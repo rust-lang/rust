@@ -8,4 +8,5 @@ impl Foo {
 fn main() {
     Foo.foo();
     //~^ ERROR type annotations needed
+    //~| ERROR type annotations needed
 }

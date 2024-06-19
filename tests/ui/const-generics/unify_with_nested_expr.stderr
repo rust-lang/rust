@@ -4,14 +4,11 @@ error[E0284]: type annotations needed
 LL |     bar();
    |     ^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
    |
-note: required by a bound in `bar`
-  --> $DIR/unify_with_nested_expr.rs:14:10
+note: required by a const generic parameter in `bar`
+  --> $DIR/unify_with_nested_expr.rs:12:8
    |
 LL | fn bar<const N: usize>()
-   |    --- required by a bound in this function
-LL | where
-LL |     [(); N + 1]:,
-   |          ^^^^^ required by this bound in `bar`
+   |        ^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
 help: consider specifying the generic argument
    |
 LL |     bar::<N>();

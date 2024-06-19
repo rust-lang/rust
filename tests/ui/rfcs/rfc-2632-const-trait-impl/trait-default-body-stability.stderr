@@ -34,6 +34,94 @@ LL | impl const FromResidual for T {
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
-error: aborting due to 4 previous errors
+error[E0284]: type annotations needed
+  --> $DIR/trait-default-body-stability.rs:33:6
+   |
+LL | impl const FromResidual for T {
+   |      ^^^^^ cannot infer the value of the constant `_`
+   |
+note: required for `T` to implement `Try`
+  --> $DIR/trait-default-body-stability.rs:18:12
+   |
+LL | impl const Try for T {
+   |      ----- ^^^     ^
+   |      |
+   |      unsatisfied trait bound introduced here
 
-For more information about this error, try `rustc --explain E0207`.
+error[E0284]: type annotations needed
+  --> $DIR/trait-default-body-stability.rs:44:9
+   |
+LL |         T?
+   |         ^^ cannot infer the value of the constant `_`
+   |
+note: required for `T` to implement `Try`
+  --> $DIR/trait-default-body-stability.rs:18:12
+   |
+LL | impl const Try for T {
+   |      ----- ^^^     ^
+   |      |
+   |      unsatisfied trait bound introduced here
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-default-body-stability.rs:44:9
+   |
+LL |         T?
+   |         ^^ cannot infer the value of the constant `_`
+   |
+note: required for `T` to implement `FromResidual<T>`
+  --> $DIR/trait-default-body-stability.rs:33:12
+   |
+LL | impl const FromResidual for T {
+   |      ----- ^^^^^^^^^^^^     ^
+   |      |
+   |      unsatisfied trait bound introduced here
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-default-body-stability.rs:44:9
+   |
+LL |         T?
+   |         ^^ cannot infer the value of the constant `_`
+   |
+note: required for `T` to implement `Try`
+  --> $DIR/trait-default-body-stability.rs:18:12
+   |
+LL | impl const Try for T {
+   |      ----- ^^^     ^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-default-body-stability.rs:44:9
+   |
+LL |         T?
+   |         ^^ cannot infer the value of the constant `_`
+   |
+note: required for `T` to implement `FromResidual<T>`
+  --> $DIR/trait-default-body-stability.rs:33:12
+   |
+LL | impl const FromResidual for T {
+   |      ----- ^^^^^^^^^^^^     ^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-default-body-stability.rs:44:9
+   |
+LL |         T?
+   |         ^^ cannot infer the value of the constant `_`
+   |
+note: required for `T` to implement `Try`
+  --> $DIR/trait-default-body-stability.rs:18:12
+   |
+LL | impl const Try for T {
+   |      ----- ^^^     ^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0207, E0284.
+For more information about an error, try `rustc --explain E0207`.
