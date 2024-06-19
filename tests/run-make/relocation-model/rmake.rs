@@ -9,8 +9,6 @@
 use run_make_support::{run, rustc};
 
 fn main() {
-    // FIXME(Oneirical): This first one will likely fail on MSVC due to #28026.
-    // Remove this after try-job
     rustc().arg("-Crelocation-model=static").input("foo.rs").run();
     run("foo");
     rustc().arg("-Crelocation-model=dynamic-no-pic").input("foo.rs").run();
