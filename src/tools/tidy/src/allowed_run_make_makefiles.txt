@@ -57,7 +57,6 @@ run-make/forced-unwind-terminate-pof/Makefile
 run-make/foreign-double-unwind/Makefile
 run-make/foreign-exceptions/Makefile
 run-make/foreign-rust-exceptions/Makefile
-run-make/glibc-staticlib-args/Makefile
 run-make/include_bytes_deps/Makefile
 run-make/incr-add-rust-src-component/Makefile
 run-make/incr-foreign-head-span/Makefile

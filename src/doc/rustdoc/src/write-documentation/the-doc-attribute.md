@@ -144,10 +144,10 @@ it will not.
 ### `test(attr(...))`
 
 This form of the `doc` attribute allows you to add arbitrary attributes to all your doctests. For
-example, if you want your doctests to fail if they produce any warnings, you could add this:
+example, if you want your doctests to fail if they have dead code, you could add this:
 
 ```rust,no_run
-#![doc(test(attr(deny(warnings))))]
+#![doc(test(attr(deny(dead_code))))]
 ```
 
 ## At the item level
