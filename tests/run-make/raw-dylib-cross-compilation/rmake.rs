@@ -4,7 +4,7 @@
 // way that previously failed due to this bug, and checks that it succeeds.
 // See https://github.com/rust-lang/rust/pull/108355
 
-//@ ignore-i686-pc-windows-msvc
+//@ ignore-i686-pc-windows-gnu
 // Reason: dlltool on this distribution is unable to produce x64 binaries
 //@ needs-dlltool
 // Reason: this is the utility being checked by this test
@@ -29,12 +29,12 @@ fn main() {
     rustc()
         .crate_type("lib")
         .crate_name("x64_raw_dylib_test")
-        .target("x86-64-pc-windows-gnu")
+        .target("x86_64-pc-windows-gnu")
         .input("lib.rs")
         .run();
     llvm_objdump()
         .arg("-a")
-        .input(rust_lib_name("i686_raw_dylib_test"))
+        .input(rust_lib_name("x64_raw_dylib_test"))
         .run()
         .assert_stdout_not_contains("file format coff-i386")
         .assert_stdout_contains("file format coff-x86-64");
