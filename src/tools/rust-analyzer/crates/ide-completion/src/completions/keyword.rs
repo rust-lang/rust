@@ -14,9 +14,9 @@ pub(crate) fn complete_for_and_where(
     match keyword_item {
         Item::Impl(it) => {
             if it.for_token().is_none() && it.trait_().is_none() && it.self_ty().is_some() {
-                add_keyword("for", "for");
+                add_keyword("for", "for $0");
             }
-            add_keyword("where", "where");
+            add_keyword("where", "where $0");
         }
         Item::Enum(_)
         | Item::Fn(_)
@@ -24,7 +24,7 @@ pub(crate) fn complete_for_and_where(
         | Item::Trait(_)
         | Item::TypeAlias(_)
         | Item::Union(_) => {
-            add_keyword("where", "where");
+            add_keyword("where", "where $0");
         }
         _ => (),
     }
