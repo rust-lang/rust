@@ -11,7 +11,7 @@
 //! connect the fact that they can only be produced by a `StableHasher` to their
 //! `Encode`/`Decode` impls.
 
-use crate::stable_hasher::{StableHasher, StableHasherResult};
+use crate::stable_hasher::{FromStableHash, StableHasherHash};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 use std::ops::BitXorAssign;
@@ -56,10 +56,12 @@ impl<D: Decoder> Decodable<D> for Hash64 {
     }
 }
 
-impl StableHasherResult for Hash64 {
+impl FromStableHash for Hash64 {
+    type Hash = StableHasherHash;
+
     #[inline]
-    fn finish(hasher: StableHasher) -> Self {
-        Self { inner: hasher.finalize().0 }
+    fn from(StableHasherHash([_0, __1]): Self::Hash) -> Self {
+        Self { inner: _0 }
     }
 }
 
@@ -121,10 +123,11 @@ impl<D: Decoder> Decodable<D> for Hash128 {
     }
 }
 
-impl StableHasherResult for Hash128 {
+impl FromStableHash for Hash128 {
+    type Hash = StableHasherHash;
+
     #[inline]
-    fn finish(hasher: StableHasher) -> Self {
-        let (_0, _1) = hasher.finalize();
+    fn from(StableHasherHash([_0, _1]): Self::Hash) -> Self {
         Self { inner: u128::from(_0) | (u128::from(_1) << 64) }
     }
 }
