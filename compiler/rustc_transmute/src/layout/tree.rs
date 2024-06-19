@@ -341,37 +341,29 @@ pub(crate) mod rustc {
 
             // We consider three kinds of enums, each demanding a different
             // treatment of their layout computation:
-            // 1. enums that are uninhabited
-            // 2. enums for which all but one variant is uninhabited
-            // 3. enums with multiple inhabited variants
+            // 1. enums that are uninhabited ZSTs
+            // 2. enums that delegate their layout to a variant
+            // 3. enums with multiple variants
             match layout.variants() {
-                _ if layout.abi.is_uninhabited() => {
-                    // Uninhabited enums are usually (always?) zero-sized. In
-                    // the (unlikely?) event that an uninhabited enum is
-                    // non-zero-sized, this assert will trigger an ICE, and this
-                    // code should be modified such that a `layout.size` amount
-                    // of uninhabited bytes is returned instead.
-                    //
-                    // Uninhabited enums are currently implemented such that
-                    // their layout is described with `Variants::Single`, even
-                    // though they don't necessarily have a 'single' variant to
-                    // defer to. That said, we don't bother specifically
-                    // matching on `Variants::Single` in this arm because the
-                    // behavioral principles here remain true even if, for
-                    // whatever reason, the compiler describes an uninhabited
-                    // enum with `Variants::Multiple`.
-                    assert_eq!(layout.size, Size::ZERO);
+                Variants::Single { .. }
+                    if layout.abi.is_uninhabited() && layout.size == Size::ZERO =>
+                {
+                    // The layout representation of uninhabited, ZST enums is
+                    // defined to be like that of the `!` type, as opposed of a
+                    // typical enum. Consequently, they cannot be descended into
+                    // as if they typical enums. We therefore special-case this
+                    // scenario and simply return an uninhabited `Tree`.
                     Ok(Self::uninhabited())
                 }
                 Variants::Single { index } => {
-                    // `Variants::Single` on non-uninhabited enums denotes that
+                    // `Variants::Single` on enums with variants denotes that
                     // the enum delegates its layout to the variant at `index`.
                     layout_of_variant(*index)
                 }
                 Variants::Multiple { tag_field, .. } => {
                     // `Variants::Multiple` denotes an enum with multiple
-                    // inhabited variants. The layout of such an enum is the
-                    // disjunction of the layouts of its tagged variants.
+                    // variants. The layout of such an enum is the disjunction
+                    // of the layouts of its tagged variants.
 
                     // For enums (but not coroutines), the tag field is
                     // currently always the first field of the layout.

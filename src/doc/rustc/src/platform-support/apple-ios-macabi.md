@@ -9,6 +9,8 @@ Apple Mac Catalyst targets.
 
 ## Target maintainers
 
+- [@badboy](https://github.com/badboy)
+- [@BlackHoleFox](https://github.com/BlackHoleFox)
 - [@madsmtm](https://github.com/madsmtm)
 
 ## Requirements

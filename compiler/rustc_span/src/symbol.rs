@@ -1678,6 +1678,7 @@ symbols! {
         shadow_call_stack,
         shl,
         shl_assign,
+        shorter_tail_lifetimes,
         should_panic,
         shr,
         shr_assign,

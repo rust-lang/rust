@@ -859,10 +859,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     // Only point to return type if the expected type is the return type, as if they
                     // are not, the expectation must have been caused by something else.
-                    debug!("return type {:?}", hir_ty);
+                    debug!(?hir_ty, "return type");
                     let ty = self.lowerer().lower_ty(hir_ty);
-                    debug!("return type {:?}", ty);
-                    debug!("expected type {:?}", expected);
+                    debug!(?ty, "return type (lowered)");
+                    debug!(?expected, "expected type");
                     let bound_vars = self.tcx.late_bound_vars(hir_ty.hir_id.owner.into());
                     let ty = Binder::bind_with_vars(ty, bound_vars);
                     let ty = self.normalize(hir_ty.span, ty);
@@ -873,7 +873,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             expected,
                         });
                         self.try_suggest_return_impl_trait(err, expected, found, fn_id);
-                        self.note_caller_chooses_ty_for_ty_param(err, expected, found);
+                        self.try_note_caller_chooses_ty_for_ty_param(err, expected, found);
                         return true;
                     }
                 }
@@ -883,18 +883,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    fn note_caller_chooses_ty_for_ty_param(
+    fn try_note_caller_chooses_ty_for_ty_param(
         &self,
         diag: &mut Diag<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
-        if let ty::Param(expected_ty_as_param) = expected.kind() {
-            diag.subdiagnostic(errors::NoteCallerChoosesTyForTyParam {
-                ty_param_name: expected_ty_as_param.name,
-                found_ty: found,
-            });
+        // Only show the note if:
+        // 1. `expected` ty is a type parameter;
+        // 2. The `expected` type parameter does *not* occur in the return expression type. This can
+        //    happen for e.g. `fn foo<T>(t: &T) -> T { t }`, where `expected` is `T` but `found` is
+        //    `&T`. Saying "the caller chooses a type for `T` which can be different from `&T`" is
+        //    "well duh" and is only confusing and not helpful.
+        let ty::Param(expected_ty_as_param) = expected.kind() else {
+            return;
+        };
+
+        if found.contains(expected) {
+            return;
         }
+
+        diag.subdiagnostic(errors::NoteCallerChoosesTyForTyParam {
+            ty_param_name: expected_ty_as_param.name,
+            found_ty: found,
+        });
     }
 
     /// check whether the return type is a generic type with a trait bound
