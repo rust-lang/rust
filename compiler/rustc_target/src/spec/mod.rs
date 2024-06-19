@@ -39,6 +39,7 @@ use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors
 use crate::json::{Json, ToJson};
 use crate::spec::abi::Abi;
 use crate::spec::crt_objects::CrtObjects;
+use crate::spec::maybe_lazy::MaybeLazy;
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -55,6 +56,7 @@ use tracing::debug;
 
 pub mod abi;
 pub mod crt_objects;
+pub mod maybe_lazy;
 
 mod base;
 pub use base::apple::deployment_target as current_apple_deployment_target;
