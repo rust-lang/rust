@@ -2261,9 +2261,6 @@ impl Step for RustDev {
 
         builder.ensure(crate::core::build_steps::llvm::Llvm { target });
 
-        // We want to package `lld` to use it with `download-ci-llvm`.
-        builder.ensure(crate::core::build_steps::llvm::Lld { target });
-
         let src_bindir = builder.llvm_out(target).join("bin");
         // If updating this, you likely want to change
         // src/bootstrap/download-ci-llvm-stamp as well, otherwise local users
@@ -2280,10 +2277,15 @@ impl Step for RustDev {
             }
         }
 
-        // We don't build LLD on some platforms, so only add it if it exists
-        let lld_path = builder.lld_out(target).join("bin").join(exe("lld", target));
-        if lld_path.exists() {
-            tarball.add_file(lld_path, "bin", 0o755);
+        if builder.config.lld_enabled {
+            // We want to package `lld` to use it with `download-ci-llvm`.
+            let lld_out = builder.ensure(crate::core::build_steps::llvm::Lld { target });
+
+            // We don't build LLD on some platforms, so only add it if it exists
+            let lld_path = lld_out.join("bin").join(exe("lld", target));
+            if lld_path.exists() {
+                tarball.add_file(lld_path, "bin", 0o755);
+            }
         }
 
         tarball.add_file(builder.llvm_filecheck(target), "bin", 0o755);
