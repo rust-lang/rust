@@ -9,6 +9,6 @@ use run_make_support::rustc;
 fn main() {
     rustc().input("baz.rs").emit("metadata").run();
     rustc().input("bar.rs").emit("metadata").extern_("baz", "libbaz.rmeta").run();
-    // There should be no internal compiler error message.
-    rustc().input("foo.rs").emit("metadata").extern_("bar", "libbaz.rmeta").run().assert_stderr_not_contains("unexpectedly panicked");
+    // There should be no internal compiler error.
+    rustc().input("foo.rs").emit("metadata").extern_("bar", "libbaz.rmeta").run();
 }
