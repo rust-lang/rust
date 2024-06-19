@@ -219,8 +219,9 @@ impl<'tcx> Instance<'tcx> {
             InstanceKind::Item(def) => tcx
                 .upstream_monomorphizations_for(def)
                 .and_then(|monos| monos.get(&self.args).cloned()),
-            InstanceKind::DropGlue(_, Some(_)) | InstanceKind::AsyncDropGlueCtorShim(_, _) => {
-                tcx.upstream_drop_glue_for(self.args)
+            InstanceKind::DropGlue(_, Some(_)) => tcx.upstream_drop_glue_for(self.args),
+            InstanceKind::AsyncDropGlueCtorShim(_, Some(_)) => {
+                tcx.upstream_async_drop_glue_for(self.args)
             }
             _ => None,
         }
@@ -256,7 +257,7 @@ impl<'tcx> InstanceKind<'tcx> {
         match self {
             ty::InstanceKind::Item(def) => Some(def),
             ty::InstanceKind::DropGlue(def_id, Some(_))
-            | InstanceKind::AsyncDropGlueCtorShim(def_id, _)
+            | InstanceKind::AsyncDropGlueCtorShim(def_id, Some(_))
             | InstanceKind::ThreadLocalShim(def_id) => Some(def_id),
             InstanceKind::VTableShim(..)
             | InstanceKind::ReifyShim(..)
@@ -267,6 +268,7 @@ impl<'tcx> InstanceKind<'tcx> {
             | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
             | ty::InstanceKind::CoroutineKindShim { .. }
             | InstanceKind::DropGlue(..)
+            | InstanceKind::AsyncDropGlueCtorShim(..)
             | InstanceKind::CloneShim(..)
             | InstanceKind::FnPtrAddrShim(..) => None,
         }
@@ -312,7 +314,9 @@ impl<'tcx> InstanceKind<'tcx> {
         if self.requires_inline(tcx) {
             return true;
         }
-        if let ty::InstanceKind::DropGlue(.., Some(ty)) = *self {
+        if let ty::InstanceKind::DropGlue(.., Some(ty))
+        | ty::InstanceKind::AsyncDropGlueCtorShim(.., Some(ty)) = *self
+        {
             // Drop glue generally wants to be instantiated at every codegen
             // unit, but without an #[inline] hint. We should make this
             // available to normal end-users.
@@ -327,9 +331,14 @@ impl<'tcx> InstanceKind<'tcx> {
             // drops of `Option::None` before LTO. We also respect the intent of
             // `#[inline]` on `Drop::drop` implementations.
             return ty.ty_adt_def().map_or(true, |adt_def| {
-                adt_def
-                    .destructor(tcx)
-                    .map_or_else(|| adt_def.is_enum(), |dtor| tcx.cross_crate_inlinable(dtor.did))
+                match *self {
+                    ty::InstanceKind::DropGlue(..) => adt_def.destructor(tcx).map(|dtor| dtor.did),
+                    ty::InstanceKind::AsyncDropGlueCtorShim(..) => {
+                        adt_def.async_destructor(tcx).map(|dtor| dtor.ctor)
+                    }
+                    _ => unreachable!(),
+                }
+                .map_or_else(|| adt_def.is_enum(), |did| tcx.cross_crate_inlinable(did))
             });
         }
         if let ty::InstanceKind::ThreadLocalShim(..) = *self {
