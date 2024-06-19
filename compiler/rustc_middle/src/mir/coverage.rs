@@ -76,7 +76,7 @@ rustc_index::newtype_index! {
 }
 
 impl ConditionId {
-    pub const NONE: Self = Self::from_u32(0);
+    pub const START: Self = Self::from_usize(0);
 }
 
 /// Enum that can hold a constant zero value, the ID of an physical coverage
@@ -315,18 +315,8 @@ pub struct BranchSpan {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct ConditionInfo {
     pub condition_id: ConditionId,
-    pub true_next_id: ConditionId,
-    pub false_next_id: ConditionId,
-}
-
-impl Default for ConditionInfo {
-    fn default() -> Self {
-        Self {
-            condition_id: ConditionId::NONE,
-            true_next_id: ConditionId::NONE,
-            false_next_id: ConditionId::NONE,
-        }
-    }
+    pub true_next_id: Option<ConditionId>,
+    pub false_next_id: Option<ConditionId>,
 }
 
 #[derive(Clone, Debug)]

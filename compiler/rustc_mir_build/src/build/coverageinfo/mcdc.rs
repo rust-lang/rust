@@ -46,8 +46,9 @@ impl BooleanDecisionCtx {
     }
 
     fn next_condition_id(&mut self) -> ConditionId {
+        let id = ConditionId::from_usize(self.condition_id_counter);
         self.condition_id_counter += 1;
-        ConditionId::from_usize(self.condition_id_counter)
+        id
     }
 
     // At first we assign ConditionIds for each sub expression.
@@ -91,12 +92,15 @@ impl BooleanDecisionCtx {
     // - If the op is AND, the "false_next" of LHS and RHS should be the parent's "false_next". While "true_next" of the LHS is the RHS, the "true next" of RHS is the parent's "true_next".
     // - If the op is OR, the "true_next" of LHS and RHS should be the parent's "true_next". While "false_next" of the LHS is the RHS, the "false next" of RHS is the parent's "false_next".
     fn record_conditions(&mut self, op: LogicalOp) {
-        let parent_condition = self.decision_stack.pop_back().unwrap_or_default();
-        let lhs_id = if parent_condition.condition_id == ConditionId::NONE {
-            ConditionId::from(self.next_condition_id())
-        } else {
-            parent_condition.condition_id
+        let parent_condition = match self.decision_stack.pop_back() {
+            Some(info) => info,
+            None => ConditionInfo {
+                condition_id: self.next_condition_id(),
+                true_next_id: None,
+                false_next_id: None,
+            },
         };
+        let lhs_id = parent_condition.condition_id;
 
         let rhs_condition_id = self.next_condition_id();
 
@@ -104,7 +108,7 @@ impl BooleanDecisionCtx {
             LogicalOp::And => {
                 let lhs = ConditionInfo {
                     condition_id: lhs_id,
-                    true_next_id: rhs_condition_id,
+                    true_next_id: Some(rhs_condition_id),
                     false_next_id: parent_condition.false_next_id,
                 };
                 let rhs = ConditionInfo {
@@ -118,7 +122,7 @@ impl BooleanDecisionCtx {
                 let lhs = ConditionInfo {
                     condition_id: lhs_id,
                     true_next_id: parent_condition.true_next_id,
-                    false_next_id: rhs_condition_id,
+                    false_next_id: Some(rhs_condition_id),
                 };
                 let rhs = ConditionInfo {
                     condition_id: rhs_condition_id,
@@ -139,11 +143,15 @@ impl BooleanDecisionCtx {
         true_marker: BlockMarkerId,
         false_marker: BlockMarkerId,
     ) {
-        let condition_info = self.decision_stack.pop_back().unwrap_or_default();
-        if condition_info.true_next_id == ConditionId::NONE {
+        let condition_info = self.decision_stack.pop_back().unwrap_or(ConditionInfo {
+            condition_id: ConditionId::START,
+            true_next_id: None,
+            false_next_id: None,
+        });
+        if condition_info.true_next_id.is_none() {
             self.decision_info.end_markers.push(true_marker);
         }
-        if condition_info.false_next_id == ConditionId::NONE {
+        if condition_info.false_next_id.is_none() {
             self.decision_info.end_markers.push(false_marker);
         }
 
@@ -338,10 +346,7 @@ impl MCDCInfoBuilder {
         ctx
     }
 
-    fn append_normal_branches(&mut self, mut branches: Vec<MCDCBranchSpan>) {
-        branches
-            .iter_mut()
-            .for_each(|branch| branch.condition_info.condition_id = ConditionId::NONE);
+    fn append_normal_branches(&mut self, branches: Vec<MCDCBranchSpan>) {
         self.normal_branch_spans.extend(branches);
     }
 
