@@ -84,6 +84,11 @@ features! {
     /// * `"avxneconvert"`
     /// * `"avxvnniint8"`
     /// * `"avxvnniint16"`
+    /// * `"amx-tile"`
+    /// * `"amx-int8"`
+    /// * `"amx-bf16"`
+    /// * `"amx-fp16"`
+    /// * `"amx-complex"`
     /// * `"f16c"`
     /// * `"fma"`
     /// * `"bmi1"`
@@ -196,6 +201,16 @@ features! {
     /// AVX-VNNI_INT8 (VNNI with 16-bit Integers)
     @FEATURE: #[unstable(feature = "avx512_target_feature", issue = "44839")] avxvnniint8: "avxvnniint8";
     /// AVX-VNNI_INT16 (VNNI with 8-bit integers)
+    @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_tile: "amx-tile";
+    /// AMX (Advanced Matrix Extensions) - Tile load/store
+    @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_int8: "amx-int8";
+    /// AMX-INT8 (Operations on 8-bit integers)
+    @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_bf16: "amx-bf16";
+    /// AMX-BF16 (BFloat16 Operations)
+    @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_fp16: "amx-fp16";
+    /// AMX-FP16 (Float16 Operations)
+    @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_complex: "amx-complex";
+    /// AMX-COMPLEX (Complex number Operations)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] f16c: "f16c";
     /// F16C (Conversions between IEEE-754 `binary16` and `binary32` formats)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] fma: "fma";

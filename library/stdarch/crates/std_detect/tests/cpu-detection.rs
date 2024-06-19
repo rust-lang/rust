@@ -5,7 +5,7 @@
 #![cfg_attr(target_arch = "powerpc64", feature(stdarch_powerpc_feature_detection))]
 #![cfg_attr(
     any(target_arch = "x86", target_arch = "x86_64"),
-    feature(sha512_sm_x86)
+    feature(sha512_sm_x86, x86_amx_intrinsics)
 )]
 #![allow(clippy::unwrap_used, clippy::use_debug, clippy::print_stdout)]
 
@@ -259,6 +259,11 @@ fn x86_all() {
     println!("xsaveopt: {:?}", is_x86_feature_detected!("xsaveopt"));
     println!("xsaves: {:?}", is_x86_feature_detected!("xsaves"));
     println!("xsavec: {:?}", is_x86_feature_detected!("xsavec"));
+    println!("amx-bf16: {:?}", is_x86_feature_detected!("amx-bf16"));
+    println!("amx-tile: {:?}", is_x86_feature_detected!("amx-tile"));
+    println!("amx-int8: {:?}", is_x86_feature_detected!("amx-int8"));
+    println!("amx-fp16: {:?}", is_x86_feature_detected!("amx-fp16"));
+    println!("amx-complex: {:?}", is_x86_feature_detected!("amx-complex"));
 }
 
 #[test]

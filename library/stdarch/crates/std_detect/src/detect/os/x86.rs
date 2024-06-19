@@ -164,6 +164,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
                 // * SSE -> `XCR0.SSE[1]`
                 // * AVX -> `XCR0.AVX[2]`
                 // * AVX-512 -> `XCR0.AVX-512[7:5]`.
+                // * AMX -> `XCR0.AMX[18:17]`
                 //
                 // by setting the corresponding bits of `XCR0` to `1`.
                 //
@@ -174,6 +175,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
                 let os_avx_support = xcr0 & 6 == 6;
                 // Test `XCR0.AVX-512[7:5]` with the mask `0b1110_0000 == 0xe0`:
                 let os_avx512_support = xcr0 & 0xe0 == 0xe0;
+                // Test `XCR0.AMX[18:17]` with the mask `0b110_0000_0000_0000_0000 == 0x60000`
+                let os_amx_support = xcr0 & 0x60000 == 0x60000;
 
                 // Only if the OS and the CPU support saving/restoring the AVX
                 // registers we enable `xsave` support:
@@ -240,6 +243,14 @@ pub(crate) fn detect_features() -> cache::Initializer {
                         enable(extended_features_edx, 8, Feature::avx512vp2intersect);
                         enable(extended_features_edx, 23, Feature::avx512fp16);
                         enable(extended_features_eax_leaf_1, 5, Feature::avx512bf16);
+
+                        if os_amx_support {
+                            enable(extended_features_edx, 24, Feature::amx_tile);
+                            enable(extended_features_edx, 25, Feature::amx_int8);
+                            enable(extended_features_edx, 22, Feature::amx_bf16);
+                            enable(extended_features_eax_leaf_1, 21, Feature::amx_fp16);
+                            enable(extended_features_edx_leaf_1, 8, Feature::amx_complex);
+                        }
                     }
                 }
             }
