@@ -265,22 +265,6 @@ install!((self, builder, _config),
             );
         }
     };
-    RustDemangler, alias = "rust-demangler", Self::should_build(_config), only_hosts: true, {
-        // NOTE: Even though `should_build` may return true for `extended` default tools,
-        // dist::RustDemangler may still return None, unless the target-dependent `profiler` config
-        // is also true, or the `tools` array explicitly includes "rust-demangler".
-        if let Some(tarball) = builder.ensure(dist::RustDemangler {
-            compiler: self.compiler,
-            target: self.target
-        }) {
-            install_sh(builder, "rust-demangler", self.compiler.stage, Some(self.target), &tarball);
-        } else {
-            builder.info(
-                &format!("skipping Install RustDemangler stage{} ({})",
-                         self.compiler.stage, self.target),
-            );
-        }
-    };
     Rustc, path = "compiler/rustc", true, only_hosts: true, {
         let tarball = builder.ensure(dist::Rustc {
             compiler: builder.compiler(builder.top_stage, self.target),
