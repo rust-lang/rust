@@ -452,8 +452,8 @@ pub struct AliasTy<I: Interner> {
     /// aka. `interner.parent(def_id)`.
     pub def_id: I::DefId,
 
-    /// This field exists to prevent the creation of `AliasTy` without using
-    /// [AliasTy::new].
+    /// This field exists to prevent the creation of `AliasTy` without using [`AliasTy::new`].
+    #[derivative(Debug = "ignore")]
     pub(crate) _use_alias_ty_new_instead: (),
 }
 
