@@ -38,16 +38,16 @@ LL |     let _ = async { break; };
    |             enclosing `async` block
 
 error[E0267]: `break` inside `async` closure
-  --> $DIR/break-inside-coroutine-issue-124495.rs:21:24
+  --> $DIR/break-inside-coroutine-issue-124495.rs:22:24
    |
 LL |     let _ = async || { break; };
-   |                      --^^^^^---
-   |                      | |
-   |                      | cannot `break` inside `async` closure
-   |                      enclosing `async` closure
+   |             -----------^^^^^---
+   |             |          |
+   |             |          cannot `break` inside `async` closure
+   |             enclosing `async` closure
 
 error[E0267]: `break` inside `gen` block
-  --> $DIR/break-inside-coroutine-issue-124495.rs:23:19
+  --> $DIR/break-inside-coroutine-issue-124495.rs:24:19
    |
 LL |     let _ = gen { break; };
    |             ------^^^^^---
@@ -56,7 +56,7 @@ LL |     let _ = gen { break; };
    |             enclosing `gen` block
 
 error[E0267]: `break` inside `async gen` block
-  --> $DIR/break-inside-coroutine-issue-124495.rs:25:25
+  --> $DIR/break-inside-coroutine-issue-124495.rs:26:25
    |
 LL |     let _ = async gen { break; };
    |             ------------^^^^^---
