@@ -58,6 +58,7 @@ impl DocTest {
                 found_extern_crate,
                 supports_color,
                 has_global_allocator,
+                has_macro_def,
                 ..
             },
             failed_ast,
@@ -85,6 +86,16 @@ impl DocTest {
                 can_be_merged: false,
             };
         };
+        // If the AST returned an error, we don't want this doctest to be merged with the
+        // others. Same if it contains `#[feature]` or `#[no_std]`.
+        let can_be_merged = can_merge_doctests
+            && !failed_ast
+            && !has_no_std
+            && !has_features
+            && !has_global_allocator
+            // If this is a merged doctest and a defined macro uses `$crate`, then the path will
+            // not work, so better not put it into merged doctests.
+            && !(has_macro_def && everything_else.contains("$crate"));
         Self {
             supports_color,
             has_main_fn,
@@ -95,9 +106,7 @@ impl DocTest {
             already_has_extern_crate: found_extern_crate,
             test_id,
             failed_ast: false,
-            // If the AST returned an error, we don't want this doctest to be merged with the
-            // others. Same if it contains `#[feature]` or `#[no_std]`.
-            can_be_merged: !failed_ast && !has_no_std && !has_features && !has_global_allocator,
+            can_be_merged,
         }
     }
 
@@ -309,6 +318,7 @@ fn parse_source(
                 }
             }
             ast::ItemKind::MacCall(..) => info.found_macro = true,
+            ast::ItemKind::MacroDef(..) => info.has_macro_def = true,
             _ => {}
         }
     }
@@ -346,6 +356,7 @@ struct ParseSourceInfo {
     found_macro: bool,
     supports_color: bool,
     has_global_allocator: bool,
+    has_macro_def: bool,
 }
 
 fn check_for_main_and_extern_crate(
