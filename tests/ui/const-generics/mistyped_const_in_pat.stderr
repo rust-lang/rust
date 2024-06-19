@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Trait<u8>` for type `Vec<u8>`
+  --> $DIR/mistyped_const_in_pat.rs:13:1
+   |
+LL | impl<T> Trait<T> for Vec<T> {
+   | --------------------------- first implementation here
+...
+LL | impl Trait<u8> for Vec<u8> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Vec<u8>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.
