@@ -15,7 +15,7 @@ use std::ops::Range;
 /// for the attribute target. This allows us to perform cfg-expansion on
 /// a token stream before we invoke a derive proc-macro.
 ///
-/// This wrapper prevents direct access to the underlying `ast::AttrVec>`.
+/// This wrapper prevents direct access to the underlying `ast::AttrVec`.
 /// Parsing code can only get access to the underlying attributes
 /// by passing an `AttrWrapper` to `collect_tokens_trailing_tokens`.
 /// This makes it difficult to accidentally construct an AST node
@@ -176,6 +176,10 @@ impl<'a> Parser<'a> {
     /// including the current token. These tokens are collected
     /// into a `LazyAttrTokenStream`, and returned along with the result
     /// of the callback.
+    ///
+    /// The `attrs` passed in are in `AttrWrapper` form, which is opaque. The
+    /// `AttrVec` within is passed to `f`. See the comment on `AttrWrapper` for
+    /// details.
     ///
     /// Note: If your callback consumes an opening delimiter
     /// (including the case where you call `collect_tokens`
