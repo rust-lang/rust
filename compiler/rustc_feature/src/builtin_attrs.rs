@@ -1089,6 +1089,14 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `#[custom_mir]` attribute is just used for the Rust test suite",
     ),
     rustc_attr!(
+        TEST, rustc_dump_item_bounds, Normal, template!(Word),
+        WarnFollowing, EncodeCrossCrate::No
+    ),
+    rustc_attr!(
+        TEST, rustc_dump_predicates, Normal, template!(Word),
+        WarnFollowing, EncodeCrossCrate::No
+    ),
+    rustc_attr!(
         TEST, rustc_object_lifetime_default, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
