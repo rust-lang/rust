@@ -162,7 +162,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.selcx.tcx()
     }
 
@@ -216,7 +216,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     Reveal::UserFacing => ty.super_fold_with(self),
 
                     Reveal::All => {
-                        let recursion_limit = self.interner().recursion_limit();
+                        let recursion_limit = self.cx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {
                             self.selcx.infcx.err_ctxt().report_overflow_error(
                                 OverflowCause::DeeplyNormalize(data.into()),
@@ -227,8 +227,8 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         }
 
                         let args = data.args.fold_with(self);
-                        let generic_ty = self.interner().type_of(data.def_id);
-                        let concrete_ty = generic_ty.instantiate(self.interner(), args);
+                        let generic_ty = self.cx().type_of(data.def_id);
+                        let concrete_ty = generic_ty.instantiate(self.cx(), args);
                         self.depth += 1;
                         let folded_ty = self.fold_ty(concrete_ty);
                         self.depth -= 1;
@@ -312,7 +312,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 normalized_ty
             }
             ty::Weak => {
-                let recursion_limit = self.interner().recursion_limit();
+                let recursion_limit = self.cx().recursion_limit();
                 if !recursion_limit.value_within_limit(self.depth) {
                     self.selcx.infcx.err_ctxt().report_overflow_error(
                         OverflowCause::DeeplyNormalize(data.into()),

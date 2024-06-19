@@ -173,7 +173,7 @@ impl<'tcx> NormalizeAfterErasingRegionsFolder<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for NormalizeAfterErasingRegionsFolder<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -211,7 +211,7 @@ impl<'tcx> TryNormalizeAfterErasingRegionsFolder<'tcx> {
 impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
     type Error = NormalizationError<'tcx>;
 
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

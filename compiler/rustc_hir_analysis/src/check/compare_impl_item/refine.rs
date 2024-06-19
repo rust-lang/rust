@@ -322,7 +322,7 @@ struct Anonymize<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Anonymize<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
