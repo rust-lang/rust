@@ -136,16 +136,7 @@ impl<'a> Parser<'a> {
         r: Restrictions,
         attrs: Option<AttrWrapper>,
     ) -> PResult<'a, P<Expr>> {
-        self.with_res(r, |this| this.parse_expr_assoc(attrs))
-    }
-
-    /// Parses an associative expression.
-    ///
-    /// This parses an expression accounting for associativity and precedence of the operators in
-    /// the expression.
-    #[inline]
-    fn parse_expr_assoc(&mut self, attrs: Option<AttrWrapper>) -> PResult<'a, P<Expr>> {
-        self.parse_expr_assoc_with(0, LhsExpr::Unparsed { attrs })
+        self.with_res(r, |this| this.parse_expr_assoc_with(0, LhsExpr::Unparsed { attrs }))
     }
 
     /// Parses an associative expression with operators of at least `min_prec` precedence.
