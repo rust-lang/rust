@@ -283,7 +283,7 @@ where
     }
 
     #[inline]
-    #[must_use = "method returns a new vector and does not mutate the original value"]
+    #[must_use = "method returns a new bool and does not mutate the original value"]
     pub fn all(self) -> bool {
         // Safety: use `self` as an integer vector
         unsafe { core::intrinsics::simd::simd_reduce_all(self.to_int()) }
