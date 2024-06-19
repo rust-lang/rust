@@ -49,7 +49,7 @@ pub use iter::IntoIter;
 /// assert_eq!(strings, ["Hello there!", "Hello there!"]);
 /// ```
 #[inline]
-#[unstable(feature = "array_repeat", issue = "none")]
+#[unstable(feature = "array_repeat", issue = "126695")]
 pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
     from_trusted_iterator(repeat_n(val, N))
 }
