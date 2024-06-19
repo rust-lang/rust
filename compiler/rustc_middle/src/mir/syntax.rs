@@ -127,6 +127,9 @@ pub enum AnalysisPhase {
     /// * [`StatementKind::AscribeUserType`]
     /// * [`StatementKind::Coverage`] with [`CoverageKind::BlockMarker`] or [`CoverageKind::SpanMarker`]
     /// * [`Rvalue::Ref`] with `BorrowKind::Fake`
+    /// * [`CastKind::PointerCoercion`] with any of the following:
+    ///   * [`PointerCoercion::ArrayToPointer`]
+    ///   * [`PointerCoercion::MutToConstPointer`]
     ///
     /// Furthermore, `Deref` projections must be the first projection within any place (if they
     /// appear at all)
@@ -1284,8 +1287,7 @@ pub enum Rvalue<'tcx> {
     ///
     /// This allows for casts from/to a variety of types.
     ///
-    /// **FIXME**: Document exactly which `CastKind`s allow which types of casts. Figure out why
-    /// `ArrayToPointer` and `MutToConstPointer` are special.
+    /// **FIXME**: Document exactly which `CastKind`s allow which types of casts.
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
     /// * `Offset` has the same semantics as [`offset`](pointer::offset), except that the second
@@ -1365,6 +1367,13 @@ pub enum CastKind {
     PointerWithExposedProvenance,
     /// Pointer related casts that are done by coercions. Note that reference-to-raw-ptr casts are
     /// translated into `&raw mut/const *r`, i.e., they are not actually casts.
+    ///
+    /// The following are allowed in [`AnalysisPhase::Initial`] as they're needed for borrowck,
+    /// but after that are forbidden (including in all phases of runtime MIR):
+    /// * [`PointerCoercion::ArrayToPointer`]
+    /// * [`PointerCoercion::MutToConstPointer`]
+    ///
+    /// Both are runtime nops, so should be [`CastKind::PtrToPtr`] instead in runtime MIR.
     PointerCoercion(PointerCoercion),
     /// Cast into a dyn* object.
     DynStar,

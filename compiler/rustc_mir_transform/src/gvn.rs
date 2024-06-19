@@ -571,11 +571,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     let ret = self.ecx.ptr_to_ptr(&src, to).ok()?;
                     ret.into()
                 }
-                CastKind::PointerCoercion(
-                    ty::adjustment::PointerCoercion::MutToConstPointer
-                    | ty::adjustment::PointerCoercion::ArrayToPointer
-                    | ty::adjustment::PointerCoercion::UnsafeFnPointer,
-                ) => {
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::UnsafeFnPointer) => {
                     let src = self.evaluated[value].as_ref()?;
                     let src = self.ecx.read_immediate(src).ok()?;
                     let to = self.ecx.layout_of(to).ok()?;
@@ -1164,10 +1160,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
-        if let PtrToPtr | PointerCoercion(MutToConstPointer) = kind
+        if let PtrToPtr = kind
             && let Value::Cast { kind: inner_kind, value: inner_value, from: inner_from, to: _ } =
                 *self.get(value)
-            && let PtrToPtr | PointerCoercion(MutToConstPointer) = inner_kind
+            && let PtrToPtr = inner_kind
         {
             from = inner_from;
             value = inner_value;
