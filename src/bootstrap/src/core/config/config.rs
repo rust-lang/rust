@@ -1718,7 +1718,23 @@ impl Config {
         config.omit_git_hash = omit_git_hash.unwrap_or(default);
         config.rust_info = GitInfo::new(config.omit_git_hash, &config.src);
 
-        if config.rust_info.is_from_tarball() && !is_user_configured_rust_channel {
+        // We need to override `rust.channel` if it's manually specified when using the CI rustc.
+        // This is because if the compiler uses a different channel than the one specified in config.toml,
+        // tests may fail due to using a different channel than the one used by the compiler during tests.
+        if let Some(commit) = &config.download_rustc_commit {
+            if is_user_configured_rust_channel {
+                println!(
+                    "WARNING: `rust.download-rustc` is enabled. The `rust.channel` option will be overridden by the CI rustc's channel."
+                );
+
+                let channel = config
+                    .read_file_by_commit(&PathBuf::from("src/ci/channel"), commit)
+                    .trim()
+                    .to_owned();
+
+                config.channel = channel;
+            }
+        } else if config.rust_info.is_from_tarball() && !is_user_configured_rust_channel {
             ci_channel.clone_into(&mut config.channel);
         }
 
