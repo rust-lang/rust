@@ -157,7 +157,6 @@ run-make/profile/Makefile
 run-make/prune-link-args/Makefile
 run-make/raw-dylib-alt-calling-convention/Makefile
 run-make/raw-dylib-c/Makefile
-run-make/raw-dylib-cross-compilation/Makefile
 run-make/raw-dylib-custom-dlltool/Makefile
 run-make/raw-dylib-import-name-type/Makefile
 run-make/raw-dylib-inline-cross-dylib/Makefile
