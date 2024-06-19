@@ -1330,17 +1330,6 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_or_use_outer_attributes(
-        &mut self,
-        already_parsed_attrs: Option<AttrWrapper>,
-    ) -> PResult<'a, AttrWrapper> {
-        if let Some(attrs) = already_parsed_attrs {
-            Ok(attrs)
-        } else {
-            self.parse_outer_attributes()
-        }
-    }
-
     /// Parses a single token tree from the input.
     pub fn parse_token_tree(&mut self) -> TokenTree {
         match self.token.kind {

@@ -2990,3 +2990,10 @@ pub(crate) struct ExprRArrowCall {
     #[suggestion(style = "short", applicability = "machine-applicable", code = ".")]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_dot_dot_range_attribute)]
+pub(crate) struct DotDotRangeAttribute {
+    #[primary_span]
+    pub span: Span,
+}
