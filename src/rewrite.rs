@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use rustc_ast::ptr;
 use rustc_span::Span;
+use thiserror::Error;
 
 use crate::config::{Config, IndentStyle};
 use crate::parse::session::ParseSess;
@@ -16,12 +17,32 @@ use crate::FormatReport;
 pub(crate) trait Rewrite {
     /// Rewrite self into shape.
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String>;
+    fn rewrite_result(
+        &self,
+        context: &RewriteContext<'_>,
+        shape: Shape,
+    ) -> Result<String, RewriteError> {
+        self.rewrite(context, shape).ok_or(RewriteError::Unknown)
+    }
 }
 
 impl<T: Rewrite> Rewrite for ptr::P<T> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         (**self).rewrite(context, shape)
     }
+}
+
+#[derive(Error, Debug)]
+pub(crate) enum RewriteError {
+    #[error("Formatting was skipped due to skip attribute or out of file range.")]
+    SkipFormatting,
+
+    #[error("It exceeds the required width of {configured_width} for the span: {span:?}")]
+    ExceedsMaxWidth { configured_width: usize, span: Span },
+
+    /// Format failure that does not fit to above categories.
+    #[error("An unknown error occurred during formatting.")]
+    Unknown,
 }
 
 #[derive(Clone)]
@@ -44,7 +65,6 @@ pub(crate) struct RewriteContext<'a> {
     pub(crate) skip_context: SkipContext,
     pub(crate) skipped_range: Rc<RefCell<Vec<(usize, usize)>>>,
 }
-
 pub(crate) struct InsideMacroGuard {
     is_nested_macro_context: bool,
     inside_macro_ref: Rc<Cell<bool>>,
