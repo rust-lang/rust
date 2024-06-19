@@ -6,7 +6,8 @@
 // See https://github.com/rust-lang/rust/issues/68794
 
 //@ ignore-cross-compile
-//FIXME(Oneirical): check that it works on more than just only-linux
+//@ ignore-windows
+// Reason: There is no `bar.dll` produced by CC to run readobj on
 
 use run_make_support::{
     cc, dynamic_lib_name, extra_c_flags, extra_cxx_flags, llvm_readobj, rustc, static_lib_name,
