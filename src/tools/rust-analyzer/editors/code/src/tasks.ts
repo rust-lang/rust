@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import type { Config } from "./config";
-import { log } from "./util";
-import { unwrapUndefinable } from "./undefinable";
+import { log, unwrapUndefinable } from "./util";
 import * as toolchain from "./toolchain";
 
 // This ends up as the `type` key in tasks.json. RLS also uses `cargo` and

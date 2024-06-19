@@ -182,7 +182,7 @@ function createCommands(): Record<string, CommandFactory> {
         applySnippetWorkspaceEdit: { enabled: commands.applySnippetWorkspaceEditCommand },
         debugSingle: { enabled: commands.debugSingle },
         gotoLocation: { enabled: commands.gotoLocation },
-        linkToCommand: { enabled: commands.linkToCommand },
+        hoverRefCommandProxy: { enabled: commands.hoverRefCommandProxy },
         resolveCodeAction: { enabled: commands.resolveCodeAction },
         runSingle: { enabled: commands.runSingle },
         showReferences: { enabled: commands.showReferences },

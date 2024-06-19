@@ -3,9 +3,7 @@ import * as os from "os";
 import * as path from "path";
 import * as readline from "readline";
 import * as vscode from "vscode";
-import { execute, log, memoizeAsync } from "./util";
-import { unwrapNullable } from "./nullable";
-import { unwrapUndefinable } from "./undefinable";
+import { execute, log, memoizeAsync, unwrapNullable, unwrapUndefinable } from "./util";
 
 interface CompilationArtifact {
     fileName: string;
@@ -157,7 +155,7 @@ export function cargoPath(): Promise<string> {
 }
 
 /** Mirrors `toolchain::get_path_for_executable()` implementation */
-export const getPathForExecutable = memoizeAsync(
+const getPathForExecutable = memoizeAsync(
     // We apply caching to decrease file-system interactions
     async (executableName: "cargo" | "rustc" | "rustup"): Promise<string> => {
         {

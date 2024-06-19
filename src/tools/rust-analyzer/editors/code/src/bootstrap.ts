@@ -1,9 +1,9 @@
 import * as vscode from "vscode";
 import * as os from "os";
 import type { Config } from "./config";
-import { log, isValidExecutable } from "./util";
+import { type Env, log } from "./util";
 import type { PersistentState } from "./persistent_state";
-import { exec } from "child_process";
+import { exec, spawnSync } from "child_process";
 
 export async function bootstrap(
     context: vscode.ExtensionContext,
@@ -13,7 +13,7 @@ export async function bootstrap(
     const path = await getServer(context, config, state);
     if (!path) {
         throw new Error(
-            "Rust Analyzer Language Server is not available. " +
+            "rust-analyzer Language Server is not available. " +
                 "Please, ensure its [proper installation](https://rust-analyzer.github.io/manual.html#installation).",
         );
     }
@@ -21,12 +21,12 @@ export async function bootstrap(
     log.info("Using server binary at", path);
 
     if (!isValidExecutable(path, config.serverExtraEnv)) {
-        if (config.serverPath) {
-            throw new Error(`Failed to execute ${path} --version. \`config.server.path\` or \`config.serverPath\` has been set explicitly.\
-            Consider removing this config or making a valid server binary available at that path.`);
-        } else {
-            throw new Error(`Failed to execute ${path} --version`);
-        }
+        throw new Error(
+            `Failed to execute ${path} --version.` + config.serverPath
+                ? `\`config.server.path\` or \`config.serverPath\` has been set explicitly.\
+            Consider removing this config or making a valid server binary available at that path.`
+                : "",
+        );
     }
 
     return path;
@@ -54,27 +54,12 @@ async function getServer(
     if (bundledExists) {
         let server = bundled;
         if (await isNixOs()) {
-            await vscode.workspace.fs.createDirectory(config.globalStorageUri).then();
-            const dest = vscode.Uri.joinPath(config.globalStorageUri, `rust-analyzer${ext}`);
-            let exists = await vscode.workspace.fs.stat(dest).then(
-                () => true,
-                () => false,
-            );
-            if (exists && config.package.version !== state.serverVersion) {
-                await vscode.workspace.fs.delete(dest);
-                exists = false;
-            }
-            if (!exists) {
-                await vscode.workspace.fs.copy(bundled, dest);
-                await patchelf(dest);
-            }
-            server = dest;
+            server = await getNixOsServer(config, ext, state, bundled, server);
+            await state.updateServerVersion(config.package.version);
         }
-        await state.updateServerVersion(config.package.version);
         return server.fsPath;
     }
 
-    await state.updateServerVersion(undefined);
     await vscode.window.showErrorMessage(
         "Unfortunately we don't ship binaries for your platform yet. " +
             "You need to manually clone the rust-analyzer repository and " +
@@ -84,6 +69,45 @@ async function getServer(
             "will consider it.",
     );
     return undefined;
+}
+
+export function isValidExecutable(path: string, extraEnv: Env): boolean {
+    log.debug("Checking availability of a binary at", path);
+
+    const res = spawnSync(path, ["--version"], {
+        encoding: "utf8",
+        env: { ...process.env, ...extraEnv },
+    });
+
+    const printOutput = res.error ? log.warn : log.info;
+    printOutput(path, "--version:", res);
+
+    return res.status === 0;
+}
+
+async function getNixOsServer(
+    config: Config,
+    ext: string,
+    state: PersistentState,
+    bundled: vscode.Uri,
+    server: vscode.Uri,
+) {
+    await vscode.workspace.fs.createDirectory(config.globalStorageUri).then();
+    const dest = vscode.Uri.joinPath(config.globalStorageUri, `rust-analyzer${ext}`);
+    let exists = await vscode.workspace.fs.stat(dest).then(
+        () => true,
+        () => false,
+    );
+    if (exists && config.package.version !== state.serverVersion) {
+        await vscode.workspace.fs.delete(dest);
+        exists = false;
+    }
+    if (!exists) {
+        await vscode.workspace.fs.copy(bundled, dest);
+        await patchelf(dest);
+    }
+    server = dest;
+    return server;
 }
 
 async function isNixOs(): Promise<boolean> {
