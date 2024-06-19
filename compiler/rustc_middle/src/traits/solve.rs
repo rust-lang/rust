@@ -5,12 +5,12 @@ use rustc_type_ir as ir;
 pub use rustc_type_ir::solve::*;
 
 use crate::ty::{
-    self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
+    self, FallibleTypeFolder, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
 };
 
 mod cache;
 
-pub use cache::{CacheData, EvaluationCache};
+pub use cache::EvaluationCache;
 
 pub type Goal<'tcx, P> = ir::solve::Goal<TyCtxt<'tcx>, P>;
 pub type QueryInput<'tcx, P> = ir::solve::QueryInput<TyCtxt<'tcx>, P>;
@@ -19,17 +19,11 @@ pub type CandidateSource<'tcx> = ir::solve::CandidateSource<TyCtxt<'tcx>>;
 pub type CanonicalInput<'tcx, P = ty::Predicate<'tcx>> = ir::solve::CanonicalInput<TyCtxt<'tcx>, P>;
 pub type CanonicalResponse<'tcx> = ir::solve::CanonicalResponse<TyCtxt<'tcx>>;
 
-/// Additional constraints returned on success.
-#[derive(Debug, PartialEq, Eq, Clone, Hash, HashStable, Default)]
-pub struct PredefinedOpaquesData<'tcx> {
-    pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
-}
-
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, HashStable)]
-pub struct PredefinedOpaques<'tcx>(pub(crate) Interned<'tcx, PredefinedOpaquesData<'tcx>>);
+pub struct PredefinedOpaques<'tcx>(pub(crate) Interned<'tcx, PredefinedOpaquesData<TyCtxt<'tcx>>>);
 
 impl<'tcx> std::ops::Deref for PredefinedOpaques<'tcx> {
-    type Target = PredefinedOpaquesData<'tcx>;
+    type Target = PredefinedOpaquesData<TyCtxt<'tcx>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0

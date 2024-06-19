@@ -7,7 +7,7 @@ pub(crate) use markdown::test as test_markdown;
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{ColorConfig, ErrorGuaranteed, FatalError};
+use rustc_errors::{ColorConfig, DiagCtxtHandle, ErrorGuaranteed, FatalError};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_interface::interface;
@@ -90,10 +90,7 @@ fn get_doctest_dir() -> io::Result<TempDir> {
     TempFileBuilder::new().prefix("rustdoctest").tempdir()
 }
 
-pub(crate) fn run(
-    dcx: &rustc_errors::DiagCtxt,
-    options: RustdocOptions,
-) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
     // See core::create_config for what's going on here.

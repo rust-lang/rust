@@ -12,7 +12,7 @@ use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind
 use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{DiagCtxt, ErrorGuaranteed, PResult};
+use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_lint_defs::{BufferedEarlyLint, RegisteredTools};
 use rustc_parse::{parser::Parser, MACRO_ARGUMENTS};
@@ -1135,7 +1135,7 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    pub fn dcx(&self) -> &'a DiagCtxt {
+    pub fn dcx(&self) -> DiagCtxtHandle<'a> {
         self.sess.dcx()
     }
 
@@ -1256,7 +1256,7 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
 }
 
 pub fn parse_macro_name_and_helper_attrs(
-    dcx: &rustc_errors::DiagCtxt,
+    dcx: DiagCtxtHandle<'_>,
     attr: &Attribute,
     macro_type: &str,
 ) -> Option<(Symbol, Vec<Symbol>)> {
@@ -1358,7 +1358,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) {
         if crate_matches {
             // FIXME: make this translatable
             #[allow(rustc::untranslatable_diagnostic)]
-            sess.psess.dcx.emit_fatal(errors::ProcMacroBackCompat {
+            sess.dcx().emit_fatal(errors::ProcMacroBackCompat {
                 crate_name: "rental".to_string(),
                 fixed_version: "0.5.6".to_string(),
             });

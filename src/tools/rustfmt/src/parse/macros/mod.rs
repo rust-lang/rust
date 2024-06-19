@@ -29,8 +29,8 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
             if Parser::nonterminal_may_begin_with($nt_kind, &cloned_parser.token) {
                 match $try_parse(&mut cloned_parser) {
                     Ok(x) => {
-                        if parser.psess.dcx.has_errors().is_some() {
-                            parser.psess.dcx.reset_err_count();
+                        if parser.psess.dcx().has_errors().is_some() {
+                            parser.psess.dcx().reset_err_count();
                         } else {
                             // Parsing succeeded.
                             *parser = cloned_parser;
@@ -39,7 +39,7 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
                     }
                     Err(e) => {
                         e.cancel();
-                        parser.psess.dcx.reset_err_count();
+                        parser.psess.dcx().reset_err_count();
                     }
                 }
             }

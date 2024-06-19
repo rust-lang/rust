@@ -1,7 +1,7 @@
 use crate::diagnostic::DiagLocation;
-use crate::{fluent_generated as fluent, Subdiagnostic};
+use crate::{fluent_generated as fluent, DiagCtxtHandle, Subdiagnostic};
 use crate::{
-    Diag, DiagArgValue, DiagCtxt, Diagnostic, EmissionGuarantee, ErrCode, IntoDiagArg, Level,
+    Diag, DiagArgValue, Diagnostic, EmissionGuarantee, ErrCode, IntoDiagArg, Level,
     SubdiagMessageOp,
 };
 use rustc_ast as ast;
@@ -315,7 +315,7 @@ impl IntoDiagArg for DiagSymbolList {
 }
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetDataLayoutErrors<'_> {
-    fn into_diag(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
                 Diag::new(dcx, level, fluent::errors_target_invalid_address_space)

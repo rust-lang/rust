@@ -16,13 +16,7 @@
 #![allow(internal_features)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![feature(
-    rustc_private,
-    decl_macro,
-    never_type,
-    trusted_len,
-    hash_raw_entry
-)]
+#![feature(rustc_private, decl_macro, never_type, trusted_len, hash_raw_entry)]
 #![allow(broken_intra_doc_links)]
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms)]
@@ -104,7 +98,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
-use rustc_errors::{DiagCtxt, ErrorGuaranteed};
+use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
@@ -386,7 +380,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     unsafe fn optimize(
         _cgcx: &CodegenContext<Self>,
-        _dcx: &DiagCtxt,
+        _dcx: DiagCtxtHandle<'_>,
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
@@ -411,14 +405,17 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     unsafe fn codegen(
         cgcx: &CodegenContext<Self>,
-        dcx: &DiagCtxt,
+        dcx: DiagCtxtHandle<'_>,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError> {
         back::write::codegen(cgcx, dcx, module, config)
     }
 
-    fn prepare_thin(_module: ModuleCodegen<Self::Module>, _emit_summary: bool) -> (String, Self::ThinBuffer) {
+    fn prepare_thin(
+        _module: ModuleCodegen<Self::Module>,
+        _emit_summary: bool,
+    ) -> (String, Self::ThinBuffer) {
         unimplemented!();
     }
 
@@ -428,7 +425,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn run_link(
         cgcx: &CodegenContext<Self>,
-        dcx: &DiagCtxt,
+        dcx: DiagCtxtHandle<'_>,
         modules: Vec<ModuleCodegen<Self::Module>>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::write::link(cgcx, dcx, modules)

@@ -1294,12 +1294,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // exclude decl_macro
                             if self.get_macro_by_def_id(def_id).macro_rules =>
                         {
-                            err.subdiagnostic(self.dcx(), ConsiderAddingMacroExport {
+                            err.subdiagnostic( ConsiderAddingMacroExport {
                                 span: binding.span,
                             });
                         }
                         _ => {
-                            err.subdiagnostic(self.dcx(), ConsiderMarkingAsPub {
+                            err.subdiagnostic( ConsiderMarkingAsPub {
                                 span: import.span,
                                 ident,
                             });

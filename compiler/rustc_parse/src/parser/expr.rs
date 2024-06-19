@@ -4,7 +4,7 @@ use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
     AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
-    SemiColonMode, SeqSep, TokenExpectType, TokenType, Trailing, TrailingToken,
+    SemiColonMode, SeqSep, TokenType, Trailing, TrailingToken,
 };
 
 use crate::errors;
@@ -1461,7 +1461,7 @@ impl<'a> Parser<'a> {
                     // If the input is something like `if a { 1 } else { 2 } | if a { 3 } else { 4 }`
                     // then suggest parens around the lhs.
                     if let Some(sp) = this.psess.ambiguous_block_expr_parse.borrow().get(&lo) {
-                        err.subdiagnostic(this.dcx(), ExprParenthesesNeeded::surrounding(*sp));
+                        err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                     }
                     err
                 })
@@ -2456,9 +2456,9 @@ impl<'a> Parser<'a> {
             self.expect(&token::BinOp(token::Or))?;
             let args = self
                 .parse_seq_to_before_tokens(
-                    &[&token::BinOp(token::Or), &token::OrOr],
+                    &[&token::BinOp(token::Or)],
+                    &[&token::OrOr],
                     SeqSep::trailing_allowed(token::Comma),
-                    TokenExpectType::NoExpect,
                     |p| p.parse_fn_block_param(),
                 )?
                 .0;

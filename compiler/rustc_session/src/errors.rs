@@ -3,8 +3,8 @@ use std::num::NonZero;
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
 use rustc_errors::{
-    codes::*, Diag, DiagCtxt, DiagMessage, Diagnostic, EmissionGuarantee, ErrorGuaranteed, Level,
-    MultiSpan,
+    codes::*, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, ErrorGuaranteed,
+    Level, MultiSpan,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
@@ -19,7 +19,7 @@ pub(crate) struct FeatureGateError {
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for FeatureGateError {
     #[track_caller]
-    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         Diag::new(dcx, level, self.explain).with_span(self.span).with_code(E0658)
     }
 }
@@ -401,7 +401,7 @@ pub fn report_lit_error(
         valid.then(|| format!("0{}{}", base_char.to_ascii_lowercase(), &suffix[1..]))
     }
 
-    let dcx = &psess.dcx;
+    let dcx = psess.dcx();
     match err {
         LitError::InvalidSuffix(suffix) => {
             dcx.emit_err(InvalidLiteralSuffix { span, kind: lit.kind.descr(), suffix })

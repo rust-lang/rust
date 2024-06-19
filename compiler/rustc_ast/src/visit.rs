@@ -52,6 +52,16 @@ pub enum BoundKind {
     /// E.g., `trait A: B`
     SuperTraits,
 }
+impl BoundKind {
+    pub fn descr(self) -> &'static str {
+        match self {
+            BoundKind::Bound => "bounds",
+            BoundKind::Impl => "`impl Trait`",
+            BoundKind::TraitObject => "`dyn` trait object bounds",
+            BoundKind::SuperTraits => "supertrait bounds",
+        }
+    }
+}
 
 #[derive(Copy, Clone, Debug)]
 pub enum FnKind<'a> {
@@ -497,13 +507,8 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
         TyKind::TraitObject(bounds, ..) => {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::TraitObject);
         }
-        TyKind::ImplTrait(_, bounds, precise_capturing) => {
+        TyKind::ImplTrait(_, bounds) => {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Impl);
-            if let Some((precise_capturing, _span)) = precise_capturing.as_deref() {
-                for arg in precise_capturing {
-                    try_visit!(visitor.visit_precise_capturing_arg(arg));
-                }
-            }
         }
         TyKind::Typeof(expression) => try_visit!(visitor.visit_anon_const(expression)),
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Dummy | TyKind::Err(_) => {}
@@ -688,6 +693,10 @@ pub fn walk_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a GenericB
     match bound {
         GenericBound::Trait(typ, _modifier) => visitor.visit_poly_trait_ref(typ),
         GenericBound::Outlives(lifetime) => visitor.visit_lifetime(lifetime, LifetimeCtxt::Bound),
+        GenericBound::Use(args, _) => {
+            walk_list!(visitor, visit_precise_capturing_arg, args);
+            V::Result::output()
+        }
     }
 }
 

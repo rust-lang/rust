@@ -4,7 +4,7 @@ use gccjit::OutputKind;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
-use rustc_errors::DiagCtxt;
+use rustc_errors::DiagCtxtHandle;
 use rustc_fs_util::link_or_copy;
 use rustc_session::config::OutputType;
 use rustc_span::fatal_error::FatalError;
@@ -15,7 +15,7 @@ use crate::{GccCodegenBackend, GccContext};
 
 pub(crate) unsafe fn codegen(
     cgcx: &CodegenContext<GccCodegenBackend>,
-    dcx: &DiagCtxt,
+    dcx: DiagCtxtHandle<'_>,
     module: ModuleCodegen<GccContext>,
     config: &ModuleConfig,
 ) -> Result<CompiledModule, FatalError> {
@@ -166,7 +166,7 @@ pub(crate) unsafe fn codegen(
 
 pub(crate) fn link(
     _cgcx: &CodegenContext<GccCodegenBackend>,
-    _dcx: &DiagCtxt,
+    _dcx: DiagCtxtHandle<'_>,
     mut _modules: Vec<ModuleCodegen<GccContext>>,
 ) -> Result<ModuleCodegen<GccContext>, FatalError> {
     unimplemented!();

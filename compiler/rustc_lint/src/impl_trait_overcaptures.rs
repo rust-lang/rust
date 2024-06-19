@@ -11,7 +11,7 @@ use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{sym, Span};
 
 use crate::fluent_generated as fluent;
 use crate::{LateContext, LateLintPass};
@@ -53,7 +53,7 @@ declare_lint! {
     /// while the `impl Display` is live.
     ///
     /// To fix this, we can explicitly state that the `impl Display` doesn't
-    /// capture any lifetimes, using `impl use<> Display`.
+    /// capture any lifetimes, using `impl Display + use<>`.
     pub IMPL_TRAIT_OVERCAPTURES,
     Allow,
     "`impl Trait` will capture more lifetimes than possibly intended in edition 2024",
@@ -79,7 +79,7 @@ declare_lint! {
     /// # #![feature(precise_capturing, lifetime_capture_rules_2024)]
     /// # #![allow(incomplete_features)]
     /// # #![deny(impl_trait_redundant_captures)]
-    /// fn test<'a>(x: &'a i32) -> impl use<'a> Sized { x }
+    /// fn test<'a>(x: &'a i32) -> impl Sized + use<'a> { x }
     /// ```
     ///
     /// {{produces}}
@@ -249,7 +249,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
             // If we have uncaptured args, and if the opaque doesn't already have
             // `use<>` syntax on it, and we're < edition 2024, then warn the user.
             if !new_capture_rules
-                && opaque.precise_capturing_args.is_none()
+                && !opaque.bounds.iter().any(|bound| matches!(bound, hir::GenericBound::Use(..)))
                 && !uncaptured_spans.is_empty()
             {
                 let suggestion = if let Ok(snippet) =
@@ -268,8 +268,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
                     // Make sure that we're not trying to name any APITs
                     if generics.iter().all(|name| !name.starts_with("impl ")) {
                         Some((
-                            format!(" use<{}>", generics.join(", ")),
-                            opaque_span.with_lo(opaque_span.lo() + BytePos(4)).shrink_to_lo(),
+                            format!(" + use<{}>", generics.join(", ")),
+                            opaque_span.shrink_to_hi(),
                         ))
                     } else {
                         None
@@ -294,7 +294,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
             // have no uncaptured args, then we should warn to the user that
             // it's redundant to capture all args explicitly.
             else if new_capture_rules
-                && let Some((captured_args, capturing_span)) = opaque.precise_capturing_args
+                && let Some((captured_args, capturing_span)) =
+                    opaque.bounds.iter().find_map(|bound| match *bound {
+                        hir::GenericBound::Use(a, s) => Some((a, s)),
+                        _ => None,
+                    })
             {
                 let mut explicitly_captured = UnordSet::default();
                 for arg in captured_args {

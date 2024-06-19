@@ -1782,20 +1782,14 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         }
 
         let rpid_def_span = fcx.tcx.def_span(rpit_def_id);
-        err.subdiagnostic(
-            fcx.tcx.dcx(),
-            SuggestBoxingForReturnImplTrait::ChangeReturnType {
-                start_sp: rpid_def_span.with_hi(rpid_def_span.lo() + BytePos(4)),
-                end_sp: rpid_def_span.shrink_to_hi(),
-            },
-        );
+        err.subdiagnostic(SuggestBoxingForReturnImplTrait::ChangeReturnType {
+            start_sp: rpid_def_span.with_hi(rpid_def_span.lo() + BytePos(4)),
+            end_sp: rpid_def_span.shrink_to_hi(),
+        });
 
         let (starts, ends) =
             arm_spans.map(|span| (span.shrink_to_lo(), span.shrink_to_hi())).unzip();
-        err.subdiagnostic(
-            fcx.tcx.dcx(),
-            SuggestBoxingForReturnImplTrait::BoxReturnExpr { starts, ends },
-        );
+        err.subdiagnostic(SuggestBoxingForReturnImplTrait::BoxReturnExpr { starts, ends });
     }
 
     fn report_return_mismatched_types<'a>(

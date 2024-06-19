@@ -1,31 +1,22 @@
-warning: the feature `precise_capturing` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/forgot-to-capture-type.rs:1:12
-   |
-LL | #![feature(precise_capturing)]
-   |            ^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #123432 <https://github.com/rust-lang/rust/issues/123432> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error: `impl Trait` must mention all type parameters in scope in `use<...>`
-  --> $DIR/forgot-to-capture-type.rs:4:23
+  --> $DIR/forgot-to-capture-type.rs:3:23
    |
-LL | fn type_param<T>() -> impl use<> Sized {}
-   |               -       ^^^^^^^^^^^^^^^^
+LL | fn type_param<T>() -> impl Sized + use<> {}
+   |               -       ^^^^^^^^^^^^^^^^^^
    |               |
    |               type parameter is implicitly captured by this `impl Trait`
    |
    = note: currently, all type parameters are required to be mentioned in the precise captures list
 
 error: `impl Trait` must mention the `Self` type of the trait in `use<...>`
-  --> $DIR/forgot-to-capture-type.rs:8:17
+  --> $DIR/forgot-to-capture-type.rs:7:17
    |
 LL | trait Foo {
    | --------- `Self` type parameter is implicitly captured by this `impl Trait`
-LL |     fn bar() -> impl use<> Sized;
-   |                 ^^^^^^^^^^^^^^^^
+LL |     fn bar() -> impl Sized + use<>;
+   |                 ^^^^^^^^^^^^^^^^^^
    |
    = note: currently, all type parameters are required to be mentioned in the precise captures list
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 

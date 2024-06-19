@@ -1,0 +1,429 @@
+//! Canonicalization is used to separate some goal from its context,
+//! throwing away unnecessary information in the process.
+//!
+//! This is necessary to cache goals containing inference variables
+//! and placeholders without restricting them to the current `InferCtxt`.
+//!
+//! Canonicalization is fairly involved, for more details see the relevant
+//! section of the [rustc-dev-guide][c].
+//!
+//! [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
+
+use std::iter;
+
+use rustc_index::IndexVec;
+use rustc_type_ir::fold::TypeFoldable;
+use rustc_type_ir::inherent::*;
+use rustc_type_ir::{self as ty, Canonical, CanonicalVarValues, Interner};
+use tracing::{instrument, trace};
+
+use crate::canonicalizer::{CanonicalizeMode, Canonicalizer};
+use crate::infcx::SolverDelegate;
+use crate::resolve::EagerResolver;
+use crate::solve::eval_ctxt::NestedGoals;
+use crate::solve::inspect;
+use crate::solve::{
+    response_no_constraints_raw, CanonicalInput, CanonicalResponse, Certainty, EvalCtxt,
+    ExternalConstraintsData, Goal, MaybeCause, NestedNormalizationGoals, NoSolution,
+    PredefinedOpaquesData, QueryInput, QueryResult, Response,
+};
+
+trait ResponseT<I: Interner> {
+    fn var_values(&self) -> CanonicalVarValues<I>;
+}
+
+impl<I: Interner> ResponseT<I> for Response<I> {
+    fn var_values(&self) -> CanonicalVarValues<I> {
+        self.var_values
+    }
+}
+
+impl<I: Interner, T> ResponseT<I> for inspect::State<I, T> {
+    fn var_values(&self) -> CanonicalVarValues<I> {
+        self.var_values
+    }
+}
+
+impl<Infcx, I> EvalCtxt<'_, Infcx>
+where
+    Infcx: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    /// Canonicalizes the goal remembering the original values
+    /// for each bound variable.
+    pub(super) fn canonicalize_goal<T: TypeFoldable<I>>(
+        &self,
+        goal: Goal<I, T>,
+    ) -> (Vec<I::GenericArg>, CanonicalInput<I, T>) {
+        let opaque_types = self.infcx.clone_opaque_types_for_query_response();
+        let (goal, opaque_types) =
+            (goal, opaque_types).fold_with(&mut EagerResolver::new(self.infcx));
+
+        let mut orig_values = Default::default();
+        let canonical_goal = Canonicalizer::canonicalize(
+            self.infcx,
+            CanonicalizeMode::Input,
+            &mut orig_values,
+            QueryInput {
+                goal,
+                predefined_opaques_in_body: self
+                    .interner()
+                    .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
+            },
+        );
+        (orig_values, canonical_goal)
+    }
+
+    /// To return the constraints of a canonical query to the caller, we canonicalize:
+    ///
+    /// - `var_values`: a map from bound variables in the canonical goal to
+    ///   the values inferred while solving the instantiated goal.
+    /// - `external_constraints`: additional constraints which aren't expressible
+    ///   using simple unification of inference variables.
+    #[instrument(level = "trace", skip(self), ret)]
+    pub(in crate::solve) fn evaluate_added_goals_and_make_canonical_response(
+        &mut self,
+        certainty: Certainty,
+    ) -> QueryResult<I> {
+        self.inspect.make_canonical_response(certainty);
+
+        let goals_certainty = self.try_evaluate_added_goals()?;
+        assert_eq!(
+            self.tainted,
+            Ok(()),
+            "EvalCtxt is tainted -- nested goals may have been dropped in a \
+            previous call to `try_evaluate_added_goals!`"
+        );
+
+        // We only check for leaks from universes which were entered inside
+        // of the query.
+        self.infcx.leak_check(self.max_input_universe).map_err(|NoSolution| {
+            trace!("failed the leak check");
+            NoSolution
+        })?;
+
+        // When normalizing, we've replaced the expected term with an unconstrained
+        // inference variable. This means that we dropped information which could
+        // have been important. We handle this by instead returning the nested goals
+        // to the caller, where they are then handled.
+        //
+        // As we return all ambiguous nested goals, we can ignore the certainty returned
+        // by `try_evaluate_added_goals()`.
+        let (certainty, normalization_nested_goals) = if self.is_normalizes_to_goal {
+            let NestedGoals { normalizes_to_goals, goals } = std::mem::take(&mut self.nested_goals);
+            if cfg!(debug_assertions) {
+                assert!(normalizes_to_goals.is_empty());
+                if goals.is_empty() {
+                    assert!(matches!(goals_certainty, Certainty::Yes));
+                }
+            }
+            (certainty, NestedNormalizationGoals(goals))
+        } else {
+            let certainty = certainty.unify_with(goals_certainty);
+            (certainty, NestedNormalizationGoals::empty())
+        };
+
+        let external_constraints =
+            self.compute_external_query_constraints(certainty, normalization_nested_goals);
+        let (var_values, mut external_constraints) =
+            (self.var_values, external_constraints).fold_with(&mut EagerResolver::new(self.infcx));
+        // Remove any trivial region constraints once we've resolved regions
+        external_constraints
+            .region_constraints
+            .retain(|outlives| outlives.0.as_region().map_or(true, |re| re != outlives.1));
+
+        let canonical = Canonicalizer::canonicalize(
+            self.infcx,
+            CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
+            &mut Default::default(),
+            Response {
+                var_values,
+                certainty,
+                external_constraints: self.interner().mk_external_constraints(external_constraints),
+            },
+        );
+
+        Ok(canonical)
+    }
+
+    /// Constructs a totally unconstrained, ambiguous response to a goal.
+    ///
+    /// Take care when using this, since often it's useful to respond with
+    /// ambiguity but return constrained variables to guide inference.
+    pub(in crate::solve) fn make_ambiguous_response_no_constraints(
+        &self,
+        maybe_cause: MaybeCause,
+    ) -> CanonicalResponse<I> {
+        response_no_constraints_raw(
+            self.interner(),
+            self.max_input_universe,
+            self.variables,
+            Certainty::Maybe(maybe_cause),
+        )
+    }
+
+    /// Computes the region constraints and *new* opaque types registered when
+    /// proving a goal.
+    ///
+    /// If an opaque was already constrained before proving this goal, then the
+    /// external constraints do not need to record that opaque, since if it is
+    /// further constrained by inference, that will be passed back in the var
+    /// values.
+    #[instrument(level = "trace", skip(self), ret)]
+    fn compute_external_query_constraints(
+        &self,
+        certainty: Certainty,
+        normalization_nested_goals: NestedNormalizationGoals<I>,
+    ) -> ExternalConstraintsData<I> {
+        // We only return region constraints once the certainty is `Yes`. This
+        // is necessary as we may drop nested goals on ambiguity, which may result
+        // in unconstrained inference variables in the region constraints. It also
+        // prevents us from emitting duplicate region constraints, avoiding some
+        // unnecessary work. This slightly weakens the leak check in case it uses
+        // region constraints from an ambiguous nested goal. This is tested in both
+        // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-5-ambig.rs` and
+        // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-6-ambig-unify.rs`.
+        let region_constraints = if certainty == Certainty::Yes {
+            self.infcx.make_deduplicated_outlives_constraints()
+        } else {
+            Default::default()
+        };
+
+        ExternalConstraintsData {
+            region_constraints,
+            opaque_types: self
+                .infcx
+                .clone_opaque_types_for_query_response()
+                .into_iter()
+                // Only return *newly defined* opaque types.
+                .filter(|(a, _)| {
+                    self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
+                })
+                .collect(),
+            normalization_nested_goals,
+        }
+    }
+
+    /// After calling a canonical query, we apply the constraints returned
+    /// by the query using this function.
+    ///
+    /// This happens in three steps:
+    /// - we instantiate the bound variables of the query response
+    /// - we unify the `var_values` of the response with the `original_values`
+    /// - we apply the `external_constraints` returned by the query, returning
+    ///   the `normalization_nested_goals`
+    pub(super) fn instantiate_and_apply_query_response(
+        &mut self,
+        param_env: I::ParamEnv,
+        original_values: Vec<I::GenericArg>,
+        response: CanonicalResponse<I>,
+    ) -> (NestedNormalizationGoals<I>, Certainty) {
+        let instantiation = Self::compute_query_response_instantiation_values(
+            self.infcx,
+            &original_values,
+            &response,
+        );
+
+        let Response { var_values, external_constraints, certainty } =
+            self.infcx.instantiate_canonical(response, instantiation);
+
+        Self::unify_query_var_values(self.infcx, param_env, &original_values, var_values);
+
+        let ExternalConstraintsData {
+            region_constraints,
+            opaque_types,
+            normalization_nested_goals,
+        } = &*external_constraints;
+        self.register_region_constraints(region_constraints);
+        self.register_new_opaque_types(opaque_types);
+        (normalization_nested_goals.clone(), certainty)
+    }
+
+    /// This returns the canoncial variable values to instantiate the bound variables of
+    /// the canonical response. This depends on the `original_values` for the
+    /// bound variables.
+    fn compute_query_response_instantiation_values<T: ResponseT<I>>(
+        infcx: &Infcx,
+        original_values: &[I::GenericArg],
+        response: &Canonical<I, T>,
+    ) -> CanonicalVarValues<I> {
+        // FIXME: Longterm canonical queries should deal with all placeholders
+        // created inside of the query directly instead of returning them to the
+        // caller.
+        let prev_universe = infcx.universe();
+        let universes_created_in_query = response.max_universe.index();
+        for _ in 0..universes_created_in_query {
+            infcx.create_next_universe();
+        }
+
+        let var_values = response.value.var_values();
+        assert_eq!(original_values.len(), var_values.len());
+
+        // If the query did not make progress with constraining inference variables,
+        // we would normally create a new inference variables for bound existential variables
+        // only then unify this new inference variable with the inference variable from
+        // the input.
+        //
+        // We therefore instantiate the existential variable in the canonical response with the
+        // inference variable of the input right away, which is more performant.
+        let mut opt_values = IndexVec::from_elem_n(None, response.variables.len());
+        for (original_value, result_value) in iter::zip(original_values, var_values.var_values) {
+            match result_value.kind() {
+                ty::GenericArgKind::Type(t) => {
+                    if let ty::Bound(debruijn, b) = t.kind() {
+                        assert_eq!(debruijn, ty::INNERMOST);
+                        opt_values[b.var()] = Some(*original_value);
+                    }
+                }
+                ty::GenericArgKind::Lifetime(r) => {
+                    if let ty::ReBound(debruijn, br) = r.kind() {
+                        assert_eq!(debruijn, ty::INNERMOST);
+                        opt_values[br.var()] = Some(*original_value);
+                    }
+                }
+                ty::GenericArgKind::Const(c) => {
+                    if let ty::ConstKind::Bound(debruijn, bv) = c.kind() {
+                        assert_eq!(debruijn, ty::INNERMOST);
+                        opt_values[bv.var()] = Some(*original_value);
+                    }
+                }
+            }
+        }
+
+        let var_values = infcx.interner().mk_args_from_iter(
+            response.variables.into_iter().enumerate().map(|(index, info)| {
+                if info.universe() != ty::UniverseIndex::ROOT {
+                    // A variable from inside a binder of the query. While ideally these shouldn't
+                    // exist at all (see the FIXME at the start of this method), we have to deal with
+                    // them for now.
+                    infcx.instantiate_canonical_var_with_infer(info, |idx| {
+                        ty::UniverseIndex::from(prev_universe.index() + idx.index())
+                    })
+                } else if info.is_existential() {
+                    // As an optimization we sometimes avoid creating a new inference variable here.
+                    //
+                    // All new inference variables we create start out in the current universe of the caller.
+                    // This is conceptually wrong as these inference variables would be able to name
+                    // more placeholders then they should be able to. However the inference variables have
+                    // to "come from somewhere", so by equating them with the original values of the caller
+                    // later on, we pull them down into their correct universe again.
+                    if let Some(v) = opt_values[ty::BoundVar::from_usize(index)] {
+                        v
+                    } else {
+                        infcx.instantiate_canonical_var_with_infer(info, |_| prev_universe)
+                    }
+                } else {
+                    // For placeholders which were already part of the input, we simply map this
+                    // universal bound variable back the placeholder of the input.
+                    original_values[info.expect_placeholder_index()]
+                }
+            }),
+        );
+
+        CanonicalVarValues { var_values }
+    }
+
+    /// Unify the `original_values` with the `var_values` returned by the canonical query..
+    ///
+    /// This assumes that this unification will always succeed. This is the case when
+    /// applying a query response right away. However, calling a canonical query, doing any
+    /// other kind of trait solving, and only then instantiating the result of the query
+    /// can cause the instantiation to fail. This is not supported and we ICE in this case.
+    ///
+    /// We always structurally instantiate aliases. Relating aliases needs to be different
+    /// depending on whether the alias is *rigid* or not. We're only really able to tell
+    /// whether an alias is rigid by using the trait solver. When instantiating a response
+    /// from the solver we assume that the solver correctly handled aliases and therefore
+    /// always relate them structurally here.
+    #[instrument(level = "trace", skip(infcx))]
+    fn unify_query_var_values(
+        infcx: &Infcx,
+        param_env: I::ParamEnv,
+        original_values: &[I::GenericArg],
+        var_values: CanonicalVarValues<I>,
+    ) {
+        assert_eq!(original_values.len(), var_values.len());
+
+        for (&orig, response) in iter::zip(original_values, var_values.var_values) {
+            let goals = infcx.eq_structurally_relating_aliases(param_env, orig, response).unwrap();
+            assert!(goals.is_empty());
+        }
+    }
+
+    fn register_region_constraints(
+        &mut self,
+        outlives: &[ty::OutlivesPredicate<I, I::GenericArg>],
+    ) {
+        for &ty::OutlivesPredicate(lhs, rhs) in outlives {
+            match lhs.kind() {
+                ty::GenericArgKind::Lifetime(lhs) => self.register_region_outlives(lhs, rhs),
+                ty::GenericArgKind::Type(lhs) => self.register_ty_outlives(lhs, rhs),
+                ty::GenericArgKind::Const(_) => panic!("const outlives: {lhs:?}: {rhs:?}"),
+            }
+        }
+    }
+
+    fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)]) {
+        for &(key, ty) in opaque_types {
+            self.infcx.inject_new_hidden_type_unchecked(key, ty);
+        }
+    }
+}
+
+/// Used by proof trees to be able to recompute intermediate actions while
+/// evaluating a goal. The `var_values` not only include the bound variables
+/// of the query input, but also contain all unconstrained inference vars
+/// created while evaluating this goal.
+pub(in crate::solve) fn make_canonical_state<Infcx, T, I>(
+    infcx: &Infcx,
+    var_values: &[I::GenericArg],
+    max_input_universe: ty::UniverseIndex,
+    data: T,
+) -> inspect::CanonicalState<I, T>
+where
+    Infcx: SolverDelegate<Interner = I>,
+    I: Interner,
+    T: TypeFoldable<I>,
+{
+    let var_values = CanonicalVarValues { var_values: infcx.interner().mk_args(var_values) };
+    let state = inspect::State { var_values, data };
+    let state = state.fold_with(&mut EagerResolver::new(infcx));
+    Canonicalizer::canonicalize(
+        infcx,
+        CanonicalizeMode::Response { max_input_universe },
+        &mut vec![],
+        state,
+    )
+}
+
+// FIXME: needs to be pub to be accessed by downstream
+// `rustc_trait_selection::solve::inspect::analyse`.
+pub fn instantiate_canonical_state<Infcx, I, T: TypeFoldable<I>>(
+    infcx: &Infcx,
+    span: Infcx::Span,
+    param_env: I::ParamEnv,
+    orig_values: &mut Vec<I::GenericArg>,
+    state: inspect::CanonicalState<I, T>,
+) -> T
+where
+    Infcx: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    // In case any fresh inference variables have been created between `state`
+    // and the previous instantiation, extend `orig_values` for it.
+    assert!(orig_values.len() <= state.value.var_values.len());
+    for &arg in &state.value.var_values.var_values[orig_values.len()..state.value.var_values.len()]
+    {
+        // FIXME: This is so ugly.
+        let unconstrained = infcx.fresh_var_for_kind_with_span(arg, span);
+        orig_values.push(unconstrained);
+    }
+
+    let instantiation =
+        EvalCtxt::compute_query_response_instantiation_values(infcx, orig_values, &state);
+
+    let inspect::State { var_values, data } = infcx.instantiate_canonical(state, instantiation);
+
+    EvalCtxt::unify_query_var_values(infcx, param_env, orig_values, var_values);
+    data
+}

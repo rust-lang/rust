@@ -4520,7 +4520,16 @@ dependencies = [
 name = "rustc_next_trait_solver"
 version = "0.0.0"
 dependencies = [
+ "bitflags 2.5.0",
+ "derivative",
+ "rustc_ast_ir",
+ "rustc_data_structures",
+ "rustc_index",
+ "rustc_macros",
+ "rustc_serialize",
  "rustc_type_ir",
+ "rustc_type_ir_macros",
+ "tracing",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 use crate::snippet::Style;
 use crate::{
-    CodeSuggestion, DiagCtxt, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level, MultiSpan,
-    StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
+    CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
+    MultiSpan, StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
@@ -133,7 +133,7 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
 pub trait Diagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `DiagCtxt`.
     #[must_use]
-    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G>;
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G>;
 }
 
 impl<'a, T, G> Diagnostic<'a, G> for Spanned<T>
@@ -141,7 +141,7 @@ where
     T: Diagnostic<'a, G>,
     G: EmissionGuarantee,
 {
-    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         self.node.into_diag(dcx, level).with_span(self.span)
     }
 }
@@ -490,7 +490,7 @@ pub struct Subdiag {
 /// the methods of `Diag` here, consider extending `DiagCtxtFlags`.
 #[must_use]
 pub struct Diag<'a, G: EmissionGuarantee = ErrorGuaranteed> {
-    pub dcx: &'a DiagCtxt,
+    pub dcx: DiagCtxtHandle<'a>,
 
     /// Why the `Option`? It is always `Some` until the `Diag` is consumed via
     /// `emit`, `cancel`, etc. At that point it is consumed and replaced with
@@ -578,13 +578,13 @@ macro_rules! with_fn {
 impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn new(dcx: &'a DiagCtxt, level: Level, message: impl Into<DiagMessage>) -> Self {
+    pub fn new(dcx: DiagCtxtHandle<'a>, level: Level, message: impl Into<DiagMessage>) -> Self {
         Self::new_diagnostic(dcx, DiagInner::new(level, message))
     }
 
     /// Creates a new `Diag` with an already constructed diagnostic.
     #[track_caller]
-    pub(crate) fn new_diagnostic(dcx: &'a DiagCtxt, diag: DiagInner) -> Self {
+    pub(crate) fn new_diagnostic(dcx: DiagCtxtHandle<'a>, diag: DiagInner) -> Self {
         debug!("Created new diagnostic");
         Self { dcx, diag: Some(Box::new(diag)), _marker: PhantomData }
     }
@@ -1192,11 +1192,8 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// used in the subdiagnostic, so suitable for use with repeated messages (i.e. re-use of
     /// interpolated variables).
     #[rustc_lint_diagnostics]
-    pub fn subdiagnostic(
-        &mut self,
-        dcx: &crate::DiagCtxt,
-        subdiagnostic: impl Subdiagnostic,
-    ) -> &mut Self {
+    pub fn subdiagnostic(&mut self, subdiagnostic: impl Subdiagnostic) -> &mut Self {
+        let dcx = self.dcx;
         subdiagnostic.add_to_diag_with(self, &|diag, msg| {
             let args = diag.args.iter();
             let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
@@ -1341,7 +1338,8 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
 
     /// See `DiagCtxt::stash_diagnostic` for details.
     pub fn stash(mut self, span: Span, key: StashKey) -> Option<ErrorGuaranteed> {
-        self.dcx.stash_diagnostic(span, key, self.take_diag())
+        let diag = self.take_diag();
+        self.dcx.stash_diagnostic(span, key, diag)
     }
 
     /// Delay emission of this diagnostic as a bug.

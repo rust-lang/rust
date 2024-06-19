@@ -8,8 +8,8 @@ use crate::{errors, fluent_generated as fluent};
 use rustc_ast::{ast, AttrKind, AttrStyle, Attribute, LitKind};
 use rustc_ast::{MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::StashKey;
-use rustc_errors::{Applicability, DiagCtxt, IntoDiagArg, MultiSpan};
+use rustc_errors::{Applicability, IntoDiagArg, MultiSpan};
+use rustc_errors::{DiagCtxtHandle, StashKey};
 use rustc_feature::{
     is_unsafe_attr, AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP,
 };
@@ -99,7 +99,7 @@ struct CheckAttrVisitor<'tcx> {
 }
 
 impl<'tcx> CheckAttrVisitor<'tcx> {
-    fn dcx(&self) -> &'tcx DiagCtxt {
+    fn dcx(&self) -> DiagCtxtHandle<'tcx> {
         self.tcx.dcx()
     }
 

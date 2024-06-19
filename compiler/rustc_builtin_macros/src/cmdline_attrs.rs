@@ -26,7 +26,7 @@ pub fn inject(krate: &mut ast::Crate, psess: &ParseSess, attrs: &[String]) {
         };
         let end_span = parser.token.span;
         if parser.token != token::Eof {
-            psess.dcx.emit_err(errors::InvalidCrateAttr { span: start_span.to(end_span) });
+            psess.dcx().emit_err(errors::InvalidCrateAttr { span: start_span.to(end_span) });
             continue;
         }
 

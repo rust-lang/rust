@@ -15,8 +15,8 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
 use rustc_errors::emitter::{stderr_destination, HumanEmitter, SilentEmitter};
 use rustc_errors::{
-    fallback_fluent_bundle, ColorConfig, Diag, DiagCtxt, DiagMessage, EmissionGuarantee, MultiSpan,
-    StashKey,
+    fallback_fluent_bundle, ColorConfig, Diag, DiagCtxt, DiagCtxtHandle, DiagMessage,
+    EmissionGuarantee, MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -106,12 +106,12 @@ pub fn feature_err_issue(
 
     // Cancel an earlier warning for this same error, if it exists.
     if let Some(span) = span.primary_span() {
-        if let Some(err) = sess.psess.dcx.steal_non_err(span, StashKey::EarlySyntaxWarning) {
+        if let Some(err) = sess.dcx().steal_non_err(span, StashKey::EarlySyntaxWarning) {
             err.cancel()
         }
     }
 
-    let mut err = sess.psess.dcx.create_err(FeatureGateError { span, explain: explain.into() });
+    let mut err = sess.dcx().create_err(FeatureGateError { span, explain: explain.into() });
     add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false, None);
     err
 }
@@ -140,7 +140,7 @@ pub fn feature_warn_issue(
     issue: GateIssue,
     explain: &'static str,
 ) {
-    let mut err = sess.psess.dcx.struct_span_warn(span, explain);
+    let mut err = sess.dcx().struct_span_warn(span, explain);
     add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false, None);
 
     // Decorate this as a future-incompatibility lint as in rustc_middle::lint::lint_level
@@ -178,30 +178,30 @@ pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
     inject_span: Option<Span>,
 ) {
     if let Some(n) = find_feature_issue(feature, issue) {
-        err.subdiagnostic(sess.dcx(), FeatureDiagnosticForIssue { n });
+        err.subdiagnostic(FeatureDiagnosticForIssue { n });
     }
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
     if sess.psess.unstable_features.is_nightly_build() {
         if feature_from_cli {
-            err.subdiagnostic(sess.dcx(), CliFeatureDiagnosticHelp { feature });
+            err.subdiagnostic(CliFeatureDiagnosticHelp { feature });
         } else if let Some(span) = inject_span {
-            err.subdiagnostic(sess.dcx(), FeatureDiagnosticSuggestion { feature, span });
+            err.subdiagnostic(FeatureDiagnosticSuggestion { feature, span });
         } else {
-            err.subdiagnostic(sess.dcx(), FeatureDiagnosticHelp { feature });
+            err.subdiagnostic(FeatureDiagnosticHelp { feature });
         }
 
         if sess.opts.unstable_opts.ui_testing {
-            err.subdiagnostic(sess.dcx(), SuggestUpgradeCompiler::ui_testing());
+            err.subdiagnostic(SuggestUpgradeCompiler::ui_testing());
         } else if let Some(suggestion) = SuggestUpgradeCompiler::new() {
-            err.subdiagnostic(sess.dcx(), suggestion);
+            err.subdiagnostic(suggestion);
         }
     }
 }
 
 /// Info about a parsing session.
 pub struct ParseSess {
-    pub dcx: DiagCtxt,
+    dcx: DiagCtxt,
     pub unstable_features: UnstableFeatures,
     pub config: Cfg,
     pub check_config: CheckCfg,
@@ -325,5 +325,9 @@ impl ParseSess {
         // This is equivalent to `.iter().copied().enumerate()`, but that isn't possible for
         // AppendOnlyVec, so we resort to this scheme.
         self.proc_macro_quoted_spans.iter_enumerated()
+    }
+
+    pub fn dcx(&self) -> DiagCtxtHandle<'_> {
+        self.dcx.handle()
     }
 }

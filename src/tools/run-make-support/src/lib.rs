@@ -30,7 +30,8 @@ pub use cc::{cc, extra_c_flags, extra_cxx_flags, Cc};
 pub use clang::{clang, Clang};
 pub use diff::{diff, Diff};
 pub use llvm::{
-    llvm_filecheck, llvm_profdata, llvm_readobj, LlvmFilecheck, LlvmProfdata, LlvmReadobj,
+    llvm_filecheck, llvm_objdump, llvm_profdata, llvm_readobj, LlvmFilecheck, LlvmObjdump,
+    LlvmProfdata, LlvmReadobj,
 };
 pub use run::{cmd, run, run_fail, run_with_args};
 pub use rustc::{aux_build, rustc, Rustc};
@@ -301,6 +302,34 @@ pub fn set_host_rpath(cmd: &mut Command) {
         }
         env::join_paths(paths.iter()).unwrap()
     });
+}
+
+/// Read the contents of a file that cannot simply be read by
+/// read_to_string, due to invalid utf8 data, then assert that it contains `expected`.
+#[track_caller]
+pub fn invalid_utf8_contains<P: AsRef<Path>>(path: P, expected: &str) {
+    let buffer = fs_wrapper::read(path.as_ref());
+    if !String::from_utf8_lossy(&buffer).contains(expected) {
+        eprintln!("=== FILE CONTENTS (LOSSY) ===");
+        eprintln!("{}", String::from_utf8_lossy(&buffer));
+        eprintln!("=== SPECIFIED TEXT ===");
+        eprintln!("{}", expected);
+        panic!("specified text was not found in file");
+    }
+}
+
+/// Read the contents of a file that cannot simply be read by
+/// read_to_string, due to invalid utf8 data, then assert that it does not contain `expected`.
+#[track_caller]
+pub fn invalid_utf8_not_contains<P: AsRef<Path>>(path: P, expected: &str) {
+    let buffer = fs_wrapper::read(path.as_ref());
+    if String::from_utf8_lossy(&buffer).contains(expected) {
+        eprintln!("=== FILE CONTENTS (LOSSY) ===");
+        eprintln!("{}", String::from_utf8_lossy(&buffer));
+        eprintln!("=== SPECIFIED TEXT ===");
+        eprintln!("{}", expected);
+        panic!("specified text was unexpectedly found in file");
+    }
 }
 
 /// Copy a directory into another.

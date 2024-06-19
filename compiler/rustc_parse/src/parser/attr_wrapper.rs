@@ -41,7 +41,7 @@ impl AttrWrapper {
     }
 
     pub(crate) fn take_for_recovery(self, psess: &ParseSess) -> AttrVec {
-        psess.dcx.span_delayed_bug(
+        psess.dcx().span_delayed_bug(
             self.attrs.get(0).map(|attr| attr.span).unwrap_or(DUMMY_SP),
             "AttrVec is taken for recovery but no error is produced",
         );

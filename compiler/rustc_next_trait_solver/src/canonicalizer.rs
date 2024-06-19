@@ -4,9 +4,10 @@ use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::visit::TypeVisitableExt;
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, InferCtxtLike,
-    Interner,
+    self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Interner,
 };
+
+use crate::infcx::SolverDelegate;
 
 /// Whether we're canonicalizing a query input or the query response.
 ///
@@ -37,7 +38,7 @@ pub enum CanonicalizeMode {
     },
 }
 
-pub struct Canonicalizer<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> {
+pub struct Canonicalizer<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> {
     infcx: &'a Infcx,
     canonicalize_mode: CanonicalizeMode,
 
@@ -46,7 +47,7 @@ pub struct Canonicalizer<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> {
     binder_index: ty::DebruijnIndex,
 }
 
-impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infcx, I> {
+impl<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, Infcx, I> {
     pub fn canonicalize<T: TypeFoldable<I>>(
         infcx: &'a Infcx,
         canonicalize_mode: CanonicalizeMode,
@@ -210,7 +211,7 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
     }
 }
 
-impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
+impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
     for Canonicalizer<'_, Infcx, I>
 {
     fn interner(&self) -> I {
