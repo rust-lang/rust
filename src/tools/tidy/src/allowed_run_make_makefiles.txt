@@ -164,7 +164,6 @@ run-make/raw-dylib-inline-cross-dylib/Makefile
 run-make/raw-dylib-link-ordinal/Makefile
 run-make/raw-dylib-stdcall-ordinal/Makefile
 run-make/redundant-libs/Makefile
-run-make/relocation-model/Makefile
 run-make/relro-levels/Makefile
 run-make/remap-path-prefix-dwarf/Makefile
 run-make/remap-path-prefix/Makefile
