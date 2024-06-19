@@ -325,6 +325,7 @@ pub fn term_search<DB: HirDatabase>(ctx: &TermSearchCtx<'_, DB>) -> Vec<Expr> {
     let mut solutions: Vec<Expr> = tactics::trivial(ctx, &defs, &mut lookup).collect();
     // Use well known types tactic before iterations as it does not depend on other tactics
     solutions.extend(tactics::famous_types(ctx, &defs, &mut lookup));
+    solutions.extend(tactics::assoc_const(ctx, &defs, &mut lookup));
 
     while should_continue() {
         lookup.new_round();

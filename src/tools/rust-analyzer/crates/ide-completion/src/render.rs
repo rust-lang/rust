@@ -1799,6 +1799,7 @@ fn go(world: &WorldSnapshot) { go(w$0) }
 "#,
             expect![[r#"
                 lc world [type+name+local]
+                ex world [type]
                 st WorldSnapshot {…} []
                 st &WorldSnapshot {…} [type]
                 st WorldSnapshot []
