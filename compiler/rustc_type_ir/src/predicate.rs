@@ -485,8 +485,8 @@ pub struct AliasTerm<I: Interner> {
     /// aka. `interner.parent(def_id)`.
     pub def_id: I::DefId,
 
-    /// This field exists to prevent the creation of `AliasTerm` without using
-    /// [AliasTerm::new].
+    /// This field exists to prevent the creation of `AliasTerm` without using [`AliasTerm::new`].
+    #[derivative(Debug = "ignore")]
     _use_alias_term_new_instead: (),
 }
 
