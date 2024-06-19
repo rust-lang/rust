@@ -361,6 +361,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub struct EarlyBinder<I: Interner, T> {
     value: T,
+    #[derivative(Debug = "ignore")]
     _tcx: PhantomData<I>,
 }
 
