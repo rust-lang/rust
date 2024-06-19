@@ -7,8 +7,9 @@ use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FusedIterator};
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
-use super::map::{self, DefaultHashBuilder, HashMap, Keys};
+use super::map::{self, HashMap, Keys};
 use crate::raw::{Allocator, Global, RawExtractIf};
+use crate::DefaultHashBuilder;
 
 // Future Optimization (FIXME!)
 // =============================
@@ -128,7 +129,7 @@ impl<T: Clone, S: Clone, A: Allocator + Clone> Clone for HashSet<T, S, A> {
     }
 }
 
-#[cfg(feature = "ahash")]
+#[cfg(feature = "default-hasher")]
 impl<T> HashSet<T, DefaultHashBuilder> {
     /// Creates an empty `HashSet`.
     ///
@@ -192,7 +193,7 @@ impl<T> HashSet<T, DefaultHashBuilder> {
     }
 }
 
-#[cfg(feature = "ahash")]
+#[cfg(feature = "default-hasher")]
 impl<T: Hash + Eq, A: Allocator> HashSet<T, DefaultHashBuilder, A> {
     /// Creates an empty `HashSet`.
     ///
@@ -459,7 +460,7 @@ impl<T, S> HashSet<T, S, Global> {
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut set = HashSet::with_hasher(s);
@@ -497,7 +498,7 @@ impl<T, S> HashSet<T, S, Global> {
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
@@ -546,7 +547,7 @@ where
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut set = HashSet::with_hasher(s);
@@ -584,7 +585,7 @@ where
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
@@ -605,7 +606,7 @@ where
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::hash_map::DefaultHashBuilder;
+    /// use hashbrown::DefaultHashBuilder;
     ///
     /// let hasher = DefaultHashBuilder::default();
     /// let set: HashSet<i32> = HashSet::with_hasher(hasher);
@@ -1324,7 +1325,7 @@ where
 }
 
 // The default hasher is used to match the std implementation signature
-#[cfg(feature = "ahash")]
+#[cfg(feature = "default-hasher")]
 impl<T, A, const N: usize> From<[T; N]> for HashSet<T, DefaultHashBuilder, A>
 where
     T: Eq + Hash,
@@ -2643,8 +2644,8 @@ fn assert_covariance() {
 
 #[cfg(test)]
 mod test_set {
-    use super::super::map::DefaultHashBuilder;
     use super::HashSet;
+    use crate::DefaultHashBuilder;
     use std::vec::Vec;
 
     #[test]

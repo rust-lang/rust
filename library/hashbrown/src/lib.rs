@@ -39,6 +39,14 @@
 #![cfg_attr(feature = "nightly", warn(fuzzy_provenance_casts))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 
+/// Default hasher for [`HashMap`], [`HashSet`] and [`HashTable`].
+#[cfg(feature = "default-hasher")]
+pub type DefaultHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
+
+/// Dummy default hasher for [`HashMap`], [`HashSet`] and [`HashTable`].
+#[cfg(not(feature = "default-hasher"))]
+pub enum DefaultHashBuilder {}
+
 #[cfg(test)]
 #[macro_use]
 extern crate std;

@@ -483,7 +483,7 @@ impl<T> Bucket<T> {
     /// use core::hash::{BuildHasher, Hash};
     /// use hashbrown::raw::{Bucket, RawTable};
     ///
-    /// type NewHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
+    /// type NewHashBuilder = hashbrown::DefaultHashBuilder;
     ///
     /// fn make_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
     ///     use core::hash::Hasher;
@@ -649,7 +649,7 @@ impl<T> Bucket<T> {
     /// use core::hash::{BuildHasher, Hash};
     /// use hashbrown::raw::{Bucket, RawTable};
     ///
-    /// type NewHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
+    /// type NewHashBuilder = hashbrown::DefaultHashBuilder;
     ///
     /// fn make_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
     ///     use core::hash::Hasher;
@@ -708,7 +708,7 @@ impl<T> Bucket<T> {
     /// use core::hash::{BuildHasher, Hash};
     /// use hashbrown::raw::{Bucket, RawTable};
     ///
-    /// type NewHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
+    /// type NewHashBuilder = hashbrown::DefaultHashBuilder;
     ///
     /// fn make_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
     ///     use core::hash::Hasher;
@@ -1235,7 +1235,7 @@ impl<T, A: Allocator> RawTable<T, A> {
                 fallibility,
                 Self::TABLE_LAYOUT,
                 if T::NEEDS_DROP {
-                    Some(mem::transmute(ptr::drop_in_place::<T> as unsafe fn(*mut T)))
+                    Some(|ptr| ptr::drop_in_place(ptr as *mut T))
                 } else {
                     None
                 },
@@ -2911,7 +2911,7 @@ impl RawTableInner {
         hasher: &dyn Fn(&mut Self, usize) -> u64,
         fallibility: Fallibility,
         layout: TableLayout,
-        drop: Option<fn(*mut u8)>,
+        drop: Option<unsafe fn(*mut u8)>,
     ) -> Result<(), TryReserveError>
     where
         A: Allocator,
@@ -3145,7 +3145,7 @@ impl RawTableInner {
         &mut self,
         hasher: &dyn Fn(&mut Self, usize) -> u64,
         size_of: usize,
-        drop: Option<fn(*mut u8)>,
+        drop: Option<unsafe fn(*mut u8)>,
     ) {
         // If the hash function panics then properly clean up any elements
         // that we haven't rehashed yet. We unfortunately can't preserve the
@@ -4577,7 +4577,7 @@ mod test_map {
                 &|table, index| hasher(table.bucket::<T>(index).as_ref()),
                 mem::size_of::<T>(),
                 if mem::needs_drop::<T>() {
-                    Some(mem::transmute(ptr::drop_in_place::<T> as unsafe fn(*mut T)))
+                    Some(|ptr| ptr::drop_in_place(ptr as *mut T))
                 } else {
                     None
                 },

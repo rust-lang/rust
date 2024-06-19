@@ -103,14 +103,13 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
     /// use bumpalo::Bump;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let bump = Bump::new();
     /// let mut table = HashTable::new_in(&bump);
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     ///
     /// // The created HashTable holds none elements
@@ -147,14 +146,13 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
     /// use bumpalo::Bump;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let bump = Bump::new();
     /// let mut table = HashTable::with_capacity_in(5, &bump);
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     ///
     /// // The created HashTable holds none elements
@@ -203,12 +201,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// table.insert_unique(hasher(&1), 1, hasher);
     /// table.insert_unique(hasher(&2), 2, hasher);
@@ -241,12 +238,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// table.insert_unique(hasher(&1), (1, "a"), |val| hasher(&val.0));
     /// if let Some(val) = table.find_mut(hasher(&1), |val| val.0 == 1) {
@@ -280,12 +276,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// table.insert_unique(hasher(&1), (1, "a"), |val| hasher(&val.0));
     /// if let Ok(entry) = table.find_entry(hasher(&1), |val| val.0 == 1) {
@@ -335,13 +330,12 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
     /// use hashbrown::hash_table::Entry;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// table.insert_unique(hasher(&1), (1, "a"), |val| hasher(&val.0));
     /// if let Entry::Occupied(entry) = table.entry(hasher(&1), |val| val.0 == 1, |val| hasher(&val.0))
@@ -392,12 +386,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut v = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// v.insert_unique(hasher(&1), 1, hasher);
     /// # }
@@ -427,12 +420,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut v = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// v.insert_unique(hasher(&1), 1, hasher);
     /// v.clear();
@@ -459,12 +451,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table = HashTable::with_capacity(100);
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// table.insert_unique(hasher(&1), 1, hasher);
     /// table.insert_unique(hasher(&2), 2, hasher);
@@ -496,12 +487,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table = HashTable::with_capacity(100);
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// table.insert_unique(hasher(&1), 1, hasher);
     /// table.insert_unique(hasher(&2), 2, hasher);
@@ -541,12 +531,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table: HashTable<i32> = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// table.reserve(10, hasher);
     /// assert!(table.capacity() >= 10);
@@ -577,12 +566,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table: HashTable<i32> = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// table
     ///     .try_reserve(10, hasher)
@@ -621,11 +609,10 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// let mut v = HashTable::new();
     /// assert_eq!(v.len(), 0);
@@ -648,11 +635,10 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// let mut v = HashTable::new();
     /// assert!(v.is_empty());
@@ -676,12 +662,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// table.insert_unique(hasher(&"a"), "b", hasher);
     /// table.insert_unique(hasher(&"b"), "b", hasher);
@@ -712,12 +697,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// table.insert_unique(hasher(&1), 1, hasher);
     /// table.insert_unique(hasher(&2), 2, hasher);
@@ -764,12 +748,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// for x in 1..=6 {
     ///     table.insert_unique(hasher(&x), x, hasher);
@@ -800,12 +783,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// for x in 1..=3 {
     ///     table.insert_unique(hasher(&x), x, hasher);
@@ -847,12 +829,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// for x in 0..8 {
     ///     table.insert_unique(hasher(&x), x, hasher);
@@ -899,13 +880,12 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
     /// use hashbrown::hash_table::Entry;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut libraries: HashTable<(&str, u32)> = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// for (k, v) in [
     ///     ("Bodleian Library", 1602),
@@ -969,13 +949,12 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
     /// use hashbrown::hash_table::Entry;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut libraries: HashTable<(&str, u32)> = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// for (k, v) in [
     ///     ("Bodleian Library", 1602),
@@ -1100,12 +1079,12 @@ where
 /// ```
 /// # #[cfg(feature = "nightly")]
 /// # fn test() {
-/// use ahash::AHasher;
-/// use hashbrown::hash_table::{Entry, HashTable, OccupiedEntry};
-/// use std::hash::{BuildHasher, BuildHasherDefault};
+/// use hashbrown::hash_table::{Entry, OccupiedEntry};
+/// use hashbrown::{HashTable, DefaultHashBuilder};
+/// use std::hash::BuildHasher;
 ///
 /// let mut table = HashTable::new();
-/// let hasher = BuildHasherDefault::<AHasher>::default();
+/// let hasher = DefaultHashBuilder::default();
 /// let hasher = |val: &_| hasher.hash_one(val);
 /// for x in ["a", "b", "c"] {
 ///     table.insert_unique(hasher(&x), x, hasher);
@@ -1152,12 +1131,12 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::hash_table::{Entry, HashTable, OccupiedEntry};
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::hash_table::{Entry, OccupiedEntry};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// for x in ["a", "b"] {
     ///     table.insert_unique(hasher(&x), x, hasher);
@@ -1182,12 +1161,12 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::hash_table::{Entry, HashTable, OccupiedEntry};
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::hash_table::{Entry, OccupiedEntry};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table = HashTable::<&str>::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     ///
     /// match table.entry(hasher(&"a"), |&x| x == "a", hasher) {
@@ -1224,12 +1203,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table: HashTable<&str> = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     ///
     /// let entry = table
@@ -1262,12 +1240,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table: HashTable<&str> = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     ///
     /// // nonexistent key
@@ -1308,12 +1285,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table: HashTable<String> = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     ///
     /// table
@@ -1344,12 +1320,11 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table: HashTable<(&str, u32)> = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     ///
     /// table
@@ -1404,12 +1379,12 @@ where
 /// ```
 /// # #[cfg(feature = "nightly")]
 /// # fn test() {
-/// use ahash::AHasher;
-/// use hashbrown::hash_table::{Entry, HashTable, OccupiedEntry};
-/// use std::hash::{BuildHasher, BuildHasherDefault};
+/// use hashbrown::hash_table::{Entry, OccupiedEntry};
+/// use hashbrown::{HashTable, DefaultHashBuilder};
+/// use std::hash::BuildHasher;
 ///
 /// let mut table = HashTable::new();
-/// let hasher = BuildHasherDefault::<AHasher>::default();
+/// let hasher = DefaultHashBuilder::default();
 /// let hasher = |val: &_| hasher.hash_one(val);
 /// for x in ["a", "b", "c"] {
 ///     table.insert_unique(hasher(&x), x, hasher);
@@ -1487,13 +1462,12 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
     /// use hashbrown::hash_table::Entry;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table: HashTable<&str> = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// // The table is empty
     /// assert!(table.is_empty() && table.capacity() == 0);
@@ -1536,13 +1510,12 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
     /// use hashbrown::hash_table::Entry;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table: HashTable<&str> = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// table.insert_unique(hasher(&"poneyland"), "poneyland", hasher);
     ///
@@ -1573,13 +1546,12 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
     /// use hashbrown::hash_table::Entry;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table: HashTable<(&str, u32)> = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// table.insert_unique(hasher(&"poneyland"), ("poneyland", 12), |(k, _)| hasher(&k));
     ///
@@ -1627,13 +1599,12 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
     /// use hashbrown::hash_table::Entry;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table: HashTable<(&str, u32)> = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     /// table.insert_unique(hasher(&"poneyland"), ("poneyland", 12), |(k, _)| hasher(&k));
     ///
@@ -1684,12 +1655,12 @@ where
 /// ```
 /// # #[cfg(feature = "nightly")]
 /// # fn test() {
-/// use ahash::AHasher;
-/// use hashbrown::hash_table::{Entry, HashTable, VacantEntry};
-/// use std::hash::{BuildHasher, BuildHasherDefault};
+/// use hashbrown::hash_table::{Entry, VacantEntry};
+/// use hashbrown::{HashTable, DefaultHashBuilder};
+/// use std::hash::BuildHasher;
 ///
 /// let mut table: HashTable<&str> = HashTable::new();
-/// let hasher = BuildHasherDefault::<AHasher>::default();
+/// let hasher = DefaultHashBuilder::default();
 /// let hasher = |val: &_| hasher.hash_one(val);
 ///
 /// let entry_v: VacantEntry<_, _> = match table.entry(hasher(&"a"), |&x| x == "a", hasher) {
@@ -1742,13 +1713,12 @@ where
     /// ```
     /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use ahash::AHasher;
     /// use hashbrown::hash_table::Entry;
-    /// use hashbrown::HashTable;
-    /// use std::hash::{BuildHasher, BuildHasherDefault};
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
     ///
     /// let mut table: HashTable<&str> = HashTable::new();
-    /// let hasher = BuildHasherDefault::<AHasher>::default();
+    /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
     ///
     /// if let Entry::Vacant(o) = table.entry(hasher(&"poneyland"), |&x| x == "poneyland", hasher) {
@@ -1798,12 +1768,12 @@ where
 /// ```
 /// # #[cfg(feature = "nightly")]
 /// # fn test() {
-/// use ahash::AHasher;
-/// use hashbrown::hash_table::{AbsentEntry, Entry, HashTable};
-/// use std::hash::{BuildHasher, BuildHasherDefault};
+/// use hashbrown::hash_table::{AbsentEntry, Entry};
+/// use hashbrown::{HashTable, DefaultHashBuilder};
+/// use std::hash::BuildHasher;
 ///
 /// let mut table: HashTable<&str> = HashTable::new();
-/// let hasher = BuildHasherDefault::<AHasher>::default();
+/// let hasher = DefaultHashBuilder::default();
 /// let hasher = |val: &_| hasher.hash_one(val);
 ///
 /// let entry_v: AbsentEntry<_, _> = table.find_entry(hasher(&"a"), |&x| x == "a").unwrap_err();

@@ -11,19 +11,19 @@ fn check<S: BuildHasher + Default>() {
     let mut set = HashSet::<i32, S>::default();
     set.extend(range.clone());
 
-    assert!(!set.contains(&i32::min_value()));
+    assert!(!set.contains(&i32::MIN));
     assert!(!set.contains(&(range.start - 1)));
     for i in range.clone() {
         assert!(set.contains(&i));
     }
     assert!(!set.contains(&range.end));
-    assert!(!set.contains(&i32::max_value()));
+    assert!(!set.contains(&i32::MAX));
 }
 
 /// Use hashbrown's default hasher.
 #[test]
 fn default() {
-    check::<hashbrown::hash_map::DefaultHashBuilder>();
+    check::<hashbrown::DefaultHashBuilder>();
 }
 
 /// Use std's default hasher.
@@ -56,7 +56,7 @@ fn max() {
 
     impl Hasher for MaxHasher {
         fn finish(&self) -> u64 {
-            u64::max_value()
+            u64::MAX
         }
         fn write(&mut self, _: &[u8]) {}
     }

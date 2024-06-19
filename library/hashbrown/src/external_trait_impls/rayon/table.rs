@@ -215,10 +215,7 @@ mod test_par_table {
 
     use rayon::prelude::*;
 
-    use crate::{
-        hash_map::{make_hash, DefaultHashBuilder},
-        hash_table::HashTable,
-    };
+    use crate::{hash_map::make_hash, hash_table::HashTable, DefaultHashBuilder};
 
     #[test]
     fn test_iterate() {
