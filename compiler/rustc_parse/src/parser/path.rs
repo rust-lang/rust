@@ -920,7 +920,8 @@ impl<'a> Parser<'a> {
             // Fall back by trying to parse a const-expr expression. If we successfully do so,
             // then we should report an error that it needs to be wrapped in braces.
             let snapshot = self.create_snapshot_for_diagnostic();
-            match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
+            let attrs = self.parse_outer_attributes()?;
+            match self.parse_expr_res(Restrictions::CONST_EXPR, attrs) {
                 Ok(expr) => {
                     return Ok(Some(self.dummy_const_arg_needs_braces(
                         self.dcx().struct_span_err(expr.span, "invalid const generic expression"),

@@ -126,9 +126,9 @@ impl<'a> Parser<'a> {
             // Remainder are line-expr stmts.
             let e = match force_collect {
                 ForceCollect::Yes => self.collect_tokens_no_attrs(|this| {
-                    this.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs))
+                    this.parse_expr_res(Restrictions::STMT_EXPR, attrs)
                 })?,
-                ForceCollect::No => self.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs))?,
+                ForceCollect::No => self.parse_expr_res(Restrictions::STMT_EXPR, attrs)?,
             };
             if matches!(e.kind, ExprKind::Assign(..)) && self.eat_keyword(kw::Else) {
                 let bl = self.parse_block()?;
