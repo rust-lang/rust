@@ -1,6 +1,11 @@
+//@aux-build: proc_macros.rs
+
 #![feature(lint_reasons)]
 #![warn(clippy::implicit_return)]
 #![allow(clippy::needless_return, clippy::needless_bool, unused, clippy::never_loop)]
+
+extern crate proc_macros;
+use proc_macros::with_span;
 
 fn test_end_of_fn() -> bool {
     if true {
@@ -137,3 +142,11 @@ fn check_expect() -> bool {
     #[expect(clippy::implicit_return)]
     true
 }
+
+with_span!(
+    span
+
+    fn dont_lint_proc_macro(x: usize) -> usize{
+        x
+    }
+);
