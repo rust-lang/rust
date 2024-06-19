@@ -6718,7 +6718,6 @@ mod test_map {
     use rand::{rngs::SmallRng, Rng, SeedableRng};
     use std::borrow::ToOwned;
     use std::cell::RefCell;
-    use std::usize;
     use std::vec::Vec;
 
     #[test]
