@@ -3,8 +3,6 @@
 // and this test checks that this is still the case.
 // See https://github.com/rust-lang/rust/pull/24423
 
-//FIXME(Oneirical): check if works without ignore freebsd
-
 use run_make_support::{invalid_utf8_contains, rustc};
 
 fn main() {
