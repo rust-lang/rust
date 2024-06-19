@@ -71,7 +71,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _7 = _4 as *mut T (PtrToPtr);
         _8 = Offset(_7, _3);
         StorageDead(_7);
-        _9 = move _8 as *const T (PointerCoercion(MutToConstPointer));
+        _9 = move _8 as *const T (PtrToPtr);
         StorageDead(_8);
         goto -> bb3;
     }
