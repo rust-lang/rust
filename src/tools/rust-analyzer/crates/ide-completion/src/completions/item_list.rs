@@ -100,6 +100,7 @@ fn add_keywords(acc: &mut Completions, ctx: &CompletionContext<'_>, kind: Option
             add_keyword("enum", "enum $1 {\n    $0\n}");
             add_keyword("mod", "mod $0");
             add_keyword("static", "static $0");
+            add_keyword("async", "async $0");
             add_keyword("struct", "struct $0");
             add_keyword("trait", "trait $1 {\n    $0\n}");
             add_keyword("union", "union $1 {\n    $0\n}");

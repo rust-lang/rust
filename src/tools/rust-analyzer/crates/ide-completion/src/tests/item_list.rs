@@ -14,6 +14,7 @@ fn in_mod_item_list() {
         r#"mod tests { $0 }"#,
         expect![[r#"
             ma makro!(…)           macro_rules! makro
+            kw async
             kw const
             kw crate::
             kw enum
@@ -47,6 +48,7 @@ fn in_source_file_item_list() {
         expect![[r#"
             ma makro!(…)           macro_rules! makro
             md module
+            kw async
             kw const
             kw crate::
             kw enum
@@ -79,6 +81,7 @@ fn in_item_list_after_attr() {
         expect![[r#"
             ma makro!(…)           macro_rules! makro
             md module
+            kw async
             kw const
             kw crate::
             kw enum
@@ -132,6 +135,7 @@ fn after_visibility() {
     check(
         r#"pub $0"#,
         expect![[r#"
+            kw async
             kw const
             kw enum
             kw extern
@@ -356,6 +360,7 @@ fn after_unit_struct() {
         expect![[r#"
             ma makro!(…)           macro_rules! makro
             md module
+            kw async
             kw const
             kw crate::
             kw enum
