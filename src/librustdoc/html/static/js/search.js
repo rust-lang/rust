@@ -2603,18 +2603,17 @@ function initSearch(rawSearchIndex) {
 
         if (type === "mod") {
             displayPath = path + "::";
-            href = ROOT_PATH + path.replace(/::/g, "/") + "/" +
-                name + "/index.html";
+            href = path.replace(/::/g, "/") + "/" + name + "/index.html";
         } else if (type === "import") {
             displayPath = item.path + "::";
-            href = ROOT_PATH + item.path.replace(/::/g, "/") + "/index.html#reexport." + name;
+            href = item.path.replace(/::/g, "/") + "/index.html#reexport." + name;
         } else if (type === "primitive" || type === "keyword") {
             displayPath = "";
-            href = ROOT_PATH + path.replace(/::/g, "/") +
+            href = path.replace(/::/g, "/") +
                 "/" + type + "." + name + ".html";
         } else if (type === "externcrate") {
             displayPath = "";
-            href = ROOT_PATH + name + "/index.html";
+            href = name + "/index.html";
         } else if (item.parent !== undefined) {
             const myparent = item.parent;
             let anchor = type + "." + name;
@@ -2641,14 +2640,13 @@ function initSearch(rawSearchIndex) {
             if (item.implDisambiguator !== null) {
                 anchor = item.implDisambiguator + "/" + anchor;
             }
-            href = ROOT_PATH + path.replace(/::/g, "/") +
+            href = path.replace(/::/g, "/") +
                 "/" + pageType +
                 "." + pageName +
                 ".html#" + anchor;
         } else {
             displayPath = item.path + "::";
-            href = ROOT_PATH + item.path.replace(/::/g, "/") +
-                "/" + type + "." + name + ".html";
+            href = item.path.replace(/::/g, "/") + "/" + type + "." + name + ".html";
         }
         return [displayPath, href, `${exactPath}::${name}`];
     }
@@ -2682,7 +2680,7 @@ function initSearch(rawSearchIndex) {
 
                 const link = document.createElement("a");
                 link.className = "result-" + type;
-                link.href = item.href;
+                link.href = ROOT_PATH + item.href;
 
                 const resultName = document.createElement("div");
                 resultName.className = "result-name";
@@ -2772,7 +2770,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             window.onunload = () => {};
             searchState.removeQueryParameters();
             const elem = document.createElement("a");
-            elem.href = results.others[0].href;
+            elem.href = ROOT_PATH + results.others[0].href;
             removeClass(elem, "active");
             // For firefox, we need the element to be in the DOM so it can be clicked.
             document.body.appendChild(elem);
