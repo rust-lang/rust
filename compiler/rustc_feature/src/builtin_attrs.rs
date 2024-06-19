@@ -479,7 +479,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(
         coverage, Normal, template!(Word, List: "on|off"),
-        WarnFollowing, EncodeCrossCrate::No,
+        ErrorPreceding, EncodeCrossCrate::No,
         coverage_attribute, experimental!(coverage)
     ),
 
