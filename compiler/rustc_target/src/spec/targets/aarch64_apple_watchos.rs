@@ -2,7 +2,11 @@ use crate::spec::base::apple::{opts, Arch, TargetAbi};
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = opts("watchos", Arch::Arm64, TargetAbi::Normal);
+    const ARCH: Arch = Arch::Arm64;
+    const OS: &'static str = "watchos";
+    const ABI: TargetAbi = TargetAbi::Normal;
+
+    let base = opts(OS, ARCH, ABI);
     Target {
         llvm_target: "aarch64-apple-watchos".into(),
         metadata: crate::spec::TargetMetadata {
