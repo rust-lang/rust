@@ -300,6 +300,11 @@
                 "command": "rust-analyzer.toggleCheckOnSave",
                 "title": "Toggle Check on Save",
                 "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.toggleLSPLogs",
+                "title": "Toggle LSP Logs",
+                "category": "rust-analyzer"
             }
         ],
         "keybindings": [
@@ -3122,6 +3127,10 @@
                 },
                 {
                     "command": "rust-analyzer.viewMemoryLayout",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.toggleLSPLogs",
                     "when": "inRustProject"
                 }
             ],
