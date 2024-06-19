@@ -899,10 +899,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             return;
                         }
                     }
-                    ty::Infer(ty::TyVar(_)) => {
-                        debug!("assemble_candidates_from_object_ty: ambiguous");
-                        candidates.ambiguous = true; // could wind up being an object type
-                        return;
+                    ty::Infer(ty::TyVar(_)) => bug!("assemble_candidates_from_object_ty is already gated behind an infer var check"),
+                    ty::Alias(ty::Opaque, alias) if self.infcx.can_define_opaque_ty(alias.def_id) => {
+                        bug!("assemble_candidates_from_object_ty is already gated behind an opaque type ");
                     }
                     _ => return,
                 };

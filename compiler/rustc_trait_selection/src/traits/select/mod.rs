@@ -1688,7 +1688,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         });
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            .eq(DefineOpaqueTypes::No, placeholder_trait_ref, trait_bound)
+            .eq(DefineOpaqueTypes::Yes, placeholder_trait_ref, trait_bound)
             .map(|InferOk { obligations: _, value: () }| {
                 // This method is called within a probe, so we can't have
                 // inference variables and placeholders escape.
