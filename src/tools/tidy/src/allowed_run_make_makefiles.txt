@@ -69,7 +69,6 @@ run-make/issue-33329/Makefile
 run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
 run-make/issue-37839/Makefile
-run-make/issue-40535/Makefile
 run-make/issue-47384/Makefile
 run-make/issue-47551/Makefile
 run-make/issue-68794-textrel-on-minimal-lib/Makefile
