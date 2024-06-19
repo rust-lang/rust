@@ -566,6 +566,37 @@ to know everything about submodules to contribute to Rust. Just know that they
 exist and that they correspond to some sort of embedded subrepository dependency
 that Git can nicely and fairly conveniently handle for us.
 
+### Hard-resetting submodules
+
+Sometimes you might run into (when you run `git status`)
+
+```
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+  (commit or discard the untracked or modified content in submodules)
+        modified:   src/llvm-project (new commits, modified content)
+```
+
+and when you try to run `git submodule update` it breaks horribly with errors like
+
+```
+error: RPC failed; curl 92 HTTP/2 stream 7 was not closed cleanly: CANCEL (err 8)
+error: 2782 bytes of body are still expected
+fetch-pack: unexpected disconnect while reading sideband packet
+fatal: early EOF
+fatal: fetch-pack: invalid index-pack output
+fatal: Fetched in submodule path 'src/llvm-project', but it did not contain 5a5152f653959d14d68613a3a8a033fb65eec021. Direct fetching of that commit failed.
+```
+
+If you see `(new commits, modified content)` you can run
+
+```bash
+$ git submodule foreach git reset --hard
+```
+
+and then try `git submodule update` again.
+
 [Git submodules]: https://git-scm.com/book/en/v2/Git-Tools-Submodules
 [`rust-lang/llvm-project`]: https://github.com/rust-lang/llvm-project
 [llvm-update]: https://github.com/rust-lang/rust/pull/99464/files
