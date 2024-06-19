@@ -1,6 +1,7 @@
 // FIXME(@lcnr): Move this module out of `rustc_hir_analysis`.
 //
 // We don't do any drop checking during hir typeck.
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
