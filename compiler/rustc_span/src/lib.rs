@@ -525,8 +525,9 @@ impl SpanData {
     fn with_ctxt(&self, ctxt: SyntaxContext) -> Span {
         Span::new(self.lo, self.hi, ctxt, self.parent)
     }
+    /// Avoid if possible, `Span::with_parent` should be preferred.
     #[inline]
-    pub fn with_parent(&self, parent: Option<LocalDefId>) -> Span {
+    fn with_parent(&self, parent: Option<LocalDefId>) -> Span {
         Span::new(self.lo, self.hi, self.ctxt, parent)
     }
     /// Returns `true` if this is a dummy span with any hygienic context.
@@ -579,14 +580,6 @@ impl Span {
     #[inline]
     pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
         self.map_ctxt(|_| ctxt)
-    }
-    #[inline]
-    pub fn parent(self) -> Option<LocalDefId> {
-        self.data().parent
-    }
-    #[inline]
-    pub fn with_parent(self, ctxt: Option<LocalDefId>) -> Span {
-        self.data().with_parent(ctxt)
     }
 
     #[inline]
