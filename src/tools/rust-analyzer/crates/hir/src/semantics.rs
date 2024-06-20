@@ -328,6 +328,8 @@ impl<'db> SemanticsImpl<'db> {
         Some(node)
     }
 
+    /// Expands the macro if it isn't one of the built-in ones that expand to custom syntax or dummy
+    /// expansions.
     pub fn expand_allowed_builtins(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         let sa = self.analyze_no_infer(macro_call.syntax())?;
 
@@ -341,33 +343,27 @@ impl<'db> SemanticsImpl<'db> {
         };
         let macro_call = self.db.lookup_intern_macro_call(file_id.macro_call_id);
 
-        match macro_call.def.kind {
+        let skip = matches!(
+            macro_call.def.kind,
             hir_expand::MacroDefKind::BuiltIn(
                 _,
-                BuiltinFnLikeExpander::Cfg
-                | BuiltinFnLikeExpander::StdPanic
-                | BuiltinFnLikeExpander::Stringify
-                | BuiltinFnLikeExpander::CorePanic,
-            )
-            | hir_expand::MacroDefKind::BuiltInEager(
-                _,
-                EagerExpander::Env
-                | EagerExpander::Concat
-                | EagerExpander::Include
-                | EagerExpander::OptionEnv
-                | EagerExpander::IncludeStr
-                | EagerExpander::ConcatBytes
-                | EagerExpander::IncludeBytes,
-            ) => {
-                // Do nothing and allow matching macros to be expanded
-            }
-
-            hir_expand::MacroDefKind::BuiltIn(_, _)
-            | hir_expand::MacroDefKind::BuiltInAttr(_, _)
-            | hir_expand::MacroDefKind::BuiltInEager(_, _)
-            | hir_expand::MacroDefKind::BuiltInDerive(_, _) => return None,
-
-            _ => (),
+                BuiltinFnLikeExpander::Column
+                    | BuiltinFnLikeExpander::File
+                    | BuiltinFnLikeExpander::ModulePath
+                    | BuiltinFnLikeExpander::Asm
+                    | BuiltinFnLikeExpander::LlvmAsm
+                    | BuiltinFnLikeExpander::GlobalAsm
+                    | BuiltinFnLikeExpander::LogSyntax
+                    | BuiltinFnLikeExpander::TraceMacros
+                    | BuiltinFnLikeExpander::FormatArgs
+                    | BuiltinFnLikeExpander::FormatArgsNl
+                    | BuiltinFnLikeExpander::ConstFormatArgs,
+            ) | hir_expand::MacroDefKind::BuiltInEager(_, EagerExpander::CompileError)
+        );
+        if skip {
+            // these macros expand to custom builtin syntax and/or dummy things, no point in
+            // showing these to the user
+            return None;
         }
 
         let node = self.parse_or_expand(file_id.into());

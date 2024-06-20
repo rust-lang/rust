@@ -233,8 +233,8 @@ mod tests {
     fn expand_allowed_builtin_macro() {
         check(
             r#"
-            //- minicore: concat
-            $0concat!("test", 10, 'b', true);"#,
+//- minicore: concat
+$0concat!("test", 10, 'b', true);"#,
             expect![[r#"
                 concat!
                 "test10btrue""#]],
@@ -245,8 +245,8 @@ mod tests {
     fn do_not_expand_disallowed_macro() {
         let (analysis, pos) = fixture::position(
             r#"
-        //- minicore: asm
-        $0asm!("0x300, x0");"#,
+//- minicore: asm
+$0asm!("0x300, x0");"#,
         );
         let expansion = analysis.expand_macro(pos).unwrap();
         assert!(expansion.is_none());
