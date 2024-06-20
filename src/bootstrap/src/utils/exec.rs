@@ -16,11 +16,11 @@ pub enum BehaviorOnFailure {
 pub enum OutputMode {
     /// Print both the output (by inheriting stdout/stderr) and also the command itself, if it
     /// fails.
-    PrintAll,
+    All,
     /// Print the output (by inheriting stdout/stderr).
-    PrintOutput,
+    OnlyOutput,
     /// Suppress the output if the command succeeds, otherwise print the output.
-    PrintOnFailure,
+    OnlyOnFailure,
 }
 
 /// Wrapper around `std::process::Command`.
@@ -46,7 +46,7 @@ impl<'a> BootstrapCommand<'a> {
 
     /// Do not print the output of the command, unless it fails.
     pub fn quiet(self) -> Self {
-        self.output_mode(OutputMode::PrintOnFailure)
+        self.output_mode(OutputMode::OnlyOnFailure)
     }
 
     pub fn output_mode(self, output_mode: OutputMode) -> Self {

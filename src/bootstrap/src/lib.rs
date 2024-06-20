@@ -585,8 +585,8 @@ impl Build {
             BootstrapCommand::from(submodule_git().args(["diff-index", "--quiet", "HEAD"]))
                 .allow_failure()
                 .output_mode(match self.is_verbose() {
-                    true => OutputMode::PrintAll,
-                    false => OutputMode::PrintOutput,
+                    true => OutputMode::All,
+                    false => OutputMode::OnlyOutput,
                 }),
         );
         if has_local_modifications {
@@ -967,15 +967,15 @@ impl Build {
         self.verbose(|| println!("running: {command:?}"));
 
         let output_mode = command.output_mode.unwrap_or_else(|| match self.is_verbose() {
-            true => OutputMode::PrintAll,
-            false => OutputMode::PrintOutput,
+            true => OutputMode::All,
+            false => OutputMode::OnlyOutput,
         });
         let (output, print_error): (io::Result<CommandOutput>, bool) = match output_mode {
-            mode @ (OutputMode::PrintAll | OutputMode::PrintOutput) => (
+            mode @ (OutputMode::All | OutputMode::OnlyOutput) => (
                 command.command.status().map(|status| status.into()),
-                matches!(mode, OutputMode::PrintAll),
+                matches!(mode, OutputMode::All),
             ),
-            OutputMode::PrintOnFailure => (command.command.output().map(|o| o.into()), true),
+            OutputMode::OnlyOnFailure => (command.command.output().map(|o| o.into()), true),
         };
 
         let output = match output {
@@ -1026,8 +1026,8 @@ impl Build {
     fn run(&self, cmd: &mut Command) {
         self.run_cmd(BootstrapCommand::from(cmd).fail_fast().output_mode(
             match self.is_verbose() {
-                true => OutputMode::PrintAll,
-                false => OutputMode::PrintOutput,
+                true => OutputMode::All,
+                false => OutputMode::OnlyOutput,
             },
         ));
     }

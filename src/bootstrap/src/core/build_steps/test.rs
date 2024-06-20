@@ -2320,7 +2320,7 @@ impl Step for ErrorIndex {
             builder.msg(Kind::Test, compiler.stage, "error-index", compiler.host, compiler.host);
         let _time = helpers::timeit(builder);
         builder
-            .run_tracked(BootstrapCommand::from(&mut tool).output_mode(OutputMode::PrintOnFailure));
+            .run_tracked(BootstrapCommand::from(&mut tool).output_mode(OutputMode::OnlyOnFailure));
         drop(guard);
         // The tests themselves need to link to std, so make sure it is
         // available.
