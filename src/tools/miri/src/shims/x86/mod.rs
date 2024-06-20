@@ -35,17 +35,48 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.").unwrap();
         match unprefixed_name {
-            // Used to implement the `_addcarry_u32` and `_addcarry_u64` functions.
-            // Computes a + b with input and output carry. The input carry is an 8-bit
-            // value, which is interpreted as 1 if it is non-zero. The output carry is
-            // an 8-bit value that will be 0 or 1.
+            // Used to implement the `_addcarry_u{32, 64}` and the `_subborrow_u{32, 64}` functions.
+            // Computes a + b or a - b with input and output carry/borrow. The input carry/borrow is an 8-bit
+            // value, which is interpreted as 1 if it is non-zero. The output carry/borrow is an 8-bit value that will be 0 or 1.
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/addcarry-u32-addcarry-u64.html
-            "addcarry.32" | "addcarry.64" => {
-                if unprefixed_name == "addcarry.64" && this.tcx.sess.target.arch != "x86_64" {
+            // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/subborrow-u32-subborrow-u64.html
+            "addcarry.32" | "addcarry.64" | "subborrow.32" | "subborrow.64" => {
+                if unprefixed_name.ends_with("64") && this.tcx.sess.target.arch != "x86_64" {
                     return Ok(EmulateItemResult::NotSupported);
                 }
 
-                let [c_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
+                let op = if unprefixed_name.starts_with("add") {
+                    mir::BinOp::AddWithOverflow
+                } else {
+                    mir::BinOp::SubWithOverflow
+                };
+
+                let [cb_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
+                let cb_in = this.read_scalar(cb_in)?.to_u8()? != 0;
+                let a = this.read_immediate(a)?;
+                let b = this.read_immediate(b)?;
+
+                let (sum, overflow1) = this.binary_op(op, &a, &b)?.to_pair(this);
+                let (sum, overflow2) =
+                    this.binary_op(op, &sum, &ImmTy::from_uint(cb_in, a.layout))?.to_pair(this);
+                let cb_out = overflow1.to_scalar().to_bool()? | overflow2.to_scalar().to_bool()?;
+
+                let d1 = this.project_field(dest, 0)?;
+                let d2 = this.project_field(dest, 1)?;
+                write_twice(this, &d1, Scalar::from_u8(cb_out.into()), &d2, sum)?;
+            }
+
+            // Used to implement the `_addcarryx_u{32, 64}` functions. They are semantically identical with the `_addcarry_u{32, 64}` functions,
+            // except for a slightly different type signature and the requirement for the "adx" target feature.
+            // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/addcarryx-u32-addcarryx-u64.html
+            "addcarryx.u32" | "addcarryx.u64" => {
+                this.expect_target_feature_for_intrinsic(link_name, "adx")?;
+
+                if unprefixed_name.ends_with("64") && this.tcx.sess.target.arch != "x86_64" {
+                    return Ok(EmulateItemResult::NotSupported);
+                }
+
+                let [c_in, a, b, out] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
                 let c_in = this.read_scalar(c_in)?.to_u8()? != 0;
                 let a = this.read_immediate(a)?;
                 let b = this.read_immediate(b)?;
@@ -61,37 +92,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     .to_pair(this);
                 let c_out = overflow1.to_scalar().to_bool()? | overflow2.to_scalar().to_bool()?;
 
-                this.write_scalar(Scalar::from_u8(c_out.into()), &this.project_field(dest, 0)?)?;
-                this.write_immediate(*sum, &this.project_field(dest, 1)?)?;
-            }
-            // Used to implement the `_subborrow_u32` and `_subborrow_u64` functions.
-            // Computes a - b with input and output borrow. The input borrow is an 8-bit
-            // value, which is interpreted as 1 if it is non-zero. The output borrow is
-            // an 8-bit value that will be 0 or 1.
-            // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/subborrow-u32-subborrow-u64.html
-            "subborrow.32" | "subborrow.64" => {
-                if unprefixed_name == "subborrow.64" && this.tcx.sess.target.arch != "x86_64" {
-                    return Ok(EmulateItemResult::NotSupported);
-                }
-
-                let [b_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
-                let b_in = this.read_scalar(b_in)?.to_u8()? != 0;
-                let a = this.read_immediate(a)?;
-                let b = this.read_immediate(b)?;
-
-                let (sub, overflow1) =
-                    this.binary_op(mir::BinOp::SubWithOverflow, &a, &b)?.to_pair(this);
-                let (sub, overflow2) = this
-                    .binary_op(
-                        mir::BinOp::SubWithOverflow,
-                        &sub,
-                        &ImmTy::from_uint(b_in, a.layout),
-                    )?
-                    .to_pair(this);
-                let b_out = overflow1.to_scalar().to_bool()? | overflow2.to_scalar().to_bool()?;
-
-                this.write_scalar(Scalar::from_u8(b_out.into()), &this.project_field(dest, 0)?)?;
-                this.write_immediate(*sub, &this.project_field(dest, 1)?)?;
+                let out = this.deref_pointer_as(out, sum.layout)?;
+                write_twice(this, dest, Scalar::from_u8(c_out.into()), &out, sum)?;
             }
 
             // Used to implement the `_mm_pause` function.
@@ -1364,5 +1366,18 @@ fn psign<'tcx>(
         this.write_immediate(*res, &dest)?;
     }
 
+    Ok(())
+}
+
+/// Write two values `v1` and `v2` to the places `d1` and `d2`.
+fn write_twice<'tcx>(
+    this: &mut crate::MiriInterpCx<'tcx>,
+    d1: &MPlaceTy<'tcx>,
+    v1: Scalar,
+    d2: &MPlaceTy<'tcx>,
+    v2: ImmTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    this.write_scalar(v1, d1)?;
+    this.write_immediate(*v2, d2)?;
     Ok(())
 }
