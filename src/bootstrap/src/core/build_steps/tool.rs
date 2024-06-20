@@ -476,24 +476,23 @@ impl Step for Rustdoc {
             return builder.initial_rustc.with_file_name(exe("rustdoc", target_compiler.host));
         }
         let target = target_compiler.host;
-        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-        // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
-        // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
-        // rustc compiler it's paired with, so it must be built with the previous stage compiler.
-        let build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
+
+        let build_compiler = if builder.download_rustc() && target_compiler.stage == 1 {
+            // We already have the stage 1 compiler, we don't need to cut the stage.
+            builder.compiler(target_compiler.stage, builder.config.build)
+        } else {
+            // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+            // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
+            // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
+            // rustc compiler it's paired with, so it must be built with the previous stage compiler.
+            builder.compiler(target_compiler.stage - 1, builder.config.build)
+        };
 
         // When using `download-rustc` and a stage0 build_compiler, copying rustc doesn't actually
         // build stage0 libstd (because the libstd in sysroot has the wrong ABI). Explicitly build
         // it.
         builder.ensure(compile::Std::new(build_compiler, target_compiler.host));
         builder.ensure(compile::Rustc::new(build_compiler, target_compiler.host));
-        // NOTE: this implies that `download-rustc` is pretty useless when compiling with the stage0
-        // compiler, since you do just as much work.
-        if !builder.config.dry_run() && builder.download_rustc() && build_compiler.stage == 0 {
-            println!(
-                "WARNING: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
-            );
-        }
 
         // The presence of `target_compiler` ensures that the necessary libraries (codegen backends,
         // compiler libraries, ...) are built. Rustdoc does not require the presence of any
