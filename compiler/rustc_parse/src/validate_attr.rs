@@ -10,6 +10,7 @@ use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::errors::report_lit_error;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Span, Symbol};
 
@@ -24,15 +25,21 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
     match attr_info {
         // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
         Some(BuiltinAttribute { name, template, .. }) if *name != sym::rustc_dummy => {
-            check_builtin_attribute(psess, attr, *name, *template)
+            match parse_meta(psess, attr) {
+                Ok(meta) => check_builtin_meta_item(psess, &meta, attr.style, *name, *template),
+                Err(err) => {
+                    err.emit();
+                }
+            }
         }
         _ if let AttrArgs::Eq(..) = attr.get_normal_item().args => {
             // All key-value attributes are restricted to meta-item syntax.
-            parse_meta(psess, attr)
-                .map_err(|err| {
+            match parse_meta(psess, attr) {
+                Ok(_) => {}
+                Err(err) => {
                     err.emit();
-                })
-                .ok();
+                }
+            }
         }
         _ => {}
     }
@@ -41,6 +48,7 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
 pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, MetaItem> {
     let item = attr.get_normal_item();
     Ok(MetaItem {
+        unsafety: item.unsafety,
         span: attr.span,
         path: item.path.clone(),
         kind: match &item.args {
@@ -57,7 +65,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     let res = match res {
                         Ok(lit) => {
                             if token_lit.suffix.is_some() {
-                                let mut err = psess.dcx.struct_span_err(
+                                let mut err = psess.dcx().struct_span_err(
                                     expr.span,
                                     "suffixed literals are not allowed in attributes",
                                 );
@@ -90,7 +98,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     //   the error because an earlier error will have already
                     //   been reported.
                     let msg = "attribute value must be a literal";
-                    let mut err = psess.dcx.struct_span_err(expr.span, msg);
+                    let mut err = psess.dcx().struct_span_err(expr.span, msg);
                     if let ast::ExprKind::Err(_) = expr.kind {
                         err.downgrade_to_delayed_bug();
                     }
@@ -102,21 +110,21 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
     })
 }
 
-pub fn check_meta_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+fn check_meta_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
     if let Delimiter::Parenthesis = delim {
         return;
     }
-    psess.dcx.emit_err(errors::MetaBadDelim {
+    psess.dcx().emit_err(errors::MetaBadDelim {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
 }
 
-pub fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+pub(super) fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
     if let Delimiter::Parenthesis = delim {
         return;
     }
-    psess.dcx.emit_err(errors::CfgAttrBadDelim {
+    psess.dcx().emit_err(errors::CfgAttrBadDelim {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
@@ -129,20 +137,6 @@ fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaIte
         MetaItemKind::List(..) => template.list.is_some(),
         MetaItemKind::NameValue(lit) if lit.kind.is_str() => template.name_value_str.is_some(),
         MetaItemKind::NameValue(..) => false,
-    }
-}
-
-pub fn check_builtin_attribute(
-    psess: &ParseSess,
-    attr: &Attribute,
-    name: Symbol,
-    template: AttributeTemplate,
-) {
-    match parse_meta(psess, attr) {
-        Ok(meta) => check_builtin_meta_item(psess, &meta, attr.style, name, template),
-        Err(err) => {
-            err.emit();
-        }
     }
 }
 
@@ -176,39 +170,28 @@ fn emit_malformed_attribute(
     };
 
     let error_msg = format!("malformed `{name}` attribute input");
-    let mut msg = "attribute must be of the form ".to_owned();
     let mut suggestions = vec![];
-    let mut first = true;
     let inner = if style == ast::AttrStyle::Inner { "!" } else { "" };
     if template.word {
-        first = false;
-        let code = format!("#{inner}[{name}]");
-        msg.push_str(&format!("`{code}`"));
-        suggestions.push(code);
+        suggestions.push(format!("#{inner}[{name}]"));
     }
     if let Some(descr) = template.list {
-        if !first {
-            msg.push_str(" or ");
-        }
-        first = false;
-        let code = format!("#{inner}[{name}({descr})]");
-        msg.push_str(&format!("`{code}`"));
-        suggestions.push(code);
+        suggestions.push(format!("#{inner}[{name}({descr})]"));
     }
     if let Some(descr) = template.name_value_str {
-        if !first {
-            msg.push_str(" or ");
-        }
-        let code = format!("#{inner}[{name} = \"{descr}\"]");
-        msg.push_str(&format!("`{code}`"));
-        suggestions.push(code);
+        suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
     }
-    suggestions.sort();
     if should_warn(name) {
-        psess.buffer_lint(ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, msg);
+        psess.buffer_lint(
+            ILL_FORMED_ATTRIBUTE_INPUT,
+            span,
+            ast::CRATE_NODE_ID,
+            BuiltinLintDiag::IllFormedAttributeInput { suggestions: suggestions.clone() },
+        );
     } else {
+        suggestions.sort();
         psess
-            .dcx
+            .dcx()
             .struct_span_err(span, error_msg)
             .with_span_suggestions(
                 span,

@@ -67,7 +67,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             return false;
         };
         if let Some(local_sig_id) = sig_id.as_local() {
-            self.resolver.delegation_fn_sigs[&local_sig_id].has_self
+            // The value may be missing due to recursive delegation.
+            // Error will be emmited later during HIR ty lowering.
+            self.resolver.delegation_fn_sigs.get(&local_sig_id).map_or(false, |sig| sig.has_self)
         } else {
             match self.tcx.def_kind(sig_id) {
                 DefKind::Fn => false,

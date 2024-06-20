@@ -1,7 +1,9 @@
+// tidy-alphabetical-start
 use std::ffi::CString;
 use std::fs;
 use std::io;
 use std::path::{absolute, Path, PathBuf};
+// tidy-alphabetical-end
 
 // Unfortunately, on windows, it looks like msvcrt.dll is silently translating
 // verbatim paths under the hood to non-verbatim paths! This manifests itself as

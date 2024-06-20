@@ -1,7 +1,7 @@
 use crate::diagnostic::DiagLocation;
-use crate::{fluent_generated as fluent, Subdiagnostic};
+use crate::{fluent_generated as fluent, DiagCtxtHandle, Subdiagnostic};
 use crate::{
-    Diag, DiagArgValue, DiagCtxt, Diagnostic, EmissionGuarantee, ErrCode, IntoDiagArg, Level,
+    Diag, DiagArgValue, Diagnostic, EmissionGuarantee, ErrCode, IntoDiagArg, Level,
     SubdiagMessageOp,
 };
 use rustc_ast as ast;
@@ -115,6 +115,15 @@ impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::UnevaluatedConst
 impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::FnSig<I> {
     fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
         format!("{self:?}").into_diag_arg()
+    }
+}
+
+impl<I: rustc_type_ir::Interner, T> IntoDiagArg for rustc_type_ir::Binder<I, T>
+where
+    T: IntoDiagArg,
+{
+    fn into_diag_arg(self) -> DiagArgValue {
+        self.skip_binder().into_diag_arg()
     }
 }
 
@@ -282,6 +291,12 @@ impl IntoDiagArg for ClosureKind {
     }
 }
 
+impl IntoDiagArg for hir::def::Namespace {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.descr()))
+    }
+}
+
 #[derive(Clone)]
 pub struct DiagSymbolList(Vec<Symbol>);
 
@@ -300,7 +315,7 @@ impl IntoDiagArg for DiagSymbolList {
 }
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetDataLayoutErrors<'_> {
-    fn into_diag(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
                 Diag::new(dcx, level, fluent::errors_target_invalid_address_space)

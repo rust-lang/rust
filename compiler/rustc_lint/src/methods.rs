@@ -25,9 +25,9 @@ declare_lint! {
     ///
     /// The inner pointer of a `CString` lives only as long as the `CString` it
     /// points to. Getting the inner pointer of a *temporary* `CString` allows the `CString`
-    /// to be dropped at the end of the statement, as it is not being referenced as far as the typesystem
-    /// is concerned. This means outside of the statement the pointer will point to freed memory, which
-    /// causes undefined behavior if the pointer is later dereferenced.
+    /// to be dropped at the end of the statement, as it is not being referenced as far as the
+    /// typesystem is concerned. This means outside of the statement the pointer will point to
+    /// freed memory, which causes undefined behavior if the pointer is later dereferenced.
     pub TEMPORARY_CSTRING_AS_PTR,
     Warn,
     "detects getting the inner pointer of a temporary `CString`"

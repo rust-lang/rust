@@ -13,7 +13,6 @@ pub fn init_tracing() {
     use tracing_subscriber::Layer;
     let _ = tracing_tree::HierarchicalLayer::default()
         .with_writer(std::io::stderr)
-        .with_indent_lines(true)
         .with_ansi(true)
         .with_targets(true)
         .with_indent_amount(2)

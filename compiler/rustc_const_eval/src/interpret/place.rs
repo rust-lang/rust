@@ -5,10 +5,10 @@
 use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
+use tracing::{instrument, trace};
 
 use rustc_ast::Mutability;
 use rustc_middle::mir;
-use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_middle::{bug, span_bug};
@@ -76,12 +76,12 @@ impl<Prov: Provenance> MemPlace<Prov> {
 
     #[inline]
     // Not called `offset_with_meta` to avoid confusion with the trait method.
-    fn offset_with_meta_<'mir, 'tcx, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn offset_with_meta_<'tcx, M: Machine<'tcx, Provenance = Prov>>(
         self,
         offset: Size,
         mode: OffsetMode,
         meta: MemPlaceMeta<Prov>,
-        ecx: &InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         debug_assert!(
             !meta.has_meta() || self.meta.has_meta(),
@@ -161,20 +161,20 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
         self.mplace.meta
     }
 
-    fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn offset_with_meta<M: Machine<'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         mode: OffsetMode,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
-        ecx: &InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         Ok(MPlaceTy { mplace: self.mplace.offset_with_meta_(offset, mode, meta, ecx)?, layout })
     }
 
-    fn to_op<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn to_op<M: Machine<'tcx, Provenance = Prov>>(
         &self,
-        _ecx: &InterpCx<'mir, 'tcx, M>,
+        _ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         Ok(self.clone().into())
     }
@@ -273,13 +273,13 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
         }
     }
 
-    fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn offset_with_meta<M: Machine<'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         mode: OffsetMode,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
-        ecx: &InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         Ok(match self.as_mplace_or_local() {
             Left(mplace) => mplace.offset_with_meta(offset, mode, meta, layout, ecx)?.into(),
@@ -304,9 +304,9 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
         })
     }
 
-    fn to_op<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn to_op<M: Machine<'tcx, Provenance = Prov>>(
         &self,
-        ecx: &InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         ecx.place_to_op(self)
     }
@@ -340,9 +340,9 @@ pub trait Writeable<'tcx, Prov: Provenance>: Projectable<'tcx, Prov> {
         &self,
     ) -> Either<MPlaceTy<'tcx, Prov>, (mir::Local, Option<Size>, usize, TyAndLayout<'tcx>)>;
 
-    fn force_mplace<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn force_mplace<M: Machine<'tcx, Provenance = Prov>>(
         &self,
-        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        ecx: &mut InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, Prov>>;
 }
 
@@ -356,9 +356,9 @@ impl<'tcx, Prov: Provenance> Writeable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
     }
 
     #[inline(always)]
-    fn force_mplace<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn force_mplace<M: Machine<'tcx, Provenance = Prov>>(
         &self,
-        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        ecx: &mut InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, Prov>> {
         ecx.force_allocation(self)
     }
@@ -373,19 +373,19 @@ impl<'tcx, Prov: Provenance> Writeable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
     }
 
     #[inline(always)]
-    fn force_mplace<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn force_mplace<M: Machine<'tcx, Provenance = Prov>>(
         &self,
-        _ecx: &mut InterpCx<'mir, 'tcx, M>,
+        _ecx: &mut InterpCx<'tcx, M>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, Prov>> {
         Ok(self.clone())
     }
 }
 
 // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
-impl<'mir, 'tcx: 'mir, Prov, M> InterpCx<'mir, 'tcx, M>
+impl<'tcx, Prov, M> InterpCx<'tcx, M>
 where
     Prov: Provenance,
-    M: Machine<'mir, 'tcx, Provenance = Prov>,
+    M: Machine<'tcx, Provenance = Prov>,
 {
     pub fn ptr_with_meta_to_mplace(
         &self,
@@ -498,13 +498,14 @@ where
         &self,
         mplace: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::Provenance>, u64)> {
-        // Basically we just transmute this place into an array following simd_size_and_type.
-        // (Transmuting is okay since this is an in-memory place. We also double-check the size
-        // stays the same.)
+        // Basically we want to transmute this place into an array following simd_size_and_type.
         let (len, e_ty) = mplace.layout.ty.simd_size_and_type(*self.tcx);
-        let array = Ty::new_array(self.tcx.tcx, e_ty, len);
-        let layout = self.layout_of(array)?;
-        let mplace = mplace.transmute(layout, self)?;
+        // Some SIMD types have padding, so `len` many `e_ty` does not cover the entire place.
+        // Therefore we cannot transmute, and instead we project at offset 0, which side-steps
+        // the size check.
+        let array_layout = self.layout_of(Ty::new_array(self.tcx.tcx, e_ty, len))?;
+        assert!(array_layout.size <= mplace.layout.size);
+        let mplace = mplace.offset(Size::ZERO, array_layout, self)?;
         Ok((mplace, len))
     }
 
@@ -1015,54 +1016,6 @@ where
         let ptr = self.global_root_pointer(Pointer::from(raw.alloc_id))?;
         let layout = self.layout_of(raw.ty)?;
         Ok(self.ptr_to_mplace(ptr.into(), layout))
-    }
-
-    /// Turn a place with a `dyn Trait` type into a place with the actual dynamic type.
-    /// Aso returns the vtable.
-    pub(super) fn unpack_dyn_trait(
-        &self,
-        mplace: &MPlaceTy<'tcx, M::Provenance>,
-        expected_trait: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::Provenance>, Pointer<Option<M::Provenance>>)> {
-        assert!(
-            matches!(mplace.layout.ty.kind(), ty::Dynamic(_, _, ty::Dyn)),
-            "`unpack_dyn_trait` only makes sense on `dyn*` types"
-        );
-        let vtable = mplace.meta().unwrap_meta().to_pointer(self)?;
-        let (ty, vtable_trait) = self.get_ptr_vtable(vtable)?;
-        if expected_trait.principal() != vtable_trait {
-            throw_ub!(InvalidVTableTrait { expected_trait, vtable_trait });
-        }
-        // This is a kind of transmute, from a place with unsized type and metadata to
-        // a place with sized type and no metadata.
-        let layout = self.layout_of(ty)?;
-        let mplace =
-            MPlaceTy { mplace: MemPlace { meta: MemPlaceMeta::None, ..mplace.mplace }, layout };
-        Ok((mplace, vtable))
-    }
-
-    /// Turn a `dyn* Trait` type into an value with the actual dynamic type.
-    /// Also returns the vtable.
-    pub(super) fn unpack_dyn_star<P: Projectable<'tcx, M::Provenance>>(
-        &self,
-        val: &P,
-        expected_trait: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ) -> InterpResult<'tcx, (P, Pointer<Option<M::Provenance>>)> {
-        assert!(
-            matches!(val.layout().ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
-            "`unpack_dyn_star` only makes sense on `dyn*` types"
-        );
-        let data = self.project_field(val, 0)?;
-        let vtable = self.project_field(val, 1)?;
-        let vtable = self.read_pointer(&vtable.to_op(self)?)?;
-        let (ty, vtable_trait) = self.get_ptr_vtable(vtable)?;
-        if expected_trait.principal() != vtable_trait {
-            throw_ub!(InvalidVTableTrait { expected_trait, vtable_trait });
-        }
-        // `data` is already the right thing but has the wrong type. So we transmute it.
-        let layout = self.layout_of(ty)?;
-        let data = data.transmute(layout, self)?;
-        Ok((data, vtable))
     }
 }
 

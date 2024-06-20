@@ -200,7 +200,7 @@ fn produce_final_output_artifacts(
     // to get rid of it.
     for output_type in crate_output.outputs.keys() {
         match *output_type {
-            OutputType::Bitcode => {
+            OutputType::Bitcode | OutputType::ThinLinkBitcode => {
                 // Cranelift doesn't have bitcode
                 // user_wants_bitcode = true;
                 // // Copy to .bc, but always keep the .0.bc. There is a later
@@ -284,6 +284,29 @@ fn produce_final_output_artifacts(
                 if let Some(ref path) = allocator_module.bytecode {
                     ensure_removed(sess.dcx(), path);
                 }
+            }
+        }
+    }
+
+    if sess.opts.json_artifact_notifications {
+        if codegen_results.modules.len() == 1 {
+            codegen_results.modules[0].for_each_output(|_path, ty| {
+                if sess.opts.output_types.contains_key(&ty) {
+                    let descr = ty.shorthand();
+                    // for single cgu file is renamed to drop cgu specific suffix
+                    // so we regenerate it the same way
+                    let path = crate_output.path(ty);
+                    sess.dcx().emit_artifact_notification(path.as_path(), descr);
+                }
+            });
+        } else {
+            for module in &codegen_results.modules {
+                module.for_each_output(|path, ty| {
+                    if sess.opts.output_types.contains_key(&ty) {
+                        let descr = ty.shorthand();
+                        sess.dcx().emit_artifact_notification(&path, descr);
+                    }
+                });
             }
         }
     }

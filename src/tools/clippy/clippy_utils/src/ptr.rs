@@ -1,5 +1,5 @@
 use crate::source::snippet;
-use crate::visitors::{for_each_expr, Descend};
+use crate::visitors::{for_each_expr_without_closures, Descend};
 use crate::{path_to_local_id, strip_pat_refs};
 use core::ops::ControlFlow;
 use rustc_hir::{Body, BodyId, ExprKind, HirId, PatKind};
@@ -31,7 +31,7 @@ fn extract_clone_suggestions<'tcx>(
     body: &'tcx Body<'_>,
 ) -> Option<Vec<(Span, Cow<'static, str>)>> {
     let mut spans = Vec::new();
-    for_each_expr(body, |e| {
+    for_each_expr_without_closures(body, |e| {
         if let ExprKind::MethodCall(seg, recv, [], _) = e.kind
             && path_to_local_id(recv, id)
         {

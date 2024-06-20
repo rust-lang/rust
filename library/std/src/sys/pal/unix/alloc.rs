@@ -59,10 +59,9 @@ unsafe impl GlobalAlloc for System {
 }
 
 cfg_if::cfg_if! {
-    // We use posix_memalign wherever possible, but not all targets have that function.
+    // We use posix_memalign wherever possible, but some targets have very incomplete POSIX coverage
+    // so we need a fallback for those.
     if #[cfg(any(
-        target_os = "redox",
-        target_os = "espidf",
         target_os = "horizon",
         target_os = "vita",
     ))] {
@@ -74,12 +73,11 @@ cfg_if::cfg_if! {
         #[inline]
         unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
             let mut out = ptr::null_mut();
-            // We prefer posix_memalign over aligned_malloc since with aligned_malloc,
-            // implementations are making almost arbitrary choices for which alignments are
-            // "supported", making it hard to use. For instance, some implementations require the
-            // size to be a multiple of the alignment (wasi emmalloc), while others require the
-            // alignment to be at least the pointer size (Illumos, macOS) -- which may or may not be
-            // standards-compliant, but that does not help us.
+            // We prefer posix_memalign over aligned_alloc since it is more widely available, and
+            // since with aligned_alloc, implementations are making almost arbitrary choices for
+            // which alignments are "supported", making it hard to use. For instance, some
+            // implementations require the size to be a multiple of the alignment (wasi emmalloc),
+            // while others require the alignment to be at least the pointer size (Illumos, macOS).
             // posix_memalign only has one, clear requirement: that the alignment be a multiple of
             // `sizeof(void*)`. Since these are all powers of 2, we can just use max.
             let align = layout.align().max(crate::mem::size_of::<usize>());

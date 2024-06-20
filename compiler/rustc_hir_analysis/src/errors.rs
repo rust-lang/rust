@@ -2,7 +2,7 @@
 
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level, MultiSpan,
+    codes::*, Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -53,6 +53,18 @@ pub struct AssocKindMismatchWrapInBracesSugg {
     pub lo: Span,
     #[suggestion_part(code = " }}")]
     pub hi: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_assoc_item_is_private, code = E0624)]
+pub struct AssocItemIsPrivate {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub kind: &'static str,
+    pub name: Ident,
+    #[label(hir_analysis_defined_here_label)]
+    pub defined_here_label: Span,
 }
 
 #[derive(Diagnostic)]
@@ -290,8 +302,8 @@ pub struct AmbiguousLifetimeBound {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_assoc_type_binding_not_allowed, code = E0229)]
-pub struct AssocTypeBindingNotAllowed {
+#[diag(hir_analysis_assoc_item_constraints_not_allowed_here, code = E0229)]
+pub struct AssocItemConstraintsNotAllowedHere {
     #[primary_span]
     #[label]
     pub span: Span,
@@ -390,6 +402,17 @@ pub struct TaitForwardCompat {
     pub item_span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(hir_analysis_tait_forward_compat2)]
+#[note]
+pub struct TaitForwardCompat2 {
+    #[primary_span]
+    pub span: Span,
+    #[note(hir_analysis_opaque)]
+    pub opaque_type_span: Span,
+    pub opaque_type: String,
+}
+
 pub struct MissingTypeParams {
     pub span: Span,
     pub def_span: Span,
@@ -401,7 +424,7 @@ pub struct MissingTypeParams {
 // Manual implementation of `Diagnostic` to be able to call `span_to_snippet`.
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MissingTypeParams {
     #[track_caller]
-    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let mut err = Diag::new(dcx, level, fluent::hir_analysis_missing_type_params);
         err.span(self.span);
         err.code(E0393);

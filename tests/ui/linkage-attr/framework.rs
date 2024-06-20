@@ -1,5 +1,5 @@
 // Check that linking frameworks on Apple platforms works.
-//@ only-macos
+//@ only-apple
 //@ revisions: omit link weak both
 //@ [omit]build-fail
 //@ [link]run-pass

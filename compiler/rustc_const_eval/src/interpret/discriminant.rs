@@ -3,15 +3,16 @@
 use rustc_middle::mir;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt};
-use rustc_middle::ty::{self, ScalarInt, Ty};
+use rustc_middle::ty::{self, CoroutineArgsExt, ScalarInt, Ty};
 use rustc_target::abi::{self, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
+use tracing::{instrument, trace};
 
 use super::{
     err_ub, throw_ub, ImmTy, InterpCx, InterpResult, Machine, Readable, Scalar, Writeable,
 };
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Writes the discriminant of the given variant.
     ///
     /// If the variant is uninhabited, this is UB.
@@ -122,14 +123,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // (`tag_bits` itself is only used for error messages below.)
                 let tag_bits = tag_val
                     .to_scalar()
-                    .try_to_int()
+                    .try_to_scalar_int()
                     .map_err(|dbg_val| err_ub!(InvalidTag(dbg_val)))?
-                    .assert_bits(tag_layout.size);
+                    .to_bits(tag_layout.size);
                 // Cast bits from tag layout to discriminant layout.
                 // After the checks we did above, this cannot fail, as
                 // discriminants are int-like.
                 let discr_val = self.int_to_int_or_float(&tag_val, discr_layout).unwrap();
-                let discr_bits = discr_val.to_scalar().assert_bits(discr_layout.size);
+                let discr_bits = discr_val.to_scalar().to_bits(discr_layout.size)?;
                 // Convert discriminant to variant index, and catch invalid discriminants.
                 let index = match *ty.kind() {
                     ty::Adt(adt, _) => {
@@ -151,7 +152,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // discriminant (encoded in niche/tag) and variant index are the same.
                 let variants_start = niche_variants.start().as_u32();
                 let variants_end = niche_variants.end().as_u32();
-                let variant = match tag_val.try_to_int() {
+                let variant = match tag_val.try_to_scalar_int() {
                     Err(dbg_val) => {
                         // So this is a pointer then, and casting to an int failed.
                         // Can only happen during CTFE.
@@ -166,15 +167,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         untagged_variant
                     }
                     Ok(tag_bits) => {
-                        let tag_bits = tag_bits.assert_bits(tag_layout.size);
+                        let tag_bits = tag_bits.to_bits(tag_layout.size);
                         // We need to use machine arithmetic to get the relative variant idx:
                         // variant_index_relative = tag_val - niche_start_val
                         let tag_val = ImmTy::from_uint(tag_bits, tag_layout);
                         let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
                         let variant_index_relative_val =
-                            self.wrapping_binary_op(mir::BinOp::Sub, &tag_val, &niche_start_val)?;
+                            self.binary_op(mir::BinOp::Sub, &tag_val, &niche_start_val)?;
                         let variant_index_relative =
-                            variant_index_relative_val.to_scalar().assert_bits(tag_val.layout.size);
+                            variant_index_relative_val.to_scalar().to_bits(tag_val.layout.size)?;
                         // Check if this is in the range that indicates an actual discriminant.
                         if variant_index_relative <= u128::from(variants_end - variants_start) {
                             let variant_index_relative = u32::try_from(variant_index_relative)
@@ -240,8 +241,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         variant_index: VariantIdx,
     ) -> InterpResult<'tcx, Option<(ScalarInt, usize)>> {
         match self.layout_of(ty)?.variants {
-            abi::Variants::Single { index } => {
-                assert_eq!(index, variant_index);
+            abi::Variants::Single { .. } => {
+                // The tag of a `Single` enum is like the tag of the niched
+                // variant: there's no tag as the discriminant is encoded
+                // entirely implicitly. If `write_discriminant` ever hits this
+                // case, we do a "validation read" to ensure the the right
+                // discriminant is encoded implicitly, so any attempt to write
+                // the wrong discriminant for a `Single` enum will reliably
+                // result in UB.
                 Ok(None)
             }
 
@@ -292,13 +299,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let variant_index_relative_val =
                     ImmTy::from_uint(variant_index_relative, tag_layout);
                 let tag = self
-                    .wrapping_binary_op(
-                        mir::BinOp::Add,
-                        &variant_index_relative_val,
-                        &niche_start_val,
-                    )?
-                    .to_scalar()
-                    .assert_int();
+                    .binary_op(mir::BinOp::Add, &variant_index_relative_val, &niche_start_val)?
+                    .to_scalar_int()?;
                 Ok(Some((tag, tag_field)))
             }
         }

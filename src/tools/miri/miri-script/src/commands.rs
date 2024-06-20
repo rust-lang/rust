@@ -25,7 +25,11 @@ impl MiriEnv {
     /// Returns the location of the sysroot.
     ///
     /// If the target is None the sysroot will be built for the host machine.
-    fn build_miri_sysroot(&mut self, quiet: bool, target: Option<&OsStr>) -> Result<PathBuf> {
+    fn build_miri_sysroot(
+        &mut self,
+        quiet: bool,
+        target: Option<impl AsRef<OsStr>>,
+    ) -> Result<PathBuf> {
         if let Some(miri_sysroot) = self.sh.var_os("MIRI_SYSROOT") {
             // Sysroot already set, use that.
             return Ok(miri_sysroot.into());
@@ -37,33 +41,27 @@ impl MiriEnv {
         self.build(path!(self.miri_dir / "Cargo.toml"), &[], quiet)?;
         self.build(&manifest_path, &[], quiet)?;
 
-        let target_flag =
-            if let Some(target) = target { vec![OsStr::new("--target"), target] } else { vec![] };
+        let target_flag = if let Some(target) = &target {
+            vec![OsStr::new("--target"), target.as_ref()]
+        } else {
+            vec![]
+        };
         let target_flag = &target_flag;
 
         if !quiet {
-            if let Some(target) = target {
-                eprintln!("$ (building Miri sysroot for {})", target.to_string_lossy());
-            } else {
-                eprintln!("$ (building Miri sysroot)");
+            eprint!("$ cargo miri setup");
+            if let Some(target) = &target {
+                eprint!(" --target {target}", target = target.as_ref().to_string_lossy());
             }
+            eprintln!();
         }
 
-        let output = cmd!(self.sh,
+        let mut cmd = cmd!(self.sh,
             "cargo +{toolchain} --quiet run {cargo_extra_flags...} --manifest-path {manifest_path} --
              miri setup --print-sysroot {target_flag...}"
-        ).read();
-        let Ok(output) = output else {
-            // Run it again (without `--print-sysroot` or `--quiet`) so the user can see the error.
-            cmd!(
-                self.sh,
-                "cargo +{toolchain} run {cargo_extra_flags...} --manifest-path {manifest_path} --
-                miri setup {target_flag...}"
-            )
-            .run()
-            .with_context(|| "`cargo miri setup` failed")?;
-            panic!("`cargo miri setup` didn't fail again the 2nd time?");
-        };
+        );
+        cmd.set_quiet(quiet);
+        let output = cmd.read()?;
         self.sh.set_var("MIRI_SYSROOT", &output);
         Ok(output.into())
     }
@@ -166,8 +164,8 @@ impl Command {
             Command::Build { flags } => Self::build(flags),
             Command::Check { flags } => Self::check(flags),
             Command::Test { bless, flags, target } => Self::test(bless, flags, target),
-            Command::Run { dep, verbose, many_seeds, flags } =>
-                Self::run(dep, verbose, many_seeds, flags),
+            Command::Run { dep, verbose, many_seeds, target, edition, flags } =>
+                Self::run(dep, verbose, many_seeds, target, edition, flags),
             Command::Fmt { flags } => Self::fmt(flags),
             Command::Clippy { flags } => Self::clippy(flags),
             Command::Cargo { flags } => Self::cargo(flags),
@@ -178,7 +176,7 @@ impl Command {
         }
     }
 
-    fn toolchain(flags: Vec<OsString>) -> Result<()> {
+    fn toolchain(flags: Vec<String>) -> Result<()> {
         // Make sure rustup-toolchain-install-master is installed.
         which::which("rustup-toolchain-install-master")
             .context("Please install rustup-toolchain-install-master by running 'cargo install rustup-toolchain-install-master'")?;
@@ -255,7 +253,7 @@ impl Command {
         cmd!(sh, "git fetch http://localhost:{JOSH_PORT}/rust-lang/rust.git@{commit}{JOSH_FILTER}.git")
             .run()
             .map_err(|e| {
-                // Try to un-do the previous `git commit`, to leave the repo in the state we found it it.
+                // Try to un-do the previous `git commit`, to leave the repo in the state we found it.
                 cmd!(sh, "git reset --hard HEAD^")
                     .run()
                     .expect("FAILED to clean up again after failed `git fetch`, sorry for that");
@@ -373,7 +371,7 @@ impl Command {
         Ok(())
     }
 
-    fn bench(target: Option<OsString>, benches: Vec<OsString>) -> Result<()> {
+    fn bench(target: Option<String>, benches: Vec<String>) -> Result<()> {
         // The hyperfine to use
         let hyperfine = env::var("HYPERFINE");
         let hyperfine = hyperfine.as_deref().unwrap_or("hyperfine -w 1 -m 5 --shell=none");
@@ -387,14 +385,14 @@ impl Command {
         let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
         let benches_dir = "bench-cargo-miri";
-        let benches = if benches.is_empty() {
+        let benches: Vec<OsString> = if benches.is_empty() {
             sh.read_dir(benches_dir)?
                 .into_iter()
                 .filter(|path| path.is_dir())
                 .map(Into::into)
                 .collect()
         } else {
-            benches.to_owned()
+            benches.into_iter().map(Into::into).collect()
         };
         let target_flag = if let Some(target) = target {
             let mut flag = OsString::from("--target=");
@@ -418,28 +416,28 @@ impl Command {
         Ok(())
     }
 
-    fn install(flags: Vec<OsString>) -> Result<()> {
+    fn install(flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
         e.install_to_sysroot(e.miri_dir.clone(), &flags)?;
         e.install_to_sysroot(path!(e.miri_dir / "cargo-miri"), &flags)?;
         Ok(())
     }
 
-    fn build(flags: Vec<OsString>) -> Result<()> {
+    fn build(flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
         e.build(path!(e.miri_dir / "Cargo.toml"), &flags, /* quiet */ false)?;
         e.build(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags, /* quiet */ false)?;
         Ok(())
     }
 
-    fn check(flags: Vec<OsString>) -> Result<()> {
+    fn check(flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
         e.check(path!(e.miri_dir / "Cargo.toml"), &flags)?;
         e.check(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags)?;
         Ok(())
     }
 
-    fn clippy(flags: Vec<OsString>) -> Result<()> {
+    fn clippy(flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
         e.clippy(path!(e.miri_dir / "Cargo.toml"), &flags)?;
         e.clippy(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags)?;
@@ -447,7 +445,7 @@ impl Command {
         Ok(())
     }
 
-    fn cargo(flags: Vec<OsString>) -> Result<()> {
+    fn cargo(flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
         let toolchain = &e.toolchain;
         // We carefully kept the working dir intact, so this will run cargo *on the workspace in the
@@ -456,7 +454,7 @@ impl Command {
         Ok(())
     }
 
-    fn test(bless: bool, mut flags: Vec<OsString>, target: Option<OsString>) -> Result<()> {
+    fn test(bless: bool, mut flags: Vec<String>, target: Option<String>) -> Result<()> {
         let mut e = MiriEnv::new()?;
 
         // Prepare a sysroot.
@@ -484,21 +482,30 @@ impl Command {
         dep: bool,
         verbose: bool,
         many_seeds: Option<Range<u32>>,
-        mut flags: Vec<OsString>,
+        target: Option<String>,
+        edition: Option<String>,
+        flags: Vec<String>,
     ) -> Result<()> {
         let mut e = MiriEnv::new()?;
-        let target = arg_flag_value(&flags, "--target");
+        // More flags that we will pass before `flags`
+        // (because `flags` may contain `--`).
+        let mut early_flags = Vec::<OsString>::new();
 
-        // Scan for "--edition", set one ourselves if that flag is not present.
-        let have_edition = arg_flag_value(&flags, "--edition").is_some();
-        if !have_edition {
-            flags.push("--edition=2021".into()); // keep in sync with `tests/ui.rs`.`
+        // Add target, edition to flags.
+        if let Some(target) = &target {
+            early_flags.push("--target".into());
+            early_flags.push(target.into());
         }
+        if verbose {
+            early_flags.push("--verbose".into());
+        }
+        early_flags.push("--edition".into());
+        early_flags.push(edition.as_deref().unwrap_or("2021").into());
 
-        // Prepare a sysroot, and add it to the flags.
+        // Prepare a sysroot, add it to the flags.
         let miri_sysroot = e.build_miri_sysroot(/* quiet */ !verbose, target.as_deref())?;
-        flags.push("--sysroot".into());
-        flags.push(miri_sysroot.into());
+        early_flags.push("--sysroot".into());
+        early_flags.push(miri_sysroot.into());
 
         // Compute everything needed to run the actual command. Also add MIRIFLAGS.
         let miri_manifest = path!(e.miri_dir / "Cargo.toml");
@@ -524,7 +531,13 @@ impl Command {
             };
             cmd.set_quiet(!verbose);
             // Add Miri flags
-            let cmd = cmd.args(&miri_flags).args(seed_flag).args(&flags);
+            let mut cmd = cmd.args(&miri_flags).args(&seed_flag).args(&early_flags).args(&flags);
+            // For `--dep` we also need to set the env var.
+            if dep {
+                if let Some(target) = &target {
+                    cmd = cmd.env("MIRI_TEST_TARGET", target);
+                }
+            }
             // And run the thing.
             Ok(cmd.run()?)
         };
@@ -543,7 +556,7 @@ impl Command {
         Ok(())
     }
 
-    fn fmt(flags: Vec<OsString>) -> Result<()> {
+    fn fmt(flags: Vec<String>) -> Result<()> {
         use itertools::Itertools;
 
         let e = MiriEnv::new()?;
@@ -565,6 +578,6 @@ impl Command {
             .filter_ok(|item| item.file_type().is_file())
             .map_ok(|item| item.into_path());
 
-        e.format_files(files, &e.toolchain[..], &config_path, &flags[..])
+        e.format_files(files, &e.toolchain[..], &config_path, &flags)
     }
 }

@@ -11,6 +11,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use std::{fmt, iter};
+use tracing::{debug, instrument};
 
 /// The value of an inserted drop flag.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -453,8 +454,7 @@ where
             });
         }
 
-        let skip_contents =
-            adt.is_union() || Some(adt.did()) == self.tcx().lang_items().manually_drop();
+        let skip_contents = adt.is_union() || adt.is_manually_drop();
         let contents_drop = if skip_contents {
             (self.succ, self.unwind)
         } else {

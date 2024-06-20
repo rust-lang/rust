@@ -9,11 +9,10 @@ declare_clippy_lint! {
     /// Checks for lifetimes with names which are one character
     /// long.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// A single character is likely not enough to express the
     /// purpose of a lifetime. Using a longer name can make code
-    /// easier to understand, especially for those who are new to
-    /// Rust.
+    /// easier to understand.
     ///
     /// ### Known problems
     /// Rust programmers and learning resources tend to use single

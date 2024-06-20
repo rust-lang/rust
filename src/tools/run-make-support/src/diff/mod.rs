@@ -1,41 +1,52 @@
 use regex::Regex;
 use similar::TextDiff;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+use crate::drop_bomb::DropBomb;
+use crate::fs_wrapper;
 
 #[cfg(test)]
 mod tests;
 
+#[track_caller]
 pub fn diff() -> Diff {
     Diff::new()
 }
 
 #[derive(Debug)]
+#[must_use]
 pub struct Diff {
     expected: Option<String>,
     expected_name: Option<String>,
+    expected_file: Option<PathBuf>,
     actual: Option<String>,
     actual_name: Option<String>,
     normalizers: Vec<(String, String)>,
+    drop_bomb: DropBomb,
 }
 
 impl Diff {
     /// Construct a bare `diff` invocation.
+    #[track_caller]
     pub fn new() -> Self {
         Self {
             expected: None,
             expected_name: None,
+            expected_file: None,
             actual: None,
             actual_name: None,
             normalizers: Vec::new(),
+            drop_bomb: DropBomb::arm("diff"),
         }
     }
 
     /// Specify the expected output for the diff from a file.
     pub fn expected_file<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         let path = path.as_ref();
-        let content = std::fs::read_to_string(path).expect("failed to read file");
+        let content = fs_wrapper::read_to_string(path);
         let name = path.to_string_lossy().to_string();
 
+        self.expected_file = Some(path.into());
         self.expected = Some(content);
         self.expected_name = Some(name);
         self
@@ -51,7 +62,7 @@ impl Diff {
     /// Specify the actual output for the diff from a file.
     pub fn actual_file<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         let path = path.as_ref();
-        let content = std::fs::read_to_string(path).expect("failed to read file");
+        let content = fs_wrapper::read_to_string(path);
         let name = path.to_string_lossy().to_string();
 
         self.actual = Some(content);
@@ -76,9 +87,9 @@ impl Diff {
         self
     }
 
-    /// Executes the diff process, prints any differences to the standard error.
     #[track_caller]
-    pub fn run(&self) {
+    pub fn run(&mut self) {
+        self.drop_bomb.defuse();
         let expected = self.expected.as_ref().expect("expected text not set");
         let mut actual = self.actual.as_ref().expect("actual text not set").to_string();
         let expected_name = self.expected_name.as_ref().unwrap();
@@ -94,6 +105,15 @@ impl Diff {
             .to_string();
 
         if !output.is_empty() {
+            // If we can bless (meaning we have a file to write into and the `RUSTC_BLESS_TEST`
+            // environment variable set), then we write into the file and return.
+            if let Some(ref expected_file) = self.expected_file {
+                if std::env::var("RUSTC_BLESS_TEST").is_ok() {
+                    println!("Blessing `{}`", expected_file.display());
+                    fs_wrapper::write(expected_file, actual);
+                    return;
+                }
+            }
             panic!(
                 "test failed: `{}` is different from `{}`\n\n{}",
                 expected_name, actual_name, output

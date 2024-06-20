@@ -297,14 +297,14 @@ impl NonSnakeCase {
             // We cannot provide meaningful suggestions
             // if the characters are in the category of "Uppercase Letter".
             let sub = if name != sc {
-                // We have a valid span in almost all cases, but we don't have one when linting a crate
-                // name provided via the command line.
+                // We have a valid span in almost all cases, but we don't have one when linting a
+                // crate name provided via the command line.
                 if !span.is_dummy() {
                     let sc_ident = Ident::from_str_and_span(&sc, span);
                     if sc_ident.is_reserved() {
-                        // We shouldn't suggest a reserved identifier to fix non-snake-case identifiers.
-                        // Instead, recommend renaming the identifier entirely or, if permitted,
-                        // escaping it to create a raw identifier.
+                        // We shouldn't suggest a reserved identifier to fix non-snake-case
+                        // identifiers. Instead, recommend renaming the identifier entirely or, if
+                        // permitted, escaping it to create a raw identifier.
                         if sc_ident.name.can_be_raw() {
                             NonSnakeCaseDiagSub::RenameOrConvertSuggestion {
                                 span,

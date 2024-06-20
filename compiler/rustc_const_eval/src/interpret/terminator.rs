@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 
 use either::Either;
+use rustc_middle::ty::TyCtxt;
+use tracing::trace;
 
 use rustc_middle::span_bug;
 use rustc_middle::{
@@ -45,7 +47,7 @@ impl<'tcx, Prov: Provenance> FnArg<'tcx, Prov> {
     }
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Make a copy of the given fn_arg. Any `InPlace` are degenerated to copies, no protection of the
     /// original memory occurs.
     pub fn copy_fn_arg(&self, arg: &FnArg<'tcx, M::Provenance>) -> OpTy<'tcx, M::Provenance> {
@@ -97,7 +99,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 for (const_int, target) in targets.iter() {
                     // Compare using MIR BinOp::Eq, to also support pointer values.
                     // (Avoiding `self.binary_op` as that does some redundant layout computation.)
-                    let res = self.wrapping_binary_op(
+                    let res = self.binary_op(
                         mir::BinOp::Eq,
                         &discr,
                         &ImmTy::from_uint(const_int, discr.layout),
@@ -173,7 +175,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Drop { place, target, unwind, replace: _ } => {
                 let place = self.eval_place(place)?;
                 let instance = Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);
-                if let ty::InstanceDef::DropGlue(_, None) = instance.def {
+                if let ty::InstanceKind::DropGlue(_, None) = instance.def {
                     // This is the branch we enter if and only if the dropped type has no drop glue
                     // whatsoever. This can happen as a result of monomorphizing a drop of a
                     // generic. In order to make sure that generic and non-generic code behaves
@@ -293,17 +295,30 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Unwrap types that are guaranteed a null-pointer-optimization
     fn unfold_npo(&self, layout: TyAndLayout<'tcx>) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-        // Check if this is `Option` wrapping some type.
-        let inner = match layout.ty.kind() {
-            ty::Adt(def, args) if self.tcx.is_diagnostic_item(sym::Option, def.did()) => {
-                args[0].as_type().unwrap()
-            }
-            _ => {
-                // Not an `Option`.
-                return Ok(layout);
-            }
+        // Check if this is `Option` wrapping some type or if this is `Result` wrapping a 1-ZST and
+        // another type.
+        let ty::Adt(def, args) = layout.ty.kind() else {
+            // Not an ADT, so definitely no NPO.
+            return Ok(layout);
         };
-        let inner = self.layout_of(inner)?;
+        let inner = if self.tcx.is_diagnostic_item(sym::Option, def.did()) {
+            // The wrapped type is the only arg.
+            self.layout_of(args[0].as_type().unwrap())?
+        } else if self.tcx.is_diagnostic_item(sym::Result, def.did()) {
+            // We want to extract which (if any) of the args is not a 1-ZST.
+            let lhs = self.layout_of(args[0].as_type().unwrap())?;
+            let rhs = self.layout_of(args[1].as_type().unwrap())?;
+            if lhs.is_1zst() {
+                rhs
+            } else if rhs.is_1zst() {
+                lhs
+            } else {
+                return Ok(layout); // no NPO
+            }
+        } else {
+            return Ok(layout); // no NPO
+        };
+
         // Check if the inner type is one of the NPO-guaranteed ones.
         // For that we first unpeel transparent *structs* (but not unions).
         let is_npo = |def: AdtDef<'tcx>| {
@@ -535,7 +550,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         match instance.def {
-            ty::InstanceDef::Intrinsic(def_id) => {
+            ty::InstanceKind::Intrinsic(def_id) => {
                 assert!(self.tcx.intrinsic(def_id).is_some());
                 // FIXME: Should `InPlace` arguments be reset to uninit?
                 if let Some(fallback) = M::call_intrinsic(
@@ -547,7 +562,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     unwind,
                 )? {
                     assert!(!self.tcx.intrinsic(fallback.def_id()).unwrap().must_be_overridden);
-                    assert!(matches!(fallback.def, ty::InstanceDef::Item(_)));
+                    assert!(matches!(fallback.def, ty::InstanceKind::Item(_)));
                     return self.eval_fn_call(
                         FnVal::Instance(fallback),
                         (caller_abi, caller_fn_abi),
@@ -561,18 +576,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Ok(())
                 }
             }
-            ty::InstanceDef::VTableShim(..)
-            | ty::InstanceDef::ReifyShim(..)
-            | ty::InstanceDef::ClosureOnceShim { .. }
-            | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceDef::CoroutineKindShim { .. }
-            | ty::InstanceDef::FnPtrShim(..)
-            | ty::InstanceDef::DropGlue(..)
-            | ty::InstanceDef::CloneShim(..)
-            | ty::InstanceDef::FnPtrAddrShim(..)
-            | ty::InstanceDef::ThreadLocalShim(..)
-            | ty::InstanceDef::AsyncDropGlueCtorShim(..)
-            | ty::InstanceDef::Item(_) => {
+            ty::InstanceKind::VTableShim(..)
+            | ty::InstanceKind::ReifyShim(..)
+            | ty::InstanceKind::ClosureOnceShim { .. }
+            | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
+            | ty::InstanceKind::CoroutineKindShim { .. }
+            | ty::InstanceKind::FnPtrShim(..)
+            | ty::InstanceKind::DropGlue(..)
+            | ty::InstanceKind::CloneShim(..)
+            | ty::InstanceKind::FnPtrAddrShim(..)
+            | ty::InstanceKind::ThreadLocalShim(..)
+            | ty::InstanceKind::AsyncDropGlueCtorShim(..)
+            | ty::InstanceKind::Item(_) => {
                 // We need MIR for this fn
                 let Some((body, instance)) = M::find_mir_or_eval_fn(
                     self,
@@ -771,9 +786,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Ok(()) => Ok(()),
                 }
             }
-            // `InstanceDef::Virtual` does not have callable MIR. Calls to `Virtual` instances must be
+            // `InstanceKind::Virtual` does not have callable MIR. Calls to `Virtual` instances must be
             // codegen'd / interpreted as virtual calls through the vtable.
-            ty::InstanceDef::Virtual(def_id, idx) => {
+            ty::InstanceKind::Virtual(def_id, idx) => {
                 let mut args = args.to_vec();
                 // We have to implement all "object safe receivers". So we have to go search for a
                 // pointer or `dyn Trait` type, but it could be wrapped in newtypes. So recursively
@@ -813,20 +828,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
 
                 // Obtain the underlying trait we are working on, and the adjusted receiver argument.
-                let (vptr, dyn_ty, adjusted_receiver) = if let ty::Dynamic(data, _, ty::DynStar) =
+                let (dyn_trait, dyn_ty, adjusted_recv) = if let ty::Dynamic(data, _, ty::DynStar) =
                     receiver_place.layout.ty.kind()
                 {
-                    let (recv, vptr) = self.unpack_dyn_star(&receiver_place, data)?;
-                    let (dyn_ty, _dyn_trait) = self.get_ptr_vtable(vptr)?;
+                    let recv = self.unpack_dyn_star(&receiver_place, data)?;
 
-                    (vptr, dyn_ty, recv.ptr())
+                    (data.principal(), recv.layout.ty, recv.ptr())
                 } else {
                     // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
                     // (For that reason we also cannot use `unpack_dyn_trait`.)
                     let receiver_tail = self
                         .tcx
                         .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env);
-                    let ty::Dynamic(data, _, ty::Dyn) = receiver_tail.kind() else {
+                    let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
                         span_bug!(
                             self.cur_span(),
                             "dynamic call on non-`dyn` type {}",
@@ -837,25 +851,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                     // Get the required information from the vtable.
                     let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
-                    let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
-                    if dyn_trait != data.principal() {
-                        throw_ub!(InvalidVTableTrait {
-                            expected_trait: data,
-                            vtable_trait: dyn_trait,
-                        });
-                    }
+                    let dyn_ty = self.get_ptr_vtable_ty(vptr, Some(receiver_trait))?;
 
                     // It might be surprising that we use a pointer as the receiver even if this
                     // is a by-val case; this works because by-val passing of an unsized `dyn
                     // Trait` to a function is actually desugared to a pointer.
-                    (vptr, dyn_ty, receiver_place.ptr())
+                    (receiver_trait.principal(), dyn_ty, receiver_place.ptr())
                 };
 
                 // Now determine the actual method to call. We can do that in two different ways and
                 // compare them to ensure everything fits.
-                let Some(ty::VtblEntry::Method(fn_inst)) =
-                    self.get_vtable_entries(vptr)?.get(idx).copied()
-                else {
+                let vtable_entries = if let Some(dyn_trait) = dyn_trait {
+                    let trait_ref = dyn_trait.with_self_ty(*self.tcx, dyn_ty);
+                    let trait_ref = self.tcx.erase_regions(trait_ref);
+                    self.tcx.vtable_entries(trait_ref)
+                } else {
+                    TyCtxt::COMMON_VTABLE_ENTRIES
+                };
+                let Some(ty::VtblEntry::Method(fn_inst)) = vtable_entries.get(idx).copied() else {
                     // FIXME(fee1-dead) these could be variants of the UB info enum instead of this
                     throw_ub_custom!(fluent::const_eval_dyn_call_not_a_method);
                 };
@@ -884,7 +897,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let receiver_ty = Ty::new_mut_ptr(self.tcx.tcx, dyn_ty);
                 args[0] = FnArg::Copy(
                     ImmTy::from_immediate(
-                        Scalar::from_maybe_pointer(adjusted_receiver, self).into(),
+                        Scalar::from_maybe_pointer(adjusted_recv, self).into(),
                         self.layout_of(receiver_ty)?,
                     )
                     .into(),
@@ -952,7 +965,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let place = self.force_allocation(place)?;
 
         // We behave a bit different from codegen here.
-        // Codegen creates an `InstanceDef::Virtual` with index 0 (the slot of the drop method) and
+        // Codegen creates an `InstanceKind::Virtual` with index 0 (the slot of the drop method) and
         // then dispatches that to the normal call machinery. However, our call machinery currently
         // only supports calling `VtblEntry::Method`; it would choke on a `MetadataDropInPlace`. So
         // instead we do the virtual call stuff ourselves. It's easier here than in `eval_fn_call`
@@ -960,11 +973,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let place = match place.layout.ty.kind() {
             ty::Dynamic(data, _, ty::Dyn) => {
                 // Dropping a trait object. Need to find actual drop fn.
-                self.unpack_dyn_trait(&place, data)?.0
+                self.unpack_dyn_trait(&place, data)?
             }
             ty::Dynamic(data, _, ty::DynStar) => {
                 // Dropping a `dyn*`. Need to find actual drop fn.
-                self.unpack_dyn_star(&place, data)?.0
+                self.unpack_dyn_star(&place, data)?
             }
             _ => {
                 debug_assert_eq!(

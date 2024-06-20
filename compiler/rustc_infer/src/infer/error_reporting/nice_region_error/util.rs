@@ -37,13 +37,15 @@ pub struct AnonymousParamInfo<'tcx> {
 #[instrument(skip(tcx), level = "debug")]
 pub fn find_param_with_region<'tcx>(
     tcx: TyCtxt<'tcx>,
+    generic_param_scope: LocalDefId,
     anon_region: Region<'tcx>,
     replace_region: Region<'tcx>,
 ) -> Option<AnonymousParamInfo<'tcx>> {
     let (id, bound_region) = match *anon_region {
         ty::ReLateParam(late_param) => (late_param.scope, late_param.bound_region),
         ty::ReEarlyParam(ebr) => {
-            (tcx.parent(ebr.def_id), ty::BoundRegionKind::BrNamed(ebr.def_id, ebr.name))
+            let region_def = tcx.generics_of(generic_param_scope).region_param(ebr, tcx).def_id;
+            (tcx.parent(region_def), ty::BoundRegionKind::BrNamed(region_def, ebr.name))
         }
         _ => return None, // not a free region
     };
@@ -53,21 +55,20 @@ pub fn find_param_with_region<'tcx>(
 
     // FIXME: use def_kind
     // Don't perform this on closures
-    match tcx.hir_node_by_def_id(def_id) {
+    match tcx.hir_node_by_def_id(generic_param_scope) {
         hir::Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
             return None;
         }
         _ => {}
     }
 
-    let body_id = hir.maybe_body_owned_by(def_id)?;
+    let body = hir.maybe_body_owned_by(def_id)?;
 
-    let owner_id = hir.body_owner(body_id);
+    let owner_id = hir.body_owner(body.id());
     let fn_decl = hir.fn_decl_by_hir_id(owner_id)?;
     let poly_fn_sig = tcx.fn_sig(id).instantiate_identity();
 
     let fn_sig = tcx.liberate_late_bound_regions(id, poly_fn_sig);
-    let body = hir.body(body_id);
     body.params
         .iter()
         .take(if fn_sig.c_variadic {
@@ -110,7 +111,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         anon_region: Region<'tcx>,
         replace_region: Region<'tcx>,
     ) -> Option<AnonymousParamInfo<'tcx>> {
-        find_param_with_region(self.tcx(), anon_region, replace_region)
+        find_param_with_region(self.tcx(), self.generic_param_scope, anon_region, replace_region)
     }
 
     // Here, we check for the case where the anonymous region

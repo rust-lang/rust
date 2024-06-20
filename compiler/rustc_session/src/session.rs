@@ -22,8 +22,8 @@ use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter, HumanR
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    codes::*, fallback_fluent_bundle, Diag, DiagCtxt, DiagMessage, Diagnostic, ErrorGuaranteed,
-    FatalAbort, FluentBundle, LazyFallbackBundle, TerminalUrl,
+    codes::*, fallback_fluent_bundle, Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic,
+    ErrorGuaranteed, FatalAbort, FluentBundle, LazyFallbackBundle, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -328,8 +328,8 @@ impl Session {
     }
 
     #[inline]
-    pub fn dcx(&self) -> &DiagCtxt {
-        &self.psess.dcx
+    pub fn dcx(&self) -> DiagCtxtHandle<'_> {
+        self.psess.dcx()
     }
 
     #[inline]
@@ -353,9 +353,19 @@ impl Session {
             && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Branch
     }
 
+    pub fn instrument_coverage_condition(&self) -> bool {
+        self.instrument_coverage()
+            && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Condition
+    }
+
     pub fn instrument_coverage_mcdc(&self) -> bool {
         self.instrument_coverage()
             && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Mcdc
+    }
+
+    /// True if `-Zcoverage-options=no-mir-spans` was passed.
+    pub fn coverage_no_mir_spans(&self) -> bool {
+        self.opts.unstable_opts.coverage_options.no_mir_spans
     }
 
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
@@ -449,15 +459,24 @@ impl Session {
         )
     }
 
-    /// Returns a list of directories where target-specific tool binaries are located.
+    /// Returns a list of directories where target-specific tool binaries are located. Some fallback
+    /// directories are also returned, for example if `--sysroot` is used but tools are missing
+    /// (#125246): we also add the bin directories to the sysroot where rustc is located.
     pub fn get_tools_search_paths(&self, self_contained: bool) -> Vec<PathBuf> {
-        let rustlib_path = rustc_target::target_rustlib_path(&self.sysroot, config::host_triple());
-        let p = PathBuf::from_iter([
-            Path::new(&self.sysroot),
-            Path::new(&rustlib_path),
-            Path::new("bin"),
-        ]);
-        if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p] }
+        let bin_path = filesearch::make_target_bin_path(&self.sysroot, config::host_triple());
+        let fallback_sysroot_paths = filesearch::sysroot_candidates()
+            .into_iter()
+            .map(|sysroot| filesearch::make_target_bin_path(&sysroot, config::host_triple()));
+        let search_paths = std::iter::once(bin_path).chain(fallback_sysroot_paths);
+
+        if self_contained {
+            // The self-contained tools are expected to be e.g. in `bin/self-contained` in the
+            // sysroot's `rustlib` path, so we add such a subfolder to the bin path, and the
+            // fallback paths.
+            search_paths.flat_map(|path| [path.clone(), path.join("self-contained")]).collect()
+        } else {
+            search_paths.collect()
+        }
     }
 
     pub fn init_incr_comp_session(&self, session_dir: PathBuf, lock_file: flock::Lock) {
@@ -1051,7 +1070,7 @@ pub fn build_session(
         match profiler {
             Ok(profiler) => Some(Arc::new(profiler)),
             Err(e) => {
-                dcx.emit_warn(errors::FailedToCreateProfiler { err: e.to_string() });
+                dcx.handle().emit_warn(errors::FailedToCreateProfiler { err: e.to_string() });
                 None
             }
         }
@@ -1183,9 +1202,9 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             });
         }
     }
-    // Cannot mix and match sanitizers.
-    let mut sanitizer_iter = sess.opts.unstable_opts.sanitizer.into_iter();
-    if let (Some(first), Some(second)) = (sanitizer_iter.next(), sanitizer_iter.next()) {
+
+    // Cannot mix and match mutually-exclusive sanitizers.
+    if let Some((first, second)) = sess.opts.unstable_opts.sanitizer.mutually_exclusive() {
         sess.dcx().emit_err(errors::CannotMixAndMatchSanitizers {
             first: first.to_string(),
             second: second.to_string(),
@@ -1218,14 +1237,6 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         && (sess.codegen_units().as_usize() != 1)
     {
         sess.dcx().emit_err(errors::SanitizerCfiRequiresSingleCodegenUnit);
-    }
-
-    // LLVM CFI is incompatible with LLVM KCFI.
-    if sess.is_sanitizer_cfi_enabled() && sess.is_sanitizer_kcfi_enabled() {
-        sess.dcx().emit_err(errors::CannotMixAndMatchSanitizers {
-            first: "cfi".to_string(),
-            second: "kcfi".to_string(),
-        });
     }
 
     // Canonical jump tables requires CFI.
@@ -1360,7 +1371,7 @@ impl EarlyDiagCtxt {
     /// format. Any errors prior to that will cause an abort and all stashed diagnostics of the
     /// previous dcx will be emitted.
     pub fn abort_if_error_and_set_error_format(&mut self, output: ErrorOutputType) {
-        self.dcx.abort_if_errors();
+        self.dcx.handle().abort_if_errors();
 
         let emitter = mk_emitter(output);
         self.dcx = DiagCtxt::new(emitter);
@@ -1369,44 +1380,44 @@ impl EarlyDiagCtxt {
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_note(&self, msg: impl Into<DiagMessage>) {
-        self.dcx.note(msg)
+        self.dcx.handle().note(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_help(&self, msg: impl Into<DiagMessage>) {
-        self.dcx.struct_help(msg).emit()
+        self.dcx.handle().struct_help(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
     pub fn early_err(&self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
-        self.dcx.err(msg)
+        self.dcx.handle().err(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_fatal(&self, msg: impl Into<DiagMessage>) -> ! {
-        self.dcx.fatal(msg)
+        self.dcx.handle().fatal(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_, FatalAbort> {
-        self.dcx.struct_fatal(msg)
+        self.dcx.handle().struct_fatal(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_warn(&self, msg: impl Into<DiagMessage>) {
-        self.dcx.warn(msg)
+        self.dcx.handle().warn(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
-        self.dcx.struct_warn(msg)
+        self.dcx.handle().struct_warn(msg)
     }
 }
 

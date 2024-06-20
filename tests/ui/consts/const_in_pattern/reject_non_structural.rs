@@ -11,8 +11,6 @@
 // See also RFC 1445
 
 #![feature(type_ascription)]
-#![warn(indirect_structural_match)]
-//~^ NOTE lint level is defined here
 
 #[derive(Copy, Clone, Debug)]
 struct NoPartialEq;
@@ -96,9 +94,7 @@ fn main() {
 
     const ADDR_OF: &OND = &Some(NoDerive);
     match &Some(NoDerive) { ADDR_OF => dbg!(ADDR_OF), _ => panic!("whoops"), };
-    //~^ WARN must be annotated with `#[derive(PartialEq)]`
+    //~^ ERROR must be annotated with `#[derive(PartialEq)]`
     //~| NOTE the traits must be derived
     //~| NOTE StructuralPartialEq.html for details
-    //~| WARN previously accepted by the compiler but is being phased out
-    //~| NOTE for more information, see
 }

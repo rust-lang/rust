@@ -17,13 +17,14 @@ use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
+use tracing::instrument;
 
 pub(crate) fn thir_body(
     tcx: TyCtxt<'_>,
     owner_def: LocalDefId,
 ) -> Result<(&Steal<Thir<'_>>, ExprId), ErrorGuaranteed> {
     let hir = tcx.hir();
-    let body = hir.body(hir.body_owned_by(owner_def));
+    let body = hir.body_owned_by(owner_def);
     let mut cx = Cx::new(tcx, owner_def);
     if let Some(reported) = cx.typeck_results.tainted_by_errors {
         return Err(reported);
@@ -33,7 +34,7 @@ pub(crate) fn thir_body(
     let owner_id = tcx.local_def_id_to_hir_id(owner_def);
     if let Some(fn_decl) = hir.fn_decl_by_hir_id(owner_id) {
         let closure_env_param = cx.closure_env_param(owner_def, owner_id);
-        let explicit_params = cx.explicit_params(owner_id, fn_decl, body);
+        let explicit_params = cx.explicit_params(owner_id, fn_decl, &body);
         cx.thir.params = closure_env_param.into_iter().chain(explicit_params).collect();
 
         // The resume argument may be missing, in that case we need to provide it here.

@@ -26,6 +26,12 @@ fn main() {
         Some(x) => x,
         None => &[],
     };
+
+    let x: Result<String, i64> = Ok(String::new());
+    x.unwrap_or_default();
+
+    let x: Result<String, i64> = Ok(String::new());
+    x.unwrap_or_default();
 }
 
 // Issue #12531

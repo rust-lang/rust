@@ -4,7 +4,7 @@
 #![crate_type = "lib"]
 
 use std::mem::swap;
-use std::ptr::{read, copy_nonoverlapping, write};
+use std::ptr::{copy_nonoverlapping, read, write};
 
 type KeccakBuffer = [[u64; 5]; 5];
 
@@ -15,7 +15,7 @@ type KeccakBuffer = [[u64; 5]; 5];
 // CHECK-LABEL: @swap_basic
 #[no_mangle]
 pub fn swap_basic(x: &mut KeccakBuffer, y: &mut KeccakBuffer) {
-// CHECK: alloca [200 x i8]
+    // CHECK: alloca [200 x i8]
 
     // SAFETY: exclusive references are always valid to read/write,
     // are non-overlapping, and nothing here panics so it's drop-safe.
@@ -32,9 +32,9 @@ pub fn swap_basic(x: &mut KeccakBuffer, y: &mut KeccakBuffer) {
 // CHECK-LABEL: @swap_std
 #[no_mangle]
 pub fn swap_std(x: &mut KeccakBuffer, y: &mut KeccakBuffer) {
-// CHECK-NOT: alloca
-// CHECK: load <{{[0-9]+}} x i64>
-// CHECK: store <{{[0-9]+}} x i64>
+    // CHECK-NOT: alloca
+    // CHECK: load <{{[0-9]+}} x i64>
+    // CHECK: store <{{[0-9]+}} x i64>
     swap(x, y)
 }
 
@@ -44,9 +44,9 @@ pub fn swap_std(x: &mut KeccakBuffer, y: &mut KeccakBuffer) {
 // CHECK-LABEL: @swap_slice
 #[no_mangle]
 pub fn swap_slice(x: &mut [KeccakBuffer], y: &mut [KeccakBuffer]) {
-// CHECK-NOT: alloca
-// CHECK: load <{{[0-9]+}} x i64>
-// CHECK: store <{{[0-9]+}} x i64>
+    // CHECK-NOT: alloca
+    // CHECK: load <{{[0-9]+}} x i64>
+    // CHECK: store <{{[0-9]+}} x i64>
     if x.len() == y.len() {
         x.swap_with_slice(y);
     }
@@ -59,9 +59,9 @@ type OneKilobyteBuffer = [u8; 1024];
 // CHECK-LABEL: @swap_1kb_slices
 #[no_mangle]
 pub fn swap_1kb_slices(x: &mut [OneKilobyteBuffer], y: &mut [OneKilobyteBuffer]) {
-// CHECK-NOT: alloca
-// CHECK: load <{{[0-9]+}} x i8>
-// CHECK: store <{{[0-9]+}} x i8>
+    // CHECK-NOT: alloca
+    // CHECK: load <{{[0-9]+}} x i8>
+    // CHECK: store <{{[0-9]+}} x i8>
     if x.len() == y.len() {
         x.swap_with_slice(y);
     }
@@ -81,10 +81,10 @@ pub struct BigButHighlyAligned([u8; 64 * 3]);
 // CHECK-LABEL: @swap_big_aligned
 #[no_mangle]
 pub fn swap_big_aligned(x: &mut BigButHighlyAligned, y: &mut BigButHighlyAligned) {
-// CHECK-NOT: call void @llvm.memcpy
-// CHECK: call void @llvm.memcpy.{{.+}}(ptr noundef nonnull align 64 dereferenceable(192)
-// CHECK: call void @llvm.memcpy.{{.+}}(ptr noundef nonnull align 64 dereferenceable(192)
-// CHECK: call void @llvm.memcpy.{{.+}}(ptr noundef nonnull align 64 dereferenceable(192)
-// CHECK-NOT: call void @llvm.memcpy
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: call void @llvm.memcpy.{{.+}}(ptr noundef nonnull align 64 dereferenceable(192)
+    // CHECK: call void @llvm.memcpy.{{.+}}(ptr noundef nonnull align 64 dereferenceable(192)
+    // CHECK: call void @llvm.memcpy.{{.+}}(ptr noundef nonnull align 64 dereferenceable(192)
+    // CHECK-NOT: call void @llvm.memcpy
     swap(x, y)
 }

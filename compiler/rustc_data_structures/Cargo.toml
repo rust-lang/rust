@@ -12,11 +12,9 @@ elsa = "=1.7.1"
 ena = "0.14.3"
 indexmap = { version = "2.0.0" }
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
-libc = "0.2"
 measureme = "11"
 rustc-hash = "1.1.0"
 rustc-rayon = { version = "0.5.0", optional = true }
-rustc-rayon-core = { version = "0.5.0", optional = true }
 rustc_arena = { path = "../rustc_arena" }
 rustc_graphviz = { path = "../rustc_graphviz" }
 rustc_index = { path = "../rustc_index", package = "rustc_index" }
@@ -42,6 +40,11 @@ features = [
     "Win32_System_Threading",
 ]
 
+[target.'cfg(unix)'.dependencies]
+# tidy-alphabetical-start
+libc = "0.2"
+# tidy-alphabetical-end
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # tidy-alphabetical-start
 memmap2 = "0.2.1"
@@ -52,5 +55,5 @@ portable-atomic = "1.5.1"
 
 [features]
 # tidy-alphabetical-start
-rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "rustc-rayon", "rustc-rayon-core"]
+rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "rustc-rayon"]
 # tidy-alphabetical-end

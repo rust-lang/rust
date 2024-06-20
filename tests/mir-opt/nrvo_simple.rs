@@ -10,5 +10,7 @@ fn nrvo(init: fn(&mut [u8; 1024])) -> [u8; 1024] {
 }
 
 fn main() {
-    let _ = nrvo(|buf| { buf[4] = 4; });
+    let _ = nrvo(|buf| {
+        buf[4] = 4;
+    });
 }

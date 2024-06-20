@@ -1,7 +1,7 @@
 //! Values computed by queries that use MIR.
 
 use crate::mir;
-use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
+use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;

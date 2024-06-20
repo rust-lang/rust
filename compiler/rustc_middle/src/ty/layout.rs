@@ -2,13 +2,14 @@ use crate::error::UnsupportedFnAbi;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt};
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxt, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
+    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem;
 use rustc_index::IndexVec;
 use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable};
 use rustc_session::config::OptLevel;
@@ -19,6 +20,7 @@ use rustc_target::abi::*;
 use rustc_target::spec::{
     abi::Abi as SpecAbi, HasTargetSpec, HasWasmCAbiOpt, PanicStrategy, Target, WasmCAbi,
 };
+use tracing::debug;
 
 use std::borrow::Cow;
 use std::cmp;
@@ -384,9 +386,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     ),
                 }
             }
-            ty::Array(inner, len)
-                if len.ty() == tcx.types.usize && tcx.features().transmute_generic_consts =>
-            {
+            ty::Array(inner, len) if tcx.features().transmute_generic_consts => {
                 let len_eval = len.try_eval_target_usize(tcx, param_env);
                 if len_eval == Some(0) {
                     return Ok(SizeSkeleton::Known(Size::from_bytes(0)));
@@ -826,25 +826,14 @@ where
                         });
                     }
 
-                    let mk_dyn_vtable = || {
+                    let mk_dyn_vtable = |principal: Option<ty::PolyExistentialTraitRef<'tcx>>| {
+                        let min_count = ty::vtable_min_entries(tcx, principal);
                         Ty::new_imm_ref(
                             tcx,
                             tcx.lifetimes.re_static,
-                            Ty::new_array(tcx, tcx.types.usize, 3),
+                            // FIXME: properly type (e.g. usize and fn pointers) the fields.
+                            Ty::new_array(tcx, tcx.types.usize, min_count.try_into().unwrap()),
                         )
-                        /* FIXME: use actual fn pointers
-                        Warning: naively computing the number of entries in the
-                        vtable by counting the methods on the trait + methods on
-                        all parent traits does not work, because some methods can
-                        be not object safe and thus excluded from the vtable.
-                        Increase this counter if you tried to implement this but
-                        failed to do it without duplicating a lot of code from
-                        other places in the compiler: 2
-                        Ty::new_tup(tcx,&[
-                            Ty::new_array(tcx,tcx.types.usize, 3),
-                            Ty::new_array(tcx,Option<fn()>),
-                        ])
-                        */
                     };
 
                     let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type()
@@ -862,17 +851,17 @@ where
                         // and we rely on this layout information to trigger a panic in
                         // `std::mem::uninitialized::<&dyn Trait>()`, for example.
                         if let ty::Adt(def, args) = metadata.kind()
-                            && Some(def.did()) == tcx.lang_items().dyn_metadata()
-                            && args.type_at(0).is_trait()
+                            && tcx.is_lang_item(def.did(), LangItem::DynMetadata)
+                            && let ty::Dynamic(data, _, ty::Dyn) = args.type_at(0).kind()
                         {
-                            mk_dyn_vtable()
+                            mk_dyn_vtable(data.principal())
                         } else {
                             metadata
                         }
                     } else {
                         match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
                             ty::Slice(_) | ty::Str => tcx.types.usize,
-                            ty::Dynamic(_, _, ty::Dyn) => mk_dyn_vtable(),
+                            ty::Dynamic(data, _, ty::Dyn) => mk_dyn_vtable(data.principal()),
                             _ => bug!("TyAndLayout::field({:?}): not applicable", this),
                         }
                     };
@@ -1181,7 +1170,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) ->
         // This is not part of `codegen_fn_attrs` as it can differ between crates
         // and therefore cannot be computed in core.
         if tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Abort {
-            if Some(did) == tcx.lang_items().drop_in_place_fn() {
+            if tcx.is_lang_item(did, LangItem::DropInPlace) {
                 return false;
             }
         }
@@ -1267,7 +1256,7 @@ pub enum FnAbiError<'tcx> {
 }
 
 impl<'a, 'b, G: EmissionGuarantee> Diagnostic<'a, G> for FnAbiError<'b> {
-    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         match self {
             Self::Layout(e) => e.into_diagnostic().into_diag(dcx, level),
             Self::AdjustForForeignAbi(call::AdjustForForeignAbiError::Unsupported {
@@ -1313,7 +1302,7 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
     ///
     /// NB: this doesn't handle virtual calls - those should use `fn_abi_of_instance`
-    /// instead, where the instance is an `InstanceDef::Virtual`.
+    /// instead, where the instance is an `InstanceKind::Virtual`.
     #[inline]
     fn fn_abi_of_fn_ptr(
         &self,
@@ -1333,7 +1322,7 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
     /// direct calls to an `fn`.
     ///
     /// NB: that includes virtual calls, which are represented by "direct calls"
-    /// to an `InstanceDef::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    /// to an `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     #[inline]
     #[tracing::instrument(level = "debug", skip(self))]
     fn fn_abi_of_instance(
@@ -1363,3 +1352,37 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
 }
 
 impl<'tcx, C: FnAbiOfHelpers<'tcx>> FnAbiOf<'tcx> for C {}
+
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn offset_of_subfield<I>(
+        self,
+        param_env: ty::ParamEnv<'tcx>,
+        mut layout: TyAndLayout<'tcx>,
+        indices: I,
+    ) -> Size
+    where
+        I: Iterator<Item = (VariantIdx, FieldIdx)>,
+    {
+        let cx = LayoutCx { tcx: self, param_env };
+        let mut offset = Size::ZERO;
+
+        for (variant, field) in indices {
+            layout = layout.for_variant(&cx, variant);
+            let index = field.index();
+            offset += layout.fields.offset(index);
+            layout = layout.field(&cx, index);
+            if !layout.is_sized() {
+                // If it is not sized, then the tail must still have at least a known static alignment.
+                let tail = self.struct_tail_erasing_lifetimes(layout.ty, param_env);
+                if !matches!(tail.kind(), ty::Slice(..)) {
+                    bug!(
+                        "offset of not-statically-aligned field (type {:?}) cannot be computed statically",
+                        layout.ty
+                    );
+                }
+            }
+        }
+
+        offset
+    }
+}

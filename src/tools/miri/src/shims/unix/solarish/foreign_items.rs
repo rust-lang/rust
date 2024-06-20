@@ -1,23 +1,49 @@
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
+use crate::shims::unix::*;
 use crate::*;
 
-pub fn is_dyn_sym(_name: &str) -> bool {
-    false
+pub fn is_dyn_sym(name: &str) -> bool {
+    matches!(name, "pthread_setname_np")
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
         abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         match link_name.as_str() {
+            // Threading
+            "pthread_setname_np" => {
+                let [thread, name] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // THREAD_NAME_MAX allows a thread name of 31+1 length
+                // https://github.com/illumos/illumos-gate/blob/7671517e13b8123748eda4ef1ee165c6d9dba7fe/usr/src/uts/common/sys/thread.h#L613
+                let max_len = 32;
+                let res = this.pthread_setname_np(
+                    this.read_scalar(thread)?,
+                    this.read_scalar(name)?,
+                    max_len,
+                )?;
+                this.write_scalar(res, dest)?;
+            }
+            "pthread_getname_np" => {
+                let [thread, name, len] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let res = this.pthread_getname_np(
+                    this.read_scalar(thread)?,
+                    this.read_scalar(name)?,
+                    this.read_scalar(len)?,
+                )?;
+                this.write_scalar(res, dest)?;
+            }
+
             // Miscellaneous
             "___errno" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -43,8 +69,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_null(dest)?;
             }
 
+            "pset_info" => {
+                let [pset, tpe, cpus, list] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // We do not need to handle the current process cpu mask, available_parallelism
+                // implementation pass null anyway. We only care for the number of
+                // cpus.
+                // https://docs.oracle.com/cd/E88353_01/html/E37841/pset-info-2.html
+
+                let pset = this.read_scalar(pset)?.to_i32()?;
+                let tpe = this.read_pointer(tpe)?;
+                let list = this.read_pointer(list)?;
+
+                let ps_myid = this.eval_libc_i32("PS_MYID");
+                if ps_myid != pset {
+                    throw_unsup_format!("pset_info is only supported with pset==PS_MYID");
+                }
+
+                if !this.ptr_is_null(tpe)? {
+                    throw_unsup_format!("pset_info is only supported with type==NULL");
+                }
+
+                if !this.ptr_is_null(list)? {
+                    throw_unsup_format!("pset_info is only supported with list==NULL");
+                }
+
+                let cpus = this.deref_pointer(cpus)?;
+                this.write_scalar(Scalar::from_u32(this.machine.num_cpus), &cpus)?;
+                this.write_null(dest)?;
+            }
+
             _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

@@ -2,15 +2,17 @@
 
 use crate::build::{parse_float_into_constval, Builder};
 use rustc_ast as ast;
+use rustc_hir::LangItem;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{Allocation, LitToConstError, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{
-    self, CanonicalUserType, CanonicalUserTypeAnnotation, TyCtxt, UserTypeAnnotationIndex,
+    self, CanonicalUserType, CanonicalUserTypeAnnotation, Ty, TyCtxt, UserTypeAnnotationIndex,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_target::abi::Size;
+use tracing::{instrument, trace};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
@@ -38,7 +40,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-pub fn as_constant_inner<'tcx>(
+pub(crate) fn as_constant_inner<'tcx>(
     expr: &Expr<'tcx>,
     push_cuta: impl FnMut(&Box<CanonicalUserType<'tcx>>) -> Option<UserTypeAnnotationIndex>,
     tcx: TyCtxt<'tcx>,
@@ -50,7 +52,7 @@ pub fn as_constant_inner<'tcx>(
             {
                 Ok(c) => c,
                 Err(LitToConstError::Reported(guar)) => {
-                    Const::Ty(ty::Const::new_error(tcx, guar, ty))
+                    Const::Ty(Ty::new_error(tcx, guar), ty::Const::new_error(tcx, guar))
                 }
                 Err(LitToConstError::TypeError) => {
                     bug!("encountered type error in `lit_to_mir_constant`")
@@ -82,8 +84,8 @@ pub fn as_constant_inner<'tcx>(
             ConstOperand { user_ty, span, const_ }
         }
         ExprKind::ConstParam { param, def_id: _ } => {
-            let const_param = ty::Const::new_param(tcx, param, expr.ty);
-            let const_ = Const::Ty(const_param);
+            let const_param = ty::Const::new_param(tcx, param);
+            let const_ = Const::Ty(expr.ty, const_param);
 
             ConstOperand { user_ty: None, span, const_ }
         }
@@ -141,7 +143,7 @@ fn lit_to_mir_constant<'tcx>(
             let id = tcx.allocate_bytes(data);
             ConstValue::Scalar(Scalar::from_pointer(id.into(), &tcx))
         }
-        (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().c_str()) =>
+        (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::CStr)) =>
         {
             let allocation = Allocation::from_bytes_byte_aligned_immutable(data as &[u8]);
             let allocation = tcx.mk_const_alloc(allocation);

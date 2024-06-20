@@ -24,7 +24,7 @@ pub unsafe fn assert_nonzero_nonmax(x: u8) -> u8 {
     // CHECK-NEXT: _0 = _1;
     // CHECK-NEXT: return;
     // CHECK-NEXT: }
-    mir!(
+    mir! {
         {
             match x {
                 0 => unreachable,
@@ -48,5 +48,5 @@ pub unsafe fn assert_nonzero_nonmax(x: u8) -> u8 {
             RET = x;
             Return()
         }
-    )
+    }
 }

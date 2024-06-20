@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::macros::{find_format_args, format_arg_removal_span, root_macro_call_first_node, MacroCall};
+use clippy_utils::macros::{format_arg_removal_span, root_macro_call_first_node, FormatArgsStorage, MacroCall};
 use clippy_utils::source::{expand_past_previous_comma, snippet_opt};
 use clippy_utils::{is_in_cfg_test, is_in_test_function};
 use rustc_ast::token::LitKind;
@@ -66,7 +66,7 @@ declare_clippy_lint! {
     /// Checks for printing on *stdout*. The purpose of this lint
     /// is to catch debugging remnants.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// People often print on *stdout* while debugging an
     /// application and might forget to remove those prints afterward.
     ///
@@ -88,7 +88,7 @@ declare_clippy_lint! {
     /// Checks for printing on *stderr*. The purpose of this lint
     /// is to catch debugging remnants.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// People often print on *stderr* while debugging an
     /// application and might forget to remove those prints afterward.
     ///
@@ -110,15 +110,18 @@ declare_clippy_lint! {
     /// Checks for usage of `Debug` formatting. The purpose of this
     /// lint is to catch debugging remnants.
     ///
-    /// ### Why is this bad?
-    /// The purpose of the `Debug` trait is to facilitate
-    /// debugging Rust code. It should not be used in user-facing output.
+    /// ### Why restrict this?
+    /// The purpose of the `Debug` trait is to facilitate debugging Rust code,
+    /// and [no guarantees are made about its output][stability].
+    /// It should not be used in user-facing output.
     ///
     /// ### Example
     /// ```no_run
     /// # let foo = "bar";
     /// println!("{:?}", foo);
     /// ```
+    ///
+    /// [stability]: https://doc.rust-lang.org/stable/std/fmt/trait.Debug.html#stability
     #[clippy::version = "pre 1.29.0"]
     pub USE_DEBUG,
     restriction,
@@ -236,13 +239,15 @@ declare_clippy_lint! {
 
 #[derive(Default)]
 pub struct Write {
+    format_args: FormatArgsStorage,
     in_debug_impl: bool,
     allow_print_in_tests: bool,
 }
 
 impl Write {
-    pub fn new(allow_print_in_tests: bool) -> Self {
+    pub fn new(format_args: FormatArgsStorage, allow_print_in_tests: bool) -> Self {
         Self {
+            format_args,
             allow_print_in_tests,
             ..Default::default()
         }
@@ -307,7 +312,7 @@ impl<'tcx> LateLintPass<'tcx> for Write {
             _ => return,
         }
 
-        if let Some(format_args) = find_format_args(cx, expr, macro_call.expn) {
+        if let Some(format_args) = self.format_args.get(cx, expr, macro_call.expn) {
             // ignore `writeln!(w)` and `write!(v, some_macro!())`
             if format_args.span.from_expansion() {
                 return;
@@ -315,15 +320,15 @@ impl<'tcx> LateLintPass<'tcx> for Write {
 
             match diag_name {
                 sym::print_macro | sym::eprint_macro | sym::write_macro => {
-                    check_newline(cx, &format_args, &macro_call, name);
+                    check_newline(cx, format_args, &macro_call, name);
                 },
                 sym::println_macro | sym::eprintln_macro | sym::writeln_macro => {
-                    check_empty_string(cx, &format_args, &macro_call, name);
+                    check_empty_string(cx, format_args, &macro_call, name);
                 },
                 _ => {},
             }
 
-            check_literal(cx, &format_args, name);
+            check_literal(cx, format_args, name);
 
             if !self.in_debug_impl {
                 for piece in &format_args.template {

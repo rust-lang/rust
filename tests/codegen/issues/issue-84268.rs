@@ -17,7 +17,5 @@ pub struct M([i32; 4]);
 pub fn is_infinite(v: V) -> M {
     // CHECK: fabs
     // CHECK: cmp oeq
-    unsafe {
-        simd_eq(simd_fabs(v), V([f32::INFINITY; 4]))
-    }
+    unsafe { simd_eq(simd_fabs(v), V([f32::INFINITY; 4])) }
 }

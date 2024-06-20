@@ -1,4 +1,4 @@
-#![crate_type="cdylib"]
+#![crate_type = "cdylib"]
 
 extern crate an_rlib;
 

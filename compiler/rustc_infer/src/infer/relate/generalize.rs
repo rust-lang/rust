@@ -1,15 +1,16 @@
 use std::mem;
 
 use super::StructurallyRelateAliases;
+use super::{PredicateEmittingRelation, Relate, RelateResult, TypeRelation};
+use crate::infer::relate;
 use crate::infer::type_variable::TypeVariableValue;
-use crate::infer::{InferCtxt, ObligationEmittingRelation, RegionVariableOrigin};
+use crate::infer::{InferCtxt, RegionVariableOrigin};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::MaxUniverse;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{AliasRelationDirection, InferConst, Term, TypeVisitable, TypeVisitableExt};
@@ -29,7 +30,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// `TypeRelation`. Do not use this, and instead please use `At::eq`, for all
     /// other usecases (i.e. setting the value of a type var).
     #[instrument(level = "debug", skip(self, relation))]
-    pub fn instantiate_ty_var<R: ObligationEmittingRelation<'tcx>>(
+    pub fn instantiate_ty_var<R: PredicateEmittingRelation<'tcx>>(
         &self,
         relation: &mut R,
         target_is_expected: bool,
@@ -82,16 +83,16 @@ impl<'tcx> InferCtxt<'tcx> {
             // mention `?0`.
             if self.next_trait_solver() {
                 let (lhs, rhs, direction) = match instantiation_variance {
-                    ty::Variance::Invariant => {
+                    ty::Invariant => {
                         (generalized_ty.into(), source_ty.into(), AliasRelationDirection::Equate)
                     }
-                    ty::Variance::Covariant => {
+                    ty::Covariant => {
                         (generalized_ty.into(), source_ty.into(), AliasRelationDirection::Subtype)
                     }
-                    ty::Variance::Contravariant => {
+                    ty::Contravariant => {
                         (source_ty.into(), generalized_ty.into(), AliasRelationDirection::Subtype)
                     }
-                    ty::Variance::Bivariant => unreachable!("bivariant generalization"),
+                    ty::Bivariant => unreachable!("bivariant generalization"),
                 };
 
                 relation.register_predicates([ty::PredicateKind::AliasRelate(lhs, rhs, direction)]);
@@ -177,7 +178,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// See `tests/ui/const-generics/occurs-check/` for more examples where this is relevant.
     #[instrument(level = "debug", skip(self, relation))]
-    pub(super) fn instantiate_const_var<R: ObligationEmittingRelation<'tcx>>(
+    pub(super) fn instantiate_const_var<R: PredicateEmittingRelation<'tcx>>(
         &self,
         relation: &mut R,
         target_is_expected: bool,
@@ -191,7 +192,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 relation.span(),
                 relation.structurally_relate_aliases(),
                 target_vid,
-                ty::Variance::Invariant,
+                ty::Invariant,
                 source_ct,
             )?;
 
@@ -209,14 +210,14 @@ impl<'tcx> InferCtxt<'tcx> {
         // generalized const and the source.
         if target_is_expected {
             relation.relate_with_variance(
-                ty::Variance::Invariant,
+                ty::Invariant,
                 ty::VarianceDiagInfo::default(),
                 generalized_ct,
                 source_ct,
             )?;
         } else {
             relation.relate_with_variance(
-                ty::Variance::Invariant,
+                ty::Invariant,
                 ty::VarianceDiagInfo::default(),
                 source_ct,
                 generalized_ct,
@@ -228,7 +229,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Attempts to generalize `source_term` for the type variable `target_vid`.
     /// This checks for cycles -- that is, whether `source_term` references `target_vid`.
-    fn generalize<T: Into<Term<'tcx>> + Relate<'tcx>>(
+    fn generalize<T: Into<Term<'tcx>> + Relate<TyCtxt<'tcx>>>(
         &self,
         span: Span,
         structurally_relate_aliases: StructurallyRelateAliases,
@@ -329,6 +330,14 @@ impl<'tcx> Generalizer<'_, 'tcx> {
         }
     }
 
+    /// Create a new type variable in the universe of the target when
+    /// generalizing an alias. This has to set `has_unconstrained_ty_var`
+    /// if we're currently in a bivariant context.
+    fn next_ty_var_for_alias(&mut self) -> Ty<'tcx> {
+        self.has_unconstrained_ty_var |= self.ambient_variance == ty::Bivariant;
+        self.infcx.next_ty_var_in_universe(self.span, self.for_universe)
+    }
+
     /// An occurs check failure inside of an alias does not mean
     /// that the types definitely don't unify. We may be able
     /// to normalize the alias after all.
@@ -358,7 +367,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
         //
         // cc trait-system-refactor-initiative#110
         if self.infcx.next_trait_solver() && !alias.has_escaping_bound_vars() && !self.in_alias {
-            return Ok(self.infcx.next_ty_var_in_universe(self.span, self.for_universe));
+            return Ok(self.next_ty_var_for_alias());
         }
 
         let is_nested_alias = mem::replace(&mut self.in_alias, true);
@@ -378,7 +387,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
                     }
 
                     debug!("generalization failure in alias");
-                    Ok(self.infcx.next_ty_var_in_universe(self.span, self.for_universe))
+                    Ok(self.next_ty_var_for_alias())
                 }
             }
         };
@@ -387,7 +396,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
     }
 }
 
-impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
+impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -402,7 +411,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         a_arg: ty::GenericArgsRef<'tcx>,
         b_arg: ty::GenericArgsRef<'tcx>,
     ) -> RelateResult<'tcx, ty::GenericArgsRef<'tcx>> {
-        if self.ambient_variance == ty::Variance::Invariant {
+        if self.ambient_variance == ty::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
             // (e.g., #41849).
@@ -422,10 +431,10 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, variance, b), ret)]
-    fn relate_with_variance<T: Relate<'tcx>>(
+    fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
         &mut self,
         variance: ty::Variance,
-        _info: ty::VarianceDiagInfo<'tcx>,
+        _info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
@@ -645,7 +654,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                             {
                                 variable_table.union(vid, new_var_id);
                             }
-                            Ok(ty::Const::new_var(self.tcx(), new_var_id, c.ty()))
+                            Ok(ty::Const::new_var(self.tcx(), new_var_id))
                         }
                     }
                 }
@@ -658,16 +667,12 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
             // structural.
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
                 let args = self.relate_with_variance(
-                    ty::Variance::Invariant,
+                    ty::Invariant,
                     ty::VarianceDiagInfo::default(),
                     args,
                     args,
                 )?;
-                Ok(ty::Const::new_unevaluated(
-                    self.tcx(),
-                    ty::UnevaluatedConst { def, args },
-                    c.ty(),
-                ))
+                Ok(ty::Const::new_unevaluated(self.tcx(), ty::UnevaluatedConst { def, args }))
             }
             ty::ConstKind::Placeholder(placeholder) => {
                 if self.for_universe.can_name(placeholder.universe) {
@@ -691,7 +696,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         _: ty::Binder<'tcx, T>,
     ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
-        T: Relate<'tcx>,
+        T: Relate<TyCtxt<'tcx>>,
     {
         let result = self.relate(a.skip_binder(), a.skip_binder())?;
         Ok(a.rebind(result))

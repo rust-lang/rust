@@ -31,9 +31,9 @@ use rustc_span::{Span, Symbol};
 use rustc_target::abi::{Abi, Size, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
-
 use std::iter;
 use std::ops::ControlFlow;
+use tracing::debug;
 
 declare_lint! {
     /// The `unused_comparisons` lint detects comparisons made useless by
@@ -1741,13 +1741,13 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
         let abi = cx.tcx.hir().get_foreign_abi(it.hir_id());
 
         match it.kind {
-            hir::ForeignItemKind::Fn(decl, _, _) if !vis.is_internal_abi(abi) => {
+            hir::ForeignItemKind::Fn(decl, _, _, _) if !vis.is_internal_abi(abi) => {
                 vis.check_foreign_fn(it.owner_id.def_id, decl);
             }
-            hir::ForeignItemKind::Static(ty, _) if !vis.is_internal_abi(abi) => {
+            hir::ForeignItemKind::Static(ty, _, _) if !vis.is_internal_abi(abi) => {
                 vis.check_foreign_static(it.owner_id, ty.span);
             }
-            hir::ForeignItemKind::Fn(decl, _, _) => vis.check_fn(it.owner_id.def_id, decl),
+            hir::ForeignItemKind::Fn(decl, _, _, _) => vis.check_fn(it.owner_id.def_id, decl),
             hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => (),
         }
     }

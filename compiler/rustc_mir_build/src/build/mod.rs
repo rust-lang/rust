@@ -15,11 +15,10 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
-use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::thir::{self, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -452,7 +451,7 @@ fn construct_fn<'tcx>(
     assert_eq!(expr.as_usize(), thir.exprs.len() - 1);
 
     // Figure out what primary body this item has.
-    let body_id = tcx.hir().body_owned_by(fn_def);
+    let body = tcx.hir().body_owned_by(fn_def);
     let span_with_body = tcx.hir().span_with_body(fn_id);
     let return_ty_span = tcx
         .hir()
@@ -512,9 +511,9 @@ fn construct_fn<'tcx>(
     );
 
     let call_site_scope =
-        region::Scope { id: body_id.hir_id.local_id, data: region::ScopeData::CallSite };
+        region::Scope { id: body.id().hir_id.local_id, data: region::ScopeData::CallSite };
     let arg_scope =
-        region::Scope { id: body_id.hir_id.local_id, data: region::ScopeData::Arguments };
+        region::Scope { id: body.id().hir_id.local_id, data: region::ScopeData::Arguments };
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
     unpack!(builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
@@ -1014,14 +1013,14 @@ fn parse_float_into_constval<'tcx>(
     float_ty: ty::FloatTy,
     neg: bool,
 ) -> Option<ConstValue<'tcx>> {
-    parse_float_into_scalar(num, float_ty, neg).map(ConstValue::Scalar)
+    parse_float_into_scalar(num, float_ty, neg).map(|s| ConstValue::Scalar(s.into()))
 }
 
 pub(crate) fn parse_float_into_scalar(
     num: Symbol,
     float_ty: ty::FloatTy,
     neg: bool,
-) -> Option<Scalar> {
+) -> Option<ScalarInt> {
     let num = num.as_str();
     match float_ty {
         // FIXME(f16_f128): When available, compare to the library parser as with `f32` and `f64`
@@ -1030,7 +1029,7 @@ pub(crate) fn parse_float_into_scalar(
             if neg {
                 f = -f;
             }
-            Some(Scalar::from_f16(f))
+            Some(ScalarInt::from(f))
         }
         ty::FloatTy::F32 => {
             let Ok(rust_f) = num.parse::<f32>() else { return None };
@@ -1053,7 +1052,7 @@ pub(crate) fn parse_float_into_scalar(
                 f = -f;
             }
 
-            Some(Scalar::from_f32(f))
+            Some(ScalarInt::from(f))
         }
         ty::FloatTy::F64 => {
             let Ok(rust_f) = num.parse::<f64>() else { return None };
@@ -1076,7 +1075,7 @@ pub(crate) fn parse_float_into_scalar(
                 f = -f;
             }
 
-            Some(Scalar::from_f64(f))
+            Some(ScalarInt::from(f))
         }
         // FIXME(f16_f128): When available, compare to the library parser as with `f32` and `f64`
         ty::FloatTy::F128 => {
@@ -1084,7 +1083,7 @@ pub(crate) fn parse_float_into_scalar(
             if neg {
                 f = -f;
             }
-            Some(Scalar::from_f128(f))
+            Some(ScalarInt::from(f))
         }
     }
 }

@@ -7,8 +7,8 @@ use ast::token::IdentIsRaw;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::{
-    self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocConstraint,
-    AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
+    self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
+    AssocItemConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
     Path, PathSegment, QSelf,
 };
 use rustc_errors::{Applicability, Diag, PResult};
@@ -20,7 +20,7 @@ use tracing::debug;
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
-pub enum PathStyle {
+pub(super) enum PathStyle {
     /// In some contexts, notably in expressions, paths with generic arguments are ambiguous
     /// with something else. For example, in expressions `segment < ....` can be interpreted
     /// as a comparison and `segment ( ....` can be interpreted as a function call.
@@ -720,10 +720,7 @@ impl<'a> Parser<'a> {
                         ));
                     }
                     let kind = if self.eat(&token::Colon) {
-                        // Parse associated type constraint bound.
-
-                        let bounds = self.parse_generic_bounds()?;
-                        AssocConstraintKind::Bound { bounds }
+                        AssocItemConstraintKind::Bound { bounds: self.parse_generic_bounds()? }
                     } else if self.eat(&token::Eq) {
                         self.parse_assoc_equality_term(
                             ident,
@@ -735,17 +732,17 @@ impl<'a> Parser<'a> {
                     };
 
                     let span = lo.to(self.prev_token.span);
-                    // Gate associated type bounds, e.g., `Iterator<Item: Ord>`.
-                    if let AssocConstraintKind::Bound { .. } = kind {
-                        if let Some(ast::GenericArgs::Parenthesized(args)) = &gen_args
-                            && args.inputs.is_empty()
-                            && matches!(args.output, ast::FnRetTy::Default(..))
-                        {
-                            self.psess.gated_spans.gate(sym::return_type_notation, span);
-                        }
+
+                    if let AssocItemConstraintKind::Bound { .. } = kind
+                        && let Some(ast::GenericArgs::Parenthesized(args)) = &gen_args
+                        && args.inputs.is_empty()
+                        && let ast::FnRetTy::Default(..) = args.output
+                    {
+                        self.psess.gated_spans.gate(sym::return_type_notation, span);
                     }
+
                     let constraint =
-                        AssocConstraint { id: ast::DUMMY_NODE_ID, ident, gen_args, kind, span };
+                        AssocItemConstraint { id: ast::DUMMY_NODE_ID, ident, gen_args, kind, span };
                     Ok(Some(AngleBracketedArg::Constraint(constraint)))
                 } else {
                     // we only want to suggest `:` and `=` in contexts where the previous token
@@ -772,7 +769,7 @@ impl<'a> Parser<'a> {
         ident: Ident,
         gen_args: Option<&GenericArgs>,
         eq: Span,
-    ) -> PResult<'a, AssocConstraintKind> {
+    ) -> PResult<'a, AssocItemConstraintKind> {
         let arg = self.parse_generic_arg(None)?;
         let span = ident.span.to(self.prev_token.span);
         let term = match arg {
@@ -820,7 +817,7 @@ impl<'a> Parser<'a> {
                 return Err(err);
             }
         };
-        Ok(AssocConstraintKind::Equality { term })
+        Ok(AssocItemConstraintKind::Equality { term })
     }
 
     /// We do not permit arbitrary expressions as const arguments. They must be one of:
@@ -923,7 +920,8 @@ impl<'a> Parser<'a> {
             // Fall back by trying to parse a const-expr expression. If we successfully do so,
             // then we should report an error that it needs to be wrapped in braces.
             let snapshot = self.create_snapshot_for_diagnostic();
-            match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
+            let attrs = self.parse_outer_attributes()?;
+            match self.parse_expr_res(Restrictions::CONST_EXPR, attrs) {
                 Ok(expr) => {
                     return Ok(Some(self.dummy_const_arg_needs_braces(
                         self.dcx().struct_span_err(expr.span, "invalid const generic expression"),
@@ -941,7 +939,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Given a arg inside of generics, we try to destructure it as if it were the LHS in
-    /// `LHS = ...`, i.e. an associated type binding.
+    /// `LHS = ...`, i.e. an associated item binding.
     /// This returns a bool indicating if there are any `for<'a, 'b>` binder args, the
     /// identifier, and any GAT arguments.
     fn get_ident_from_generic_arg(

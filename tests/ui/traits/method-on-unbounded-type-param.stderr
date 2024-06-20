@@ -76,8 +76,8 @@ LL |     x.cmp(&x);
            which is required by `&mut dyn T: Iterator`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following traits define an item `cmp`, perhaps you need to implement one of them:
-           candidate #1: `Iterator`
-           candidate #2: `Ord`
+           candidate #1: `Ord`
+   = note: the trait `Iterator` defines an item `cmp`, but is explicitly unimplemented
 
 error: aborting due to 4 previous errors
 

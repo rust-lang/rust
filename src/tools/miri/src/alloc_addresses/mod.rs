@@ -85,7 +85,7 @@ impl GlobalStateInner {
         }
     }
 
-    pub fn remove_unreachable_allocs(&mut self, allocs: &LiveAllocs<'_, '_, '_>) {
+    pub fn remove_unreachable_allocs(&mut self, allocs: &LiveAllocs<'_, '_>) {
         // `exposed` and `int_to_ptr_map` are cleared immediately when an allocation
         // is freed, so `base_addr` is the only one we have to clean up based on the GC.
         self.base_addr.retain(|id, _| allocs.is_live(*id));
@@ -101,8 +101,8 @@ fn align_addr(addr: u64, align: u64) -> u64 {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Returns the exposed `AllocId` that corresponds to the specified addr,
     // or `None` if the addr is out of bounds
     fn alloc_id_from_addr(&self, addr: u64) -> Option<AllocId> {
@@ -169,12 +169,10 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     size,
                     align,
                     memory_kind,
-                    ecx.get_active_thread(),
+                    ecx.active_thread(),
                 ) {
-                    if let Some(clock) = clock
-                        && let Some(data_race) = &ecx.machine.data_race
-                    {
-                        data_race.acquire_clock(&clock, ecx.get_active_thread());
+                    if let Some(clock) = clock {
+                        ecx.acquire_clock(&clock);
                     }
                     reuse_addr
                 } else {
@@ -236,8 +234,8 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn expose_ptr(&mut self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
         let global_state = ecx.machine.alloc_addresses.get_mut();
@@ -259,7 +257,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(())
     }
 
-    fn ptr_from_addr_cast(&self, addr: u64) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+    fn ptr_from_addr_cast(&self, addr: u64) -> InterpResult<'tcx, Pointer> {
         trace!("Casting {:#x} to a pointer", addr);
 
         let ecx = self.eval_context_ref();
@@ -299,10 +297,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Convert a relative (tcx) pointer to a Miri pointer.
     fn adjust_alloc_root_pointer(
         &self,
-        ptr: Pointer<CtfeProvenance>,
+        ptr: interpret::Pointer<CtfeProvenance>,
         tag: BorTag,
         kind: MemoryKind,
-    ) -> InterpResult<'tcx, Pointer<Provenance>> {
+    ) -> InterpResult<'tcx, interpret::Pointer<Provenance>> {
         let ecx = self.eval_context_ref();
 
         let (prov, offset) = ptr.into_parts(); // offset is relative (AllocId provenance)
@@ -312,12 +310,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Add offset with the right kind of pointer-overflowing arithmetic.
         let dl = ecx.data_layout();
         let absolute_addr = dl.overflowing_offset(base_addr, offset.bytes()).0;
-        Ok(Pointer::new(Provenance::Concrete { alloc_id, tag }, Size::from_bytes(absolute_addr)))
+        Ok(interpret::Pointer::new(
+            Provenance::Concrete { alloc_id, tag },
+            Size::from_bytes(absolute_addr),
+        ))
     }
 
     /// When a pointer is used for a memory access, this computes where in which allocation the
     /// access is going.
-    fn ptr_get_alloc(&self, ptr: Pointer<Provenance>) -> Option<(AllocId, Size)> {
+    fn ptr_get_alloc(&self, ptr: interpret::Pointer<Provenance>) -> Option<(AllocId, Size)> {
         let ecx = self.eval_context_ref();
 
         let (tag, addr) = ptr.into_parts(); // addr is absolute (Tag provenance)
@@ -343,7 +344,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
+impl<'tcx> MiriMachine<'tcx> {
     pub fn free_alloc_id(&mut self, dead_id: AllocId, size: Size, align: Align, kind: MemoryKind) {
         let global_state = self.alloc_addresses.get_mut();
         let rng = self.rng.get_mut();
@@ -369,12 +370,10 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         // `alloc_id_from_addr` any more.
         global_state.exposed.remove(&dead_id);
         // Also remember this address for future reuse.
-        let thread = self.threads.get_active_thread_id();
+        let thread = self.threads.active_thread();
         global_state.reuse.add_addr(rng, addr, size, align, kind, thread, || {
             if let Some(data_race) = &self.data_race {
-                data_race
-                    .release_clock(thread, self.threads.active_thread_ref().current_span())
-                    .clone()
+                data_race.release_clock(&self.threads).clone()
             } else {
                 VClock::default()
             }

@@ -3,35 +3,56 @@ use std::time::Duration;
 use rustc_target::abi::Size;
 
 use crate::concurrency::init_once::InitOnceStatus;
-use crate::concurrency::thread::MachineCallback;
 use crate::*;
 
-impl<'mir, 'tcx> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Windows sync primitives are pointer sized.
     // We only use the first 4 bytes for the id.
 
-    fn init_once_get_id(
-        &mut self,
-        init_once_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, InitOnceId> {
+    fn init_once_get_id(&mut self, init_once_op: &OpTy<'tcx>) -> InterpResult<'tcx, InitOnceId> {
         let this = self.eval_context_mut();
         this.init_once_get_or_create_id(init_once_op, this.windows_ty_layout("INIT_ONCE"), 0)
     }
+
+    /// Returns `true` if we were succssful, `false` if we would block.
+    fn init_once_try_begin(
+        &mut self,
+        id: InitOnceId,
+        pending_place: &MPlaceTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx, bool> {
+        let this = self.eval_context_mut();
+        Ok(match this.init_once_status(id) {
+            InitOnceStatus::Uninitialized => {
+                this.init_once_begin(id);
+                this.write_scalar(this.eval_windows("c", "TRUE"), pending_place)?;
+                this.write_scalar(this.eval_windows("c", "TRUE"), dest)?;
+                true
+            }
+            InitOnceStatus::Complete => {
+                this.init_once_observe_completed(id);
+                this.write_scalar(this.eval_windows("c", "FALSE"), pending_place)?;
+                this.write_scalar(this.eval_windows("c", "TRUE"), dest)?;
+                true
+            }
+            InitOnceStatus::Begun => false,
+        })
+    }
 }
 
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 #[allow(non_snake_case)]
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn InitOnceBeginInitialize(
         &mut self,
-        init_once_op: &OpTy<'tcx, Provenance>,
-        flags_op: &OpTy<'tcx, Provenance>,
-        pending_op: &OpTy<'tcx, Provenance>,
-        context_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        init_once_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+        pending_op: &OpTy<'tcx>,
+        context_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let active_thread = this.get_active_thread();
 
         let id = this.init_once_get_id(init_once_op)?;
         let flags = this.read_scalar(flags_op)?.to_u32()?;
@@ -46,66 +67,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("non-null `lpContext` in `InitOnceBeginInitialize`");
         }
 
-        match this.init_once_status(id) {
-            InitOnceStatus::Uninitialized => {
-                this.init_once_begin(id);
-                this.write_scalar(this.eval_windows("c", "TRUE"), &pending_place)?;
-            }
-            InitOnceStatus::Begun => {
-                // Someone else is already on it.
-                // Block this thread until they are done.
-                // When we are woken up, set the `pending` flag accordingly.
-                struct Callback<'tcx> {
-                    init_once_id: InitOnceId,
-                    pending_place: MPlaceTy<'tcx, Provenance>,
-                }
-
-                impl<'tcx> VisitProvenance for Callback<'tcx> {
-                    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-                        let Callback { init_once_id: _, pending_place } = self;
-                        pending_place.visit_provenance(visit);
-                    }
-                }
-
-                impl<'mir, 'tcx> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
-                    fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-                        let pending = match this.init_once_status(self.init_once_id) {
-                            InitOnceStatus::Uninitialized =>
-                                unreachable!(
-                                    "status should have either been set to begun or complete"
-                                ),
-                            InitOnceStatus::Begun => this.eval_windows("c", "TRUE"),
-                            InitOnceStatus::Complete => this.eval_windows("c", "FALSE"),
-                        };
-
-                        this.write_scalar(pending, &self.pending_place)?;
-
-                        Ok(())
-                    }
-                }
-
-                this.init_once_enqueue_and_block(
-                    id,
-                    active_thread,
-                    Box::new(Callback { init_once_id: id, pending_place }),
-                )
-            }
-            InitOnceStatus::Complete => {
-                this.init_once_observe_completed(id);
-                this.write_scalar(this.eval_windows("c", "FALSE"), &pending_place)?;
-            }
+        if this.init_once_try_begin(id, &pending_place, dest)? {
+            // Done!
+            return Ok(());
         }
 
-        // This always succeeds (even if the thread is blocked, we will succeed if we ever unblock).
-        Ok(this.eval_windows("c", "TRUE"))
+        // We have to block, and then try again when we are woken up.
+        let dest = dest.clone();
+        this.init_once_enqueue_and_block(
+            id,
+            callback!(
+                @capture<'tcx> {
+                    id: InitOnceId,
+                    pending_place: MPlaceTy<'tcx>,
+                    dest: MPlaceTy<'tcx>,
+                }
+                @unblock = |this| {
+                    let ret = this.init_once_try_begin(id, &pending_place, &dest)?;
+                    assert!(ret, "we were woken up but init_once_try_begin still failed");
+                    Ok(())
+                }
+            ),
+        );
+        return Ok(());
     }
 
     fn InitOnceComplete(
         &mut self,
-        init_once_op: &OpTy<'tcx, Provenance>,
-        flags_op: &OpTy<'tcx, Provenance>,
-        context_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        init_once_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+        context_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let id = this.init_once_get_id(init_once_op)?;
@@ -142,11 +134,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn WaitOnAddress(
         &mut self,
-        ptr_op: &OpTy<'tcx, Provenance>,
-        compare_op: &OpTy<'tcx, Provenance>,
-        size_op: &OpTy<'tcx, Provenance>,
-        timeout_op: &OpTy<'tcx, Provenance>,
-        dest: &MPlaceTy<'tcx, Provenance>,
+        ptr_op: &OpTy<'tcx>,
+        compare_op: &OpTy<'tcx>,
+        size_op: &OpTy<'tcx>,
+        timeout_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -155,7 +147,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let size = this.read_target_usize(size_op)?;
         let timeout_ms = this.read_scalar(timeout_op)?.to_u32()?;
 
-        let thread = this.get_active_thread();
         let addr = ptr.addr().bytes();
 
         if size > 8 || !size.is_power_of_two() {
@@ -166,11 +157,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         };
         let size = Size::from_bytes(size);
 
-        let timeout_time = if timeout_ms == this.eval_windows_u32("c", "INFINITE") {
+        let timeout = if timeout_ms == this.eval_windows_u32("c", "INFINITE") {
             None
         } else {
             let duration = Duration::from_millis(timeout_ms.into());
-            Some(CallbackTime::Monotonic(this.machine.clock.now().checked_add(duration).unwrap()))
+            Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration))
         };
 
         // See the Linux futex implementation for why this fence exists.
@@ -183,41 +174,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         if futex_val == compare_val {
             // If the values are the same, we have to block.
-            this.block_thread(thread, BlockReason::Futex { addr });
-            this.futex_wait(addr, thread, u32::MAX);
-
-            if let Some(timeout_time) = timeout_time {
-                struct Callback<'tcx> {
-                    thread: ThreadId,
-                    addr: u64,
-                    dest: MPlaceTy<'tcx, Provenance>,
-                }
-
-                impl<'tcx> VisitProvenance for Callback<'tcx> {
-                    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-                        let Callback { thread: _, addr: _, dest } = self;
-                        dest.visit_provenance(visit);
-                    }
-                }
-
-                impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
-                    fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-                        this.unblock_thread(self.thread, BlockReason::Futex { addr: self.addr });
-                        this.futex_remove_waiter(self.addr, self.thread);
-                        let error_timeout = this.eval_windows("c", "ERROR_TIMEOUT");
-                        this.set_last_error(error_timeout)?;
-                        this.write_scalar(Scalar::from_i32(0), &self.dest)?;
-
-                        Ok(())
-                    }
-                }
-
-                this.register_timeout_callback(
-                    thread,
-                    timeout_time,
-                    Box::new(Callback { thread, addr, dest: dest.clone() }),
-                );
-            }
+            this.futex_wait(
+                addr,
+                u32::MAX, // bitset
+                timeout,
+                Scalar::from_i32(1), // retval_succ
+                Scalar::from_i32(0), // retval_timeout
+                dest.clone(),
+                this.eval_windows("c", "ERROR_TIMEOUT"),
+            );
         }
 
         this.write_scalar(Scalar::from_i32(1), dest)?;
@@ -225,7 +190,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(())
     }
 
-    fn WakeByAddressSingle(&mut self, ptr_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn WakeByAddressSingle(&mut self, ptr_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let ptr = this.read_pointer(ptr_op)?;
@@ -234,14 +199,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
         let addr = ptr.addr().bytes();
-        if let Some(thread) = this.futex_wake(addr, u32::MAX) {
-            this.unblock_thread(thread, BlockReason::Futex { addr });
-            this.unregister_timeout_callback_if_exists(thread);
-        }
+        this.futex_wake(addr, u32::MAX)?;
 
         Ok(())
     }
-    fn WakeByAddressAll(&mut self, ptr_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn WakeByAddressAll(&mut self, ptr_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let ptr = this.read_pointer(ptr_op)?;
@@ -250,10 +212,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
         let addr = ptr.addr().bytes();
-        while let Some(thread) = this.futex_wake(addr, u32::MAX) {
-            this.unblock_thread(thread, BlockReason::Futex { addr });
-            this.unregister_timeout_callback_if_exists(thread);
-        }
+        while this.futex_wake(addr, u32::MAX)? {}
 
         Ok(())
     }

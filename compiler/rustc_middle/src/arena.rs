@@ -61,7 +61,10 @@ macro_rules! arena_types {
             [] dtorck_constraint: rustc_middle::traits::query::DropckConstraint<'tcx>,
             [] candidate_step: rustc_middle::traits::query::CandidateStep<'tcx>,
             [] autoderef_bad_ty: rustc_middle::traits::query::MethodAutoderefBadTy<'tcx>,
-            [] canonical_goal_evaluation: rustc_next_trait_solver::solve::inspect::GoalEvaluationStep<rustc_middle::ty::TyCtxt<'tcx>>,
+            [] canonical_goal_evaluation:
+                rustc_type_ir::solve::inspect::CanonicalGoalEvaluationStep<
+                    rustc_middle::ty::TyCtxt<'tcx>
+                >,
             [] query_region_constraints: rustc_middle::infer::canonical::QueryRegionConstraints<'tcx>,
             [] type_op_subtype:
                 rustc_middle::infer::canonical::Canonical<'tcx,
@@ -105,10 +108,10 @@ macro_rules! arena_types {
             [decode] trait_impl_trait_tys:
                 rustc_data_structures::unord::UnordMap<
                     rustc_hir::def_id::DefId,
-                    rustc_middle::ty::EarlyBinder<rustc_middle::ty::Ty<'tcx>>
+                    rustc_middle::ty::EarlyBinder<'tcx, rustc_middle::ty::Ty<'tcx>>
                 >,
-            [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<'tcx>,
-            [] predefined_opaques_in_body: rustc_middle::traits::solve::PredefinedOpaquesData<'tcx>,
+            [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<rustc_middle::ty::TyCtxt<'tcx>>,
+            [] predefined_opaques_in_body: rustc_middle::traits::solve::PredefinedOpaquesData<rustc_middle::ty::TyCtxt<'tcx>>,
             [decode] doc_link_resolutions: rustc_hir::def::DocLinkResMap,
             [] stripped_cfg_items: rustc_ast::expand::StrippedCfgItem,
             [] mod_child: rustc_middle::metadata::ModChild,

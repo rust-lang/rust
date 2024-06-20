@@ -10,9 +10,9 @@ use rustc_ast as ast;
 use rustc_ast::util::{classify, parser};
 use rustc_ast::{ExprKind, StmtKind};
 use rustc_errors::{pluralize, MultiSpan};
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, LangItem};
 use rustc_infer::traits::util::elaborate;
 use rustc_middle::ty::adjustment;
 use rustc_middle::ty::{self, Ty};
@@ -22,6 +22,7 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span};
 use std::iter;
 use std::ops::ControlFlow;
+use tracing::instrument;
 
 declare_lint! {
     /// The `unused_must_use` lint detects unused result of a type flagged as
@@ -288,7 +289,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     is_ty_must_use(cx, boxed_ty, expr, span)
                         .map(|inner| MustUsePath::Boxed(Box::new(inner)))
                 }
-                ty::Adt(def, args) if cx.tcx.lang_items().pin_type() == Some(def.did()) => {
+                ty::Adt(def, args) if cx.tcx.is_lang_item(def.did(), LangItem::Pin) => {
                     let pinned_ty = args.type_at(0);
                     is_ty_must_use(cx, pinned_ty, expr, span)
                         .map(|inner| MustUsePath::Pinned(Box::new(inner)))
@@ -386,7 +387,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             }
         }
 
-        // Returns whether further errors should be suppressed because either a lint has been emitted or the type should be ignored.
+        // Returns whether further errors should be suppressed because either a lint has been
+        // emitted or the type should be ignored.
         fn check_must_use_def(
             cx: &LateContext<'_>,
             def_id: DefId,
@@ -676,7 +678,8 @@ trait UnusedDelimLint {
             return true;
         }
 
-        // Check if LHS needs parens to prevent false-positives in cases like `fn x() -> u8 { ({ 0 } + 1) }`.
+        // Check if LHS needs parens to prevent false-positives in cases like
+        // `fn x() -> u8 { ({ 0 } + 1) }`.
         //
         // FIXME: https://github.com/rust-lang/rust/issues/119426
         // The syntax tree in this code is from after macro expansion, so the
@@ -721,7 +724,8 @@ trait UnusedDelimLint {
             }
         }
 
-        // Check if RHS needs parens to prevent false-positives in cases like `if (() == return) {}`.
+        // Check if RHS needs parens to prevent false-positives in cases like `if (() == return)
+        // {}`.
         if !followed_by_block {
             return false;
         }
@@ -1264,7 +1268,7 @@ impl EarlyLintPass for UnusedParens {
                     ast::TyKind::TraitObject(..) => {}
                     ast::TyKind::BareFn(b)
                         if self.with_self_ty_parens && b.generic_params.len() > 0 => {}
-                    ast::TyKind::ImplTrait(_, bounds, _) if bounds.len() > 1 => {}
+                    ast::TyKind::ImplTrait(_, bounds) if bounds.len() > 1 => {}
                     _ => {
                         let spans = if !ty.span.from_expansion() {
                             r.span

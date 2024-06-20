@@ -3,8 +3,8 @@
 #[cfg(unix)]
 extern crate libc;
 
-use run_make_support::{aux_build, tmp_dir};
-use std::fs;
+use run_make_support::{aux_build, fs_wrapper};
+
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -16,11 +16,11 @@ fn main() {
     }
 
     aux_build().arg("foo.rs").run();
-    verify(&tmp_dir().join("libfoo.rlib"));
+    verify(Path::new("libfoo.rlib"));
 }
 
 fn verify(path: &Path) {
-    let perm = fs::metadata(path).unwrap().permissions();
+    let perm = fs_wrapper::metadata(path).permissions();
 
     assert!(!perm.readonly());
 

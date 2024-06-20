@@ -31,7 +31,7 @@ struct Delta<T> {
 enum Epsilon {
     A(u8, u16),
     B,
-    C { c: u32 }
+    C { c: u32 },
 }
 
 enum Zeta<T> {

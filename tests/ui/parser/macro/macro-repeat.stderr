@@ -1,10 +1,10 @@
-error: variable 'v' is still repeating at this depth
+error: variable `v` is still repeating at this depth
   --> $DIR/macro-repeat.rs:3:9
    |
 LL |         $v
    |         ^^
 
-error: variable 'v' is still repeating at this depth
+error: variable `v` is still repeating at this depth
   --> $DIR/macro-repeat.rs:3:9
    |
 LL |         $v

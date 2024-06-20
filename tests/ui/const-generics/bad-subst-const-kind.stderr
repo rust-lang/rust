@@ -1,7 +1,7 @@
 error: the constant `13` is not of type `u64`
   --> $DIR/bad-subst-const-kind.rs:13:24
    |
-LL | pub fn test() -> [u8; <[u8; 13] as Q>::ASSOC] { todo!() }
+LL | pub fn test() -> [u8; <[u8; 13] as Q>::ASSOC] {
    |                        ^^^^^^^^ expected `u64`, found `usize`
    |
 note: required for `[u8; 13]` to implement `Q`

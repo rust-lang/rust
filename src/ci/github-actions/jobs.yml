@@ -33,11 +33,11 @@ runners:
     <<: *base-job
 
   - &job-aarch64-linux
-    os: [ self-hosted, ARM64, linux ]
+    os: ubuntu-22.04-arm64-8core-32gb
 
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
-    SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
+    SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc
     RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
     MACOSX_DEPLOYMENT_TARGET: 10.12
@@ -50,8 +50,6 @@ envs:
   production:
     &production
     DEPLOY_BUCKET: rust-lang-ci2
-    TOOLSTATE_ISSUES_API_URL: https://api.github.com/repos/rust-lang/rust/issues
-    TOOLSTATE_PUBLISH: 1
     # AWS_SECRET_ACCESS_KEYs are stored in GitHub's secrets storage, named
     # AWS_SECRET_ACCESS_KEY_<keyid>. Including the key id in the name allows to
     # rotate them in a single branch while keeping the old key in another
@@ -60,9 +58,16 @@ envs:
     CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
     ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
     AWS_REGION: us-west-1
+    TOOLSTATE_PUBLISH: 1
 
   try:
     <<: *production
+    # The following env var activates faster `try` builds in `opt-dist` by, e.g.
+    # - building only the more commonly useful components (we rarely need e.g. rust-docs in try
+    #   builds)
+    # - not running `opt-dist`'s post-optimization smoke tests on the resulting toolchain
+    #
+    # If you *want* these to happen however, temporarily uncomment it before triggering a try build.
     DIST_TRY_BUILD: 1
 
   auto:
@@ -108,66 +113,66 @@ auto:
     <<: *job-aarch64-linux
 
   - image: arm-android
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: armhf-gnu
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-aarch64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-android
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-arm-linux
-    <<: *job-linux-16c
+    <<: *job-linux-8c
 
   - image: dist-armhf-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-armv7-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-i586-gnu-i586-i686-musl
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-i686-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-loongarch64-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-ohos
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-powerpc-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-powerpc64-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-powerpc64le-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-riscv64-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-s390x-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-various-1
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-various-2
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-x86_64-freebsd
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-x86_64-illumos
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-x86_64-linux
     env:
@@ -186,7 +191,7 @@ auto:
     <<: *job-linux-8c
 
   - image: dist-x86_64-netbsd
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: i686-gnu
     <<: *job-linux-8c
@@ -198,7 +203,7 @@ auto:
     <<: *job-linux-4c
 
   - image: test-various
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: x86_64-gnu
     <<: *job-linux-4c
@@ -229,7 +234,7 @@ auto:
     <<: *job-linux-8c
 
   - image: x86_64-gnu-debug
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: x86_64-gnu-distcheck
     <<: *job-linux-8c
@@ -289,7 +294,7 @@ auto:
 
   - image: x86_64-apple-2
     env:
-      SCRIPT: ./x.py --stage 2 test tests/ui tests/rustdoc tests/run-make-fulldeps
+      SCRIPT: ./x.py --stage 2 test tests/ui tests/rustdoc
       <<: *env-x86_64-apple-tests
     <<: *job-macos-xl
 
@@ -380,19 +385,15 @@ auto:
       # We are intentionally allowing an old toolchain on this builder (and that's
       # incompatible with LLVM downloads today).
       NO_DOWNLOAD_CI_LLVM: 1
-      CUSTOM_MINGW: 1
     <<: *job-windows-8c
 
   - image: x86_64-mingw
     env:
       SCRIPT: make ci-mingw
-      RUST_CONFIGURE_ARGS: >-
-        --build=x86_64-pc-windows-gnu
-        --enable-profiler
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
       # We are intentionally allowing an old toolchain on this builder (and that's
       # incompatible with LLVM downloads today).
       NO_DOWNLOAD_CI_LLVM: 1
-      CUSTOM_MINGW: 1
     <<: *job-windows-8c
 
   - image: dist-x86_64-msvc
@@ -425,6 +426,7 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-msvc
         --host=aarch64-pc-windows-msvc
+        --target=aarch64-pc-windows-msvc,arm64ec-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
@@ -436,12 +438,10 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=i686-pc-windows-gnu
         --enable-full-tools
-        --enable-profiler
       # We are intentionally allowing an old toolchain on this builder (and that's
       # incompatible with LLVM downloads today).
       NO_DOWNLOAD_CI_LLVM: 1
       SCRIPT: python x.py dist bootstrap --include-default-paths
-      CUSTOM_MINGW: 1
       DIST_REQUIRE_ALL_TOOLS: 1
     <<: *job-windows-8c
 
@@ -451,11 +451,9 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-gnu
         --enable-full-tools
-        --enable-profiler
       # We are intentionally allowing an old toolchain on this builder (and that's
       # incompatible with LLVM downloads today).
       NO_DOWNLOAD_CI_LLVM: 1
-      CUSTOM_MINGW: 1
       DIST_REQUIRE_ALL_TOOLS: 1
     <<: *job-windows-8c
 
@@ -464,3 +462,8 @@ auto:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
     <<: *job-windows-8c
+
+  # Tests integration with Rust for Linux.
+  # Builds stage 1 compiler and tries to compile a few RfL examples with it.
+  - image: rfl
+    <<: *job-linux-8c

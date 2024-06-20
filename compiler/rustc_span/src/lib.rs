@@ -33,15 +33,16 @@
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
+// The code produced by the `Encodable`/`Decodable` derive macros refer to
+// `rustc_span::Span{Encoder,Decoder}`. That's fine outside this crate, but doesn't work inside
+// this crate without this line making `rustc_span` available.
 extern crate self as rustc_span;
-
-#[macro_use]
-extern crate tracing;
 
 use rustc_data_structures::{outline, AtomicRef};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use tracing::debug;
 
 mod caching_source_map_view;
 pub mod source_map;
@@ -519,8 +520,9 @@ impl SpanData {
     pub fn with_hi(&self, hi: BytePos) -> Span {
         Span::new(self.lo, hi, self.ctxt, self.parent)
     }
+    /// Avoid if possible, `Span::map_ctxt` should be preferred.
     #[inline]
-    pub fn with_ctxt(&self, ctxt: SyntaxContext) -> Span {
+    fn with_ctxt(&self, ctxt: SyntaxContext) -> Span {
         Span::new(self.lo, self.hi, ctxt, self.parent)
     }
     #[inline]
@@ -576,7 +578,7 @@ impl Span {
     }
     #[inline]
     pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
-        self.data_untracked().with_ctxt(ctxt)
+        self.map_ctxt(|_| ctxt)
     }
     #[inline]
     pub fn parent(self) -> Option<LocalDefId> {
@@ -679,6 +681,13 @@ impl Span {
         let span = self.data();
         let other = other.data();
         if span.hi > other.hi { Some(span.with_lo(cmp::max(span.lo, other.hi))) } else { None }
+    }
+
+    /// Returns `Some(span)`, where the end is trimmed by the start of `other`.
+    pub fn trim_end(self, other: Span) -> Option<Span> {
+        let span = self.data();
+        let other = other.data();
+        if span.lo < other.lo { Some(span.with_hi(cmp::min(span.hi, other.lo))) } else { None }
     }
 
     /// Returns the source span -- this is either the supplied span, or the span for
@@ -958,7 +967,7 @@ impl Span {
     /// This span, but in a larger context, may switch to the metavariable span if suitable.
     pub fn with_neighbor(self, neighbor: Span) -> Span {
         match Span::prepare_to_combine(self, neighbor) {
-            Ok((this, ..)) => Span::new(this.lo, this.hi, this.ctxt, this.parent),
+            Ok((this, ..)) => this.span(),
             Err(_) => self,
         }
     }
@@ -1051,39 +1060,46 @@ impl Span {
 
     #[inline]
     pub fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> Span {
-        let span = self.data();
-        span.with_ctxt(span.ctxt.apply_mark(expn_id, transparency))
+        self.map_ctxt(|ctxt| ctxt.apply_mark(expn_id, transparency))
     }
 
     #[inline]
     pub fn remove_mark(&mut self) -> ExpnId {
-        let mut span = self.data();
-        let mark = span.ctxt.remove_mark();
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = ExpnId::root();
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.remove_mark();
+            ctxt
+        });
         mark
     }
 
     #[inline]
     pub fn adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
-        let mut span = self.data();
-        let mark = span.ctxt.adjust(expn_id);
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = None;
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.adjust(expn_id);
+            ctxt
+        });
         mark
     }
 
     #[inline]
     pub fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
-        let mut span = self.data();
-        let mark = span.ctxt.normalize_to_macros_2_0_and_adjust(expn_id);
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = None;
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.normalize_to_macros_2_0_and_adjust(expn_id);
+            ctxt
+        });
         mark
     }
 
     #[inline]
     pub fn glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
-        let mut span = self.data();
-        let mark = span.ctxt.glob_adjust(expn_id, glob_span);
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = None;
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.glob_adjust(expn_id, glob_span);
+            ctxt
+        });
         mark
     }
 
@@ -1093,22 +1109,22 @@ impl Span {
         expn_id: ExpnId,
         glob_span: Span,
     ) -> Option<Option<ExpnId>> {
-        let mut span = self.data();
-        let mark = span.ctxt.reverse_glob_adjust(expn_id, glob_span);
-        *self = Span::new(span.lo, span.hi, span.ctxt, span.parent);
+        let mut mark = None;
+        *self = self.map_ctxt(|mut ctxt| {
+            mark = ctxt.reverse_glob_adjust(expn_id, glob_span);
+            ctxt
+        });
         mark
     }
 
     #[inline]
     pub fn normalize_to_macros_2_0(self) -> Span {
-        let span = self.data();
-        span.with_ctxt(span.ctxt.normalize_to_macros_2_0())
+        self.map_ctxt(|ctxt| ctxt.normalize_to_macros_2_0())
     }
 
     #[inline]
     pub fn normalize_to_macro_rules(self) -> Span {
-        let span = self.data();
-        span.with_ctxt(span.ctxt.normalize_to_macro_rules())
+        self.map_ctxt(|ctxt| ctxt.normalize_to_macro_rules())
     }
 }
 
@@ -1346,7 +1362,7 @@ impl fmt::Debug for Span {
 
 impl fmt::Debug for SpanData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&Span::new(self.lo, self.hi, self.ctxt, self.parent), f)
+        fmt::Debug::fmt(&self.span(), f)
     }
 }
 

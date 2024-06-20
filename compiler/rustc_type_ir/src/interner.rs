@@ -1,121 +1,173 @@
+use rustc_ast_ir::Movability;
+use rustc_index::bit_set::BitSet;
 use smallvec::SmallVec;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
 
+use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
-use crate::solve::inspect::GoalEvaluationStep;
+use crate::lang_items::TraitSolverLangItem;
+use crate::relate::Relate;
+use crate::solve::inspect::CanonicalGoalEvaluationStep;
+use crate::solve::{ExternalConstraintsData, PredefinedOpaquesData, SolverMode};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{
-    AliasTerm, AliasTermKind, AliasTy, AliasTyKind, CanonicalVarInfo, CoercePredicate,
-    DebugWithInfcx, ExistentialProjection, ExistentialTraitRef, FnSig, GenericArgKind,
-    NormalizesTo, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
-};
+use crate::{self as ty};
 
 pub trait Interner:
     Sized
     + Copy
-    + IrPrint<AliasTy<Self>>
-    + IrPrint<AliasTerm<Self>>
-    + IrPrint<TraitRef<Self>>
-    + IrPrint<TraitPredicate<Self>>
-    + IrPrint<ExistentialTraitRef<Self>>
-    + IrPrint<ExistentialProjection<Self>>
-    + IrPrint<ProjectionPredicate<Self>>
-    + IrPrint<NormalizesTo<Self>>
-    + IrPrint<SubtypePredicate<Self>>
-    + IrPrint<CoercePredicate<Self>>
-    + IrPrint<FnSig<Self>>
+    + IrPrint<ty::AliasTy<Self>>
+    + IrPrint<ty::AliasTerm<Self>>
+    + IrPrint<ty::TraitRef<Self>>
+    + IrPrint<ty::TraitPredicate<Self>>
+    + IrPrint<ty::ExistentialTraitRef<Self>>
+    + IrPrint<ty::ExistentialProjection<Self>>
+    + IrPrint<ty::ProjectionPredicate<Self>>
+    + IrPrint<ty::NormalizesTo<Self>>
+    + IrPrint<ty::SubtypePredicate<Self>>
+    + IrPrint<ty::CoercePredicate<Self>>
+    + IrPrint<ty::FnSig<Self>>
 {
-    type DefId: Copy + Debug + Hash + Eq;
-    type AdtDef: Copy + Debug + Hash + Eq;
+    type DefId: DefId<Self>;
+    type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
 
     type GenericArgs: GenericArgs<Self>;
-    /// The slice of args for a specific item. For a GAT like `type Foo<'a>`, it will be `['a]`,
-    /// not including the args from the parent item (trait or impl).
-    type OwnItemArgs: Copy + Debug + Hash + Eq;
-    type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Eq + IntoKind<Kind = GenericArgKind<Self>>;
-    type Term: Copy + Debug + Hash + Eq;
+    type GenericArgsSlice: Copy + Debug + Hash + Eq + Deref<Target = [Self::GenericArg]>;
+    type GenericArg: GenericArg<Self>;
+    type Term: Term<Self>;
 
-    type Binder<T: TypeVisitable<Self>>: BoundVars<Self> + TypeSuperVisitable<Self>;
-    type BoundVars: IntoIterator<Item = Self::BoundVar>;
-    type BoundVar;
+    type BoundVarKinds: Copy
+        + Debug
+        + Hash
+        + Eq
+        + Deref<Target: Deref<Target = [Self::BoundVarKind]>>
+        + Default;
+    type BoundVarKind: Copy + Debug + Hash + Eq;
 
-    type CanonicalVars: Copy + Debug + Hash + Eq + IntoIterator<Item = CanonicalVarInfo<Self>>;
-    type PredefinedOpaques: Copy + Debug + Hash + Eq;
-    type DefiningOpaqueTypes: Copy + Debug + Hash + Default + Eq + TypeVisitable<Self>;
-    type ExternalConstraints: Copy + Debug + Hash + Eq;
-    type GoalEvaluationSteps: Copy + Debug + Hash + Eq + Deref<Target = [GoalEvaluationStep<Self>]>;
+    type PredefinedOpaques: Copy
+        + Debug
+        + Hash
+        + Eq
+        + TypeFoldable<Self>
+        + Deref<Target = PredefinedOpaquesData<Self>>;
+    fn mk_predefined_opaques_in_body(
+        self,
+        data: PredefinedOpaquesData<Self>,
+    ) -> Self::PredefinedOpaques;
+
+    type DefiningOpaqueTypes: Copy
+        + Debug
+        + Hash
+        + Default
+        + Eq
+        + TypeVisitable<Self>
+        + Deref<Target: Deref<Target = [Self::LocalDefId]>>;
+    type CanonicalGoalEvaluationStepRef: Copy
+        + Debug
+        + Hash
+        + Eq
+        + Deref<Target = CanonicalGoalEvaluationStep<Self>>;
+
+    type CanonicalVars: Copy
+        + Debug
+        + Hash
+        + Eq
+        + IntoIterator<Item = ty::CanonicalVarInfo<Self>>
+        + Deref<Target: Deref<Target = [ty::CanonicalVarInfo<Self>]>>
+        + Default;
+    fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
+
+    type ExternalConstraints: Copy
+        + Debug
+        + Hash
+        + Eq
+        + TypeFoldable<Self>
+        + Deref<Target = ExternalConstraintsData<Self>>;
+    fn mk_external_constraints(
+        self,
+        data: ExternalConstraintsData<Self>,
+    ) -> Self::ExternalConstraints;
+
+    type DepNodeIndex;
+    fn with_cached_task<T>(self, task: impl FnOnce() -> T) -> (T, Self::DepNodeIndex);
 
     // Kinds of tys
     type Ty: Ty<Self>;
     type Tys: Tys<Self>;
-    type FnInputTys: Copy + Debug + Hash + Eq + Deref<Target = [Self::Ty]>;
-    type ParamTy: Copy + Debug + Hash + Eq;
+    type FnInputTys: Copy + Debug + Hash + Eq + Deref<Target = [Self::Ty]> + TypeVisitable<Self>;
+    type ParamTy: Copy + Debug + Hash + Eq + ParamLike;
     type BoundTy: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type PlaceholderTy: PlaceholderLike;
 
     // Things stored inside of tys
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
-    type BoundExistentialPredicates: Copy + DebugWithInfcx<Self> + Hash + Eq;
-    type PolyFnSig: Copy + DebugWithInfcx<Self> + Hash + Eq;
+    type BoundExistentialPredicates: BoundExistentialPredicates<Self>;
     type AllocId: Copy + Debug + Hash + Eq;
-    type Pat: Copy + Debug + Hash + Eq + DebugWithInfcx<Self>;
+    type Pat: Copy + Debug + Hash + Eq + Debug + Relate<Self>;
     type Safety: Safety<Self>;
     type Abi: Abi<Self>;
 
     // Kinds of consts
     type Const: Const<Self>;
-    type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type PlaceholderConst: PlaceholderLike;
-    type ParamConst: Copy + Debug + Hash + Eq;
+    type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
     type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type ValueConst: Copy + Debug + Hash + Eq;
-    type ExprConst: Copy + DebugWithInfcx<Self> + Hash + Eq;
+    type ExprConst: Copy + Debug + Hash + Eq + Relate<Self>;
 
     // Kinds of regions
     type Region: Region<Self>;
-    type EarlyParamRegion: Copy + Debug + Hash + Eq;
+    type EarlyParamRegion: Copy + Debug + Hash + Eq + ParamLike;
     type LateParamRegion: Copy + Debug + Hash + Eq;
     type BoundRegion: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
-    type InferRegion: Copy + DebugWithInfcx<Self> + Hash + Eq;
     type PlaceholderRegion: PlaceholderLike;
 
     // Predicates
-    type ParamEnv: Copy + Debug + Hash + Eq;
+    type ParamEnv: ParamEnv<Self>;
     type Predicate: Predicate<Self>;
-    type TraitPredicate: Copy + Debug + Hash + Eq;
-    type RegionOutlivesPredicate: Copy + Debug + Hash + Eq;
-    type TypeOutlivesPredicate: Copy + Debug + Hash + Eq;
-    type ProjectionPredicate: Copy + Debug + Hash + Eq;
-    type NormalizesTo: Copy + Debug + Hash + Eq;
-    type SubtypePredicate: Copy + Debug + Hash + Eq;
-    type CoercePredicate: Copy + Debug + Hash + Eq;
-    type ClosureKind: Copy + Debug + Hash + Eq;
+    type Clause: Clause<Self>;
     type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
 
-    fn mk_canonical_var_infos(self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
+    type EvaluationCache: EvaluationCache<Self>;
+    fn evaluation_cache(self, mode: SolverMode) -> Self::EvaluationCache;
+
+    fn expand_abstract_consts<T: TypeFoldable<Self>>(self, t: T) -> T;
 
     type GenericsOf: GenericsOf<Self>;
     fn generics_of(self, def_id: Self::DefId) -> Self::GenericsOf;
 
-    // FIXME: Remove after uplifting `EarlyBinder`
-    fn type_of_instantiated(self, def_id: Self::DefId, args: Self::GenericArgs) -> Self::Ty;
+    type VariancesOf: Copy
+        + Debug
+        + Deref<Target = [ty::Variance]>
+        // FIXME: This is terrible!
+        + IntoIterator<Item: Deref<Target = ty::Variance>>;
+    fn variances_of(self, def_id: Self::DefId) -> Self::VariancesOf;
 
-    fn alias_ty_kind(self, alias: AliasTy<Self>) -> AliasTyKind;
+    fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;
 
-    fn alias_term_kind(self, alias: AliasTerm<Self>) -> AliasTermKind;
+    type AdtDef: AdtDef<Self>;
+    fn adt_def(self, adt_def_id: Self::DefId) -> Self::AdtDef;
+
+    fn alias_ty_kind(self, alias: ty::AliasTy<Self>) -> ty::AliasTyKind;
+
+    fn alias_term_kind(self, alias: ty::AliasTerm<Self>) -> ty::AliasTermKind;
 
     fn trait_ref_and_own_args_for_alias(
         self,
         def_id: Self::DefId,
         args: Self::GenericArgs,
-    ) -> (TraitRef<Self>, Self::OwnItemArgs);
+    ) -> (ty::TraitRef<Self>, Self::GenericArgsSlice);
 
     fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs;
 
-    fn mk_args_from_iter(self, args: impl Iterator<Item = Self::GenericArg>) -> Self::GenericArgs;
+    fn mk_args_from_iter<I, T>(self, args: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<Self::GenericArg, Self::GenericArgs>;
+
+    fn check_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs) -> bool;
 
     fn check_and_mk_args(
         self,
@@ -123,7 +175,122 @@ pub trait Interner:
         args: impl IntoIterator<Item: Into<Self::GenericArg>>,
     ) -> Self::GenericArgs;
 
+    fn intern_canonical_goal_evaluation_step(
+        self,
+        step: CanonicalGoalEvaluationStep<Self>,
+    ) -> Self::CanonicalGoalEvaluationStepRef;
+
+    fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<Self::Ty, Self::Tys>;
+
     fn parent(self, def_id: Self::DefId) -> Self::DefId;
+
+    fn recursion_limit(self) -> usize;
+
+    type Features: Features<Self>;
+    fn features(self) -> Self::Features;
+
+    fn bound_coroutine_hidden_types(
+        self,
+        def_id: Self::DefId,
+    ) -> impl IntoIterator<Item = ty::EarlyBinder<Self, ty::Binder<Self, Self::Ty>>>;
+
+    fn fn_sig(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, ty::Binder<Self, ty::FnSig<Self>>>;
+
+    fn coroutine_movability(self, def_id: Self::DefId) -> Movability;
+
+    fn coroutine_for_closure(self, def_id: Self::DefId) -> Self::DefId;
+
+    fn generics_require_sized_self(self, def_id: Self::DefId) -> bool;
+
+    fn item_bounds(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+
+    fn predicates_of(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+
+    fn own_predicates_of(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+
+    // FIXME: Rename this so it's obvious it's only *immediate* super predicates.
+    fn super_predicates_of(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+
+    fn has_target_features(self, def_id: Self::DefId) -> bool;
+
+    fn require_lang_item(self, lang_item: TraitSolverLangItem) -> Self::DefId;
+
+    fn is_lang_item(self, def_id: Self::DefId, lang_item: TraitSolverLangItem) -> bool;
+
+    fn associated_type_def_ids(self, def_id: Self::DefId) -> impl IntoIterator<Item = Self::DefId>;
+
+    // FIXME: move `fast_reject` into `rustc_type_ir`.
+    fn args_may_unify_deep(
+        self,
+        obligation_args: Self::GenericArgs,
+        impl_args: Self::GenericArgs,
+    ) -> bool;
+
+    fn for_each_relevant_impl(
+        self,
+        trait_def_id: Self::DefId,
+        self_ty: Self::Ty,
+        f: impl FnMut(Self::DefId),
+    );
+
+    fn has_item_definition(self, def_id: Self::DefId) -> bool;
+
+    fn impl_is_default(self, impl_def_id: Self::DefId) -> bool;
+
+    fn impl_trait_ref(self, impl_def_id: Self::DefId) -> ty::EarlyBinder<Self, ty::TraitRef<Self>>;
+
+    fn impl_polarity(self, impl_def_id: Self::DefId) -> ty::ImplPolarity;
+
+    fn trait_is_auto(self, trait_def_id: Self::DefId) -> bool;
+
+    fn trait_is_alias(self, trait_def_id: Self::DefId) -> bool;
+
+    fn trait_is_object_safe(self, trait_def_id: Self::DefId) -> bool;
+
+    fn trait_may_be_implemented_via_object(self, trait_def_id: Self::DefId) -> bool;
+
+    fn fn_trait_kind_from_def_id(self, trait_def_id: Self::DefId) -> Option<ty::ClosureKind>;
+
+    fn async_fn_trait_kind_from_def_id(self, trait_def_id: Self::DefId) -> Option<ty::ClosureKind>;
+
+    fn supertrait_def_ids(self, trait_def_id: Self::DefId)
+    -> impl IntoIterator<Item = Self::DefId>;
+
+    fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;
+
+    fn is_general_coroutine(self, coroutine_def_id: Self::DefId) -> bool;
+    fn coroutine_is_async(self, coroutine_def_id: Self::DefId) -> bool;
+    fn coroutine_is_gen(self, coroutine_def_id: Self::DefId) -> bool;
+    fn coroutine_is_async_gen(self, coroutine_def_id: Self::DefId) -> bool;
+
+    fn layout_is_pointer_like(self, param_env: Self::ParamEnv, ty: Self::Ty) -> bool;
+
+    type UnsizingParams: Deref<Target = BitSet<u32>>;
+    fn unsizing_params_for_adt(self, adt_def_id: Self::DefId) -> Self::UnsizingParams;
+
+    fn find_const_ty_from_env(
+        self,
+        param_env: Self::ParamEnv,
+        placeholder: Self::PlaceholderConst,
+    ) -> Self::Ty;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

@@ -37,22 +37,19 @@ macro_rules! vis { ($vis:vis) => { stringify!($vis) }; }
 // the same result (which is preferable.)
 macro_rules! c1 {
     ($frag:ident, [$($tt:tt)*], $s:literal) => {
+        // Prior to #125174:
+        // - the first of these two lines created a `TokenKind::Interpolated`
+        //   that was printed by the AST pretty printer;
+        // - the second of these two lines created a token stream that was
+        //   printed by the TokenStream pretty printer.
+        //
+        // Now they are both printed by the TokenStream pretty printer. But it
+        // doesn't hurt to keep both assertions to ensure this remains true.
+        //
+        // (This also explains the name `c1`. There used to be a `c2` macro for
+        // cases where the two pretty printers produced different output.)
         assert_eq!($frag!($($tt)*), $s);
         assert_eq!(stringify!($($tt)*), $s);
-    };
-}
-
-// Use this when AST pretty-printing and TokenStream pretty-printing give
-// different results.
-//
-// `c1` and `c2` could be in a single macro, but having them separate makes it
-// easy to find the cases where the two pretty-printing approaches give
-// different results.
-macro_rules! c2 {
-    ($frag:ident, [$($tt:tt)*], $s1:literal, $s2:literal $(,)?) => {
-        assert_ne!($s1, $s2, "should use `c1!` instead");
-        assert_eq!($frag!($($tt)*), $s1);
-        assert_eq!(stringify!($($tt)*), $s2);
     };
 }
 
@@ -76,7 +73,7 @@ fn test_expr() {
     // ExprKind::Array
     c1!(expr, [ [] ], "[]");
     c1!(expr, [ [true] ], "[true]");
-    c2!(expr, [ [true,] ], "[true]", "[true,]");
+    c1!(expr, [ [true,] ], "[true,]");
     c1!(expr, [ [true, true] ], "[true, true]");
 
     // ExprKind::ConstBlock
@@ -85,11 +82,11 @@ fn test_expr() {
     // ExprKind::Call
     c1!(expr, [ f() ], "f()");
     c1!(expr, [ f::<u8>() ], "f::<u8>()");
-    c2!(expr, [ f ::  < u8>( ) ], "f::<u8>()", "f :: < u8>()");
+    c1!(expr, [ f ::  < u8>( ) ], "f :: < u8>()");
     c1!(expr, [ f::<1>() ], "f::<1>()");
     c1!(expr, [ f::<'a, u8, 1>() ], "f::<'a, u8, 1>()");
     c1!(expr, [ f(true) ], "f(true)");
-    c2!(expr, [ f(true,) ], "f(true)", "f(true,)");
+    c1!(expr, [ f(true,) ], "f(true,)");
     c1!(expr, [ ()() ], "()()");
 
     // ExprKind::MethodCall
@@ -101,7 +98,7 @@ fn test_expr() {
     c1!(expr, [ () ], "()");
     c1!(expr, [ (true,) ], "(true,)");
     c1!(expr, [ (true, false) ], "(true, false)");
-    c2!(expr, [ (true, false,) ], "(true, false)", "(true, false,)");
+    c1!(expr, [ (true, false,) ], "(true, false,)");
 
     // ExprKind::Binary
     c1!(expr, [ true || false ], "true || false");
@@ -131,16 +128,6 @@ fn test_expr() {
     c1!(expr, [ if let Some(a) = b { c } else { d } ], "if let Some(a) = b { c } else { d }");
     c1!(expr, [ if let _ = true && false {} ], "if let _ = true && false {}");
     c1!(expr, [ if let _ = (true && false) {} ], "if let _ = (true && false) {}");
-    macro_rules! c2_if_let {
-        ($expr:expr, $expr_expected:expr, $tokens_expected:expr $(,)?) => {
-            c2!(expr, [ if let _ = $expr {} ], $expr_expected, $tokens_expected);
-        };
-    }
-    c2_if_let!(
-        true && false,
-        "if let _ = (true && false) {}",
-        "if let _ = true && false {}",
-    );
     c1!(expr,
         [ match () { _ if let _ = Struct {} => {} } ],
         "match () { _ if let _ = Struct {} => {} }"
@@ -203,31 +190,6 @@ fn test_expr() {
         } ],
         "match self { Ok => 1, Err => 0, }"
     );
-    macro_rules! c2_match_arm {
-        ([ $expr:expr ], $expr_expected:expr, $tokens_expected:expr $(,)?) => {
-            c2!(expr, [ match () { _ => $expr } ], $expr_expected, $tokens_expected);
-        };
-    }
-    c2_match_arm!(
-        [ { 1 } - 1 ],
-        "match () { _ => ({ 1 }) - 1, }",
-        "match () { _ => { 1 } - 1 }",
-    );
-    c2_match_arm!(
-        [ m!() - 1 ],
-        "match () { _ => m!() - 1, }",
-        "match () { _ => m!() - 1 }",
-    );
-    c2_match_arm!(
-        [ m![] - 1 ],
-        "match () { _ => m![] - 1, }",
-        "match () { _ => m![] - 1 }",
-    );
-    c2_match_arm!(
-        [ m! {} - 1 ],
-        "match () { _ => m! {} - 1, }",
-        "match () { _ => m! {} - 1 }",
-    );
 
     // ExprKind::Closure
     c1!(expr, [ || {} ], "|| {}");
@@ -242,22 +204,19 @@ fn test_expr() {
     c1!(expr, [ static async || self ], "static async || self");
     c1!(expr, [ static async move || self ], "static async move || self");
     c1!(expr, [ || -> u8 { self } ], "|| -> u8 { self }");
-    c2!(expr, [ 1 + || {} ], "1 + (|| {})", "1 + || {}"); // AST??
+    c1!(expr, [ 1 + || {} ], "1 + || {}");
 
     // ExprKind::Block
     c1!(expr, [ {} ], "{}");
     c1!(expr, [ unsafe {} ], "unsafe {}");
     c1!(expr, [ 'a: {} ], "'a: {}");
     c1!(expr, [ #[attr] {} ], "#[attr] {}");
-    c2!(expr,
+    c1!(expr,
         [
             {
                 #![attr]
             }
         ],
-        "{\n\
-        \x20   #![attr]\n\
-        }",
         "{ #![attr] }"
     );
 
@@ -289,7 +248,7 @@ fn test_expr() {
     c1!(expr, [ ..hi ], "..hi");
     c1!(expr, [ lo.. ], "lo..");
     c1!(expr, [ lo..hi ], "lo..hi");
-    c2!(expr, [ lo .. hi ], "lo..hi", "lo .. hi");
+    c1!(expr, [ lo .. hi ], "lo .. hi");
     c1!(expr, [ ..=hi ], "..=hi");
     c1!(expr, [ lo..=hi ], "lo..=hi");
     c1!(expr, [ -2..=-1 ], "-2..=-1");
@@ -382,11 +341,7 @@ fn test_item() {
     c1!(item, [ pub extern crate self as std; ], "pub extern crate self as std;");
 
     // ItemKind::Use
-    c2!(item,
-        [ pub use crate::{a, b::c}; ],
-        "pub use crate::{a, b::c};",
-        "pub use crate::{ a, b::c };" // FIXME
-    );
+    c1!(item, [ pub use crate::{a, b::c}; ], "pub use crate::{ a, b::c };"); // FIXME
     c1!(item, [ pub use A::*; ], "pub use A::*;");
 
     // ItemKind::Static
@@ -418,24 +373,19 @@ fn test_item() {
 
     // ItemKind::ForeignMod
     c1!(item, [ extern "C" {} ], "extern \"C\" {}");
-    c2!(item,
-        [ pub extern "C" {} ],
-        "extern \"C\" {}", // ??
-        "pub extern \"C\" {}"
-    );
+    c1!(item, [ pub extern "C" {} ], "pub extern \"C\" {}");
     c1!(item, [ unsafe extern "C++" {} ], "unsafe extern \"C++\" {}");
 
     // ItemKind::GlobalAsm: untestable because this test works pre-expansion.
 
     // ItemKind::TyAlias
-    c2!(item,
+    c1!(item,
         [
             pub default type Type<'a>: Bound
             where
                 Self: 'a,
             = T;
         ],
-        "pub default type Type<'a>: Bound where Self: 'a = T;",
         "pub default type Type<'a>: Bound where Self: 'a, = T;"
     );
 
@@ -451,7 +401,7 @@ fn test_item() {
         ],
         "enum Empty { Unit, Tuple(), Struct {}, }"
     );
-    c2!(item,
+    c1!(item,
         [
             enum Enum<T>
             where
@@ -462,13 +412,6 @@ fn test_item() {
                 Struct { t: T },
             }
         ],
-        "enum Enum<T> where T: 'a {\n\
-        \x20   Unit,\n\
-        \x20   Tuple(T),\n\
-        \x20   Struct {\n\
-        \x20       t: T,\n\
-        \x20   },\n\
-        }",
         "enum Enum<T> where T: 'a, { Unit, Tuple(T), Struct { t: T }, }"
     );
 
@@ -477,7 +420,7 @@ fn test_item() {
     c1!(item, [ struct Tuple(); ], "struct Tuple();");
     c1!(item, [ struct Tuple(T); ], "struct Tuple(T);");
     c1!(item, [ struct Struct {} ], "struct Struct {}");
-    c2!(item,
+    c1!(item,
         [
             struct Struct<T>
             where
@@ -486,29 +429,23 @@ fn test_item() {
                 t: T,
             }
         ],
-        "struct Struct<T> where T: 'a {\n\
-        \x20   t: T,\n\
-        }",
         "struct Struct<T> where T: 'a, { t: T, }"
     );
 
     // ItemKind::Union
     c1!(item, [ pub union Union {} ], "pub union Union {}");
-    c2!(item,
+    c1!(item,
         [
             union Union<T> where T: 'a {
                 t: T,
             }
         ],
-        "union Union<T> where T: 'a {\n\
-        \x20   t: T,\n\
-        }",
         "union Union<T> where T: 'a { t: T, }"
     );
 
     // ItemKind::Trait
     c1!(item, [ pub unsafe auto trait Send {} ], "pub unsafe auto trait Send {}");
-    c2!(item,
+    c1!(item,
         [
             trait Trait<'a>: Sized
             where
@@ -516,7 +453,6 @@ fn test_item() {
             {
             }
         ],
-        "trait Trait<'a>: Sized where Self: 'a {}",
         "trait Trait<'a>: Sized where Self: 'a, {}"
     );
 
@@ -547,11 +483,7 @@ fn test_item() {
         ],
         "macro_rules! stringify { () => {}; }"
     );
-    c2!(item,
-        [ pub macro stringify() {} ],
-        "pub macro stringify { () => {} }", // ??
-        "pub macro stringify() {}"
-    );
+    c1!(item, [ pub macro stringify() {} ], "pub macro stringify() {}");
 }
 
 #[test]
@@ -577,7 +509,7 @@ fn test_pat() {
     // PatKind::Struct
     c1!(pat, [ Struct {} ], "Struct {}");
     c1!(pat, [ Struct::<u8> {} ], "Struct::<u8> {}");
-    c2!(pat, [ Struct ::< u8 > {} ], "Struct::<u8> {}", "Struct ::< u8 > {}");
+    c1!(pat, [ Struct ::< u8 > {} ], "Struct ::< u8 > {}");
     c1!(pat, [ Struct::<'static> {} ], "Struct::<'static> {}");
     c1!(pat, [ Struct { x } ], "Struct { x }");
     c1!(pat, [ Struct { x: _x } ], "Struct { x: _x }");
@@ -597,8 +529,8 @@ fn test_pat() {
 
     // PatKind::Or
     c1!(pat, [ true | false ], "true | false");
-    c2!(pat, [ | true ], "true", "| true");
-    c2!(pat, [ |true| false ], "true | false", "|true| false");
+    c1!(pat, [ | true ], "| true");
+    c1!(pat, [ |true| false ], "|true| false");
 
     // PatKind::Path
     c1!(pat, [ crate::Path ], "crate::Path");
@@ -631,7 +563,7 @@ fn test_pat() {
     // PatKind::Slice
     c1!(pat, [ [] ], "[]");
     c1!(pat, [ [true] ], "[true]");
-    c2!(pat, [ [true,] ], "[true]", "[true,]");
+    c1!(pat, [ [true,] ], "[true,]");
     c1!(pat, [ [true, false] ], "[true, false]");
 
     // PatKind::Rest
@@ -658,7 +590,7 @@ fn test_path() {
     c1!(path, [ crate::thing ], "crate::thing");
     c1!(path, [ Self::thing ], "Self::thing");
     c1!(path, [ Self<'static> ], "Self<'static>");
-    c2!(path, [ Self::<'static> ], "Self<'static>", "Self::<'static>");
+    c1!(path, [ Self::<'static> ], "Self::<'static>");
     c1!(path, [ Self() ], "Self()");
     c1!(path, [ Self() -> () ], "Self() -> ()");
 }
@@ -666,40 +598,12 @@ fn test_path() {
 #[test]
 fn test_stmt() {
     // StmtKind::Local
-    c2!(stmt, [ let _ ], "let _;", "let _");
-    c2!(stmt, [ let x = true ], "let x = true;", "let x = true");
-    c2!(stmt, [ let x: bool = true ], "let x: bool = true;", "let x: bool = true");
-    c2!(stmt, [ let (a, b) = (1, 2) ], "let (a, b) = (1, 2);", "let (a, b) = (1, 2)");
-    c2!(stmt,
-        [ let (a, b): (u32, u32) = (1, 2) ],
-        "let (a, b): (u32, u32) = (1, 2);",
-        "let (a, b): (u32, u32) = (1, 2)"
-    );
-    c2!(stmt,
-        [ let _ = f() else { return; } ],
-        "let _ = f() else { return; };",
-        "let _ = f() else { return; }",
-    );
-    macro_rules! c2_let_expr_minus_one {
-        ([ $expr:expr ], $stmt_expected:expr, $tokens_expected:expr $(,)?) => {
-            c2!(stmt, [ let _ = $expr - 1 ], $stmt_expected, $tokens_expected);
-        };
-    }
-    c2_let_expr_minus_one!(
-        [ match void {} ],
-        "let _ = match void {} - 1;",
-        "let _ = match void {} - 1",
-    );
-    macro_rules! c2_let_expr_else_return {
-        ([ $expr:expr ], $stmt_expected:expr, $tokens_expected:expr $(,)?) => {
-            c2!(stmt, [ let _ = $expr else { return; } ], $stmt_expected, $tokens_expected);
-        };
-    }
-    c2_let_expr_else_return!(
-        [ f() ],
-        "let _ = f() else { return; };",
-        "let _ = f() else { return; }",
-    );
+    c1!(stmt, [ let _ ], "let _");
+    c1!(stmt, [ let x = true ], "let x = true");
+    c1!(stmt, [ let x: bool = true ], "let x: bool = true");
+    c1!(stmt, [ let (a, b) = (1, 2) ], "let (a, b) = (1, 2)");
+    c1!(stmt, [ let (a, b): (u32, u32) = (1, 2) ], "let (a, b): (u32, u32) = (1, 2)");
+    c1!(stmt, [ let _ = f() else { return; } ], "let _ = f() else { return; }");
 
     // StmtKind::Item
     c1!(stmt, [ struct S; ], "struct S;");
@@ -709,62 +613,7 @@ fn test_stmt() {
     c1!(stmt, [ loop {} ], "loop {}");
 
     // StmtKind::Semi
-    c2!(stmt, [ 1 + 1 ], "1 + 1;", "1 + 1");
-    macro_rules! c2_expr_as_stmt {
-        // Parse as expr, then reparse as stmt.
-        //
-        // The c2_minus_one macro below can't directly call `c2!(stmt, ...)`
-        // because `$expr - 1` cannot be parsed directly as a stmt. A statement
-        // boundary occurs after the `match void {}`, after which the `-` token
-        // hits "no rules expected this token in macro call".
-        //
-        // The unwanted statement boundary is exactly why the pretty-printer is
-        // injecting parentheses around the subexpression, which is the behavior
-        // we are interested in testing.
-        ([ $expr:expr ], $stmt_expected:expr, $tokens_expected:expr $(,)?) => {
-            c2!(stmt, [ $expr ], $stmt_expected, $tokens_expected);
-        };
-    }
-    macro_rules! c2_minus_one {
-        ([ $expr:expr ], $stmt_expected:expr, $tokens_expected:expr $(,)?) => {
-            c2_expr_as_stmt!([ $expr - 1 ], $stmt_expected, $tokens_expected);
-        };
-    }
-    c2_minus_one!(
-        [ match void {} ],
-        "(match void {}) - 1;",
-        "match void {} - 1",
-    );
-    c2_minus_one!(
-        [ match void {}() ],
-        "(match void {})() - 1;",
-        "match void {}() - 1",
-    );
-    c2_minus_one!(
-        [ match void {}[0] ],
-        "(match void {})[0] - 1;",
-        "match void {}[0] - 1",
-    );
-    c2_minus_one!(
-        [ loop { break 1; } ],
-        "(loop { break 1; }) - 1;",
-        "loop { break 1; } - 1",
-    );
-    c2_minus_one!(
-        [ m!() ],
-        "m!() - 1;",
-        "m!() - 1"
-    );
-    c2_minus_one!(
-        [ m![] ],
-        "m![] - 1;",
-        "m![] - 1"
-    );
-    c2_minus_one!(
-        [ m! {} ],
-        "(m! {}) - 1;",
-        "m! {} - 1"
-    );
+    c1!(stmt, [ 1 + 1 ], "1 + 1");
 
     // StmtKind::Empty
     c1!(stmt, [ ; ], ";");
@@ -793,14 +642,14 @@ fn test_ty() {
     c1!(ty, [ &'a T ], "&'a T");
     c1!(ty, [ &'a mut [T] ], "&'a mut [T]");
     c1!(ty, [ &A<B<C<D<E>>>> ], "&A<B<C<D<E>>>>");
-    c2!(ty, [ &A<B<C<D<E> > > > ], "&A<B<C<D<E>>>>", "&A<B<C<D<E> > > >");
+    c1!(ty, [ &A<B<C<D<E> > > > ], "&A<B<C<D<E> > > >");
 
     // TyKind::BareFn
     c1!(ty, [ fn() ], "fn()");
     c1!(ty, [ fn() -> () ], "fn() -> ()");
     c1!(ty, [ fn(u8) ], "fn(u8)");
     c1!(ty, [ fn(x: u8) ], "fn(x: u8)");
-    c2!(ty, [ for<> fn() ], "fn()", "for<> fn()");
+    c1!(ty, [ for<> fn() ], "for<> fn()");
     c1!(ty, [ for<'a> fn() ], "for<'a> fn()");
 
     // TyKind::Never
@@ -819,7 +668,7 @@ fn test_ty() {
     c1!(ty, [ T ], "T");
     c1!(ty, [ Ref<'a> ], "Ref<'a>");
     c1!(ty, [ PhantomData<T> ], "PhantomData<T>");
-    c2!(ty, [ PhantomData::<T> ], "PhantomData<T>", "PhantomData::<T>");
+    c1!(ty, [ PhantomData::<T> ], "PhantomData::<T>");
     c1!(ty, [ Fn() -> ! ], "Fn() -> !");
     c1!(ty, [ Fn(u8) -> ! ], "Fn(u8) -> !");
     c1!(ty, [ <Struct as Trait>::Type ], "<Struct as Trait>::Type");
@@ -864,23 +713,19 @@ fn test_ty() {
 #[test]
 fn test_vis() {
     // VisibilityKind::Public
-    c2!(vis, [ pub ], "pub ", "pub");
+    c1!(vis, [ pub ], "pub");
 
     // VisibilityKind::Restricted
-    c2!(vis, [ pub(crate) ], "pub(crate) ", "pub(crate)");
-    c2!(vis, [ pub(self) ], "pub(self) ", "pub(self)");
-    c2!(vis, [ pub(super) ], "pub(super) ", "pub(super)");
-    c2!(vis, [ pub(in crate) ], "pub(in crate) ", "pub(in crate)");
-    c2!(vis, [ pub(in self) ], "pub(in self) ", "pub(in self)");
-    c2!(vis, [ pub(in super) ], "pub(in super) ", "pub(in super)");
-    c2!(vis, [ pub(in path::to) ], "pub(in path::to) ", "pub(in path::to)");
-    c2!(vis, [ pub(in ::path::to) ], "pub(in ::path::to) ", "pub(in ::path::to)");
-    c2!(vis, [ pub(in self::path::to) ], "pub(in self::path::to) ", "pub(in self::path::to)");
-    c2!(vis,
-        [ pub(in super::path::to) ],
-        "pub(in super::path::to) ",
-        "pub(in super::path::to)"
-    );
+    c1!(vis, [ pub(crate) ], "pub(crate)");
+    c1!(vis, [ pub(self) ], "pub(self)");
+    c1!(vis, [ pub(super) ], "pub(super)");
+    c1!(vis, [ pub(in crate) ], "pub(in crate)");
+    c1!(vis, [ pub(in self) ], "pub(in self)");
+    c1!(vis, [ pub(in super) ], "pub(in super)");
+    c1!(vis, [ pub(in path::to) ], "pub(in path::to)");
+    c1!(vis, [ pub(in ::path::to) ], "pub(in ::path::to)");
+    c1!(vis, [ pub(in self::path::to) ], "pub(in self::path::to)");
+    c1!(vis, [ pub(in super::path::to) ], "pub(in super::path::to)");
 
     // VisibilityKind::Inherited
     // This one is different because directly calling `vis!` does not work.

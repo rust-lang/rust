@@ -1,6 +1,7 @@
 use rustc_middle::mir::{self, NonDivergingIntrinsic};
 use rustc_middle::span_bug;
 use rustc_session::config::OptLevel;
+use tracing::instrument;
 
 use super::FunctionCx;
 use super::LocalRef;

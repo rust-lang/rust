@@ -214,7 +214,8 @@ where
         spans: IndexMap::default(),
         types: IndexMap::default(),
         instances: IndexMap::default(),
-        constants: IndexMap::default(),
+        ty_consts: IndexMap::default(),
+        mir_consts: IndexMap::default(),
         layouts: IndexMap::default(),
     }));
     stable_mir::compiler_interface::run(&tables, || init(&tables, f))

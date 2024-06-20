@@ -30,7 +30,7 @@ use std::assert_matches::assert_matches;
 use std::cell::Cell;
 use std::{cmp, iter, mem};
 
-use rustc_const_eval::transform::check_consts::{qualifs, ConstCx};
+use rustc_const_eval::check_consts::{qualifs, ConstCx};
 
 /// A `MirPass` for promotion.
 ///
@@ -464,13 +464,13 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::UnaryOp(op, operand) => {
                 match op {
                     // These operations can never fail.
-                    UnOp::Neg | UnOp::Not => {}
+                    UnOp::Neg | UnOp::Not | UnOp::PtrMetadata => {}
                 }
 
                 self.validate_operand(operand)?;
             }
 
-            Rvalue::BinaryOp(op, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(op, box (lhs, rhs)) => {
+            Rvalue::BinaryOp(op, box (lhs, rhs)) => {
                 let op = *op;
                 let lhs_ty = lhs.ty(self.body, self.tcx);
 
@@ -500,14 +500,14 @@ impl<'tcx> Validator<'_, 'tcx> {
                                 }
                                 _ => None,
                             };
-                            match rhs_val.map(|x| x.assert_uint(sz)) {
+                            match rhs_val.map(|x| x.to_uint(sz)) {
                                 // for the zero test, int vs uint does not matter
                                 Some(x) if x != 0 => {}        // okay
                                 _ => return Err(Unpromotable), // value not known or 0 -- not okay
                             }
                             // Furthermore, for signed divison, we also have to exclude `int::MIN / -1`.
                             if lhs_ty.is_signed() {
-                                match rhs_val.map(|x| x.assert_int(sz)) {
+                                match rhs_val.map(|x| x.to_int(sz)) {
                                     Some(-1) | None => {
                                         // The RHS is -1 or unknown, so we have to be careful.
                                         // But is the LHS int::MIN?
@@ -518,7 +518,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                             _ => None,
                                         };
                                         let lhs_min = sz.signed_int_min();
-                                        match lhs_val.map(|x| x.assert_int(sz)) {
+                                        match lhs_val.map(|x| x.to_int(sz)) {
                                             Some(x) if x != lhs_min => {}  // okay
                                             _ => return Err(Unpromotable), // value not known or int::MIN -- not okay
                                         }
@@ -539,10 +539,13 @@ impl<'tcx> Validator<'_, 'tcx> {
                     | BinOp::Offset
                     | BinOp::Add
                     | BinOp::AddUnchecked
+                    | BinOp::AddWithOverflow
                     | BinOp::Sub
                     | BinOp::SubUnchecked
+                    | BinOp::SubWithOverflow
                     | BinOp::Mul
                     | BinOp::MulUnchecked
+                    | BinOp::MulWithOverflow
                     | BinOp::BitXor
                     | BinOp::BitAnd
                     | BinOp::BitOr
@@ -953,7 +956,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
         }
     }
 
-    fn visit_constant(&mut self, constant: &mut ConstOperand<'tcx>, _location: Location) {
+    fn visit_const_operand(&mut self, constant: &mut ConstOperand<'tcx>, _location: Location) {
         if constant.const_.is_required_const() {
             self.promoted.required_consts.push(*constant);
         }

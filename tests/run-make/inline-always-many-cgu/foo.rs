@@ -2,11 +2,9 @@
 
 pub mod a {
     #[inline(always)]
-    pub fn foo() {
-    }
+    pub fn foo() {}
 
-    pub fn bar() {
-    }
+    pub fn bar() {}
 }
 
 #[no_mangle]

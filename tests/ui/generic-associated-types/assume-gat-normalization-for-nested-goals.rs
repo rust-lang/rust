@@ -1,8 +1,7 @@
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
-//@[current] known-bug: #117606
-//@[next] check-pass
+//@ known-bug: #117606
 
 #![feature(associated_type_defaults)]
 

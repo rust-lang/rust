@@ -125,8 +125,8 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         placeholder_indices,
         placeholder_index_to_region: _,
         liveness_constraints,
-        outlives_constraints,
-        member_constraints,
+        mut outlives_constraints,
+        mut member_constraints,
         universe_causes,
         type_tests,
     } = constraints;
@@ -143,6 +143,16 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         &universal_regions,
         &universal_region_relations,
     );
+
+    if let Some(guar) = universal_regions.tainted_by_errors() {
+        // Suppress unhelpful extra errors in `infer_opaque_types` by clearing out all
+        // outlives bounds that we may end up checking.
+        outlives_constraints = Default::default();
+        member_constraints = Default::default();
+
+        // Also taint the entire scope.
+        infcx.set_tainted_by_errors(guar);
+    }
 
     let mut regioncx = RegionInferenceContext::new(
         infcx,

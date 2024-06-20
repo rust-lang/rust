@@ -177,8 +177,6 @@ declare_features! (
 
     /// Allows using the `unadjusted` ABI; perma-unstable.
     (internal, abi_unadjusted, "1.16.0", None),
-    /// Allows using the `vectorcall` ABI.
-    (unstable, abi_vectorcall, "1.7.0", None),
     /// Allows using `#![needs_allocator]`, an implementation detail of `#[global_allocator]`.
     (internal, allocator_internals, "1.20.0", None),
     /// Allows using `#[allow_internal_unsafe]`. This is an
@@ -243,6 +241,8 @@ declare_features! (
     // feature-group-start: internal feature gates
     // -------------------------------------------------------------------------
 
+    /// Allows using the `vectorcall` ABI.
+    (unstable, abi_vectorcall, "1.7.0", Some(124485)),
     /// Allows features specific to auto traits.
     /// Renamed from `optin_builtin_traits`.
     (unstable, auto_traits, "1.50.0", Some(13231)),
@@ -424,8 +424,6 @@ declare_features! (
     /// Allows function attribute `#[coverage(on/off)]`, to control coverage
     /// instrumentation of that function.
     (unstable, coverage_attribute, "1.74.0", Some(84605)),
-    /// Allows users to provide classes for fenced code block using `class:classname`.
-    (unstable, custom_code_classes_in_docs, "1.74.0", Some(79483)),
     /// Allows non-builtin attributes in inner attribute position.
     (unstable, custom_inner_attributes, "1.30.0", Some(54726)),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.
@@ -459,7 +457,7 @@ declare_features! (
     /// Allows explicit tail calls via `become` expression.
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
     /// Uses 2024 rules for matching `expr` fragments in macros. Also enables `expr_2021` fragment.
-    (incomplete, expr_fragment_specifier_2024, "CURRENT_RUSTC_VERSION", Some(123742)),
+    (incomplete, expr_fragment_specifier_2024, "1.80.0", Some(123742)),
     /// Allows using `efiapi`, `sysv64` and `win64` as calling convention
     /// for functions with varargs.
     (unstable, extended_varargs_abi_support, "1.65.0", Some(100189)),
@@ -489,6 +487,8 @@ declare_features! (
     (incomplete, generic_const_exprs, "1.56.0", Some(76560)),
     /// Allows generic parameters and where-clauses on free & associated const items.
     (incomplete, generic_const_items, "1.73.0", Some(113521)),
+    /// Allows registering static items globally, possibly across crates, to iterate over at runtime.
+    (unstable, global_registration, "1.80.0", Some(125119)),
     /// Allows using `..=X` as a patterns in slices.
     (unstable, half_open_range_patterns_in_slices, "1.66.0", Some(67264)),
     /// Allows `if let` guard in match arms.
@@ -516,6 +516,8 @@ declare_features! (
     (unstable, lint_reasons, "1.31.0", Some(54503)),
     /// Give access to additional metadata about declarative macro meta-variables.
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
+    /// Provides a way to concatenate identifiers using metavariable expressions.
+    (unstable, macro_metavar_expr_concat, "CURRENT_RUSTC_VERSION", Some(124225)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types in cases that are
@@ -529,8 +531,6 @@ declare_features! (
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
     /// Allows the `#[must_not_suspend]` attribute.
     (unstable, must_not_suspend, "1.57.0", Some(83310)),
-    /// Make `mut` not reset the binding mode on edition >= 2024.
-    (incomplete, mut_preserve_binding_mode_2024, "1.79.0", Some(123076)),
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
     (incomplete, mut_ref, "1.79.0", Some(123076)),
     /// Allows using `#[naked]` on functions.
@@ -561,20 +561,20 @@ declare_features! (
     (unstable, offset_of_enum, "1.75.0", Some(120141)),
     /// Allows using multiple nested field accesses in offset_of!
     (unstable, offset_of_nested, "1.77.0", Some(120140)),
+    /// Allows using fields with slice type in offset_of!
+    (unstable, offset_of_slice, "CURRENT_RUSTC_VERSION", Some(126151)),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
-    /// Allows `use<'a, 'b, A, B>` in `impl use<...> Trait` for precise capture of generic args.
-    (incomplete, precise_capturing, "1.79.0", Some(123432)),
+    /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
+    (unstable, precise_capturing, "1.79.0", Some(123432)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
     (unstable, raw_ref_op, "1.41.0", Some(64490)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
     (incomplete, ref_pat_eat_one_layer_2024, "1.79.0", Some(123076)),
-    /// Allows `&` and `&mut` patterns to consume match-ergonomics-inserted references.
-    (incomplete, ref_pat_everywhere, "1.79.0", Some(123076)),
     /// Allows using the `#[register_tool]` attribute.
     (unstable, register_tool, "1.41.0", Some(66079)),
     /// Allows the `#[repr(i128)]` attribute for enums.
@@ -583,11 +583,13 @@ declare_features! (
     (unstable, repr_simd, "1.4.0", Some(27731)),
     /// Allows enums like Result<T, E> to be used across FFI, if T's niche value can
     /// be used to describe E or vise-versa.
-    (unstable, result_ffi_guarantees, "CURRENT_RUSTC_VERSION", Some(110503)),
+    (unstable, result_ffi_guarantees, "1.80.0", Some(110503)),
     /// Allows bounding the return type of AFIT/RPITIT.
     (incomplete, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
+    /// Shortern the tail expression lifetime
+    (unstable, shorter_tail_lifetimes, "1.79.0", Some(123739)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
     (unstable, simd_ffi, "1.0.0", Some(27731)),
     /// Allows specialization of implementations (RFC 1210).
@@ -624,6 +626,10 @@ declare_features! (
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
     /// Allows unnamed fields of struct and union type
     (incomplete, unnamed_fields, "1.74.0", Some(49804)),
+    /// Allows unsafe attributes.
+    (unstable, unsafe_attributes, "1.80.0", Some(123757)),
+    /// Allows unsafe on extern declarations and safety qualifiers over internal items.
+    (unstable, unsafe_extern_blocks, "1.80.0", Some(123743)),
     /// Allows unsized fn parameters.
     (unstable, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows unsized rvalues at arguments and parameters.

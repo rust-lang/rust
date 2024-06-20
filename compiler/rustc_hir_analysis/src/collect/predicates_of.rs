@@ -1,7 +1,7 @@
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
-use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
+use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter, RegionInferReason};
 use hir::{HirId, Node};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
@@ -117,7 +117,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     let mut is_trait = None;
     let mut is_default_impl_trait = None;
 
-    // FIXME: Should ItemCtxt take a LocalDefId?
     let icx = ItemCtxt::new(tcx, def_id);
 
     const NO_GENERICS: &hir::Generics<'_> = hir::Generics::empty();
@@ -170,12 +169,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         predicates.insert((trait_ref.upcast(tcx), tcx.def_span(def_id)));
     }
 
-    // Collect the predicates that were written inline by the user on each
-    // type parameter (e.g., `<T: Foo>`). Also add `ConstArgHasType` predicates
-    // for each const parameter.
+    // Add implicit predicates that should be treated as if the user has written them,
+    // including the implicit `T: Sized` for all generic parameters, and `ConstArgHasType`
+    // for const params.
     for param in hir_generics.params {
         match param.kind {
-            // We already dealt with early bound lifetimes above.
             GenericParamKind::Lifetime { .. } => (),
             GenericParamKind::Type { .. } => {
                 let param_ty = icx.lowerer().lower_ty_param(param.hir_id);
@@ -197,7 +195,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     .type_of(param.def_id.to_def_id())
                     .no_bound_vars()
                     .expect("const parameters cannot be generic");
-                let ct = icx.lowerer().lower_const_param(param.hir_id, ct_ty);
+                let ct = icx.lowerer().lower_const_param(param.hir_id);
                 predicates
                     .insert((ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx), param.span));
             }
@@ -205,7 +203,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     }
 
     trace!(?predicates);
-    // Add in the bounds that appear in the where-clause.
+    // Add inline `<T: Foo>` bounds and bounds in the where clause.
     for predicate in hir_generics.predicates {
         match predicate {
             hir::WherePredicate::BoundPredicate(bound_pred) => {
@@ -244,12 +242,15 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             }
 
             hir::WherePredicate::RegionPredicate(region_pred) => {
-                let r1 = icx.lowerer().lower_lifetime(region_pred.lifetime, None);
+                let r1 = icx
+                    .lowerer()
+                    .lower_lifetime(region_pred.lifetime, RegionInferReason::RegionPredicate);
                 predicates.extend(region_pred.bounds.iter().map(|bound| {
                     let (r2, span) = match bound {
-                        hir::GenericBound::Outlives(lt) => {
-                            (icx.lowerer().lower_lifetime(lt, None), lt.ident.span)
-                        }
+                        hir::GenericBound::Outlives(lt) => (
+                            icx.lowerer().lower_lifetime(lt, RegionInferReason::RegionPredicate),
+                            lt.ident.span,
+                        ),
                         bound => {
                             span_bug!(
                                 bound.span(),
@@ -323,7 +324,7 @@ fn compute_bidirectional_outlives_predicates<'tcx>(
         if let ty::ReEarlyParam(..) = *orig_lifetime {
             let dup_lifetime = ty::Region::new_early_param(
                 tcx,
-                ty::EarlyParamRegion { def_id: param.def_id, index: param.index, name: param.name },
+                ty::EarlyParamRegion { index: param.index, name: param.name },
             );
             let span = tcx.def_span(param.def_id);
             predicates.push((
@@ -461,83 +462,55 @@ pub(super) fn explicit_predicates_of<'tcx>(
             }
         }
     } else {
-        if matches!(def_kind, DefKind::AnonConst) && tcx.features().generic_const_exprs {
-            let hir_id = tcx.local_def_id_to_hir_id(def_id);
-            let parent_def_id = tcx.hir().get_parent_item(hir_id);
+        if matches!(def_kind, DefKind::AnonConst)
+            && tcx.features().generic_const_exprs
+            && let Some(defaulted_param_def_id) =
+                tcx.hir().opt_const_param_default_param_def_id(tcx.local_def_id_to_hir_id(def_id))
+        {
+            // In `generics_of` we set the generics' parent to be our parent's parent which means that
+            // we lose out on the predicates of our actual parent if we dont return those predicates here.
+            // (See comment in `generics_of` for more information on why the parent shenanigans is necessary)
+            //
+            // struct Foo<T, const N: usize = { <T as Trait>::ASSOC }>(T) where T: Trait;
+            //        ^^^                     ^^^^^^^^^^^^^^^^^^^^^^^ the def id we are calling
+            //        ^^^                                             explicit_predicates_of on
+            //        parent item we dont have set as the
+            //        parent of generics returned by `generics_of`
+            //
+            // In the above code we want the anon const to have predicates in its param env for `T: Trait`
+            // and we would be calling `explicit_predicates_of(Foo)` here
+            let parent_def_id = tcx.local_parent(def_id);
+            let parent_preds = tcx.explicit_predicates_of(parent_def_id);
 
-            if let Some(defaulted_param_def_id) =
-                tcx.hir().opt_const_param_default_param_def_id(hir_id)
-            {
-                // In `generics_of` we set the generics' parent to be our parent's parent which means that
-                // we lose out on the predicates of our actual parent if we dont return those predicates here.
-                // (See comment in `generics_of` for more information on why the parent shenanigans is necessary)
-                //
-                // struct Foo<T, const N: usize = { <T as Trait>::ASSOC }>(T) where T: Trait;
-                //        ^^^                     ^^^^^^^^^^^^^^^^^^^^^^^ the def id we are calling
-                //        ^^^                                             explicit_predicates_of on
-                //        parent item we dont have set as the
-                //        parent of generics returned by `generics_of`
-                //
-                // In the above code we want the anon const to have predicates in its param env for `T: Trait`
-                // and we would be calling `explicit_predicates_of(Foo)` here
-                let parent_preds = tcx.explicit_predicates_of(parent_def_id);
-
-                // If we dont filter out `ConstArgHasType` predicates then every single defaulted const parameter
-                // will ICE because of #106994. FIXME(generic_const_exprs): remove this when a more general solution
-                // to #106994 is implemented.
-                let filtered_predicates = parent_preds
-                    .predicates
-                    .into_iter()
-                    .filter(|(pred, _)| {
-                        if let ty::ClauseKind::ConstArgHasType(ct, _) = pred.kind().skip_binder() {
-                            match ct.kind() {
-                                ty::ConstKind::Param(param_const) => {
-                                    let defaulted_param_idx = tcx
-                                        .generics_of(parent_def_id)
-                                        .param_def_id_to_index[&defaulted_param_def_id.to_def_id()];
-                                    param_const.index < defaulted_param_idx
-                                }
-                                _ => bug!(
-                                    "`ConstArgHasType` in `predicates_of`\
-                                 that isn't a `Param` const"
-                                ),
+            // If we dont filter out `ConstArgHasType` predicates then every single defaulted const parameter
+            // will ICE because of #106994. FIXME(generic_const_exprs): remove this when a more general solution
+            // to #106994 is implemented.
+            let filtered_predicates = parent_preds
+                .predicates
+                .into_iter()
+                .filter(|(pred, _)| {
+                    if let ty::ClauseKind::ConstArgHasType(ct, _) = pred.kind().skip_binder() {
+                        match ct.kind() {
+                            ty::ConstKind::Param(param_const) => {
+                                let defaulted_param_idx = tcx
+                                    .generics_of(parent_def_id)
+                                    .param_def_id_to_index[&defaulted_param_def_id.to_def_id()];
+                                param_const.index < defaulted_param_idx
                             }
-                        } else {
-                            true
+                            _ => bug!(
+                                "`ConstArgHasType` in `predicates_of`\
+                                 that isn't a `Param` const"
+                            ),
                         }
-                    })
-                    .cloned();
-                return GenericPredicates {
-                    parent: parent_preds.parent,
-                    predicates: { tcx.arena.alloc_from_iter(filtered_predicates) },
-                };
-            }
-
-            let parent_def_kind = tcx.def_kind(parent_def_id);
-            if matches!(parent_def_kind, DefKind::OpaqueTy) {
-                // In `instantiate_identity` we inherit the predicates of our parent.
-                // However, opaque types do not have a parent (see `gather_explicit_predicates_of`), which means
-                // that we lose out on the predicates of our actual parent if we dont return those predicates here.
-                //
-                //
-                // fn foo<T: Trait>() -> impl Iterator<Output = Another<{ <T as Trait>::ASSOC }> > { todo!() }
-                //                                                        ^^^^^^^^^^^^^^^^^^^ the def id we are calling
-                //                                                                            explicit_predicates_of on
-                //
-                // In the above code we want the anon const to have predicates in its param env for `T: Trait`.
-                // However, the anon const cannot inherit predicates from its parent since it's opaque.
-                //
-                // To fix this, we call `explicit_predicates_of` directly on `foo`, the parent's parent.
-
-                // In the above example this is `foo::{opaque#0}` or `impl Iterator`
-                let parent_hir_id = tcx.local_def_id_to_hir_id(parent_def_id.def_id);
-
-                // In the above example this is the function `foo`
-                let item_def_id = tcx.hir().get_parent_item(parent_hir_id);
-
-                // In the above code example we would be calling `explicit_predicates_of(foo)` here
-                return tcx.explicit_predicates_of(item_def_id);
-            }
+                    } else {
+                        true
+                    }
+                })
+                .cloned();
+            return GenericPredicates {
+                parent: parent_preds.parent,
+                predicates: { tcx.arena.alloc_from_iter(filtered_predicates) },
+            };
         }
         gather_explicit_predicates_of(tcx, def_id)
     }

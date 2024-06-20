@@ -139,6 +139,11 @@ impl Buf {
     }
 
     #[inline]
+    pub fn leak<'a>(self) -> &'a mut Slice {
+        unsafe { mem::transmute(self.inner.leak()) }
+    }
+
+    #[inline]
     pub fn into_box(self) -> Box<Slice> {
         unsafe { mem::transmute(self.inner.into_box()) }
     }

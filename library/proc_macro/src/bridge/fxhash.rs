@@ -7,7 +7,6 @@
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
 use std::hash::Hasher;
-use std::mem::size_of;
 use std::ops::BitXor;
 
 /// Type alias for a hashmap using the `fx` hash algorithm.
@@ -69,7 +68,7 @@ impl Hasher for FxHasher {
             hash.add_to_hash(u16::from_ne_bytes(bytes[..2].try_into().unwrap()) as usize);
             bytes = &bytes[2..];
         }
-        if (size_of::<usize>() > 1) && bytes.len() >= 1 {
+        if (size_of::<usize>() > 1) && !bytes.is_empty() {
             hash.add_to_hash(bytes[0] as usize);
         }
         self.hash = hash.hash;

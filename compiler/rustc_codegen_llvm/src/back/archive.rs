@@ -18,6 +18,7 @@ use rustc_codegen_ssa::back::archive::{
     get_native_object_symbols, try_extract_macho_fat_archive, ArArchiveBuilder,
     ArchiveBuildFailure, ArchiveBuilder, ArchiveBuilderBuilder, UnknownArchiveKind,
 };
+use tracing::trace;
 
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
@@ -127,11 +128,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
         is_direct_dependency: bool,
     ) -> PathBuf {
         let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
-        let output_path = {
-            let mut output_path: PathBuf = tmpdir.to_path_buf();
-            output_path.push(format!("{lib_name}{name_suffix}"));
-            output_path.with_extension("lib")
-        };
+        let output_path = tmpdir.join(format!("{lib_name}{name_suffix}.lib"));
 
         let target = &sess.target;
         let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(target);
@@ -156,8 +153,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             // that loaded but crashed with an AV upon calling one of the imported
             // functions. Therefore, use binutils to create the import library instead,
             // by writing a .DEF file to the temp dir and calling binutils's dlltool.
-            let def_file_path =
-                tmpdir.join(format!("{lib_name}{name_suffix}")).with_extension("def");
+            let def_file_path = tmpdir.join(format!("{lib_name}{name_suffix}.def"));
 
             let def_file_content = format!(
                 "EXPORTS\n{}",
@@ -200,21 +196,20 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
                 _ => panic!("unsupported arch {}", sess.target.arch),
             };
             let mut dlltool_cmd = std::process::Command::new(&dlltool);
-            dlltool_cmd.args([
-                "-d",
-                def_file_path.to_str().unwrap(),
-                "-D",
-                lib_name,
-                "-l",
-                output_path.to_str().unwrap(),
-                "-m",
-                dlltool_target_arch,
-                "-f",
-                dlltool_target_bitness,
-                "--no-leading-underscore",
-                "--temp-prefix",
-                temp_prefix.to_str().unwrap(),
-            ]);
+            dlltool_cmd
+                .arg("-d")
+                .arg(def_file_path)
+                .arg("-D")
+                .arg(lib_name)
+                .arg("-l")
+                .arg(&output_path)
+                .arg("-m")
+                .arg(dlltool_target_arch)
+                .arg("-f")
+                .arg(dlltool_target_bitness)
+                .arg("--no-leading-underscore")
+                .arg("--temp-prefix")
+                .arg(temp_prefix);
 
             match dlltool_cmd.output() {
                 Err(e) => {

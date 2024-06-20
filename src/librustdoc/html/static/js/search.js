@@ -89,6 +89,10 @@ const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 // of permutations we need to check.
 const UNBOXING_LIMIT = 5;
 
+// used for search query verification
+const REGEX_IDENT = /\p{ID_Start}\p{ID_Continue}*|_\p{ID_Continue}+/uy;
+const REGEX_INVALID_TYPE_FILTER = /[^a-z]/ui;
+
 // In the search display, allows to switch between tabs.
 function printTab(nb) {
     let iter = 0;
@@ -410,18 +414,21 @@ function initSearch(rawSearchIndex) {
     }
 
     /**
-     * Returns `true` if the given `c` character is valid for an ident.
+     * If the current parser position is at the beginning of an identifier,
+     * move the position to the end of it and return `true`. Otherwise, return `false`.
      *
-     * @param {string} c
+     * @param {ParserState} parserState
      *
      * @return {boolean}
      */
-    function isIdentCharacter(c) {
-        return (
-            c === "_" ||
-            (c >= "0" && c <= "9") ||
-            (c >= "a" && c <= "z") ||
-            (c >= "A" && c <= "Z"));
+    function consumeIdent(parserState) {
+        REGEX_IDENT.lastIndex = parserState.pos;
+        const match = parserState.userQuery.match(REGEX_IDENT);
+        if (match) {
+            parserState.pos += match[0].length;
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -618,70 +625,62 @@ function initSearch(rawSearchIndex) {
      * @return {integer}
      */
     function getIdentEndPosition(parserState) {
-        const start = parserState.pos;
+        let afterIdent = consumeIdent(parserState);
         let end = parserState.pos;
-        let foundExclamation = -1;
+        let macroExclamation = -1;
         while (parserState.pos < parserState.length) {
             const c = parserState.userQuery[parserState.pos];
-            if (!isIdentCharacter(c)) {
-                if (c === "!") {
-                    if (foundExclamation !== -1) {
-                        throw ["Cannot have more than one ", "!", " in an ident"];
-                    } else if (parserState.pos + 1 < parserState.length &&
-                        isIdentCharacter(parserState.userQuery[parserState.pos + 1])
-                    ) {
+            if (c === "!") {
+                if (macroExclamation !== -1) {
+                    throw ["Cannot have more than one ", "!", " in an ident"];
+                } else if (parserState.pos + 1 < parserState.length) {
+                    const pos = parserState.pos;
+                    parserState.pos++;
+                    const beforeIdent = consumeIdent(parserState);
+                    parserState.pos = pos;
+                    if (beforeIdent) {
                         throw ["Unexpected ", "!", ": it can only be at the end of an ident"];
                     }
-                    foundExclamation = parserState.pos;
-                } else if (isPathSeparator(c)) {
-                    if (c === ":") {
-                        if (!isPathStart(parserState)) {
+                }
+                if (afterIdent) macroExclamation = parserState.pos;
+            } else if (isPathSeparator(c)) {
+                if (c === ":") {
+                    if (!isPathStart(parserState)) {
+                        break;
+                    }
+                    // Skip current ":".
+                    parserState.pos += 1;
+                } else {
+                    while (parserState.pos + 1 < parserState.length) {
+                        const next_c = parserState.userQuery[parserState.pos + 1];
+                        if (next_c !== " ") {
                             break;
                         }
-                        // Skip current ":".
                         parserState.pos += 1;
-                    } else {
-                        while (parserState.pos + 1 < parserState.length) {
-                            const next_c = parserState.userQuery[parserState.pos + 1];
-                            if (next_c !== " ") {
-                                break;
-                            }
-                            parserState.pos += 1;
-                        }
                     }
-                    if (foundExclamation !== -1) {
-                        if (foundExclamation !== start &&
-                            isIdentCharacter(parserState.userQuery[foundExclamation - 1])
-                        ) {
-                            throw ["Cannot have associated items in macros"];
-                        } else {
-                            // while the never type has no associated macros, we still
-                            // can parse a path like that
-                            foundExclamation = -1;
-                        }
-                    }
-                } else if (
-                    c === "[" ||
-                    c === "(" ||
-                    isEndCharacter(c) ||
-                    isSpecialStartCharacter(c) ||
-                    isSeparatorCharacter(c)
-                ) {
-                    break;
-                } else if (parserState.pos > 0) {
-                    throw ["Unexpected ", c, " after ", parserState.userQuery[parserState.pos - 1]];
-                } else {
-                    throw ["Unexpected ", c];
                 }
+                if (macroExclamation !== -1) {
+                    throw ["Cannot have associated items in macros"];
+                }
+            } else if (
+                c === "[" ||
+                c === "(" ||
+                isEndCharacter(c) ||
+                isSpecialStartCharacter(c) ||
+                isSeparatorCharacter(c)
+            ) {
+                break;
+            } else if (parserState.pos > 0) {
+                throw ["Unexpected ", c, " after ", parserState.userQuery[parserState.pos - 1],
+                    " (not a valid identifier)"];
+            } else {
+                throw ["Unexpected ", c, " (not a valid identifier)"];
             }
             parserState.pos += 1;
+            afterIdent = consumeIdent(parserState);
             end = parserState.pos;
         }
-        // if start == end - 1, we got the never type
-        if (foundExclamation !== -1 &&
-            foundExclamation !== start &&
-            isIdentCharacter(parserState.userQuery[foundExclamation - 1])
-        ) {
+        if (macroExclamation !== -1) {
             if (parserState.typeFilter === null) {
                 parserState.typeFilter = "macro";
             } else if (parserState.typeFilter !== "macro") {
@@ -693,7 +692,7 @@ function initSearch(rawSearchIndex) {
                     " both specified",
                 ];
             }
-            end = foundExclamation;
+            end = macroExclamation;
         }
         return end;
     }
@@ -1071,16 +1070,15 @@ function initSearch(rawSearchIndex) {
     function checkExtraTypeFilterCharacters(start, parserState) {
         const query = parserState.userQuery.slice(start, parserState.pos).trim();
 
-        for (const c in query) {
-            if (!isIdentCharacter(query[c])) {
-                throw [
-                    "Unexpected ",
-                    query[c],
-                    " in type filter (before ",
-                    ":",
-                    ")",
-                ];
-            }
+        const match = query.match(REGEX_INVALID_TYPE_FILTER);
+        if (match) {
+            throw [
+                "Unexpected ",
+                match[0],
+                " in type filter (before ",
+                ":",
+                ")",
+            ];
         }
     }
 
@@ -2127,7 +2125,7 @@ function initSearch(rawSearchIndex) {
             };
         }
 
-        function handleAliases(ret, query, filterCrates, currentCrate) {
+        async function handleAliases(ret, query, filterCrates, currentCrate) {
             const lowerQuery = query.toLowerCase();
             // We separate aliases and crate aliases because we want to have current crate
             // aliases to be before the others in the displayed results.
@@ -2163,6 +2161,15 @@ function initSearch(rawSearchIndex) {
             crateAliases.sort(sortFunc);
             aliases.sort(sortFunc);
 
+            const fetchDesc = alias => {
+                return searchIndexEmptyDesc.get(alias.crate).contains(alias.bitIndex) ?
+                    "" : searchState.loadDesc(alias);
+            };
+            const [crateDescs, descs] = await Promise.all([
+                Promise.all(crateAliases.map(fetchDesc)),
+                Promise.all(aliases.map(fetchDesc)),
+            ]);
+
             const pushFunc = alias => {
                 alias.alias = query;
                 const res = buildHrefAndPath(alias);
@@ -2176,7 +2183,13 @@ function initSearch(rawSearchIndex) {
                 }
             };
 
+            aliases.forEach((alias, i) => {
+                alias.desc = descs[i];
+            });
             aliases.forEach(pushFunc);
+            crateAliases.forEach((alias, i) => {
+                alias.desc = crateDescs[i];
+            });
             crateAliases.forEach(pushFunc);
         }
 
@@ -2386,15 +2399,19 @@ function initSearch(rawSearchIndex) {
              * @param {boolean} isAssocType
              */
             function convertNameToId(elem, isAssocType) {
-                if (typeNameIdMap.has(elem.normalizedPathLast) &&
-                    (isAssocType || !typeNameIdMap.get(elem.normalizedPathLast).assocOnly)) {
-                    elem.id = typeNameIdMap.get(elem.normalizedPathLast).id;
+                const loweredName = elem.pathLast.toLowerCase();
+                if (typeNameIdMap.has(loweredName) &&
+                    (isAssocType || !typeNameIdMap.get(loweredName).assocOnly)) {
+                    elem.id = typeNameIdMap.get(loweredName).id;
                 } else if (!parsedQuery.literalSearch) {
                     let match = null;
                     let matchDist = maxEditDistance + 1;
                     let matchName = "";
                     for (const [name, {id, assocOnly}] of typeNameIdMap) {
-                        const dist = editDistance(name, elem.normalizedPathLast, maxEditDistance);
+                        const dist = Math.min(
+                            editDistance(name, loweredName, maxEditDistance),
+                            editDistance(name, elem.normalizedPathLast, maxEditDistance),
+                        );
                         if (dist <= matchDist && dist <= maxEditDistance &&
                             (isAssocType || !assocOnly)) {
                             if (dist === matchDist && matchName > name) {
@@ -2538,7 +2555,8 @@ function initSearch(rawSearchIndex) {
             sorted_returned,
             sorted_others,
             parsedQuery);
-        handleAliases(ret, parsedQuery.original.replace(/"/g, ""), filterCrates, currentCrate);
+        await handleAliases(ret, parsedQuery.original.replace(/"/g, ""),
+            filterCrates, currentCrate);
         await Promise.all([ret.others, ret.returned, ret.in_args].map(async list => {
             const descs = await Promise.all(list.map(result => {
                 return searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?

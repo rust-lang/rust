@@ -2080,8 +2080,7 @@ pub trait Iterator {
     fn try_collect<B>(&mut self) -> ChangeOutputType<Self::Item, B>
     where
         Self: Sized,
-        <Self as Iterator>::Item: Try,
-        <<Self as Iterator>::Item as Try>::Residual: Residual<B>,
+        Self::Item: Try<Residual: Residual<B>>,
         B: FromIterator<<Self::Item as Try>::Output>,
     {
         try_process(ByRefSized(self), |i| i.collect())
@@ -2689,12 +2688,13 @@ pub trait Iterator {
     #[inline]
     #[unstable(feature = "iterator_try_reduce", reason = "new API", issue = "87053")]
     #[rustc_do_not_const_check]
-    fn try_reduce<F, R>(&mut self, f: F) -> ChangeOutputType<R, Option<R::Output>>
+    fn try_reduce<R>(
+        &mut self,
+        f: impl FnMut(Self::Item, Self::Item) -> R,
+    ) -> ChangeOutputType<R, Option<R::Output>>
     where
         Self: Sized,
-        F: FnMut(Self::Item, Self::Item) -> R,
-        R: Try<Output = Self::Item>,
-        R::Residual: Residual<Option<Self::Item>>,
+        R: Try<Output = Self::Item, Residual: Residual<Option<Self::Item>>>,
     {
         let first = match self.next() {
             Some(i) => i,
@@ -2956,12 +2956,13 @@ pub trait Iterator {
     #[inline]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
     #[rustc_do_not_const_check]
-    fn try_find<F, R>(&mut self, f: F) -> ChangeOutputType<R, Option<Self::Item>>
+    fn try_find<R>(
+        &mut self,
+        f: impl FnMut(&Self::Item) -> R,
+    ) -> ChangeOutputType<R, Option<Self::Item>>
     where
         Self: Sized,
-        F: FnMut(&Self::Item) -> R,
-        R: Try<Output = bool>,
-        R::Residual: Residual<Option<Self::Item>>,
+        R: Try<Output = bool, Residual: Residual<Option<Self::Item>>>,
     {
         #[inline]
         fn check<I, V, R>(

@@ -4,6 +4,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use smallvec::{smallvec, SmallVec};
+use tracing::debug;
 
 use std::mem;
 
@@ -420,8 +421,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
             | Rvalue::Cast(_, ref operand, _)
             | Rvalue::ShallowInitBox(ref operand, _)
             | Rvalue::UnaryOp(_, ref operand) => self.gather_operand(operand),
-            Rvalue::BinaryOp(ref _binop, box (ref lhs, ref rhs))
-            | Rvalue::CheckedBinaryOp(ref _binop, box (ref lhs, ref rhs)) => {
+            Rvalue::BinaryOp(ref _binop, box (ref lhs, ref rhs)) => {
                 self.gather_operand(lhs);
                 self.gather_operand(rhs);
             }

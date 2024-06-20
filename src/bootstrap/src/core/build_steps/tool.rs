@@ -1,6 +1,6 @@
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::core::build_steps::compile;
@@ -9,7 +9,7 @@ use crate::core::builder;
 use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::helpers::output;
 use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::Compiler;
 use crate::Mode;
@@ -109,9 +109,8 @@ impl Step for ToolBuild {
             &self.target,
         );
 
-        let mut cargo = Command::from(cargo);
         // we check this below
-        let build_success = builder.run_cmd(BootstrapCommand::from(&mut cargo).allow_failure());
+        let build_success = compile::stream_cargo(builder, cargo, vec![], &mut |_| {});
 
         builder.save_toolstate(
             tool,
@@ -200,7 +199,7 @@ pub fn prepare_tool_cargo(
         cargo.env("CFG_COMMIT_DATE", date);
     }
     if !features.is_empty() {
-        cargo.arg("--features").arg(&features.join(", "));
+        cargo.arg("--features").arg(features.join(", "));
     }
 
     // Enable internal lints for clippy and rustdoc
@@ -313,9 +312,46 @@ bootstrap_tool!(
     SuggestTests, "src/tools/suggest-tests", "suggest-tests";
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
-    OptimizedDist, "src/tools/opt-dist", "opt-dist";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
 );
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct OptimizedDist {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for OptimizedDist {
+    type Output = PathBuf;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/opt-dist")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(OptimizedDist {
+            compiler: run.builder.compiler(0, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        // We need to ensure the rustc-perf submodule is initialized when building opt-dist since
+        // the tool requires it to be in place to run.
+        builder.update_submodule(Path::new("src/tools/rustc-perf"));
+
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "opt-dist",
+            mode: Mode::ToolBootstrap,
+            path: "src/tools/opt-dist",
+            source_type: SourceType::InTree,
+            extra_features: Vec::new(),
+            allow_features: "",
+        })
+    }
+}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct ErrorIndex {
@@ -485,10 +521,7 @@ impl Step for Rustdoc {
         // If the rustdoc output is piped to e.g. `head -n1` we want the process
         // to be killed, rather than having an error bubble up and cause a
         // panic.
-        // FIXME: Synthetic #[cfg(bootstrap)]. Remove when the bootstrap compiler supports it.
-        if build_compiler.stage > 0 {
-            cargo.rustflag("-Zon-broken-pipe=kill");
-        }
+        cargo.rustflag("-Zon-broken-pipe=kill");
 
         let _guard = builder.msg_tool(
             Kind::Build,
@@ -767,6 +800,69 @@ impl Step for LlvmBitcodeLinker {
     }
 }
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct LibcxxVersionTool {
+    pub target: TargetSelection,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum LibcxxVersion {
+    Gnu(usize),
+    Llvm(usize),
+}
+
+impl Step for LibcxxVersionTool {
+    type Output = LibcxxVersion;
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.never()
+    }
+
+    fn run(self, builder: &Builder<'_>) -> LibcxxVersion {
+        let out_dir = builder.out.join(self.target.to_string()).join("libcxx-version");
+        let executable = out_dir.join(exe("libcxx-version", self.target));
+
+        // This is a sanity-check specific step, which means it is frequently called (when using
+        // CI LLVM), and compiling `src/tools/libcxx-version/main.cpp` at the beginning of the bootstrap
+        // invocation adds a fair amount of overhead to the process (see https://github.com/rust-lang/rust/issues/126423).
+        // Therefore, we want to avoid recompiling this file unnecessarily.
+        if !executable.exists() {
+            if !out_dir.exists() {
+                t!(fs::create_dir_all(&out_dir));
+            }
+
+            let compiler = builder.cxx(self.target).unwrap();
+            let mut cmd = Command::new(compiler);
+
+            cmd.arg("-o")
+                .arg(&executable)
+                .arg(builder.src.join("src/tools/libcxx-version/main.cpp"));
+
+            builder.run_cmd(&mut cmd);
+
+            if !executable.exists() {
+                panic!("Something went wrong. {} is not present", executable.display());
+            }
+        }
+
+        let version_output = output(&mut Command::new(executable));
+
+        let version_str = version_output.split_once("version:").unwrap().1;
+        let version = version_str.trim().parse::<usize>().unwrap();
+
+        if version_output.starts_with("libstdc++") {
+            LibcxxVersion::Gnu(version)
+        } else if version_output.starts_with("libc++") {
+            LibcxxVersion::Llvm(version)
+        } else {
+            panic!("Coudln't recognize the standard library version.");
+        }
+    }
+}
+
 macro_rules! tool_extended {
     (($sel:ident, $builder:ident),
        $($name:ident,
@@ -868,7 +964,6 @@ tool_extended!((self, builder),
     // But `builder.cargo` doesn't know how to handle ToolBootstrap in stages other than 0,
     // and this is close enough for now.
     Rls, "src/tools/rls", "rls", stable=true, tool_std=true;
-    RustDemangler, "src/tools/rust-demangler", "rust-demangler", stable=false, tool_std=true;
     Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];
 );
 

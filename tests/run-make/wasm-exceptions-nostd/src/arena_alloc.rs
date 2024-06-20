@@ -14,9 +14,7 @@ pub struct ArenaAllocator {
 
 impl ArenaAllocator {
     pub const fn new() -> Self {
-        Self {
-            arena: UnsafeCell::new(Arena::new()),
-        }
+        Self { arena: UnsafeCell::new(Arena::new()) }
     }
 }
 
@@ -42,10 +40,7 @@ struct Arena {
 
 impl Arena {
     pub const fn new() -> Self {
-        Self {
-            buf: [0x55; ARENA_SIZE],
-            allocated: 0,
-        }
+        Self { buf: [0x55; ARENA_SIZE], allocated: 0 }
     }
 
     pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {

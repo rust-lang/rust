@@ -381,10 +381,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let maybe_missing_semi = self.check_for_missing_semi(expr, &mut err);
 
                 // We defer to the later error produced by `check_lhs_assignable`.
-                // We only downgrade this if it's the LHS, though.
+                // We only downgrade this if it's the LHS, though, and if this is a
+                // valid assignment statement.
                 if maybe_missing_semi
                     && let hir::Node::Expr(parent) = self.tcx.parent_hir_node(expr.hir_id)
                     && let hir::ExprKind::Assign(lhs, _, _) = parent.kind
+                    && let hir::Node::Stmt(stmt) = self.tcx.parent_hir_node(parent.hir_id)
+                    && let hir::StmtKind::Expr(_) | hir::StmtKind::Semi(_) = stmt.kind
                     && lhs.hir_id == expr.hir_id
                 {
                     err.downgrade_to_delayed_bug();
@@ -817,7 +820,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // If the previous expression was a block expression, suggest parentheses
                         // (turning this into a binary subtraction operation instead.)
                         // for example, `{2} - 2` -> `({2}) - 2` (see src\test\ui\parser\expr-as-stmt.rs)
-                        err.subdiagnostic(self.dcx(), ExprParenthesesNeeded::surrounding(*sp));
+                        err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                     } else {
                         match actual.kind() {
                             Uint(_) if op == hir::UnOp::Neg => {
@@ -925,7 +928,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (obligation, _) =
                     self.obligation_for_method(cause, trait_did, lhs_ty, Some(input_types));
                 // FIXME: This should potentially just add the obligation to the `FnCtxt`
-                let ocx = ObligationCtxt::new(&self.infcx);
+                let ocx = ObligationCtxt::new_with_diagnostics(&self.infcx);
                 ocx.register_obligation(obligation);
                 Err(ocx.select_all_or_error())
             }

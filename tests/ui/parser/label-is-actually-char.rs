@@ -1,4 +1,4 @@
-// Note: it's ok to interpret 'a as 'a', but but not ok to interpret 'abc as
+// Note: it's ok to interpret 'a as 'a', but not ok to interpret 'abc as
 // 'abc' because 'abc' is not a valid char literal.
 
 fn main() {

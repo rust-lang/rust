@@ -162,9 +162,7 @@ impl<'tcx> SpanMapVisitor<'tcx> {
         // compiled (because of cfg)!
         //
         // See discussion in https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352
-        let typeck_results = self
-            .tcx
-            .typeck_body(hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"));
+        let typeck_results = self.tcx.typeck_body(hir.body_owned_by(body_id).id());
         // Interestingly enough, for method calls, we need the whole expression whereas for static
         // method/function calls, we need the call expression specifically.
         if let Some(def_id) = typeck_results.type_dependent_def_id(expr_hir_id.unwrap_or(hir_id)) {

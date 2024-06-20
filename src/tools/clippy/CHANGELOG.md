@@ -6,11 +6,69 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[93f0a9a9...master](https://github.com/rust-lang/rust-clippy/compare/93f0a9a9...master)
+[ca3b3937...master](https://github.com/rust-lang/rust-clippy/compare/ca3b3937...master)
+
+## Rust 1.79
+
+Current stable, released 2024-06-13
+
+[View all 102 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2024-03-08T11%3A13%3A58Z..2024-04-18T15%3A50%3A50Z+base%3Amaster)
+
+### New Lints
+
+* Added [`legacy_numeric_constants`] to `style`
+  [#12312](https://github.com/rust-lang/rust-clippy/pull/12312)
+* Added [`missing_transmute_annotations`] to `suspicious`
+  [#12239](https://github.com/rust-lang/rust-clippy/pull/12239)
+* Added [`integer_division_remainder_used`] to `restriction`
+  [#12451](https://github.com/rust-lang/rust-clippy/pull/12451)
+* Added [`duplicated_attributes`] to `suspicious`
+  [#12378](https://github.com/rust-lang/rust-clippy/pull/12378)
+* Added [`manual_unwrap_or_default`] to `suspicious`
+  [#12440](https://github.com/rust-lang/rust-clippy/pull/12440)
+* Added [`zero_repeat_side_effects`] to `suspicious`
+  [#12449](https://github.com/rust-lang/rust-clippy/pull/12449)
+* Added [`const_is_empty`] to `suspicious`
+  [#12310](https://github.com/rust-lang/rust-clippy/pull/12310)
+
+### Moves and Deprecations
+
+* Moved [`box_default`] to `style` (From `perf`)
+  [#12601](https://github.com/rust-lang/rust-clippy/pull/12601)
+* Moved [`manual_clamp`] to `complexity` (From `nursery` now warn-by-default)
+  [#12543](https://github.com/rust-lang/rust-clippy/pull/12543)
+* Moved [`readonly_write_lock`] to `perf` (From `nursery` now warn-by-default)
+  [#12479](https://github.com/rust-lang/rust-clippy/pull/12479)
+
+### Enhancements
+
+* [`module_name_repetitions`]: Added the [`allowed-prefixes`] configuration to allow common prefixes.
+  [#12573](https://github.com/rust-lang/rust-clippy/pull/12573)
+* [`cast_sign_loss`], [`cast_possible_truncation`], [`cast_lossless`]: Are now allowed in macros
+  [#12631](https://github.com/rust-lang/rust-clippy/pull/12631)
+* [`manual_clamp`]: Now only lints on constant min and max values
+  [#12543](https://github.com/rust-lang/rust-clippy/pull/12543)
+* [`assigning_clones`]: Now considers the [`msrv`] configuration
+  [#12511](https://github.com/rust-lang/rust-clippy/pull/12511)
+* [`needless_return`], [`useless_let_if_seq`], [`mut_mut`], [`read_zero_byte_vec`], [`unused_io_amount`],
+  [`unused_peekable`]: Now respects `#[allow]` attributes on the affected statement instead
+  [#12446](https://github.com/rust-lang/rust-clippy/pull/12446)
+
+### False Positive Fixes
+
+* [`cast_lossless`]: No longer lints when casting to `u128`
+  [#12496](https://github.com/rust-lang/rust-clippy/pull/12496)
+* [`std_instead_of_core`] No longer lints on modules that are only in `std`
+  [#12447](https://github.com/rust-lang/rust-clippy/pull/12447)
+
+### ICE Fixes
+
+* [`needless_return`]: No longer crashes on non-ascii characters
+  [#12493](https://github.com/rust-lang/rust-clippy/pull/12493)
 
 ## Rust 1.78
 
-Current stable, released 2024-05-02
+Released 2024-05-02
 
 [View all 112 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2024-01-26T05%3A46%3A23Z..2024-03-07T16%3A25%3A52Z+base%3Amaster)
 
@@ -5249,6 +5307,7 @@ Released 2018-09-13
 [`disallowed_type`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_type
 [`disallowed_types`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 [`diverging_sub_expression`]: https://rust-lang.github.io/rust-clippy/master/index.html#diverging_sub_expression
+[`doc_lazy_continuation`]: https://rust-lang.github.io/rust-clippy/master/index.html#doc_lazy_continuation
 [`doc_link_with_quotes`]: https://rust-lang.github.io/rust-clippy/master/index.html#doc_link_with_quotes
 [`doc_markdown`]: https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
 [`double_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_comparisons
@@ -5447,6 +5506,7 @@ Released 2018-09-13
 [`little_endian_bytes`]: https://rust-lang.github.io/rust-clippy/master/index.html#little_endian_bytes
 [`logic_bug`]: https://rust-lang.github.io/rust-clippy/master/index.html#logic_bug
 [`lossy_float_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#lossy_float_literal
+[`macro_metavars_in_unsafe`]: https://rust-lang.github.io/rust-clippy/master/index.html#macro_metavars_in_unsafe
 [`macro_use_imports`]: https://rust-lang.github.io/rust-clippy/master/index.html#macro_use_imports
 [`main_recursion`]: https://rust-lang.github.io/rust-clippy/master/index.html#main_recursion
 [`manual_assert`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_assert
@@ -5472,6 +5532,7 @@ Released 2018-09-13
 [`manual_next_back`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_next_back
 [`manual_non_exhaustive`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_non_exhaustive
 [`manual_ok_or`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_ok_or
+[`manual_pattern_char_comparison`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_pattern_char_comparison
 [`manual_range_contains`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_range_contains
 [`manual_range_patterns`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_range_patterns
 [`manual_rem_euclid`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_rem_euclid
@@ -5565,6 +5626,7 @@ Released 2018-09-13
 [`needless_borrow`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_borrow
 [`needless_borrowed_reference`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_borrowed_reference
 [`needless_borrows_for_generic_args`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_borrows_for_generic_args
+[`needless_character_iteration`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_character_iteration
 [`needless_collect`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_collect
 [`needless_continue`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_continue
 [`needless_doctest_main`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_doctest_main
@@ -5574,6 +5636,7 @@ Released 2018-09-13
 [`needless_late_init`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_late_init
 [`needless_lifetimes`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_lifetimes
 [`needless_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_match
+[`needless_maybe_sized`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_maybe_sized
 [`needless_option_as_deref`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_option_as_deref
 [`needless_option_take`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_option_take
 [`needless_parens_on_range_literals`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_parens_on_range_literals
@@ -5702,6 +5765,7 @@ Released 2018-09-13
 [`ref_option_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#ref_option_ref
 [`ref_patterns`]: https://rust-lang.github.io/rust-clippy/master/index.html#ref_patterns
 [`regex_macro`]: https://rust-lang.github.io/rust-clippy/master/index.html#regex_macro
+[`renamed_function_params`]: https://rust-lang.github.io/rust-clippy/master/index.html#renamed_function_params
 [`repeat_once`]: https://rust-lang.github.io/rust-clippy/master/index.html#repeat_once
 [`repeat_vec_with_capacity`]: https://rust-lang.github.io/rust-clippy/master/index.html#repeat_vec_with_capacity
 [`replace_consts`]: https://rust-lang.github.io/rust-clippy/master/index.html#replace_consts
@@ -5908,6 +5972,7 @@ Released 2018-09-13
 [`verbose_file_reads`]: https://rust-lang.github.io/rust-clippy/master/index.html#verbose_file_reads
 [`vtable_address_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#vtable_address_comparisons
 [`waker_clone_wake`]: https://rust-lang.github.io/rust-clippy/master/index.html#waker_clone_wake
+[`while_float`]: https://rust-lang.github.io/rust-clippy/master/index.html#while_float
 [`while_immutable_condition`]: https://rust-lang.github.io/rust-clippy/master/index.html#while_immutable_condition
 [`while_let_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#while_let_loop
 [`while_let_on_iterator`]: https://rust-lang.github.io/rust-clippy/master/index.html#while_let_on_iterator
@@ -5939,8 +6004,10 @@ Released 2018-09-13
 [`allow-expect-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-expect-in-tests
 [`allow-mixed-uninlined-format-args`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-mixed-uninlined-format-args
 [`allow-one-hash-in-raw-strings`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-one-hash-in-raw-strings
+[`allow-panic-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-panic-in-tests
 [`allow-print-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-print-in-tests
 [`allow-private-module-inception`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-private-module-inception
+[`allow-renamed-params-for`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-renamed-params-for
 [`allow-unwrap-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-unwrap-in-tests
 [`allow-useless-vec-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-useless-vec-in-tests
 [`allowed-dotfiles`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allowed-dotfiles
@@ -6002,4 +6069,5 @@ Released 2018-09-13
 [`vec-box-size-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#vec-box-size-threshold
 [`verbose-bit-mask-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#verbose-bit-mask-threshold
 [`warn-on-all-wildcard-imports`]: https://doc.rust-lang.org/clippy/lint_configuration.html#warn-on-all-wildcard-imports
+[`warn-unsafe-macro-metavars-in-private-macros`]: https://doc.rust-lang.org/clippy/lint_configuration.html#warn-unsafe-macro-metavars-in-private-macros
 <!-- end autogenerated links to configuration documentation -->

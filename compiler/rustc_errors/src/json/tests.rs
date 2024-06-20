@@ -55,8 +55,7 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
         );
 
         let span = Span::with_root_ctxt(BytePos(span.0), BytePos(span.1));
-        let dcx = DiagCtxt::new(Box::new(je));
-        dcx.span_err(span, "foo");
+        DiagCtxt::new(Box::new(je)).handle().span_err(span, "foo");
 
         let bytes = output.lock().unwrap();
         let actual_output = str::from_utf8(&bytes).unwrap();

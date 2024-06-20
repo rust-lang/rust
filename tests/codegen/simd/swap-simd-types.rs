@@ -13,18 +13,18 @@ use core::arch::x86_64::__m256;
 // CHECK-LABEL: @swap_single_m256
 #[no_mangle]
 pub fn swap_single_m256(x: &mut __m256, y: &mut __m256) {
-// CHECK-NOT: alloca
-// CHECK: load <8 x float>{{.+}}align 32
-// CHECK: store <8 x float>{{.+}}align 32
+    // CHECK-NOT: alloca
+    // CHECK: load <8 x float>{{.+}}align 32
+    // CHECK: store <8 x float>{{.+}}align 32
     swap(x, y)
 }
 
 // CHECK-LABEL: @swap_m256_slice
 #[no_mangle]
 pub fn swap_m256_slice(x: &mut [__m256], y: &mut [__m256]) {
-// CHECK-NOT: alloca
-// CHECK: load <8 x float>{{.+}}align 32
-// CHECK: store <8 x float>{{.+}}align 32
+    // CHECK-NOT: alloca
+    // CHECK: load <8 x float>{{.+}}align 32
+    // CHECK: store <8 x float>{{.+}}align 32
     if x.len() == y.len() {
         x.swap_with_slice(y);
     }
@@ -33,8 +33,8 @@ pub fn swap_m256_slice(x: &mut [__m256], y: &mut [__m256]) {
 // CHECK-LABEL: @swap_bytes32
 #[no_mangle]
 pub fn swap_bytes32(x: &mut [u8; 32], y: &mut [u8; 32]) {
-// CHECK-NOT: alloca
-// CHECK: load <32 x i8>{{.+}}align 1
-// CHECK: store <32 x i8>{{.+}}align 1
+    // CHECK-NOT: alloca
+    // CHECK: load <32 x i8>{{.+}}align 1
+    // CHECK: store <32 x i8>{{.+}}align 1
     swap(x, y)
 }

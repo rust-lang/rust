@@ -27,9 +27,11 @@
 
 use super::*;
 
+use crate::infer::relate::{Relate, StructurallyRelateAliases, TypeRelation};
 use rustc_middle::bug;
-use rustc_middle::ty::relate::{Relate, TypeRelation};
 use rustc_middle::ty::{Const, ImplSubject};
+
+use crate::traits::Obligation;
 
 /// Whether we should define opaque types or just treat them opaquely.
 ///
@@ -46,11 +48,6 @@ pub struct At<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     pub cause: &'a ObligationCause<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
-}
-
-pub struct Trace<'a, 'tcx> {
-    at: At<'a, 'tcx>,
-    trace: TypeTrace<'tcx>,
 }
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -95,7 +92,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
+pub trait ToTrace<'tcx>: Relate<TyCtxt<'tcx>> + Copy {
     fn to_trace(
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
@@ -109,9 +106,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// call like `foo(x)`, where `foo: fn(i32)`, you might have
     /// `sup(i32, x)`, since the "expected" type is the type that
     /// appears in the signature.
-    ///
-    /// See [`At::trace`] and [`Trace::sub`] for a version of
-    /// this method that only requires `T: Relate<'tcx>`
     pub fn sup<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -121,13 +115,17 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).sup(define_opaque_types, expected, actual)
+        let mut fields = CombineFields::new(
+            self.infcx,
+            ToTrace::to_trace(self.cause, true, expected, actual),
+            self.param_env,
+            define_opaque_types,
+        );
+        fields.sup().relate(expected, actual)?;
+        Ok(InferOk { value: (), obligations: fields.into_obligations() })
     }
 
     /// Makes `expected <: actual`.
-    ///
-    /// See [`At::trace`] and [`Trace::sub`] for a version of
-    /// this method that only requires `T: Relate<'tcx>`
     pub fn sub<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -137,13 +135,17 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).sub(define_opaque_types, expected, actual)
+        let mut fields = CombineFields::new(
+            self.infcx,
+            ToTrace::to_trace(self.cause, true, expected, actual),
+            self.param_env,
+            define_opaque_types,
+        );
+        fields.sub().relate(expected, actual)?;
+        Ok(InferOk { value: (), obligations: fields.into_obligations() })
     }
 
-    /// Makes `expected <: actual`.
-    ///
-    /// See [`At::trace`] and [`Trace::eq`] for a version of
-    /// this method that only requires `T: Relate<'tcx>`
+    /// Makes `expected == actual`.
     pub fn eq<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -153,7 +155,50 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).eq(define_opaque_types, expected, actual)
+        let mut fields = CombineFields::new(
+            self.infcx,
+            ToTrace::to_trace(self.cause, true, expected, actual),
+            self.param_env,
+            define_opaque_types,
+        );
+        fields.equate(StructurallyRelateAliases::No).relate(expected, actual)?;
+        Ok(InferOk {
+            value: (),
+            obligations: fields
+                .goals
+                .into_iter()
+                .map(|goal| {
+                    Obligation::new(
+                        self.infcx.tcx,
+                        fields.trace.cause.clone(),
+                        goal.param_env,
+                        goal.predicate,
+                    )
+                })
+                .collect(),
+        })
+    }
+
+    /// Equates `expected` and `found` while structurally relating aliases.
+    /// This should only be used inside of the next generation trait solver
+    /// when relating rigid aliases.
+    pub fn eq_structurally_relating_aliases<T>(
+        self,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
+    where
+        T: ToTrace<'tcx>,
+    {
+        assert!(self.infcx.next_trait_solver());
+        let mut fields = CombineFields::new(
+            self.infcx,
+            ToTrace::to_trace(self.cause, true, expected, actual),
+            self.param_env,
+            DefineOpaqueTypes::Yes,
+        );
+        fields.equate(StructurallyRelateAliases::Yes).relate(expected, actual)?;
+        Ok(InferOk { value: (), obligations: fields.into_obligations() })
     }
 
     pub fn relate<T>(
@@ -167,17 +212,61 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         T: ToTrace<'tcx>,
     {
         match variance {
-            ty::Variance::Covariant => self.sub(define_opaque_types, expected, actual),
-            ty::Variance::Invariant => self.eq(define_opaque_types, expected, actual),
-            ty::Variance::Contravariant => self.sup(define_opaque_types, expected, actual),
+            ty::Covariant => self.sub(define_opaque_types, expected, actual),
+            ty::Invariant => self.eq(define_opaque_types, expected, actual),
+            ty::Contravariant => self.sup(define_opaque_types, expected, actual),
 
             // We could make this make sense but it's not readily
             // exposed and I don't feel like dealing with it. Note
             // that bivariance in general does a bit more than just
             // *nothing*, it checks that the types are the same
             // "modulo variance" basically.
-            ty::Variance::Bivariant => panic!("Bivariant given to `relate()`"),
+            ty::Bivariant => panic!("Bivariant given to `relate()`"),
         }
+    }
+
+    /// Used in the new solver since we don't care about tracking an `ObligationCause`.
+    pub fn relate_no_trace<T>(
+        self,
+        expected: T,
+        variance: ty::Variance,
+        actual: T,
+    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>
+    where
+        T: Relate<TyCtxt<'tcx>>,
+    {
+        let mut fields = CombineFields::new(
+            self.infcx,
+            TypeTrace::dummy(self.cause),
+            self.param_env,
+            DefineOpaqueTypes::Yes,
+        );
+        fields.sub().relate_with_variance(
+            variance,
+            ty::VarianceDiagInfo::default(),
+            expected,
+            actual,
+        )?;
+        Ok(fields.goals)
+    }
+
+    /// Used in the new solver since we don't care about tracking an `ObligationCause`.
+    pub fn eq_structurally_relating_aliases_no_trace<T>(
+        self,
+        expected: T,
+        actual: T,
+    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>
+    where
+        T: Relate<TyCtxt<'tcx>>,
+    {
+        let mut fields = CombineFields::new(
+            self.infcx,
+            TypeTrace::dummy(self.cause),
+            self.param_env,
+            DefineOpaqueTypes::Yes,
+        );
+        fields.equate(StructurallyRelateAliases::Yes).relate(expected, actual)?;
+        Ok(fields.goals)
     }
 
     /// Computes the least-upper-bound, or mutual supertype, of two
@@ -185,9 +274,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// this can result in an error (e.g., if asked to compute LUB of
     /// u32 and i32), it is meaningful to call one of them the
     /// "expected type".
-    ///
-    /// See [`At::trace`] and [`Trace::lub`] for a version of
-    /// this method that only requires `T: Relate<'tcx>`
     pub fn lub<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -197,15 +283,19 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).lub(define_opaque_types, expected, actual)
+        let mut fields = CombineFields::new(
+            self.infcx,
+            ToTrace::to_trace(self.cause, true, expected, actual),
+            self.param_env,
+            define_opaque_types,
+        );
+        let value = fields.lub().relate(expected, actual)?;
+        Ok(InferOk { value, obligations: fields.into_obligations() })
     }
 
     /// Computes the greatest-lower-bound, or mutual subtype, of two
     /// values. As with `lub` order doesn't matter, except for error
     /// cases.
-    ///
-    /// See [`At::trace`] and [`Trace::glb`] for a version of
-    /// this method that only requires `T: Relate<'tcx>`
     pub fn glb<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -215,105 +305,14 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).glb(define_opaque_types, expected, actual)
-    }
-
-    /// Sets the "trace" values that will be used for
-    /// error-reporting, but doesn't actually perform any operation
-    /// yet (this is useful when you want to set the trace using
-    /// distinct values from those you wish to operate upon).
-    pub fn trace<T>(self, expected: T, actual: T) -> Trace<'a, 'tcx>
-    where
-        T: ToTrace<'tcx>,
-    {
-        let trace = ToTrace::to_trace(self.cause, true, expected, actual);
-        Trace { at: self, trace }
-    }
-}
-
-impl<'a, 'tcx> Trace<'a, 'tcx> {
-    /// Makes `a <: b`.
-    #[instrument(skip(self), level = "debug")]
-    pub fn sub<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
-    where
-        T: Relate<'tcx>,
-    {
-        let Trace { at, trace } = self;
-        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
-        fields
-            .sub()
-            .relate(a, b)
-            .map(move |_| InferOk { value: (), obligations: fields.obligations })
-    }
-
-    /// Makes `a :> b`.
-    #[instrument(skip(self), level = "debug")]
-    pub fn sup<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
-    where
-        T: Relate<'tcx>,
-    {
-        let Trace { at, trace } = self;
-        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
-        fields
-            .sup()
-            .relate(a, b)
-            .map(move |_| InferOk { value: (), obligations: fields.obligations })
-    }
-
-    /// Makes `a == b`.
-    #[instrument(skip(self), level = "debug")]
-    pub fn eq<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, ()>
-    where
-        T: Relate<'tcx>,
-    {
-        let Trace { at, trace } = self;
-        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
-        fields
-            .equate(StructurallyRelateAliases::No)
-            .relate(a, b)
-            .map(move |_| InferOk { value: (), obligations: fields.obligations })
-    }
-
-    /// Equates `a` and `b` while structurally relating aliases. This should only
-    /// be used inside of the next generation trait solver when relating rigid aliases.
-    #[instrument(skip(self), level = "debug")]
-    pub fn eq_structurally_relating_aliases<T>(self, a: T, b: T) -> InferResult<'tcx, ()>
-    where
-        T: Relate<'tcx>,
-    {
-        let Trace { at, trace } = self;
-        debug_assert!(at.infcx.next_trait_solver());
-        let mut fields = at.infcx.combine_fields(trace, at.param_env, DefineOpaqueTypes::Yes);
-        fields
-            .equate(StructurallyRelateAliases::Yes)
-            .relate(a, b)
-            .map(move |_| InferOk { value: (), obligations: fields.obligations })
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    pub fn lub<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, T>
-    where
-        T: Relate<'tcx>,
-    {
-        let Trace { at, trace } = self;
-        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
-        fields
-            .lub()
-            .relate(a, b)
-            .map(move |t| InferOk { value: t, obligations: fields.obligations })
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    pub fn glb<T>(self, define_opaque_types: DefineOpaqueTypes, a: T, b: T) -> InferResult<'tcx, T>
-    where
-        T: Relate<'tcx>,
-    {
-        let Trace { at, trace } = self;
-        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
-        fields
-            .glb()
-            .relate(a, b)
-            .map(move |t| InferOk { value: t, obligations: fields.obligations })
+        let mut fields = CombineFields::new(
+            self.infcx,
+            ToTrace::to_trace(self.cause, true, expected, actual),
+            self.param_env,
+            define_opaque_types,
+        );
+        let value = fields.glb().relate(expected, actual)?;
+        Ok(InferOk { value, obligations: fields.into_obligations() })
     }
 }
 
@@ -348,7 +347,7 @@ impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+            values: ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
         }
     }
 }
@@ -360,7 +359,10 @@ impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Regions(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: ValuePairs::Regions(ExpectedFound::new(a_is_expected, a, b)),
+        }
     }
 }
 
@@ -373,7 +375,7 @@ impl<'tcx> ToTrace<'tcx> for Const<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+            values: ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
         }
     }
 }
@@ -389,13 +391,13 @@ impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
             cause: cause.clone(),
             values: match (a.unpack(), b.unpack()) {
                 (GenericArgKind::Lifetime(a), GenericArgKind::Lifetime(b)) => {
-                    Regions(ExpectedFound::new(a_is_expected, a, b))
+                    ValuePairs::Regions(ExpectedFound::new(a_is_expected, a, b))
                 }
                 (GenericArgKind::Type(a), GenericArgKind::Type(b)) => {
-                    Terms(ExpectedFound::new(a_is_expected, a.into(), b.into()))
+                    ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into()))
                 }
                 (GenericArgKind::Const(a), GenericArgKind::Const(b)) => {
-                    Terms(ExpectedFound::new(a_is_expected, a.into(), b.into()))
+                    ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into()))
                 }
 
                 (
@@ -424,7 +426,10 @@ impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Terms(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: ValuePairs::Terms(ExpectedFound::new(a_is_expected, a, b)),
+        }
     }
 }
 
@@ -437,7 +442,7 @@ impl<'tcx> ToTrace<'tcx> for ty::TraitRef<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: TraitRefs(ExpectedFound::new(a_is_expected, a, b)),
+            values: ValuePairs::TraitRefs(ExpectedFound::new(a_is_expected, a, b)),
         }
     }
 }
@@ -451,7 +456,7 @@ impl<'tcx> ToTrace<'tcx> for ty::AliasTy<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: Aliases(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+            values: ValuePairs::Aliases(ExpectedFound::new(a_is_expected, a.into(), b.into())),
         }
     }
 }
@@ -463,7 +468,10 @@ impl<'tcx> ToTrace<'tcx> for ty::AliasTerm<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Aliases(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: ValuePairs::Aliases(ExpectedFound::new(a_is_expected, a, b)),
+        }
     }
 }
 
@@ -476,7 +484,7 @@ impl<'tcx> ToTrace<'tcx> for ty::FnSig<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: PolySigs(ExpectedFound::new(
+            values: ValuePairs::PolySigs(ExpectedFound::new(
                 a_is_expected,
                 ty::Binder::dummy(a),
                 ty::Binder::dummy(b),
@@ -494,7 +502,7 @@ impl<'tcx> ToTrace<'tcx> for ty::PolyFnSig<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: PolySigs(ExpectedFound::new(a_is_expected, a, b)),
+            values: ValuePairs::PolySigs(ExpectedFound::new(a_is_expected, a, b)),
         }
     }
 }
@@ -508,7 +516,7 @@ impl<'tcx> ToTrace<'tcx> for ty::PolyExistentialTraitRef<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ExistentialTraitRef(ExpectedFound::new(a_is_expected, a, b)),
+            values: ValuePairs::ExistentialTraitRef(ExpectedFound::new(a_is_expected, a, b)),
         }
     }
 }
@@ -522,7 +530,7 @@ impl<'tcx> ToTrace<'tcx> for ty::PolyExistentialProjection<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ExistentialProjection(ExpectedFound::new(a_is_expected, a, b)),
+            values: ValuePairs::ExistentialProjection(ExpectedFound::new(a_is_expected, a, b)),
         }
     }
 }

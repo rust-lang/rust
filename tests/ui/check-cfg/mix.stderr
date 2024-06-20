@@ -44,7 +44,7 @@ warning: unexpected `cfg` condition name: `uu`
 LL | #[cfg_attr(uu, test)]
    |            ^^
    |
-   = help: expected names are: `clippy`, `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `rustfmt`, `sanitize`, `sanitizer_cfi_generalize_pointers`, `sanitizer_cfi_normalize_integers`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `ub_checks`, `unix`, `windows`
+   = help: expected names are: `clippy`, `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `rustfmt`, `sanitize`, `sanitizer_cfi_generalize_pointers`, `sanitizer_cfi_normalize_integers`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `ub_checks`, `unix`, and `windows`
    = help: to expect this configuration use `--check-cfg=cfg(uu)`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
@@ -251,7 +251,7 @@ warning: unexpected `cfg` condition value: `zebra`
 LL |     cfg!(target_feature = "zebra");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `target_feature` are: `10e60`, `2e3`, `3e3r1`, `3e3r2`, `3e3r3`, `3e7`, `7e10`, `a`, `aclass`, `adx`, `aes`, `altivec`, `alu32`, `atomics`, `avx`, `avx2`, `avx512bf16`, `avx512bitalg`, `avx512bw`, `avx512cd`, `avx512dq`, `avx512er`, `avx512f`, `avx512fp16`, `avx512ifma`, `avx512pf`, `avx512vbmi`, `avx512vbmi2`, `avx512vl`, `avx512vnni`, `avx512vp2intersect`, `avx512vpopcntdq`, `bf16`, `bmi1`, `bmi2` and 188 more
+   = note: expected values for `target_feature` are: `10e60`, `2e3`, `3e3r1`, `3e3r2`, `3e3r3`, `3e7`, `7e10`, `a`, `aclass`, `adx`, `aes`, `altivec`, `alu32`, `atomics`, `avx`, `avx2`, `avx512bf16`, `avx512bitalg`, `avx512bw`, `avx512cd`, `avx512dq`, `avx512f`, `avx512fp16`, `avx512ifma`, `avx512vbmi`, `avx512vbmi2`, `avx512vl`, `avx512vnni`, `avx512vp2intersect`, `avx512vpopcntdq`, `bf16`, `bmi1`, `bmi2`, `bti`, and `bulk-memory` and 186 more
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: 27 warnings emitted

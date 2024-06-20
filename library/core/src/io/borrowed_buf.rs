@@ -92,14 +92,20 @@ impl<'data> BorrowedBuf<'data> {
     #[inline]
     pub fn filled(&self) -> &[u8] {
         // SAFETY: We only slice the filled part of the buffer, which is always valid
-        unsafe { MaybeUninit::slice_assume_init_ref(&self.buf[0..self.filled]) }
+        unsafe {
+            let buf = self.buf.get_unchecked(..self.filled);
+            MaybeUninit::slice_assume_init_ref(buf)
+        }
     }
 
     /// Returns a mutable reference to the filled portion of the buffer.
     #[inline]
     pub fn filled_mut(&mut self) -> &mut [u8] {
         // SAFETY: We only slice the filled part of the buffer, which is always valid
-        unsafe { MaybeUninit::slice_assume_init_mut(&mut self.buf[0..self.filled]) }
+        unsafe {
+            let buf = self.buf.get_unchecked_mut(..self.filled);
+            MaybeUninit::slice_assume_init_mut(buf)
+        }
     }
 
     /// Returns a cursor over the unfilled part of the buffer.
@@ -205,7 +211,10 @@ impl<'a> BorrowedCursor<'a> {
     #[inline]
     pub fn init_ref(&self) -> &[u8] {
         // SAFETY: We only slice the initialized part of the buffer, which is always valid
-        unsafe { MaybeUninit::slice_assume_init_ref(&self.buf.buf[self.buf.filled..self.buf.init]) }
+        unsafe {
+            let buf = self.buf.buf.get_unchecked(self.buf.filled..self.buf.init);
+            MaybeUninit::slice_assume_init_ref(buf)
+        }
     }
 
     /// Returns a mutable reference to the initialized portion of the cursor.
@@ -213,7 +222,8 @@ impl<'a> BorrowedCursor<'a> {
     pub fn init_mut(&mut self) -> &mut [u8] {
         // SAFETY: We only slice the initialized part of the buffer, which is always valid
         unsafe {
-            MaybeUninit::slice_assume_init_mut(&mut self.buf.buf[self.buf.filled..self.buf.init])
+            let buf = self.buf.buf.get_unchecked_mut(self.buf.filled..self.buf.init);
+            MaybeUninit::slice_assume_init_mut(buf)
         }
     }
 
@@ -222,7 +232,8 @@ impl<'a> BorrowedCursor<'a> {
     /// It is safe to uninitialize any of these bytes.
     #[inline]
     pub fn uninit_mut(&mut self) -> &mut [MaybeUninit<u8>] {
-        &mut self.buf.buf[self.buf.init..]
+        // SAFETY: always in bounds
+        unsafe { self.buf.buf.get_unchecked_mut(self.buf.init..) }
     }
 
     /// Returns a mutable reference to the whole cursor.
@@ -232,7 +243,8 @@ impl<'a> BorrowedCursor<'a> {
     /// The caller must not uninitialize any bytes in the initialized portion of the cursor.
     #[inline]
     pub unsafe fn as_mut(&mut self) -> &mut [MaybeUninit<u8>] {
-        &mut self.buf.buf[self.buf.filled..]
+        // SAFETY: always in bounds
+        unsafe { self.buf.buf.get_unchecked_mut(self.buf.filled..) }
     }
 
     /// Advance the cursor by asserting that `n` bytes have been filled.

@@ -119,7 +119,7 @@ impl Handle {
         Self::new(discriminant, data)
     }
 
-    pub fn to_scalar(self, cx: &impl HasDataLayout) -> Scalar<Provenance> {
+    pub fn to_scalar(self, cx: &impl HasDataLayout) -> Scalar {
         // 64-bit handles are sign extended 32-bit handles
         // see https://docs.microsoft.com/en-us/windows/win32/winprog64/interprocess-communication
         #[allow(clippy::cast_possible_wrap)] // we want it to wrap
@@ -128,7 +128,7 @@ impl Handle {
     }
 
     pub fn from_scalar<'tcx>(
-        handle: Scalar<Provenance>,
+        handle: Scalar,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Option<Self>> {
         let sign_extended_handle = handle.to_target_isize(cx)?;
@@ -145,17 +145,17 @@ impl Handle {
     }
 }
 
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 
 #[allow(non_snake_case)]
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn invalid_handle(&mut self, function_name: &str) -> InterpResult<'tcx, !> {
         throw_machine_stop!(TerminationInfo::Abort(format!(
             "invalid handle passed to `{function_name}`"
         )))
     }
 
-    fn CloseHandle(&mut self, handle_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn CloseHandle(&mut self, handle_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let handle = this.read_scalar(handle_op)?;

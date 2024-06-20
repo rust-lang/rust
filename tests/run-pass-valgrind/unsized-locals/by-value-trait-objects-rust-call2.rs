@@ -51,7 +51,6 @@ impl FnOnce<(String, Box<str>)> for D {
     }
 }
 
-
 fn main() {
     let (s1, s2) = (format!("s1"), format!("s2").into_boxed_str());
     let x = *(Box::new(A) as Box<dyn FnOnce<(String, Box<str>), Output = String>>);
@@ -61,10 +60,10 @@ fn main() {
     assert_eq!(x.call_once((s1, s2)), format!("42"));
     let (s1, s2) = (format!("s1"), format!("s2").into_boxed_str());
     let x = *(Box::new(C(format!("jumping fox")))
-              as Box<dyn FnOnce<(String, Box<str>), Output = String>>);
+        as Box<dyn FnOnce<(String, Box<str>), Output = String>>);
     assert_eq!(x.call_once((s1, s2)), format!("jumping fox"));
     let (s1, s2) = (format!("s1"), format!("s2").into_boxed_str());
     let x = *(Box::new(D(Box::new(format!("lazy dog"))))
-              as Box<dyn FnOnce<(String, Box<str>), Output = String>>);
+        as Box<dyn FnOnce<(String, Box<str>), Output = String>>);
     assert_eq!(x.call_once((s1, s2)), format!("lazy dog"));
 }

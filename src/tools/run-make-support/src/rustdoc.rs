@@ -1,31 +1,32 @@
-use std::env;
 use std::ffi::OsStr;
-use std::io::Write;
 use std::path::Path;
-use std::process::{Command, Output, Stdio};
 
-use crate::{handle_failed_output, set_host_rpath};
+use crate::command::Command;
+use crate::{env_var, env_var_os, set_host_rpath};
 
 /// Construct a plain `rustdoc` invocation with no flags set.
+#[track_caller]
 pub fn bare_rustdoc() -> Rustdoc {
     Rustdoc::bare()
 }
 
 /// Construct a new `rustdoc` invocation with `-L $(TARGET_RPATH_DIR)` set.
+#[track_caller]
 pub fn rustdoc() -> Rustdoc {
     Rustdoc::new()
 }
 
 #[derive(Debug)]
+#[must_use]
 pub struct Rustdoc {
     cmd: Command,
-    stdin: Option<Box<[u8]>>,
 }
 
 crate::impl_common_helpers!(Rustdoc);
 
+#[track_caller]
 fn setup_common() -> Command {
-    let rustdoc = env::var("RUSTDOC").unwrap();
+    let rustdoc = env_var("RUSTDOC");
     let mut cmd = Command::new(rustdoc);
     set_host_rpath(&mut cmd);
     cmd
@@ -33,17 +34,19 @@ fn setup_common() -> Command {
 
 impl Rustdoc {
     /// Construct a bare `rustdoc` invocation.
+    #[track_caller]
     pub fn bare() -> Self {
         let cmd = setup_common();
-        Self { cmd, stdin: None }
+        Self { cmd }
     }
 
     /// Construct a `rustdoc` invocation with `-L $(TARGET_RPATH_DIR)` set.
+    #[track_caller]
     pub fn new() -> Self {
         let mut cmd = setup_common();
-        let target_rpath_dir = env::var_os("TARGET_RPATH_DIR").unwrap();
+        let target_rpath_dir = env_var_os("TARGET_RPATH_DIR");
         cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
-        Self { cmd, stdin: None }
+        Self { cmd }
     }
 
     /// Specify where an external library is located.
@@ -89,31 +92,8 @@ impl Rustdoc {
 
     /// Specify a stdin input
     pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
-        self.cmd.stdin(Stdio::piped());
-        self.stdin = Some(input.as_ref().to_vec().into_boxed_slice());
+        self.cmd.set_stdin(input.as_ref().to_vec().into_boxed_slice());
         self
-    }
-
-    /// Get the [`Output`][::std::process::Output] of the finished process.
-    #[track_caller]
-    pub fn command_output(&mut self) -> ::std::process::Output {
-        // let's make sure we piped all the input and outputs
-        self.cmd.stdin(Stdio::piped());
-        self.cmd.stdout(Stdio::piped());
-        self.cmd.stderr(Stdio::piped());
-
-        if let Some(input) = &self.stdin {
-            let mut child = self.cmd.spawn().unwrap();
-
-            {
-                let mut stdin = child.stdin.take().unwrap();
-                stdin.write_all(input.as_ref()).unwrap();
-            }
-
-            child.wait_with_output().expect("failed to get output of finished process")
-        } else {
-            self.cmd.output().expect("failed to get output of finished process")
-        }
     }
 
     /// Specify the edition year.
@@ -151,15 +131,10 @@ impl Rustdoc {
         self
     }
 
-    #[track_caller]
-    pub fn run_fail_assert_exit_code(&mut self, code: i32) -> Output {
-        let caller_location = std::panic::Location::caller();
-        let caller_line_number = caller_location.line();
-
-        let output = self.command_output();
-        if output.status.code().unwrap() != code {
-            handle_failed_output(&self.cmd, output, caller_line_number);
-        }
-        output
+    /// Specify the output format.
+    pub fn output_format(&mut self, format: &str) -> &mut Self {
+        self.cmd.arg("--output-format");
+        self.cmd.arg(format);
+        self
     }
 }

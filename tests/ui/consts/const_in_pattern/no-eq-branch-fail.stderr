@@ -1,5 +1,5 @@
 error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq)]`
-  --> $DIR/no-eq-branch-fail.rs:21:9
+  --> $DIR/no-eq-branch-fail.rs:19:9
    |
 LL |         BAR_BAZ => panic!(),
    |         ^^^^^^^

@@ -21,9 +21,10 @@ use crate::traits::{
     self, coherence, FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt,
 };
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{codes::*, DelayDm, Diag, EmissionGuarantee};
+use rustc_errors::{codes::*, Diag, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
+use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
@@ -136,6 +137,10 @@ pub fn translate_args_with_cause<'tcx>(
     source_args.rebase_onto(infcx.tcx, source_impl, target_args)
 }
 
+pub(super) fn specialization_enabled_in(tcx: TyCtxt<'_>, _: LocalCrate) -> bool {
+    tcx.features().specialization || tcx.features().min_specialization
+}
+
 /// Is `impl1` a specialization of `impl2`?
 ///
 /// Specialization is determined by the sets of types to which the impls apply;
@@ -143,31 +148,18 @@ pub fn translate_args_with_cause<'tcx>(
 /// to.
 #[instrument(skip(tcx), level = "debug")]
 pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId, DefId)) -> bool {
-    // The feature gate should prevent introducing new specializations, but not
-    // taking advantage of upstream ones.
-    // If specialization is enabled for this crate then no extra checks are needed.
-    // If it's not, and either of the `impl`s is local to this crate, then this definitely
-    // isn't specializing - unless specialization is enabled for the `impl` span,
-    // e.g. if it comes from an `allow_internal_unstable` macro
-    let features = tcx.features();
-    let specialization_enabled = features.specialization || features.min_specialization;
-    if !specialization_enabled {
-        if impl1_def_id.is_local() {
-            let span = tcx.def_span(impl1_def_id);
-            if !span.allows_unstable(sym::specialization)
-                && !span.allows_unstable(sym::min_specialization)
-            {
-                return false;
-            }
-        }
-
-        if impl2_def_id.is_local() {
-            let span = tcx.def_span(impl2_def_id);
-            if !span.allows_unstable(sym::specialization)
-                && !span.allows_unstable(sym::min_specialization)
-            {
-                return false;
-            }
+    // We check that the specializing impl comes from a crate that has specialization enabled,
+    // or if the specializing impl is marked with `allow_internal_unstable`.
+    //
+    // We don't really care if the specialized impl (the parent) is in a crate that has
+    // specialization enabled, since it's not being specialized, and it's already been checked
+    // for coherence.
+    if !tcx.specialization_enabled_in(impl1_def_id.krate) {
+        let span = tcx.def_span(impl1_def_id);
+        if !span.allows_unstable(sym::specialization)
+            && !span.allows_unstable(sym::min_specialization)
+        {
+            return false;
         }
     }
 
@@ -449,7 +441,7 @@ fn report_conflicting_impls<'tcx>(
         }
     }
 
-    let msg = DelayDm(|| {
+    let msg = || {
         format!(
             "conflicting implementations of trait `{}`{}{}",
             overlap.trait_ref.print_trait_sugared(),
@@ -459,7 +451,7 @@ fn report_conflicting_impls<'tcx>(
                 _ => "",
             }
         )
-    });
+    };
 
     // Don't report overlap errors if the header references error
     if let Err(err) = (overlap.trait_ref, overlap.self_ty).error_reported() {
@@ -471,7 +463,7 @@ fn report_conflicting_impls<'tcx>(
             let reported = if overlap.with_impl.is_local()
                 || tcx.ensure().orphan_check_impl(impl_def_id).is_ok()
             {
-                let mut err = tcx.dcx().struct_span_err(impl_span, msg);
+                let mut err = tcx.dcx().struct_span_err(impl_span, msg());
                 err.code(E0119);
                 decorate(tcx, &overlap, impl_span, &mut err);
                 err.emit()
@@ -485,15 +477,10 @@ fn report_conflicting_impls<'tcx>(
                 FutureCompatOverlapErrorKind::OrderDepTraitObjects => ORDER_DEPENDENT_TRAIT_OBJECTS,
                 FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
             };
-            tcx.node_span_lint(
-                lint,
-                tcx.local_def_id_to_hir_id(impl_def_id),
-                impl_span,
-                msg,
-                |err| {
-                    decorate(tcx, &overlap, impl_span, err);
-                },
-            );
+            tcx.node_span_lint(lint, tcx.local_def_id_to_hir_id(impl_def_id), impl_span, |err| {
+                err.primary_message(msg());
+                decorate(tcx, &overlap, impl_span, err);
+            });
             Ok(())
         }
     }

@@ -6,9 +6,11 @@ use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{walk_item, Visitor};
 use rustc_ast::{attr, ModKind};
+use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
+use rustc_lint_defs::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_session::Session;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
@@ -163,7 +165,7 @@ impl<'a> Visitor<'a> for InnerItemLinter<'_> {
                 UNNAMEABLE_TEST_ITEMS,
                 attr.span,
                 i.id,
-                crate::fluent_generated::builtin_macros_unnameable_test_items,
+                BuiltinLintDiag::UnnameableTestItems,
             );
         }
     }
@@ -202,6 +204,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                     let allow_dead_code = attr::mk_attr_nested_word(
                         &self.sess.psess.attr_id_generator,
                         ast::AttrStyle::Outer,
+                        ast::Safety::Default,
                         sym::allow,
                         sym::dead_code,
                         self.def_site,
@@ -389,7 +392,7 @@ fn get_test_name(i: &ast::Item) -> Option<Symbol> {
     attr::first_attr_value_str_by_name(&i.attrs, sym::rustc_test_marker)
 }
 
-fn get_test_runner(dcx: &rustc_errors::DiagCtxt, krate: &ast::Crate) -> Option<ast::Path> {
+fn get_test_runner(dcx: DiagCtxtHandle<'_>, krate: &ast::Crate) -> Option<ast::Path> {
     let test_attr = attr::find_by_name(&krate.attrs, sym::test_runner)?;
     let meta_list = test_attr.meta_item_list()?;
     let span = test_attr.span;

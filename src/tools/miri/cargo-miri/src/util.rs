@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::fs::File;
@@ -11,14 +12,15 @@ use serde::{Deserialize, Serialize};
 
 pub use crate::arg::*;
 
-pub fn show_error(msg: &impl std::fmt::Display) -> ! {
+pub fn show_error_(msg: &impl std::fmt::Display) -> ! {
     eprintln!("fatal error: {msg}");
     std::process::exit(1)
 }
 
 macro_rules! show_error {
-    ($($tt:tt)*) => { crate::util::show_error(&format_args!($($tt)*)) };
+    ($($tt:tt)*) => { crate::util::show_error_(&format_args!($($tt)*)) };
 }
+pub(crate) use show_error;
 
 /// The information to run a crate with the given environment.
 #[derive(Clone, Serialize, Deserialize)]
@@ -169,11 +171,16 @@ where
         drop(path); // We don't need the path, we can pipe the bytes directly
         cmd.stdin(std::process::Stdio::piped());
         let mut child = cmd.spawn().expect("failed to spawn process");
-        {
-            let stdin = child.stdin.as_mut().expect("failed to open stdin");
-            stdin.write_all(input).expect("failed to write out test source");
-        }
-        let exit_status = child.wait().expect("failed to run command");
+        let child_stdin = child.stdin.take().unwrap();
+        // Write stdin in a background thread, as it may block.
+        let exit_status = std::thread::scope(|s| {
+            s.spawn(|| {
+                let mut child_stdin = child_stdin;
+                // Ignore failure, it is most likely due to the process having terminated.
+                let _ = child_stdin.write_all(input);
+            });
+            child.wait().expect("failed to run command")
+        });
         std::process::exit(exit_status.code().unwrap_or(-1))
     }
 }
@@ -232,21 +239,18 @@ pub fn get_cargo_metadata() -> Metadata {
 }
 
 /// Pulls all the crates in this workspace from the cargo metadata.
-/// Workspace members are emitted like "miri 0.1.0 (path+file:///path/to/miri)"
 /// Additionally, somewhere between cargo metadata and TyCtxt, '-' gets replaced with '_' so we
 /// make that same transformation here.
 pub fn local_crates(metadata: &Metadata) -> String {
     assert!(!metadata.workspace_members.is_empty());
-    let mut local_crates = String::new();
-    for member in &metadata.workspace_members {
-        let name = member.repr.split(' ').next().unwrap();
-        let name = name.replace('-', "_");
-        local_crates.push_str(&name);
-        local_crates.push(',');
-    }
-    local_crates.pop(); // Remove the trailing ','
-
-    local_crates
+    let package_name_by_id: HashMap<_, _> =
+        metadata.packages.iter().map(|package| (&package.id, package.name.as_str())).collect();
+    metadata
+        .workspace_members
+        .iter()
+        .map(|id| package_name_by_id[id].replace('-', "_"))
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 /// Debug-print a command that is going to be run.
@@ -269,7 +273,7 @@ pub fn get_target_dir(meta: &Metadata) -> PathBuf {
     output
 }
 
-/// Determines where the sysroot of this exeuction is
+/// Determines where the sysroot of this execution is
 ///
 /// Either in a user-specified spot by an envar, or in a default cache location.
 pub fn get_sysroot_dir() -> PathBuf {
@@ -317,4 +321,25 @@ pub fn clean_target_dir(meta: &Metadata) {
     eprintln!("Cleaning target directory at {}", target_dir.display());
 
     remove_dir_all_idem(&target_dir).unwrap_or_else(|err| show_error!("{}", err))
+}
+
+/// Run `f` according to the many-seeds argument. In single-seed mode, `f` will only
+/// be called once, with `None`.
+pub fn run_many_seeds(many_seeds: Option<String>, f: impl Fn(Option<u32>)) {
+    let Some(many_seeds) = many_seeds else {
+        return f(None);
+    };
+    let (from, to) = many_seeds
+        .split_once("..")
+        .unwrap_or_else(|| show_error!("invalid format for `--many-seeds`: expected `from..to`"));
+    let from: u32 = if from.is_empty() {
+        0
+    } else {
+        from.parse().unwrap_or_else(|_| show_error!("invalid `from` in `--many-seeds=from..to"))
+    };
+    let to: u32 =
+        to.parse().unwrap_or_else(|_| show_error!("invalid `to` in `--many-seeds=from..to"));
+    for seed in from..to {
+        f(Some(seed));
+    }
 }

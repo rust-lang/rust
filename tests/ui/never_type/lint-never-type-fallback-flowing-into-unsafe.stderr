@@ -4,75 +4,93 @@ warning: never type fallback affects this call to an `unsafe` function
 LL |         unsafe { mem::zeroed() }
    |                  ^^^^^^^^^^^^^
    |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
    = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` on by default
 
 warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:22:13
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:23:13
    |
 LL |             core::mem::transmute(Zst)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
 warning: never type fallback affects this union access
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:37:18
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:39:18
    |
 LL |         unsafe { Union { a: () }.b }
    |                  ^^^^^^^^^^^^^^^^^
    |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
 warning: never type fallback affects this raw pointer dereference
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:46:18
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:49:18
    |
 LL |         unsafe { *ptr::from_ref(&()).cast() }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
 warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:63:18
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:67:18
    |
 LL |         unsafe { internally_create(x) }
    |                  ^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
 warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:77:18
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:83:18
    |
 LL |         unsafe { zeroed() }
    |                  ^^^^^^^^
    |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
 warning: never type fallback affects this `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:74:22
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:79:22
    |
 LL |         let zeroed = mem::zeroed;
    |                      ^^^^^^^^^^^
    |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
 warning: never type fallback affects this `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:91:17
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:98:17
    |
 LL |         let f = internally_create;
    |                 ^^^^^^^^^^^^^^^^^
    |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
 warning: never type fallback affects this call to an `unsafe` method
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:114:13
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:122:13
    |
 LL |             S(marker::PhantomData).create_out_of_thin_air()
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
 warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:130:19
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:139:19
    |
 LL |             match send_message::<_ /* ?0 */>() {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,6 +98,8 @@ LL |             match send_message::<_ /* ?0 */>() {
 LL |         msg_send!();
    |         ----------- in this macro invocation
    |
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
    = note: this warning originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
 

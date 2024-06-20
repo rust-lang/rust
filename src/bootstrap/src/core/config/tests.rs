@@ -1,5 +1,7 @@
 use super::{flags::Flags, ChangeIdWrapper, Config};
 use crate::core::build_steps::clippy::get_clippy_rules_in_order;
+use crate::core::config::Target;
+use crate::core::config::TargetSelection;
 use crate::core::config::{LldMode, TomlConfig};
 
 use clap::CommandFactory;
@@ -12,16 +14,9 @@ use std::{
 };
 
 fn parse(config: &str) -> Config {
-    Config::parse_inner(
-        &[
-            "check".to_string(),
-            "--set=build.rustc=/does/not/exist".to_string(),
-            "--set=build.cargo=/does/not/exist".to_string(),
-            "--config=/does/not/exist".to_string(),
-            "--skip-stage0-validation".to_string(),
-        ],
-        |&_| toml::from_str(&config).unwrap(),
-    )
+    Config::parse_inner(&["check".to_string(), "--config=/does/not/exist".to_string()], |&_| {
+        toml::from_str(&config).unwrap()
+    })
 }
 
 #[test]
@@ -124,6 +119,10 @@ fn override_toml() {
             "--set=build.gdb=\"bar\"".to_owned(),
             "--set=build.tools=[\"cargo\"]".to_owned(),
             "--set=llvm.build-config={\"foo\" = \"bar\"}".to_owned(),
+            "--set=target.x86_64-unknown-linux-gnu.runner=bar".to_owned(),
+            "--set=target.x86_64-unknown-linux-gnu.rpath=false".to_owned(),
+            "--set=target.aarch64-unknown-linux-gnu.sanitizers=false".to_owned(),
+            "--set=target.aarch64-apple-darwin.runner=apple".to_owned(),
         ],
         |&_| {
             toml::from_str(
@@ -140,6 +139,17 @@ tools = []
 [llvm]
 download-ci-llvm = false
 build-config = {}
+
+[target.aarch64-unknown-linux-gnu]
+sanitizers = true
+rpath = true
+runner = "aarch64-runner"
+
+[target.x86_64-unknown-linux-gnu]
+sanitizers = true
+rpath = true
+runner = "x86_64-runner"
+
                 "#,
             )
             .unwrap()
@@ -163,6 +173,30 @@ build-config = {}
         [("foo".to_string(), "bar".to_string())].into_iter().collect(),
         "setting dictionary value"
     );
+
+    let x86_64 = TargetSelection::from_user("x86_64-unknown-linux-gnu");
+    let x86_64_values = Target {
+        sanitizers: Some(true),
+        rpath: Some(false),
+        runner: Some("bar".into()),
+        ..Default::default()
+    };
+    let aarch64 = TargetSelection::from_user("aarch64-unknown-linux-gnu");
+    let aarch64_values = Target {
+        sanitizers: Some(false),
+        rpath: Some(true),
+        runner: Some("aarch64-runner".into()),
+        ..Default::default()
+    };
+    let darwin = TargetSelection::from_user("aarch64-apple-darwin");
+    let darwin_values = Target { runner: Some("apple".into()), ..Default::default() };
+    assert_eq!(
+        config.target_config,
+        [(x86_64, x86_64_values), (aarch64, aarch64_values), (darwin, darwin_values)]
+            .into_iter()
+            .collect(),
+        "setting dictionary value"
+    );
 }
 
 #[test]
@@ -171,10 +205,7 @@ fn override_toml_duplicate() {
     Config::parse_inner(
         &[
             "check".to_owned(),
-            "--set=build.rustc=/does/not/exist".to_string(),
-            "--set=build.cargo=/does/not/exist".to_string(),
-            "--config=/does/not/exist".to_owned(),
-            "--skip-stage0-validation".to_owned(),
+            "--config=/does/not/exist".to_string(),
             "--set=change-id=1".to_owned(),
             "--set=change-id=2".to_owned(),
         ],
@@ -197,15 +228,7 @@ fn profile_user_dist() {
             .and_then(|table: toml::Value| TomlConfig::deserialize(table))
             .unwrap()
     }
-    Config::parse_inner(
-        &[
-            "check".to_owned(),
-            "--set=build.rustc=/does/not/exist".to_string(),
-            "--set=build.cargo=/does/not/exist".to_string(),
-            "--skip-stage0-validation".to_string(),
-        ],
-        get_toml,
-    );
+    Config::parse_inner(&["check".to_owned()], get_toml);
 }
 
 #[test]

@@ -1,7 +1,9 @@
 //! Analysis of patterns, notably match exhaustiveness checking.
 
-#![allow(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-end
 
 pub mod constructor;
 #[cfg(feature = "rustc")]

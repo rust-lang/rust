@@ -34,9 +34,11 @@ declare_lint_pass! {
         CONST_EVALUATABLE_UNCHECKED,
         CONST_ITEM_MUTATION,
         DEAD_CODE,
+        DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
         DEPRECATED,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DEPRECATED_IN_FUTURE,
+        DEPRECATED_SAFE,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
@@ -49,7 +51,6 @@ declare_lint_pass! {
         HIDDEN_GLOB_REEXPORTS,
         ILL_FORMED_ATTRIBUTE_INPUT,
         INCOMPLETE_INCLUDE,
-        INDIRECT_STRUCTURAL_MATCH,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
         INLINE_NO_SANITIZE,
         INVALID_DOC_ATTRIBUTES,
@@ -66,6 +67,7 @@ declare_lint_pass! {
         META_VARIABLE_MISUSE,
         MISSING_ABI,
         MISSING_FRAGMENT_SPECIFIER,
+        MISSING_UNSAFE_ON_EXTERN,
         MUST_NOT_SUSPEND,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
         NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
@@ -74,10 +76,8 @@ declare_lint_pass! {
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         OVERLAPPING_RANGE_ENDPOINTS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
-        POINTER_STRUCTURAL_MATCH,
         PRIVATE_BOUNDS,
         PRIVATE_INTERFACES,
-        PROC_MACRO_BACK_COMPAT,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         REDUNDANT_LIFETIMES,
@@ -90,6 +90,7 @@ declare_lint_pass! {
         RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
         RUST_2021_PRELUDE_COLLISIONS,
         RUST_2024_INCOMPATIBLE_PAT,
+        SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
@@ -136,7 +137,6 @@ declare_lint_pass! {
         USELESS_DEPRECATED,
         WARNINGS,
         WASM_C_ABI,
-        WHERE_CLAUSES_OBJECT_SAFETY,
         WRITES_THROUGH_IMMUTABLE_POINTER,
         // tidy-alphabetical-end
     ]
@@ -512,8 +512,9 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// error: external crate `regex` unused in `lint_example`: remove the dependency or add `use regex as _;`
+    /// error: extern crate `regex` is unused in crate `lint_example`
     ///   |
+    ///   = help: remove the dependency or add `use regex as _;` to the crate root
     /// note: the lint level is defined here
     ///  --> src/lib.rs:1:9
     ///   |
@@ -1315,10 +1316,8 @@ declare_lint! {
     /// * If you are trying to perform a one-time initialization of a global:
     ///     * If the value can be computed at compile-time, consider using
     ///       const-compatible values (see [Constant Evaluation]).
-    ///     * For more complex single-initialization cases, consider using a
-    ///       third-party crate, such as [`lazy_static`] or [`once_cell`].
-    ///     * If you are using the [nightly channel], consider the new
-    ///       [`lazy`] module in the standard library.
+    ///     * For more complex single-initialization cases, consider using
+    ///       [`std::sync::LazyLock`].
     /// * If you truly need a mutable global, consider using a [`static`],
     ///   which has a variety of options:
     ///   * Simple data types can be directly defined and mutated with an
@@ -1333,9 +1332,7 @@ declare_lint! {
     /// [Constant Evaluation]: https://doc.rust-lang.org/reference/const_eval.html
     /// [`static`]: https://doc.rust-lang.org/reference/items/static-items.html
     /// [mutable `static`]: https://doc.rust-lang.org/reference/items/static-items.html#mutable-statics
-    /// [`lazy`]: https://doc.rust-lang.org/nightly/std/lazy/index.html
-    /// [`lazy_static`]: https://crates.io/crates/lazy_static
-    /// [`once_cell`]: https://crates.io/crates/once_cell
+    /// [`std::sync::LazyLock`]: https://doc.rust-lang.org/stable/std/sync/struct.LazyLock.html
     /// [`atomic`]: https://doc.rust-lang.org/std/sync/atomic/index.html
     /// [`Mutex`]: https://doc.rust-lang.org/std/sync/struct.Mutex.html
     pub CONST_ITEM_MUTATION,
@@ -2098,47 +2095,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `where_clauses_object_safety` lint detects for [object safety] of
-    /// [where clauses].
-    ///
-    /// [object safety]: https://doc.rust-lang.org/reference/items/traits.html#object-safety
-    /// [where clauses]: https://doc.rust-lang.org/reference/items/generics.html#where-clauses
-    ///
-    /// ### Example
-    ///
-    /// ```rust,no_run
-    /// trait Trait {}
-    ///
-    /// trait X { fn foo(&self) where Self: Trait; }
-    ///
-    /// impl X for () { fn foo(&self) {} }
-    ///
-    /// impl Trait for dyn X {}
-    ///
-    /// // Segfault at opt-level 0, SIGILL otherwise.
-    /// pub fn main() { <dyn X as X>::foo(&()); }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The compiler previously allowed these object-unsafe bounds, which was
-    /// incorrect. This is a [future-incompatible] lint to transition this to
-    /// a hard error in the future. See [issue #51443] for more details.
-    ///
-    /// [issue #51443]: https://github.com/rust-lang/rust/issues/51443
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub WHERE_CLAUSES_OBJECT_SAFETY,
-    Warn,
-    "checks the object safety of where clauses",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #51443 <https://github.com/rust-lang/rust/issues/51443>",
-    };
-}
-
-declare_lint! {
     /// The `proc_macro_derive_resolution_fallback` lint detects proc macro
     /// derives using inaccessible names from parent modules.
     ///
@@ -2206,8 +2162,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `macro_use_extern_crate` lint detects the use of the
-    /// [`macro_use` attribute].
+    /// The `macro_use_extern_crate` lint detects the use of the [`macro_use` attribute].
     ///
     /// ### Example
     ///
@@ -2225,12 +2180,13 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// error: deprecated `#[macro_use]` attribute used to import macros should be replaced at use sites with a `use` item to import the macro instead
+    /// error: applying the `#[macro_use]` attribute to an `extern crate` item is deprecated
     ///  --> src/main.rs:3:1
     ///   |
     /// 3 | #[macro_use]
     ///   | ^^^^^^^^^^^^
     ///   |
+    ///   = help: remove it and import macros at use sites with a `use` item instead
     /// note: the lint level is defined here
     ///  --> src/main.rs:1:9
     ///   |
@@ -2355,52 +2311,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `indirect_structural_match` lint detects a `const` in a pattern
-    /// that manually implements [`PartialEq`] and [`Eq`].
-    ///
-    /// [`PartialEq`]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html
-    /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(indirect_structural_match)]
-    ///
-    /// struct NoDerive(i32);
-    /// impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
-    /// impl Eq for NoDerive { }
-    /// #[derive(PartialEq, Eq)]
-    /// struct WrapParam<T>(T);
-    /// const WRAP_INDIRECT_PARAM: & &WrapParam<NoDerive> = & &WrapParam(NoDerive(0));
-    /// fn main() {
-    ///     match WRAP_INDIRECT_PARAM {
-    ///         WRAP_INDIRECT_PARAM => { }
-    ///         _ => { }
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The compiler unintentionally accepted this form in the past. This is a
-    /// [future-incompatible] lint to transition this to a hard error in the
-    /// future. See [issue #62411] for a complete description of the problem,
-    /// and some possible solutions.
-    ///
-    /// [issue #62411]: https://github.com/rust-lang/rust/issues/62411
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub INDIRECT_STRUCTURAL_MATCH,
-    Warn,
-    "constant used in pattern contains value of non-structural-match type in a field or a variant",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #120362 <https://github.com/rust-lang/rust/issues/120362>",
-    };
-}
-
-declare_lint! {
     /// The `deprecated_in_future` lint is internal to rustc and should not be
     /// used by user code.
     ///
@@ -2415,45 +2325,6 @@ declare_lint! {
     Allow,
     "detects use of items that will be deprecated in a future version",
     report_in_external_macro
-}
-
-declare_lint! {
-    /// The `pointer_structural_match` lint detects pointers used in patterns whose behaviour
-    /// cannot be relied upon across compiler versions and optimization levels.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(pointer_structural_match)]
-    /// fn foo(a: usize, b: usize) -> usize { a + b }
-    /// const FOO: fn(usize, usize) -> usize = foo;
-    /// fn main() {
-    ///     match FOO {
-    ///         FOO => {},
-    ///         _ => {},
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Previous versions of Rust allowed function pointers and all raw pointers in patterns.
-    /// While these work in many cases as expected by users, it is possible that due to
-    /// optimizations pointers are "not equal to themselves" or pointers to different functions
-    /// compare as equal during runtime. This is because LLVM optimizations can deduplicate
-    /// functions if their bodies are the same, thus also making pointers to these functions point
-    /// to the same location. Additionally functions may get duplicated if they are instantiated
-    /// in different crates and not deduplicated again via LTO. Pointer identity for memory
-    /// created by `const` is similarly unreliable.
-    pub POINTER_STRUCTURAL_MATCH,
-    Warn,
-    "pointers are not structural-match",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #120362 <https://github.com/rust-lang/rust/issues/120362>",
-    };
 }
 
 declare_lint! {
@@ -3150,6 +3021,47 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `self_constructor_from_outer_item` lint detects cases where the `Self` constructor
+    /// was silently allowed due to a bug in the resolver, and which may produce surprising
+    /// and unintended behavior.
+    ///
+    /// Using a `Self` type alias from an outer item was never intended, but was silently allowed.
+    /// This is deprecated -- and is a hard error when the `Self` type alias references generics
+    /// that are not in scope.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(self_constructor_from_outer_item)]
+    ///
+    /// struct S0(usize);
+    ///
+    /// impl S0 {
+    ///     fn foo() {
+    ///         const C: S0 = Self(0);
+    ///         fn bar() -> S0 {
+    ///             Self(0)
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The `Self` type alias should not be reachable because nested items are not associated with
+    /// the scope of the parameters from the parent item.
+    pub SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
+    Warn,
+    "detect unsupported use of `Self` from outer item",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reference: "issue #124186 <https://github.com/rust-lang/rust/issues/124186>",
+    };
+}
+
+declare_lint! {
     /// The `semicolon_in_expressions_from_macros` lint detects trailing semicolons
     /// in macro bodies when the macro is invoked in expression position.
     /// This was previous accepted, but is being phased out.
@@ -3339,11 +3251,18 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// This lint is only active when `--check-cfg` arguments are being passed
-    /// to the compiler and triggers whenever an unexpected condition name or value is used.
+    /// This lint is only active when [`--check-cfg`][check-cfg] arguments are being
+    /// passed to the compiler and triggers whenever an unexpected condition name or value is
+    /// used.
     ///
-    /// The known condition include names or values passed in `--check-cfg`, and some
-    /// well-knows names and values built into the compiler.
+    /// See the [Checking Conditional Configurations][check-cfg] section for more
+    /// details.
+    ///
+    /// See the [Cargo Specifics][unexpected_cfgs_lint_config] section for configuring this lint in
+    /// `Cargo.toml`.
+    ///
+    /// [check-cfg]: https://doc.rust-lang.org/nightly/rustc/check-cfg.html
+    /// [unexpected_cfgs_lint_config]: https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html#check-cfg-in-lintsrust-table
     pub UNEXPECTED_CFGS,
     Warn,
     "detects unexpected names and values in `#[cfg]` conditions",
@@ -3752,58 +3671,11 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `proc_macro_back_compat` lint detects uses of old versions of certain
-    /// proc-macro crates, which have hardcoded workarounds in the compiler.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (needs-dependency)
-    ///
-    /// use time_macros_impl::impl_macros;
-    /// struct Foo;
-    /// impl_macros!(Foo);
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// warning: using an old version of `time-macros-impl`
-    ///   ::: $DIR/group-compat-hack.rs:27:5
-    ///    |
-    /// LL |     impl_macros!(Foo);
-    ///    |     ------------------ in this macro invocation
-    ///    |
-    ///    = note: `#[warn(proc_macro_back_compat)]` on by default
-    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
-    ///    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
-    ///    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// Eventually, the backwards-compatibility hacks present in the compiler will be removed,
-    /// causing older versions of certain crates to stop compiling.
-    /// This is a [future-incompatible] lint to ease the transition to an error.
-    /// See [issue #83125] for more details.
-    ///
-    /// [issue #83125]: https://github.com/rust-lang/rust/issues/83125
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub PROC_MACRO_BACK_COMPAT,
-    Deny,
-    "detects usage of old versions of certain proc-macro crates",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #83125 <https://github.com/rust-lang/rust/issues/83125>",
-    };
-}
-
-declare_lint! {
     /// The `rust_2021_incompatible_or_patterns` lint detects usage of old versions of or-patterns.
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,edition2018,compile_fail
     /// #![deny(rust_2021_incompatible_or_patterns)]
     ///
     /// macro_rules! match_any {
@@ -3843,7 +3715,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,edition2018,compile_fail
     /// #![deny(rust_2021_prelude_collisions)]
     ///
     /// trait Foo {
@@ -4263,8 +4135,7 @@ declare_lint! {
     ///
     /// // where absurd is a function with the following signature
     /// // (it's sound, because `!` always marks unreachable code):
-    /// fn absurd<T>(_: !) -> T { ... }
-    // FIXME: use `core::convert::absurd` here instead, once it's merged
+    /// fn absurd<T>(never: !) -> T { ... }
     /// ```
     ///
     /// While it's convenient to be able to use non-diverging code in one of the branches (like
@@ -4321,7 +4192,65 @@ declare_lint! {
     /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
     pub NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
     Warn,
-    "never type fallback affecting unsafe function calls"
+    "never type fallback affecting unsafe function calls",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
+        reference: "issue #123748 <https://github.com/rust-lang/rust/issues/123748>",
+    };
+    report_in_external_macro
+}
+
+declare_lint! {
+    /// The `dependency_on_unit_never_type_fallback` lint detects cases where code compiles with
+    /// [never type fallback] being [`()`], but will stop compiling with fallback being [`!`].
+    ///
+    /// [never type fallback]: https://doc.rust-lang.org/nightly/core/primitive.never.html#never-type-fallback
+    /// [`!`]: https://doc.rust-lang.org/core/primitive.never.html
+    /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(dependency_on_unit_never_type_fallback)]
+    /// fn main() {
+    ///     if true {
+    ///         // return has type `!` which, is some cases, causes never type fallback
+    ///         return
+    ///     } else {
+    ///         // the type produced by this call is not specified explicitly,
+    ///         // so it will be inferred from the previous branch
+    ///         Default::default()
+    ///     };
+    ///     // depending on the fallback, this may compile (because `()` implements `Default`),
+    ///     // or it may not (because `!` does not implement `Default`)
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Due to historic reasons never type fallback was `()`, meaning that `!` got spontaneously
+    /// coerced to `()`. There are plans to change that, but they may make the code such as above
+    /// not compile. Instead of depending on the fallback, you should specify the type explicitly:
+    /// ```
+    /// if true {
+    ///     return
+    /// } else {
+    ///     // type is explicitly specified, fallback can't hurt us no more
+    ///     <() as Default>::default()
+    /// };
+    /// ```
+    ///
+    /// See [Tracking Issue for making `!` fall back to `!`](https://github.com/rust-lang/rust/issues/123748).
+    pub DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
+    Warn,
+    "never type fallback affecting unsafe function calls",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reference: "issue #123748 <https://github.com/rust-lang/rust/issues/123748>",
+    };
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -4664,16 +4593,18 @@ declare_lint! {
 
 declare_lint! {
     /// The `elided_lifetimes_in_associated_constant` lint detects elided lifetimes
-    /// that were erroneously allowed in associated constants.
+    /// in associated constants when there are other lifetimes in scope. This was
+    /// accidentally supported, and this lint was later relaxed to allow eliding
+    /// lifetimes to `'static` when there are no lifetimes in scope.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
     /// #![deny(elided_lifetimes_in_associated_constant)]
     ///
-    /// struct Foo;
+    /// struct Foo<'a>(&'a ());
     ///
-    /// impl Foo {
+    /// impl<'a> Foo<'a> {
     ///     const STR: &str = "hello, world";
     /// }
     /// ```
@@ -4884,5 +4815,90 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #124559 <https://github.com/rust-lang/rust/issues/124559>",
+    };
+}
+
+declare_lint! {
+    /// The `deprecated_safe` lint detects unsafe functions being used as safe
+    /// functions.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2021,compile_fail
+    /// #![deny(deprecated_safe)]
+    /// // edition 2021
+    /// use std::env;
+    /// fn enable_backtrace() {
+    ///     env::set_var("RUST_BACKTRACE", "1");
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust [editions] allow the language to evolve without breaking backward
+    /// compatibility. This lint catches code that uses `unsafe` functions that
+    /// were declared as safe (non-`unsafe`) in earlier editions. If you switch
+    /// the compiler to a new edition without updating the code, then it
+    /// will fail to compile if you are using a function previously marked as
+    /// safe.
+    ///
+    /// You can audit the code to see if it suffices the preconditions of the
+    /// `unsafe` code, and if it does, you can wrap it in an `unsafe` block. If
+    /// you can't fulfill the preconditions, you probably need to switch to a
+    /// different way of doing what you want to achieve.
+    ///
+    /// This lint can automatically wrap the calls in `unsafe` blocks, but this
+    /// obviously cannot verify that the preconditions of the `unsafe`
+    /// functions are fulfilled, so that is still up to the user.
+    ///
+    /// The lint is currently "allow" by default, but that might change in the
+    /// future.
+    ///
+    /// [editions]: https://doc.rust-lang.org/edition-guide/
+    pub DEPRECATED_SAFE,
+    Allow,
+    "detects unsafe functions being used as safe functions",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "issue #27970 <https://github.com/rust-lang/rust/issues/27970>",
+    };
+}
+
+declare_lint! {
+    /// The `missing_unsafe_on_extern` lint detects missing unsafe keyword on extern declarations.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(unsafe_extern_blocks)]
+    /// #![warn(missing_unsafe_on_extern)]
+    /// #![allow(dead_code)]
+    ///
+    /// extern "C" {
+    ///     fn foo(_: i32);
+    /// }
+    ///
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Declaring extern items, even without ever using them, can cause Undefined Behavior. We
+    /// should consider all sources of Undefined Behavior to be unsafe.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a
+    /// hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub MISSING_UNSAFE_ON_EXTERN,
+    Allow,
+    "detects missing unsafe keyword on extern declarations",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "issue #123743 <https://github.com/rust-lang/rust/issues/123743>",
     };
 }

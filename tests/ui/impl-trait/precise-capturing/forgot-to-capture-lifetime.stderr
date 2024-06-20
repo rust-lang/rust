@@ -1,35 +1,26 @@
-warning: the feature `precise_capturing` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/forgot-to-capture-lifetime.rs:1:12
-   |
-LL | #![feature(precise_capturing)]
-   |            ^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #123432 <https://github.com/rust-lang/rust/issues/123432> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error: `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
-  --> $DIR/forgot-to-capture-lifetime.rs:4:58
+  --> $DIR/forgot-to-capture-lifetime.rs:3:52
    |
-LL | fn lifetime_in_bounds<'a>(x: &'a ()) -> impl use<> Into<&'a ()> { x }
-   |                       --                -----------------^^----
+LL | fn lifetime_in_bounds<'a>(x: &'a ()) -> impl Into<&'a ()> + use<> { x }
+   |                       --                -----------^^------------
    |                       |                 |
    |                       |                 lifetime captured due to being mentioned in the bounds of the `impl Trait`
    |                       this lifetime parameter is captured
 
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/forgot-to-capture-lifetime.rs:7:60
+  --> $DIR/forgot-to-capture-lifetime.rs:6:62
    |
-LL | fn lifetime_in_hidden<'a>(x: &'a ()) -> impl use<> Sized { x }
-   |                       --                ----------------   ^
+LL | fn lifetime_in_hidden<'a>(x: &'a ()) -> impl Sized + use<> { x }
+   |                       --                ------------------   ^
    |                       |                 |
    |                       |                 opaque type defined here
    |                       hidden type `&'a ()` captures the lifetime `'a` as defined here
    |
 help: to declare that `impl Sized` captures `'a`, you can add an explicit `'a` lifetime bound
    |
-LL | fn lifetime_in_hidden<'a>(x: &'a ()) -> impl use<> Sized + 'a { x }
-   |                                                          ++++
+LL | fn lifetime_in_hidden<'a>(x: &'a ()) -> impl Sized + use<> + 'a { x }
+   |                                                            ++++
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0700`.

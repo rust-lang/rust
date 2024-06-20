@@ -1,4 +1,5 @@
 //@compile-flags: -Zdeduplicate-diagnostics=yes
+//@aux-build: proc_macros.rs
 
 #![warn(clippy::indexing_slicing)]
 // We also check the out_of_bounds_indexing lint here, because it lints similar things and
@@ -11,6 +12,9 @@
     clippy::useless_vec
 )]
 
+extern crate proc_macros;
+use proc_macros::with_span;
+
 const ARR: [i32; 2] = [1, 2];
 const REF: &i32 = &ARR[idx()]; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
 //~^ ERROR: indexing may panic
@@ -21,6 +25,22 @@ const fn idx() -> usize {
 const fn idx4() -> usize {
     4
 }
+
+with_span!(
+    span
+
+    fn dont_lint_proc_macro_array() {
+        let x = [1, 2, 3, 4];
+        let index: usize = 1;
+        x[index];
+        x[10];
+
+        let x = vec![0; 5];
+        let index: usize = 1;
+        x[index];
+        x[10];
+    }
+);
 
 fn main() {
     let x = [1, 2, 3, 4];

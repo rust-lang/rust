@@ -5,9 +5,9 @@ use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 use crate::errors;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
-use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, LangItem};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_infer::{
@@ -41,7 +41,7 @@ pub fn check_legal_trait_for_method_call(
     trait_id: DefId,
     body_id: DefId,
 ) -> Result<(), ErrorGuaranteed> {
-    if tcx.lang_items().drop_trait() == Some(trait_id)
+    if tcx.is_lang_item(trait_id, LangItem::Drop)
         && tcx.lang_items().fallback_surface_drop_fn() != Some(body_id)
     {
         let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
@@ -628,7 +628,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return;
             };
 
-            let pick = self.confirm_method(
+            let pick = self.confirm_method_for_diagnostic(
                 call_expr.span,
                 callee_expr,
                 call_expr,

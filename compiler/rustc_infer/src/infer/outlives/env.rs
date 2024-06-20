@@ -64,8 +64,7 @@ struct OutlivesEnvironmentBuilder<'tcx> {
 /// "Region-bound pairs" tracks outlives relations that are known to
 /// be true, either because of explicit where-clauses like `T: 'a` or
 /// because of implied bounds.
-pub type RegionBoundPairs<'tcx> =
-    FxIndexSet<ty::OutlivesPredicate<GenericKind<'tcx>, Region<'tcx>>>;
+pub type RegionBoundPairs<'tcx> = FxIndexSet<ty::OutlivesPredicate<'tcx, GenericKind<'tcx>>>;
 
 impl<'tcx> OutlivesEnvironment<'tcx> {
     /// Create a builder using `ParamEnv` and add explicit outlives bounds into it.

@@ -10,7 +10,7 @@ pub enum Variant {
     Two,
 }
 
-extern {
+extern "C" {
     fn exf1();
     fn exf2();
 }

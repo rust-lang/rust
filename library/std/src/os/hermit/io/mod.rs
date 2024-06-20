@@ -1,13 +1,4 @@
-#![stable(feature = "os_fd", since = "1.66.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
-mod net;
-#[path = "../../fd/owned.rs"]
-mod owned;
-#[path = "../../fd/raw.rs"]
-mod raw;
-
-// Export the types and traits for the public API.
-#[stable(feature = "os_fd", since = "1.66.0")]
-pub use owned::*;
-#[stable(feature = "os_fd", since = "1.66.0")]
-pub use raw::*;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use crate::os::fd::*;

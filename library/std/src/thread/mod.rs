@@ -205,7 +205,7 @@ cfg_if::cfg_if! {
         #[doc(hidden)]
         #[unstable(feature = "thread_local_internals", issue = "none")]
         pub mod local_impl {
-            pub use crate::sys::thread_local::{thread_local_inner, Key, abort_on_dtor_unwind};
+            pub use crate::sys::thread_local::*;
         }
     }
 }
@@ -539,7 +539,7 @@ impl Builder {
             let f = f.into_inner();
             set_current(their_thread);
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                crate::sys_common::backtrace::__rust_begin_short_backtrace(f)
+                crate::sys::backtrace::__rust_begin_short_backtrace(f)
             }));
             // SAFETY: `their_packet` as been built just above and moved by the
             // closure (it is an Arc<...>) and `my_packet` will be stored in the
@@ -561,7 +561,8 @@ impl Builder {
         let main = Box::new(main);
         // SAFETY: dynamic size and alignment of the Box remain the same. See below for why the
         // lifetime change is justified.
-        let main = unsafe { Box::from_raw(Box::into_raw(main) as *mut (dyn FnOnce() + 'static)) };
+        let main =
+            unsafe { Box::from_raw(Box::into_raw(main) as *mut (dyn FnOnce() + Send + 'static)) };
 
         Ok(JoinInner {
             // SAFETY:
@@ -1544,7 +1545,7 @@ struct Packet<'scope, T> {
 // The type `T` should already always be Send (otherwise the thread could not
 // have been created) and the Packet is Sync because all access to the
 // `UnsafeCell` synchronized (by the `join()` boundary), and `ScopeData` is Sync.
-unsafe impl<'scope, T: Sync> Sync for Packet<'scope, T> {}
+unsafe impl<'scope, T: Send> Sync for Packet<'scope, T> {}
 
 impl<'scope, T> Drop for Packet<'scope, T> {
     fn drop(&mut self) {

@@ -41,8 +41,9 @@ let ParserState;
  *     foundElems: number,
  *     totalElems: number,
  *     literalSearch: boolean,
- *     corrections: Array<{from: string, to: integer}>,
+ *     corrections: Array<{from: string, to: integer}> | null,
  *     typeFingerprint: Uint32Array,
+ *     error: Array<string> | null,
  * }}
  */
 let ParsedQuery;

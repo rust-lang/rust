@@ -7,7 +7,7 @@ struct Wrap<F>(F);
 
 impl<A, B, F> MyFn<A> for Wrap<F>
 where
-    F: Fn(A) -> B
+    F: Fn(A) -> B,
 {
     type Output = B;
 
@@ -16,13 +16,10 @@ where
     }
 }
 
-
 struct A;
-fn test() -> impl for<'a> MyFn<&'a A, Output=impl Iterator + 'a> {
+fn test() -> impl for<'a> MyFn<&'a A, Output = impl Iterator + 'a> {
     //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
     Wrap(|a| Some(a).into_iter())
-    //~^ ERROR implementation of `FnOnce` is not general enough
-    //~| ERROR implementation of `FnOnce` is not general enough
 }
 
 fn main() {}

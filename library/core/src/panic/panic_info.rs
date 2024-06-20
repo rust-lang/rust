@@ -1,99 +1,65 @@
-use crate::any::Any;
-use crate::fmt;
+use crate::fmt::{self, Display};
 use crate::panic::Location;
 
 /// A struct providing information about a panic.
 ///
-/// `PanicInfo` structure is passed to a panic hook set by the [`set_hook`]
-/// function.
+/// A `PanicInfo` structure is passed to the panic handler defined by `#[panic_handler]`.
 ///
-/// [`set_hook`]: ../../std/panic/fn.set_hook.html
+/// For the type used by the panic hook mechanism in `std`, see [`std::panic::PanicHookInfo`].
 ///
-/// # Examples
-///
-/// ```should_panic
-/// use std::panic;
-///
-/// panic::set_hook(Box::new(|panic_info| {
-///     println!("panic occurred: {panic_info}");
-/// }));
-///
-/// panic!("critical system failure");
-/// ```
+/// [`std::panic::PanicHookInfo`]: ../../std/panic/struct.PanicHookInfo.html
 #[lang = "panic_info"]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[derive(Debug)]
 pub struct PanicInfo<'a> {
-    payload: &'a (dyn Any + Send),
-    message: Option<&'a fmt::Arguments<'a>>,
+    message: fmt::Arguments<'a>,
     location: &'a Location<'a>,
     can_unwind: bool,
     force_no_backtrace: bool,
 }
 
+/// A message that was given to the `panic!()` macro.
+///
+/// The [`Display`] implementation of this type will format the message with the arguments
+/// that were given to the `panic!()` macro.
+///
+/// See [`PanicInfo::message`].
+#[unstable(feature = "panic_info_message", issue = "66745")]
+pub struct PanicMessage<'a> {
+    message: fmt::Arguments<'a>,
+}
+
 impl<'a> PanicInfo<'a> {
-    #[unstable(
-        feature = "panic_internals",
-        reason = "internal details of the implementation of the `panic!` and related macros",
-        issue = "none"
-    )]
-    #[doc(hidden)]
     #[inline]
-    pub fn internal_constructor(
-        message: Option<&'a fmt::Arguments<'a>>,
+    pub(crate) fn new(
+        message: fmt::Arguments<'a>,
         location: &'a Location<'a>,
         can_unwind: bool,
         force_no_backtrace: bool,
     ) -> Self {
-        struct NoPayload;
-        PanicInfo { location, message, payload: &NoPayload, can_unwind, force_no_backtrace }
+        PanicInfo { location, message, can_unwind, force_no_backtrace }
     }
 
-    #[unstable(
-        feature = "panic_internals",
-        reason = "internal details of the implementation of the `panic!` and related macros",
-        issue = "none"
-    )]
-    #[doc(hidden)]
-    #[inline]
-    pub fn set_payload(&mut self, info: &'a (dyn Any + Send)) {
-        self.payload = info;
-    }
-
-    /// Returns the payload associated with the panic.
+    /// The message that was given to the `panic!` macro.
     ///
-    /// This will commonly, but not always, be a `&'static str` or [`String`].
+    /// # Example
     ///
-    /// [`String`]: ../../std/string/struct.String.html
+    /// The type returned by this method implements `Display`, so it can
+    /// be passed directly to [`write!()`] and similar macros.
     ///
-    /// # Examples
+    /// [`write!()`]: core::write
     ///
-    /// ```should_panic
-    /// use std::panic;
-    ///
-    /// panic::set_hook(Box::new(|panic_info| {
-    ///     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-    ///         println!("panic occurred: {s:?}");
-    ///     } else {
-    ///         println!("panic occurred");
-    ///     }
-    /// }));
-    ///
-    /// panic!("Normal panic");
+    /// ```ignore (no_std)
+    /// #[panic_handler]
+    /// fn panic_handler(panic_info: &PanicInfo<'_>) -> ! {
+    ///     write!(DEBUG_OUTPUT, "panicked: {}", panic_info.message());
+    ///     loop {}
+    /// }
     /// ```
     #[must_use]
-    #[stable(feature = "panic_hooks", since = "1.10.0")]
-    pub fn payload(&self) -> &(dyn Any + Send) {
-        self.payload
-    }
-
-    /// If the `panic!` macro from the `core` crate (not from `std`)
-    /// was used with a formatting string and some additional arguments,
-    /// returns that message ready to be used for example with [`fmt::write`]
-    #[must_use]
     #[unstable(feature = "panic_info_message", issue = "66745")]
-    pub fn message(&self) -> Option<&fmt::Arguments<'_>> {
-        self.message
+    pub fn message(&self) -> PanicMessage<'_> {
+        PanicMessage { message: self.message }
     }
 
     /// Returns information about the location from which the panic originated,
@@ -128,6 +94,24 @@ impl<'a> PanicInfo<'a> {
         Some(&self.location)
     }
 
+    /// Returns the payload associated with the panic.
+    ///
+    /// On this type, `core::panic::PanicInfo`, this method never returns anything useful.
+    /// It only exists because of compatibility with [`std::panic::PanicHookInfo`],
+    /// which used to be the same type.
+    ///
+    /// See [`std::panic::PanicHookInfo::payload`].
+    ///
+    /// [`std::panic::PanicHookInfo`]: ../../std/panic/struct.PanicHookInfo.html
+    /// [`std::panic::PanicHookInfo::payload`]: ../../std/panic/struct.PanicHookInfo.html#method.payload
+    #[deprecated(since = "1.81.0", note = "this never returns anything useful")]
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    #[allow(deprecated, deprecated_in_future)]
+    pub fn payload(&self) -> &(dyn crate::any::Any + Send) {
+        struct NoPayload;
+        &NoPayload
+    }
+
     /// Returns whether the panic handler is allowed to unwind the stack from
     /// the point where the panic occurred.
     ///
@@ -157,22 +141,50 @@ impl<'a> PanicInfo<'a> {
 }
 
 #[stable(feature = "panic_hook_display", since = "1.26.0")]
-impl fmt::Display for PanicInfo<'_> {
+impl Display for PanicInfo<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("panicked at ")?;
         self.location.fmt(formatter)?;
-        formatter.write_str(":")?;
-        if let Some(message) = self.message {
-            formatter.write_str("\n")?;
-            formatter.write_fmt(*message)?;
-        } else if let Some(payload) = self.payload.downcast_ref::<&'static str>() {
-            formatter.write_str("\n")?;
-            formatter.write_str(payload)?;
-        }
-        // NOTE: we cannot use downcast_ref::<String>() here
-        // since String is not available in core!
-        // The payload is a String when `std::panic!` is called with multiple arguments,
-        // but in that case the message is also available.
+        formatter.write_str(":\n")?;
+        formatter.write_fmt(self.message)?;
         Ok(())
+    }
+}
+
+impl<'a> PanicMessage<'a> {
+    /// Get the formatted message, if it has no arguments to be formatted at runtime.
+    ///
+    /// This can be used to avoid allocations in some cases.
+    ///
+    /// # Guarantees
+    ///
+    /// For `panic!("just a literal")`, this function is guaranteed to
+    /// return `Some("just a literal")`.
+    ///
+    /// For most cases with placeholders, this function will return `None`.
+    ///
+    /// See [`fmt::Arguments::as_str`] for details.
+    #[unstable(feature = "panic_info_message", issue = "66745")]
+    #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]
+    #[must_use]
+    #[inline]
+    pub const fn as_str(&self) -> Option<&'static str> {
+        self.message.as_str()
+    }
+}
+
+#[unstable(feature = "panic_info_message", issue = "66745")]
+impl Display for PanicMessage<'_> {
+    #[inline]
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_fmt(self.message)
+    }
+}
+
+#[unstable(feature = "panic_info_message", issue = "66745")]
+impl fmt::Debug for PanicMessage<'_> {
+    #[inline]
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_fmt(self.message)
     }
 }

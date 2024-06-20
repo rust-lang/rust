@@ -1,6 +1,6 @@
 use crate::back::write::create_informational_target_machine;
 use crate::errors::{
-    InvalidTargetFeaturePrefix, PossibleFeature, TargetFeatureDisableOrEnable,
+    FixedX18InvalidArch, InvalidTargetFeaturePrefix, PossibleFeature, TargetFeatureDisableOrEnable,
     UnknownCTargetFeature, UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
 };
 use crate::llvm;
@@ -394,10 +394,15 @@ fn print_target_features(out: &mut dyn PrintBackendInfo, sess: &Session, tm: &ll
             (*feature, desc)
         })
         .collect::<Vec<_>>();
+
+    // Since we add this at the end ...
     rustc_target_features.extend_from_slice(&[(
         "crt-static",
         "Enables C Run-time Libraries to be statically linked",
     )]);
+    // ... we need to sort the list again.
+    rustc_target_features.sort();
+
     llvm_target_features.retain(|(f, _d)| !known_llvm_target_features.contains(f));
 
     let max_feature_len = llvm_target_features
@@ -614,6 +619,15 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         })
         .flatten();
     features.extend(feats);
+
+    // -Zfixed-x18
+    if sess.opts.unstable_opts.fixed_x18 {
+        if sess.target.arch != "aarch64" {
+            sess.dcx().emit_fatal(FixedX18InvalidArch { arch: &sess.target.arch });
+        } else {
+            features.push("+reserve-x18".into());
+        }
+    }
 
     if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
         sess.dcx().emit_err(TargetFeatureDisableOrEnable {

@@ -6,7 +6,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
-use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -168,7 +167,14 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                 hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => visitor.visit_stmt(statement),
             }
         }
-        walk_list!(visitor, visit_expr, &blk.expr);
+        if let Some(tail_expr) = blk.expr {
+            if visitor.tcx.features().shorter_tail_lifetimes
+                && blk.span.edition().at_least_rust_2024()
+            {
+                visitor.terminating_scopes.insert(tail_expr.hir_id.local_id);
+            }
+            visitor.visit_expr(tail_expr);
+        }
     }
 
     visitor.cx = prev_cx;
@@ -782,25 +788,8 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
         }
         self.enter_scope(Scope { id, data: ScopeData::Node });
     }
-}
 
-impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
-    fn visit_block(&mut self, b: &'tcx Block<'tcx>) {
-        resolve_block(self, b);
-    }
-
-    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
-        let body_id = body.id();
-        let owner_id = self.tcx.hir().body_owner_def_id(body_id);
-
-        debug!(
-            "visit_body(id={:?}, span={:?}, body.id={:?}, cx.parent={:?})",
-            owner_id,
-            self.tcx.sess.source_map().span_to_diagnostic_string(body.value.span),
-            body_id,
-            self.cx.parent
-        );
-
+    fn enter_body(&mut self, hir_id: hir::HirId, f: impl FnOnce(&mut Self)) {
         // Save all state that is specific to the outer function
         // body. These will be restored once down below, once we've
         // visited the body.
@@ -812,49 +801,72 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         // control flow assumptions. This doesn't apply to nested
         // bodies within the `+=` statements. See #69307.
         let outer_pessimistic_yield = mem::replace(&mut self.pessimistic_yield, false);
-        self.terminating_scopes.insert(body.value.hir_id.local_id);
+        self.terminating_scopes.insert(hir_id.local_id);
 
-        self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::CallSite });
-        self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::Arguments });
+        self.enter_scope(Scope { id: hir_id.local_id, data: ScopeData::CallSite });
+        self.enter_scope(Scope { id: hir_id.local_id, data: ScopeData::Arguments });
 
-        // The arguments and `self` are parented to the fn.
-        self.cx.var_parent = self.cx.parent.take();
-        for param in body.params {
-            self.visit_pat(param.pat);
-        }
-
-        // The body of the every fn is a root scope.
-        self.cx.parent = self.cx.var_parent;
-        if self.tcx.hir().body_owner_kind(owner_id).is_fn_or_closure() {
-            self.visit_expr(body.value)
-        } else {
-            // Only functions have an outer terminating (drop) scope, while
-            // temporaries in constant initializers may be 'static, but only
-            // according to rvalue lifetime semantics, using the same
-            // syntactical rules used for let initializers.
-            //
-            // e.g., in `let x = &f();`, the temporary holding the result from
-            // the `f()` call lives for the entirety of the surrounding block.
-            //
-            // Similarly, `const X: ... = &f();` would have the result of `f()`
-            // live for `'static`, implying (if Drop restrictions on constants
-            // ever get lifted) that the value *could* have a destructor, but
-            // it'd get leaked instead of the destructor running during the
-            // evaluation of `X` (if at all allowed by CTFE).
-            //
-            // However, `const Y: ... = g(&f());`, like `let y = g(&f());`,
-            // would *not* let the `f()` temporary escape into an outer scope
-            // (i.e., `'static`), which means that after `g` returns, it drops,
-            // and all the associated destruction scope rules apply.
-            self.cx.var_parent = None;
-            resolve_local(self, None, Some(body.value));
-        }
+        f(self);
 
         // Restore context we had at the start.
         self.expr_and_pat_count = outer_ec;
         self.cx = outer_cx;
         self.terminating_scopes = outer_ts;
         self.pessimistic_yield = outer_pessimistic_yield;
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
+    fn visit_block(&mut self, b: &'tcx Block<'tcx>) {
+        resolve_block(self, b);
+    }
+
+    fn visit_body(&mut self, body: &hir::Body<'tcx>) {
+        let body_id = body.id();
+        let owner_id = self.tcx.hir().body_owner_def_id(body_id);
+
+        debug!(
+            "visit_body(id={:?}, span={:?}, body.id={:?}, cx.parent={:?})",
+            owner_id,
+            self.tcx.sess.source_map().span_to_diagnostic_string(body.value.span),
+            body_id,
+            self.cx.parent
+        );
+
+        self.enter_body(body.value.hir_id, |this| {
+            if this.tcx.hir().body_owner_kind(owner_id).is_fn_or_closure() {
+                // The arguments and `self` are parented to the fn.
+                this.cx.var_parent = this.cx.parent.take();
+                for param in body.params {
+                    this.visit_pat(param.pat);
+                }
+
+                // The body of the every fn is a root scope.
+                this.cx.parent = this.cx.var_parent;
+                this.visit_expr(body.value)
+            } else {
+                // Only functions have an outer terminating (drop) scope, while
+                // temporaries in constant initializers may be 'static, but only
+                // according to rvalue lifetime semantics, using the same
+                // syntactical rules used for let initializers.
+                //
+                // e.g., in `let x = &f();`, the temporary holding the result from
+                // the `f()` call lives for the entirety of the surrounding block.
+                //
+                // Similarly, `const X: ... = &f();` would have the result of `f()`
+                // live for `'static`, implying (if Drop restrictions on constants
+                // ever get lifted) that the value *could* have a destructor, but
+                // it'd get leaked instead of the destructor running during the
+                // evaluation of `X` (if at all allowed by CTFE).
+                //
+                // However, `const Y: ... = g(&f());`, like `let y = g(&f());`,
+                // would *not* let the `f()` temporary escape into an outer scope
+                // (i.e., `'static`), which means that after `g` returns, it drops,
+                // and all the associated destruction scope rules apply.
+                this.cx.var_parent = None;
+                resolve_local(this, None, Some(body.value));
+            }
+        })
     }
 
     fn visit_arm(&mut self, a: &'tcx Arm<'tcx>) {
@@ -887,7 +899,7 @@ pub fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
         return tcx.region_scope_tree(typeck_root_def_id);
     }
 
-    let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by(def_id.expect_local()) {
+    let scope_tree = if let Some(body) = tcx.hir().maybe_body_owned_by(def_id.expect_local()) {
         let mut visitor = RegionResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),
@@ -898,9 +910,8 @@ pub fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
             fixup_scopes: vec![],
         };
 
-        let body = tcx.hir().body(body_id);
         visitor.scope_tree.root_body = Some(body.value.hir_id);
-        visitor.visit_body(body);
+        visitor.visit_body(&body);
         visitor.scope_tree
     } else {
         ScopeTree::default()

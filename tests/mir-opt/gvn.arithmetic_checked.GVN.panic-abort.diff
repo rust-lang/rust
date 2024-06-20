@@ -31,9 +31,9 @@
           StorageLive(_3);
           StorageLive(_4);
           _4 = _1;
--         _5 = CheckedAdd(_4, const 0_u64);
+-         _5 = AddWithOverflow(_4, const 0_u64);
 -         assert(!move (_5.1: bool), "attempt to compute `{} + {}`, which would overflow", move _4, const 0_u64) -> [success: bb1, unwind unreachable];
-+         _5 = CheckedAdd(_1, const 0_u64);
++         _5 = AddWithOverflow(_1, const 0_u64);
 +         assert(!const false, "attempt to compute `{} + {}`, which would overflow", _1, const 0_u64) -> [success: bb1, unwind unreachable];
       }
   
@@ -52,7 +52,7 @@
           StorageLive(_7);
           StorageLive(_8);
           _8 = _1;
--         _9 = CheckedSub(_8, const 0_u64);
+-         _9 = SubWithOverflow(_8, const 0_u64);
 -         assert(!move (_9.1: bool), "attempt to compute `{} - {}`, which would overflow", move _8, const 0_u64) -> [success: bb3, unwind unreachable];
 +         _9 = _5;
 +         assert(!const false, "attempt to compute `{} - {}`, which would overflow", _1, const 0_u64) -> [success: bb3, unwind unreachable];
@@ -76,7 +76,7 @@
           _12 = _1;
           StorageLive(_13);
           _13 = _1;
--         _14 = CheckedSub(_12, _13);
+-         _14 = SubWithOverflow(_12, _13);
 -         assert(!move (_14.1: bool), "attempt to compute `{} - {}`, which would overflow", move _12, move _13) -> [success: bb5, unwind unreachable];
 +         _14 = const (0_u64, false);
 +         assert(!const false, "attempt to compute `{} - {}`, which would overflow", _1, _1) -> [success: bb5, unwind unreachable];
@@ -99,7 +99,7 @@
           StorageLive(_16);
           StorageLive(_17);
           _17 = _1;
--         _18 = CheckedMul(_17, const 0_u64);
+-         _18 = MulWithOverflow(_17, const 0_u64);
 -         assert(!move (_18.1: bool), "attempt to compute `{} * {}`, which would overflow", move _17, const 0_u64) -> [success: bb7, unwind unreachable];
 +         _18 = const (0_u64, false);
 +         assert(!const false, "attempt to compute `{} * {}`, which would overflow", _1, const 0_u64) -> [success: bb7, unwind unreachable];
@@ -120,7 +120,7 @@
           StorageLive(_20);
           StorageLive(_21);
           _21 = _1;
--         _22 = CheckedMul(_21, const 1_u64);
+-         _22 = MulWithOverflow(_21, const 1_u64);
 -         assert(!move (_22.1: bool), "attempt to compute `{} * {}`, which would overflow", move _21, const 1_u64) -> [success: bb9, unwind unreachable];
 +         _22 = _5;
 +         assert(!const false, "attempt to compute `{} * {}`, which would overflow", _1, const 1_u64) -> [success: bb9, unwind unreachable];

@@ -11,10 +11,11 @@
 //! even if it is stabilized or removed, *do not remove it*. Instead, move the
 //! symbol to the `accepted` or `removed` modules respectively.
 
+// tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(rustdoc_internals)]
 #![doc(rust_logo)]
-#![feature(lazy_cell)]
+#![feature(rustdoc_internals)]
+// tidy-alphabetical-end
 
 mod accepted;
 mod builtin_attrs;
@@ -124,8 +125,8 @@ pub use accepted::ACCEPTED_FEATURES;
 pub use builtin_attrs::AttributeDuplicates;
 pub use builtin_attrs::{
     deprecated_attributes, encode_cross_crate, find_gated_cfg, is_builtin_attr_name,
-    is_valid_for_get_attr, AttributeGate, AttributeTemplate, AttributeType, BuiltinAttribute,
-    GatedCfg, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
+    is_unsafe_attr, is_valid_for_get_attr, AttributeGate, AttributeTemplate, AttributeType,
+    BuiltinAttribute, GatedCfg, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
 };
 pub use removed::REMOVED_FEATURES;
 pub use unstable::{Features, INCOMPATIBLE_FEATURES, UNSTABLE_FEATURES};

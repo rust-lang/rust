@@ -34,7 +34,18 @@ help: use angle brackets instead
 LL | struct Apple((Apple, Option<Banana ? Citron>));
    |                            ~               ~
 
-error: aborting due to 4 previous errors
+error[E0072]: recursive type `Apple` has infinite size
+  --> $DIR/issue-103748-ICE-wrong-braces.rs:3:1
+   |
+LL | struct Apple((Apple, Option(Banana ? Citron)));
+   | ^^^^^^^^^^^^  ----- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL | struct Apple((Box<Apple>, Option(Banana ? Citron)));
+   |               ++++     +
 
-Some errors have detailed explanations: E0214, E0412.
-For more information about an error, try `rustc --explain E0214`.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0072, E0214, E0412.
+For more information about an error, try `rustc --explain E0072`.

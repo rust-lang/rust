@@ -1,10 +1,8 @@
 use super::combine::CombineFields;
+use crate::infer::relate::{PredicateEmittingRelation, StructurallyRelateAliases};
 use crate::infer::BoundRegionConversionTime::HigherRankedType;
-use crate::infer::{
-    DefineOpaqueTypes, ObligationEmittingRelation, StructurallyRelateAliases, SubregionOrigin,
-};
-use crate::traits::{Obligation, PredicateObligations};
-
+use crate::infer::{DefineOpaqueTypes, SubregionOrigin};
+use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::relate::{
     relate_args_invariantly, relate_args_with_variances, Relate, RelateResult, TypeRelation,
 };
@@ -29,7 +27,7 @@ impl<'combine, 'infcx, 'tcx> TypeRelating<'combine, 'infcx, 'tcx> {
     }
 }
 
-impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
+impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
     fn tag(&self) -> &'static str {
         "TypeRelating"
     }
@@ -44,7 +42,7 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         a_arg: ty::GenericArgsRef<'tcx>,
         b_arg: ty::GenericArgsRef<'tcx>,
     ) -> RelateResult<'tcx, ty::GenericArgsRef<'tcx>> {
-        if self.ambient_variance == ty::Variance::Invariant {
+        if self.ambient_variance == ty::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
             // (e.g., #41849).
@@ -56,10 +54,10 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         }
     }
 
-    fn relate_with_variance<T: Relate<'tcx>>(
+    fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
         &mut self,
         variance: ty::Variance,
-        _info: ty::VarianceDiagInfo<'tcx>,
+        _info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
@@ -80,8 +78,8 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         }
 
         let infcx = self.fields.infcx;
-        let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
-        let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
+        let a = infcx.shallow_resolve(a);
+        let b = infcx.shallow_resolve(b);
 
         match (a.kind(), b.kind()) {
             (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
@@ -89,9 +87,8 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
                     ty::Covariant => {
                         // can't make progress on `A <: B` if both A and B are
                         // type variables, so record an obligation.
-                        self.fields.obligations.push(Obligation::new(
+                        self.fields.goals.push(Goal::new(
                             self.tcx(),
-                            self.fields.trace.cause.clone(),
                             self.fields.param_env,
                             ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
                                 a_is_expected: true,
@@ -103,9 +100,8 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
                     ty::Contravariant => {
                         // can't make progress on `B <: A` if both A and B are
                         // type variables, so record an obligation.
-                        self.fields.obligations.push(Obligation::new(
+                        self.fields.goals.push(Goal::new(
                             self.tcx(),
-                            self.fields.trace.cause.clone(),
                             self.fields.param_env,
                             ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
                                 a_is_expected: false,
@@ -154,11 +150,12 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
                     && def_id.is_local()
                     && !infcx.next_trait_solver() =>
             {
-                self.fields.obligations.extend(
-                    infcx
-                        .handle_opaque_type(a, b, &self.fields.trace.cause, self.param_env())?
-                        .obligations,
-                );
+                self.fields.goals.extend(infcx.handle_opaque_type(
+                    a,
+                    b,
+                    self.fields.trace.cause.span,
+                    self.param_env(),
+                )?);
             }
 
             _ => {
@@ -226,7 +223,7 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         b: ty::Binder<'tcx, T>,
     ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
-        T: Relate<'tcx>,
+        T: Relate<TyCtxt<'tcx>>,
     {
         if a == b {
             // Do nothing
@@ -299,7 +296,7 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> ObligationEmittingRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
+impl<'tcx> PredicateEmittingRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
     fn span(&self) -> Span {
         self.fields.trace.span()
     }
@@ -319,29 +316,32 @@ impl<'tcx> ObligationEmittingRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         self.fields.register_predicates(obligations);
     }
 
-    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
+    fn register_goals(
+        &mut self,
+        obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) {
         self.fields.register_obligations(obligations);
     }
 
-    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+    fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
         self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
-            ty::Variance::Covariant => ty::PredicateKind::AliasRelate(
+            ty::Covariant => ty::PredicateKind::AliasRelate(
                 a.into(),
                 b.into(),
                 ty::AliasRelationDirection::Subtype,
             ),
             // a :> b is b <: a
-            ty::Variance::Contravariant => ty::PredicateKind::AliasRelate(
+            ty::Contravariant => ty::PredicateKind::AliasRelate(
                 b.into(),
                 a.into(),
                 ty::AliasRelationDirection::Subtype,
             ),
-            ty::Variance::Invariant => ty::PredicateKind::AliasRelate(
+            ty::Invariant => ty::PredicateKind::AliasRelate(
                 a.into(),
                 b.into(),
                 ty::AliasRelationDirection::Equate,
             ),
-            ty::Variance::Bivariant => {
+            ty::Bivariant => {
                 unreachable!("Expected bivariance to be handled in relate_with_variance")
             }
         })]);

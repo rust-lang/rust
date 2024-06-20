@@ -24,6 +24,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{sym, Span};
+use tracing::instrument;
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let typeck_results = tcx.typeck(def_id);
@@ -1136,7 +1137,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
 
     let all_arms_have_guards = arms.iter().all(|arm_id| thir[*arm_id].guard.is_some());
     if !is_empty_match && all_arms_have_guards {
-        err.subdiagnostic(cx.tcx.dcx(), NonExhaustiveMatchAllArmsGuarded);
+        err.subdiagnostic(NonExhaustiveMatchAllArmsGuarded);
     }
     if let Some((span, sugg)) = suggestion {
         err.span_suggestion_verbose(span, msg, sugg, Applicability::HasPlaceholders);

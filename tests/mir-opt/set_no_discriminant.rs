@@ -19,7 +19,7 @@ pub fn f() -> usize {
     // CHECK-NOT: goto
     // CHECK: switchInt(
     // CHECK-NOT: goto
-    mir!(
+    mir! {
         let a: isize;
         let e: E<char>;
         {
@@ -39,7 +39,7 @@ pub fn f() -> usize {
             RET = 1;
             Return()
         }
-    )
+    }
 }
 
 // EMIT_MIR set_no_discriminant.generic.JumpThreading.diff
@@ -49,7 +49,7 @@ pub fn generic<T>() -> usize {
     // CHECK-NOT: goto
     // CHECK: switchInt(
     // CHECK-NOT: goto
-    mir!(
+    mir! {
         let a: isize;
         let e: E<T>;
         {
@@ -69,7 +69,7 @@ pub fn generic<T>() -> usize {
             RET = 1;
             Return()
         }
-    )
+    }
 }
 
 fn main() {

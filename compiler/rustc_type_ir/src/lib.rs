@@ -1,57 +1,68 @@
+// tidy-alphabetical-start
+#![allow(rustc::usage_of_ty_tykind)]
 #![cfg_attr(
     feature = "nightly",
-    feature(associated_type_defaults, min_specialization, never_type, rustc_attrs)
+    feature(associated_type_defaults, min_specialization, never_type, rustc_attrs, negative_impls)
 )]
-#![allow(rustc::usage_of_ty_tykind)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
+// tidy-alphabetical-end
 
 #[cfg(feature = "nightly")]
 extern crate self as rustc_type_ir;
 
 #[cfg(feature = "nightly")]
+use rustc_data_structures::sso::SsoHashSet;
+#[cfg(feature = "nightly")]
 use rustc_data_structures::sync::Lrc;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
+#[cfg(not(feature = "nightly"))]
+use std::collections::HashSet as SsoHashSet;
 use std::fmt;
 use std::hash::Hash;
 #[cfg(not(feature = "nightly"))]
 use std::sync::Arc as Lrc;
 
+// These modules are `pub` since they are not glob-imported.
 #[macro_use]
 pub mod visit;
 #[cfg(feature = "nightly")]
 pub mod codec;
+pub mod error;
 pub mod fold;
 pub mod inherent;
 pub mod ir_print;
+pub mod lang_items;
 pub mod lift;
+pub mod relate;
 pub mod solve;
-pub mod ty_info;
-pub mod ty_kind;
 
+// These modules are not `pub` since they are glob-imported.
 #[macro_use]
 mod macros;
+mod binder;
 mod canonical;
 mod const_kind;
-mod debug;
 mod flags;
 mod generic_arg;
-mod infcx;
 mod interner;
+mod opaque_ty;
 mod predicate;
 mod predicate_kind;
 mod region_kind;
+mod ty_info;
+mod ty_kind;
 mod upcast;
 
+pub use binder::*;
 pub use canonical::*;
 #[cfg(feature = "nightly")]
 pub use codec::*;
 pub use const_kind::*;
-pub use debug::{DebugWithInfcx, WithInfcx};
 pub use flags::*;
 pub use generic_arg::*;
-pub use infcx::InferCtxtLike;
 pub use interner::*;
+pub use opaque_ty::*;
 pub use predicate::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
@@ -63,6 +74,7 @@ pub use DynKind::*;
 pub use InferTy::*;
 pub use RegionKind::*;
 pub use TyKind::*;
+pub use Variance::*;
 
 rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing
@@ -373,6 +385,10 @@ rustc_index::newtype_index! {
 impl<I: Interner> inherent::BoundVarLike<I> for BoundVar {
     fn var(self) -> BoundVar {
         self
+    }
+
+    fn assert_eq(self, _var: I::BoundVarKind) {
+        unreachable!("FIXME: We really should have a separate `BoundConst` for consts")
     }
 }
 

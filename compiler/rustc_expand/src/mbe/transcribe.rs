@@ -1,20 +1,21 @@
-use crate::base::ExtCtxt;
 use crate::errors::{
     CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers, MustRepeatOnce,
     NoSyntaxVarsExprRepeat, VarStillRepeating,
 };
 use crate::mbe::macro_parser::{NamedMatch, NamedMatch::*};
+use crate::mbe::metavar_expr::{MetaVarExprConcatElem, RAW_IDENT_ERR};
 use crate::mbe::{self, KleeneOp, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
+use rustc_ast::token::IdentIsRaw;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{pluralize, Diag, PResult};
+use rustc_errors::{pluralize, Diag, DiagCtxtHandle, PResult};
 use rustc_parse::parser::ParseNtResult;
+use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::{with_metavar_spans, Span, SyntaxContext};
-
+use rustc_span::{with_metavar_spans, Span, Symbol, SyntaxContext};
 use smallvec::{smallvec, SmallVec};
 use std::mem;
 
@@ -30,11 +31,11 @@ impl MutVisitor for Marker {
         // it's some advanced case with macro-generated macros. So if we cache the marked version
         // of that context once, we'll typically have a 100% cache hit rate after that.
         let Marker(expn_id, transparency, ref mut cache) = *self;
-        let data = span.data();
-        let marked_ctxt = *cache
-            .entry(data.ctxt)
-            .or_insert_with(|| data.ctxt.apply_mark(expn_id.to_expn_id(), transparency));
-        *span = data.with_ctxt(marked_ctxt);
+        *span = span.map_ctxt(|ctxt| {
+            *cache
+                .entry(ctxt)
+                .or_insert_with(|| ctxt.apply_mark(expn_id.to_expn_id(), transparency))
+        });
     }
 }
 
@@ -99,11 +100,12 @@ impl<'a> Iterator for Frame<'a> {
 ///
 /// Along the way, we do some additional error checking.
 pub(super) fn transcribe<'a>(
-    cx: &ExtCtxt<'a>,
+    psess: &'a ParseSess,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     src: &mbe::Delimited,
     src_span: DelimSpan,
     transparency: Transparency,
+    expand_id: LocalExpnId,
 ) -> PResult<'a, TokenStream> {
     // Nothing for us to transcribe...
     if src.tts.is_empty() {
@@ -137,8 +139,9 @@ pub(super) fn transcribe<'a>(
     // again, and we are done transcribing.
     let mut result: Vec<TokenTree> = Vec::new();
     let mut result_stack = Vec::new();
-    let mut marker = Marker(cx.current_expansion.id, transparency, Default::default());
+    let mut marker = Marker(expand_id, transparency, Default::default());
 
+    let dcx = psess.dcx();
     loop {
         // Look at the last frame on the stack.
         // If it still has a TokenTree we have not looked at yet, use that tree.
@@ -201,9 +204,7 @@ pub(super) fn transcribe<'a>(
             seq @ mbe::TokenTree::Sequence(_, seq_rep) => {
                 match lockstep_iter_size(seq, interp, &repeats) {
                     LockstepIterSize::Unconstrained => {
-                        return Err(cx
-                            .dcx()
-                            .create_err(NoSyntaxVarsExprRepeat { span: seq.span() }));
+                        return Err(dcx.create_err(NoSyntaxVarsExprRepeat { span: seq.span() }));
                     }
 
                     LockstepIterSize::Contradiction(msg) => {
@@ -211,9 +212,9 @@ pub(super) fn transcribe<'a>(
                         // happens when two meta-variables are used in the same repetition in a
                         // sequence, but they come from different sequence matchers and repeat
                         // different amounts.
-                        return Err(cx
-                            .dcx()
-                            .create_err(MetaVarsDifSeqMatchers { span: seq.span(), msg }));
+                        return Err(
+                            dcx.create_err(MetaVarsDifSeqMatchers { span: seq.span(), msg })
+                        );
                     }
 
                     LockstepIterSize::Constraint(len, _) => {
@@ -227,9 +228,7 @@ pub(super) fn transcribe<'a>(
                                 // FIXME: this really ought to be caught at macro definition
                                 // time... It happens when the Kleene operator in the matcher and
                                 // the body for the same meta-variable do not match.
-                                return Err(cx
-                                    .dcx()
-                                    .create_err(MustRepeatOnce { span: sp.entire() }));
+                                return Err(dcx.create_err(MustRepeatOnce { span: sp.entire() }));
                             }
                         } else {
                             // 0 is the initial counter (we have done 0 repetitions so far). `len`
@@ -253,13 +252,27 @@ pub(super) fn transcribe<'a>(
             mbe::TokenTree::MetaVar(mut sp, mut original_ident) => {
                 // Find the matched nonterminal from the macro invocation, and use it to replace
                 // the meta-var.
+                //
+                // We use `Spacing::Alone` everywhere here, because that's the conservative choice
+                // and spacing of declarative macros is tricky. E.g. in this macro:
+                // ```
+                // macro_rules! idents {
+                //     ($($a:ident,)*) => { stringify!($($a)*) }
+                // }
+                // ```
+                // `$a` has no whitespace after it and will be marked `JointHidden`. If you then
+                // call `idents!(x,y,z,)`, each of `x`, `y`, and `z` will be marked as `Joint`. So
+                // if you choose to use `$x`'s spacing or the identifier's spacing, you'll end up
+                // producing "xyz", which is bad because it effectively merges tokens.
+                // `Spacing::Alone` is the safer option. Fortunately, `space_between` will avoid
+                // some of the unnecessary whitespace.
                 let ident = MacroRulesNormalizedIdent::new(original_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
                     let tt = match cur_matched {
                         MatchedSingle(ParseNtResult::Tt(tt)) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
-                            maybe_use_metavar_location(cx, &stack, sp, tt, &mut marker)
+                            maybe_use_metavar_location(psess, &stack, sp, tt, &mut marker)
                         }
                         MatchedSingle(ParseNtResult::Ident(ident, is_raw)) => {
                             marker.visit_span(&mut sp);
@@ -280,7 +293,7 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
-                            return Err(cx.dcx().create_err(VarStillRepeating { span: sp, ident }));
+                            return Err(dcx.create_err(VarStillRepeating { span: sp, ident }));
                         }
                     };
                     result.push(tt)
@@ -299,7 +312,7 @@ pub(super) fn transcribe<'a>(
 
             // Replace meta-variable expressions with the result of their expansion.
             mbe::TokenTree::MetaVarExpr(sp, expr) => {
-                transcribe_metavar_expr(cx, expr, interp, &mut marker, &repeats, &mut result, sp)?;
+                transcribe_metavar_expr(dcx, expr, interp, &mut marker, &repeats, &mut result, sp)?;
             }
 
             // If we are entering a new delimiter, we push its contents to the `stack` to be
@@ -359,7 +372,7 @@ pub(super) fn transcribe<'a>(
 ///   combine with each other and not with tokens outside of the sequence.
 /// - The metavariable span comes from a different crate, then we prefer the more local span.
 fn maybe_use_metavar_location(
-    cx: &ExtCtxt<'_>,
+    psess: &ParseSess,
     stack: &[Frame<'_>],
     mut metavar_span: Span,
     orig_tt: &TokenTree,
@@ -397,7 +410,7 @@ fn maybe_use_metavar_location(
                 && insert(mspans, dspan.entire(), metavar_span)
         }),
     };
-    if no_collision || cx.source_map().is_imported(metavar_span) {
+    if no_collision || psess.source_map().is_imported(metavar_span) {
         return orig_tt.clone();
     }
 
@@ -558,7 +571,7 @@ fn lockstep_iter_size(
 /// * `[ $( ${count(foo, 1)} ),* ]` will return an error because `${count(foo, 1)}` is
 ///   declared inside a single repetition and the index `1` implies two nested repetitions.
 fn count_repetitions<'a>(
-    cx: &ExtCtxt<'a>,
+    dcx: DiagCtxtHandle<'a>,
     depth_user: usize,
     mut matched: &NamedMatch,
     repeats: &[(usize, usize)],
@@ -595,7 +608,7 @@ fn count_repetitions<'a>(
         .and_then(|el| el.checked_sub(repeats.len()))
         .unwrap_or_default();
     if depth_user > depth_max {
-        return Err(out_of_bounds_err(cx, depth_max + 1, sp.entire(), "count"));
+        return Err(out_of_bounds_err(dcx, depth_max + 1, sp.entire(), "count"));
     }
 
     // `repeats` records all of the nested levels at which we are currently
@@ -611,7 +624,7 @@ fn count_repetitions<'a>(
     }
 
     if let MatchedSingle(_) = matched {
-        return Err(cx.dcx().create_err(CountRepetitionMisplaced { span: sp.entire() }));
+        return Err(dcx.create_err(CountRepetitionMisplaced { span: sp.entire() }));
     }
 
     count(depth_user, depth_max, matched)
@@ -619,7 +632,7 @@ fn count_repetitions<'a>(
 
 /// Returns a `NamedMatch` item declared on the LHS given an arbitrary [Ident]
 fn matched_from_ident<'ctx, 'interp, 'rslt>(
-    cx: &ExtCtxt<'ctx>,
+    dcx: DiagCtxtHandle<'ctx>,
     ident: Ident,
     interp: &'interp FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
 ) -> PResult<'ctx, &'rslt NamedMatch>
@@ -628,12 +641,12 @@ where
 {
     let span = ident.span;
     let key = MacroRulesNormalizedIdent::new(ident);
-    interp.get(&key).ok_or_else(|| cx.dcx().create_err(MetaVarExprUnrecognizedVar { span, key }))
+    interp.get(&key).ok_or_else(|| dcx.create_err(MetaVarExprUnrecognizedVar { span, key }))
 }
 
 /// Used by meta-variable expressions when an user input is out of the actual declared bounds. For
 /// example, index(999999) in an repetition of only three elements.
-fn out_of_bounds_err<'a>(cx: &ExtCtxt<'a>, max: usize, span: Span, ty: &str) -> Diag<'a> {
+fn out_of_bounds_err<'a>(dcx: DiagCtxtHandle<'a>, max: usize, span: Span, ty: &str) -> Diag<'a> {
     let msg = if max == 0 {
         format!(
             "meta-variable expression `{ty}` with depth parameter \
@@ -645,11 +658,11 @@ fn out_of_bounds_err<'a>(cx: &ExtCtxt<'a>, max: usize, span: Span, ty: &str) -> 
              must be less than {max}"
         )
     };
-    cx.dcx().struct_span_err(span, msg)
+    dcx.struct_span_err(span, msg)
 }
 
 fn transcribe_metavar_expr<'a>(
-    cx: &ExtCtxt<'a>,
+    dcx: DiagCtxtHandle<'a>,
     expr: &MetaVarExpr,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     marker: &mut Marker,
@@ -663,9 +676,26 @@ fn transcribe_metavar_expr<'a>(
         span
     };
     match *expr {
+        MetaVarExpr::Concat(ref elements) => {
+            let mut concatenated = String::new();
+            for element in elements.into_iter() {
+                let string = match element {
+                    MetaVarExprConcatElem::Ident(ident) => ident.to_string(),
+                    MetaVarExprConcatElem::Var(ident) => extract_ident(dcx, *ident, interp)?,
+                };
+                concatenated.push_str(&string);
+            }
+            // The current implementation marks the span as coming from the macro regardless of
+            // contexts of the concatenated identifiers but this behavior may change in the
+            // future.
+            result.push(TokenTree::Token(
+                Token::from_ast_ident(Ident::new(Symbol::intern(&concatenated), visited_span())),
+                Spacing::Alone,
+            ));
+        }
         MetaVarExpr::Count(original_ident, depth) => {
-            let matched = matched_from_ident(cx, original_ident, interp)?;
-            let count = count_repetitions(cx, depth, matched, repeats, sp)?;
+            let matched = matched_from_ident(dcx, original_ident, interp)?;
+            let count = count_repetitions(dcx, depth, matched, repeats, sp)?;
             let tt = TokenTree::token_alone(
                 TokenKind::lit(token::Integer, sym::integer(count), None),
                 visited_span(),
@@ -674,7 +704,7 @@ fn transcribe_metavar_expr<'a>(
         }
         MetaVarExpr::Ignore(original_ident) => {
             // Used to ensure that `original_ident` is present in the LHS
-            let _ = matched_from_ident(cx, original_ident, interp)?;
+            let _ = matched_from_ident(dcx, original_ident, interp)?;
         }
         MetaVarExpr::Index(depth) => match repeats.iter().nth_back(depth) {
             Some((index, _)) => {
@@ -683,7 +713,7 @@ fn transcribe_metavar_expr<'a>(
                     visited_span(),
                 ));
             }
-            None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "index")),
+            None => return Err(out_of_bounds_err(dcx, repeats.len(), sp.entire(), "index")),
         },
         MetaVarExpr::Len(depth) => match repeats.iter().nth_back(depth) {
             Some((_, length)) => {
@@ -692,8 +722,38 @@ fn transcribe_metavar_expr<'a>(
                     visited_span(),
                 ));
             }
-            None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "len")),
+            None => return Err(out_of_bounds_err(dcx, repeats.len(), sp.entire(), "len")),
         },
     }
     Ok(())
+}
+
+/// Extracts an identifier that can be originated from a `$var:ident` variable or from a token tree.
+fn extract_ident<'a>(
+    dcx: DiagCtxtHandle<'a>,
+    ident: Ident,
+    interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+) -> PResult<'a, String> {
+    if let NamedMatch::MatchedSingle(pnr) = matched_from_ident(dcx, ident, interp)? {
+        if let ParseNtResult::Ident(nt_ident, is_raw) = pnr {
+            if let IdentIsRaw::Yes = is_raw {
+                return Err(dcx.struct_span_err(ident.span, RAW_IDENT_ERR));
+            }
+            return Ok(nt_ident.to_string());
+        }
+        if let ParseNtResult::Tt(TokenTree::Token(
+            Token { kind: TokenKind::Ident(token_ident, is_raw), .. },
+            _,
+        )) = pnr
+        {
+            if let IdentIsRaw::Yes = is_raw {
+                return Err(dcx.struct_span_err(ident.span, RAW_IDENT_ERR));
+            }
+            return Ok(token_ident.to_string());
+        }
+    }
+    Err(dcx.struct_span_err(
+        ident.span,
+        "`${concat(..)}` currently only accepts identifiers or meta-variables as parameters",
+    ))
 }

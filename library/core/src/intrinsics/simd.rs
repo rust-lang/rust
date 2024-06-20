@@ -152,7 +152,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_fabs<T>(x: T) -> T;
 
-    /// Elementwise minimum of a vector.
+    /// Elementwise minimum of two vectors.
     ///
     /// `T` must be a vector of floating-point primitive types.
     ///
@@ -160,7 +160,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_fmin<T>(x: T, y: T) -> T;
 
-    /// Elementwise maximum of a vector.
+    /// Elementwise maximum of two vectors.
     ///
     /// `T` must be a vector of floating-point primitive types.
     ///
@@ -387,7 +387,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_reduce_mul_ordered<T, U>(x: T, y: U) -> U;
 
-    /// Add elements within a vector in arbitrary order. May also be re-associated with
+    /// Multiply elements within a vector in arbitrary order. May also be re-associated with
     /// unordered additions on the inputs/outputs.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
@@ -405,7 +405,7 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_reduce_all<T>(x: T) -> bool;
 
-    /// Check if all mask values are true.
+    /// Check if any mask value is true.
     ///
     /// `T` must be a vector of integer primitive types.
     ///
@@ -568,6 +568,12 @@ extern "rust-intrinsic" {
     /// `T` must be a vector of integers.
     #[rustc_nounwind]
     pub fn simd_ctlz<T>(x: T) -> T;
+
+    /// Count the number of ones in each element.
+    ///
+    /// `T` must be a vector of integers.
+    #[rustc_nounwind]
+    pub fn simd_ctpop<T>(x: T) -> T;
 
     /// Count the trailing zeros of each element.
     ///

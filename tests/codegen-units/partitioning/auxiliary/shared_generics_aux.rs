@@ -3,7 +3,7 @@
 //@ compile-flags:-Zshare-generics=yes -Copt-level=0
 //@ no-prefer-dynamic
 
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 
 pub fn generic_fn<T>(x: T, y: T) -> (T, T) {
     (x, y)

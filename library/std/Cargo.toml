@@ -24,24 +24,20 @@ hashbrown = { version = "0.14", default-features = false, features = ['rustc-dep
 std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = ['rustc-dep-of-std'] }
 
 # Dependencies of the `backtrace` crate
-rustc-demangle = { version = "0.1.21", features = ['rustc-dep-of-std'] }
+rustc-demangle = { version = "0.1.24", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))'.dependencies]
 miniz_oxide = { version = "0.7.0", optional = true, default-features = false }
-addr2line = { version = "0.21.0", optional = true, default-features = false }
+addr2line = { version = "0.22.0", optional = true, default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
-libc = { version = "=0.2.153", default-features = false, features = ['rustc-dep-of-std'], public = true }
-
-# Pin libc (pending https://github.com/rust-lang/rust/pull/124560)
-[target.'cfg(all(windows, target_env = "msvc"))'.dependencies]
-libc = { version = "=0.2.153", default-features = false }
+libc = { version = "0.2.153", default-features = false, features = ['rustc-dep-of-std'], public = true }
 
 [target.'cfg(all(not(target_os = "aix"), not(all(windows, target_env = "msvc", not(target_vendor = "uwp")))))'.dependencies]
-object = { version = "0.32.0", default-features = false, optional = true, features = ['read_core', 'elf', 'macho', 'pe', 'unaligned', 'archive'] }
+object = { version = "0.36.0", default-features = false, optional = true, features = ['read_core', 'elf', 'macho', 'pe', 'unaligned', 'archive'] }
 
 [target.'cfg(target_os = "aix")'.dependencies]
-object = { version = "0.32.0", default-features = false, optional = true, features = ['read_core', 'xcoff', 'unaligned', 'archive'] }
+object = { version = "0.36.0", default-features = false, optional = true, features = ['read_core', 'xcoff', 'unaligned', 'archive'] }
 
 [dev-dependencies]
 rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
@@ -54,7 +50,7 @@ dlmalloc = { version = "0.2.4", features = ['rustc-dep-of-std'] }
 fortanix-sgx-abi = { version = "0.5.0", features = ['rustc-dep-of-std'], public = true }
 
 [target.'cfg(target_os = "hermit")'.dependencies]
-hermit-abi = { version = "0.3.9", features = ['rustc-dep-of-std'], public = true }
+hermit-abi = { version = "0.4.0", features = ['rustc-dep-of-std'], public = true }
 
 [target.'cfg(target_os = "wasi")'.dependencies]
 wasi = { version = "0.11.0", features = ['rustc-dep-of-std'], default-features = false }
@@ -82,6 +78,8 @@ system-llvm-libunwind = ["unwind/system-llvm-libunwind"]
 
 # Make panics and failed asserts immediately abort without formatting any message
 panic_immediate_abort = ["core/panic_immediate_abort", "alloc/panic_immediate_abort"]
+# Choose algorithms that are optimized for binary size instead of runtime performance
+optimize_for_size = ["core/optimize_for_size", "alloc/optimize_for_size"]
 
 # Enable std_detect default features for stdarch/crates/std_detect:
 # https://github.com/rust-lang/stdarch/blob/master/crates/std_detect/Cargo.toml
@@ -99,3 +97,16 @@ heap_size = 0x8000000
 name = "stdbenches"
 path = "benches/lib.rs"
 test = true
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+# x.py uses beta cargo, so `check-cfg` entries do not yet take effect
+# for rust-lang/rust. But for users of `-Zbuild-std` it does.
+check-cfg = [
+    'cfg(bootstrap)',
+    'cfg(target_arch, values("xtensa"))',
+    # std use #[path] imports to portable-simd `std_float` crate
+    # and to the `backtrace` crate which messes-up with Cargo list
+    # of declared features, we therefor expect any feature cfg
+    'cfg(feature, values(any()))',
+]

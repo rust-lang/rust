@@ -3,7 +3,7 @@
 //!
 //! For more information about LLVM KCFI and cross-language LLVM KCFI support for the Rust compiler,
 //! see the tracking issue #123479.
-use rustc_middle::ty::{Instance, InstanceDef, ReifyReason, Ty, TyCtxt};
+use rustc_middle::ty::{Instance, InstanceKind, ReifyReason, Ty, TyCtxt};
 use rustc_target::abi::call::FnAbi;
 use std::hash::Hasher;
 use twox_hash::XxHash64;
@@ -44,7 +44,7 @@ pub fn typeid_for_instance<'tcx>(
     //
     // This was implemented for KCFI support in #123106 and #123052 (which introduced the
     // ReifyReason). The tracking issue for KCFI support for Rust is #123479.
-    if matches!(instance.def, InstanceDef::ReifyShim(_, Some(ReifyReason::FnPtr))) {
+    if matches!(instance.def, InstanceKind::ReifyShim(_, Some(ReifyReason::FnPtr))) {
         options.insert(TypeIdOptions::USE_CONCRETE_SELF);
     }
     // A KCFI type metadata identifier is a 32-bit constant produced by taking the lower half of the

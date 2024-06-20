@@ -1,4 +1,3 @@
-#![feature(lazy_cell)]
 #![feature(let_chains)]
 #![feature(rustc_private)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]

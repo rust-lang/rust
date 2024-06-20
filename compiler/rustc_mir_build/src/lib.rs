@@ -1,7 +1,6 @@
 //! Construction of MIR from HIR.
-//!
-//! This crate also contains the match exhaustiveness and usefulness checking.
 
+// tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
@@ -9,9 +8,7 @@
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(try_blocks)]
-
-#[macro_use]
-extern crate tracing;
+// tidy-alphabetical-end
 
 mod build;
 mod check_unsafety;

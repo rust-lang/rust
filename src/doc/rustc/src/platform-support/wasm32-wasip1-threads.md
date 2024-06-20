@@ -150,3 +150,15 @@ or another engine that supports `wasi-threads` is installed and can be found in 
 5. Apply such [a change](https://github.com/g0djan/rust/compare/godjan/wasi-threads...g0djan:rust:godjan/wasi-run-ui-tests?expand=1) with an engine from the step 1.
 6. Run `./x.py test --target wasm32-wasip1-threads tests/ui` and save the list of failed tests.
 7. For both lists of failed tests run `cat list | sort > sorted_list` and compare it with `diff sorted_list1 sorted_list2`.
+
+## Conditionally compiling code
+
+It's recommended to conditionally compile code for this target with:
+
+```text
+#[cfg(all(target_os = "wasi", target_env = "p1", target_feature = "atomics"))]
+```
+
+Prior to Rust 1.80 the `target_env = "p1"` key was not set. Currently the
+`target_feature = "atomics"` is Nightly-only. Note that the precise `#[cfg]`
+necessary to detect this target may change as the target becomes more stable.

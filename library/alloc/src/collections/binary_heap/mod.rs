@@ -440,7 +440,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// heap.push(4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_binary_heap_constructor", issue = "112353")]
+    #[rustc_const_stable(feature = "const_binary_heap_constructor", since = "1.80.0")]
     #[must_use]
     pub const fn new() -> BinaryHeap<T> {
         BinaryHeap { data: vec![] }
@@ -484,7 +484,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// heap.push(4);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "const_binary_heap_constructor", issue = "112353")]
+    #[rustc_const_unstable(feature = "const_binary_heap_new_in", issue = "112353")]
     #[must_use]
     pub const fn new_in(alloc: A) -> BinaryHeap<T, A> {
         BinaryHeap { data: Vec::new_in(alloc) }
@@ -1213,7 +1213,6 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(binary_heap_as_slice)]
     /// use std::collections::BinaryHeap;
     /// use std::io::{self, Write};
     ///
@@ -1222,7 +1221,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// io::sink().write(heap.as_slice()).unwrap();
     /// ```
     #[must_use]
-    #[unstable(feature = "binary_heap_as_slice", issue = "83659")]
+    #[stable(feature = "binary_heap_as_slice", since = "1.80.0")]
     pub fn as_slice(&self) -> &[T] {
         self.data.as_slice()
     }

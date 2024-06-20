@@ -133,6 +133,8 @@ parse_dot_dot_dot_for_remaining_fields = expected field pattern, found `{$token_
 parse_dot_dot_dot_range_to_pattern_not_allowed = range-to patterns with `...` are not allowed
     .suggestion = use `..=` instead
 
+parse_dot_dot_range_attribute = attributes are not allowed on range expressions starting with `..`
+
 parse_dotdotdot = unexpected token: `...`
     .suggest_exclusive_range = use `..` for an exclusive range
     .suggest_inclusive_range = or `..=` for an inclusive range
@@ -621,8 +623,6 @@ parse_or_pattern_not_allowed_in_fn_parameters = top-level or-patterns are not al
 parse_or_pattern_not_allowed_in_let_binding = top-level or-patterns are not allowed in `let` bindings
 parse_out_of_range_hex_escape = out of range hex escape
     .label = must be a character in the range [\x00-\x7f]
-
-parse_outer_attr_ambiguous = ambiguous outer attributes
 
 parse_outer_attr_explanation = outer attributes, like `#[test]`, annotate the item following them
 

@@ -23,6 +23,10 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
+    pub fn is_lang_item(self, def_id: DefId, lang_item: LangItem) -> bool {
+        self.lang_items().get(lang_item) == Some(def_id)
+    }
+
     /// Given a [`DefId`] of one of the [`Fn`], [`FnMut`] or [`FnOnce`] traits,
     /// returns a corresponding [`ty::ClosureKind`].
     /// For any other [`DefId`] return `None`.

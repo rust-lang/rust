@@ -30,7 +30,8 @@ impl From<ErrorGuaranteed> for NotConstEvaluatable {
 
 TrivialTypeTraversalImpls! { NotConstEvaluatable }
 
-pub type BoundAbstractConst<'tcx> = Result<Option<EarlyBinder<ty::Const<'tcx>>>, ErrorGuaranteed>;
+pub type BoundAbstractConst<'tcx> =
+    Result<Option<EarlyBinder<'tcx, ty::Const<'tcx>>>, ErrorGuaranteed>;
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, ac: T) -> T {
@@ -52,7 +53,7 @@ impl<'tcx> TyCtxt<'tcx> {
             fn fold_const(&mut self, c: Const<'tcx>) -> Const<'tcx> {
                 let ct = match c.kind() {
                     ty::ConstKind::Unevaluated(uv) => match self.tcx.thir_abstract_const(uv.def) {
-                        Err(e) => ty::Const::new_error(self.tcx, e, c.ty()),
+                        Err(e) => ty::Const::new_error(self.tcx, e),
                         Ok(Some(bac)) => {
                             let args = self.tcx.erase_regions(uv.args);
                             let bac = bac.instantiate(self.tcx, args);

@@ -1,5 +1,7 @@
-#![cfg_attr(feature = "nightly", feature(allow_internal_unstable))]
+// tidy-alphabetical-start
 #![cfg_attr(feature = "nightly", allow(internal_features))]
+#![cfg_attr(feature = "nightly", feature(allow_internal_unstable))]
+// tidy-alphabetical-end
 
 use proc_macro::TokenStream;
 

@@ -7,18 +7,18 @@ use rustc_middle::mir;
 use rustc_middle::span_bug;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, ValTree};
-use rustc_session::lint;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause};
+use tracing::{debug, instrument, trace};
 
 use std::cell::Cell;
 
 use super::PatCtxt;
 use crate::errors::{
-    IndirectStructuralMatch, InvalidPattern, NaNPattern, PointerPattern, TypeNotPartialEq,
-    TypeNotStructural, UnionPattern, UnsizedPattern,
+    InvalidPattern, NaNPattern, PointerPattern, TypeNotPartialEq, TypeNotStructural, UnionPattern,
+    UnsizedPattern,
 };
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
@@ -50,15 +50,6 @@ struct ConstToPat<'tcx> {
     // value.
     saw_const_match_error: Cell<Option<ErrorGuaranteed>>,
 
-    // This tracks if we emitted some diagnostic for a given const value, so that
-    // we will not subsequently issue an irrelevant lint for the same const
-    // value.
-    saw_const_match_lint: Cell<bool>,
-
-    // For backcompat we need to keep allowing non-structurally-eq types behind references.
-    // See also all the `cant-hide-behind` tests.
-    behind_reference: Cell<bool>,
-
     // inference context used for checking `T: Structural` bounds.
     infcx: InferCtxt<'tcx>,
 
@@ -85,8 +76,6 @@ impl<'tcx> ConstToPat<'tcx> {
             infcx,
             param_env: pat_ctxt.param_env,
             saw_const_match_error: Cell::new(None),
-            saw_const_match_lint: Cell::new(false),
-            behind_reference: Cell::new(false),
             treat_byte_string_as_slice: pat_ctxt
                 .typeck_results
                 .treat_byte_string_as_slice
@@ -112,9 +101,9 @@ impl<'tcx> ConstToPat<'tcx> {
         // level of indirection can be eliminated
 
         let have_valtree =
-            matches!(cv, mir::Const::Ty(c) if matches!(c.kind(), ty::ConstKind::Value(_)));
+            matches!(cv, mir::Const::Ty(_, c) if matches!(c.kind(), ty::ConstKind::Value(_, _)));
         let inlined_const_as_pat = match cv {
-            mir::Const::Ty(c) => match c.kind() {
+            mir::Const::Ty(_, c) => match c.kind() {
                 ty::ConstKind::Param(_)
                 | ty::ConstKind::Infer(_)
                 | ty::ConstKind::Bound(_, _)
@@ -124,8 +113,8 @@ impl<'tcx> ConstToPat<'tcx> {
                 | ty::ConstKind::Expr(_) => {
                     span_bug!(self.span, "unexpected const in `to_pat`: {:?}", c.kind())
                 }
-                ty::ConstKind::Value(valtree) => {
-                    self.recur(valtree, cv.ty()).unwrap_or_else(|_: FallbackToOpaqueConst| {
+                ty::ConstKind::Value(ty, valtree) => {
+                    self.recur(valtree, ty).unwrap_or_else(|_: FallbackToOpaqueConst| {
                         Box::new(Pat {
                             span: self.span,
                             ty: cv.ty(),
@@ -198,15 +187,12 @@ impl<'tcx> ConstToPat<'tcx> {
                     // complained about structural match violations there, so we don't
                     // have to check anything any more.
                 }
-            } else if !have_valtree && !self.saw_const_match_lint.get() {
+            } else if !have_valtree {
                 // The only way valtree construction can fail without the structural match
                 // checker finding a violation is if there is a pointer somewhere.
-                self.tcx().emit_node_span_lint(
-                    lint::builtin::POINTER_STRUCTURAL_MATCH,
-                    self.id,
-                    self.span,
-                    PointerPattern,
-                );
+                let e = self.tcx().dcx().emit_err(PointerPattern { span: self.span });
+                let kind = PatKind::Error(e);
+                return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
             }
 
             // Always check for `PartialEq` if we had no other errors yet.
@@ -275,36 +261,11 @@ impl<'tcx> ConstToPat<'tcx> {
         cv: ValTree<'tcx>,
         ty: Ty<'tcx>,
     ) -> Result<Box<Pat<'tcx>>, FallbackToOpaqueConst> {
-        let id = self.id;
         let span = self.span;
         let tcx = self.tcx();
         let param_env = self.param_env;
 
         let kind = match ty.kind() {
-            // If the type is not structurally comparable, just emit the constant directly,
-            // causing the pattern match code to treat it opaquely.
-            // FIXME: This code doesn't emit errors itself, the caller emits the errors.
-            // So instead of specific errors, you just get blanket errors about the whole
-            // const type. See
-            // https://github.com/rust-lang/rust/pull/70743#discussion_r404701963 for
-            // details.
-            // Backwards compatibility hack because we can't cause hard errors on these
-            // types, so we compare them via `PartialEq::eq` at runtime.
-            ty::Adt(..) if !self.type_marked_structural(ty) && self.behind_reference.get() => {
-                if self.saw_const_match_error.get().is_none() && !self.saw_const_match_lint.get() {
-                    self.saw_const_match_lint.set(true);
-                    tcx.emit_node_span_lint(
-                        lint::builtin::INDIRECT_STRUCTURAL_MATCH,
-                        id,
-                        span,
-                        IndirectStructuralMatch { non_sm_ty: ty },
-                    );
-                }
-                // Since we are behind a reference, we can just bubble the error up so we get a
-                // constant at reference type, making it easy to let the fallback call
-                // `PartialEq::eq` on it.
-                return Err(FallbackToOpaqueConst);
-            }
             ty::FnDef(..) => {
                 let e = tcx.dcx().emit_err(InvalidPattern { span, non_sm_ty: ty });
                 self.saw_const_match_error.set(Some(e));
@@ -321,8 +282,7 @@ impl<'tcx> ConstToPat<'tcx> {
             }
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
                 let (&variant_index, fields) = cv.unwrap_branch().split_first().unwrap();
-                let variant_index =
-                    VariantIdx::from_u32(variant_index.unwrap_leaf().try_to_u32().ok().unwrap());
+                let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().to_u32());
                 PatKind::Variant {
                     adt_def: *adt_def,
                     args,
@@ -375,41 +335,9 @@ impl<'tcx> ConstToPat<'tcx> {
             ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
                 // `&str` is represented as a valtree, let's keep using this
                 // optimization for now.
-                ty::Str => {
-                    PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
-                }
-                // Backwards compatibility hack: support references to non-structural types,
-                // but hard error if we aren't behind a double reference. We could just use
-                // the fallback code path below, but that would allow *more* of this fishy
-                // code to compile, as then it only goes through the future incompat lint
-                // instead of a hard error.
-                ty::Adt(_, _) if !self.type_marked_structural(*pointee_ty) => {
-                    if self.behind_reference.get() {
-                        if self.saw_const_match_error.get().is_none()
-                            && !self.saw_const_match_lint.get()
-                        {
-                            self.saw_const_match_lint.set(true);
-                            tcx.emit_node_span_lint(
-                                lint::builtin::INDIRECT_STRUCTURAL_MATCH,
-                                self.id,
-                                span,
-                                IndirectStructuralMatch { non_sm_ty: *pointee_ty },
-                            );
-                        }
-                        return Err(FallbackToOpaqueConst);
-                    } else {
-                        if let Some(e) = self.saw_const_match_error.get() {
-                            // We already errored. Signal that in the pattern, so that follow up errors can be silenced.
-                            PatKind::Error(e)
-                        } else {
-                            let err = TypeNotStructural { span, non_sm_ty: *pointee_ty };
-                            let e = tcx.dcx().emit_err(err);
-                            self.saw_const_match_error.set(Some(e));
-                            // We errored. Signal that in the pattern, so that follow up errors can be silenced.
-                            PatKind::Error(e)
-                        }
-                    }
-                }
+                ty::Str => PatKind::Constant {
+                    value: mir::Const::Ty(ty, ty::Const::new_value(tcx, cv, ty)),
+                },
                 // All other references are converted into deref patterns and then recursively
                 // convert the dereferenced constant to a pattern that is the sub-pattern of the
                 // deref pattern.
@@ -420,7 +348,6 @@ impl<'tcx> ConstToPat<'tcx> {
                         // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                         PatKind::Error(e)
                     } else {
-                        let old = self.behind_reference.replace(true);
                         // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
                         // matching against references, you can only use byte string literals.
                         // The typechecker has a special case for byte string literals, by treating them
@@ -435,7 +362,6 @@ impl<'tcx> ConstToPat<'tcx> {
                         };
                         // References have the same valtree representation as their pointee.
                         let subpattern = self.recur(cv, pointee_ty)?;
-                        self.behind_reference.set(old);
                         PatKind::Deref { subpattern }
                     }
                 }
@@ -444,8 +370,8 @@ impl<'tcx> ConstToPat<'tcx> {
                 let v = cv.unwrap_leaf();
                 let is_nan = match flt {
                     ty::FloatTy::F16 => unimplemented!("f16_f128"),
-                    ty::FloatTy::F32 => v.try_to_f32().unwrap().is_nan(),
-                    ty::FloatTy::F64 => v.try_to_f64().unwrap().is_nan(),
+                    ty::FloatTy::F32 => v.to_f32().is_nan(),
+                    ty::FloatTy::F64 => v.to_f64().is_nan(),
                     ty::FloatTy::F128 => unimplemented!("f16_f128"),
                 };
                 if is_nan {
@@ -455,13 +381,15 @@ impl<'tcx> ConstToPat<'tcx> {
                     self.saw_const_match_error.set(Some(e));
                     return Err(FallbackToOpaqueConst);
                 } else {
-                    PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
+                    PatKind::Constant {
+                        value: mir::Const::Ty(ty, ty::Const::new_value(tcx, cv, ty)),
+                    }
                 }
             }
             ty::Pat(..) | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::RawPtr(..) => {
                 // The raw pointers we see here have been "vetted" by valtree construction to be
                 // just integers, so we simply allow them.
-                PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
+                PatKind::Constant { value: mir::Const::Ty(ty, ty::Const::new_value(tcx, cv, ty)) }
             }
             ty::FnPtr(..) => {
                 unreachable!(

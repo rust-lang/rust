@@ -6,7 +6,6 @@
 
 use std::marker::PhantomData;
 
-
 trait MyIndex<T> {
     type O;
     fn my_index(self) -> Self::O;
@@ -15,7 +14,6 @@ trait MyFrom<T>: Sized {
     type Error;
     fn my_from(value: T) -> Result<Self, Self::Error>;
 }
-
 
 trait F {}
 impl F for () {}
@@ -28,6 +26,7 @@ struct Scope<T>(Phantom2<DummyT<T>>);
 
 impl<T> Scope<T> {
     fn new() -> Self {
+        //~^ ERROR item does not constrain
         unimplemented!()
     }
 }
@@ -43,6 +42,7 @@ impl<T: MyFrom<Phantom2<DummyT<U>>>, U> MyIndex<DummyT<T>> for Scope<U> {
     //~^ ERROR the type parameter `T` is not constrained by the impl
     type O = T;
     fn my_index(self) -> Self::O {
+        //~^ ERROR item does not constrain
         MyFrom::my_from(self.0).ok().unwrap()
     }
 }

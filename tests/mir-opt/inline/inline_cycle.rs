@@ -32,7 +32,6 @@ impl<T: Call> Call for A<T> {
     }
 }
 
-
 impl<T: Call> Call for B<T> {
     #[inline]
     fn call() {

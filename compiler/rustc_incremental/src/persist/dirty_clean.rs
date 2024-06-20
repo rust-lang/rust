@@ -33,6 +33,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use thin_vec::ThinVec;
+use tracing::debug;
 
 const LOADED_FROM_DISK: Symbol = sym::loaded_from_disk;
 const EXCEPT: Symbol = sym::except;

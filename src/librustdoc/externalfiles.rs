@@ -1,4 +1,5 @@
 use crate::html::markdown::{ErrorCodes, HeadingOffset, IdMap, Markdown, Playground};
+use rustc_errors::DiagCtxtHandle;
 use rustc_span::edition::Edition;
 use std::fs;
 use std::path::Path;
@@ -27,7 +28,7 @@ impl ExternalHtml {
         md_before_content: &[String],
         md_after_content: &[String],
         nightly_build: bool,
-        dcx: &rustc_errors::DiagCtxt,
+        dcx: DiagCtxtHandle<'_>,
         id_map: &mut IdMap,
         edition: Edition,
         playground: &Option<Playground>,
@@ -46,8 +47,6 @@ impl ExternalHtml {
                 edition,
                 playground,
                 heading_offset: HeadingOffset::H2,
-                // For external files, it'll be disabled until the feature is enabled by default.
-                custom_code_classes_in_docs: false,
             }
             .into_string()
         );
@@ -63,8 +62,6 @@ impl ExternalHtml {
                 edition,
                 playground,
                 heading_offset: HeadingOffset::H2,
-                // For external files, it'll be disabled until the feature is enabled by default.
-                custom_code_classes_in_docs: false,
             }
             .into_string()
         );
@@ -79,7 +76,7 @@ pub(crate) enum LoadStringError {
 
 pub(crate) fn load_string<P: AsRef<Path>>(
     file_path: P,
-    dcx: &rustc_errors::DiagCtxt,
+    dcx: DiagCtxtHandle<'_>,
 ) -> Result<String, LoadStringError> {
     let file_path = file_path.as_ref();
     let contents = match fs::read(file_path) {
@@ -102,7 +99,7 @@ pub(crate) fn load_string<P: AsRef<Path>>(
     }
 }
 
-fn load_external_files(names: &[String], dcx: &rustc_errors::DiagCtxt) -> Option<String> {
+fn load_external_files(names: &[String], dcx: DiagCtxtHandle<'_>) -> Option<String> {
     let mut out = String::new();
     for name in names {
         let Ok(s) = load_string(name, dcx) else { return None };

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context, walk_span_to_context};
-use clippy_utils::visitors::for_each_expr;
+use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{get_async_fn_body, is_async_fn};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
@@ -16,12 +16,13 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for missing return statements at the end of a block.
     ///
-    /// ### Why is this bad?
-    /// Actually omitting the return keyword is idiomatic Rust code. Programmers
-    /// coming from other languages might prefer the expressiveness of `return`. It's possible to miss
-    /// the last returning statement because the only difference is a missing `;`. Especially in bigger
-    /// code with multiple return paths having a `return` keyword makes it easier to find the
-    /// corresponding statements.
+    /// ### Why restrict this?
+    /// Omitting the return keyword whenever possible is idiomatic Rust code, but:
+    ///
+    /// * Programmers coming from other languages might prefer the expressiveness of `return`.
+    /// * It's possible to miss the last returning statement because the only difference is a missing `;`.
+    /// * Especially in bigger code with multiple return paths, having a `return` keyword makes it easier to find the
+    ///   corresponding statements.
     ///
     /// ### Example
     /// ```no_run
@@ -152,7 +153,7 @@ fn lint_implicit_returns(
 
         ExprKind::Loop(block, ..) => {
             let mut add_return = false;
-            let _: Option<!> = for_each_expr(block, |e| {
+            let _: Option<!> = for_each_expr_without_closures(block, |e| {
                 if let ExprKind::Break(dest, sub_expr) = e.kind {
                     if dest.target_id.ok() == Some(expr.hir_id) {
                         if call_site_span.is_none() && e.span.ctxt() == ctxt {

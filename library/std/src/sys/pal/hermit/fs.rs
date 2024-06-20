@@ -1,8 +1,8 @@
-use super::abi::{
-    self, dirent64, stat as stat_struct, DT_DIR, DT_LNK, DT_REG, DT_UNKNOWN, O_APPEND, O_CREAT,
-    O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY, S_IFDIR, S_IFLNK, S_IFMT, S_IFREG,
-};
 use super::fd::FileDesc;
+use super::hermit_abi::{
+    self, dirent64, stat as stat_struct, DT_DIR, DT_LNK, DT_REG, DT_UNKNOWN, O_APPEND, O_CREAT,
+    O_DIRECTORY, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY, S_IFDIR, S_IFLNK, S_IFMT, S_IFREG,
+};
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
@@ -47,7 +47,7 @@ impl InnerReadDir {
 
 pub struct ReadDir {
     inner: Arc<InnerReadDir>,
-    pos: i64,
+    pos: usize,
 }
 
 impl ReadDir {
@@ -62,7 +62,7 @@ pub struct DirEntry {
     /// 64-bit inode number
     ino: u64,
     /// File type
-    type_: u32,
+    type_: u8,
     /// name of the entry
     name: OsString,
 }
@@ -90,7 +90,7 @@ pub struct FilePermissions {
 
 #[derive(Copy, Clone, Eq, Debug)]
 pub struct FileType {
-    mode: u32,
+    mode: u8,
 }
 
 impl PartialEq for FileType {
@@ -112,31 +112,23 @@ pub struct DirBuilder {
 
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(
-            self.stat_val.st_mtime.try_into().unwrap(),
-            self.stat_val.st_mtime_nsec.try_into().unwrap(),
-        ))
+        Ok(SystemTime::new(self.stat_val.st_mtim.tv_sec, self.stat_val.st_mtim.tv_nsec))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(
-            self.stat_val.st_atime.try_into().unwrap(),
-            self.stat_val.st_atime_nsec.try_into().unwrap(),
-        ))
+        Ok(SystemTime::new(self.stat_val.st_atim.tv_sec, self.stat_val.st_atim.tv_nsec))
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(
-            self.stat_val.st_ctime.try_into().unwrap(),
-            self.stat_val.st_ctime_nsec.try_into().unwrap(),
-        ))
+        Ok(SystemTime::new(self.stat_val.st_ctim.tv_sec, self.stat_val.st_ctim.tv_nsec))
     }
 
     pub fn size(&self) -> u64 {
         self.stat_val.st_size as u64
     }
+
     pub fn perm(&self) -> FilePermissions {
-        FilePermissions { mode: (self.stat_val.st_mode) }
+        FilePermissions { mode: self.stat_val.st_mode }
     }
 
     pub fn file_type(&self) -> FileType {
@@ -197,38 +189,31 @@ impl Iterator for ReadDir {
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         let mut counter: usize = 0;
-        let mut offset: i64 = 0;
+        let mut offset: usize = 0;
 
         // loop over all directory entries and search the entry for the current position
         loop {
             // leave function, if the loop reaches the of the buffer (with all entries)
-            if offset >= self.inner.dir.len().try_into().unwrap() {
+            if offset >= self.inner.dir.len() {
                 return None;
             }
 
-            let dir = unsafe {
-                &*(self.inner.dir.as_ptr().offset(offset.try_into().unwrap()) as *const dirent64)
-            };
+            let dir = unsafe { &*(self.inner.dir.as_ptr().add(offset) as *const dirent64) };
 
-            if counter == self.pos.try_into().unwrap() {
+            if counter == self.pos {
                 self.pos += 1;
 
                 // After dirent64, the file name is stored. d_reclen represents the length of the dirent64
                 // plus the length of the file name. Consequently, file name has a size of d_reclen minus
                 // the size of dirent64. The file name is always a C string and terminated by `\0`.
                 // Consequently, we are able to ignore the last byte.
-                let name_bytes = unsafe {
-                    core::slice::from_raw_parts(
-                        &dir.d_name as *const _ as *const u8,
-                        dir.d_reclen as usize - core::mem::size_of::<dirent64>() - 1,
-                    )
-                    .to_vec()
-                };
+                let name_bytes =
+                    unsafe { CStr::from_ptr(&dir.d_name as *const _ as *const i8).to_bytes() };
                 let entry = DirEntry {
                     root: self.inner.root.clone(),
                     ino: dir.d_ino,
-                    type_: dir.d_type as u32,
-                    name: OsString::from_vec(name_bytes),
+                    type_: dir.d_type,
+                    name: OsString::from_vec(name_bytes.to_vec()),
                 };
 
                 return Some(Ok(entry));
@@ -237,7 +222,7 @@ impl Iterator for ReadDir {
             counter += 1;
 
             // move to the next dirent64, which is directly stored after the previous one
-            offset = offset + dir.d_off;
+            offset = offset + usize::from(dir.d_reclen);
         }
     }
 }
@@ -258,7 +243,7 @@ impl DirEntry {
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        Ok(FileType { mode: self.type_ as u32 })
+        Ok(FileType { mode: self.type_ })
     }
 
     #[allow(dead_code)]
@@ -365,7 +350,7 @@ impl File {
             mode = 0;
         }
 
-        let fd = unsafe { cvt(abi::open(path.as_ptr(), flags, mode))? };
+        let fd = unsafe { cvt(hermit_abi::open(path.as_ptr(), flags, mode))? };
         Ok(File(unsafe { FileDesc::from_raw_fd(fd as i32) }))
     }
 
@@ -392,12 +377,12 @@ impl File {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        crate::io::default_read_vectored(|buf| self.read(buf), bufs)
+        self.0.read_vectored(bufs)
     }
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        false
+        self.0.is_read_vectored()
     }
 
     pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
@@ -409,12 +394,12 @@ impl File {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        crate::io::default_write_vectored(|buf| self.write(buf), bufs)
+        self.0.write_vectored(bufs)
     }
 
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
-        false
+        self.0.is_write_vectored()
     }
 
     #[inline]
@@ -446,13 +431,13 @@ impl DirBuilder {
 
     pub fn mkdir(&self, path: &Path) -> io::Result<()> {
         run_path_with_cstr(path, &|path| {
-            cvt(unsafe { abi::mkdir(path.as_ptr(), self.mode) }).map(|_| ())
+            cvt(unsafe { hermit_abi::mkdir(path.as_ptr(), self.mode.into()) }).map(|_| ())
         })
     }
 
     #[allow(dead_code)]
     pub fn set_mode(&mut self, mode: u32) {
-        self.mode = mode as u32;
+        self.mode = mode;
     }
 }
 
@@ -508,7 +493,9 @@ impl FromRawFd for File {
 }
 
 pub fn readdir(path: &Path) -> io::Result<ReadDir> {
-    let fd_raw = run_path_with_cstr(path, &|path| cvt(unsafe { abi::opendir(path.as_ptr()) }))?;
+    let fd_raw = run_path_with_cstr(path, &|path| {
+        cvt(unsafe { hermit_abi::open(path.as_ptr(), O_RDONLY | O_DIRECTORY, 0) })
+    })?;
     let fd = unsafe { FileDesc::from_raw_fd(fd_raw as i32) };
     let root = path.to_path_buf();
 
@@ -519,8 +506,9 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
         // reserve memory to receive all directory entries
         vec.resize(sz, 0);
 
-        let readlen =
-            unsafe { abi::getdents64(fd.as_raw_fd(), vec.as_mut_ptr() as *mut dirent64, sz) };
+        let readlen = unsafe {
+            hermit_abi::getdents64(fd.as_raw_fd(), vec.as_mut_ptr() as *mut dirent64, sz)
+        };
         if readlen > 0 {
             // shrink down to the minimal size
             vec.resize(readlen.try_into().unwrap(), 0);
@@ -529,7 +517,7 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
 
         // if the buffer is too small, getdents64 returns EINVAL
         // otherwise, getdents64 returns an error number
-        if readlen != (-abi::errno::EINVAL).into() {
+        if readlen != (-hermit_abi::errno::EINVAL).into() {
             return Err(Error::from_raw_os_error(readlen.try_into().unwrap()));
         }
 
@@ -547,7 +535,7 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(path: &Path) -> io::Result<()> {
-    run_path_with_cstr(path, &|path| cvt(unsafe { abi::unlink(path.as_ptr()) }).map(|_| ()))
+    run_path_with_cstr(path, &|path| cvt(unsafe { hermit_abi::unlink(path.as_ptr()) }).map(|_| ()))
 }
 
 pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
@@ -559,7 +547,7 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
 }
 
 pub fn rmdir(path: &Path) -> io::Result<()> {
-    run_path_with_cstr(path, &|path| cvt(unsafe { abi::rmdir(path.as_ptr()) }).map(|_| ()))
+    run_path_with_cstr(path, &|path| cvt(unsafe { hermit_abi::rmdir(path.as_ptr()) }).map(|_| ()))
 }
 
 pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
@@ -581,7 +569,7 @@ pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
 pub fn stat(path: &Path) -> io::Result<FileAttr> {
     run_path_with_cstr(path, &|path| {
         let mut stat_val: stat_struct = unsafe { mem::zeroed() };
-        cvt(unsafe { abi::stat(path.as_ptr(), &mut stat_val) })?;
+        cvt(unsafe { hermit_abi::stat(path.as_ptr(), &mut stat_val) })?;
         Ok(FileAttr::from_stat(stat_val))
     })
 }
@@ -589,7 +577,7 @@ pub fn stat(path: &Path) -> io::Result<FileAttr> {
 pub fn lstat(path: &Path) -> io::Result<FileAttr> {
     run_path_with_cstr(path, &|path| {
         let mut stat_val: stat_struct = unsafe { mem::zeroed() };
-        cvt(unsafe { abi::lstat(path.as_ptr(), &mut stat_val) })?;
+        cvt(unsafe { hermit_abi::lstat(path.as_ptr(), &mut stat_val) })?;
         Ok(FileAttr::from_stat(stat_val))
     })
 }

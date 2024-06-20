@@ -44,8 +44,8 @@ impl HasStaticRootDefId for DummyMachine {
     }
 }
 
-impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
-    interpret::compile_time_machine!(<'mir, 'tcx>);
+impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
+    interpret::compile_time_machine!(<'tcx>);
     type MemoryKind = !;
     const PANIC_ON_ALLOC_FAIL: bool = true;
 
@@ -53,11 +53,11 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
     const ALL_CONSTS_ARE_PRECHECKED: bool = false;
 
     #[inline(always)]
-    fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+    fn enforce_alignment(_ecx: &InterpCx<'tcx, Self>) -> bool {
         false // no reason to enforce alignment
     }
 
-    fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>, _layout: TyAndLayout<'tcx>) -> bool {
+    fn enforce_validity(_ecx: &InterpCx<'tcx, Self>, _layout: TyAndLayout<'tcx>) -> bool {
         false
     }
 
@@ -83,26 +83,26 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
     }
 
     fn find_mir_or_eval_fn(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _abi: rustc_target::spec::abi::Abi,
         _args: &[interpret::FnArg<'tcx, Self::Provenance>],
         _destination: &interpret::MPlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,
-    ) -> interpret::InterpResult<'tcx, Option<(&'mir Body<'tcx>, ty::Instance<'tcx>)>> {
+    ) -> interpret::InterpResult<'tcx, Option<(&'tcx Body<'tcx>, ty::Instance<'tcx>)>> {
         unimplemented!()
     }
 
     fn panic_nounwind(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'tcx, Self>,
         _msg: &str,
     ) -> interpret::InterpResult<'tcx> {
         unimplemented!()
     }
 
     fn call_intrinsic(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _args: &[interpret::OpTy<'tcx, Self::Provenance>],
         _destination: &interpret::MPlaceTy<'tcx, Self::Provenance>,
@@ -113,7 +113,7 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
     }
 
     fn assert_panic(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'tcx, Self>,
         _msg: &rustc_middle::mir::AssertMessage<'tcx>,
         _unwind: UnwindAction,
     ) -> interpret::InterpResult<'tcx> {
@@ -121,11 +121,11 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
     }
 
     fn binary_ptr_op(
-        ecx: &InterpCx<'mir, 'tcx, Self>,
+        ecx: &InterpCx<'tcx, Self>,
         bin_op: BinOp,
         left: &interpret::ImmTy<'tcx, Self::Provenance>,
         right: &interpret::ImmTy<'tcx, Self::Provenance>,
-    ) -> interpret::InterpResult<'tcx, (ImmTy<'tcx, Self::Provenance>, bool)> {
+    ) -> interpret::InterpResult<'tcx, ImmTy<'tcx, Self::Provenance>> {
         use rustc_middle::mir::BinOp::*;
         Ok(match bin_op {
             Eq | Ne | Lt | Le | Gt | Ge => {
@@ -154,7 +154,7 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
                     Ge => left >= right,
                     _ => bug!(),
                 };
-                (ImmTy::from_bool(res, *ecx.tcx), false)
+                ImmTy::from_bool(res, *ecx.tcx)
             }
 
             // Some more operations are possible with atomics.
@@ -168,32 +168,30 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for DummyMachine {
     }
 
     fn expose_ptr(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'tcx, Self>,
         _ptr: interpret::Pointer<Self::Provenance>,
     ) -> interpret::InterpResult<'tcx> {
         unimplemented!()
     }
 
-    fn init_frame_extra(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _frame: interpret::Frame<'mir, 'tcx, Self::Provenance>,
-    ) -> interpret::InterpResult<
-        'tcx,
-        interpret::Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
-    > {
+    fn init_frame(
+        _ecx: &mut InterpCx<'tcx, Self>,
+        _frame: interpret::Frame<'tcx, Self::Provenance>,
+    ) -> interpret::InterpResult<'tcx, interpret::Frame<'tcx, Self::Provenance, Self::FrameExtra>>
+    {
         unimplemented!()
     }
 
     fn stack<'a>(
-        _ecx: &'a InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a [interpret::Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>] {
+        _ecx: &'a InterpCx<'tcx, Self>,
+    ) -> &'a [interpret::Frame<'tcx, Self::Provenance, Self::FrameExtra>] {
         // Return an empty stack instead of panicking, as `cur_span` uses it to evaluate constants.
         &[]
     }
 
     fn stack_mut<'a>(
-        _ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<interpret::Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
+        _ecx: &'a mut InterpCx<'tcx, Self>,
+    ) -> &'a mut Vec<interpret::Frame<'tcx, Self::Provenance, Self::FrameExtra>> {
         unimplemented!()
     }
 }

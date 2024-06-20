@@ -1,13 +1,10 @@
-use run_make_support::{htmldocck, rustc, rustdoc, source_path, tmp_dir};
-use std::fs::read_dir;
+use run_make_support::{fs_wrapper, htmldocck, rustc, rustdoc, source_root};
 use std::path::Path;
 
-pub fn scrape() {
-    let lib_dir = tmp_dir();
-    let out_dir = tmp_dir().join("rustdoc");
+pub fn scrape(extra_args: &[&str]) {
+    let out_dir = Path::new("rustdoc");
     let crate_name = "foobar";
-    let deps = read_dir("examples")
-        .unwrap()
+    let deps = fs_wrapper::read_dir("examples")
         .filter_map(|entry| entry.ok().map(|e| e.path()))
         .filter(|path| path.is_file() && path.extension().is_some_and(|ext| ext == "rs"))
         .collect::<Vec<_>>();
@@ -23,12 +20,13 @@ pub fn scrape() {
             .crate_name(&dep_stem)
             .crate_type("bin")
             .output(&out_dir)
-            .extern_(crate_name, lib_dir.join(format!("lib{crate_name}.rmeta")))
+            .extern_(crate_name, format!("lib{crate_name}.rmeta"))
             .arg("-Zunstable-options")
             .arg("--scrape-examples-output-path")
             .arg(&out_example)
             .arg("--scrape-examples-target-crate")
             .arg(crate_name)
+            .args(extra_args)
             .run();
         out_deps.push(out_example);
     }
@@ -45,5 +43,5 @@ pub fn scrape() {
     }
     rustdoc.run();
 
-    assert!(htmldocck().arg(out_dir).arg("src/lib.rs").status().unwrap().success());
+    htmldocck().arg(out_dir).arg("src/lib.rs").run();
 }

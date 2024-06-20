@@ -8,15 +8,13 @@ struct Struct<T> {
     f: fn(x: T) -> T,
 }
 
-fn id<T>(x: T) -> T { x }
+fn id<T>(x: T) -> T {
+    x
+}
 
 impl<T> Struct<T> {
-
     fn new(x: T) -> Struct<T> {
-        Struct {
-            x: x,
-            f: id
-        }
+        Struct { x: x, f: id }
     }
 
     fn get<T2>(self, x: T2) -> (T, T2) {
@@ -24,17 +22,16 @@ impl<T> Struct<T> {
     }
 }
 
-pub struct LifeTimeOnly<'a> {
-    _a: &'a u32
+pub struct _LifeTimeOnly<'a> {
+    _a: &'a u32,
 }
 
-impl<'a> LifeTimeOnly<'a> {
-
-    //~ MONO_ITEM fn LifeTimeOnly::<'_>::foo
+impl<'a> _LifeTimeOnly<'a> {
+    //~ MONO_ITEM fn _LifeTimeOnly::<'_>::foo
     pub fn foo(&self) {}
-    //~ MONO_ITEM fn LifeTimeOnly::<'_>::bar
+    //~ MONO_ITEM fn _LifeTimeOnly::<'_>::bar
     pub fn bar(&'a self) {}
-    //~ MONO_ITEM fn LifeTimeOnly::<'_>::baz
+    //~ MONO_ITEM fn _LifeTimeOnly::<'_>::baz
     pub fn baz<'b>(&'b self) {}
 
     pub fn non_instantiated<T>(&self) {}

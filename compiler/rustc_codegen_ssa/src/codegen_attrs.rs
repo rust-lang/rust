@@ -324,6 +324,19 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     let linkage = Some(linkage_by_name(tcx, did, val.as_str()));
                     if tcx.is_foreign_item(did) {
                         codegen_fn_attrs.import_linkage = linkage;
+
+                        if tcx.is_mutable_static(did.into()) {
+                            let mut diag = tcx.dcx().struct_span_err(
+                                attr.span,
+                                "extern mutable statics are not allowed with `#[linkage]`",
+                            );
+                            diag.note(
+                                "marking the extern static mutable would allow changing which symbol \
+                                 the static references rather than make the target of the symbol \
+                                 mutable",
+                            );
+                            diag.emit();
+                        }
                     } else {
                         codegen_fn_attrs.linkage = linkage;
                     }
@@ -564,8 +577,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     lint::builtin::INLINE_NO_SANITIZE,
                     hir_id,
                     no_sanitize_span,
-                    "`no_sanitize` will have no effect after inlining",
                     |lint| {
+                        lint.primary_message("`no_sanitize` will have no effect after inlining");
                         lint.span_note(inline_span, "inlining requested here");
                     },
                 )

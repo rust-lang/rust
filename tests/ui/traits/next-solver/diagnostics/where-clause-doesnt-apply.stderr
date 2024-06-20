@@ -6,6 +6,11 @@ LL |     needs_foo(());
    |     |
    |     required by a bound introduced by this call
    |
+help: this trait has no implementations, consider adding one
+  --> $DIR/where-clause-doesnt-apply.rs:2:1
+   |
+LL | trait Bar {}
+   | ^^^^^^^^^
 note: required for `()` to implement `Foo`
   --> $DIR/where-clause-doesnt-apply.rs:4:9
    |

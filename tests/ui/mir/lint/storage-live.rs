@@ -5,6 +5,7 @@
 //@ normalize-stderr-test "note: .*\n\n" -> ""
 //@ normalize-stderr-test "thread 'rustc' panicked.*\n" -> ""
 //@ normalize-stderr-test "storage_live\[....\]" -> "storage_live[HASH]"
+//@ normalize-stderr-test "(delayed at [^:]+):\d+:\d+ - " -> "$1:LL:CC - "
 //@ rustc-env:RUST_BACKTRACE=0
 
 #![feature(custom_mir, core_intrinsics)]
@@ -15,14 +16,14 @@ use core::ptr::{addr_of, addr_of_mut};
 
 #[custom_mir(dialect = "built")]
 fn multiple_storage() {
-    mir!(
+    mir! {
         let a: usize;
         {
             StorageLive(a);
             StorageLive(a);
             Return()
         }
-    )
+    }
 }
 
 fn main() {

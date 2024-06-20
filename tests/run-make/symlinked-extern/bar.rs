@@ -2,5 +2,4 @@
 
 extern crate foo;
 
-pub fn bar(_s: foo::S) {
-}
+pub fn bar(_s: foo::S) {}

@@ -67,6 +67,12 @@ pub mod consts {
     // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
     pub const FRAC_1_SQRT_PI: f16 = 0.564189583547756286948079451560772586_f16;
 
+    /// 1/sqrt(2π)
+    #[doc(alias = "FRAC_1_SQRT_TAU")]
+    #[unstable(feature = "f16", issue = "116909")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const FRAC_1_SQRT_2PI: f16 = 0.398942280401432677939946059934381868_f16;
+
     /// 2/π
     #[unstable(feature = "f16", issue = "116909")]
     pub const FRAC_2_PI: f16 = 0.636619772367581343075535053490057448_f16;

@@ -34,9 +34,7 @@ fn write_test_case(file: &Path, n: usize) -> HashSet<String> {
 fn read_linker_args(path: &Path) -> String {
     let contents = fs::read(path).unwrap();
     if cfg!(target_env = "msvc") {
-        let mut i = contents.chunks(2).map(|c| {
-            c[0] as u16 | ((c[1] as u16) << 8)
-        });
+        let mut i = contents.chunks(2).map(|c| c[0] as u16 | ((c[1] as u16) << 8));
         assert_eq!(i.next(), Some(0xfeff), "Expected UTF-16 BOM");
         String::from_utf16(&i.collect::<Vec<u16>>()).unwrap()
     } else {
@@ -52,7 +50,7 @@ fn main() {
             let file = file.to_str().expect("non-utf8 file argument");
             fs::copy(&file[1..], &ok).unwrap();
         }
-        return
+        return;
     }
 
     let rustc = env::var_os("RUSTC").unwrap_or("rustc".into());
@@ -65,28 +63,35 @@ fn main() {
         drop(fs::remove_file(&ok));
         let output = Command::new(&rustc)
             .arg(&file)
-            .arg("-C").arg(&me_as_linker)
-            .arg("--out-dir").arg(&tmpdir)
+            .arg("-C")
+            .arg(&me_as_linker)
+            .arg("--out-dir")
+            .arg(&tmpdir)
             .env("YOU_ARE_A_LINKER", "1")
             .output()
             .unwrap();
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            panic!("status: {}\nstdout:\n{}\nstderr:\n{}",
-                   output.status,
-                   String::from_utf8_lossy(&output.stdout),
-                   stderr.lines().map(|l| {
-                       if l.len() > 200 {
-                           format!("{}...\n", &l[..200])
-                       } else {
-                           format!("{}\n", l)
-                       }
-                   }).collect::<String>());
+            panic!(
+                "status: {}\nstdout:\n{}\nstderr:\n{}",
+                output.status,
+                String::from_utf8_lossy(&output.stdout),
+                stderr
+                    .lines()
+                    .map(|l| {
+                        if l.len() > 200 {
+                            format!("{}...\n", &l[..200])
+                        } else {
+                            format!("{}\n", l)
+                        }
+                    })
+                    .collect::<String>()
+            );
         }
 
         if !ok.exists() {
-            continue
+            continue;
         }
 
         let linker_args = read_linker_args(&ok);
@@ -101,6 +106,6 @@ fn main() {
             linker_args,
         );
 
-        break
+        break;
     }
 }

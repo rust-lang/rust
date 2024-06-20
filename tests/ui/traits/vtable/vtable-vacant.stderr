@@ -7,7 +7,7 @@ error: vtable entries for `<S as B>`: [
            Method(<S as B>::foo_b1),
            Vacant,
        ]
-  --> $DIR/vtable-vacant.rs:15:1
+  --> $DIR/vtable-vacant.rs:14:1
    |
 LL | trait B: A {
    | ^^^^^^^^^^

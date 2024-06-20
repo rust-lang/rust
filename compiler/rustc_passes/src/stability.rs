@@ -25,9 +25,9 @@ use rustc_session::lint::builtin::{INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPR
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
-
 use std::mem::replace;
 use std::num::NonZero;
+use tracing::{debug, info};
 
 #[derive(PartialEq)]
 enum AnnotationKind {

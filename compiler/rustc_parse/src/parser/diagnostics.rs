@@ -1,7 +1,6 @@
 use super::pat::Expected;
 use super::{
-    BlockMode, CommaRecoveryMode, Parser, PathStyle, Restrictions, SemiColonMode, SeqSep,
-    TokenExpectType, TokenType,
+    BlockMode, CommaRecoveryMode, Parser, PathStyle, Restrictions, SemiColonMode, SeqSep, TokenType,
 };
 use crate::errors::{
     AmbiguousPlus, AsyncMoveBlockIn2015, AttributeOnParamType, BadQPathStage2, BadTypePlus,
@@ -35,7 +34,7 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, Applicability, Diag, DiagCtxt, ErrorGuaranteed, FatalError, PErr, PResult,
+    pluralize, Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, PErr, PResult,
     Subdiagnostic,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -45,6 +44,7 @@ use rustc_span::{BytePos, Span, SpanSnippetError, Symbol, DUMMY_SP};
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
 use thin_vec::{thin_vec, ThinVec};
+use tracing::{debug, trace};
 
 /// Creates a placeholder argument.
 pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
@@ -129,14 +129,14 @@ pub enum AttemptLocalParseRecovery {
 }
 
 impl AttemptLocalParseRecovery {
-    pub fn yes(&self) -> bool {
+    pub(super) fn yes(&self) -> bool {
         match self {
             AttemptLocalParseRecovery::Yes => true,
             AttemptLocalParseRecovery::No => false,
         }
     }
 
-    pub fn no(&self) -> bool {
+    pub(super) fn no(&self) -> bool {
         match self {
             AttemptLocalParseRecovery::Yes => false,
             AttemptLocalParseRecovery::No => true,
@@ -240,8 +240,8 @@ impl<'a> DerefMut for SnapshotParser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn dcx(&self) -> &'a DiagCtxt {
-        &self.psess.dcx
+    pub fn dcx(&self) -> DiagCtxtHandle<'a> {
+        self.psess.dcx()
     }
 
     /// Replace `self` with `snapshot.parser`.
@@ -666,7 +666,7 @@ impl<'a> Parser<'a> {
         {
             err.note("you may be trying to write a c-string literal");
             err.note("c-string literals require Rust 2021 or later");
-            err.subdiagnostic(self.dcx(), HelpUseLatestEdition::new());
+            err.subdiagnostic(HelpUseLatestEdition::new());
         }
 
         // `pub` may be used for an item or `pub(crate)`
@@ -890,7 +890,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn maybe_suggest_struct_literal(
+    pub(super) fn maybe_suggest_struct_literal(
         &mut self,
         lo: Span,
         s: BlockCheckMode,
@@ -1044,9 +1044,7 @@ impl<'a> Parser<'a> {
     /// passes through any errors encountered. Used for error recovery.
     pub(super) fn eat_to_tokens(&mut self, kets: &[&TokenKind]) {
         if let Err(err) =
-            self.parse_seq_to_before_tokens(kets, SeqSep::none(), TokenExpectType::Expect, |p| {
-                Ok(p.parse_token_tree())
-            })
+            self.parse_seq_to_before_tokens(kets, &[], SeqSep::none(), |p| Ok(p.parse_token_tree()))
         {
             err.cancel();
         }
@@ -2359,7 +2357,7 @@ impl<'a> Parser<'a> {
         let mut err = self.dcx().struct_span_err(span, msg);
         let sp = self.psess.source_map().start_point(self.token.span);
         if let Some(sp) = self.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
-            err.subdiagnostic(self.dcx(), ExprParenthesesNeeded::surrounding(*sp));
+            err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
         err.span_label(span, "expected expression");
 
@@ -2458,7 +2456,7 @@ impl<'a> Parser<'a> {
     /// Handle encountering a symbol in a generic argument list that is not a `,` or `>`. In this
     /// case, we emit an error and try to suggest enclosing a const argument in braces if it looks
     /// like the user has forgotten them.
-    pub fn handle_ambiguous_unbraced_const_arg(
+    pub(super) fn handle_ambiguous_unbraced_const_arg(
         &mut self,
         args: &mut ThinVec<AngleBracketedArg>,
     ) -> PResult<'a, bool> {
@@ -2499,9 +2497,10 @@ impl<'a> Parser<'a> {
     /// - Single-segment paths (i.e. standalone generic const parameters).
     /// All other expressions that can be parsed will emit an error suggesting the expression be
     /// wrapped in braces.
-    pub fn handle_unambiguous_unbraced_const_arg(&mut self) -> PResult<'a, P<Expr>> {
+    pub(super) fn handle_unambiguous_unbraced_const_arg(&mut self) -> PResult<'a, P<Expr>> {
         let start = self.token.span;
-        let expr = self.parse_expr_res(Restrictions::CONST_EXPR, None).map_err(|mut err| {
+        let attrs = self.parse_outer_attributes()?;
+        let expr = self.parse_expr_res(Restrictions::CONST_EXPR, attrs).map_err(|mut err| {
             err.span_label(
                 start.shrink_to_lo(),
                 "while parsing a const generic argument starting here",
@@ -2558,7 +2557,7 @@ impl<'a> Parser<'a> {
         Some(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }))
     }
 
-    pub fn recover_const_param_declaration(
+    pub(super) fn recover_const_param_declaration(
         &mut self,
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, Option<GenericArg>> {
@@ -2588,7 +2587,11 @@ impl<'a> Parser<'a> {
     /// When encountering code like `foo::< bar + 3 >` or `foo::< bar - baz >` we suggest
     /// `foo::<{ bar + 3 }>` and `foo::<{ bar - baz }>`, respectively. We only provide a suggestion
     /// if we think that the resulting expression would be well formed.
-    pub fn recover_const_arg(&mut self, start: Span, mut err: Diag<'a>) -> PResult<'a, GenericArg> {
+    pub(super) fn recover_const_arg(
+        &mut self,
+        start: Span,
+        mut err: Diag<'a>,
+    ) -> PResult<'a, GenericArg> {
         let is_op_or_dot = AssocOp::from_token(&self.token)
             .and_then(|op| {
                 if let AssocOp::Greater
@@ -2619,7 +2622,10 @@ impl<'a> Parser<'a> {
         if is_op_or_dot {
             self.bump();
         }
-        match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
+        match (|| {
+            let attrs = self.parse_outer_attributes()?;
+            self.parse_expr_res(Restrictions::CONST_EXPR, attrs)
+        })() {
             Ok(expr) => {
                 // Find a mistake like `MyTrait<Assoc == S::Assoc>`.
                 if token::EqEq == snapshot.token.kind {
@@ -2673,7 +2679,10 @@ impl<'a> Parser<'a> {
         &mut self,
         mut snapshot: SnapshotParser<'a>,
     ) -> Option<P<ast::Expr>> {
-        match snapshot.parse_expr_res(Restrictions::CONST_EXPR, None) {
+        match (|| {
+            let attrs = self.parse_outer_attributes()?;
+            snapshot.parse_expr_res(Restrictions::CONST_EXPR, attrs)
+        })() {
             // Since we don't know the exact reason why we failed to parse the type or the
             // expression, employ a simple heuristic to weed out some pathological cases.
             Ok(expr) if let token::Comma | token::Gt = snapshot.token.kind => {
@@ -2689,7 +2698,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Creates a dummy const argument, and reports that the expression must be enclosed in braces
-    pub fn dummy_const_arg_needs_braces(&self, mut err: Diag<'a>, span: Span) -> GenericArg {
+    pub(super) fn dummy_const_arg_needs_braces(&self, mut err: Diag<'a>, span: Span) -> GenericArg {
         err.multipart_suggestion(
             "expressions must be enclosed in braces to be used as const generic \
              arguments",
@@ -2960,7 +2969,7 @@ impl<'a> Parser<'a> {
     /// * `=====`
     /// * `<<<<<`
     ///
-    pub fn is_vcs_conflict_marker(
+    pub(super) fn is_vcs_conflict_marker(
         &mut self,
         long_kind: &TokenKind,
         short_kind: &TokenKind,
@@ -2980,14 +2989,14 @@ impl<'a> Parser<'a> {
         None
     }
 
-    pub fn recover_vcs_conflict_marker(&mut self) {
+    pub(super) fn recover_vcs_conflict_marker(&mut self) {
         if let Err(err) = self.err_vcs_conflict_marker() {
             err.emit();
             FatalError.raise();
         }
     }
 
-    pub fn err_vcs_conflict_marker(&mut self) -> PResult<'a, ()> {
+    pub(crate) fn err_vcs_conflict_marker(&mut self) -> PResult<'a, ()> {
         let Some(start) = self.conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt)
         else {
             return Ok(());

@@ -20,7 +20,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
     self, clean_bound_vars, clean_generics, clean_impl_item, clean_middle_assoc_item,
-    clean_middle_field, clean_middle_ty, clean_poly_fn_sig, clean_trait_ref_with_bindings,
+    clean_middle_field, clean_middle_ty, clean_poly_fn_sig, clean_trait_ref_with_constraints,
     clean_ty, clean_ty_alias_inner_type, clean_ty_generics, clean_variant_def, utils, Attributes,
     AttributesExt, ImplKind, ItemId, Type,
 };
@@ -130,7 +130,10 @@ pub(crate) fn try_inline(
         }
         Res::Def(DefKind::Const, did) => {
             record_extern_fqn(cx, did, ItemType::Constant);
-            cx.with_param_env(did, |cx| clean::ConstantItem(build_const(cx, did)))
+            cx.with_param_env(did, |cx| {
+                let (generics, ty, ct) = build_const_item(cx, did);
+                clean::ConstantItem(generics, Box::new(ty), ct)
+            })
         }
         Res::Def(DefKind::Macro(kind), did) => {
             let is_doc_hidden = cx.tcx.is_doc_hidden(did)
@@ -566,7 +569,7 @@ pub(crate) fn build_impl(
     };
     let polarity = tcx.impl_polarity(did);
     let trait_ = associated_trait
-        .map(|t| clean_trait_ref_with_bindings(cx, ty::Binder::dummy(t), ThinVec::new()));
+        .map(|t| clean_trait_ref_with_constraints(cx, ty::Binder::dummy(t), ThinVec::new()));
     if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
@@ -688,7 +691,7 @@ fn build_module_items(
                                     name: prim_ty.as_sym(),
                                     args: clean::GenericArgs::AngleBracketed {
                                         args: Default::default(),
-                                        bindings: ThinVec::new(),
+                                        constraints: ThinVec::new(),
                                     },
                                 }],
                             },
@@ -717,21 +720,20 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
     }
 }
 
-fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
+fn build_const_item(
+    cx: &mut DocContext<'_>,
+    def_id: DefId,
+) -> (clean::Generics, clean::Type, clean::Constant) {
     let mut generics =
         clean_ty_generics(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id));
     clean::simplify::move_bounds_to_generic_parameters(&mut generics);
-
-    clean::Constant {
-        type_: Box::new(clean_middle_ty(
-            ty::Binder::dummy(cx.tcx.type_of(def_id).instantiate_identity()),
-            cx,
-            Some(def_id),
-            None,
-        )),
-        generics,
-        kind: clean::ConstantKind::Extern { def_id },
-    }
+    let ty = clean_middle_ty(
+        ty::Binder::dummy(cx.tcx.type_of(def_id).instantiate_identity()),
+        cx,
+        None,
+        None,
+    );
+    (generics, ty, clean::Constant { kind: clean::ConstantKind::Extern { def_id } })
 }
 
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {

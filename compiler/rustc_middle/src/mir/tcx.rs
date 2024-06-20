@@ -5,6 +5,7 @@
 
 use crate::mir::*;
 use rustc_hir as hir;
+use tracing::{debug, instrument};
 
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct PlaceTy<'tcx> {
@@ -179,13 +180,10 @@ impl<'tcx> Rvalue<'tcx> {
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 op.ty(tcx, lhs_ty, rhs_ty)
             }
-            Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
-                let lhs_ty = lhs.ty(local_decls, tcx);
-                let rhs_ty = rhs.ty(local_decls, tcx);
-                let ty = op.ty(tcx, lhs_ty, rhs_ty);
-                Ty::new_tup(tcx, &[ty, tcx.types.bool])
+            Rvalue::UnaryOp(op, ref operand) => {
+                let arg_ty = operand.ty(local_decls, tcx);
+                op.ty(tcx, arg_ty)
             }
-            Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
                 tcx.types.usize
@@ -263,6 +261,11 @@ impl<'tcx> BinOp {
                 assert_eq!(lhs_ty, rhs_ty);
                 lhs_ty
             }
+            &BinOp::AddWithOverflow | &BinOp::SubWithOverflow | &BinOp::MulWithOverflow => {
+                // these should be integers of the same size.
+                assert_eq!(lhs_ty, rhs_ty);
+                Ty::new_tup(tcx, &[lhs_ty, tcx.types.bool])
+            }
             &BinOp::Shl
             | &BinOp::ShlUnchecked
             | &BinOp::Shr
@@ -282,6 +285,27 @@ impl<'tcx> BinOp {
     }
 }
 
+impl<'tcx> UnOp {
+    pub fn ty(&self, tcx: TyCtxt<'tcx>, arg_ty: Ty<'tcx>) -> Ty<'tcx> {
+        match self {
+            UnOp::Not | UnOp::Neg => arg_ty,
+            UnOp::PtrMetadata => {
+                let pointee_ty = arg_ty
+                    .builtin_deref(true)
+                    .unwrap_or_else(|| bug!("PtrMetadata of non-dereferenceable ty {arg_ty:?}"));
+                if pointee_ty.is_trivially_sized(tcx) {
+                    tcx.types.unit
+                } else {
+                    let Some(metadata_def_id) = tcx.lang_items().metadata_type() else {
+                        bug!("No metadata_type lang item while looking at {arg_ty:?}")
+                    };
+                    Ty::new_projection(tcx, metadata_def_id, [pointee_ty])
+                }
+            }
+        }
+    }
+}
+
 impl BorrowKind {
     pub fn to_mutbl_lossy(self) -> hir::Mutability {
         match self {
@@ -296,11 +320,13 @@ impl BorrowKind {
 }
 
 impl BinOp {
-    pub fn to_hir_binop(self) -> hir::BinOpKind {
+    pub(crate) fn to_hir_binop(self) -> hir::BinOpKind {
         match self {
-            BinOp::Add => hir::BinOpKind::Add,
-            BinOp::Sub => hir::BinOpKind::Sub,
-            BinOp::Mul => hir::BinOpKind::Mul,
+            // HIR `+`/`-`/`*` can map to either of these MIR BinOp, depending
+            // on whether overflow checks are enabled or not.
+            BinOp::Add | BinOp::AddWithOverflow => hir::BinOpKind::Add,
+            BinOp::Sub | BinOp::SubWithOverflow => hir::BinOpKind::Sub,
+            BinOp::Mul | BinOp::MulWithOverflow => hir::BinOpKind::Mul,
             BinOp::Div => hir::BinOpKind::Div,
             BinOp::Rem => hir::BinOpKind::Rem,
             BinOp::BitXor => hir::BinOpKind::BitXor,
@@ -314,6 +340,7 @@ impl BinOp {
             BinOp::Gt => hir::BinOpKind::Gt,
             BinOp::Le => hir::BinOpKind::Le,
             BinOp::Ge => hir::BinOpKind::Ge,
+            // We don't have HIR syntax for these.
             BinOp::Cmp
             | BinOp::AddUnchecked
             | BinOp::SubUnchecked
@@ -324,5 +351,30 @@ impl BinOp {
                 unreachable!()
             }
         }
+    }
+
+    /// If this is a `FooWithOverflow`, return `Some(Foo)`.
+    pub fn overflowing_to_wrapping(self) -> Option<BinOp> {
+        Some(match self {
+            BinOp::AddWithOverflow => BinOp::Add,
+            BinOp::SubWithOverflow => BinOp::Sub,
+            BinOp::MulWithOverflow => BinOp::Mul,
+            _ => return None,
+        })
+    }
+
+    /// Returns whether this is a `FooWithOverflow`
+    pub fn is_overflowing(self) -> bool {
+        self.overflowing_to_wrapping().is_some()
+    }
+
+    /// If this is a `Foo`, return `Some(FooWithOverflow)`.
+    pub fn wrapping_to_overflowing(self) -> Option<BinOp> {
+        Some(match self {
+            BinOp::Add => BinOp::AddWithOverflow,
+            BinOp::Sub => BinOp::SubWithOverflow,
+            BinOp::Mul => BinOp::MulWithOverflow,
+            _ => return None,
+        })
     }
 }

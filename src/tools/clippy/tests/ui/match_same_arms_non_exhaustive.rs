@@ -1,7 +1,6 @@
 #![feature(non_exhaustive_omitted_patterns_lint)]
 #![warn(clippy::match_same_arms)]
 #![no_main]
-//@no-rustfix
 use std::sync::atomic::Ordering; // #[non_exhaustive] enum
 
 fn repeat() -> ! {

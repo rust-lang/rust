@@ -36,22 +36,16 @@ impl<T> Context for io::Result<T> {
 /// # Errors
 ///
 /// This function errors out if the files couldn't be created or written to.
-pub fn create(
-    pass: &String,
-    lint_name: Option<&String>,
-    category: Option<&str>,
-    mut ty: Option<&str>,
-    msrv: bool,
-) -> io::Result<()> {
-    if category == Some("cargo") && ty.is_none() {
+pub fn create(pass: &str, name: &str, category: &str, mut ty: Option<&str>, msrv: bool) -> io::Result<()> {
+    if category == "cargo" && ty.is_none() {
         // `cargo` is a special category, these lints should always be in `clippy_lints/src/cargo`
         ty = Some("cargo");
     }
 
     let lint = LintData {
         pass,
-        name: lint_name.expect("`name` argument is validated by clap"),
-        category: category.expect("`category` argument is validated by clap"),
+        name,
+        category,
         ty,
         project_root: clippy_project_root(),
     };
@@ -337,12 +331,17 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 }
 
 fn get_lint_declaration(name_upper: &str, category: &str) -> String {
+    let justification_heading = if category == "restriction" {
+        "Why restrict this?"
+    } else {
+        "Why is this bad?"
+    };
     formatdoc!(
         r#"
             declare_clippy_lint! {{
                 /// ### What it does
                 ///
-                /// ### Why is this bad?
+                /// ### {justification_heading}
                 ///
                 /// ### Example
                 /// ```no_run

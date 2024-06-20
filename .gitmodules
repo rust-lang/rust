@@ -33,7 +33,7 @@
 [submodule "src/llvm-project"]
 	path = src/llvm-project
 	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/18.0-2024-02-13
+	branch = rustc/18.1-2024-05-19
 	shallow = true
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
@@ -42,4 +42,8 @@
 [submodule "library/backtrace"]
 	path = library/backtrace
 	url = https://github.com/rust-lang/backtrace-rs.git
+	shallow = true
+[submodule "src/tools/rustc-perf"]
+	path = src/tools/rustc-perf
+	url = https://github.com/rust-lang/rustc-perf.git
 	shallow = true

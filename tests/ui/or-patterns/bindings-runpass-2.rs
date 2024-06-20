@@ -26,5 +26,6 @@ fn main() {
     assert_eq!(or_at(Err(7)), 207);
     assert_eq!(or_at(Err(8)), 8);
     assert_eq!(or_at(Err(20)), 220);
+    assert_eq!(or_at(Err(34)), 134);
     assert_eq!(or_at(Err(50)), 500);
 }

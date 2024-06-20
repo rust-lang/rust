@@ -12,11 +12,9 @@ use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    ///
     /// Finds items imported through `std` when available through `core`.
     ///
-    /// ### Why is this bad?
-    ///
+    /// ### Why restrict this?
     /// Crates which have `no_std` compatibility may wish to ensure types are imported from core to ensure
     /// disabling `std` does not cause the crate to fail to compile. This lint is also useful for crates
     /// migrating to become `no_std` compatible.
@@ -37,11 +35,9 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    ///
     /// Finds items imported through `std` when available through `alloc`.
     ///
-    /// ### Why is this bad?
-    ///
+    /// ### Why restrict this?
     /// Crates which have `no_std` compatibility and require alloc may wish to ensure types are imported from
     /// alloc to ensure disabling `std` does not cause the crate to fail to compile. This lint is also useful
     /// for crates migrating to become `no_std` compatible.
@@ -63,11 +59,9 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    ///
     /// Finds items imported through `alloc` when available through `core`.
     ///
-    /// ### Why is this bad?
-    ///
+    /// ### Why restrict this?
     /// Crates which have `no_std` compatibility and may optionally require alloc may wish to ensure types are
     /// imported from core to ensure disabling `alloc` does not cause the crate to fail to compile. This lint
     /// is also useful for crates migrating to become `no_std` compatible.

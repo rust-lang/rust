@@ -46,7 +46,7 @@ declare_clippy_lint! {
     /// Checks for slicing expressions which are equivalent to dereferencing the
     /// value.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Some people may prefer to dereference rather than slice.
     ///
     /// ### Example

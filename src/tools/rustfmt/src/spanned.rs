@@ -181,6 +181,7 @@ impl Spanned for ast::GenericBound {
         match *self {
             ast::GenericBound::Trait(ref ptr, _) => ptr.span,
             ast::GenericBound::Outlives(ref l) => l.ident.span,
+            ast::GenericBound::Use(_, span) => span,
         }
     }
 }

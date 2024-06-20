@@ -191,7 +191,7 @@ impl IntoArgs for (CrateNum, DefId) {
     }
 }
 
-impl<'tcx> IntoArgs for ty::InstanceDef<'tcx> {
+impl<'tcx> IntoArgs for ty::InstanceKind<'tcx> {
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self.def_id(), ())
@@ -287,6 +287,10 @@ provide! { tcx, def_id, other, cdata,
         let _ = cdata;
         tcx.calculate_dtor(def_id, |_,_| Ok(()))
     }
+    adt_async_destructor => {
+        let _ = cdata;
+        tcx.calculate_async_dtor(def_id, |_,_| Ok(()))
+    }
     associated_item_def_ids => {
         tcx.arena.alloc_from_iter(cdata.get_associated_item_or_field_def_ids(def_id.index))
     }
@@ -310,6 +314,7 @@ provide! { tcx, def_id, other, cdata,
     extern_crate => { cdata.extern_crate.map(|c| &*tcx.arena.alloc(c)) }
     is_no_builtins => { cdata.root.no_builtins }
     symbol_mangling_version => { cdata.root.symbol_mangling_version }
+    specialization_enabled_in => { cdata.root.specialization_enabled_in }
     reachable_non_generics => {
         let reachable_non_generics = tcx
             .exported_symbols(cdata.cnum)

@@ -149,12 +149,14 @@ impl Step for Miri {
             &[],
         );
         miri.add_rustc_lib_path(builder);
-        // Forward arguments.
         miri.arg("--").arg("--target").arg(target.rustc_target_arg());
-        miri.args(builder.config.args());
 
         // miri tests need to know about the stage sysroot
-        miri.env("MIRI_SYSROOT", &miri_sysroot);
+        miri.arg("--sysroot").arg(miri_sysroot);
+
+        // Forward arguments. This may contain further arguments to the program
+        // after another --, so this must be at the end.
+        miri.args(builder.config.args());
 
         let mut miri = Command::from(miri);
         builder.run(&mut miri);

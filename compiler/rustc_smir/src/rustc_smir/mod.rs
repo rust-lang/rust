@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use stable_mir::abi::Layout;
 use stable_mir::mir::mono::InstanceDef;
-use stable_mir::ty::{ConstId, Span};
+use stable_mir::ty::{MirConstId, Span, TyConstId};
 use stable_mir::{CtorKind, ItemKind};
 use std::ops::RangeInclusive;
 use tracing::debug;
@@ -33,7 +33,8 @@ pub struct Tables<'tcx> {
     pub(crate) spans: IndexMap<rustc_span::Span, Span>,
     pub(crate) types: IndexMap<Ty<'tcx>, stable_mir::ty::Ty>,
     pub(crate) instances: IndexMap<ty::Instance<'tcx>, InstanceDef>,
-    pub(crate) constants: IndexMap<mir::Const<'tcx>, ConstId>,
+    pub(crate) ty_consts: IndexMap<ty::Const<'tcx>, TyConstId>,
+    pub(crate) mir_consts: IndexMap<mir::Const<'tcx>, MirConstId>,
     pub(crate) layouts: IndexMap<rustc_target::abi::Layout<'tcx>, Layout>,
 }
 
@@ -42,19 +43,40 @@ impl<'tcx> Tables<'tcx> {
         self.types.create_or_fetch(ty)
     }
 
-    pub(crate) fn intern_const(&mut self, constant: mir::Const<'tcx>) -> ConstId {
-        self.constants.create_or_fetch(constant)
+    pub(crate) fn intern_ty_const(&mut self, ct: ty::Const<'tcx>) -> TyConstId {
+        self.ty_consts.create_or_fetch(ct)
     }
 
-    pub(crate) fn has_body(&self, instance: Instance<'tcx>) -> bool {
+    pub(crate) fn intern_mir_const(&mut self, constant: mir::Const<'tcx>) -> MirConstId {
+        self.mir_consts.create_or_fetch(constant)
+    }
+
+    /// Return whether the instance as a body available.
+    ///
+    /// Items and intrinsics may have a body available from its definition.
+    /// Shims body may be generated depending on their type.
+    pub(crate) fn instance_has_body(&self, instance: Instance<'tcx>) -> bool {
         let def_id = instance.def_id();
-        self.tcx.is_mir_available(def_id)
+        self.item_has_body(def_id)
             || !matches!(
                 instance.def,
-                ty::InstanceDef::Virtual(..)
-                    | ty::InstanceDef::Intrinsic(..)
-                    | ty::InstanceDef::Item(..)
+                ty::InstanceKind::Virtual(..)
+                    | ty::InstanceKind::Intrinsic(..)
+                    | ty::InstanceKind::Item(..)
             )
+    }
+
+    /// Return whether the item has a body defined by the user.
+    ///
+    /// Note that intrinsics may have a placeholder body that shouldn't be used in practice.
+    /// In StableMIR, we handle this case as if the body is not available.
+    pub(crate) fn item_has_body(&self, def_id: DefId) -> bool {
+        let must_override = if let Some(intrinsic) = self.tcx.intrinsic(def_id) {
+            intrinsic.must_be_overridden
+        } else {
+            false
+        };
+        !must_override && self.tcx.is_mir_available(def_id)
     }
 }
 

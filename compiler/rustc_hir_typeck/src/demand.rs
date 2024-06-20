@@ -4,7 +4,7 @@ use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
+use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::bug;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -166,7 +166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Requires that the two types unify, and prints an error message if
     /// they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
-        if let Some(e) = self.demand_suptype_diag(sp, expected, actual) {
+        if let Err(e) = self.demand_suptype_diag(sp, expected, actual) {
             e.emit();
         }
     }
@@ -176,7 +176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<Diag<'tcx>> {
+    ) -> Result<(), Diag<'tcx>> {
         self.demand_suptype_with_origin(&self.misc(sp), expected, actual)
     }
 
@@ -186,18 +186,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<Diag<'tcx>> {
-        match self.at(cause, self.param_env).sup(DefineOpaqueTypes::Yes, expected, actual) {
-            Ok(InferOk { obligations, value: () }) => {
-                self.register_predicates(obligations);
-                None
-            }
-            Err(e) => Some(self.err_ctxt().report_mismatched_types(cause, expected, actual, e)),
-        }
+    ) -> Result<(), Diag<'tcx>> {
+        self.at(cause, self.param_env)
+            .sup(DefineOpaqueTypes::Yes, expected, actual)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+            .map_err(|e| self.err_ctxt().report_mismatched_types(cause, expected, actual, e))
     }
 
     pub fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
-        if let Some(err) = self.demand_eqtype_diag(sp, expected, actual) {
+        if let Err(err) = self.demand_eqtype_diag(sp, expected, actual) {
             err.emit();
         }
     }
@@ -207,7 +204,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<Diag<'tcx>> {
+    ) -> Result<(), Diag<'tcx>> {
         self.demand_eqtype_with_origin(&self.misc(sp), expected, actual)
     }
 
@@ -216,14 +213,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<Diag<'tcx>> {
-        match self.at(cause, self.param_env).eq(DefineOpaqueTypes::Yes, expected, actual) {
-            Ok(InferOk { obligations, value: () }) => {
-                self.register_predicates(obligations);
-                None
-            }
-            Err(e) => Some(self.err_ctxt().report_mismatched_types(cause, expected, actual, e)),
-        }
+    ) -> Result<(), Diag<'tcx>> {
+        self.at(cause, self.param_env)
+            .eq(DefineOpaqueTypes::Yes, expected, actual)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+            .map_err(|e| self.err_ctxt().report_mismatched_types(cause, expected, actual, e))
     }
 
     pub fn demand_coerce(
@@ -234,12 +228,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         allow_two_phase: AllowTwoPhase,
     ) -> Ty<'tcx> {
-        let (ty, err) =
-            self.demand_coerce_diag(expr, checked_ty, expected, expected_ty_expr, allow_two_phase);
-        if let Some(err) = err {
-            err.emit();
+        match self.demand_coerce_diag(expr, checked_ty, expected, expected_ty_expr, allow_two_phase)
+        {
+            Ok(ty) => ty,
+            Err(err) => {
+                err.emit();
+                // Return the original type instead of an error type here, otherwise the type of `x` in
+                // `let x: u32 = ();` will be a type error, causing all subsequent usages of `x` to not
+                // report errors, even though `x` is definitely `u32`.
+                expected
+            }
         }
-        ty
     }
 
     /// Checks that the type of `expr` can be coerced to `expected`.
@@ -254,11 +253,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         mut expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         allow_two_phase: AllowTwoPhase,
-    ) -> (Ty<'tcx>, Option<Diag<'tcx>>) {
+    ) -> Result<Ty<'tcx>, Diag<'tcx>> {
         let expected = self.resolve_vars_with_obligations(expected);
 
         let e = match self.coerce(expr, checked_ty, expected, allow_two_phase, None) {
-            Ok(ty) => return (ty, None),
+            Ok(ty) => return Ok(ty),
             Err(e) => e,
         };
 
@@ -275,7 +274,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected, expected_ty_expr, Some(e));
 
-        (expected, Some(err))
+        Err(err)
     }
 
     /// Notes the point at which a variable is constrained to some type incompatible
@@ -327,8 +326,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut expr_finder = FindExprs { hir_id: local_hir_id, uses: init.into_iter().collect() };
-        let body =
-            hir.body(hir.maybe_body_owned_by(self.body_id).expect("expected item to have body"));
+        let body = hir.body_owned_by(self.body_id);
         expr_finder.visit_expr(body.value);
 
         // Replaces all of the variables in the given type with a fresh inference variable.
@@ -351,7 +349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             lt_op: |_| self.tcx.lifetimes.re_erased,
             ct_op: |ct| {
                 if let ty::ConstKind::Infer(_) = ct.kind() {
-                    self.next_const_var(ct.ty(), DUMMY_SP)
+                    self.next_const_var(DUMMY_SP)
                 } else {
                     ct
                 }
@@ -373,8 +371,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let Some(arg_ty) = self.node_ty_opt(args[idx].hir_id) else {
                     return false;
                 };
-                let possible_rcvr_ty = expr_finder.uses.iter().find_map(|binding| {
+                let possible_rcvr_ty = expr_finder.uses.iter().rev().find_map(|binding| {
                     let possible_rcvr_ty = self.node_ty_opt(binding.hir_id)?;
+                    if possible_rcvr_ty.is_ty_var() {
+                        return None;
+                    }
                     // Fudge the receiver, so we can do new inference on it.
                     let possible_rcvr_ty = possible_rcvr_ty.fold_with(&mut fudger);
                     let method = self
@@ -386,6 +387,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             binding,
                         )
                         .ok()?;
+                    // Make sure we select the same method that we started with...
+                    if Some(method.def_id)
+                        != self.typeck_results.borrow().type_dependent_def_id(call_expr.hir_id)
+                    {
+                        return None;
+                    }
                     // Unify the method signature with our incompatible arg, to
                     // do inference in the *opposite* direction and to find out
                     // what our ideal rcvr ty would look like.
@@ -456,6 +463,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ) else {
                     continue;
                 };
+                // Make sure we select the same method that we started with...
+                if Some(method.def_id)
+                    != self.typeck_results.borrow().type_dependent_def_id(parent_expr.hir_id)
+                {
+                    continue;
+                }
 
                 let ideal_rcvr_ty = rcvr_ty.fold_with(&mut fudger);
                 let ideal_method = self
@@ -505,13 +518,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // blame arg, if possible. Don't do this if we're coming from
                     // arg mismatch code, because we'll possibly suggest a mutually
                     // incompatible fix at the original mismatch site.
+                    // HACK(compiler-errors): We don't actually consider the implications
+                    // of our inference guesses in `emit_type_mismatch_suggestions`, so
+                    // only suggest things when we know our type error is precisely due to
+                    // a type mismatch, and not via some projection or something. See #116155.
                     if matches!(source, TypeMismatchSource::Ty(_))
                         && let Some(ideal_method) = ideal_method
-                        && let ideal_arg_ty = self.resolve_vars_if_possible(ideal_method.sig.inputs()[idx + 1])
-                        // HACK(compiler-errors): We don't actually consider the implications
-                        // of our inference guesses in `emit_type_mismatch_suggestions`, so
-                        // only suggest things when we know our type error is precisely due to
-                        // a type mismatch, and not via some projection or something. See #116155.
+                        && Some(ideal_method.def_id)
+                            == self
+                                .typeck_results
+                                .borrow()
+                                .type_dependent_def_id(parent_expr.hir_id)
+                        && let ideal_arg_ty =
+                            self.resolve_vars_if_possible(ideal_method.sig.inputs()[idx + 1])
                         && !ideal_arg_ty.has_non_region_infer()
                     {
                         self.emit_type_mismatch_suggestions(
@@ -807,7 +826,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ) else {
             return;
         };
-        let in_scope_methods = self.probe_for_name_many(
+
+        let Ok(in_scope_methods) = self.probe_for_name_many(
             probe::Mode::MethodCall,
             path.ident,
             Some(expected),
@@ -815,11 +835,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self_ty,
             deref.hir_id,
             probe::ProbeScope::TraitsInScope,
-        );
+        ) else {
+            return;
+        };
+
         let other_methods_in_scope: Vec<_> =
             in_scope_methods.iter().filter(|c| c.item.def_id != pick.item.def_id).collect();
 
-        let all_methods = self.probe_for_name_many(
+        let Ok(all_methods) = self.probe_for_name_many(
             probe::Mode::MethodCall,
             path.ident,
             Some(expected),
@@ -827,7 +850,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self_ty,
             deref.hir_id,
             probe::ProbeScope::AllTraits,
-        );
+        ) else {
+            return;
+        };
+
         let suggestions: Vec<_> = all_methods
             .into_iter()
             .filter(|c| c.item.def_id != pick.item.def_id)

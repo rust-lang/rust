@@ -289,6 +289,60 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         };
     }
 
+    fn fold<B, F>(mut self, mut accum: B, mut f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        if T::IS_ZST {
+            while self.ptr.as_ptr() != self.end.cast_mut() {
+                // SAFETY: we just checked that `self.ptr` is in bounds.
+                let tmp = unsafe { self.ptr.read() };
+                // See `next` for why we subtract from `end` here.
+                self.end = self.end.wrapping_byte_sub(1);
+                accum = f(accum, tmp);
+            }
+        } else {
+            // SAFETY: `self.end` can only be null if `T` is a ZST.
+            while self.ptr != non_null!(self.end, T) {
+                // SAFETY: we just checked that `self.ptr` is in bounds.
+                let tmp = unsafe { self.ptr.read() };
+                // SAFETY: the maximum this can be is `self.end`.
+                // Increment `self.ptr` first to avoid double dropping in the event of a panic.
+                self.ptr = unsafe { self.ptr.add(1) };
+                accum = f(accum, tmp);
+            }
+        }
+        accum
+    }
+
+    fn try_fold<B, F, R>(&mut self, mut accum: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: core::ops::Try<Output = B>,
+    {
+        if T::IS_ZST {
+            while self.ptr.as_ptr() != self.end.cast_mut() {
+                // SAFETY: we just checked that `self.ptr` is in bounds.
+                let tmp = unsafe { self.ptr.read() };
+                // See `next` for why we subtract from `end` here.
+                self.end = self.end.wrapping_byte_sub(1);
+                accum = f(accum, tmp)?;
+            }
+        } else {
+            // SAFETY: `self.end` can only be null if `T` is a ZST.
+            while self.ptr != non_null!(self.end, T) {
+                // SAFETY: we just checked that `self.ptr` is in bounds.
+                let tmp = unsafe { self.ptr.read() };
+                // SAFETY: the maximum this can be is `self.end`.
+                // Increment `self.ptr` first to avoid double dropping in the event of a panic.
+                self.ptr = unsafe { self.ptr.add(1) };
+                accum = f(accum, tmp)?;
+            }
+        }
+        R::from_output(accum)
+    }
+
     unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,

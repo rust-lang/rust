@@ -3,10 +3,9 @@
 //@ [x64] compile-flags: --target x86_64-unknown-linux-gnu -Crelocation-model=pic
 //@ [x64] needs-llvm-components: x86
 
-
 #![feature(no_core, lang_items)]
 #![no_core]
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 
 #[lang = "sized"]
 trait Sized {}
@@ -17,9 +16,7 @@ trait Copy {}
 // CHECK:       {{(jmpq|callq)}} *other_fn@GOTPCREL(%rip)
 #[no_mangle]
 pub fn call_other_fn() -> u8 {
-    unsafe {
-        other_fn()
-    }
+    unsafe { other_fn() }
 }
 
 // CHECK-LABEL: other_fn:
@@ -27,9 +24,9 @@ pub fn call_other_fn() -> u8 {
 #[no_mangle]
 #[inline(never)]
 pub fn other_fn() -> u8 {
-    unsafe {
-        foreign_fn()
-    }
+    unsafe { foreign_fn() }
 }
 
-extern "C" {fn foreign_fn() -> u8;}
+extern "C" {
+    fn foreign_fn() -> u8;
+}

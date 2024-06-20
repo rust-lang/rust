@@ -167,7 +167,7 @@ impl PathSegment {
     }
 }
 
-/// The arguments of a path segment.
+/// The generic arguments and associated item constraints of a path segment.
 ///
 /// E.g., `<A, B>` as in `Foo<A, B>` or `(A, B)` as in `Foo(A, B)`.
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -221,14 +221,13 @@ pub struct AngleBracketedArgs {
     pub args: ThinVec<AngleBracketedArg>,
 }
 
-/// Either an argument for a parameter e.g., `'a`, `Vec<u8>`, `0`,
-/// or a constraint on an associated item, e.g., `Item = String` or `Item: Bound`.
+/// Either an argument for a generic parameter or a constraint on an associated item.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum AngleBracketedArg {
-    /// Argument for a generic parameter.
+    /// A generic argument for a generic parameter.
     Arg(GenericArg),
-    /// Constraint for an associated item.
-    Constraint(AssocConstraint),
+    /// A constraint on an associated item.
+    Constraint(AssocItemConstraint),
 }
 
 impl AngleBracketedArg {
@@ -308,6 +307,8 @@ impl TraitBoundModifiers {
 pub enum GenericBound {
     Trait(PolyTraitRef, TraitBoundModifiers),
     Outlives(Lifetime),
+    /// Precise capturing syntax: `impl Sized + use<'a>`
+    Use(ThinVec<PreciseCapturingArg>, Span),
 }
 
 impl GenericBound {
@@ -315,6 +316,7 @@ impl GenericBound {
         match self {
             GenericBound::Trait(t, ..) => t.span,
             GenericBound::Outlives(l) => l.ident.span,
+            GenericBound::Use(_, span) => *span,
         }
     }
 }
@@ -418,7 +420,7 @@ impl Default for WhereClause {
 /// A single predicate in a where-clause.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum WherePredicate {
-    /// A type binding (e.g., `for<'c> Foo: Send + Clone + 'c`).
+    /// A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
     BoundPredicate(WhereBoundPredicate),
     /// A lifetime predicate (e.g., `'a: 'b + 'c`).
     RegionPredicate(WhereRegionPredicate),
@@ -489,6 +491,7 @@ pub struct Crate {
 /// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct MetaItem {
+    pub unsafety: Safety,
     pub path: Path,
     pub kind: MetaItemKind,
     pub span: Span,
@@ -972,7 +975,9 @@ impl UnOp {
     }
 }
 
-/// A statement
+/// A statement. No `attrs` or `tokens` fields because each `StmtKind` variant
+/// contains an AST node with those fields. (Except for `StmtKind::Empty`,
+/// which never has attrs or tokens)
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Stmt {
     pub id: NodeId,
@@ -2034,18 +2039,25 @@ impl UintTy {
     }
 }
 
-/// A constraint on an associated type (e.g., `A = Bar` in `Foo<A = Bar>` or
-/// `A: TraitA + TraitB` in `Foo<A: TraitA + TraitB>`).
+/// A constraint on an associated item.
+///
+/// ### Examples
+///
+/// * the `A = Ty` and `B = Ty` in `Trait<A = Ty, B = Ty>`
+/// * the `G<Ty> = Ty` in `Trait<G<Ty> = Ty>`
+/// * the `A: Bound` in `Trait<A: Bound>`
+/// * the `RetTy` in `Trait(ArgTy, ArgTy) -> RetTy`
+/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `associated_const_equality`)
+/// * the `f(): Bound` in `Trait<f(): Bound>` (feature `return_type_notation`)
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct AssocConstraint {
+pub struct AssocItemConstraint {
     pub id: NodeId,
     pub ident: Ident,
     pub gen_args: Option<GenericArgs>,
-    pub kind: AssocConstraintKind,
+    pub kind: AssocItemConstraintKind,
     pub span: Span,
 }
 
-/// The kinds of an `AssocConstraint`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum Term {
     Ty(P<Ty>),
@@ -2064,12 +2076,17 @@ impl From<AnonConst> for Term {
     }
 }
 
-/// The kinds of an `AssocConstraint`.
+/// The kind of [associated item constraint][AssocItemConstraint].
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub enum AssocConstraintKind {
-    /// E.g., `A = Bar`, `A = 3` in `Foo<A = Bar>` where A is an associated type.
+pub enum AssocItemConstraintKind {
+    /// An equality constraint for an associated item (e.g., `AssocTy = Ty` in `Trait<AssocTy = Ty>`).
+    ///
+    /// Also known as an *associated item binding* (we *bind* an associated item to a term).
+    ///
+    /// Furthermore, associated type equality constraints can also be referred to as *associated type
+    /// bindings*. Similarly with associated const equality constraints and *associated const bindings*.
     Equality { term: Term },
-    /// E.g. `A: TraitA + TraitB` in `Foo<A: TraitA + TraitB>`.
+    /// A bound on an associated type (e.g., `AssocTy: Bound` in `Trait<AssocTy: Bound>`).
     Bound { bounds: GenericBounds },
 }
 
@@ -2150,7 +2167,7 @@ pub enum TyKind {
     /// The `NodeId` exists to prevent lowering from having to
     /// generate `NodeId`s on the fly, which would complicate
     /// the generation of opaque `type Foo = impl Trait` items significantly.
-    ImplTrait(NodeId, GenericBounds, Option<P<(ThinVec<PreciseCapturingArg>, Span)>>),
+    ImplTrait(NodeId, GenericBounds),
     /// No-op; kept solely so that we can pretty-print faithfully.
     Paren(P<Ty>),
     /// Unused for now.
@@ -2490,6 +2507,8 @@ pub enum IsAuto {
 pub enum Safety {
     /// `unsafe` an item is explicitly marked as `unsafe`.
     Unsafe(Span),
+    /// `safe` an item is explicitly marked as `safe`.
+    Safe(Span),
     /// Default means no value was provided, it will take a default value given the context in
     /// which is used.
     Default,
@@ -2733,6 +2752,13 @@ pub enum UseTreeKind {
     /// `use prefix` or `use prefix as rename`
     Simple(Option<Ident>),
     /// `use prefix::{...}`
+    ///
+    /// The span represents the braces of the nested group and all elements within:
+    ///
+    /// ```text
+    /// use foo::{bar, baz};
+    ///          ^^^^^^^^^^
+    /// ```
     Nested { items: ThinVec<(UseTree, NodeId)>, span: Span },
     /// `use prefix::*`
     Glob,
@@ -2803,7 +2829,12 @@ pub struct NormalAttr {
 impl NormalAttr {
     pub fn from_ident(ident: Ident) -> Self {
         Self {
-            item: AttrItem { path: Path::from_ident(ident), args: AttrArgs::Empty, tokens: None },
+            item: AttrItem {
+                unsafety: Safety::Default,
+                path: Path::from_ident(ident),
+                args: AttrArgs::Empty,
+                tokens: None,
+            },
             tokens: None,
         }
     }
@@ -2811,6 +2842,7 @@ impl NormalAttr {
 
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct AttrItem {
+    pub unsafety: Safety,
     pub path: Path,
     pub args: AttrArgs,
     // Tokens for the meta item, e.g. just the `foo` within `#[foo]` or `#![foo]`.
@@ -3131,19 +3163,23 @@ pub struct Delegation {
     pub path: Path,
     pub rename: Option<Ident>,
     pub body: Option<P<Block>>,
+    /// The item was expanded from a glob delegation item.
+    pub from_glob: bool,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct DelegationMac {
     pub qself: Option<P<QSelf>>,
     pub prefix: Path,
-    pub suffixes: ThinVec<(Ident, Option<Ident>)>,
+    // Some for list delegation, and None for glob delegation.
+    pub suffixes: Option<ThinVec<(Ident, Option<Ident>)>>,
     pub body: Option<P<Block>>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct StaticItem {
     pub ty: P<Ty>,
+    pub safety: Safety,
     pub mutability: Mutability,
     pub expr: Option<P<Expr>>,
 }
@@ -3153,6 +3189,7 @@ pub struct StaticItem {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct StaticForeignItem {
     pub ty: P<Ty>,
+    pub safety: Safety,
     pub mutability: Mutability,
     pub expr: Option<P<Expr>>,
 }
@@ -3161,6 +3198,7 @@ impl From<StaticItem> for StaticForeignItem {
     fn from(static_item: StaticItem) -> StaticForeignItem {
         StaticForeignItem {
             ty: static_item.ty,
+            safety: static_item.safety,
             mutability: static_item.mutability,
             expr: static_item.expr,
         }
@@ -3171,6 +3209,7 @@ impl From<StaticForeignItem> for StaticItem {
     fn from(static_item: StaticForeignItem) -> StaticItem {
         StaticItem {
             ty: static_item.ty,
+            safety: static_item.safety,
             mutability: static_item.mutability,
             expr: static_item.expr,
         }
@@ -3260,7 +3299,7 @@ pub enum ItemKind {
     ///
     /// E.g. `reuse <Type as Trait>::name { target_expr_template }`.
     Delegation(Box<Delegation>),
-    /// A list delegation item (`reuse prefix::{a, b, c}`).
+    /// A list or glob delegation item (`reuse prefix::{a, b, c}`, `reuse prefix::*`).
     /// Treated similarly to a macro call and expanded early.
     DelegationMac(Box<DelegationMac>),
 }
@@ -3341,7 +3380,7 @@ pub enum AssocItemKind {
     MacCall(P<MacCall>),
     /// An associated delegation item.
     Delegation(Box<Delegation>),
-    /// An associated delegation item list.
+    /// An associated list or glob delegation item.
     DelegationMac(Box<DelegationMac>),
 }
 

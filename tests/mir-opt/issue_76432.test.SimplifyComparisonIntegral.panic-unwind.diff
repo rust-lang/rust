@@ -29,8 +29,8 @@
           _3 = &_4;
           _2 = move _3 as &[T] (PointerCoercion(Unsize));
           StorageDead(_3);
-          _5 = const 3_usize;
-          _6 = const true;
+          nop;
+          nop;
           goto -> bb2;
       }
   

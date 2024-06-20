@@ -25,7 +25,7 @@ mod mod3 {
 }
 
 // This is similar to the previous cases in that 'a is equal to 'static,
-// which is is some sense an implicit parameter to `Opaque`.
+// which is some sense an implicit parameter to `Opaque`.
 // For example, given a defining use `Opaque<'a> := &'a ()`,
 // it is ambiguous whether `Opaque<'a> := &'a ()` or `Opaque<'a> := &'static ()`
 mod mod4 {

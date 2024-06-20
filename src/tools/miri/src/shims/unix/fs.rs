@@ -9,7 +9,6 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::ty::TyCtxt;
 use rustc_target::abi::Size;
 
 use crate::shims::os_str::bytes_to_os_str;
@@ -34,7 +33,7 @@ impl FileDescription for FileHandle {
         &mut self,
         communicate_allowed: bool,
         bytes: &mut [u8],
-        _tcx: TyCtxt<'tcx>,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.read(bytes))
@@ -44,7 +43,7 @@ impl FileDescription for FileHandle {
         &mut self,
         communicate_allowed: bool,
         bytes: &[u8],
-        _tcx: TyCtxt<'tcx>,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.write(bytes))
@@ -87,12 +86,12 @@ impl FileDescription for FileHandle {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExtPrivate<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExtPrivate<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn macos_stat_write_buf(
         &mut self,
         metadata: FileMetadata,
-        buf_op: &OpTy<'tcx, Provenance>,
+        buf_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -181,7 +180,7 @@ struct OpenDir {
     read_dir: ReadDir,
     /// The most recent entry returned by readdir().
     /// Will be freed by the next call.
-    entry: Option<Pointer<Option<Provenance>>>,
+    entry: Option<Pointer>,
 }
 
 impl OpenDir {
@@ -255,9 +254,9 @@ fn maybe_sync_file(
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    fn open(&mut self, args: &[OpTy<'tcx, Provenance>]) -> InterpResult<'tcx, i32> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    fn open(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, i32> {
         if args.len() < 2 {
             throw_ub_format!(
                 "incorrect number of arguments for `open`: got {}, expected at least 2",
@@ -390,12 +389,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.try_unwrap_io_result(fd)
     }
 
-    fn lseek64(
-        &mut self,
-        fd: i32,
-        offset: i128,
-        whence: i32,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn lseek64(&mut self, fd: i32, offset: i128, whence: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         // Isolation check is done via `FileDescriptor` trait.
@@ -426,7 +420,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(Scalar::from_i64(result))
     }
 
-    fn unlink(&mut self, path_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
+    fn unlink(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
@@ -444,8 +438,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn symlink(
         &mut self,
-        target_op: &OpTy<'tcx, Provenance>,
-        linkpath_op: &OpTy<'tcx, Provenance>,
+        target_op: &OpTy<'tcx>,
+        linkpath_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, i32> {
         #[cfg(unix)]
         fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
@@ -475,9 +469,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn macos_fbsd_stat(
         &mut self,
-        path_op: &OpTy<'tcx, Provenance>,
-        buf_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        path_op: &OpTy<'tcx>,
+        buf_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd") {
@@ -507,9 +501,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     // `lstat` is used to get symlink metadata.
     fn macos_fbsd_lstat(
         &mut self,
-        path_op: &OpTy<'tcx, Provenance>,
-        buf_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        path_op: &OpTy<'tcx>,
+        buf_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd") {
@@ -537,9 +531,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn macos_fbsd_fstat(
         &mut self,
-        fd_op: &OpTy<'tcx, Provenance>,
-        buf_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        fd_op: &OpTy<'tcx>,
+        buf_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd") {
@@ -564,11 +558,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn linux_statx(
         &mut self,
-        dirfd_op: &OpTy<'tcx, Provenance>,    // Should be an `int`
-        pathname_op: &OpTy<'tcx, Provenance>, // Should be a `const char *`
-        flags_op: &OpTy<'tcx, Provenance>,    // Should be an `int`
-        mask_op: &OpTy<'tcx, Provenance>,     // Should be an `unsigned int`
-        statxbuf_op: &OpTy<'tcx, Provenance>, // Should be a `struct statx *`
+        dirfd_op: &OpTy<'tcx>,    // Should be an `int`
+        pathname_op: &OpTy<'tcx>, // Should be a `const char *`
+        flags_op: &OpTy<'tcx>,    // Should be an `int`
+        mask_op: &OpTy<'tcx>,     // Should be an `unsigned int`
+        statxbuf_op: &OpTy<'tcx>, // Should be a `struct statx *`
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -746,8 +740,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn rename(
         &mut self,
-        oldpath_op: &OpTy<'tcx, Provenance>,
-        newpath_op: &OpTy<'tcx, Provenance>,
+        oldpath_op: &OpTy<'tcx>,
+        newpath_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -775,11 +769,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.try_unwrap_io_result(result)
     }
 
-    fn mkdir(
-        &mut self,
-        path_op: &OpTy<'tcx, Provenance>,
-        mode_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    fn mkdir(&mut self, path_op: &OpTy<'tcx>, mode_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         #[cfg_attr(not(unix), allow(unused_variables))]
@@ -814,7 +804,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.try_unwrap_io_result(result)
     }
 
-    fn rmdir(&mut self, path_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
+    fn rmdir(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
@@ -831,10 +821,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.try_unwrap_io_result(result)
     }
 
-    fn opendir(
-        &mut self,
-        name_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn opendir(&mut self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let name = this.read_path_from_c_str(this.read_pointer(name_op)?)?;
@@ -865,10 +852,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn linux_readdir64(
-        &mut self,
-        dirp_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn linux_readdir64(&mut self, dirp_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("linux", "readdir64");
@@ -909,14 +893,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let dirent64_layout = this.libc_ty_layout("dirent64");
                 let d_name_offset = dirent64_layout.fields.offset(4 /* d_name */).bytes();
-                let size = d_name_offset.checked_add(name_len).unwrap();
+                let size = d_name_offset.strict_add(name_len);
 
                 let entry = this.allocate_ptr(
                     Size::from_bytes(size),
                     dirent64_layout.align.abi,
                     MiriMemoryKind::Runtime.into(),
                 )?;
-                let entry: Pointer<Option<Provenance>> = entry.into();
+                let entry: Pointer = entry.into();
 
                 // If the host is a Unix system, fill in the inode number with its real value.
                 // If not, use 0 as a fallback value.
@@ -963,10 +947,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn macos_fbsd_readdir_r(
         &mut self,
-        dirp_op: &OpTy<'tcx, Provenance>,
-        entry_op: &OpTy<'tcx, Provenance>,
-        result_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        dirp_op: &OpTy<'tcx>,
+        entry_op: &OpTy<'tcx>,
+        result_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd") {
@@ -991,7 +975,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // The name is written with write_os_str_to_c_str, while the rest of the
                 // dirent struct is written using write_int_fields.
 
-                // For reference:
+                // For reference, on macOS this looks like:
                 // pub struct dirent {
                 //     pub d_ino: u64,
                 //     pub d_seekoff: u64,
@@ -1010,7 +994,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     name_place.ptr(),
                     name_place.layout.size.bytes(),
                 )?;
-                let file_name_len = file_name_buf_len.checked_sub(1).unwrap();
+                let file_name_len = file_name_buf_len.strict_sub(1);
                 if !name_fits {
                     throw_unsup_format!(
                         "a directory entry had a name too large to fit in libc::dirent"
@@ -1026,40 +1010,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
 
-                // macOS offset field is d_seekoff
-                if this.projectable_has_field(&entry_place, "d_seekoff") {
-                    this.write_int_fields_named(
-                        &[
-                            ("d_ino", ino.into()),
-                            ("d_seekoff", 0),
-                            ("d_reclen", 0),
-                            ("d_namlen", file_name_len.into()),
-                            ("d_type", file_type.into()),
-                        ],
-                        &entry_place,
-                    )?;
-                } else if this.projectable_has_field(&entry_place, "d_off") {
-                    // freebsd 12 and onwards had added the d_off field
-                    this.write_int_fields_named(
-                        &[
-                            ("d_fileno", ino.into()),
-                            ("d_off", 0),
-                            ("d_reclen", 0),
-                            ("d_type", file_type.into()),
-                            ("d_namlen", file_name_len.into()),
-                        ],
-                        &entry_place,
-                    )?;
-                } else {
-                    this.write_int_fields_named(
-                        &[
-                            ("d_fileno", ino.into()),
-                            ("d_reclen", 0),
-                            ("d_type", file_type.into()),
-                            ("d_namlen", file_name_len.into()),
-                        ],
-                        &entry_place,
-                    )?;
+                // Common fields.
+                this.write_int_fields_named(
+                    &[
+                        ("d_reclen", 0),
+                        ("d_namlen", file_name_len.into()),
+                        ("d_type", file_type.into()),
+                    ],
+                    &entry_place,
+                )?;
+                // Special fields.
+                match &*this.tcx.sess.target.os {
+                    "macos" => {
+                        #[rustfmt::skip]
+                        this.write_int_fields_named(
+                            &[
+                                ("d_ino", ino.into()),
+                                ("d_seekoff", 0),
+                            ],
+                            &entry_place,
+                        )?;
+                    }
+                    "freebsd" => {
+                        this.write_int(ino, &this.project_field_named(&entry_place, "d_fileno")?)?;
+                        // `d_off` only exists on FreeBSD 12+, but we support v11 as well.
+                        // `libc` uses a build script to determine which version of the API to use,
+                        // and cross-builds always end up using v11.
+                        // To support both v11 and v12+, we dynamically check whether the field exists.
+                        if this.projectable_has_field(&entry_place, "d_off") {
+                            this.write_int(0, &this.project_field_named(&entry_place, "d_off")?)?;
+                        }
+                    }
+                    _ => unreachable!(),
                 }
 
                 let result_place = this.deref_pointer(result_op)?;
@@ -1086,7 +1068,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }))
     }
 
-    fn closedir(&mut self, dirp_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
+    fn closedir(&mut self, dirp_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let dirp = this.read_target_usize(dirp_op)?;
@@ -1109,7 +1091,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn ftruncate64(&mut self, fd: i32, length: i128) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn ftruncate64(&mut self, fd: i32, length: i128) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         // Reject if isolation is enabled.
@@ -1150,7 +1132,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn fsync(&mut self, fd_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
+    fn fsync(&mut self, fd_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         // On macOS, `fsync` (unlike `fcntl(F_FULLFSYNC)`) does not wait for the
         // underlying disk to finish writing. In the interest of host compatibility,
         // we conservatively implement this with `sync_all`, which
@@ -1185,7 +1167,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.try_unwrap_io_result(io_result)
     }
 
-    fn fdatasync(&mut self, fd_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
+    fn fdatasync(&mut self, fd_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -1212,11 +1194,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn sync_file_range(
         &mut self,
-        fd_op: &OpTy<'tcx, Provenance>,
-        offset_op: &OpTy<'tcx, Provenance>,
-        nbytes_op: &OpTy<'tcx, Provenance>,
-        flags_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        fd_op: &OpTy<'tcx>,
+        offset_op: &OpTy<'tcx>,
+        nbytes_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -1262,9 +1244,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn readlink(
         &mut self,
-        pathname_op: &OpTy<'tcx, Provenance>,
-        buf_op: &OpTy<'tcx, Provenance>,
-        bufsize_op: &OpTy<'tcx, Provenance>,
+        pathname_op: &OpTy<'tcx>,
+        buf_op: &OpTy<'tcx>,
+        bufsize_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
@@ -1305,10 +1287,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn isatty(
-        &mut self,
-        miri_fd: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn isatty(&mut self, miri_fd: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         // "returns 1 if fd is an open file descriptor referring to a terminal;
         // otherwise 0 is returned, and errno is set to indicate the error"
@@ -1329,9 +1308,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn realpath(
         &mut self,
-        path_op: &OpTy<'tcx, Provenance>,
-        processed_path_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        path_op: &OpTy<'tcx>,
+        processed_path_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_unix("realpath");
 
@@ -1387,7 +1366,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         }
     }
-    fn mkstemp(&mut self, template_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
+    fn mkstemp(&mut self, template_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
         use rand::seq::SliceRandom;
 
         // POSIX defines the template string.
@@ -1534,7 +1513,7 @@ fn extract_sec_and_nsec<'tcx>(
 /// Stores a file's metadata in order to avoid code duplication in the different metadata related
 /// shims.
 struct FileMetadata {
-    mode: Scalar<Provenance>,
+    mode: Scalar,
     size: u64,
     created: Option<(u64, u32)>,
     accessed: Option<(u64, u32)>,
@@ -1543,7 +1522,7 @@ struct FileMetadata {
 
 impl FileMetadata {
     fn from_path<'tcx>(
-        ecx: &mut MiriInterpCx<'_, 'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
         path: &Path,
         follow_symlink: bool,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
@@ -1554,7 +1533,7 @@ impl FileMetadata {
     }
 
     fn from_fd<'tcx>(
-        ecx: &mut MiriInterpCx<'_, 'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
         fd: i32,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let Some(file_descriptor) = ecx.machine.fds.get(fd) else {
@@ -1576,7 +1555,7 @@ impl FileMetadata {
     }
 
     fn from_meta<'tcx>(
-        ecx: &mut MiriInterpCx<'_, 'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
         metadata: Result<std::fs::Metadata, std::io::Error>,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let metadata = match metadata {

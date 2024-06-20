@@ -210,6 +210,7 @@ pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: IdentIsRaw) -> boo
             kw::Unsafe,
             kw::While,
             kw::Yield,
+            kw::Safe,
             kw::Static,
         ]
         .contains(&name)
@@ -577,6 +578,7 @@ impl Token {
                 kw::Impl,
                 kw::Unsafe,
                 kw::Const,
+                kw::Safe,
                 kw::Static,
                 kw::Union,
                 kw::Macro,

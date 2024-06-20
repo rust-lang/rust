@@ -166,7 +166,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
             Scalar::Int(int) => {
-                let data = int.assert_bits(layout.size(self));
+                let data = int.to_bits(layout.size(self));
 
                 // FIXME(antoyo): there's some issues with using the u128 code that follows, so hard-code
                 // the paths for floating-point values.

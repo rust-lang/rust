@@ -52,12 +52,27 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
 
         let ty = cx.typeck_results().expr_ty(arg);
 
-        let &ty::Adt(adt, args) = ty.kind() else { return };
+        let (adt, args, ref_mutability) = match ty.kind() {
+            &ty::Adt(adt, args) => (adt, args, None),
+            &ty::Ref(_, ty, mutability) => match ty.kind() {
+                &ty::Adt(adt, args) => (adt, args, Some(mutability)),
+                _ => return,
+            },
+            _ => return,
+        };
 
         let (article, ty, var) = match adt.did() {
+            did if cx.tcx.is_diagnostic_item(sym::Option, did) && ref_mutability.is_some() => {
+                ("a", "Option", "Some")
+            }
             did if cx.tcx.is_diagnostic_item(sym::Option, did) => ("an", "Option", "Some"),
             did if cx.tcx.is_diagnostic_item(sym::Result, did) => ("a", "Result", "Ok"),
             _ => return,
+        };
+
+        let ref_prefix = match ref_mutability {
+            None => "",
+            Some(ref_mutability) => ref_mutability.ref_prefix_str(),
         };
 
         let sub = if let Some(recv) = extract_iterator_next_call(cx, arg)
@@ -85,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
         cx.emit_span_lint(
             FOR_LOOPS_OVER_FALLIBLES,
             arg.span,
-            ForLoopsOverFalliblesDiag { article, ty, sub, question_mark, suggestion },
+            ForLoopsOverFalliblesDiag { article, ref_prefix, ty, sub, question_mark, suggestion },
         );
     }
 }

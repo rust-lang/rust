@@ -22,9 +22,8 @@ declare_clippy_lint! {
     ///
     /// See [RFC0212](https://github.com/rust-lang/rfcs/blob/master/text/0212-restore-int-fallback.md) for more information about the fallback.
     ///
-    /// ### Why is this bad?
-    /// For those who are very careful about types, default numeric fallback
-    /// can be a pitfall that cause unexpected runtime behavior.
+    /// ### Why restrict this?
+    /// To ensure that every numeric type is chosen explicitly rather than implicitly.
     ///
     /// ### Known problems
     /// This lint can only be allowed at the function level or above.
@@ -49,7 +48,7 @@ declare_clippy_lint! {
 declare_lint_pass!(DefaultNumericFallback => [DEFAULT_NUMERIC_FALLBACK]);
 
 impl<'tcx> LateLintPass<'tcx> for DefaultNumericFallback {
-    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
+    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &Body<'tcx>) {
         let hir = cx.tcx.hir();
         let is_parent_const = matches!(
             hir.body_const_context(hir.body_owner_def_id(body.id())),

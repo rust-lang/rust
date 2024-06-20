@@ -3,6 +3,7 @@ use crate::ty::GenericArgsRef;
 use crate::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;
+use tracing::debug;
 
 /// Checks if the specified `local` is used as the `self` parameter of a method call
 /// in the provided `BasicBlock`. If it is, then the `DefId` of the called method is

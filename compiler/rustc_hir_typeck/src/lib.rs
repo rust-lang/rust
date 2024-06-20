@@ -1,11 +1,14 @@
+// tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![feature(if_let_guard)]
-#![feature(let_chains)]
-#![feature(try_blocks)]
-#![feature(never_type)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
+#![feature(if_let_guard)]
+#![feature(is_none_or)]
+#![feature(let_chains)]
+#![feature(never_type)]
+#![feature(try_blocks)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate tracing;
@@ -235,11 +238,17 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
         if let Some(item) = tcx.opt_associated_item(def_id.into())
             && let ty::AssocKind::Const = item.kind
             && let ty::ImplContainer = item.container
-            && let Some(trait_item) = item.trait_item_def_id
+            && let Some(trait_item_def_id) = item.trait_item_def_id
         {
-            let args =
-                tcx.impl_trait_ref(item.container_id(tcx)).unwrap().instantiate_identity().args;
-            Some(tcx.type_of(trait_item).instantiate(tcx, args))
+            let impl_def_id = item.container_id(tcx);
+            let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
+            let args = ty::GenericArgs::identity_for_item(tcx, def_id).rebase_onto(
+                tcx,
+                impl_def_id,
+                impl_trait_ref.args,
+            );
+            tcx.check_args_compatible(trait_item_def_id, args)
+                .then(|| tcx.type_of(trait_item_def_id).instantiate(tcx, args))
         } else {
             Some(fcx.next_ty_var(span))
         }

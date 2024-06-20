@@ -149,8 +149,9 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 }
             };
 
-            // When there's a duplicate lang item, something went very wrong and there's no value in recovering or doing anything.
-            // Give the user the one message to let them debug the mess they created and then wish them farewell.
+            // When there's a duplicate lang item, something went very wrong and there's no value
+            // in recovering or doing anything. Give the user the one message to let them debug the
+            // mess they created and then wish them farewell.
             self.tcx.dcx().emit_fatal(DuplicateLangItem {
                 local_span: item_span,
                 lang_item_name,

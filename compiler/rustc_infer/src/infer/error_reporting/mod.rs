@@ -58,21 +58,22 @@ use crate::traits::{
     PredicateObligation,
 };
 
+use crate::infer::relate::{self, RelateResult, TypeRelation};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt, DiagStyledString,
-    ErrorGuaranteed, IntoDiagArg, StringPart,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxtHandle,
+    DiagStyledString, ErrorGuaranteed, IntoDiagArg, StringPart,
 };
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{self as hir, ParamName};
 use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::DepContext;
+use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{with_forced_trimmed_paths, PrintError, PrintTraitRefExt as _};
-use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
 use rustc_middle::ty::Upcast;
 use rustc_middle::ty::{
     self, error::TypeError, IsSuggestable, List, Region, Ty, TyCtxt, TypeFoldable,
@@ -138,8 +139,8 @@ pub struct TypeErrCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
-    pub fn dcx(&self) -> &'tcx DiagCtxt {
-        self.infcx.tcx.dcx()
+    pub fn dcx(&self) -> DiagCtxtHandle<'tcx> {
+        self.infcx.dcx()
     }
 
     /// This is just to avoid a potential footgun of accidentally
@@ -161,6 +162,7 @@ impl<'tcx> Deref for TypeErrCtxt<'_, 'tcx> {
 pub(super) fn note_and_explain_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     err: &mut Diag<'_>,
+    generic_param_scope: LocalDefId,
     prefix: &str,
     region: ty::Region<'tcx>,
     suffix: &str,
@@ -168,12 +170,15 @@ pub(super) fn note_and_explain_region<'tcx>(
 ) {
     let (description, span) = match *region {
         ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::RePlaceholder(_) | ty::ReStatic => {
-            msg_span_from_named_region(tcx, region, alt_span)
+            msg_span_from_named_region(tcx, generic_param_scope, region, alt_span)
         }
 
         ty::ReError(_) => return,
 
-        ty::ReVar(_) | ty::ReBound(..) | ty::ReErased => {
+        // FIXME(#125431): `ReVar` shouldn't reach here.
+        ty::ReVar(_) => (format!("lifetime `{region}`"), alt_span),
+
+        ty::ReBound(..) | ty::ReErased => {
             bug!("unexpected region for note_and_explain_region: {:?}", region);
         }
     };
@@ -184,23 +189,27 @@ pub(super) fn note_and_explain_region<'tcx>(
 fn explain_free_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     err: &mut Diag<'_>,
+    generic_param_scope: LocalDefId,
     prefix: &str,
     region: ty::Region<'tcx>,
     suffix: &str,
 ) {
-    let (description, span) = msg_span_from_named_region(tcx, region, None);
+    let (description, span) = msg_span_from_named_region(tcx, generic_param_scope, region, None);
 
     label_msg_span(err, prefix, description, span, suffix);
 }
 
 fn msg_span_from_named_region<'tcx>(
     tcx: TyCtxt<'tcx>,
+    generic_param_scope: LocalDefId,
     region: ty::Region<'tcx>,
     alt_span: Option<Span>,
 ) -> (String, Option<Span>) {
     match *region {
-        ty::ReEarlyParam(ref br) => {
-            let scope = region.free_region_binding_scope(tcx).expect_local();
+        ty::ReEarlyParam(br) => {
+            let scope = tcx
+                .parent(tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id)
+                .expect_local();
             let span = if let Some(param) =
                 tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
             {
@@ -217,21 +226,21 @@ fn msg_span_from_named_region<'tcx>(
         }
         ty::ReLateParam(ref fr) => {
             if !fr.bound_region.is_named()
-                && let Some((ty, _)) = find_anon_type(tcx, region, &fr.bound_region)
+                && let Some((ty, _)) =
+                    find_anon_type(tcx, generic_param_scope, region, &fr.bound_region)
             {
                 ("the anonymous lifetime defined here".to_string(), Some(ty.span))
             } else {
-                let scope = region.free_region_binding_scope(tcx).expect_local();
                 match fr.bound_region {
                     ty::BoundRegionKind::BrNamed(_, name) => {
                         let span = if let Some(param) = tcx
                             .hir()
-                            .get_generics(scope)
+                            .get_generics(generic_param_scope)
                             .and_then(|generics| generics.get_named(name))
                         {
                             param.span
                         } else {
-                            tcx.def_span(scope)
+                            tcx.def_span(generic_param_scope)
                         };
                         let text = if name == kw::UnderscoreLifetime {
                             "the anonymous lifetime as defined here".to_string()
@@ -242,11 +251,11 @@ fn msg_span_from_named_region<'tcx>(
                     }
                     ty::BrAnon => (
                         "the anonymous lifetime as defined here".to_string(),
-                        Some(tcx.def_span(scope)),
+                        Some(tcx.def_span(generic_param_scope)),
                     ),
                     _ => (
                         format!("the lifetime `{region}` as defined here"),
-                        Some(tcx.def_span(scope)),
+                        Some(tcx.def_span(generic_param_scope)),
                     ),
                 }
             }
@@ -299,6 +308,7 @@ fn label_msg_span(
 #[instrument(level = "trace", skip(tcx))]
 pub fn unexpected_hidden_region_diagnostic<'tcx>(
     tcx: TyCtxt<'tcx>,
+    generic_param_scope: LocalDefId,
     span: Span,
     hidden_ty: Ty<'tcx>,
     hidden_region: ty::Region<'tcx>,
@@ -324,11 +334,12 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
             explain_free_region(
                 tcx,
                 &mut err,
+                generic_param_scope,
                 &format!("hidden type `{hidden_ty}` captures "),
                 hidden_region,
                 "",
             );
-            if let Some(reg_info) = tcx.is_suitable_region(hidden_region) {
+            if let Some(reg_info) = tcx.is_suitable_region(generic_param_scope, hidden_region) {
                 let fn_returns = tcx.return_type_impl_or_dyn_traits(reg_info.def_id);
                 nice_region_error::suggest_new_region_bound(
                     tcx,
@@ -346,6 +357,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
             explain_free_region(
                 tcx,
                 &mut err,
+                generic_param_scope,
                 &format!("hidden type `{}` captures ", hidden_ty),
                 hidden_region,
                 "",
@@ -373,6 +385,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
             note_and_explain_region(
                 tcx,
                 &mut err,
+                generic_param_scope,
                 &format!("hidden type `{hidden_ty}` captures "),
                 hidden_region,
                 "",
@@ -413,7 +426,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         ty::ClauseKind::Projection(projection_predicate)
                             if projection_predicate.projection_term.def_id == item_def_id =>
                         {
-                            projection_predicate.term.ty()
+                            projection_predicate.term.as_type()
                         }
                         _ => None,
                     })
@@ -447,7 +460,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         for error in errors {
             debug!("report_region_errors: error = {:?}", error);
 
-            guar = Some(if let Some(guar) = self.try_report_nice_region_error(&error) {
+            let e = if let Some(guar) =
+                self.try_report_nice_region_error(generic_param_scope, &error)
+            {
                 guar
             } else {
                 match error.clone() {
@@ -460,9 +475,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     // general bit of code that displays the error information
                     RegionResolutionError::ConcreteFailure(origin, sub, sup) => {
                         if sub.is_placeholder() || sup.is_placeholder() {
-                            self.report_placeholder_failure(origin, sub, sup).emit()
+                            self.report_placeholder_failure(generic_param_scope, origin, sub, sup)
+                                .emit()
                         } else {
-                            self.report_concrete_failure(origin, sub, sup).emit()
+                            self.report_concrete_failure(generic_param_scope, origin, sub, sup)
+                                .emit()
                         }
                     }
 
@@ -485,12 +502,29 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         _,
                     ) => {
                         if sub_r.is_placeholder() {
-                            self.report_placeholder_failure(sub_origin, sub_r, sup_r).emit()
+                            self.report_placeholder_failure(
+                                generic_param_scope,
+                                sub_origin,
+                                sub_r,
+                                sup_r,
+                            )
+                            .emit()
                         } else if sup_r.is_placeholder() {
-                            self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit()
+                            self.report_placeholder_failure(
+                                generic_param_scope,
+                                sup_origin,
+                                sub_r,
+                                sup_r,
+                            )
+                            .emit()
                         } else {
                             self.report_sub_sup_conflict(
-                                var_origin, sub_origin, sub_r, sup_origin, sup_r,
+                                generic_param_scope,
+                                var_origin,
+                                sub_origin,
+                                sub_r,
+                                sup_origin,
+                                sup_r,
                             )
                         }
                     }
@@ -511,7 +545,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // value.
                         let sub_r = self.tcx.lifetimes.re_erased;
 
-                        self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit()
+                        self.report_placeholder_failure(
+                            generic_param_scope,
+                            sup_origin,
+                            sub_r,
+                            sup_r,
+                        )
+                        .emit()
                     }
 
                     RegionResolutionError::CannotNormalize(clause, origin) => {
@@ -523,7 +563,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             .emit()
                     }
                 }
-            })
+            };
+
+            guar = Some(e)
         }
 
         guar.unwrap()
@@ -850,7 +892,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         arm_ty,
                         arm_span,
                     ) {
-                        err.subdiagnostic(self.dcx(), subdiag);
+                        err.subdiagnostic(subdiag);
                     }
                 }
             },
@@ -876,7 +918,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     else_ty,
                     else_span,
                 ) {
-                    err.subdiagnostic(self.dcx(), subdiag);
+                    err.subdiagnostic(subdiag);
                 }
             }
             ObligationCauseCode::LetElse => {
@@ -1665,6 +1707,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ValuePairs::ExistentialProjection(_) => {
                         (false, Mismatch::Fixed("existential projection"))
                     }
+                    ValuePairs::Dummy => {
+                        bug!("do not expect to report a type error from a ValuePairs::Dummy")
+                    }
                 };
                 let Some(vals) = self.values_str(values) else {
                     // Derived error. Cancel the emitter.
@@ -2061,10 +2106,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 // If a string was expected and the found expression is a character literal,
                 // perhaps the user meant to write `"s"` to specify a string literal.
                 (ty::Ref(_, r, _), ty::Char) if r.is_str() => {
-                    suggestions.push(TypeErrorAdditionalDiags::MeantStrLiteral {
-                        start: span.with_hi(span.lo() + BytePos(1)),
-                        end: span.with_lo(span.hi() - BytePos(1)),
-                    })
+                    if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
+                        && code.starts_with("'")
+                        && code.ends_with("'")
+                    {
+                        suggestions.push(TypeErrorAdditionalDiags::MeantStrLiteral {
+                            start: span.with_hi(span.lo() + BytePos(1)),
+                            end: span.with_lo(span.hi() - BytePos(1)),
+                        });
+                    }
                 }
                 // For code `if Some(..) = expr `, the type mismatch may be expected `bool` but found `()`,
                 // we try to suggest to add the missing `let` for `if let Some(..) = expr`
@@ -2203,12 +2253,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         values: ValuePairs<'tcx>,
     ) -> Option<(DiagStyledString, DiagStyledString, Option<PathBuf>)> {
         match values {
-            infer::Regions(exp_found) => self.expected_found_str(exp_found),
-            infer::Terms(exp_found) => self.expected_found_str_term(exp_found),
-            infer::Aliases(exp_found) => self.expected_found_str(exp_found),
-            infer::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
-            infer::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
-            infer::TraitRefs(exp_found) => {
+            ValuePairs::Regions(exp_found) => self.expected_found_str(exp_found),
+            ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found),
+            ValuePairs::Aliases(exp_found) => self.expected_found_str(exp_found),
+            ValuePairs::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
+            ValuePairs::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
+            ValuePairs::TraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
                     expected: exp_found.expected.print_trait_sugared(),
                     found: exp_found.found.print_trait_sugared(),
@@ -2220,13 +2270,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ret => ret,
                 }
             }
-            infer::PolySigs(exp_found) => {
+            ValuePairs::PolySigs(exp_found) => {
                 let exp_found = self.resolve_vars_if_possible(exp_found);
                 if exp_found.references_error() {
                     return None;
                 }
                 let (exp, fnd) = self.cmp_fn_sig(&exp_found.expected, &exp_found.found);
                 Some((exp, fnd, None))
+            }
+            ValuePairs::Dummy => {
+                bug!("do not expect to report a type error from a ValuePairs::Dummy")
             }
         }
     }
@@ -2344,7 +2397,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         '_explain: {
             let (description, span) = match sub.kind() {
                 ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::ReStatic => {
-                    msg_span_from_named_region(self.tcx, sub, Some(span))
+                    msg_span_from_named_region(self.tcx, generic_param_scope, sub, Some(span))
                 }
                 _ => (format!("lifetime `{sub}`"), Some(span)),
             };
@@ -2376,7 +2429,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let (type_scope, type_param_sugg_span) = match bound_kind {
                 GenericKind::Param(param) => {
                     let generics = self.tcx.generics_of(generic_param_scope);
-                    let def_id = generics.type_param(param, self.tcx).def_id.expect_local();
+                    let type_param = generics.type_param(param, self.tcx);
+                    let def_id = type_param.def_id.expect_local();
                     let scope = self.tcx.local_def_id_to_hir_id(def_id).owner.def_id;
                     // Get the `hir::Param` to verify whether it already has any bounds.
                     // We do this to avoid suggesting code that ends up as `T: 'a'b`,
@@ -2386,7 +2440,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         Some((span, open_paren_sp)) => Some((span, true, open_paren_sp)),
                         // If `param` corresponds to `Self`, no usable suggestion span.
                         None if generics.has_self && param.index == 0 => None,
-                        None => Some((self.tcx.def_span(def_id).shrink_to_hi(), false, None)),
+                        None => {
+                            let span = if let Some(param) =
+                                hir_generics.params.iter().find(|param| param.def_id == def_id)
+                                && let ParamName::Plain(ident) = param.name
+                            {
+                                ident.span.shrink_to_hi()
+                            } else {
+                                let span = self.tcx.def_span(def_id);
+                                span.shrink_to_hi()
+                            };
+                            Some((span, false, None))
+                        }
                     };
                     (scope, sugg_span)
                 }
@@ -2395,7 +2460,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let suggestion_scope = {
                 let lifetime_scope = match sub.kind() {
                     ty::ReStatic => hir::def_id::CRATE_DEF_ID,
-                    _ => match self.tcx.is_suitable_region(sub) {
+                    _ => match self.tcx.is_suitable_region(generic_param_scope, sub) {
                         Some(info) => info.def_id,
                         None => generic_param_scope,
                     },
@@ -2407,7 +2472,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             };
 
             let mut suggs = vec![];
-            let lt_name = self.suggest_name_region(sub, &mut suggs);
+            let lt_name = self.suggest_name_region(generic_param_scope, sub, &mut suggs);
 
             if let Some((sp, has_lifetimes, open_paren_sp)) = type_param_sugg_span
                 && suggestion_scope == type_scope
@@ -2452,6 +2517,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     pub fn suggest_name_region(
         &self,
+        generic_param_scope: LocalDefId,
         lifetime: Region<'tcx>,
         add_lt_suggs: &mut Vec<(Span, String)>,
     ) -> String {
@@ -2498,12 +2564,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        let (lifetime_def_id, lifetime_scope) = match self.tcx.is_suitable_region(lifetime) {
-            Some(info) if !lifetime.has_name() => {
-                (info.bound_region.get_id().unwrap().expect_local(), info.def_id)
-            }
-            _ => return lifetime.get_name_or_anon().to_string(),
-        };
+        let (lifetime_def_id, lifetime_scope) =
+            match self.tcx.is_suitable_region(generic_param_scope, lifetime) {
+                Some(info) if !lifetime.has_name() => {
+                    (info.bound_region.get_id().unwrap().expect_local(), info.def_id)
+                }
+                _ => return lifetime.get_name_or_anon().to_string(),
+            };
 
         let new_lt = {
             let generics = self.tcx.generics_of(lifetime_scope);
@@ -2554,6 +2621,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn report_sub_sup_conflict(
         &self,
+        generic_param_scope: LocalDefId,
         var_origin: RegionVariableOrigin,
         sub_origin: SubregionOrigin<'tcx>,
         sub_region: Region<'tcx>,
@@ -2565,6 +2633,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         note_and_explain_region(
             self.tcx,
             &mut err,
+            generic_param_scope,
             "first, the lifetime cannot outlive ",
             sup_region,
             "...",
@@ -2587,6 +2656,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             note_and_explain_region(
                 self.tcx,
                 &mut err,
+                generic_param_scope,
                 "...but the lifetime must also be valid for ",
                 sub_region,
                 "...",
@@ -2610,6 +2680,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         note_and_explain_region(
             self.tcx,
             &mut err,
+            generic_param_scope,
             "but, the lifetime must be valid for ",
             sub_region,
             "...",
@@ -2634,7 +2705,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// with the other type. A TyVar inference type is compatible with any type, and an IntVar or
     /// FloatVar inference type are compatible with themselves or their concrete types (Int and
     /// Float types, respectively). When comparing two ADTs, these rules apply recursively.
-    pub fn same_type_modulo_infer<T: relate::Relate<'tcx>>(&self, a: T, b: T) -> bool {
+    pub fn same_type_modulo_infer<T: relate::Relate<TyCtxt<'tcx>>>(&self, a: T, b: T) -> bool {
         let (a, b) = self.resolve_vars_if_possible((a, b));
         SameTypeModuloInfer(self).relate(a, b).is_ok()
     }
@@ -2642,7 +2713,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
 struct SameTypeModuloInfer<'a, 'tcx>(&'a InferCtxt<'tcx>);
 
-impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
+impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameTypeModuloInfer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.0.tcx
     }
@@ -2651,10 +2722,10 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         "SameTypeModuloInfer"
     }
 
-    fn relate_with_variance<T: relate::Relate<'tcx>>(
+    fn relate_with_variance<T: relate::Relate<TyCtxt<'tcx>>>(
         &mut self,
         _variance: ty::Variance,
-        _info: ty::VarianceDiagInfo<'tcx>,
+        _info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
         a: T,
         b: T,
     ) -> relate::RelateResult<'tcx, T> {
@@ -2702,7 +2773,7 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         b: ty::Binder<'tcx, T>,
     ) -> relate::RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
-        T: relate::Relate<'tcx>,
+        T: relate::Relate<TyCtxt<'tcx>>,
     {
         Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }

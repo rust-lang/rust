@@ -14,15 +14,18 @@
 #![no_core]
 
 #[lang = "sized"]
-pub trait Sized { }
+pub trait Sized {}
 #[lang = "copy"]
-pub trait Copy { }
+pub trait Copy {}
 #[lang = "receiver"]
-pub trait Receiver { }
+pub trait Receiver {}
 #[lang = "tuple_trait"]
-pub trait Tuple { }
+pub trait Tuple {}
 
-pub struct Result<T, E> { _a: T, _b: E }
+pub struct Result<T, E> {
+    _a: T,
+    _b: E,
+}
 
 impl Copy for usize {}
 impl Copy for &usize {}
@@ -39,7 +42,7 @@ pub trait FnOnce<Args: Tuple> {
 }
 
 #[lang = "fn_mut"]
-pub trait FnMut<Args: Tuple> : FnOnce<Args> {
+pub trait FnMut<Args: Tuple>: FnOnce<Args> {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
@@ -64,7 +67,7 @@ fn arbitrary_black_box(ptr: &usize, _: &mut u32) -> Result<(), ()> {
 
 #[inline(never)]
 #[no_mangle]
-fn call_through_fn_trait(a: &mut impl Fn<(), Output=()>) {
+fn call_through_fn_trait(a: &mut impl Fn<(), Output = ()>) {
     (*a)()
 }
 
@@ -110,7 +113,10 @@ pub unsafe fn transmute_fn_ptr_to_data(x: fn()) -> *const () {
     transmute(x)
 }
 
-pub enum Either<T, U> { A(T), B(U) }
+pub enum Either<T, U> {
+    A(T),
+    B(U),
+}
 
 // Previously, we would codegen this as passing/returning a scalar pair of `{ i8, ptr }`,
 // with the `ptr` field representing both `&i32` and `fn()` depending on the variant.

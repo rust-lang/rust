@@ -21,6 +21,8 @@ incremental_cargo_help_2 =
 incremental_copy_workproduct_to_cache =
     error copying object file `{$from}` to incremental directory as `{$to}`: {$err}
 
+incremental_corrupt_file = corrupt incremental compilation artifact found at `{$path}`. This file will automatically be ignored and deleted. If you see this message repeatedly or can provoke it without manually manipulating the compiler's artifacts, please file an issue. The incremental compilation system relies on hardlinks and filesystem locks behaving correctly, and may not deal well with OS crashes, so whatever information you can provide about your filesystem or other state may be very relevant.
+
 incremental_create_dep_graph = failed to create dependency graph at `{$path}`: {$err}
 
 incremental_create_incr_comp_dir =

@@ -181,8 +181,8 @@ impl Debug for CodeRegion {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum Op {
     Subtract,
     Add,
@@ -329,14 +329,14 @@ pub struct MCDCBranchSpan {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct DecisionInfo {
     pub bitmap_idx: u32,
-    pub conditions_num: u16,
+    pub num_conditions: u16,
 }
 
 #[derive(Clone, Debug)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct MCDCDecisionSpan {
     pub span: Span,
-    pub conditions_num: usize,
+    pub num_conditions: usize,
     pub end_markers: Vec<BlockMarkerId>,
     pub decision_depth: u16,
 }

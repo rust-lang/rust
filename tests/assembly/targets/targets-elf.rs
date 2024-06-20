@@ -228,6 +228,9 @@
 //@ revisions: i686_unknown_openbsd
 //@ [i686_unknown_openbsd] compile-flags: --target i686-unknown-openbsd
 //@ [i686_unknown_openbsd] needs-llvm-components: x86
+//@ revisions: i686_unknown_redox
+//@ [i686_unknown_redox] compile-flags: --target i686-unknown-redox
+//@ [i686_unknown_redox] needs-llvm-components: x86
 //@ revisions: i686_wrs_vxworks
 //@ [i686_wrs_vxworks] compile-flags: --target i686-wrs-vxworks
 //@ [i686_wrs_vxworks] needs-llvm-components: x86
@@ -573,7 +576,18 @@
 //@ revisions: x86_64_wrs_vxworks
 //@ [x86_64_wrs_vxworks] compile-flags: --target x86_64-wrs-vxworks
 //@ [x86_64_wrs_vxworks] needs-llvm-components: x86
-
+// FIXME: disabled since it requires a custom LLVM until the upstream LLVM adds support for the target (https://github.com/espressif/llvm-project/issues/4)
+/*
+    revisions: xtensa_esp32_none_elf
+    [xtensa_esp32_none_elf] compile-flags: --target xtensa-esp32-none-elf
+    [xtensa_esp32_none_elf] needs-llvm-components: xtensa
+    revisions: xtensa_esp32s2_none_elf
+    [xtensa_esp32s2_none_elf] compile-flags: --target xtensa-esp32s2-none-elf
+    [xtensa_esp32s2_none_elf] needs-llvm-components: xtensa
+    revisions: xtensa_esp32s3_none_elf
+    [xtensa_esp32s3_none_elf] compile-flags: --target xtensa-esp32s3-none-elf
+    [xtensa_esp32s3_none_elf] needs-llvm-components: xtensa
+*/
 // Sanity-check that each target can produce assembly code.
 
 #![feature(no_core, lang_items)]

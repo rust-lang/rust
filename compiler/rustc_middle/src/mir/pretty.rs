@@ -15,6 +15,7 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_target::abi::Size;
+use tracing::trace;
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -176,7 +177,7 @@ fn dump_path<'tcx>(
     // All drop shims have the same DefId, so we have to add the type
     // to get unique file names.
     let shim_disambiguator = match source.instance {
-        ty::InstanceDef::DropGlue(_, Some(ty)) => {
+        ty::InstanceKind::DropGlue(_, Some(ty)) => {
             // Unfortunately, pretty-printed typed are not very filename-friendly.
             // We dome some filtering.
             let mut s = ".".to_owned();
@@ -187,7 +188,7 @@ fn dump_path<'tcx>(
             }));
             s
         }
-        ty::InstanceDef::AsyncDropGlueCtorShim(_, Some(ty)) => {
+        ty::InstanceKind::AsyncDropGlueCtorShim(_, Some(ty)) => {
             // Unfortunately, pretty-printed typed are not very filename-friendly.
             // We dome some filtering.
             let mut s = ".".to_owned();
@@ -279,7 +280,7 @@ pub fn write_mir_pretty<'tcx>(
             // are shared between mir_for_ctfe and optimized_mir
             write_mir_fn(tcx, tcx.mir_for_ctfe(def_id), &mut |_, _| Ok(()), w)?;
         } else {
-            let instance_mir = tcx.instance_mir(ty::InstanceDef::Item(def_id));
+            let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id));
             render_body(w, instance_mir)?;
         }
     }
@@ -511,12 +512,12 @@ fn write_coverage_branch_info(
         )?;
     }
 
-    for coverage::MCDCDecisionSpan { span, conditions_num, end_markers, decision_depth } in
+    for coverage::MCDCDecisionSpan { span, num_conditions, end_markers, decision_depth } in
         mcdc_decision_spans
     {
         writeln!(
             w,
-            "{INDENT}coverage mcdc decision {{ conditions_num: {conditions_num:?}, end: {end_markers:?}, depth: {decision_depth:?} }} => {span:?}"
+            "{INDENT}coverage mcdc decision {{ num_conditions: {num_conditions:?}, end: {end_markers:?}, depth: {decision_depth:?} }} => {span:?}"
         )?;
     }
 
@@ -558,10 +559,10 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
     match (kind, body.source.promoted) {
         (_, Some(_)) => write!(w, "const ")?, // promoteds are the closest to consts
         (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
-        (DefKind::Static { mutability: hir::Mutability::Not, nested: false }, _) => {
+        (DefKind::Static { safety: _, mutability: hir::Mutability::Not, nested: false }, _) => {
             write!(w, "static ")?
         }
-        (DefKind::Static { mutability: hir::Mutability::Mut, nested: false }, _) => {
+        (DefKind::Static { safety: _, mutability: hir::Mutability::Mut, nested: false }, _) => {
             write!(w, "static mut ")?
         }
         (_, _) if is_function => write!(w, "fn ")?,
@@ -971,9 +972,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 with_no_trimmed_paths!(write!(fmt, "{place:?} as {ty} ({kind:?})"))
             }
             BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
-            CheckedBinaryOp(ref op, box (ref a, ref b)) => {
-                write!(fmt, "Checked{op:?}({a:?}, {b:?})")
-            }
             UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
             NullaryOp(ref op, ref t) => {
@@ -1289,7 +1287,7 @@ fn use_verbose(ty: Ty<'_>, fn_def: bool) -> bool {
 }
 
 impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
-    fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, _location: Location) {
+    fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, _location: Location) {
         let ConstOperand { span, user_ty, const_ } = constant;
         if use_verbose(const_.ty(), true) {
             self.push("mir::ConstOperand");
@@ -1315,12 +1313,12 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             };
 
             let val = match const_ {
-                Const::Ty(ct) => match ct.kind() {
+                Const::Ty(_, ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("ty::Param({p})"),
                     ty::ConstKind::Unevaluated(uv) => {
                         format!("ty::Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.args,)
                     }
-                    ty::ConstKind::Value(val) => format!("ty::Valtree({})", fmt_valtree(&val)),
+                    ty::ConstKind::Value(_, val) => format!("ty::Valtree({})", fmt_valtree(&val)),
                     // No `ty::` prefix since we also use this to represent errors from `mir::Unevaluated`.
                     ty::ConstKind::Error(_) => "Error".to_string(),
                     // These variants shouldn't exist in the MIR.
@@ -1417,9 +1415,9 @@ pub fn write_allocations<'tcx>(
     struct CollectAllocIds(BTreeSet<AllocId>);
 
     impl<'tcx> Visitor<'tcx> for CollectAllocIds {
-        fn visit_constant(&mut self, c: &ConstOperand<'tcx>, _: Location) {
+        fn visit_const_operand(&mut self, c: &ConstOperand<'tcx>, _: Location) {
             match c.const_ {
-                Const::Ty(_) | Const::Unevaluated(..) => {}
+                Const::Ty(_, _) | Const::Unevaluated(..) => {}
                 Const::Val(val, _) => {
                     self.0.extend(alloc_ids_from_const_val(val));
                 }

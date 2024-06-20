@@ -18,6 +18,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use tracing::{debug, instrument};
 
 use std::cmp::Ordering;
 
@@ -140,7 +141,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
                 if let ty::Adt(def, _) = ty.kind()
-                    && Some(def.did()) == tcx.lang_items().string()
+                    && tcx.is_lang_item(def.did(), LangItem::String)
                 {
                     if !tcx.features().string_deref_patterns {
                         bug!(

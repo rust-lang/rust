@@ -256,29 +256,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty::is_transparent(self)
     }
 
-    pub fn offset_of_subfield<C, I>(self, cx: &C, indices: I) -> Size
-    where
-        Ty: TyAbiInterface<'a, C>,
-        I: Iterator<Item = (VariantIdx, FieldIdx)>,
-    {
-        let mut layout = self;
-        let mut offset = Size::ZERO;
-
-        for (variant, field) in indices {
-            layout = layout.for_variant(cx, variant);
-            let index = field.index();
-            offset += layout.fields.offset(index);
-            layout = layout.field(cx, index);
-            assert!(
-                layout.is_sized(),
-                "offset of unsized field (type {:?}) cannot be computed statically",
-                layout.ty
-            );
-        }
-
-        offset
-    }
-
     /// Finds the one field that is not a 1-ZST.
     /// Returns `None` if there are multiple non-1-ZST fields or only 1-ZST-fields.
     pub fn non_1zst_field<C>(&self, cx: &C) -> Option<(usize, Self)>

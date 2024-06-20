@@ -31,16 +31,18 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{
-    self, AdtKind, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt, Visibility,
+    self, AdtKind, CoroutineArgsExt, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt,
+    Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::symbol::Symbol;
-use rustc_span::FileName;
+use rustc_span::{hygiene, FileName, DUMMY_SP};
 use rustc_span::{FileNameDisplayPreference, SourceFile};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::DebuginfoKind;
 use smallvec::smallvec;
+use tracing::{debug, instrument};
 
 use libc::{c_char, c_longlong, c_uint};
 use std::borrow::Cow;
@@ -1304,7 +1306,7 @@ pub fn build_global_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, glo
     // We may want to remove the namespace scope if we're in an extern block (see
     // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952).
     let var_scope = get_namespace_for_item(cx, def_id);
-    let span = tcx.def_span(def_id);
+    let span = hygiene::walk_chain_collapsed(tcx.def_span(def_id), DUMMY_SP);
 
     let (file_metadata, line_number) = if !span.is_dummy() {
         let loc = cx.lookup_debug_loc(span.lo());

@@ -9,6 +9,7 @@ use rustc_middle::mir::coverage::{
 };
 use rustc_middle::ty::Instance;
 use rustc_span::Symbol;
+use tracing::{debug, instrument};
 
 /// Holds all of the coverage mapping data associated with a function instance,
 /// collected during traversal of `Coverage` statements in the function's MIR.

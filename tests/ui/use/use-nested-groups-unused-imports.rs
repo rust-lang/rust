@@ -13,7 +13,7 @@ mod foo {
 }
 
 use foo::{Foo, bar::{baz::{}, foobar::*}, *};
-    //~^ ERROR unused imports: `*`, `Foo`, `baz::{}`, `foobar::*`
+    //~^ ERROR unused imports: `*`, `Foo`, `baz::{}`, and `foobar::*`
 use foo::bar::baz::{*, *};
     //~^ ERROR unused import: `*`
 use foo::{};

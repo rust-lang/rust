@@ -4,16 +4,13 @@
 //@ compile-flags:-Zinline-in-all-cgus=no
 
 #![allow(dead_code)]
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 mod inline {
 
     //~ MONO_ITEM fn inline::inlined_function @@ local_inlining_but_not_all-inline[External]
     #[inline]
-    pub fn inlined_function()
-    {
-
-    }
+    pub fn inlined_function() {}
 }
 
 pub mod user1 {
@@ -37,7 +34,5 @@ pub mod user2 {
 pub mod non_user {
 
     //~ MONO_ITEM fn non_user::baz @@ local_inlining_but_not_all-non_user[External]
-    pub fn baz() {
-
-    }
+    pub fn baz() {}
 }

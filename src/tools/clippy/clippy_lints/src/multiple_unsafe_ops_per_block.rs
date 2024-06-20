@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::visitors::{for_each_expr_with_closures, Descend, Visitable};
+use clippy_utils::visitors::{for_each_expr, Descend, Visitable};
 use core::ops::ControlFlow::Continue;
 use hir::def::{DefKind, Res};
-use hir::{BlockCheckMode, ExprKind, Safety, QPath, UnOp};
+use hir::{BlockCheckMode, ExprKind, QPath, Safety, UnOp};
 use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `unsafe` blocks that contain more than one unsafe operation.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Combined with `undocumented_unsafe_blocks`,
     /// this lint ensures that each unsafe operation must be independently justified.
     /// Combined with `unused_unsafe`, this lint also ensures
@@ -96,7 +96,7 @@ fn collect_unsafe_exprs<'tcx>(
     node: impl Visitable<'tcx>,
     unsafe_ops: &mut Vec<(&'static str, Span)>,
 ) {
-    for_each_expr_with_closures(cx, node, |expr| {
+    for_each_expr(cx, node, |expr| {
         match expr.kind {
             ExprKind::InlineAsm(_) => unsafe_ops.push(("inline assembly used here", expr.span)),
 

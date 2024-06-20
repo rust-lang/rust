@@ -99,7 +99,7 @@ For more details and options, refer to the Cargo documentation.
 ### Specifying the minimum supported Rust version
 
 Projects that intend to support old versions of Rust can disable lints pertaining to newer features by specifying the
-minimum supported Rust version (MSRV) in the clippy configuration file.
+minimum supported Rust version (MSRV) in the Clippy configuration file.
 
 ```toml
 msrv = "1.30.0"
@@ -133,7 +133,7 @@ Very rarely, you may wish to prevent Clippy from evaluating certain sections of 
 `clippy` cfg is not set. You may need to provide a stub so that the code compiles:
 
 ```rust
-#[cfg(not(clippy)]
+#[cfg(not(clippy))]
 include!(concat!(env!("OUT_DIR"), "/my_big_function-generated.rs"));
 
 #[cfg(clippy)]

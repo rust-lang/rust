@@ -337,7 +337,7 @@ impl DeepRejectCtxt {
             | ty::ConstKind::Error(_) => {
                 return true;
             }
-            ty::ConstKind::Value(impl_val) => impl_val,
+            ty::ConstKind::Value(_, impl_val) => impl_val,
             ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
                 bug!("unexpected impl arg: {:?}", impl_ct)
             }
@@ -357,7 +357,7 @@ impl DeepRejectCtxt {
             ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
                 true
             }
-            ty::ConstKind::Value(obl_val) => obl_val == impl_val,
+            ty::ConstKind::Value(_, obl_val) => obl_val == impl_val,
 
             ty::ConstKind::Infer(_) => true,
 

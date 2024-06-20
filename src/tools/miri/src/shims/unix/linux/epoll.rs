@@ -25,10 +25,10 @@ struct Epoll {
 struct EpollEvent {
     #[allow(dead_code)]
     events: u32,
-    /// `Scalar<Provenance>` is used to represent the
+    /// `Scalar` is used to represent the
     /// `epoll_data` type union.
     #[allow(dead_code)]
-    data: Scalar<Provenance>,
+    data: Scalar,
 }
 
 impl FileDescription for Epoll {
@@ -44,26 +44,26 @@ impl FileDescription for Epoll {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// This function returns a file descriptor referring to the new `Epoll` instance. This file
     /// descriptor is used for all subsequent calls to the epoll interface. If the `flags` argument
     /// is 0, then this function is the same as `epoll_create()`.
     ///
     /// <https://linux.die.net/man/2/epoll_create1>
-    fn epoll_create1(
-        &mut self,
-        flags: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn epoll_create1(&mut self, flags: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let flags = this.read_scalar(flags)?.to_i32()?;
 
         let epoll_cloexec = this.eval_libc_i32("EPOLL_CLOEXEC");
-        if flags == epoll_cloexec {
-            // Miri does not support exec, so this flag has no effect.
-        } else if flags != 0 {
-            throw_unsup_format!("epoll_create1 flags {flags} are not implemented");
+
+        // Miri does not support exec, so EPOLL_CLOEXEC flag has no effect.
+        if flags != epoll_cloexec && flags != 0 {
+            throw_unsup_format!(
+                "epoll_create1: flag {:#x} is unsupported, only 0 or EPOLL_CLOEXEC are allowed",
+                flags
+            );
         }
 
         let fd = this.machine.fds.insert_fd(FileDescriptor::new(Epoll::default()));
@@ -85,11 +85,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// <https://linux.die.net/man/2/epoll_ctl>
     fn epoll_ctl(
         &mut self,
-        epfd: &OpTy<'tcx, Provenance>,
-        op: &OpTy<'tcx, Provenance>,
-        fd: &OpTy<'tcx, Provenance>,
-        event: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        epfd: &OpTy<'tcx>,
+        op: &OpTy<'tcx>,
+        fd: &OpTy<'tcx>,
+        event: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let epfd = this.read_scalar(epfd)?.to_i32()?;
@@ -167,11 +167,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// <https://man7.org/linux/man-pages/man2/epoll_wait.2.html>
     fn epoll_wait(
         &mut self,
-        epfd: &OpTy<'tcx, Provenance>,
-        events: &OpTy<'tcx, Provenance>,
-        maxevents: &OpTy<'tcx, Provenance>,
-        timeout: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        epfd: &OpTy<'tcx>,
+        events: &OpTy<'tcx>,
+        maxevents: &OpTy<'tcx>,
+        timeout: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let epfd = this.read_scalar(epfd)?.to_i32()?;

@@ -10,7 +10,7 @@ use crate::clean;
 use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::*;
 use crate::core::DocContext;
-use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString};
+use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::visit::DocVisitor;
 use rustc_hir as hir;
 use rustc_middle::lint::LintLevelSource;
@@ -44,8 +44,8 @@ pub(crate) struct Tests {
     pub(crate) found_tests: usize,
 }
 
-impl crate::doctest::Tester for Tests {
-    fn add_test(&mut self, _: String, config: LangString, _: usize) {
+impl crate::doctest::DoctestVisitor for Tests {
+    fn visit_test(&mut self, _: String, config: LangString, _: MdRelLine) {
         if config.rust && config.ignore == Ignore::None {
             self.found_tests += 1;
         }
@@ -62,7 +62,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | clean::AssocTypeItem(..)
                 | clean::TypeAliasItem(_)
                 | clean::StaticItem(_)
-                | clean::ConstantItem(_)
+                | clean::ConstantItem(_, _, _)
                 | clean::ExternCrateItem { .. }
                 | clean::ImportItem(_)
                 | clean::PrimitiveItem(_)
@@ -112,26 +112,15 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
 
     let mut tests = Tests { found_tests: 0 };
 
-    find_testable_code(
-        dox,
-        &mut tests,
-        ErrorCodes::No,
-        false,
-        None,
-        cx.tcx.features().custom_code_classes_in_docs,
-    );
+    find_testable_code(dox, &mut tests, ErrorCodes::No, false, None);
 
     if tests.found_tests == 0 && cx.tcx.features().rustdoc_missing_doc_code_examples {
         if should_have_doc_example(cx, item) {
             debug!("reporting error for {item:?} (hir_id={hir_id:?})");
             let sp = item.attr_span(cx.tcx);
-            cx.tcx.node_span_lint(
-                crate::lint::MISSING_DOC_CODE_EXAMPLES,
-                hir_id,
-                sp,
-                "missing code example in this documentation",
-                |_| {},
-            );
+            cx.tcx.node_span_lint(crate::lint::MISSING_DOC_CODE_EXAMPLES, hir_id, sp, |lint| {
+                lint.primary_message("missing code example in this documentation");
+            });
         }
     } else if tests.found_tests > 0
         && !cx.cache.effective_visibilities.is_exported(cx.tcx, item.item_id.expect_def_id())
@@ -140,8 +129,9 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
             crate::lint::PRIVATE_DOC_TESTS,
             hir_id,
             item.attr_span(cx.tcx),
-            "documentation test in private item",
-            |_| {},
+            |lint| {
+                lint.primary_message("documentation test in private item");
+            },
         );
     }
 }

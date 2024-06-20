@@ -4,15 +4,15 @@
 #![allow(unused, incomplete_features)]
 #![deny(impl_trait_overcaptures)]
 
-fn named<'a>(x: &'a i32) -> impl use<> Sized { *x }
+fn named<'a>(x: &'a i32) -> impl Sized + use<> { *x }
 //~^ ERROR `impl Sized` will capture more lifetimes than possibly intended in edition 2024
 
-fn implicit(x: &i32) -> impl use<> Sized { *x }
+fn implicit(x: &i32) -> impl Sized + use<> { *x }
 //~^ ERROR `impl Sized` will capture more lifetimes than possibly intended in edition 2024
 
 struct W;
 impl W {
-    fn hello(&self, x: &i32) -> impl use<'_> Sized + '_ { self }
+    fn hello(&self, x: &i32) -> impl Sized + '_ + use<'_> { self }
     //~^ ERROR `impl Sized + '_` will capture more lifetimes than possibly intended in edition 2024
 }
 
@@ -23,7 +23,7 @@ impl Higher<'_> for () {
     type Output = ();
 }
 
-fn hrtb() -> impl for<'a> Higher<'a, Output = impl use<> Sized> {}
+fn hrtb() -> impl for<'a> Higher<'a, Output = impl Sized + use<>> {}
 //~^ ERROR `impl Sized` will capture more lifetimes than possibly intended in edition 2024
 
 fn main() {}

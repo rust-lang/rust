@@ -22,13 +22,14 @@ use super::glb::Glb;
 use super::lub::Lub;
 use super::type_relating::TypeRelating;
 use super::StructurallyRelateAliases;
+use super::{RelateResult, TypeRelation};
+use crate::infer::relate;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace};
-use crate::traits::{Obligation, PredicateObligations};
+use crate::traits::{Obligation, PredicateObligation};
 use rustc_middle::bug;
-use rustc_middle::infer::canonical::OriginalQueryValues;
 use rustc_middle::infer::unify_key::EffectVarValue;
+use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::relate::{RelateResult, TypeRelation};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt, TypeVisitableExt, Upcast};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::Span;
@@ -38,8 +39,33 @@ pub struct CombineFields<'infcx, 'tcx> {
     pub infcx: &'infcx InferCtxt<'tcx>,
     pub trace: TypeTrace<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
-    pub obligations: PredicateObligations<'tcx>,
+    pub goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     pub define_opaque_types: DefineOpaqueTypes,
+}
+
+impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
+    pub fn new(
+        infcx: &'infcx InferCtxt<'tcx>,
+        trace: TypeTrace<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        define_opaque_types: DefineOpaqueTypes,
+    ) -> Self {
+        Self { infcx, trace, param_env, define_opaque_types, goals: vec![] }
+    }
+
+    pub(crate) fn into_obligations(self) -> Vec<PredicateObligation<'tcx>> {
+        self.goals
+            .into_iter()
+            .map(|goal| {
+                Obligation::new(
+                    self.infcx.tcx,
+                    self.trace.cause.clone(),
+                    goal.param_env,
+                    goal.predicate,
+                )
+            })
+            .collect()
+    }
 }
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -50,7 +76,7 @@ impl<'tcx> InferCtxt<'tcx> {
         b: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
-        R: ObligationEmittingRelation<'tcx>,
+        R: PredicateEmittingRelation<'tcx>,
     {
         debug_assert!(!a.has_escaping_bound_vars());
         debug_assert!(!b.has_escaping_bound_vars());
@@ -58,40 +84,38 @@ impl<'tcx> InferCtxt<'tcx> {
         match (a.kind(), b.kind()) {
             // Relate integral variables to other types
             (&ty::Infer(ty::IntVar(a_id)), &ty::Infer(ty::IntVar(b_id))) => {
-                self.inner
-                    .borrow_mut()
-                    .int_unification_table()
-                    .unify_var_var(a_id, b_id)
-                    .map_err(|e| int_unification_error(true, e))?;
+                self.inner.borrow_mut().int_unification_table().union(a_id, b_id);
                 Ok(a)
             }
             (&ty::Infer(ty::IntVar(v_id)), &ty::Int(v)) => {
-                self.unify_integral_variable(true, v_id, IntType(v))
+                self.unify_integral_variable(v_id, IntType(v));
+                Ok(b)
             }
             (&ty::Int(v), &ty::Infer(ty::IntVar(v_id))) => {
-                self.unify_integral_variable(false, v_id, IntType(v))
+                self.unify_integral_variable(v_id, IntType(v));
+                Ok(a)
             }
             (&ty::Infer(ty::IntVar(v_id)), &ty::Uint(v)) => {
-                self.unify_integral_variable(true, v_id, UintType(v))
+                self.unify_integral_variable(v_id, UintType(v));
+                Ok(b)
             }
             (&ty::Uint(v), &ty::Infer(ty::IntVar(v_id))) => {
-                self.unify_integral_variable(false, v_id, UintType(v))
+                self.unify_integral_variable(v_id, UintType(v));
+                Ok(a)
             }
 
             // Relate floating-point variables to other types
             (&ty::Infer(ty::FloatVar(a_id)), &ty::Infer(ty::FloatVar(b_id))) => {
-                self.inner
-                    .borrow_mut()
-                    .float_unification_table()
-                    .unify_var_var(a_id, b_id)
-                    .map_err(|e| float_unification_error(true, e))?;
+                self.inner.borrow_mut().float_unification_table().union(a_id, b_id);
                 Ok(a)
             }
             (&ty::Infer(ty::FloatVar(v_id)), &ty::Float(v)) => {
-                self.unify_float_variable(true, v_id, v)
+                self.unify_float_variable(v_id, ty::FloatVarValue::Known(v));
+                Ok(b)
             }
             (&ty::Float(v), &ty::Infer(ty::FloatVar(v_id))) => {
-                self.unify_float_variable(false, v_id, v)
+                self.unify_float_variable(v_id, ty::FloatVarValue::Known(v));
+                Ok(a)
             }
 
             // We don't expect `TyVar` or `Fresh*` vars at this point with lazy norm.
@@ -113,10 +137,10 @@ impl<'tcx> InferCtxt<'tcx> {
             (_, ty::Alias(..)) | (ty::Alias(..), _) if self.next_trait_solver() => {
                 match relation.structurally_relate_aliases() {
                     StructurallyRelateAliases::Yes => {
-                        ty::relate::structurally_relate_tys(relation, a, b)
+                        relate::structurally_relate_tys(relation, a, b)
                     }
                     StructurallyRelateAliases::No => {
-                        relation.register_type_relate_obligation(a, b);
+                        relation.register_alias_relate_predicate(a, b);
                         Ok(a)
                     }
                 }
@@ -124,7 +148,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
             // All other cases of inference are errors
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
-                Err(TypeError::Sorts(ty::relate::expected_found(a, b)))
+                Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
             }
 
             // During coherence, opaque types should be treated as *possibly*
@@ -136,7 +160,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 Ok(a)
             }
 
-            _ => ty::relate::structurally_relate_tys(relation, a, b),
+            _ => relate::structurally_relate_tys(relation, a, b),
         }
     }
 
@@ -147,7 +171,7 @@ impl<'tcx> InferCtxt<'tcx> {
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>>
     where
-        R: ObligationEmittingRelation<'tcx>,
+        R: PredicateEmittingRelation<'tcx>,
     {
         debug!("{}.consts({:?}, {:?})", relation.tag(), a, b);
         debug_assert!(!a.has_escaping_bound_vars());
@@ -158,37 +182,6 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let a = self.shallow_resolve_const(a);
         let b = self.shallow_resolve_const(b);
-
-        // We should never have to relate the `ty` field on `Const` as it is checked elsewhere that consts have the
-        // correct type for the generic param they are an argument for. However there have been a number of cases
-        // historically where asserting that the types are equal has found bugs in the compiler so this is valuable
-        // to check even if it is a bit nasty impl wise :(
-        //
-        // This probe is probably not strictly necessary but it seems better to be safe and not accidentally find
-        // ourselves with a check to find bugs being required for code to compile because it made inference progress.
-        self.probe(|_| {
-            if a.ty() == b.ty() {
-                return;
-            }
-
-            // We don't have access to trait solving machinery in `rustc_infer` so the logic for determining if the
-            // two const param's types are able to be equal has to go through a canonical query with the actual logic
-            // in `rustc_trait_selection`.
-            let canonical = self.canonicalize_query(
-                relation.param_env().and((a.ty(), b.ty())),
-                &mut OriginalQueryValues::default(),
-            );
-            self.tcx.check_tys_might_be_eq(canonical).unwrap_or_else(|_| {
-                // The error will only be reported later. If we emit an ErrorGuaranteed
-                // here, then we will never get to the code that actually emits the error.
-                self.tcx.dcx().delayed_bug(format!(
-                    "cannot relate consts of different types (a={a:?}, b={b:?})",
-                ));
-                // We treat these constants as if they were of the same type, so that any
-                // such constants being used in impls make these impls match barring other mismatches.
-                // This helps with diagnostics down the road.
-            });
-        });
 
         match (a.kind(), b.kind()) {
             (
@@ -257,43 +250,22 @@ impl<'tcx> InferCtxt<'tcx> {
                         Ok(b)
                     }
                     StructurallyRelateAliases::Yes => {
-                        ty::relate::structurally_relate_consts(relation, a, b)
+                        relate::structurally_relate_consts(relation, a, b)
                     }
                 }
             }
-            _ => ty::relate::structurally_relate_consts(relation, a, b),
+            _ => relate::structurally_relate_consts(relation, a, b),
         }
     }
 
-    fn unify_integral_variable(
-        &self,
-        vid_is_expected: bool,
-        vid: ty::IntVid,
-        val: ty::IntVarValue,
-    ) -> RelateResult<'tcx, Ty<'tcx>> {
-        self.inner
-            .borrow_mut()
-            .int_unification_table()
-            .unify_var_value(vid, Some(val))
-            .map_err(|e| int_unification_error(vid_is_expected, e))?;
-        match val {
-            IntType(v) => Ok(Ty::new_int(self.tcx, v)),
-            UintType(v) => Ok(Ty::new_uint(self.tcx, v)),
-        }
+    #[inline(always)]
+    fn unify_integral_variable(&self, vid: ty::IntVid, val: ty::IntVarValue) {
+        self.inner.borrow_mut().int_unification_table().union_value(vid, val);
     }
 
-    fn unify_float_variable(
-        &self,
-        vid_is_expected: bool,
-        vid: ty::FloatVid,
-        val: ty::FloatTy,
-    ) -> RelateResult<'tcx, Ty<'tcx>> {
-        self.inner
-            .borrow_mut()
-            .float_unification_table()
-            .unify_var_value(vid, Some(ty::FloatVarValue(val)))
-            .map_err(|e| float_unification_error(vid_is_expected, e))?;
-        Ok(Ty::new_float(self.tcx, val))
+    #[inline(always)]
+    fn unify_float_variable(&self, vid: ty::FloatVid, val: ty::FloatVarValue) {
+        self.inner.borrow_mut().float_unification_table().union_value(vid, val);
     }
 
     fn unify_effect_variable(&self, vid: ty::EffectVid, val: ty::Const<'tcx>) -> ty::Const<'tcx> {
@@ -333,21 +305,26 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         Glb::new(self)
     }
 
-    pub fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
-        self.obligations.extend(obligations);
+    pub fn register_obligations(
+        &mut self,
+        obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) {
+        self.goals.extend(obligations);
     }
 
     pub fn register_predicates(
         &mut self,
         obligations: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
     ) {
-        self.obligations.extend(obligations.into_iter().map(|to_pred| {
-            Obligation::new(self.infcx.tcx, self.trace.cause.clone(), self.param_env, to_pred)
-        }))
+        self.goals.extend(
+            obligations
+                .into_iter()
+                .map(|to_pred| Goal::new(self.infcx.tcx, self.param_env, to_pred)),
+        )
     }
 }
 
-pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
+pub trait PredicateEmittingRelation<'tcx>: TypeRelation<TyCtxt<'tcx>> {
     fn span(&self) -> Span;
 
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
@@ -358,32 +335,18 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
     fn structurally_relate_aliases(&self) -> StructurallyRelateAliases;
 
     /// Register obligations that must hold in order for this relation to hold
-    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>);
+    fn register_goals(
+        &mut self,
+        obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    );
 
-    /// Register predicates that must hold in order for this relation to hold. Uses
-    /// a default obligation cause, [`ObligationEmittingRelation::register_obligations`] should
-    /// be used if control over the obligation causes is required.
+    /// Register predicates that must hold in order for this relation to hold.
+    /// This uses the default `param_env` of the obligation.
     fn register_predicates(
         &mut self,
         obligations: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
     );
 
     /// Register `AliasRelate` obligation(s) that both types must be related to each other.
-    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>);
-}
-
-fn int_unification_error<'tcx>(
-    a_is_expected: bool,
-    v: (ty::IntVarValue, ty::IntVarValue),
-) -> TypeError<'tcx> {
-    let (a, b) = v;
-    TypeError::IntMismatch(ExpectedFound::new(a_is_expected, a, b))
-}
-
-fn float_unification_error<'tcx>(
-    a_is_expected: bool,
-    v: (ty::FloatVarValue, ty::FloatVarValue),
-) -> TypeError<'tcx> {
-    let (ty::FloatVarValue(a), ty::FloatVarValue(b)) = v;
-    TypeError::FloatMismatch(ExpectedFound::new(a_is_expected, a, b))
+    fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>);
 }

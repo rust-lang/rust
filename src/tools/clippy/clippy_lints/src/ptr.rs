@@ -188,7 +188,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         }
     }
 
-    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
+    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &Body<'tcx>) {
         let hir = cx.tcx.hir();
         let mut parents = hir.parent_iter(body.value.hir_id);
         let (item_id, sig, is_trait_item) = match parents.next() {
@@ -460,13 +460,19 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                             }
                             None
                         }) {
-                            if !lifetime.is_anonymous()
+                            if let LifetimeName::Param(param_def_id) = lifetime.res
+                                && !lifetime.is_anonymous()
                                 && fn_sig
                                     .output()
                                     .walk()
                                     .filter_map(|arg| {
                                         arg.as_region().and_then(|lifetime| match lifetime.kind() {
-                                            ty::ReEarlyParam(r) => Some(r.def_id),
+                                            ty::ReEarlyParam(r) => Some(
+                                                cx.tcx
+                                                    .generics_of(cx.tcx.parent(param_def_id.to_def_id()))
+                                                    .region_param(r, cx.tcx)
+                                                    .def_id,
+                                            ),
                                             ty::ReBound(_, r) => r.kind.get_id(),
                                             ty::ReLateParam(r) => r.bound_region.get_id(),
                                             ty::ReStatic
@@ -476,14 +482,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                             | ty::ReError(_) => None,
                                         })
                                     })
-                                    .any(|def_id| {
-                                        matches!(
-                                            lifetime.res,
-                                            LifetimeName::Param(param_def_id) if def_id
-                                                .as_local()
-                                                .is_some_and(|def_id| def_id == param_def_id),
-                                        )
-                                    })
+                                    .any(|def_id| def_id.as_local().is_some_and(|def_id| def_id == param_def_id))
                             {
                                 // `&Cow<'a, T>` when the return type uses 'a is okay
                                 return None;
@@ -526,7 +525,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
         })
 }
 
-fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Option<&'tcx Body<'_>>) {
+fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Option<&Body<'tcx>>) {
     if let FnRetTy::Return(ty) = sig.decl.output
         && let Some((out, Mutability::Mut, _)) = get_ref_lm(ty)
     {
@@ -560,7 +559,7 @@ fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Optio
 }
 
 #[expect(clippy::too_many_lines)]
-fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args: &[PtrArg<'tcx>]) -> Vec<PtrArgResult> {
+fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[PtrArg<'tcx>]) -> Vec<PtrArgResult> {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
         /// Map from a local id to which argument it came from (index into `Self::args` and

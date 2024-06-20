@@ -11,6 +11,7 @@ mod my_mod {
     }
 
     pub fn get_foot(_: Foo) -> Foot {
+        //~^ ERROR: item does not constrain `Foo::{opaque#0}`, but has it in its signature
         get_foo() //~ ERROR opaque type's hidden type cannot be another opaque type
     }
 }

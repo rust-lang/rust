@@ -7,7 +7,7 @@ use crate::mbe::{
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, Diag, DiagCtxt, DiagMessage};
+use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_span::source_map::SourceMap;
@@ -61,7 +61,7 @@ pub(super) fn failed_to_match_macro<'cx>(
         err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
     }
 
-    annotate_doc_comment(cx.sess.dcx(), &mut err, psess.source_map(), span);
+    annotate_doc_comment(&mut err, psess.source_map(), span);
 
     if let Some(span) = remaining_matcher.span() {
         err.span_note(span, format!("while trying to match {remaining_matcher}"));
@@ -324,12 +324,12 @@ enum ExplainDocComment {
     },
 }
 
-pub(super) fn annotate_doc_comment(dcx: &DiagCtxt, err: &mut Diag<'_>, sm: &SourceMap, span: Span) {
+pub(super) fn annotate_doc_comment(err: &mut Diag<'_>, sm: &SourceMap, span: Span) {
     if let Ok(src) = sm.span_to_snippet(span) {
         if src.starts_with("///") || src.starts_with("/**") {
-            err.subdiagnostic(dcx, ExplainDocComment::Outer { span });
+            err.subdiagnostic(ExplainDocComment::Outer { span });
         } else if src.starts_with("//!") || src.starts_with("/*!") {
-            err.subdiagnostic(dcx, ExplainDocComment::Inner { span });
+            err.subdiagnostic(ExplainDocComment::Inner { span });
         }
     }
 }

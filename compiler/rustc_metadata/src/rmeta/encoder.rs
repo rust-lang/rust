@@ -33,6 +33,7 @@ use std::collections::hash_map::Entry;
 use std::fs::File;
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
+use tracing::{debug, instrument, trace};
 
 pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: opaque::FileEncoder,
@@ -740,6 +741,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 expn_data,
                 expn_hashes,
                 def_path_hash_map,
+                specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
             })
         });
 
@@ -1676,9 +1678,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 if should_encode_const(tcx.def_kind(def_id)) {
                     let qualifs = tcx.mir_const_qualif(def_id);
                     record!(self.tables.mir_const_qualif[def_id.to_def_id()] <- qualifs);
-                    let body_id = tcx.hir().maybe_body_owned_by(def_id);
-                    if let Some(body_id) = body_id {
-                        let const_data = rendered_const(self.tcx, body_id);
+                    let body = tcx.hir().maybe_body_owned_by(def_id);
+                    if let Some(body) = body {
+                        let const_data = rendered_const(self.tcx, &body, def_id);
                         record!(self.tables.rendered_const[def_id.to_def_id()] <- const_data);
                     }
                 }
@@ -1691,7 +1693,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
             }
 
-            let instance = ty::InstanceDef::Item(def_id.to_def_id());
+            let instance = ty::InstanceKind::Item(def_id.to_def_id());
             let unused = tcx.unused_generic_params(instance);
             self.tables.unused_generic_params.set(def_id.local_def_index, unused);
         }
@@ -2018,7 +2020,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 // if this is an impl of `CoerceUnsized`, create its
                 // "unsized info", else just store None
-                if Some(trait_ref.def_id) == tcx.lang_items().coerce_unsized_trait() {
+                if tcx.is_lang_item(trait_ref.def_id, LangItem::CoerceUnsized) {
                     let coerce_unsized_info = tcx.coerce_unsized_info(def_id).unwrap();
                     record!(self.tables.coerce_unsized_info[def_id] <- coerce_unsized_info);
                 }
@@ -2367,9 +2369,9 @@ pub fn provide(providers: &mut Providers) {
 /// Whenever possible, prefer to evaluate the constant first and try to
 /// use a different method for pretty-printing. Ideally this function
 /// should only ever be used as a fallback.
-pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: hir::BodyId) -> String {
+pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: LocalDefId) -> String {
     let hir = tcx.hir();
-    let value = &hir.body(body).value;
+    let value = body.value;
 
     #[derive(PartialEq, Eq)]
     enum Classification {
@@ -2425,13 +2427,13 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: hir::BodyId) -> String {
 
         // Otherwise we prefer pretty-printing to get rid of extraneous whitespace, comments and
         // other formatting artifacts.
-        Literal | Simple => id_to_string(&hir, body.hir_id),
+        Literal | Simple => id_to_string(&hir, body.id().hir_id),
 
         // FIXME: Omit the curly braces if the enclosing expression is an array literal
         //        with a repeated element (an `ExprKind::Repeat`) as in such case it
         //        would not actually need any disambiguation.
         Complex => {
-            if tcx.def_kind(hir.body_owner_def_id(body).to_def_id()) == DefKind::AnonConst {
+            if tcx.def_kind(def_id) == DefKind::AnonConst {
                 "{ _ }".to_owned()
             } else {
                 "_".to_owned()

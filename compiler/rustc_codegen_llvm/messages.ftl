@@ -18,6 +18,8 @@ codegen_llvm_error_creating_import_library =
 codegen_llvm_error_writing_def_file =
     Error writing .DEF file: {$error}
 
+codegen_llvm_fixed_x18_invalid_arch = the `-Zfixed-x18` flag is not supported on the `{$arch}` architecture
+
 codegen_llvm_from_llvm_diag = {$message}
 
 codegen_llvm_from_llvm_optimization_diag = {$filename}:{$line}:{$column} {$pass_name} ({$kind}): {$message}

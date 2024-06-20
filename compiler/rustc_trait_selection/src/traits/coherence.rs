@@ -11,15 +11,13 @@ use crate::solve::{deeply_normalize_for_diagnostics, inspect};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::NormalizeExt;
 use crate::traits::SkipLeakCheck;
-use crate::traits::{
-    Obligation, ObligationCause, PredicateObligation, PredicateObligations, SelectionContext,
-};
+use crate::traits::{util, FulfillmentErrorCode};
+use crate::traits::{Obligation, ObligationCause, PredicateObligation, SelectionContext};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::{util, FulfillmentErrorCode};
 use rustc_middle::bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
@@ -305,7 +303,7 @@ fn equate_impl_headers<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     impl1: &ty::ImplHeader<'tcx>,
     impl2: &ty::ImplHeader<'tcx>,
-) -> Option<PredicateObligations<'tcx>> {
+) -> Option<Vec<PredicateObligation<'tcx>>> {
     let result =
         match (impl1.trait_ref, impl2.trait_ref) {
             (Some(impl1_ref), Some(impl2_ref)) => infcx
@@ -360,7 +358,7 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
     let infcx = selcx.infcx;
 
     if infcx.next_trait_solver() {
-        let ocx = ObligationCtxt::new(infcx);
+        let ocx = ObligationCtxt::new_with_diagnostics(infcx);
         ocx.register_obligations(obligations.iter().cloned());
         let errors_and_ambiguities = ocx.select_all_or_error();
         // We only care about the obligations that are *definitely* true errors.
@@ -529,7 +527,6 @@ fn plug_infer_with_placeholders<'tcx>(
                         ty::Const::new_placeholder(
                             self.infcx.tcx,
                             ty::Placeholder { universe: self.universe, bound: self.next_var() },
-                            ct.ty(),
                         ),
                     )
                 else {
@@ -772,8 +769,8 @@ pub struct UncoveredTyParams<'tcx, T> {
 ///    add "non-blanket" impls without breaking negative reasoning in dependent
 ///    crates. This is the "rebalancing coherence" (RFC 1023) restriction.
 ///
-///    For that, we only a allow crate to perform negative reasoning on
-///    non-local-non-`#[fundamental]` only if there's a local key parameter as per (2).
+///    For that, we only allow a crate to perform negative reasoning on
+///    non-local-non-`#[fundamental]` if there's a local key parameter as per (2).
 ///
 ///    Because we never perform negative reasoning generically (coherence does
 ///    not involve type parameters), this can be interpreted as doing the full
@@ -924,11 +921,12 @@ where
                 }
             }
 
-            ty::Alias(kind @ (ty::Projection | ty::Inherent | ty::Weak), ..) => {
-                if ty.has_type_flags(ty::TypeFlags::HAS_TY_PARAM) {
-                    bug!("unexpected ty param in alias ty");
-                }
-
+            // A rigid alias may normalize to anything.
+            // * If it references an infer var, placeholder or bound ty, it may
+            //   normalize to that, so we have to treat it as an uncovered ty param.
+            // * Otherwise it may normalize to any non-type-generic type
+            //   be it local or non-local.
+            ty::Alias(kind, _) => {
                 if ty.has_type_flags(
                     ty::TypeFlags::HAS_TY_PLACEHOLDER
                         | ty::TypeFlags::HAS_TY_BOUND
@@ -948,7 +946,24 @@ where
                         }
                     }
                 } else {
-                    ControlFlow::Continue(())
+                    // Regarding *opaque types* specifically, we choose to treat them as non-local,
+                    // even those that appear within the same crate. This seems somewhat surprising
+                    // at first, but makes sense when you consider that opaque types are supposed
+                    // to hide the underlying type *within the same crate*. When an opaque type is
+                    // used from outside the module where it is declared, it should be impossible to
+                    // observe anything about it other than the traits that it implements.
+                    //
+                    // The alternative would be to look at the underlying type to determine whether
+                    // or not the opaque type itself should be considered local.
+                    //
+                    // However, this could make it a breaking change to switch the underlying hidden
+                    // type from a local type to a remote type. This would violate the rule that
+                    // opaque types should be completely opaque apart from the traits that they
+                    // implement, so we don't use this behavior.
+                    // Addendum: Moreover, revealing the underlying type is likely to cause cycle
+                    // errors as we rely on coherence / the specialization graph during typeck.
+
+                    self.found_non_local_ty(ty)
                 }
             }
 
@@ -990,35 +1005,6 @@ where
             // auto trait impl applies. There will never be multiple impls, so we can just
             // act as if it were a local type here.
             ty::CoroutineWitness(..) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
-            ty::Alias(ty::Opaque, ..) => {
-                // This merits some explanation.
-                // Normally, opaque types are not involved when performing
-                // coherence checking, since it is illegal to directly
-                // implement a trait on an opaque type. However, we might
-                // end up looking at an opaque type during coherence checking
-                // if an opaque type gets used within another type (e.g. as
-                // the type of a field) when checking for auto trait or `Sized`
-                // impls. This requires us to decide whether or not an opaque
-                // type should be considered 'local' or not.
-                //
-                // We choose to treat all opaque types as non-local, even
-                // those that appear within the same crate. This seems
-                // somewhat surprising at first, but makes sense when
-                // you consider that opaque types are supposed to hide
-                // the underlying type *within the same crate*. When an
-                // opaque type is used from outside the module
-                // where it is declared, it should be impossible to observe
-                // anything about it other than the traits that it implements.
-                //
-                // The alternative would be to look at the underlying type
-                // to determine whether or not the opaque type itself should
-                // be considered local. However, this could make it a breaking change
-                // to switch the underlying ('defining') type from a local type
-                // to a remote type. This would violate the rule that opaque
-                // types should be completely opaque apart from the traits
-                // that they implement, so we don't use this behavior.
-                self.found_non_local_ty(ty)
-            }
         };
         // A bit of a hack, the `OrphanChecker` is only used to visit a `TraitRef`, so
         // the first type we visit is always the self type.

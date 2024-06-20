@@ -55,4 +55,19 @@ fn check_ln1p() {
     let _ = (1.0 + x - 2.0).ln();
 }
 
+fn issue12881() {
+    pub trait MyLog {
+        fn log(&self) -> Self;
+    }
+
+    impl MyLog for f32 {
+        fn log(&self) -> Self {
+            4.
+        }
+    }
+
+    let x = 2.0;
+    x.log();
+}
+
 fn main() {}

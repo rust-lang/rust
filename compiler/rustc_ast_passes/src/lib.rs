@@ -4,13 +4,15 @@
 //!
 //! The crate also contains other misc AST visitors, e.g. `node_count` and `show_span`.
 
+// tidy-alphabetical-start
 #![allow(internal_features)]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iter_is_partitioned)]
 #![feature(let_chains)]
+#![feature(rustdoc_internals)]
+// tidy-alphabetical-end
 
 pub mod ast_validation;
 mod errors;

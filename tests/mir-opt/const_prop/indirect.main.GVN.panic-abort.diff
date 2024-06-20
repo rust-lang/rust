@@ -14,7 +14,7 @@
           StorageLive(_1);
           StorageLive(_2);
 -         _2 = const 2_u32 as u8 (IntToInt);
--         _3 = CheckedAdd(_2, const 1_u8);
+-         _3 = AddWithOverflow(_2, const 1_u8);
 -         assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", move _2, const 1_u8) -> [success: bb1, unwind unreachable];
 +         _2 = const 2_u8;
 +         _3 = const (3_u8, false);

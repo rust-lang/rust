@@ -1,0 +1,122 @@
+error: cannot find macro `in_mod` in this scope
+  --> $DIR/key-value-expansion-scope.rs:2:10
+   |
+LL | #![doc = in_mod!()]
+   |          ^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_block` in this scope
+  --> $DIR/key-value-expansion-scope.rs:4:10
+   |
+LL | #![doc = in_block!()]
+   |          ^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_root` in this scope
+  --> $DIR/key-value-expansion-scope.rs:6:9
+   |
+LL | #[doc = in_root!()]
+   |         ^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_mod` in this scope
+  --> $DIR/key-value-expansion-scope.rs:7:9
+   |
+LL | #[doc = in_mod!()]
+   |         ^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_mod_escape` in this scope
+  --> $DIR/key-value-expansion-scope.rs:8:9
+   |
+LL | #[doc = in_mod_escape!()]
+   |         ^^^^^^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_block` in this scope
+  --> $DIR/key-value-expansion-scope.rs:9:9
+   |
+LL | #[doc = in_block!()]
+   |         ^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_root` in this scope
+  --> $DIR/key-value-expansion-scope.rs:11:14
+   |
+LL |     #![doc = in_root!()]
+   |              ^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_mod` in this scope
+  --> $DIR/key-value-expansion-scope.rs:12:14
+   |
+LL |     #![doc = in_mod!()]
+   |              ^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_mod_escape` in this scope
+  --> $DIR/key-value-expansion-scope.rs:13:14
+   |
+LL |     #![doc = in_mod_escape!()]
+   |              ^^^^^^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_block` in this scope
+  --> $DIR/key-value-expansion-scope.rs:14:14
+   |
+LL |     #![doc = in_block!()]
+   |              ^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_block` in this scope
+  --> $DIR/key-value-expansion-scope.rs:43:14
+   |
+LL |     #![doc = in_block!()]
+   |              ^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_mod` in this scope
+  --> $DIR/key-value-expansion-scope.rs:54:9
+   |
+LL | #[doc = in_mod!()]
+   |         ^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_block` in this scope
+  --> $DIR/key-value-expansion-scope.rs:56:9
+   |
+LL | #[doc = in_block!()]
+   |         ^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_mod` in this scope
+  --> $DIR/key-value-expansion-scope.rs:59:14
+   |
+LL |     #![doc = in_mod!()]
+   |              ^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `in_block` in this scope
+  --> $DIR/key-value-expansion-scope.rs:61:14
+   |
+LL |     #![doc = in_block!()]
+   |              ^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: aborting due to 15 previous errors
+

@@ -11,5 +11,6 @@ extend-exclude = """(\
     src/doc/edition-guide/|\
     src/llvm-project/|\
     src/doc/embedded-book/|\
+    src/tools/rustc-perf/|\
     library/backtrace/
     )"""

@@ -6,7 +6,7 @@ use std::time::{Duration, Instant as StdInstant};
 /// This number is pretty random, but it has been shown to approximately cause
 /// some sample programs to run within an order of magnitude of real time on desktop CPUs.
 /// (See `tests/pass/shims/time-with-isolation*.rs`.)
-const NANOSECONDS_PER_BASIC_BLOCK: u64 = 5000;
+const NANOSECONDS_PER_BASIC_BLOCK: u128 = 5000;
 
 #[derive(Debug)]
 pub struct Instant {
@@ -16,19 +16,24 @@ pub struct Instant {
 #[derive(Debug)]
 enum InstantKind {
     Host(StdInstant),
-    Virtual { nanoseconds: u64 },
+    Virtual { nanoseconds: u128 },
 }
 
 impl Instant {
-    pub fn checked_add(&self, duration: Duration) -> Option<Instant> {
+    /// Will try to add `duration`, but if that overflows it may add less.
+    pub fn add_lossy(&self, duration: Duration) -> Instant {
         match self.kind {
-            InstantKind::Host(instant) =>
-                instant.checked_add(duration).map(|i| Instant { kind: InstantKind::Host(i) }),
-            InstantKind::Virtual { nanoseconds } =>
-                u128::from(nanoseconds)
-                    .checked_add(duration.as_nanos())
-                    .and_then(|n| u64::try_from(n).ok())
-                    .map(|nanoseconds| Instant { kind: InstantKind::Virtual { nanoseconds } }),
+            InstantKind::Host(instant) => {
+                // If this overflows, try adding just 1h and assume that will not overflow.
+                let i = instant
+                    .checked_add(duration)
+                    .unwrap_or_else(|| instant.checked_add(Duration::from_secs(3600)).unwrap());
+                Instant { kind: InstantKind::Host(i) }
+            }
+            InstantKind::Virtual { nanoseconds } => {
+                let n = nanoseconds.saturating_add(duration.as_nanos());
+                Instant { kind: InstantKind::Virtual { nanoseconds: n } }
+            }
         }
     }
 
@@ -39,7 +44,17 @@ impl Instant {
             (
                 InstantKind::Virtual { nanoseconds },
                 InstantKind::Virtual { nanoseconds: earlier },
-            ) => Duration::from_nanos(nanoseconds.saturating_sub(earlier)),
+            ) => {
+                let duration = nanoseconds.saturating_sub(earlier);
+                // `Duration` does not provide a nice constructor from a `u128` of nanoseconds,
+                // so we have to implement this ourselves.
+                // It is possible for second to overflow because u64::MAX < (u128::MAX / 1e9).
+                // It will be saturated to u64::MAX seconds if the value after division exceeds u64::MAX.
+                let seconds = u64::try_from(duration / 1_000_000_000).unwrap_or(u64::MAX);
+                // It is impossible for nanosecond to overflow because u32::MAX > 1e9.
+                let nanosecond = u32::try_from(duration.wrapping_rem(1_000_000_000)).unwrap();
+                Duration::new(seconds, nanosecond)
+            }
             _ => panic!("all `Instant` must be of the same kind"),
         }
     }
@@ -54,12 +69,13 @@ pub struct Clock {
 #[derive(Debug)]
 enum ClockKind {
     Host {
-        /// The "time anchor" for this machine's monotone clock.
-        time_anchor: StdInstant,
+        /// The "epoch" for this machine's monotone clock:
+        /// the moment we consider to be time = 0.
+        epoch: StdInstant,
     },
     Virtual {
         /// The "current virtual time".
-        nanoseconds: Cell<u64>,
+        nanoseconds: Cell<u128>,
     },
 }
 
@@ -67,7 +83,7 @@ impl Clock {
     /// Create a new clock based on the availability of communication with the host.
     pub fn new(communicate: bool) -> Self {
         let kind = if communicate {
-            ClockKind::Host { time_anchor: StdInstant::now() }
+            ClockKind::Host { epoch: StdInstant::now() }
         } else {
             ClockKind::Virtual { nanoseconds: 0.into() }
         };
@@ -93,16 +109,19 @@ impl Clock {
             ClockKind::Host { .. } => std::thread::sleep(duration),
             ClockKind::Virtual { nanoseconds } => {
                 // Just pretend that we have slept for some time.
-                let nanos: u64 = duration.as_nanos().try_into().unwrap();
-                nanoseconds.update(|x| x + nanos);
+                let nanos: u128 = duration.as_nanos();
+                nanoseconds.update(|x| {
+                    x.checked_add(nanos)
+                        .expect("Miri's virtual clock cannot represent an execution this long")
+                });
             }
         }
     }
 
-    /// Return the `anchor` instant, to convert between monotone instants and durations relative to the anchor.
-    pub fn anchor(&self) -> Instant {
+    /// Return the `epoch` instant (time = 0), to convert between monotone instants and absolute durations.
+    pub fn epoch(&self) -> Instant {
         match &self.kind {
-            ClockKind::Host { time_anchor } => Instant { kind: InstantKind::Host(*time_anchor) },
+            ClockKind::Host { epoch } => Instant { kind: InstantKind::Host(*epoch) },
             ClockKind::Virtual { .. } => Instant { kind: InstantKind::Virtual { nanoseconds: 0 } },
         }
     }

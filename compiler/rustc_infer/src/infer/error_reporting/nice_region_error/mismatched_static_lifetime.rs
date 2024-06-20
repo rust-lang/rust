@@ -57,6 +57,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         let expl = note_and_explain::RegionExplanation::new(
             self.tcx(),
+            self.generic_param_scope,
             sup,
             Some(binding_span),
             note_and_explain::PrefixKind::Empty,

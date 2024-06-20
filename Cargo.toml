@@ -23,7 +23,6 @@ members = [
   "src/tools/remote-test-client",
   "src/tools/remote-test-server",
   "src/tools/rust-installer",
-  "src/tools/rust-demangler",
   "src/tools/rustdoc",
   "src/tools/rls",
   "src/tools/rustfmt",

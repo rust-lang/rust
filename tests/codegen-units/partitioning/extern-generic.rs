@@ -3,7 +3,7 @@
 //@ compile-flags:-Zprint-mono-items=eager -Zshare-generics=y
 
 #![allow(dead_code)]
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 //@ aux-build:cgu_generic_function.rs
 extern crate cgu_generic_function;

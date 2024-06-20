@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
-use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
+use clippy_utils::visitors::{for_each_expr, Descend};
 use hir::HirId;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
@@ -38,10 +38,9 @@ declare_clippy_lint! {
     /// );
     /// ```
     ///
-    /// ### Why is this bad?
-    /// Undocumented unsafe blocks and impls can make it difficult to
-    /// read and maintain code, as well as uncover unsoundness
-    /// and bugs.
+    /// ### Why restrict this?
+    /// Undocumented unsafe blocks and impls can make it difficult to read and maintain code.
+    /// Writing out the safety justification may help in discovering unsoundness or bugs.
     ///
     /// ### Example
     /// ```no_run
@@ -67,7 +66,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `// SAFETY: ` comments on safe code.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Safe code has no safety requirements, so there is no need to
     /// describe safety invariants.
     ///
@@ -297,7 +296,7 @@ fn expr_has_unnecessary_safety_comment<'tcx>(
     }
 
     // this should roughly be the reverse of `block_parents_have_safety_comment`
-    if for_each_expr_with_closures(cx, expr, |expr| match expr.kind {
+    if for_each_expr(cx, expr, |expr| match expr.kind {
         hir::ExprKind::Block(
             Block {
                 rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),

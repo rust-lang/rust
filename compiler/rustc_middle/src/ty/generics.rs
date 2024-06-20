@@ -6,6 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
+use tracing::instrument;
 
 use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
 
@@ -65,7 +66,7 @@ pub struct GenericParamDef {
 impl GenericParamDef {
     pub fn to_early_bound_region_data(&self) -> ty::EarlyParamRegion {
         if let GenericParamDefKind::Lifetime = self.kind {
-            ty::EarlyParamRegion { def_id: self.def_id, index: self.index, name: self.name }
+            ty::EarlyParamRegion { index: self.index, name: self.name }
         } else {
             bug!("cannot convert a non-lifetime parameter def to an early bound region")
         }
@@ -87,7 +88,7 @@ impl GenericParamDef {
     pub fn default_value<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-    ) -> Option<EarlyBinder<ty::GenericArg<'tcx>>> {
+    ) -> Option<EarlyBinder<'tcx, ty::GenericArg<'tcx>>> {
         match self.kind {
             GenericParamDefKind::Type { has_default, .. } if has_default => {
                 Some(tcx.type_of(self.def_id).map_bound(|t| t.into()))
@@ -99,19 +100,11 @@ impl GenericParamDef {
         }
     }
 
-    pub fn to_error<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        preceding_args: &[ty::GenericArg<'tcx>],
-    ) -> ty::GenericArg<'tcx> {
+    pub fn to_error<'tcx>(&self, tcx: TyCtxt<'tcx>) -> ty::GenericArg<'tcx> {
         match &self.kind {
             ty::GenericParamDefKind::Lifetime => ty::Region::new_error_misc(tcx).into(),
             ty::GenericParamDefKind::Type { .. } => Ty::new_misc_error(tcx).into(),
-            ty::GenericParamDefKind::Const { .. } => ty::Const::new_misc_error(
-                tcx,
-                tcx.type_of(self.def_id).instantiate(tcx, preceding_args),
-            )
-            .into(),
+            ty::GenericParamDefKind::Const { .. } => ty::Const::new_misc_error(tcx).into(),
         }
     }
 }
@@ -244,20 +237,6 @@ impl<'tcx> Generics {
         }
     }
 
-    /// Returns the `GenericParamDef` with the given index if available.
-    pub fn opt_param_at(
-        &'tcx self,
-        param_index: usize,
-        tcx: TyCtxt<'tcx>,
-    ) -> Option<&'tcx GenericParamDef> {
-        if let Some(index) = param_index.checked_sub(self.parent_count) {
-            self.own_params.get(index)
-        } else {
-            tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
-                .opt_param_at(param_index, tcx)
-        }
-    }
-
     pub fn params_to(&'tcx self, param_index: usize, tcx: TyCtxt<'tcx>) -> &'tcx [GenericParamDef] {
         if let Some(index) = param_index.checked_sub(self.parent_count) {
             &self.own_params[..index]
@@ -286,20 +265,6 @@ impl<'tcx> Generics {
         match param.kind {
             GenericParamDefKind::Type { .. } => param,
             _ => bug!("expected type parameter, but found another generic parameter"),
-        }
-    }
-
-    /// Returns the `GenericParamDef` associated with this `ParamTy` if it belongs to this
-    /// `Generics`.
-    pub fn opt_type_param(
-        &'tcx self,
-        param: ParamTy,
-        tcx: TyCtxt<'tcx>,
-    ) -> Option<&'tcx GenericParamDef> {
-        let param = self.opt_param_at(param.index as usize, tcx)?;
-        match param.kind {
-            GenericParamDefKind::Type { .. } => Some(param),
-            _ => None,
         }
     }
 
@@ -391,6 +356,14 @@ impl<'tcx> Generics {
         }
         false
     }
+
+    pub fn is_empty(&'tcx self) -> bool {
+        self.count() == 0
+    }
+
+    pub fn is_own_empty(&'tcx self) -> bool {
+        self.own_params.is_empty()
+    }
 }
 
 /// Bounds on generics.
@@ -417,6 +390,10 @@ impl<'tcx> GenericPredicates<'tcx> {
         args: GenericArgsRef<'tcx>,
     ) -> impl Iterator<Item = (Clause<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator {
         EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args)
+    }
+
+    pub fn instantiate_own_identity(&self) -> impl Iterator<Item = (Clause<'tcx>, Span)> {
+        EarlyBinder::bind(self.predicates).instantiate_identity_iter_copied()
     }
 
     #[instrument(level = "debug", skip(self, tcx))]

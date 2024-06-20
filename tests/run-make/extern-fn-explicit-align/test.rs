@@ -1,6 +1,6 @@
 // Issue #80127: Passing structs via FFI should work with explicit alignment.
 
-use std::ffi::{CStr, c_char};
+use std::ffi::{c_char, CStr};
 use std::ptr::null_mut;
 
 #[repr(C)]
@@ -18,7 +18,7 @@ pub struct TwoU64s {
 
 #[repr(C)]
 pub struct WrappedU64s {
-    pub a: TwoU64s
+    pub a: TwoU64s,
 }
 
 #[repr(C)]

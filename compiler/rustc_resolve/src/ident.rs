@@ -524,18 +524,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         match binding {
                             Ok(binding) => {
                                 if let Some(lint_id) = derive_fallback_lint_id {
-                                    this.lint_buffer.buffer_lint_with_diagnostic(
+                                    this.lint_buffer.buffer_lint(
                                         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                                         lint_id,
                                         orig_ident.span,
-                                        format!(
-                                            "cannot find {} `{}` in this scope",
-                                            ns.descr(),
-                                            ident
-                                        ),
-                                        BuiltinLintDiag::ProcMacroDeriveResolutionFallback(
-                                            orig_ident.span,
-                                        ),
+                                        BuiltinLintDiag::ProcMacroDeriveResolutionFallback {
+                                            span: orig_ident.span,
+                                            ns,
+                                            ident,
+                                        },
                                     );
                                 }
                                 let misc_flags = if module == this.graph_root {
@@ -968,6 +965,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // if it can then our result is not determined and can be invalidated.
         for single_import in &resolution.single_imports {
             let Some(import_vis) = single_import.vis.get() else {
+                // This branch handles a cycle in single imports, which occurs
+                // when we've previously **steal** the `vis` value during an import
+                // process.
+                //
+                // For example:
+                // ```
+                // use a::b;
+                // use b as a;
+                // ```
+                // 1. Steal the `vis` in `use a::b` and attempt to locate `a` in the
+                //    current module.
+                // 2. Encounter the import `use b as a`, which is a `single_import` for `a`,
+                //    and try to find `b` in the current module.
+                // 3. Re-encounter the `use a::b` import since it's a `single_import` of `b`.
+                //    This leads to entering this branch.
                 continue;
             };
             if !self.is_accessible_from(import_vis, parent_scope.module) {
@@ -982,15 +994,32 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // named imports.
                 continue;
             }
+
             let Some(module) = single_import.imported_module.get() else {
                 return Err((Undetermined, Weak::No));
             };
-            let ImportKind::Single { source: ident, .. } = single_import.kind else {
+            let ImportKind::Single { source, target, target_bindings, .. } = &single_import.kind
+            else {
                 unreachable!();
             };
+            if source != target {
+                // This branch allows the binding to be defined or updated later if the target name
+                // can hide the source.
+                if target_bindings.iter().all(|binding| binding.get().is_none()) {
+                    // None of the target bindings are available, so we can't determine
+                    // if this binding is correct or not.
+                    // See more details in #124840
+                    return Err((Undetermined, Weak::No));
+                } else if target_bindings[ns].get().is_none() && binding.is_some() {
+                    // `binding.is_some()` avoids the condition where the binding
+                    // truly doesn't exist in this namespace and should return `Err(Determined)`.
+                    return Err((Undetermined, Weak::No));
+                }
+            }
+
             match self.resolve_ident_in_module(
                 module,
-                ident,
+                *source,
                 ns,
                 &single_import.parent_scope,
                 None,

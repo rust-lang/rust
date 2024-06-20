@@ -40,6 +40,7 @@ use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::fmt;
 use std::hash::Hash;
+use tracing::{debug, trace};
 
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -688,6 +689,11 @@ impl SyntaxContext {
     #[inline]
     pub(crate) const fn from_u32(raw: u32) -> SyntaxContext {
         SyntaxContext(raw)
+    }
+
+    #[inline]
+    pub(crate) const fn from_u16(raw: u16) -> SyntaxContext {
+        SyntaxContext(raw as u32)
     }
 
     /// Extend a syntax context with a given expansion and transparency.

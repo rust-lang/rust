@@ -37,7 +37,7 @@ use rustc_trait_selection::traits::misc::{
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
-    self, ObligationCause, ObligationCauseCode, ObligationCtxt, WellFormedLoc,
+    self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt, WellFormedLoc,
 };
 use rustc_type_ir::TypeFlags;
 
@@ -45,13 +45,13 @@ use std::cell::LazyCell;
 use std::ops::{ControlFlow, Deref};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
-    pub(super) ocx: ObligationCtxt<'a, 'tcx>,
+    pub(super) ocx: ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>,
     span: Span,
     body_def_id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
 }
 impl<'a, 'tcx> Deref for WfCheckingCtxt<'a, 'tcx> {
-    type Target = ObligationCtxt<'a, 'tcx>;
+    type Target = ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>;
     fn deref(&self) -> &Self::Target {
         &self.ocx
     }
@@ -106,7 +106,7 @@ where
 {
     let param_env = tcx.param_env(body_def_id);
     let infcx = &tcx.infer_ctxt().build();
-    let ocx = ObligationCtxt::new(infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
     let mut wfcx = WfCheckingCtxt { ocx, span, body_def_id, param_env };
 
@@ -432,7 +432,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
             }
             let gat_generics = tcx.generics_of(gat_def_id);
             // FIXME(jackh726): we can also warn in the more general case
-            if gat_generics.own_params.is_empty() {
+            if gat_generics.is_own_empty() {
                 continue;
             }
 
@@ -675,11 +675,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 let region_param = gat_generics.param_at(*region_a_idx, tcx);
                 let region_param = ty::Region::new_early_param(
                     tcx,
-                    ty::EarlyParamRegion {
-                        def_id: region_param.def_id,
-                        index: region_param.index,
-                        name: region_param.name,
-                    },
+                    ty::EarlyParamRegion { index: region_param.index, name: region_param.name },
                 );
                 // The predicate we expect to see. (In our example,
                 // `Self: 'me`.)
@@ -708,21 +704,13 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 let region_a_param = gat_generics.param_at(*region_a_idx, tcx);
                 let region_a_param = ty::Region::new_early_param(
                     tcx,
-                    ty::EarlyParamRegion {
-                        def_id: region_a_param.def_id,
-                        index: region_a_param.index,
-                        name: region_a_param.name,
-                    },
+                    ty::EarlyParamRegion { index: region_a_param.index, name: region_a_param.name },
                 );
                 // Same for the region.
                 let region_b_param = gat_generics.param_at(*region_b_idx, tcx);
                 let region_b_param = ty::Region::new_early_param(
                     tcx,
-                    ty::EarlyParamRegion {
-                        def_id: region_b_param.def_id,
-                        index: region_b_param.index,
-                        name: region_b_param.name,
-                    },
+                    ty::EarlyParamRegion { index: region_b_param.index, name: region_b_param.name },
                 );
                 // The predicate we expect to see.
                 bounds.insert(
@@ -893,7 +881,7 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
         _ => {}
     }
     if !trait_should_be_self.is_empty() {
-        if tcx.check_is_object_safe(trait_def_id) {
+        if tcx.is_object_safe(trait_def_id) {
             return;
         }
         let sugg = trait_should_be_self.iter().map(|span| (*span, "Self".to_string())).collect();
@@ -2101,16 +2089,14 @@ fn lint_redundant_lifetimes<'tcx>(
         }
 
         for &victim in &lifetimes[(idx + 1)..] {
-            // We should only have late-bound lifetimes of the `BrNamed` variety,
-            // since we get these signatures straight from `hir_lowering`. And any
-            // other regions (ReError/ReStatic/etc.) shouldn't matter, since we
+            // All region parameters should have a `DefId` available as:
+            // - Late-bound parameters should be of the`BrNamed` variety,
+            // since we get these signatures straight from `hir_lowering`.
+            // - Early-bound parameters unconditionally have a `DefId` available.
+            //
+            // Any other regions (ReError/ReStatic/etc.) shouldn't matter, since we
             // can't really suggest to remove them.
-            let (ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
-            | ty::ReLateParam(ty::LateParamRegion {
-                bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
-                ..
-            })) = victim.kind()
-            else {
+            let Some(def_id) = victim.opt_param_def_id(tcx, owner_id.to_def_id()) else {
                 continue;
             };
 

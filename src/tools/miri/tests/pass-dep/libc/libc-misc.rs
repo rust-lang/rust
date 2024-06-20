@@ -10,9 +10,11 @@ use std::mem::transmute;
 fn test_thread_local_errno() {
     #[cfg(any(target_os = "illumos", target_os = "solaris"))]
     use libc::___errno as __errno_location;
+    #[cfg(target_os = "android")]
+    use libc::__errno as __errno_location;
     #[cfg(target_os = "linux")]
     use libc::__errno_location;
-    #[cfg(any(target_os = "macos", target_os = "freebsd"))]
+    #[cfg(any(target_os = "freebsd", target_os = "macos"))]
     use libc::__error as __errno_location;
 
     unsafe {
@@ -25,6 +27,21 @@ fn test_thread_local_errno() {
         .join()
         .unwrap();
         assert_eq!(*__errno_location(), 0xBEEF);
+    }
+}
+
+fn test_environ() {
+    // Just a smoke test for now, checking that the extern static exists.
+    extern "C" {
+        static mut environ: *const *const libc::c_char;
+    }
+
+    unsafe {
+        let mut e = environ;
+        // Iterate to the end.
+        while !(*e).is_null() {
+            e = e.add(1);
+        }
     }
 }
 
@@ -60,6 +77,7 @@ fn test_dlsym() {
 
 fn main() {
     test_thread_local_errno();
+    test_environ();
 
     test_dlsym();
 

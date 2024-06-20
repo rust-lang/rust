@@ -1,7 +1,6 @@
 //@ compile-flags: -C opt-level=3
 
 #![crate_type = "lib"]
-
 #![allow(unconditional_recursion)]
 
 // CHECK-LABEL: @infinite_recursion

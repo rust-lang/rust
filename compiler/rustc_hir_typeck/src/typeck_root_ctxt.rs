@@ -11,7 +11,9 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-use rustc_trait_selection::traits::{self, PredicateObligation, TraitEngine, TraitEngineExt as _};
+use rustc_trait_selection::traits::{
+    self, FulfillmentError, PredicateObligation, TraitEngine, TraitEngineExt as _,
+};
 
 use std::cell::RefCell;
 use std::ops::Deref;
@@ -20,7 +22,7 @@ use std::ops::Deref;
 /// e.g. closures defined within the function. For example:
 /// ```ignore (illustrative)
 /// fn foo() {
-///     bar(move|| { ... })
+///     bar(move || { ... })
 /// }
 /// ```
 /// Here, the function `foo()` and the closure passed to
@@ -34,7 +36,7 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
 
     pub(super) locals: RefCell<HirIdMap<Ty<'tcx>>>,
 
-    pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
+    pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx, FulfillmentError<'tcx>>>>,
 
     /// Some additional `Sized` obligations badly affect type inference.
     /// These obligations are added in a later stage of typeck.
@@ -83,7 +85,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
 
         TypeckRootCtxt {
             typeck_results,
-            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(&infcx)),
+            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_, _>>::new(&infcx)),
             infcx,
             locals: RefCell::new(Default::default()),
             deferred_sized_obligations: RefCell::new(Vec::new()),
@@ -158,7 +160,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
         {
             // If the projection predicate (Foo::Bar == X) has X as a non-TyVid,
             // we need to make it into one.
-            if let Some(vid) = predicate.term.ty().and_then(|ty| ty.ty_vid()) {
+            if let Some(vid) = predicate.term.as_type().and_then(|ty| ty.ty_vid()) {
                 debug!("infer_var_info: {:?}.output = true", vid);
                 infer_var_info.entry(vid).or_default().output = true;
             }

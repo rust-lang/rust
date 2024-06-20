@@ -12,14 +12,13 @@ use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for idents which comprise of a single letter.
+    /// Checks for identifiers which consist of a single character (or fewer than the configured threshold).
     ///
     /// Note: This lint can be very noisy when enabled; it may be desirable to only enable it
     /// temporarily.
     ///
-    /// ### Why is this bad?
-    /// In many cases it's not, but at times it can severely hinder readability. Some codebases may
-    /// wish to disallow this to improve readability.
+    /// ### Why restrict this?
+    /// To improve readability by requiring that every variable has a name more specific than a single letter can be.
     ///
     /// ### Example
     /// ```rust,ignore

@@ -1,3 +1,5 @@
+#![warn(clippy::arithmetic_side_effects)]
+
 mod atomic;
 mod simd;
 
@@ -18,15 +20,15 @@ use atomic::EvalContextExt as _;
 use helpers::{check_arg_count, ToHost, ToSoft};
 use simd::EvalContextExt as _;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
-        _unwind: mir::UnwindAction,
+        unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let this = self.eval_context_mut();
 
@@ -43,28 +45,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
                     throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
                 }
-                let intrinsic_fallback_checks_ub = Symbol::intern("intrinsic_fallback_checks_ub");
+                let intrinsic_fallback_is_spec = Symbol::intern("intrinsic_fallback_is_spec");
                 if this
                     .tcx
-                    .get_attrs_by_path(
-                        instance.def_id(),
-                        &[sym::miri, intrinsic_fallback_checks_ub],
-                    )
+                    .get_attrs_by_path(instance.def_id(), &[sym::miri, intrinsic_fallback_is_spec])
                     .next()
                     .is_none()
                 {
                     throw_unsup_format!(
-                        "miri can only use intrinsic fallback bodies that check UB. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_checks_ub]` attribute to it; also ping @rust-lang/miri when you do that"
+                        "Miri can only use intrinsic fallback bodies that exactly reflect the specification: they fully check for UB and are as non-deterministic as possible. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_is_spec]` attribute to it; also ping @rust-lang/miri when you do that"
                     );
                 }
                 Ok(Some(ty::Instance {
-                    def: ty::InstanceDef::Item(instance.def_id()),
+                    def: ty::InstanceKind::Item(instance.def_id()),
                     args: instance.args,
                 }))
             }
-            EmulateItemResult::NeedsJumping => {
+            EmulateItemResult::NeedsReturn => {
                 trace!("{:?}", this.dump_place(&dest.clone().into()));
                 this.return_to_block(ret)?;
+                Ok(None)
+            }
+            EmulateItemResult::NeedsUnwind => {
+                // Jump to the unwind block to begin unwinding.
+                this.unwind_to_block(unwind)?;
                 Ok(None)
             }
             EmulateItemResult::AlreadyJumped => Ok(None),
@@ -77,8 +81,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         intrinsic_name: &str,
         generic_args: ty::GenericArgsRef<'tcx>,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
@@ -167,6 +171,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // This is a "bitwise" operation, so there's no NaN non-determinism.
                 this.write_scalar(Scalar::from_f64(f.abs()), dest)?;
             }
+
             "floorf32" | "ceilf32" | "truncf32" | "roundf32" | "rintf32" => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
@@ -182,6 +187,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
+            "floorf64" | "ceilf64" | "truncf64" | "roundf64" | "rintf64" => {
+                let [f] = check_arg_count(args)?;
+                let f = this.read_scalar(f)?.to_f64()?;
+                let mode = match intrinsic_name {
+                    "floorf64" => Round::TowardNegative,
+                    "ceilf64" => Round::TowardPositive,
+                    "truncf64" => Round::TowardZero,
+                    "roundf64" => Round::NearestTiesToAway,
+                    "rintf64" => Round::NearestTiesToEven,
+                    _ => bug!(),
+                };
+                let res = f.round_to_integral(mode).value;
+                let res = this.adjust_nan(res, &[f]);
+                this.write_scalar(res, dest)?;
+            }
+
             #[rustfmt::skip]
             | "sinf32"
             | "cosf32"
@@ -208,22 +229,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     _ => bug!(),
                 };
                 let res = res.to_soft();
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "floorf64" | "ceilf64" | "truncf64" | "roundf64" | "rintf64" => {
-                let [f] = check_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f64()?;
-                let mode = match intrinsic_name {
-                    "floorf64" => Round::TowardNegative,
-                    "ceilf64" => Round::TowardPositive,
-                    "truncf64" => Round::TowardZero,
-                    "roundf64" => Round::NearestTiesToAway,
-                    "rintf64" => Round::NearestTiesToEven,
-                    _ => bug!(),
-                };
-                let res = f.round_to_integral(mode).value;
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -257,61 +262,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(res, dest)?;
             }
 
-            #[rustfmt::skip]
-            | "fadd_fast"
-            | "fsub_fast"
-            | "fmul_fast"
-            | "fdiv_fast"
-            | "frem_fast"
-            => {
-                let [a, b] = check_arg_count(args)?;
-                let a = this.read_immediate(a)?;
-                let b = this.read_immediate(b)?;
-                let op = match intrinsic_name {
-                    "fadd_fast" => mir::BinOp::Add,
-                    "fsub_fast" => mir::BinOp::Sub,
-                    "fmul_fast" => mir::BinOp::Mul,
-                    "fdiv_fast" => mir::BinOp::Div,
-                    "frem_fast" => mir::BinOp::Rem,
-                    _ => bug!(),
-                };
-                let float_finite = |x: &ImmTy<'tcx, _>| -> InterpResult<'tcx, bool> {
-                    let ty::Float(fty) = x.layout.ty.kind() else {
-                        bug!("float_finite: non-float input type {}", x.layout.ty)
-                    };
-                    Ok(match fty {
-                        FloatTy::F16 => unimplemented!("f16_f128"),
-                        FloatTy::F32 => x.to_scalar().to_f32()?.is_finite(),
-                        FloatTy::F64 => x.to_scalar().to_f64()?.is_finite(),
-                        FloatTy::F128 => unimplemented!("f16_f128"),
-                    })
-                };
-                match (float_finite(&a)?, float_finite(&b)?) {
-                    (false, false) => throw_ub_format!(
-                        "`{intrinsic_name}` intrinsic called with non-finite value as both parameters",
-                    ),
-                    (false, _) => throw_ub_format!(
-                        "`{intrinsic_name}` intrinsic called with non-finite value as first parameter",
-                    ),
-                    (_, false) => throw_ub_format!(
-                        "`{intrinsic_name}` intrinsic called with non-finite value as second parameter",
-                    ),
-                    _ => {}
-                }
-                let res = this.wrapping_binary_op(op, &a, &b)?;
-                if !float_finite(&res)? {
-                    throw_ub_format!("`{intrinsic_name}` intrinsic produced non-finite value as result");
-                }
-                // This cannot be a NaN so we also don't have to apply any non-determinism.
-                // (Also, `wrapping_binary_op` already called `generate_nan` if needed.)
-                this.write_immediate(*res, dest)?;
-            }
-
-            #[rustfmt::skip]
-            | "minnumf32"
-            | "maxnumf32"
-            | "copysignf32"
-            => {
+            "minnumf32" | "maxnumf32" | "copysignf32" => {
                 let [a, b] = check_arg_count(args)?;
                 let a = this.read_scalar(a)?.to_f32()?;
                 let b = this.read_scalar(b)?.to_f32()?;
@@ -323,12 +274,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
                 this.write_scalar(Scalar::from_f32(res), dest)?;
             }
-
-            #[rustfmt::skip]
-            | "minnumf64"
-            | "maxnumf64"
-            | "copysignf64"
-            => {
+            "minnumf64" | "maxnumf64" | "copysignf64" => {
                 let [a, b] = check_arg_count(args)?;
                 let a = this.read_scalar(a)?.to_f64()?;
                 let b = this.read_scalar(b)?.to_f64()?;
@@ -351,7 +297,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
             }
-
             "fmaf64" => {
                 let [a, b, c] = check_arg_count(args)?;
                 let a = this.read_scalar(a)?.to_f64()?;
@@ -372,7 +317,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
-
             "powf64" => {
                 let [f1, f2] = check_arg_count(args)?;
                 let f1 = this.read_scalar(f1)?.to_f64()?;
@@ -392,7 +336,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
-
             "powif64" => {
                 let [f, i] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
@@ -401,6 +344,79 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let res = f.to_host().powi(i).to_soft();
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
+            }
+
+            #[rustfmt::skip]
+            | "fadd_algebraic"
+            | "fsub_algebraic"
+            | "fmul_algebraic"
+            | "fdiv_algebraic"
+            | "frem_algebraic"
+            => {
+                let [a, b] = check_arg_count(args)?;
+                let a = this.read_immediate(a)?;
+                let b = this.read_immediate(b)?;
+                let op = match intrinsic_name {
+                    "fadd_algebraic" => mir::BinOp::Add,
+                    "fsub_algebraic" => mir::BinOp::Sub,
+                    "fmul_algebraic" => mir::BinOp::Mul,
+                    "fdiv_algebraic" => mir::BinOp::Div,
+                    "frem_algebraic" => mir::BinOp::Rem,
+                    _ => bug!(),
+                };
+                let res = this.binary_op(op, &a, &b)?;
+                // `binary_op` already called `generate_nan` if necessary.
+                this.write_immediate(*res, dest)?;
+            }
+
+            #[rustfmt::skip]
+            | "fadd_fast"
+            | "fsub_fast"
+            | "fmul_fast"
+            | "fdiv_fast"
+            | "frem_fast"
+            => {
+                let [a, b] = check_arg_count(args)?;
+                let a = this.read_immediate(a)?;
+                let b = this.read_immediate(b)?;
+                let op = match intrinsic_name {
+                    "fadd_fast" => mir::BinOp::Add,
+                    "fsub_fast" => mir::BinOp::Sub,
+                    "fmul_fast" => mir::BinOp::Mul,
+                    "fdiv_fast" => mir::BinOp::Div,
+                    "frem_fast" => mir::BinOp::Rem,
+                    _ => bug!(),
+                };
+                let float_finite = |x: &ImmTy<'tcx>| -> InterpResult<'tcx, bool> {
+                    let ty::Float(fty) = x.layout.ty.kind() else {
+                        bug!("float_finite: non-float input type {}", x.layout.ty)
+                    };
+                    Ok(match fty {
+                        FloatTy::F16 => unimplemented!("f16_f128"),
+                        FloatTy::F32 => x.to_scalar().to_f32()?.is_finite(),
+                        FloatTy::F64 => x.to_scalar().to_f64()?.is_finite(),
+                        FloatTy::F128 => unimplemented!("f16_f128"),
+                    })
+                };
+                match (float_finite(&a)?, float_finite(&b)?) {
+                    (false, false) => throw_ub_format!(
+                        "`{intrinsic_name}` intrinsic called with non-finite value as both parameters",
+                    ),
+                    (false, _) => throw_ub_format!(
+                        "`{intrinsic_name}` intrinsic called with non-finite value as first parameter",
+                    ),
+                    (_, false) => throw_ub_format!(
+                        "`{intrinsic_name}` intrinsic called with non-finite value as second parameter",
+                    ),
+                    _ => {}
+                }
+                let res = this.binary_op(op, &a, &b)?;
+                if !float_finite(&res)? {
+                    throw_ub_format!("`{intrinsic_name}` intrinsic produced non-finite value as result");
+                }
+                // This cannot be a NaN so we also don't have to apply any non-determinism.
+                // (Also, `binary_op` already called `generate_nan` if needed.)
+                this.write_immediate(*res, dest)?;
             }
 
             "float_to_int_unchecked" => {
@@ -429,6 +445,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             _ => return Ok(EmulateItemResult::NotSupported),
         }
 
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

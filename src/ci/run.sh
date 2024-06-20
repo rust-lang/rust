@@ -89,6 +89,8 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --dist-compression-formats=xz"
 # (to avoid spending a lot of time cloning llvm)
 if [ "$EXTERNAL_LLVM" = "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.optimized-compiler-builtins"
+  # Likewise, only demand we test all LLVM components if we know we built LLVM with them
+  export COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS=1
 elif [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
     echo "error: dist builds should always use optimized compiler-rt!" >&2
     exit 1
@@ -167,12 +169,6 @@ else
     # included with LLVM, since a dynamic libstdcpp may not be available.
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
   fi
-fi
-
-# Unless we're using an older version of LLVM, check that all LLVM components
-# used by tests are available.
-if [ "$IS_NOT_LATEST_LLVM" = "" ]; then
-  export COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS=1
 fi
 
 if [ "$ENABLE_GCC_CODEGEN" = "1" ]; then

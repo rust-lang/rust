@@ -12,11 +12,10 @@ use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind
 use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{DiagCtxt, ErrorGuaranteed, PResult};
+use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
-use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
-use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, RegisteredTools};
-use rustc_parse::{parser, MACRO_ARGUMENTS};
+use rustc_lint_defs::{BufferedEarlyLint, RegisteredTools};
+use rustc_parse::{parser::Parser, MACRO_ARGUMENTS};
 use rustc_session::config::CollapseMacroDebuginfo;
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
@@ -356,6 +355,10 @@ where
     ) -> MacroExpanderResult<'cx> {
         self(ecx, span, input)
     }
+}
+
+pub trait GlobDelegationExpander {
+    fn expand(&self, ecx: &mut ExtCtxt<'_>) -> ExpandResult<Vec<(Ident, Option<Ident>)>, ()>;
 }
 
 // Use a macro because forwarding to a simple function has type system issues
@@ -715,6 +718,9 @@ pub enum SyntaxExtensionKind {
         /// The produced AST fragment is appended to the input AST fragment.
         Box<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
     ),
+
+    /// A glob delegation.
+    GlobDelegation(Box<dyn GlobDelegationExpander + sync::DynSync + sync::DynSend>),
 }
 
 /// A struct representing a macro definition in "lowered" form ready for expansion.
@@ -749,7 +755,9 @@ impl SyntaxExtension {
     /// Returns which kind of macro calls this syntax extension.
     pub fn macro_kind(&self) -> MacroKind {
         match self.kind {
-            SyntaxExtensionKind::Bang(..) | SyntaxExtensionKind::LegacyBang(..) => MacroKind::Bang,
+            SyntaxExtensionKind::Bang(..)
+            | SyntaxExtensionKind::LegacyBang(..)
+            | SyntaxExtensionKind::GlobDelegation(..) => MacroKind::Bang,
             SyntaxExtensionKind::Attr(..)
             | SyntaxExtensionKind::LegacyAttr(..)
             | SyntaxExtensionKind::NonMacroAttr => MacroKind::Attr,
@@ -923,6 +931,32 @@ impl SyntaxExtension {
         SyntaxExtension::default(SyntaxExtensionKind::NonMacroAttr, edition)
     }
 
+    pub fn glob_delegation(
+        trait_def_id: DefId,
+        impl_def_id: LocalDefId,
+        edition: Edition,
+    ) -> SyntaxExtension {
+        struct GlobDelegationExpanderImpl {
+            trait_def_id: DefId,
+            impl_def_id: LocalDefId,
+        }
+        impl GlobDelegationExpander for GlobDelegationExpanderImpl {
+            fn expand(
+                &self,
+                ecx: &mut ExtCtxt<'_>,
+            ) -> ExpandResult<Vec<(Ident, Option<Ident>)>, ()> {
+                match ecx.resolver.glob_delegation_suffixes(self.trait_def_id, self.impl_def_id) {
+                    Ok(suffixes) => ExpandResult::Ready(suffixes),
+                    Err(Indeterminate) if ecx.force_mode => ExpandResult::Ready(Vec::new()),
+                    Err(Indeterminate) => ExpandResult::Retry(()),
+                }
+            }
+        }
+
+        let expander = GlobDelegationExpanderImpl { trait_def_id, impl_def_id };
+        SyntaxExtension::default(SyntaxExtensionKind::GlobDelegation(Box::new(expander)), edition)
+    }
+
     pub fn expn_data(
         &self,
         parent: LocalExpnId,
@@ -1031,6 +1065,16 @@ pub trait ResolverExpand {
 
     /// Tools registered with `#![register_tool]` and used by tool attributes and lints.
     fn registered_tools(&self) -> &RegisteredTools;
+
+    /// Mark this invocation id as a glob delegation.
+    fn register_glob_delegation(&mut self, invoc_id: LocalExpnId);
+
+    /// Names of specific methods to which glob delegation expands.
+    fn glob_delegation_suffixes(
+        &mut self,
+        trait_def_id: DefId,
+        impl_def_id: LocalDefId,
+    ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate>;
 }
 
 pub trait LintStoreExpand {
@@ -1136,7 +1180,7 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    pub fn dcx(&self) -> &'a DiagCtxt {
+    pub fn dcx(&self) -> DiagCtxtHandle<'a> {
         self.sess.dcx()
     }
 
@@ -1150,8 +1194,8 @@ impl<'a> ExtCtxt<'a> {
     pub fn monotonic_expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a> {
         expand::MacroExpander::new(self, true)
     }
-    pub fn new_parser_from_tts(&self, stream: TokenStream) -> parser::Parser<'a> {
-        rustc_parse::stream_to_parser(&self.sess.psess, stream, MACRO_ARGUMENTS)
+    pub fn new_parser_from_tts(&self, stream: TokenStream) -> Parser<'a> {
+        Parser::new(&self.sess.psess, stream, MACRO_ARGUMENTS)
     }
     pub fn source_map(&self) -> &'a SourceMap {
         self.sess.psess.source_map()
@@ -1257,7 +1301,7 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
 }
 
 pub fn parse_macro_name_and_helper_attrs(
-    dcx: &rustc_errors::DiagCtxt,
+    dcx: DiagCtxtHandle<'_>,
     attr: &Attribute,
     macro_type: &str,
 ) -> Option<(Symbol, Vec<Symbol>)> {
@@ -1330,83 +1374,63 @@ pub fn parse_macro_name_and_helper_attrs(
     Some((trait_ident.name, proc_attrs))
 }
 
-/// This nonterminal looks like some specific enums from
-/// `proc-macro-hack` and `procedural-masquerade` crates.
-/// We need to maintain some special pretty-printing behavior for them due to incorrect
-/// asserts in old versions of those crates and their wide use in the ecosystem.
-/// See issue #73345 for more details.
+/// If this item looks like a specific enums from `rental`, emit a fatal error.
+/// See #73345 and #83125 for more details.
 /// FIXME(#73933): Remove this eventually.
-fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) -> bool {
+fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) {
     let name = item.ident.name;
-    if name == sym::ProceduralMasqueradeDummyType {
-        if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
-            if let [variant] = &*enum_def.variants {
-                if variant.ident.name == sym::Input {
-                    let filename = sess.source_map().span_to_filename(item.ident.span);
-                    if let FileName::Real(real) = filename {
-                        if let Some(c) = real
-                            .local_path()
-                            .unwrap_or(Path::new(""))
-                            .components()
-                            .flat_map(|c| c.as_os_str().to_str())
-                            .find(|c| c.starts_with("rental") || c.starts_with("allsorts-rental"))
-                        {
-                            let crate_matches = if c.starts_with("allsorts-rental") {
-                                true
-                            } else {
-                                let mut version = c.trim_start_matches("rental-").split('.');
-                                version.next() == Some("0")
-                                    && version.next() == Some("5")
-                                    && version
-                                        .next()
-                                        .and_then(|c| c.parse::<u32>().ok())
-                                        .is_some_and(|v| v < 6)
-                            };
+    if name == sym::ProceduralMasqueradeDummyType
+        && let ast::ItemKind::Enum(enum_def, _) = &item.kind
+        && let [variant] = &*enum_def.variants
+        && variant.ident.name == sym::Input
+        && let FileName::Real(real) = sess.source_map().span_to_filename(item.ident.span)
+        && let Some(c) = real
+            .local_path()
+            .unwrap_or(Path::new(""))
+            .components()
+            .flat_map(|c| c.as_os_str().to_str())
+            .find(|c| c.starts_with("rental") || c.starts_with("allsorts-rental"))
+    {
+        let crate_matches = if c.starts_with("allsorts-rental") {
+            true
+        } else {
+            let mut version = c.trim_start_matches("rental-").split('.');
+            version.next() == Some("0")
+                && version.next() == Some("5")
+                && version.next().and_then(|c| c.parse::<u32>().ok()).is_some_and(|v| v < 6)
+        };
 
-                            if crate_matches {
-                                // FIXME: make this translatable
-                                #[allow(rustc::untranslatable_diagnostic)]
-                                sess.psess.buffer_lint_with_diagnostic(
-                                        PROC_MACRO_BACK_COMPAT,
-                                        item.ident.span,
-                                        ast::CRATE_NODE_ID,
-                                        "using an old version of `rental`",
-                                        BuiltinLintDiag::ProcMacroBackCompat(
-                                        "older versions of the `rental` crate will stop compiling in future versions of Rust; \
-                                        please update to `rental` v0.5.6, or switch to one of the `rental` alternatives".to_string()
-                                        )
-                                    );
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
+        if crate_matches {
+            // FIXME: make this translatable
+            #[allow(rustc::untranslatable_diagnostic)]
+            sess.dcx().emit_fatal(errors::ProcMacroBackCompat {
+                crate_name: "rental".to_string(),
+                fixed_version: "0.5.6".to_string(),
+            });
         }
     }
-    false
 }
 
-pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, sess: &Session) -> bool {
+pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, sess: &Session) {
     let item = match ann {
         Annotatable::Item(item) => item,
         Annotatable::Stmt(stmt) => match &stmt.kind {
             ast::StmtKind::Item(item) => item,
-            _ => return false,
+            _ => return,
         },
-        _ => return false,
+        _ => return,
     };
     pretty_printing_compatibility_hack(item, sess)
 }
 
-pub(crate) fn nt_pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &Session) -> bool {
+pub(crate) fn nt_pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &Session) {
     let item = match nt {
         Nonterminal::NtItem(item) => item,
         Nonterminal::NtStmt(stmt) => match &stmt.kind {
             ast::StmtKind::Item(item) => item,
-            _ => return false,
+            _ => return,
         },
-        _ => return false,
+        _ => return,
     };
     pretty_printing_compatibility_hack(item, sess)
 }

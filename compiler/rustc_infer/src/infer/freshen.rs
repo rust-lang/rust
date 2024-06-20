@@ -33,7 +33,6 @@
 use super::InferCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;
-use rustc_middle::infer::unify_key::ToType;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitableExt};
 use std::collections::hash_map::Entry;
@@ -80,7 +79,6 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
         &mut self,
         input: Result<ty::Const<'tcx>, ty::InferConst>,
         freshener: F,
-        ty: Ty<'tcx>,
     ) -> ty::Const<'tcx>
     where
         F: FnOnce(u32) -> ty::InferConst,
@@ -92,7 +90,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
                 Entry::Vacant(entry) => {
                     let index = self.const_freshen_count;
                     self.const_freshen_count += 1;
-                    let ct = ty::Const::new_infer(self.infcx.tcx, freshener(index), ty);
+                    let ct = ty::Const::new_infer(self.infcx.tcx, freshener(index));
                     entry.insert(ct);
                     ct
                 }
@@ -150,7 +148,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
                         ty::InferConst::Var(inner.const_unification_table().find(v).vid)
                     });
                 drop(inner);
-                self.freshen_const(input, ty::InferConst::Fresh, ct.ty())
+                self.freshen_const(input, ty::InferConst::Fresh)
             }
             ty::ConstKind::Infer(ty::InferConst::EffectVar(v)) => {
                 let mut inner = self.infcx.inner.borrow_mut();
@@ -159,7 +157,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
                         ty::InferConst::EffectVar(inner.effect_unification_table().find(v).vid)
                     });
                 drop(inner);
-                self.freshen_const(input, ty::InferConst::Fresh, ct.ty())
+                self.freshen_const(input, ty::InferConst::Fresh)
             }
             ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
                 if i >= self.const_freshen_count {
@@ -178,7 +176,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
             }
 
             ty::ConstKind::Param(_)
-            | ty::ConstKind::Value(_)
+            | ty::ConstKind::Value(_, _)
             | ty::ConstKind::Unevaluated(..)
             | ty::ConstKind::Expr(..)
             | ty::ConstKind::Error(_) => ct.super_fold_with(self),
@@ -204,22 +202,27 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
 
             ty::IntVar(v) => {
                 let mut inner = self.infcx.inner.borrow_mut();
-                let input = inner
-                    .int_unification_table()
-                    .probe_value(v)
-                    .map(|v| v.to_type(self.infcx.tcx))
-                    .ok_or_else(|| ty::IntVar(inner.int_unification_table().find(v)));
+                let value = inner.int_unification_table().probe_value(v);
+                let input = match value {
+                    ty::IntVarValue::IntType(ty) => Ok(Ty::new_int(self.infcx.tcx, ty)),
+                    ty::IntVarValue::UintType(ty) => Ok(Ty::new_uint(self.infcx.tcx, ty)),
+                    ty::IntVarValue::Unknown => {
+                        Err(ty::IntVar(inner.int_unification_table().find(v)))
+                    }
+                };
                 drop(inner);
                 Some(self.freshen_ty(input, |n| Ty::new_fresh_int(self.infcx.tcx, n)))
             }
 
             ty::FloatVar(v) => {
                 let mut inner = self.infcx.inner.borrow_mut();
-                let input = inner
-                    .float_unification_table()
-                    .probe_value(v)
-                    .map(|v| v.to_type(self.infcx.tcx))
-                    .ok_or_else(|| ty::FloatVar(inner.float_unification_table().find(v)));
+                let value = inner.float_unification_table().probe_value(v);
+                let input = match value {
+                    ty::FloatVarValue::Known(ty) => Ok(Ty::new_float(self.infcx.tcx, ty)),
+                    ty::FloatVarValue::Unknown => {
+                        Err(ty::FloatVar(inner.float_unification_table().find(v)))
+                    }
+                };
                 drop(inner);
                 Some(self.freshen_ty(input, |n| Ty::new_fresh_float(self.infcx.tcx, n)))
             }

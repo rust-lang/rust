@@ -21,7 +21,10 @@
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 
-enum E { A(u32), B(u32) }
+enum E {
+    A(u32),
+    B(u32),
+}
 
 pub fn main() {
     let e = E::A(23);

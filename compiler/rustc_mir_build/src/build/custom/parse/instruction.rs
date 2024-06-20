@@ -12,7 +12,7 @@ use crate::build::expr::as_constant::as_constant_inner;
 use super::{parse_by_kind, PResult, ParseCtxt};
 
 impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
-    pub fn parse_statement(&self, expr_id: ExprId) -> PResult<StatementKind<'tcx>> {
+    pub(crate) fn parse_statement(&self, expr_id: ExprId) -> PResult<StatementKind<'tcx>> {
         parse_by_kind!(self, expr_id, _, "statement",
             @call(mir_storage_live, args) => {
                 Ok(StatementKind::StorageLive(self.parse_local(args[0])?))
@@ -46,7 +46,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         )
     }
 
-    pub fn parse_terminator(&self, expr_id: ExprId) -> PResult<TerminatorKind<'tcx>> {
+    pub(crate) fn parse_terminator(&self, expr_id: ExprId) -> PResult<TerminatorKind<'tcx>> {
         parse_by_kind!(self, expr_id, expr, "terminator",
             @call(mir_return, _args) => {
                 Ok(TerminatorKind::Return)
@@ -195,9 +195,15 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             },
             @call(mir_checked, args) => {
                 parse_by_kind!(self, args[0], _, "binary op",
-                    ExprKind::Binary { op, lhs, rhs } => Ok(Rvalue::CheckedBinaryOp(
-                        *op, Box::new((self.parse_operand(*lhs)?, self.parse_operand(*rhs)?))
-                    )),
+                    ExprKind::Binary { op, lhs, rhs } => {
+                        if let Some(op_with_overflow) = op.wrapping_to_overflowing() {
+                            Ok(Rvalue::BinaryOp(
+                                op_with_overflow, Box::new((self.parse_operand(*lhs)?, self.parse_operand(*rhs)?))
+                            ))
+                        } else {
+                            Err(self.expr_error(expr_id, "No WithOverflow form of this operator"))
+                        }
+                    },
                 )
             },
             @call(mir_offset, args) => {
@@ -206,6 +212,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 Ok(Rvalue::BinaryOp(BinOp::Offset, Box::new((ptr, offset))))
             },
             @call(mir_len, args) => Ok(Rvalue::Len(self.parse_place(args[0])?)),
+            @call(mir_ptr_metadata, args) => Ok(Rvalue::UnaryOp(UnOp::PtrMetadata, self.parse_operand(args[0])?)),
             @call(mir_copy_for_deref, args) => Ok(Rvalue::CopyForDeref(self.parse_place(args[0])?)),
             ExprKind::Borrow { borrow_kind, arg } => Ok(
                 Rvalue::Ref(self.tcx.lifetimes.re_erased, *borrow_kind, self.parse_place(*arg)?)
@@ -254,7 +261,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         )
     }
 
-    pub fn parse_operand(&self, expr_id: ExprId) -> PResult<Operand<'tcx>> {
+    pub(crate) fn parse_operand(&self, expr_id: ExprId) -> PResult<Operand<'tcx>> {
         parse_by_kind!(self, expr_id, expr, "operand",
             @call(mir_move, args) => self.parse_place(args[0]).map(Operand::Move),
             @call(mir_static, args) => self.parse_static(args[0]),

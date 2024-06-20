@@ -41,3 +41,25 @@ fn _returns_result() -> Result<(), ()> {
 
     Ok(())
 }
+
+fn _by_ref() {
+    // Shared refs
+    for _ in &Some(1) {}
+    //~^ WARN for loop over a `&Option`. This is more readably written as an `if let` statement
+    //~| HELP to check pattern in a loop use `while let`
+    //~| HELP consider using `if let` to clear intent
+    for _ in &Ok::<_, ()>(1) {}
+    //~^ WARN for loop over a `&Result`. This is more readably written as an `if let` statement
+    //~| HELP to check pattern in a loop use `while let`
+    //~| HELP consider using `if let` to clear intent
+
+    // Mutable refs
+    for _ in &mut Some(1) {}
+    //~^ WARN for loop over a `&mut Option`. This is more readably written as an `if let` statement
+    //~| HELP to check pattern in a loop use `while let`
+    //~| HELP consider using `if let` to clear intent
+    for _ in &mut Ok::<_, ()>(1) {}
+    //~^ WARN for loop over a `&mut Result`. This is more readably written as an `if let` statement
+    //~| HELP to check pattern in a loop use `while let`
+    //~| HELP consider using `if let` to clear intent
+}

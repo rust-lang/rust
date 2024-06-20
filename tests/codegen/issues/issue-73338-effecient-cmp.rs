@@ -4,7 +4,7 @@
 
 //@ compile-flags: -Copt-level=3
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 #[repr(u32)]
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd)]
@@ -15,25 +15,25 @@ pub enum Foo {
 }
 
 #[no_mangle]
-pub fn compare_less(a: Foo, b: Foo)->bool{
+pub fn compare_less(a: Foo, b: Foo) -> bool {
     // CHECK-NOT: br {{.*}}
     a < b
 }
 
 #[no_mangle]
-pub fn compare_le(a: Foo, b: Foo)->bool{
+pub fn compare_le(a: Foo, b: Foo) -> bool {
     // CHECK-NOT: br {{.*}}
     a <= b
 }
 
 #[no_mangle]
-pub fn compare_ge(a: Foo, b: Foo)->bool{
+pub fn compare_ge(a: Foo, b: Foo) -> bool {
     // CHECK-NOT: br {{.*}}
     a >= b
 }
 
 #[no_mangle]
-pub fn compare_greater(a: Foo, b: Foo)->bool{
+pub fn compare_greater(a: Foo, b: Foo) -> bool {
     // CHECK-NOT: br {{.*}}
     a > b
 }

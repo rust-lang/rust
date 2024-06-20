@@ -33,12 +33,12 @@ All tier 1 targets with host tools support the full standard library.
 target | notes
 -------|-------
 `aarch64-unknown-linux-gnu` | ARM64 Linux (kernel 4.1, glibc 2.17+)
-`i686-pc-windows-gnu` | 32-bit MinGW (Windows 10+) [^x86_32-floats-return-ABI]
-`i686-pc-windows-msvc` | 32-bit MSVC (Windows 10+) [^x86_32-floats-return-ABI]
+`i686-pc-windows-gnu` | 32-bit MinGW (Windows 10+, Windows Server 2016+) [^x86_32-floats-return-ABI]
+`i686-pc-windows-msvc` | 32-bit MSVC (Windows 10+, Windows Server 2016+) [^x86_32-floats-return-ABI]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+) [^x86_32-floats-return-ABI]
-`x86_64-apple-darwin` | 64-bit macOS (10.12+, Sierra+)
-`x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 10+)
-`x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 10+)
+[`x86_64-apple-darwin`](platform-support/apple-darwin.md) | 64-bit macOS (10.12+, Sierra+)
+`x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 10+, Windows Server 2016+)
+`x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 10+, Windows Server 2016+)
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 3.2+, glibc 2.17+)
 
 [^x86_32-floats-return-ABI]: Due to limitations of the C ABI, floating-point support on `i686` targets is non-compliant: floating-point return values are passed via an x87 register, so NaN payload bits can be lost. See [issue #114479][x86-32-float-issue].
@@ -86,7 +86,7 @@ so Rustup may install the documentation for a similar tier 1 target instead.
 
 target | notes
 -------|-------
-`aarch64-apple-darwin` | ARM64 macOS (11.0+, Big Sur+)
+[`aarch64-apple-darwin`](platform-support/apple-darwin.md) | ARM64 macOS (11.0+, Big Sur+)
 `aarch64-pc-windows-msvc` | ARM64 Windows MSVC
 `aarch64-unknown-linux-musl` | ARM64 Linux with musl 1.2.3
 `arm-unknown-linux-gnueabi` | Armv6 Linux (kernel 3.2, glibc 2.17)
@@ -133,8 +133,8 @@ so Rustup may install the documentation for a similar tier 1 target instead.
 
 target | std | notes
 -------|:---:|-------
-`aarch64-apple-ios` | ✓ | ARM64 iOS
-[`aarch64-apple-ios-sim`](platform-support/aarch64-apple-ios-sim.md) | ✓ | Apple iOS Simulator on ARM64
+[`aarch64-apple-ios`](platform-support/apple-ios.md) | ✓ | ARM64 iOS
+[`aarch64-apple-ios-sim`](platform-support/apple-ios.md) | ✓ | Apple iOS Simulator on ARM64
 `aarch64-fuchsia` | ✓ | Alias for `aarch64-unknown-fuchsia`
 [`aarch64-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ | ARM64 Fuchsia
 [`aarch64-linux-android`](platform-support/android.md) | ✓ | ARM64 Android
@@ -146,6 +146,7 @@ target | std | notes
 [`arm-linux-androideabi`](platform-support/android.md) | ✓ | Armv6 Android
 `arm-unknown-linux-musleabi` | ✓ | Armv6 Linux with musl 1.2.3
 `arm-unknown-linux-musleabihf` | ✓ | Armv6 Linux with musl 1.2.3, hardfloat
+[`arm64ec-pc-windows-msvc`](platform-support/arm64ec-pc-windows-msvc.md) | ✓ | Arm64EC Windows MSVC
 [`armebv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian
 [`armebv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian, hardfloat
 `armv5te-unknown-linux-gnueabi` | ✓ | Armv5TE Linux (kernel 4.4, glibc 2.23)
@@ -192,7 +193,7 @@ target | std | notes
 `wasm32-wasi` | ✓ | WebAssembly with WASI (undergoing a [rename to `wasm32-wasip1`][wasi-rename])
 [`wasm32-wasip1`](platform-support/wasm32-wasip1.md) | ✓ | WebAssembly with WASI
 [`wasm32-wasip1-threads`](platform-support/wasm32-wasip1-threads.md) | ✓ |  | WebAssembly with WASI Preview 1 and threads
-`x86_64-apple-ios` | ✓ | 64-bit x86 iOS
+[`x86_64-apple-ios`](platform-support/apple-ios.md) | ✓ | 64-bit x86 iOS
 [`x86_64-fortanix-unknown-sgx`](platform-support/x86_64-fortanix-unknown-sgx.md) | ✓ | [Fortanix ABI] for 64-bit Intel SGX
 `x86_64-fuchsia` | ✓ | Alias for `x86_64-unknown-fuchsia`
 [`x86_64-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ | 64-bit x86 Fuchsia
@@ -202,7 +203,7 @@ target | std | notes
 `x86_64-unknown-linux-gnux32` | ✓ | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
 [`x86_64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | x86_64 OpenHarmony
 [`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * | Freestanding/bare-metal x86_64, softfloat
-`x86_64-unknown-redox` | ✓ | Redox OS
+[`x86_64-unknown-redox`](platform-support/redox.md) | ✓ | Redox OS
 [`x86_64-unknown-uefi`](platform-support/unknown-uefi.md) | ? | 64-bit UEFI
 
 [^x86_32-floats-x87]: Floating-point support on `i586` targets is non-compliant: the `x87` registers and instructions used for these targets do not provide IEEE-754-compliant behavior, in particular when it comes to rounding and NaN payload bits. See [issue #114479][x86-32-float-issue].
@@ -240,10 +241,9 @@ target | std | host | notes
 -------|:---:|:----:|-------
 [`arm64e-apple-ios`](platform-support/arm64e-apple-ios.md) | ✓ | | ARM64e Apple iOS
 [`arm64e-apple-darwin`](platform-support/arm64e-apple-darwin.md)  | ✓ | ✓ | ARM64e Apple Darwin
-[`arm64ec-pc-windows-msvc`](platform-support/arm64ec-pc-windows-msvc.md) | ? | | Arm64EC Windows MSVC
-`aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
-[`aarch64-apple-tvos`](platform-support/apple-tvos.md) | ? |  | ARM64 tvOS
-[`aarch64-apple-tvos-sim`](platform-support/apple-tvos.md) | ? |  | ARM64 tvOS Simulator
+[`aarch64-apple-ios-macabi`](platform-support/apple-ios-macabi.md) | ✓ |  | Apple Catalyst on ARM64
+[`aarch64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | ARM64 tvOS
+[`aarch64-apple-tvos-sim`](platform-support/apple-tvos.md) | ✓ |  | ARM64 tvOS Simulator
 [`aarch64-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | ARM64 Apple WatchOS
 [`aarch64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | ARM64 Apple WatchOS Simulator
 [`aarch64-apple-visionos`](platform-support/apple-visionos.md) | ✓ |  | ARM64 Apple visionOS
@@ -258,8 +258,8 @@ target | std | host | notes
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
-`aarch64-unknown-redox` | ? |  | ARM64 Redox OS
-`aarch64-uwp-windows-msvc` | ? |  |
+[`aarch64-unknown-redox`](platform-support/redox.md) | ✓ |  | ARM64 Redox OS
+`aarch64-uwp-windows-msvc` | ✓ |  |
 `aarch64-wrs-vxworks` | ? |  |
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
@@ -283,7 +283,7 @@ target | std | host | notes
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
 [`armv7a-none-eabihf`](platform-support/arm-none-eabi.md) | * |  | Bare Armv7-A, hardfloat
 [`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | Armv7-A Apple WatchOS
-`armv7s-apple-ios` | ✓ |  | Armv7-A Apple-A6 Apple iOS
+[`armv7s-apple-ios`](platform-support/apple-ios.md) | ✓ |  | Armv7-A Apple-A6 Apple iOS
 [`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Bare Armv8-R, hardfloat
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
@@ -292,16 +292,17 @@ target | std | host | notes
 `csky-unknown-linux-gnuabiv2hf` | ✓ |  | C-SKY abiv2 Linux, hardfloat (little endian)
 [`hexagon-unknown-none-elf`](platform-support/hexagon-unknown-none-elf.md)| * | | Bare Hexagon (v60+, HVX)
 [`hexagon-unknown-linux-musl`](platform-support/hexagon-unknown-linux-musl.md) | ✓ | | Hexagon Linux with musl 1.2.3
-`i386-apple-ios` | ✓ |  | 32-bit x86 iOS [^x86_32-floats-return-ABI]
+[`i386-apple-ios`](platform-support/apple-ios.md) | ✓ |  | 32-bit x86 iOS [^x86_32-floats-return-ABI]
 [`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS  [^x86_32-floats-return-ABI]
 [`i586-unknown-netbsd`](platform-support/netbsd.md) | ✓ |  | 32-bit x86, restricted to Pentium
-`i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+) [^x86_32-floats-return-ABI]
+[`i686-apple-darwin`](platform-support/apple-darwin.md) | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+) [^x86_32-floats-return-ABI]
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku [^x86_32-floats-return-ABI]
 [`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd [^x86_32-floats-return-ABI]
 [`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 with SSE2 [^x86_32-floats-return-ABI]
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD [^x86_32-floats-return-ABI]
-`i686-uwp-windows-gnu` | ? |  | [^x86_32-floats-return-ABI]
-`i686-uwp-windows-msvc` | ? |  | [^x86_32-floats-return-ABI]
+[`i686-unknown-redox`](platform-support/redox.md) | ✓ |  | i686 Redox OS
+`i686-uwp-windows-gnu` | ✓ |  | [^x86_32-floats-return-ABI]
+`i686-uwp-windows-msvc` | ✓ |  | [^x86_32-floats-return-ABI]
 [`i686-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ |   | 32-bit Windows 7 support [^x86_32-floats-return-ABI]
 `i686-wrs-vxworks` | ? |  | [^x86_32-floats-return-ABI]
 [`loongarch64-unknown-linux-musl`](platform-support/loongarch-linux.md) | ? |  | LoongArch64 Linux (LP64D ABI) with musl 1.2.3
@@ -362,13 +363,13 @@ target | std | host | notes
 [`sparc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/sparc64
 [`thumbv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Thumb-mode Bare Armv4T
 [`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Thumb-mode Bare Armv5TE
-`thumbv7a-pc-windows-msvc` | ? |  |
+`thumbv7a-pc-windows-msvc` | ✓ |  |
 `thumbv7a-uwp-windows-msvc` | ✓ |  |
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode Armv7-A Linux with NEON, musl 1.2.3
 [`wasm32-wasip2`](platform-support/wasm32-wasip2.md) | ✓ |  | WebAssembly
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
-`x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
-[`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ? |  | x86 64-bit tvOS
+[`x86_64-apple-ios-macabi`](platform-support/apple-ios-macabi.md) | ✓ |  | Apple Catalyst on x86_64
+[`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | x86 64-bit tvOS
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | x86 64-bit Apple WatchOS simulator
 [`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS |
 [`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |   | 64-bit Unikraft with musl 1.2.3
@@ -383,5 +384,8 @@ target | std | host | notes
 `x86_64-wrs-vxworks` | ? |  |
 [`x86_64h-apple-darwin`](platform-support/x86_64h-apple-darwin.md) | ✓ | ✓ | macOS with late-gen Intel (at least Haswell)
 [`x86_64-unknown-linux-none`](platform-support/x86_64-unknown-linux-none.md) | * |  | 64-bit Linux with no libc
+`xtensa-esp32-none-elf` |  |  | Xtensa ESP32
+`xtensa-esp32s2-none-elf` |  |  | Xtensa ESP32-S2
+`xtensa-esp32s3-none-elf` |  |  | Xtensa ESP32-S3
 
 [runs on NVIDIA GPUs]: https://github.com/japaric-archived/nvptx#targets

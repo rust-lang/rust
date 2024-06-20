@@ -50,6 +50,7 @@ pub fn match1(e: Enum1) -> u8 {
 }
 
 // Case 2: Special cases don't apply.
+#[rustfmt::skip]
 pub enum X {
     _2=2, _3, _4, _5, _6, _7, _8, _9, _10, _11,
     _12, _13, _14, _15, _16, _17, _18, _19, _20,

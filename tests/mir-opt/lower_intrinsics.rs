@@ -184,9 +184,9 @@ pub fn assume() {
 // EMIT_MIR lower_intrinsics.with_overflow.LowerIntrinsics.diff
 pub fn with_overflow(a: i32, b: i32) {
     // CHECK-LABEL: fn with_overflow(
-    // CHECK: CheckedAdd(
-    // CHECK: CheckedSub(
-    // CHECK: CheckedMul(
+    // CHECK: AddWithOverflow(
+    // CHECK: SubWithOverflow(
+    // CHECK: MulWithOverflow(
 
     let _x = core::intrinsics::add_with_overflow(a, b);
     let _y = core::intrinsics::sub_with_overflow(a, b);
@@ -257,4 +257,13 @@ pub fn make_pointers(a: *const u8, b: *mut (), n: usize) {
     let _thin_mut: *mut u8 = aggregate_raw_ptr(b, ());
     let _slice_const: *const [u16] = aggregate_raw_ptr(a, n);
     let _slice_mut: *mut [u64] = aggregate_raw_ptr(b, n);
+}
+
+// EMIT_MIR lower_intrinsics.get_metadata.LowerIntrinsics.diff
+pub fn get_metadata(a: *const i32, b: *const [u8], c: *const dyn std::fmt::Debug) {
+    use std::intrinsics::ptr_metadata;
+
+    let _unit = ptr_metadata(a);
+    let _usize = ptr_metadata(b);
+    let _vtable = ptr_metadata(c);
 }

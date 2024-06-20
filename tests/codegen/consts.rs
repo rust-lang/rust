@@ -9,11 +9,11 @@
 // CHECK: @STATIC = {{.*}}, align 4
 
 // This checks the constants from inline_enum_const
-// CHECK: @alloc_af1f8e8e6f4b341431a1d405e652df2d = {{.*}}, align 2
+// CHECK: @alloc_[[INLINE_ENUM_HASH:[a-f0-9]{32}]] = {{.*}}, align 2
 
 // This checks the constants from {low,high}_align_const, they share the same
 // constant, but the alignment differs, so the higher one should be used
-// CHECK: [[LOW_HIGH:@alloc_[a-f0-9]+]] = {{.*}}, align 4
+// CHECK: [[LOW_HIGH:@alloc_[a-f0-9]{32}]] = {{.*}}, align 4
 
 #[derive(Copy, Clone)]
 // repr(i16) is required for the {low,high}_align_const test

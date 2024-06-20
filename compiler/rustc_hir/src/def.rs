@@ -76,6 +76,8 @@ pub enum DefKind {
     /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
     ConstParam,
     Static {
+        /// Whether it's a `unsafe static`, `safe static` (inside extern only) or just a `static`.
+        safety: hir::Safety,
         /// Whether it's a `static mut` or just a `static`.
         mutability: ast::Mutability,
         /// Whether it's an anonymous static generated for nested allocations.

@@ -191,10 +191,10 @@ LL |     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
    |                                 ^^^^^^^^^^^^^^ help: supported expressions are count, ignore, index and len
 
 error: expected identifier
-  --> $DIR/syntax-errors.rs:118:31
+  --> $DIR/syntax-errors.rs:118:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ {} } };
-   |                               ^^^^^^
+   |                                 ^^
 
 error: `count` can not be placed inside the inner-most repetition
   --> $DIR/syntax-errors.rs:12:24
@@ -208,7 +208,7 @@ error: `count` can not be placed inside the inner-most repetition
 LL |     ( $i:ident ) => { ${ count($i) } };
    |                        ^^^^^^^^^^^^^
 
-error: variable 'i' is still repeating at this depth
+error: variable `i` is still repeating at this depth
   --> $DIR/syntax-errors.rs:37:36
    |
 LL |     ( $( $i:ident ),* ) => { count($i) };

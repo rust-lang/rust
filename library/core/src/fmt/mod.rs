@@ -338,20 +338,19 @@ pub struct Arguments<'a> {
 impl<'a> Arguments<'a> {
     #[inline]
     #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
-    pub const fn new_const(pieces: &'a [&'static str]) -> Self {
-        if pieces.len() > 1 {
-            panic!("invalid args");
-        }
+    pub const fn new_const<const N: usize>(pieces: &'a [&'static str; N]) -> Self {
+        const { assert!(N <= 1) };
         Arguments { pieces, fmt: None, args: &[] }
     }
 
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
     #[inline]
-    pub fn new_v1(pieces: &'a [&'static str], args: &'a [rt::Argument<'a>]) -> Arguments<'a> {
-        if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
-            panic!("invalid args");
-        }
+    pub fn new_v1<const P: usize, const A: usize>(
+        pieces: &'a [&'static str; P],
+        args: &'a [rt::Argument<'a>; A],
+    ) -> Arguments<'a> {
+        const { assert!(P >= A && P <= A + 1, "invalid args") }
         Arguments { pieces, fmt: None, args }
     }
 
@@ -2399,23 +2398,47 @@ impl Display for bool {
 impl Debug for str {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.write_char('"')?;
-        let mut from = 0;
-        for (i, c) in self.char_indices() {
-            let esc = c.escape_debug_ext(EscapeDebugExtArgs {
-                escape_grapheme_extended: true,
-                escape_single_quote: false,
-                escape_double_quote: true,
-            });
-            // If char needs escaping, flush backlog so far and write, else skip
-            if esc.len() != 1 {
-                f.write_str(&self[from..i])?;
-                for c in esc {
-                    f.write_char(c)?;
-                }
-                from = i + c.len_utf8();
-            }
+
+        // substring we know is printable
+        let mut printable_range = 0..0;
+
+        fn needs_escape(b: u8) -> bool {
+            b > 0x7E || b < 0x20 || b == b'\\' || b == b'"'
         }
-        f.write_str(&self[from..])?;
+
+        // the loop here first skips over runs of printable ASCII as a fast path.
+        // other chars (unicode, or ASCII that needs escaping) are then handled per-`char`.
+        let mut rest = self;
+        while rest.len() > 0 {
+            let Some(non_printable_start) = rest.as_bytes().iter().position(|&b| needs_escape(b))
+            else {
+                printable_range.end += rest.len();
+                break;
+            };
+
+            printable_range.end += non_printable_start;
+            // SAFETY: the position was derived from an iterator, so is known to be within bounds, and at a char boundary
+            rest = unsafe { rest.get_unchecked(non_printable_start..) };
+
+            let mut chars = rest.chars();
+            if let Some(c) = chars.next() {
+                let esc = c.escape_debug_ext(EscapeDebugExtArgs {
+                    escape_grapheme_extended: true,
+                    escape_single_quote: false,
+                    escape_double_quote: true,
+                });
+                if esc.len() != 1 {
+                    f.write_str(&self[printable_range.clone()])?;
+                    Display::fmt(&esc, f)?;
+                    printable_range.start = printable_range.end + c.len_utf8();
+                }
+                printable_range.end += c.len_utf8();
+            }
+            rest = chars.as_str();
+        }
+
+        f.write_str(&self[printable_range])?;
+
         f.write_char('"')
     }
 }
@@ -2431,13 +2454,12 @@ impl Display for str {
 impl Debug for char {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.write_char('\'')?;
-        for c in self.escape_debug_ext(EscapeDebugExtArgs {
+        let esc = self.escape_debug_ext(EscapeDebugExtArgs {
             escape_grapheme_extended: true,
             escape_single_quote: true,
             escape_double_quote: false,
-        }) {
-            f.write_char(c)?
-        }
+        });
+        Display::fmt(&esc, f)?;
         f.write_char('\'')
     }
 }

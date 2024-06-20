@@ -73,7 +73,9 @@ pub use alloc_crate::alloc::*;
 /// work, such as to serve alignment requests greater than the alignment
 /// provided directly by the backing system allocator.
 ///
-/// This type implements the `GlobalAlloc` trait and Rust programs by default
+/// This type implements the [`GlobalAlloc`] trait. Currently the default
+/// global allocator is unspecified. Libraries, however, like `cdylib`s and
+/// `staticlib`s are guaranteed to use the [`System`] by default and as such
 /// work as if they had this definition:
 ///
 /// ```rust
