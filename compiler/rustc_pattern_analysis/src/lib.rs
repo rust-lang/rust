@@ -21,9 +21,7 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 use std::fmt;
 
-// Re-exports to avoid rustc_index version issues.
-pub use rustc_index::Idx;
-pub use rustc_index::IndexVec;
+pub use rustc_index::{Idx, IndexVec}; // re-exported to avoid rustc_index version issues
 
 #[cfg(feature = "rustc")]
 use rustc_middle::ty::Ty;

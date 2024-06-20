@@ -4,6 +4,9 @@
 //! This module is imported by default when `#![no_std]` is used in the same
 //! manner as the standard library's prelude.
 
+// No formatting: this file is nothing but re-exports, and their order is worth preserving.
+#![cfg_attr(rustfmt, rustfmt::skip)]
+
 #![stable(feature = "core_prelude", since = "1.4.0")]
 
 mod common;
