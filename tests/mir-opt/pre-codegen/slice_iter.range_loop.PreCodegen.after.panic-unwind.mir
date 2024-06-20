@@ -12,9 +12,10 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     let mut _14: &impl Fn(usize, &T);
     let mut _15: (usize, &T);
     let _16: ();
+    let mut _17: usize;
     scope 1 {
         debug ((iter: std::ops::Range<usize>).0: usize) => _4;
-        debug ((iter: std::ops::Range<usize>).1: usize) => _3;
+        debug ((iter: std::ops::Range<usize>).1: usize) => _17;
         let _10: usize;
         scope 2 {
             debug i => _10;
@@ -42,6 +43,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     bb0: {
         _3 = PtrMetadata(_1);
         StorageLive(_4);
+        StorageLive(_17);
         _4 = const 0_usize;
         goto -> bb1;
     }
@@ -62,6 +64,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageDead(_7);
         StorageDead(_9);
         StorageDead(_4);
+        StorageDead(_17);
         drop(_2) -> [return: bb3, unwind continue];
     }
 

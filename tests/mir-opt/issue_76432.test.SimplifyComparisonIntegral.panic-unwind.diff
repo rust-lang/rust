@@ -26,8 +26,8 @@
           StorageLive(_3);
           StorageLive(_4);
           _4 = [_1, _1, _1];
-          _3 = &_4;
-          _2 = move _3 as &[T] (PointerCoercion(Unsize));
+          nop;
+          nop;
           StorageDead(_3);
           nop;
           nop;
@@ -40,8 +40,11 @@
   
       bb2: {
           StorageLive(_7);
+          nop;
           StorageLive(_8);
+          nop;
           StorageLive(_9);
+          nop;
           StorageDead(_9);
           StorageDead(_8);
           StorageDead(_7);
