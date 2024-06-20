@@ -17,6 +17,8 @@ use rustc_span::FileName;
 
 use super::GlobalTestOptions;
 
+/// This struct contains information about the doctest itself which is then used to generate
+/// doctest source code appropriately.
 pub(crate) struct DocTest {
     pub(crate) supports_color: bool,
     pub(crate) already_has_extern_crate: bool,
