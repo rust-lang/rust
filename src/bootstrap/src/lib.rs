@@ -41,7 +41,7 @@ use crate::core::builder::Kind;
 use crate::core::config::{flags, LldMode};
 use crate::core::config::{DryRun, Target};
 use crate::core::config::{LlvmLibunwind, TargetSelection};
-use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, OutputMode};
+use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
 
 mod core;
@@ -956,6 +956,65 @@ impl Build {
             rustc.args(["--print", "sysroot"]);
             output(&mut rustc).trim().into()
         })
+    }
+
+    fn run_tracked(&self, command: BootstrapCommand) -> CommandOutput {
+        if self.config.dry_run() {
+            return CommandOutput::default();
+        }
+
+        self.verbose(|| println!("running: {command:?}"));
+
+        let (output, print_error): (io::Result<CommandOutput>, bool) = match command.output_mode {
+            mode @ (OutputMode::PrintAll | OutputMode::PrintOutput) => (
+                command.command.status().map(|status| status.into()),
+                matches!(mode, OutputMode::PrintAll),
+            ),
+            OutputMode::SuppressOnSuccess => (command.command.output().map(|o| o.into()), true),
+        };
+
+        let output = match output {
+            Ok(output) => output,
+            Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", command, e)),
+        };
+        if !output.is_success() {
+            if print_error {
+                println!(
+                    "\n\nCommand did not execute successfully.\
+                \nExpected success, got: {}",
+                    output.status(),
+                );
+
+                if !self.is_verbose() {
+                    println!("Add `-v` to see more details.\n");
+                }
+
+                self.verbose(|| {
+                    println!(
+                        "\nSTDOUT ----\n{}\n\
+                    STDERR ----\n{}\n",
+                        output.stdout(),
+                        output.stderr(),
+                    )
+                });
+            }
+
+            match command.failure_behavior {
+                BehaviorOnFailure::DelayFail => {
+                    if self.fail_fast {
+                        exit!(1);
+                    }
+
+                    let mut failures = self.delayed_failures.borrow_mut();
+                    failures.push(format!("{command:?}"));
+                }
+                BehaviorOnFailure::Exit => {
+                    exit!(1);
+                }
+                BehaviorOnFailure::Ignore => {}
+            }
+        }
+        output
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
