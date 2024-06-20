@@ -1,4 +1,4 @@
-#![unstable(feature = "async_drop", issue = "none")]
+#![unstable(feature = "async_drop", issue = "126482")]
 
 use crate::fmt;
 use crate::future::{Future, IntoFuture};
@@ -10,27 +10,27 @@ use crate::task::{ready, Context, Poll};
 
 /// Asynchronously drops a value by running `AsyncDrop::async_drop`
 /// on a value and its fields recursively.
-#[unstable(feature = "async_drop", issue = "none")]
+#[unstable(feature = "async_drop", issue = "126482")]
 pub fn async_drop<T>(value: T) -> AsyncDropOwning<T> {
     AsyncDropOwning { value: MaybeUninit::new(value), dtor: None, _pinned: PhantomPinned }
 }
 
 /// A future returned by the [`async_drop`].
-#[unstable(feature = "async_drop", issue = "none")]
+#[unstable(feature = "async_drop", issue = "126482")]
 pub struct AsyncDropOwning<T> {
     value: MaybeUninit<T>,
     dtor: Option<AsyncDropInPlace<T>>,
     _pinned: PhantomPinned,
 }
 
-#[unstable(feature = "async_drop", issue = "none")]
+#[unstable(feature = "async_drop", issue = "126482")]
 impl<T> fmt::Debug for AsyncDropOwning<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("AsyncDropOwning").finish_non_exhaustive()
     }
 }
 
-#[unstable(feature = "async_drop", issue = "none")]
+#[unstable(feature = "async_drop", issue = "126482")]
 impl<T> Future for AsyncDropOwning<T> {
     type Output = ();
 
@@ -86,24 +86,24 @@ unsafe fn async_drop_in_place_raw<T: ?Sized>(
 ///   returned future stores the `to_drop` pointer and user is required
 ///   to guarantee that dropped value doesn't move.
 ///
-#[unstable(feature = "async_drop", issue = "none")]
+#[unstable(feature = "async_drop", issue = "126482")]
 pub unsafe fn async_drop_in_place<T: ?Sized>(to_drop: *mut T) -> AsyncDropInPlace<T> {
     // SAFETY: `async_drop_in_place_raw` has the same safety requirements
     unsafe { AsyncDropInPlace(async_drop_in_place_raw(to_drop)) }
 }
 
 /// A future returned by the [`async_drop_in_place`].
-#[unstable(feature = "async_drop", issue = "none")]
+#[unstable(feature = "async_drop", issue = "126482")]
 pub struct AsyncDropInPlace<T: ?Sized>(<T as AsyncDestruct>::AsyncDestructor);
 
-#[unstable(feature = "async_drop", issue = "none")]
+#[unstable(feature = "async_drop", issue = "126482")]
 impl<T: ?Sized> fmt::Debug for AsyncDropInPlace<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("AsyncDropInPlace").finish_non_exhaustive()
     }
 }
 
-#[unstable(feature = "async_drop", issue = "none")]
+#[unstable(feature = "async_drop", issue = "126482")]
 impl<T: ?Sized> Future for AsyncDropInPlace<T> {
     type Output = ();
 
@@ -117,18 +117,18 @@ impl<T: ?Sized> Future for AsyncDropInPlace<T> {
 // FIXME(zetanumbers): Add same restrictions on AsyncDrop impls as
 //   with Drop impls
 /// Custom code within the asynchronous destructor.
-#[unstable(feature = "async_drop", issue = "none")]
+#[unstable(feature = "async_drop", issue = "126482")]
 #[lang = "async_drop"]
 pub trait AsyncDrop {
     /// A future returned by the [`AsyncDrop::async_drop`] to be part
     /// of the async destructor.
-    #[unstable(feature = "async_drop", issue = "none")]
+    #[unstable(feature = "async_drop", issue = "126482")]
     type Dropper<'a>: Future<Output = ()>
     where
         Self: 'a;
 
     /// Constructs the asynchronous destructor for this type.
-    #[unstable(feature = "async_drop", issue = "none")]
+    #[unstable(feature = "async_drop", issue = "126482")]
     fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_>;
 }
 
@@ -161,6 +161,11 @@ async unsafe fn surface_drop_in_place<T: Drop + ?Sized>(ptr: *mut T) {
 /// wrapped future completes by returning `Poll::Ready(())` on poll. This
 /// is useful for constructing async destructors to guarantee this
 /// "fuse" property
+//
+// FIXME: Consider optimizing combinators to not have to use fuse in majority
+// of cases, perhaps by adding `#[(rustc_)idempotent(_future)]` attribute for
+// async functions and blocks with the unit return type. However current layout
+// optimizations currently encode `None` case into the async block's discriminant.
 struct Fuse<T> {
     inner: Option<T>,
 }
@@ -249,6 +254,13 @@ async unsafe fn either<O: IntoFuture<Output = ()>, M: IntoFuture<Output = ()>, T
         drop(matched);
         other.await
     }
+}
+
+#[lang = "async_drop_deferred_drop_in_place"]
+async unsafe fn deferred_drop_in_place<T>(to_drop: *mut T) {
+    // SAFETY: same safety requirements as with drop_in_place (implied by
+    // function's name)
+    unsafe { crate::ptr::drop_in_place(to_drop) }
 }
 
 /// Used for noop async destructors. We don't use [`core::future::Ready`]

@@ -9,6 +9,12 @@ use rustc_ast::ptr::P;
 use rustc_ast::ModKind;
 use rustc_span::symbol::Ident;
 
+enum DelegationKind<'a> {
+    Single,
+    List(&'a [(Ident, Option<Ident>)]),
+    Glob,
+}
+
 fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
     format!("{}{}", State::to_string(|s| s.print_visibility(vis)), s)
 }
@@ -31,7 +37,13 @@ impl<'a> State<'a> {
             ast::ForeignItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
             }
-            ast::ForeignItemKind::Static(box ast::StaticForeignItem { ty, mutability, expr }) => {
+            ast::ForeignItemKind::Static(box ast::StaticForeignItem {
+                ty,
+                mutability,
+                expr,
+                safety,
+            }) => {
+                self.print_safety(*safety);
                 self.print_item_const(
                     ident,
                     Some(*mutability),
@@ -165,7 +177,8 @@ impl<'a> State<'a> {
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(box StaticItem { ty, mutability: mutbl, expr: body }) => {
+            ast::ItemKind::Static(box StaticItem { ty, safety, mutability: mutbl, expr: body }) => {
+                self.print_safety(*safety);
                 self.print_item_const(
                     item.ident,
                     Some(*mutbl),
@@ -380,7 +393,7 @@ impl<'a> State<'a> {
                 &item.vis,
                 &deleg.qself,
                 &deleg.path,
-                None,
+                DelegationKind::Single,
                 &deleg.body,
             ),
             ast::ItemKind::DelegationMac(deleg) => self.print_delegation(
@@ -388,7 +401,7 @@ impl<'a> State<'a> {
                 &item.vis,
                 &deleg.qself,
                 &deleg.prefix,
-                Some(&deleg.suffixes),
+                deleg.suffixes.as_ref().map_or(DelegationKind::Glob, |s| DelegationKind::List(s)),
                 &deleg.body,
             ),
         }
@@ -572,7 +585,7 @@ impl<'a> State<'a> {
                 vis,
                 &deleg.qself,
                 &deleg.path,
-                None,
+                DelegationKind::Single,
                 &deleg.body,
             ),
             ast::AssocItemKind::DelegationMac(deleg) => self.print_delegation(
@@ -580,20 +593,20 @@ impl<'a> State<'a> {
                 vis,
                 &deleg.qself,
                 &deleg.prefix,
-                Some(&deleg.suffixes),
+                deleg.suffixes.as_ref().map_or(DelegationKind::Glob, |s| DelegationKind::List(s)),
                 &deleg.body,
             ),
         }
         self.ann.post(self, AnnNode::SubItem(id))
     }
 
-    pub(crate) fn print_delegation(
+    fn print_delegation(
         &mut self,
         attrs: &[ast::Attribute],
         vis: &ast::Visibility,
         qself: &Option<P<ast::QSelf>>,
         path: &ast::Path,
-        suffixes: Option<&[(Ident, Option<Ident>)]>,
+        kind: DelegationKind<'_>,
         body: &Option<P<ast::Block>>,
     ) {
         if body.is_some() {
@@ -607,21 +620,28 @@ impl<'a> State<'a> {
         } else {
             self.print_path(path, false, 0);
         }
-        if let Some(suffixes) = suffixes {
-            self.word("::");
-            self.word("{");
-            for (i, (ident, rename)) in suffixes.iter().enumerate() {
-                self.print_ident(*ident);
-                if let Some(rename) = rename {
-                    self.nbsp();
-                    self.word_nbsp("as");
-                    self.print_ident(*rename);
+        match kind {
+            DelegationKind::Single => {}
+            DelegationKind::List(suffixes) => {
+                self.word("::");
+                self.word("{");
+                for (i, (ident, rename)) in suffixes.iter().enumerate() {
+                    self.print_ident(*ident);
+                    if let Some(rename) = rename {
+                        self.nbsp();
+                        self.word_nbsp("as");
+                        self.print_ident(*rename);
+                    }
+                    if i != suffixes.len() - 1 {
+                        self.word_space(",");
+                    }
                 }
-                if i != suffixes.len() - 1 {
-                    self.word_space(",");
-                }
+                self.word("}");
             }
-            self.word("}");
+            DelegationKind::Glob => {
+                self.word("::");
+                self.word("*");
+            }
         }
         if let Some(body) = body {
             self.nbsp();

@@ -4,6 +4,14 @@ hir_analysis_ambiguous_assoc_item = ambiguous associated {$assoc_kind} `{$assoc_
 hir_analysis_ambiguous_lifetime_bound =
     ambiguous lifetime bound, explicit lifetime bound required
 
+hir_analysis_assoc_item_constraints_not_allowed_here =
+    associated item constraints are not allowed here
+    .label = associated item constraint not allowed here
+
+hir_analysis_assoc_item_is_private = {$kind} `{$name}` is private
+    .label = private {$kind}
+    .defined_here_label = the {$kind} is defined here
+
 hir_analysis_assoc_item_not_found = associated {$assoc_kind} `{$assoc_name}` not found for `{$ty_param_name}`
 
 hir_analysis_assoc_item_not_found_found_in_other_trait_label = there is {$identically_named ->
@@ -23,10 +31,6 @@ hir_analysis_assoc_kind_mismatch = expected {$expected}, found {$got}
     .bound_on_assoc_const_label = bounds are not allowed on associated constants
 
 hir_analysis_assoc_kind_mismatch_wrap_in_braces_sugg = consider adding braces here
-
-hir_analysis_assoc_type_binding_not_allowed =
-    associated type bindings are not allowed here
-    .label = associated type not allowed here
 
 hir_analysis_associated_type_trait_uninferred_generic_params = cannot use the associated type of a trait with uninferred generic parameters
     .suggestion = use a fully qualified path with inferred lifetimes
@@ -371,9 +375,9 @@ hir_analysis_pass_to_variadic_function = can't pass `{$ty}` to variadic function
     .suggestion = cast the value to `{$cast_ty}`
     .help = cast the value to `{$cast_ty}`
 
-hir_analysis_pattern_type_non_const_range = "range patterns must have constant range start and end"
-hir_analysis_pattern_type_wild_pat = "wildcard patterns are not permitted for pattern types"
-    .label = "this type is the same as the inner type without a pattern"
+hir_analysis_pattern_type_non_const_range = range patterns must have constant range start and end
+hir_analysis_pattern_type_wild_pat = wildcard patterns are not permitted for pattern types
+    .label = this type is the same as the inner type without a pattern
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures
 
@@ -459,6 +463,10 @@ hir_analysis_static_specialize = cannot specialize on `'static` lifetime
 
 hir_analysis_tait_forward_compat = item constrains opaque type that is not in its signature
     .note = this item must mention the opaque type in its signature in order to be able to register hidden types
+
+hir_analysis_tait_forward_compat2 = item does not constrain `{$opaque_type}`, but has it in its signature
+    .note = consider moving the opaque type's declaration and defining uses into a separate module
+    .opaque = this opaque type is in the signature
 
 hir_analysis_target_feature_on_main = `main` function is not allowed to have `#[target_feature]`
 

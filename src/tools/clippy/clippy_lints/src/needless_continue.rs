@@ -178,8 +178,7 @@ impl EarlyLintPass for NeedlessContinue {
 /// Given an expression, returns true if either of the following is true
 ///
 /// - The expression is a `continue` node.
-/// - The expression node is a block with the first statement being a
-/// `continue`.
+/// - The expression node is a block with the first statement being a `continue`.
 fn needless_continue_in_else(else_expr: &ast::Expr, label: Option<&ast::Label>) -> bool {
     match else_expr.kind {
         ast::ExprKind::Block(ref else_block, _) => is_first_block_stmt_continue(else_block, label),

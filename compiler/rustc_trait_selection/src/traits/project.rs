@@ -523,16 +523,9 @@ fn normalize_to_error<'a, 'tcx>(
         | ty::AliasTermKind::InherentTy
         | ty::AliasTermKind::OpaqueTy
         | ty::AliasTermKind::WeakTy => selcx.infcx.next_ty_var(cause.span).into(),
-        ty::AliasTermKind::UnevaluatedConst | ty::AliasTermKind::ProjectionConst => selcx
-            .infcx
-            .next_const_var(
-                selcx
-                    .tcx()
-                    .type_of(projection_term.def_id)
-                    .instantiate(selcx.tcx(), projection_term.args),
-                cause.span,
-            )
-            .into(),
+        ty::AliasTermKind::UnevaluatedConst | ty::AliasTermKind::ProjectionConst => {
+            selcx.infcx.next_const_var(cause.span).into()
+        }
     };
     let trait_obligation = Obligation {
         cause,
@@ -744,8 +737,6 @@ fn project<'cx, 'tcx>(
                         obligation.predicate.def_id,
                         obligation.predicate.args,
                     ),
-                    tcx.type_of(obligation.predicate.def_id)
-                        .instantiate(tcx, obligation.predicate.args),
                 )
                 .into(),
                 kind => {
@@ -1024,6 +1015,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // not eligible.
                 let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
 
+                let tcx = selcx.tcx();
                 let lang_items = selcx.tcx().lang_items();
                 if [
                     lang_items.coroutine_trait(),
@@ -1040,7 +1032,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 .contains(&Some(trait_ref.def_id))
                 {
                     true
-                } else if lang_items.async_fn_kind_helper() == Some(trait_ref.def_id) {
+                } else if tcx.is_lang_item(trait_ref.def_id, LangItem::AsyncFnKindHelper) {
                     // FIXME(async_closures): Validity constraints here could be cleaned up.
                     if obligation.predicate.args.type_at(0).is_ty_var()
                         || obligation.predicate.args.type_at(4).is_ty_var()
@@ -1052,7 +1044,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         obligation.predicate.args.type_at(0).to_opt_closure_kind().is_some()
                             && obligation.predicate.args.type_at(1).to_opt_closure_kind().is_some()
                     }
-                } else if lang_items.discriminant_kind_trait() == Some(trait_ref.def_id) {
+                } else if tcx.is_lang_item(trait_ref.def_id, LangItem::DiscriminantKind) {
                     match self_ty.kind() {
                         ty::Bool
                         | ty::Char
@@ -1089,7 +1081,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Infer(..)
                         | ty::Error(_) => false,
                     }
-                } else if lang_items.async_destruct_trait() == Some(trait_ref.def_id) {
+                } else if tcx.is_lang_item(trait_ref.def_id, LangItem::AsyncDestruct) {
                     match self_ty.kind() {
                         ty::Bool
                         | ty::Char
@@ -1125,7 +1117,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Infer(_)
                         | ty::Error(_) => false,
                     }
-                } else if lang_items.pointee_trait() == Some(trait_ref.def_id) {
+                } else if tcx.is_lang_item(trait_ref.def_id, LangItem::PointeeTrait) {
                     let tail = selcx.tcx().struct_tail_with_normalize(
                         self_ty,
                         |ty| {
@@ -1309,15 +1301,15 @@ fn confirm_select_candidate<'cx, 'tcx>(
     match impl_source {
         ImplSource::UserDefined(data) => confirm_impl_candidate(selcx, obligation, data),
         ImplSource::Builtin(BuiltinImplSource::Misc, data) => {
-            let trait_def_id = obligation.predicate.trait_def_id(selcx.tcx());
-            let lang_items = selcx.tcx().lang_items();
-            if lang_items.coroutine_trait() == Some(trait_def_id) {
+            let tcx = selcx.tcx();
+            let trait_def_id = obligation.predicate.trait_def_id(tcx);
+            if tcx.is_lang_item(trait_def_id, LangItem::Coroutine) {
                 confirm_coroutine_candidate(selcx, obligation, data)
-            } else if lang_items.future_trait() == Some(trait_def_id) {
+            } else if tcx.is_lang_item(trait_def_id, LangItem::Future) {
                 confirm_future_candidate(selcx, obligation, data)
-            } else if lang_items.iterator_trait() == Some(trait_def_id) {
+            } else if tcx.is_lang_item(trait_def_id, LangItem::Iterator) {
                 confirm_iterator_candidate(selcx, obligation, data)
-            } else if lang_items.async_iterator_trait() == Some(trait_def_id) {
+            } else if tcx.is_lang_item(trait_def_id, LangItem::AsyncIterator) {
                 confirm_async_iterator_candidate(selcx, obligation, data)
             } else if selcx.tcx().fn_trait_kind_from_def_id(trait_def_id).is_some() {
                 if obligation.predicate.self_ty().is_closure()
@@ -1329,7 +1321,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
                 }
             } else if selcx.tcx().async_fn_trait_kind_from_def_id(trait_def_id).is_some() {
                 confirm_async_closure_candidate(selcx, obligation, data)
-            } else if lang_items.async_fn_kind_helper() == Some(trait_def_id) {
+            } else if tcx.is_lang_item(trait_def_id, LangItem::AsyncFnKindHelper) {
                 confirm_async_fn_kind_helper_candidate(selcx, obligation, data)
             } else {
                 confirm_builtin_candidate(selcx, obligation, data)
@@ -1382,15 +1374,15 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
         coroutine_sig,
     );
 
-    let name = tcx.associated_item(obligation.predicate.def_id).name;
-    let ty = if name == sym::Return {
+    let ty = if tcx.is_lang_item(obligation.predicate.def_id, LangItem::CoroutineReturn) {
         return_ty
-    } else if name == sym::Yield {
+    } else if tcx.is_lang_item(obligation.predicate.def_id, LangItem::CoroutineYield) {
         yield_ty
     } else {
         span_bug!(
             tcx.def_span(obligation.predicate.def_id),
-            "unexpected associated type: `Coroutine::{name}`"
+            "unexpected associated type: `Coroutine::{}`",
+            tcx.item_name(obligation.predicate.def_id),
         );
     };
 
@@ -1547,21 +1539,20 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
     let self_ty = obligation.predicate.self_ty();
-    let lang_items = tcx.lang_items();
     let item_def_id = obligation.predicate.def_id;
     let trait_def_id = tcx.trait_of_item(item_def_id).unwrap();
     let args = tcx.mk_args(&[self_ty.into()]);
-    let (term, obligations) = if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
+    let (term, obligations) = if tcx.is_lang_item(trait_def_id, LangItem::DiscriminantKind) {
         let discriminant_def_id = tcx.require_lang_item(LangItem::Discriminant, None);
         assert_eq!(discriminant_def_id, item_def_id);
 
         (self_ty.discriminant_ty(tcx).into(), Vec::new())
-    } else if lang_items.async_destruct_trait() == Some(trait_def_id) {
+    } else if tcx.is_lang_item(trait_def_id, LangItem::AsyncDestruct) {
         let destructor_def_id = tcx.associated_item_def_ids(trait_def_id)[0];
         assert_eq!(destructor_def_id, item_def_id);
 
-        (self_ty.async_destructor_ty(tcx, obligation.param_env).into(), Vec::new())
-    } else if lang_items.pointee_trait() == Some(trait_def_id) {
+        (self_ty.async_destructor_ty(tcx).into(), Vec::new())
+    } else if tcx.is_lang_item(trait_def_id, LangItem::PointeeTrait) {
         let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
         assert_eq!(metadata_def_id, item_def_id);
 
@@ -1680,14 +1671,8 @@ fn confirm_closure_candidate<'cx, 'tcx>(
                         args.coroutine_captures_by_ref_ty(),
                     )
                 } else {
-                    let async_fn_kind_trait_def_id =
-                        tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
-                    let upvars_projection_def_id = tcx
-                        .associated_items(async_fn_kind_trait_def_id)
-                        .filter_by_name_unhygienic(sym::Upvars)
-                        .next()
-                        .unwrap()
-                        .def_id;
+                    let upvars_projection_def_id =
+                        tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
                     let tupled_upvars_ty = Ty::new_projection(
                         tcx,
                         upvars_projection_def_id,
@@ -1816,14 +1801,8 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                             args.coroutine_captures_by_ref_ty(),
                         )
                     } else {
-                        let async_fn_kind_trait_def_id =
-                            tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
-                        let upvars_projection_def_id = tcx
-                            .associated_items(async_fn_kind_trait_def_id)
-                            .filter_by_name_unhygienic(sym::Upvars)
-                            .next()
-                            .unwrap()
-                            .def_id;
+                        let upvars_projection_def_id =
+                            tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
                         // When we don't know the closure kind (and therefore also the closure's upvars,
                         // which are computed at the same time), we must delay the computation of the
                         // generator's upvars. We do this using the `AsyncFnKindHelper`, which as a trait
@@ -1880,13 +1859,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
             let term = match item_name {
                 sym::CallOnceFuture | sym::CallRefFuture => sig.output(),
                 sym::Output => {
-                    let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
-                    let future_output_def_id = tcx
-                        .associated_items(future_trait_def_id)
-                        .filter_by_name_unhygienic(sym::Output)
-                        .next()
-                        .unwrap()
-                        .def_id;
+                    let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
                     Ty::new_projection(tcx, future_output_def_id, [sig.output()])
                 }
                 name => bug!("no such associated type: {name}"),
@@ -1919,13 +1892,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
             let term = match item_name {
                 sym::CallOnceFuture | sym::CallRefFuture => sig.output(),
                 sym::Output => {
-                    let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
-                    let future_output_def_id = tcx
-                        .associated_items(future_trait_def_id)
-                        .filter_by_name_unhygienic(sym::Output)
-                        .next()
-                        .unwrap()
-                        .def_id;
+                    let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
                     Ty::new_projection(tcx, future_output_def_id, [sig.output()])
                 }
                 name => bug!("no such associated type: {name}"),
@@ -2095,15 +2062,14 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     // * `args` ends up as `[u32, S]`
     let args = obligation.predicate.args.rebase_onto(tcx, trait_def_id, args);
     let args = translate_args(selcx.infcx, param_env, impl_def_id, args, assoc_ty.defining_node);
-    let ty = tcx.type_of(assoc_ty.item.def_id);
     let is_const = matches!(tcx.def_kind(assoc_ty.item.def_id), DefKind::AssocConst);
-    let term: ty::EarlyBinder<ty::Term<'tcx>> = if is_const {
+    let term: ty::EarlyBinder<'tcx, ty::Term<'tcx>> = if is_const {
         let did = assoc_ty.item.def_id;
         let identity_args = crate::traits::GenericArgs::identity_for_item(tcx, did);
         let uv = ty::UnevaluatedConst::new(did, identity_args);
-        ty.map_bound(|ty| ty::Const::new_unevaluated(tcx, uv, ty).into())
+        ty::EarlyBinder::bind(ty::Const::new_unevaluated(tcx, uv).into())
     } else {
-        ty.map_bound(|ty| ty.into())
+        tcx.type_of(assoc_ty.item.def_id).map_bound(|ty| ty.into())
     };
     if !tcx.check_args_compatible(assoc_ty.item.def_id, args) {
         let err = Ty::new_error_with_message(

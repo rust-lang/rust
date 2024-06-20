@@ -3,13 +3,13 @@ use std::str;
 
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::Symbol;
-use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
 use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
 
+use shims::unix::android::foreign_items as android;
 use shims::unix::freebsd::foreign_items as freebsd;
 use shims::unix::linux::foreign_items as linux;
 use shims::unix::macos::foreign_items as macos;
@@ -27,6 +27,7 @@ pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
         // Give specific OSes a chance to allow their symbols.
         _ =>
             match target_os {
+                "android" => android::is_dyn_sym(name),
                 "freebsd" => freebsd::is_dyn_sym(name),
                 "linux" => linux::is_dyn_sym(name),
                 "macos" => macos::is_dyn_sym(name),
@@ -36,14 +37,14 @@ pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
         abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
@@ -249,28 +250,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             // Allocation
             "posix_memalign" => {
-                let [ret, align, size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let ret = this.deref_pointer(ret)?;
-                let align = this.read_target_usize(align)?;
-                let size = this.read_target_usize(size)?;
-                // Align must be power of 2, and also at least ptr-sized (POSIX rules).
-                // But failure to adhere to this is not UB, it's an error condition.
-                if !align.is_power_of_two() || align < this.pointer_size().bytes() {
-                    let einval = this.eval_libc_i32("EINVAL");
-                    this.write_int(einval, dest)?;
-                } else {
-                    if size == 0 {
-                        this.write_null(&ret)?;
-                    } else {
-                        let ptr = this.allocate_ptr(
-                            Size::from_bytes(size),
-                            Align::from_bytes(align).unwrap(),
-                            MiriMemoryKind::C.into(),
-                        )?;
-                        this.write_pointer(ptr, &ret)?;
-                    }
-                    this.write_null(dest)?;
-                }
+                let [memptr, align, size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.posix_memalign(memptr, align, size)?;
+                this.write_scalar(result, dest)?;
             }
 
             "mmap" => {
@@ -287,7 +269,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             "reallocarray" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd") {
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "android") {
                     throw_unsup_format!(
                         "`reallocarray` is not supported on {}",
                         this.tcx.sess.target.os
@@ -315,6 +297,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     }
                 }
             }
+            "aligned_alloc" => {
+                // This is a C11 function, we assume all Unixes have it.
+                // (MSVC explicitly does not support this.)
+                let [align, size] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let res = this.aligned_alloc(align, size)?;
+                this.write_pointer(res, dest)?;
+            }
 
             // Dynamic symbol loading
             "dlsym" => {
@@ -336,7 +326,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let name = this.read_scalar(name)?.to_i32()?;
                 // FIXME: Which of these are POSIX, and which are GNU/Linux?
                 // At least the names seem to all also exist on macOS.
-                let sysconfs: &[(&str, fn(&MiriInterpCx<'_, '_>) -> Scalar<Provenance>)] = &[
+                let sysconfs: &[(&str, fn(&MiriInterpCx<'_>) -> Scalar)] = &[
                     ("_SC_PAGESIZE", |this| Scalar::from_int(this.machine.page_size, this.pointer_size())),
                     ("_SC_NPROCESSORS_CONF", |this| Scalar::from_int(this.machine.num_cpus, this.pointer_size())),
                     ("_SC_NPROCESSORS_ONLN", |this| Scalar::from_int(this.machine.num_cpus, this.pointer_size())),
@@ -398,14 +388,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "pthread_getspecific" => {
                 let [key] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
-                let active_thread = this.get_active_thread();
+                let active_thread = this.active_thread();
                 let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
                 this.write_scalar(ptr, dest)?;
             }
             "pthread_setspecific" => {
                 let [key, new_ptr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
-                let active_thread = this.get_active_thread();
+                let active_thread = this.active_thread();
                 let new_data = this.read_scalar(new_ptr)?;
                 this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
 
@@ -436,8 +426,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             "pthread_mutex_lock" => {
                 let [mutex] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_mutex_lock(mutex)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_mutex_lock(mutex, dest)?;
             }
             "pthread_mutex_trylock" => {
                 let [mutex] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -456,8 +445,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             "pthread_rwlock_rdlock" => {
                 let [rwlock] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_rwlock_rdlock(rwlock)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_rwlock_rdlock(rwlock, dest)?;
             }
             "pthread_rwlock_tryrdlock" => {
                 let [rwlock] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -466,8 +454,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             "pthread_rwlock_wrlock" => {
                 let [rwlock] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_rwlock_wrlock(rwlock)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_rwlock_wrlock(rwlock, dest)?;
             }
             "pthread_rwlock_trywrlock" => {
                 let [rwlock] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -523,8 +510,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             "pthread_cond_wait" => {
                 let [cond, mutex] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_cond_wait(cond, mutex)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_cond_wait(cond, mutex, dest)?;
             }
             "pthread_cond_timedwait" => {
                 let [cond, mutex, abstime] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -605,7 +591,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "getentropy" => {
                 // This function is non-standard but exists with the same signature and behavior on
                 // Linux, macOS, FreeBSD and Solaris/Illumos.
-                if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "freebsd" | "illumos" | "solaris") {
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "freebsd" | "illumos" | "solaris" | "android") {
                     throw_unsup_format!(
                         "`getentropy` is not supported on {}",
                         this.tcx.sess.target.os
@@ -634,9 +620,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "getrandom" => {
                 // This function is non-standard but exists with the same signature and behavior on
                 // Linux, FreeBSD and Solaris/Illumos.
-                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "illumos" | "solaris") {
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "illumos" | "solaris" | "android") {
                     throw_unsup_format!(
-                        "`getentropy` is not supported on {}",
+                        "`getrandom` is not supported on {}",
                         this.tcx.sess.target.os
                     );
                 }
@@ -648,6 +634,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // We ignore the flags, just always use the same PRNG / host RNG.
                 this.gen_random(ptr, len)?;
                 this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
+            }
+            "_Unwind_RaiseException" => {
+                // This is not formally part of POSIX, but it is very wide-spread on POSIX systems.
+                // It was originally specified as part of the Itanium C++ ABI:
+                // https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html#base-throw.
+                // On Linux it is
+                // documented as part of the LSB:
+                // https://refspecs.linuxfoundation.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/baselib--unwind-raiseexception.html
+                // Basically every other UNIX uses the exact same api though. Arm also references
+                // back to the Itanium C++ ABI for the definition of `_Unwind_RaiseException` for
+                // arm64:
+                // https://github.com/ARM-software/abi-aa/blob/main/cppabi64/cppabi64.rst#toc-entry-35
+                // For arm32 they did something custom, but similar enough that the same
+                // `_Unwind_RaiseException` impl in miri should work:
+                // https://github.com/ARM-software/abi-aa/blob/main/ehabi32/ehabi32.rst
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "illumos" | "solaris" | "android" | "macos") {
+                    throw_unsup_format!(
+                        "`_Unwind_RaiseException` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
+                // This function looks and behaves excatly like miri_start_unwind.
+                let [payload] = this.check_shim(abi, Abi::C { unwind: true }, link_name, args)?;
+                this.handle_miri_start_unwind(payload)?;
+                return Ok(EmulateItemResult::NeedsUnwind);
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
@@ -718,8 +729,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_int(super::UID, dest)?;
             }
 
-            "getpwuid_r"
+            "getpwuid_r" | "__posix_getpwuid_r"
             if this.frame_in_std() => {
+                // getpwuid_r is the standard name, __posix_getpwuid_r is used on solarish
                 let [uid, pwd, buf, buflen, result] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.check_no_isolation("`getpwuid_r`")?;
@@ -759,6 +771,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             _ => {
                 let target_os = &*this.tcx.sess.target.os;
                 return match target_os {
+                    "android" => android::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "freebsd" => freebsd::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "linux" => linux::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
                     "macos" => macos::EvalContextExt::emulate_foreign_item_inner(this, link_name, abi, args, dest),
@@ -768,6 +781,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         };
 
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }

@@ -1,0 +1,68 @@
+error: expected identifier
+  --> $DIR/syntax-errors.rs:5:10
+   |
+LL |         ${concat()}
+   |          ^^^^^^^^^^
+
+error: `concat` must have at least two elements
+  --> $DIR/syntax-errors.rs:8:11
+   |
+LL |         ${concat(aaaa)}
+   |           ^^^^^^
+
+error: expected identifier
+  --> $DIR/syntax-errors.rs:11:10
+   |
+LL |         ${concat(aaaa,)}
+   |          ^^^^^^^^^^^^^^^
+
+error: expected identifier, found `1`
+  --> $DIR/syntax-errors.rs:14:24
+   |
+LL |         ${concat(aaaa, 1)}
+   |                        ^ help: try removing `1`
+
+error: expected comma
+  --> $DIR/syntax-errors.rs:19:10
+   |
+LL |         ${concat(aaaa aaaa)}
+   |          ^^^^^^^^^^^^^^^^^^^
+
+error: `concat` must have at least two elements
+  --> $DIR/syntax-errors.rs:22:11
+   |
+LL |         ${concat($ex)}
+   |           ^^^^^^
+
+error: expected comma
+  --> $DIR/syntax-errors.rs:28:10
+   |
+LL |         ${concat($ex, aaaa 123)}
+   |          ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected identifier
+  --> $DIR/syntax-errors.rs:31:10
+   |
+LL |         ${concat($ex, aaaa,)}
+   |          ^^^^^^^^^^^^^^^^^^^^
+
+error: expected identifier, found `123`
+  --> $DIR/syntax-errors.rs:34:29
+   |
+LL |         ${concat($ex, aaaa, 123)}
+   |                             ^^^ help: try removing `123`
+
+error: `${concat(..)}` currently only accepts identifiers or meta-variables as parameters
+  --> $DIR/syntax-errors.rs:25:19
+   |
+LL |         ${concat($ex, aaaa)}
+   |                   ^^
+
+error: variable `foo` is not recognized in meta-variable expression
+  --> $DIR/syntax-errors.rs:41:30
+   |
+LL |         const ${concat(FOO, $foo)}: i32 = 2;
+   |                              ^^^
+
+error: aborting due to 11 previous errors
+

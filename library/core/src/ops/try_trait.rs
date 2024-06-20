@@ -363,7 +363,9 @@ pub trait Residual<O> {
 }
 
 #[unstable(feature = "pub_crate_should_not_need_unstable_attr", issue = "none")]
-pub(crate) type ChangeOutputType<T, V> = <<T as Try>::Residual as Residual<V>>::TryType;
+#[allow(type_alias_bounds)]
+pub(crate) type ChangeOutputType<T: Try<Residual: Residual<V>>, V> =
+    <T::Residual as Residual<V>>::TryType;
 
 /// An adapter for implementing non-try methods via the `Try` implementation.
 ///

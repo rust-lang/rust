@@ -7,7 +7,7 @@ use rustc_errors::{
     SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::{
     edition::{Edition, LATEST_STABLE_EDITION},
     symbol::Ident,
@@ -181,6 +181,15 @@ pub enum NeverTypeFallbackFlowingIntoUnsafe {
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_deref)]
     Deref,
+}
+
+#[derive(LintDiagnostic)]
+#[help]
+#[diag(hir_typeck_dependency_on_unit_never_type_fallback)]
+pub struct DependencyOnUnitNeverTypeFallback<'tcx> {
+    #[note]
+    pub obligation_span: Span,
+    pub obligation: ty::Predicate<'tcx>,
 }
 
 #[derive(Subdiagnostic)]
@@ -650,4 +659,32 @@ pub enum SuggestBoxingForReturnImplTrait {
         #[suggestion_part(code = ")")]
         ends: Vec<Span>,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_self_ctor_from_outer_item, code = E0401)]
+pub struct SelfCtorFromOuterItem {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub impl_span: Span,
+    #[subdiagnostic]
+    pub sugg: Option<ReplaceWithName>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_self_ctor_from_outer_item)]
+pub struct SelfCtorFromOuterItemLint {
+    #[label]
+    pub impl_span: Span,
+    #[subdiagnostic]
+    pub sugg: Option<ReplaceWithName>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(hir_typeck_suggestion, code = "{name}", applicability = "machine-applicable")]
+pub struct ReplaceWithName {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
 }

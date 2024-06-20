@@ -151,6 +151,21 @@ platform. For example `cargo miri test --target s390x-unknown-linux-gnu`
 will run your test suite on a big-endian target, which is useful for testing
 endian-sensitive code.
 
+### Testing multiple different executions
+
+Certain parts of the execution are picked randomly by Miri, such as the exact base address
+allocations are stored at and the interleaving of concurrently executing threads. Sometimes, it can
+be useful to explore multiple different execution, e.g. to make sure that your code does not depend
+on incidental "super-alignment" of new allocations and to test different thread interleavings.
+This can be done with the `--many-seeds` flag:
+
+```
+cargo miri test --many-seeds # tries the seeds in 0..64
+cargo miri test --many-seeds=0..16
+```
+
+The default of 64 different seeds is quite slow, so you probably want to specify a smaller range.
+
 ### Running Miri on CI
 
 When running Miri on CI, use the following snippet to install a nightly toolchain with the Miri
@@ -182,23 +197,6 @@ Here is an example job for GitHub Actions:
 
 The explicit `cargo miri setup` helps to keep the output of the actual test step
 clean.
-
-### Testing for alignment issues
-
-Miri can sometimes miss misaligned accesses since allocations can "happen to be"
-aligned just right. You can use `-Zmiri-symbolic-alignment-check` to definitely
-catch all such issues, but that flag will also cause false positives when code
-does manual pointer arithmetic to account for alignment. Another alternative is
-to call Miri with various values for `-Zmiri-seed`; that will alter the
-randomness that is used to determine allocation base addresses. The following
-snippet calls Miri in a loop with different values for the seed:
-
-```
-for SEED in $(seq 0 255); do
-  echo "Trying seed: $SEED"
-  MIRIFLAGS=-Zmiri-seed=$SEED cargo miri test || { echo "Failing seed: $SEED"; break; };
-done
-```
 
 ### Supported targets
 
@@ -448,28 +446,19 @@ Some native rustc `-Z` flags are also very relevant for Miri:
 * `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
   enables this per default because it is needed for [Stacked Borrows] and [Tree Borrows].
 
-Moreover, Miri recognizes some environment variables (unless noted otherwise, these are supported
-by all intended entry points, i.e. `cargo miri` and `./miri {test,run}`):
+Moreover, Miri recognizes some environment variables:
 
-* `MIRI_AUTO_OPS` indicates whether the automatic execution of rustfmt, clippy and toolchain setup
-  should be skipped. If it is set to `no`, they are skipped. This is used to allow automated IDE
-  actions to avoid the auto ops.
-* `MIRI_LOG`, `MIRI_BACKTRACE` control logging and backtrace printing during
-  Miri executions, also [see "Testing the Miri driver" in `CONTRIBUTING.md`][testing-miri].
 * `MIRIFLAGS` defines extra flags to be passed to Miri.
 * `MIRI_LIB_SRC` defines the directory where Miri expects the sources of the standard library that
   it will build and use for interpretation. This directory must point to the `library` subdirectory
   of a `rust-lang/rust` repository checkout.
-* `MIRI_SYSROOT` indicates the sysroot to use. When using `cargo miri`, this skips the automatic
+* `MIRI_SYSROOT` indicates the sysroot to use. When using `cargo miri test`/`cargo miri run`, this skips the automatic
   setup -- only set this if you do not want to use the automatically created sysroot. When invoking
   `cargo miri setup`, this indicates where the sysroot will be put.
-* `MIRI_TEST_THREADS` (recognized by `./miri test`): set the number of threads to use for running tests.
-  By default, the number of cores is used.
 * `MIRI_NO_STD` makes sure that the target's sysroot is built without libstd. This allows testing
-  and running no_std programs. (Miri has a heuristic to detect no-std targets based on the target
-  name; this environment variable is only needed when that heuristic fails.)
-* `MIRI_SKIP_UI_CHECKS` (recognized by `./miri test`): don't check whether the
-  `stderr` or `stdout` files match the actual output.
+  and running no_std programs. This should *not usually be used*; Miri has a heuristic to detect
+  no-std targets based on the target name. Setting this on a target that does support libstd can
+  lead to confusing results.
 
 [testing-miri]: CONTRIBUTING.md#testing-the-miri-driver
 

@@ -13,7 +13,6 @@
 
 use rustc_ast::Mutability;
 use rustc_middle::{mir, ty};
-use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
 
@@ -24,11 +23,11 @@ use helpers::check_arg_count;
 #[derive(Debug)]
 pub struct CatchUnwindData<'tcx> {
     /// The `catch_fn` callback to call in case of a panic.
-    catch_fn: Pointer<Option<Provenance>>,
+    catch_fn: Pointer,
     /// The `data` argument for that callback.
-    data: Scalar<Provenance>,
+    data: Scalar,
     /// The return place from the original call to `try`.
-    dest: MPlaceTy<'tcx, Provenance>,
+    dest: MPlaceTy<'tcx>,
     /// The return block from the original call to `try`.
     ret: Option<mir::BasicBlock>,
 }
@@ -42,37 +41,27 @@ impl VisitProvenance for CatchUnwindData<'_> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Handles the special `miri_start_unwind` intrinsic, which is called
     /// by libpanic_unwind to delegate the actual unwinding process to Miri.
-    fn handle_miri_start_unwind(
-        &mut self,
-        abi: Abi,
-        link_name: Symbol,
-        args: &[OpTy<'tcx, Provenance>],
-        unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx> {
+    fn handle_miri_start_unwind(&mut self, payload: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         trace!("miri_start_unwind: {:?}", this.frame().instance);
 
-        // Get the raw pointer stored in arg[0] (the panic payload).
-        let [payload] = this.check_shim(abi, Abi::Rust, link_name, args)?;
         let payload = this.read_scalar(payload)?;
         let thread = this.active_thread_mut();
         thread.panic_payloads.push(payload);
 
-        // Jump to the unwind block to begin unwinding.
-        this.unwind_to_block(unwind)?;
         Ok(())
     }
 
     /// Handles the `try` intrinsic, the underlying implementation of `std::panicking::try`.
     fn handle_catch_unwind(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();

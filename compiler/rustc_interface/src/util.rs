@@ -1,5 +1,4 @@
 use crate::errors;
-use info;
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 #[cfg(parallel_compiler)]
@@ -23,6 +22,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use std::thread;
 use std::{env, iter};
+use tracing::info;
 
 /// Function pointer type that constructs a new CodegenBackend.
 pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
@@ -51,20 +51,38 @@ pub fn add_configuration(cfg: &mut Cfg, sess: &mut Session, codegen_backend: &dy
 pub static STACK_SIZE: OnceLock<usize> = OnceLock::new();
 pub const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
 
-fn init_stack_size() -> usize {
+fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
     // Obey the environment setting or default
     *STACK_SIZE.get_or_init(|| {
         env::var_os("RUST_MIN_STACK")
-            .map(|os_str| os_str.to_string_lossy().into_owned())
-            // ignore if it is set to nothing
-            .filter(|s| s.trim() != "")
-            .map(|s| s.trim().parse::<usize>().unwrap())
+            .as_ref()
+            .map(|os_str| os_str.to_string_lossy())
+            // if someone finds out `export RUST_MIN_STACK=640000` isn't enough stack
+            // they might try to "unset" it by running `RUST_MIN_STACK=  rustc code.rs`
+            // this is wrong, but std would nonetheless "do what they mean", so let's do likewise
+            .filter(|s| !s.trim().is_empty())
+            // rustc is a batch program, so error early on inputs which are unlikely to be intended
+            // so no one thinks we parsed them setting `RUST_MIN_STACK="64 megabytes"`
+            // FIXME: we could accept `RUST_MIN_STACK=64MB`, perhaps?
+            .map(|s| {
+                let s = s.trim();
+                // FIXME(workingjubilee): add proper diagnostics when we factor out "pre-run" setup
+                #[allow(rustc::untranslatable_diagnostic, rustc::diagnostic_outside_of_impl)]
+                s.parse::<usize>().unwrap_or_else(|_| {
+                    let mut err = early_dcx.early_struct_fatal(format!(
+                        r#"`RUST_MIN_STACK` should be a number of bytes, but was "{s}""#,
+                    ));
+                    err.note("you can also unset `RUST_MIN_STACK` to use the default stack size");
+                    err.emit()
+                })
+            })
             // otherwise pick a consistent default
             .unwrap_or(DEFAULT_STACK_SIZE)
     })
 }
 
 fn run_in_thread_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
+    thread_stack_size: usize,
     edition: Edition,
     sm_inputs: SourceMapInputs,
     f: F,
@@ -75,7 +93,7 @@ fn run_in_thread_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
     // the parallel compiler, in particular to ensure there is no accidental
     // sharing of data between the main thread and the compilation thread
     // (which might cause problems for the parallel compiler).
-    let builder = thread::Builder::new().name("rustc".to_string()).stack_size(init_stack_size());
+    let builder = thread::Builder::new().name("rustc".to_string()).stack_size(thread_stack_size);
 
     // We build the session globals and run `f` on the spawned thread, because
     // `SessionGlobals` does not impl `Send` in the non-parallel compiler.
@@ -100,16 +118,19 @@ fn run_in_thread_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
 
 #[cfg(not(parallel_compiler))]
 pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
+    thread_builder_diag: &EarlyDiagCtxt,
     edition: Edition,
     _threads: usize,
     sm_inputs: SourceMapInputs,
     f: F,
 ) -> R {
-    run_in_thread_with_globals(edition, sm_inputs, f)
+    let thread_stack_size = init_stack_size(thread_builder_diag);
+    run_in_thread_with_globals(thread_stack_size, edition, sm_inputs, f)
 }
 
 #[cfg(parallel_compiler)]
 pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
+    thread_builder_diag: &EarlyDiagCtxt,
     edition: Edition,
     threads: usize,
     sm_inputs: SourceMapInputs,
@@ -121,10 +142,12 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
     use rustc_query_system::query::{break_query_cycles, QueryContext};
     use std::process;
 
+    let thread_stack_size = init_stack_size(thread_builder_diag);
+
     let registry = sync::Registry::new(std::num::NonZero::new(threads).unwrap());
 
     if !sync::is_dyn_thread_safe() {
-        return run_in_thread_with_globals(edition, sm_inputs, |current_gcx| {
+        return run_in_thread_with_globals(thread_stack_size, edition, sm_inputs, |current_gcx| {
             // Register the thread for use with the `WorkerLocal` type.
             registry.register();
 
@@ -167,7 +190,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
                 })
                 .unwrap();
         })
-        .stack_size(init_stack_size());
+        .stack_size(thread_stack_size);
 
     // We create the session globals on the main thread, then create the thread
     // pool. Upon creation, each worker thread created gets a copy of the
@@ -376,31 +399,17 @@ pub(crate) fn check_attr_crate_type(
 
                 if let ast::MetaItemKind::NameValue(spanned) = a.meta_kind().unwrap() {
                     let span = spanned.span;
-                    let lev_candidate = find_best_match_for_name(
+                    let candidate = find_best_match_for_name(
                         &CRATE_TYPES.iter().map(|(k, _)| *k).collect::<Vec<_>>(),
                         n,
                         None,
                     );
-                    if let Some(candidate) = lev_candidate {
-                        lint_buffer.buffer_lint_with_diagnostic(
-                            lint::builtin::UNKNOWN_CRATE_TYPES,
-                            ast::CRATE_NODE_ID,
-                            span,
-                            "invalid `crate_type` value",
-                            BuiltinLintDiag::UnknownCrateTypes(
-                                span,
-                                "did you mean".to_string(),
-                                format!("\"{candidate}\""),
-                            ),
-                        );
-                    } else {
-                        lint_buffer.buffer_lint(
-                            lint::builtin::UNKNOWN_CRATE_TYPES,
-                            ast::CRATE_NODE_ID,
-                            span,
-                            "invalid `crate_type` value",
-                        );
-                    }
+                    lint_buffer.buffer_lint(
+                        lint::builtin::UNKNOWN_CRATE_TYPES,
+                        ast::CRATE_NODE_ID,
+                        span,
+                        BuiltinLintDiag::UnknownCrateTypes { span, candidate },
+                    );
                 }
             } else {
                 // This is here mainly to check for using a macro, such as

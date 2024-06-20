@@ -12,6 +12,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::{Align, FieldsShape, Int, Pointer, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
+use tracing::{debug, instrument};
 
 /// The location and extra runtime properties of the place.
 ///
@@ -159,9 +160,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 bx.inbounds_ptradd(self.val.llval, bx.const_usize(offset.bytes()))
             };
             let val = PlaceValue {
-                    llval,
+                llval,
                 llextra: if bx.cx().type_has_metadata(field.ty) { self.val.llextra } else { None },
-                    align: effective_field_align,
+                align: effective_field_align,
             };
             val.with_type(field)
         };
@@ -408,9 +409,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         };
 
         let llval = bx.inbounds_gep(
-                    bx.cx().backend_type(self.layout),
-                    self.val.llval,
-                    &[bx.cx().const_usize(0), llindex],
+            bx.cx().backend_type(self.layout),
+            self.val.llval,
+            &[bx.cx().const_usize(0), llindex],
         );
         let align = self.val.align.restrict_for_offset(offset);
         PlaceValue::new_sized(llval, align).with_type(layout)
@@ -479,6 +480,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             cg_base = match *elem {
                 mir::ProjectionElem::Deref => bx.load_operand(cg_base).deref(bx.cx()),
                 mir::ProjectionElem::Field(ref field, _) => {
+                    debug_assert!(
+                        !cg_base.layout.ty.is_any_ptr(),
+                        "Bad PlaceRef: destructing pointers should use cast/PtrMetadata, \
+                         but tried to access field {field:?} of pointer {cg_base:?}",
+                    );
                     cg_base.project_field(bx, field.index())
                 }
                 mir::ProjectionElem::OpaqueCast(ty) => {

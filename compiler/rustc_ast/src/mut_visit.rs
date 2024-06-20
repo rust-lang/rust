@@ -175,8 +175,8 @@ pub trait MutVisitor: Sized {
         noop_visit_lifetime(l, self);
     }
 
-    fn visit_constraint(&mut self, t: &mut AssocConstraint) {
-        noop_visit_constraint(t, self);
+    fn visit_assoc_item_constraint(&mut self, c: &mut AssocItemConstraint) {
+        noop_visit_assoc_item_constraint(c, self);
     }
 
     fn visit_foreign_mod(&mut self, nm: &mut ForeignMod) {
@@ -463,8 +463,8 @@ pub fn noop_flat_map_arm<T: MutVisitor>(mut arm: Arm, vis: &mut T) -> SmallVec<[
     smallvec![arm]
 }
 
-fn noop_visit_constraint<T: MutVisitor>(
-    AssocConstraint { id, ident, gen_args, kind, span }: &mut AssocConstraint,
+fn noop_visit_assoc_item_constraint<T: MutVisitor>(
+    AssocItemConstraint { id, ident, gen_args, kind, span }: &mut AssocItemConstraint,
     vis: &mut T,
 ) {
     vis.visit_id(id);
@@ -473,11 +473,11 @@ fn noop_visit_constraint<T: MutVisitor>(
         vis.visit_generic_args(gen_args);
     }
     match kind {
-        AssocConstraintKind::Equality { term } => match term {
+        AssocItemConstraintKind::Equality { term } => match term {
             Term::Ty(ty) => vis.visit_ty(ty),
             Term::Const(c) => vis.visit_anon_const(c),
         },
-        AssocConstraintKind::Bound { bounds } => visit_bounds(bounds, vis),
+        AssocItemConstraintKind::Bound { bounds } => visit_bounds(bounds, vis),
     }
     vis.visit_span(span);
 }
@@ -523,14 +523,9 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
         TyKind::TraitObject(bounds, _syntax) => {
             visit_vec(bounds, |bound| vis.visit_param_bound(bound))
         }
-        TyKind::ImplTrait(id, bounds, precise_capturing) => {
+        TyKind::ImplTrait(id, bounds) => {
             vis.visit_id(id);
             visit_vec(bounds, |bound| vis.visit_param_bound(bound));
-            if let Some((precise_capturing, _span)) = precise_capturing.as_deref_mut() {
-                for arg in precise_capturing {
-                    vis.visit_precise_capturing_arg(arg);
-                }
-            }
         }
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
         TyKind::AnonStruct(id, fields) | TyKind::AnonUnion(id, fields) => {
@@ -607,7 +602,7 @@ fn noop_visit_angle_bracketed_parameter_data<T: MutVisitor>(
     let AngleBracketedArgs { args, span } = data;
     visit_thin_vec(args, |arg| match arg {
         AngleBracketedArg::Arg(arg) => vis.visit_generic_arg(arg),
-        AngleBracketedArg::Constraint(constraint) => vis.visit_constraint(constraint),
+        AngleBracketedArg::Constraint(constraint) => vis.visit_assoc_item_constraint(constraint),
     });
     vis.visit_span(span);
 }
@@ -647,8 +642,10 @@ fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
     let Attribute { kind, id: _, style: _, span } = attr;
     match kind {
         AttrKind::Normal(normal) => {
-            let NormalAttr { item: AttrItem { path, args, tokens }, tokens: attr_tokens } =
-                &mut **normal;
+            let NormalAttr {
+                item: AttrItem { unsafety: _, path, args, tokens },
+                tokens: attr_tokens,
+            } = &mut **normal;
             vis.visit_path(path);
             visit_attr_args(args, vis);
             visit_lazy_tts(tokens, vis);
@@ -678,7 +675,7 @@ fn noop_visit_meta_list_item<T: MutVisitor>(li: &mut NestedMetaItem, vis: &mut T
 }
 
 fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
-    let MetaItem { path: _, kind, span } = mi;
+    let MetaItem { unsafety: _, path: _, kind, span } = mi;
     match kind {
         MetaItemKind::Word => {}
         MetaItemKind::List(mis) => visit_thin_vec(mis, |mi| vis.visit_meta_list_item(mi)),
@@ -840,7 +837,7 @@ fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
         token::NtTy(ty) => vis.visit_ty(ty),
         token::NtLiteral(expr) => vis.visit_expr(expr),
         token::NtMeta(item) => {
-            let AttrItem { path, args, tokens } = item.deref_mut();
+            let AttrItem { unsafety: _, path, args, tokens } = item.deref_mut();
             vis.visit_path(path);
             visit_attr_args(args, vis);
             visit_lazy_tts(tokens, vis);
@@ -862,6 +859,7 @@ fn visit_defaultness<T: MutVisitor>(defaultness: &mut Defaultness, vis: &mut T) 
 fn visit_safety<T: MutVisitor>(safety: &mut Safety, vis: &mut T) {
     match safety {
         Safety::Unsafe(span) => vis.visit_span(span),
+        Safety::Safe(span) => vis.visit_span(span),
         Safety::Default => {}
     }
 }
@@ -920,6 +918,11 @@ fn noop_visit_param_bound<T: MutVisitor>(pb: &mut GenericBound, vis: &mut T) {
     match pb {
         GenericBound::Trait(ty, _modifier) => vis.visit_poly_trait_ref(ty),
         GenericBound::Outlives(lifetime) => noop_visit_lifetime(lifetime, vis),
+        GenericBound::Use(args, _) => {
+            for arg in args {
+                vis.visit_precise_capturing_arg(arg);
+            }
+        }
     }
 }
 
@@ -1079,7 +1082,7 @@ impl NoopVisitItemKind for ItemKind {
         match self {
             ItemKind::ExternCrate(_orig_name) => {}
             ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
-            ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
+            ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
                 vis.visit_ty(ty);
                 visit_opt(expr, |expr| vis.visit_expr(expr));
             }
@@ -1159,7 +1162,14 @@ impl NoopVisitItemKind for ItemKind {
             }
             ItemKind::MacCall(m) => vis.visit_mac_call(m),
             ItemKind::MacroDef(def) => vis.visit_macro_def(def),
-            ItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
+            ItemKind::Delegation(box Delegation {
+                id,
+                qself,
+                path,
+                rename,
+                body,
+                from_glob: _,
+            }) => {
                 vis.visit_id(id);
                 vis.visit_qself(qself);
                 vis.visit_path(path);
@@ -1173,10 +1183,12 @@ impl NoopVisitItemKind for ItemKind {
             ItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
                 vis.visit_qself(qself);
                 vis.visit_path(prefix);
-                for (ident, rename) in suffixes {
-                    vis.visit_ident(ident);
-                    if let Some(rename) = rename {
-                        vis.visit_ident(rename);
+                if let Some(suffixes) = suffixes {
+                    for (ident, rename) in suffixes {
+                        vis.visit_ident(ident);
+                        if let Some(rename) = rename {
+                            vis.visit_ident(rename);
+                        }
                     }
                 }
                 if let Some(body) = body {
@@ -1215,7 +1227,14 @@ impl NoopVisitItemKind for AssocItemKind {
                 visit_opt(ty, |ty| visitor.visit_ty(ty));
             }
             AssocItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
-            AssocItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
+            AssocItemKind::Delegation(box Delegation {
+                id,
+                qself,
+                path,
+                rename,
+                body,
+                from_glob: _,
+            }) => {
                 visitor.visit_id(id);
                 visitor.visit_qself(qself);
                 visitor.visit_path(path);
@@ -1229,10 +1248,12 @@ impl NoopVisitItemKind for AssocItemKind {
             AssocItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
                 visitor.visit_qself(qself);
                 visitor.visit_path(prefix);
-                for (ident, rename) in suffixes {
-                    visitor.visit_ident(ident);
-                    if let Some(rename) = rename {
-                        visitor.visit_ident(rename);
+                if let Some(suffixes) = suffixes {
+                    for (ident, rename) in suffixes {
+                        visitor.visit_ident(ident);
+                        if let Some(rename) = rename {
+                            visitor.visit_ident(rename);
+                        }
                     }
                 }
                 if let Some(body) = body {
@@ -1289,7 +1310,12 @@ pub fn noop_flat_map_item<K: NoopVisitItemKind>(
 impl NoopVisitItemKind for ForeignItemKind {
     fn noop_visit(&mut self, visitor: &mut impl MutVisitor) {
         match self {
-            ForeignItemKind::Static(box StaticForeignItem { ty, mutability: _, expr }) => {
+            ForeignItemKind::Static(box StaticForeignItem {
+                ty,
+                mutability: _,
+                expr,
+                safety: _,
+            }) => {
                 visitor.visit_ty(ty);
                 visit_opt(expr, |expr| visitor.visit_expr(expr));
             }

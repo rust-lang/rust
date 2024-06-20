@@ -17,7 +17,11 @@
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 
-enum E { A, B, C }
+enum E {
+    A,
+    B,
+    C,
+}
 
 pub fn main() {
     let e = E::C;

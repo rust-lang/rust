@@ -399,7 +399,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         }
 
         match instance.def {
-            InstanceDef::Intrinsic(_) => {
+            InstanceKind::Intrinsic(_) => {
                 match crate::intrinsics::codegen_intrinsic_call(
                     fx,
                     instance,
@@ -412,7 +412,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     Err(instance) => Some(instance),
                 }
             }
-            InstanceDef::DropGlue(_, None) | ty::InstanceDef::AsyncDropGlueCtorShim(_, None) => {
+            InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None) => {
                 // empty drop glue - a nop.
                 let dest = target.expect("Non terminating drop_in_place_real???");
                 let ret_block = fx.get_block(dest);
@@ -494,7 +494,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     let (func_ref, first_arg_override) = match instance {
         // Trait object call
-        Some(Instance { def: InstanceDef::Virtual(_, idx), .. }) => {
+        Some(Instance { def: InstanceKind::Virtual(_, idx), .. }) => {
             if fx.clif_comments.enabled() {
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(
@@ -593,11 +593,12 @@ pub(crate) fn codegen_drop<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     source_info: mir::SourceInfo,
     drop_place: CPlace<'tcx>,
+    target: BasicBlock,
 ) {
     let ty = drop_place.layout().ty;
     let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty).polymorphize(fx.tcx);
 
-    if let ty::InstanceDef::DropGlue(_, None) | ty::InstanceDef::AsyncDropGlueCtorShim(_, None) =
+    if let ty::InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None) =
         drop_instance.def
     {
         // we don't actually need to drop anything
@@ -620,10 +621,16 @@ pub(crate) fn codegen_drop<'tcx>(
                 let ptr = ptr.get_addr(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable);
 
+                let is_null = fx.bcx.ins().icmp_imm(IntCC::Equal, drop_fn, 0);
+                let target_block = fx.get_block(target);
+                let continued = fx.bcx.create_block();
+                fx.bcx.ins().brif(is_null, target_block, &[], continued, &[]);
+                fx.bcx.switch_to_block(continued);
+
                 // FIXME(eddyb) perhaps move some of this logic into
                 // `Instance::resolve_drop_in_place`?
                 let virtual_drop = Instance {
-                    def: ty::InstanceDef::Virtual(drop_instance.def_id(), 0),
+                    def: ty::InstanceKind::Virtual(drop_instance.def_id(), 0),
                     args: drop_instance.args,
                 };
                 let fn_abi =
@@ -659,8 +666,14 @@ pub(crate) fn codegen_drop<'tcx>(
                 let (data, vtable) = drop_place.to_cvalue(fx).dyn_star_force_data_on_stack(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable);
 
+                let is_null = fx.bcx.ins().icmp_imm(IntCC::Equal, drop_fn, 0);
+                let target_block = fx.get_block(target);
+                let continued = fx.bcx.create_block();
+                fx.bcx.ins().brif(is_null, target_block, &[], continued, &[]);
+                fx.bcx.switch_to_block(continued);
+
                 let virtual_drop = Instance {
-                    def: ty::InstanceDef::Virtual(drop_instance.def_id(), 0),
+                    def: ty::InstanceKind::Virtual(drop_instance.def_id(), 0),
                     args: drop_instance.args,
                 };
                 let fn_abi =
@@ -671,7 +684,7 @@ pub(crate) fn codegen_drop<'tcx>(
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[data]);
             }
             _ => {
-                assert!(!matches!(drop_instance.def, InstanceDef::Virtual(_, _)));
+                assert!(!matches!(drop_instance.def, InstanceKind::Virtual(_, _)));
 
                 let fn_abi =
                     RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(drop_instance, ty::List::empty());
@@ -697,4 +710,7 @@ pub(crate) fn codegen_drop<'tcx>(
             }
         }
     }
+
+    let target_block = fx.get_block(target);
+    fx.bcx.ins().jump(target_block, &[]);
 }

@@ -1,4 +1,6 @@
 use rustc_serialize::leb128::*;
+use rustc_serialize::opaque::MemDecoder;
+use rustc_serialize::opaque::MAGIC_END_BYTES;
 use rustc_serialize::Decoder;
 
 macro_rules! impl_test_unsigned_leb128 {
@@ -25,13 +27,15 @@ macro_rules! impl_test_unsigned_leb128 {
                 let n = $write_fn_name(&mut buf, x);
                 stream.extend(&buf[..n]);
             }
+            let stream_end = stream.len();
+            stream.extend(MAGIC_END_BYTES);
 
-            let mut decoder = rustc_serialize::opaque::MemDecoder::new(&stream, 0);
+            let mut decoder = MemDecoder::new(&stream, 0).unwrap();
             for &expected in &values {
                 let actual = $read_fn_name(&mut decoder);
                 assert_eq!(expected, actual);
             }
-            assert_eq!(stream.len(), decoder.position());
+            assert_eq!(stream_end, decoder.position());
         }
     };
 }
@@ -72,13 +76,15 @@ macro_rules! impl_test_signed_leb128 {
                 let n = $write_fn_name(&mut buf, x);
                 stream.extend(&buf[..n]);
             }
+            let stream_end = stream.len();
+            stream.extend(MAGIC_END_BYTES);
 
-            let mut decoder = rustc_serialize::opaque::MemDecoder::new(&stream, 0);
+            let mut decoder = MemDecoder::new(&stream, 0).unwrap();
             for &expected in &values {
                 let actual = $read_fn_name(&mut decoder);
                 assert_eq!(expected, actual);
             }
-            assert_eq!(stream.len(), decoder.position());
+            assert_eq!(stream_end, decoder.position());
         }
     };
 }

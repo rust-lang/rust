@@ -631,7 +631,10 @@ impl<'a> ExtCtxt<'a> {
             span,
             name,
             AttrVec::new(),
-            ast::ItemKind::Static(ast::StaticItem { ty, mutability, expr: Some(expr) }.into()),
+            ast::ItemKind::Static(
+                ast::StaticItem { ty, safety: ast::Safety::Default, mutability, expr: Some(expr) }
+                    .into(),
+            ),
         )
     }
 
@@ -663,7 +666,7 @@ impl<'a> ExtCtxt<'a> {
     // Builds `#[name]`.
     pub fn attr_word(&self, name: Symbol, span: Span) -> ast::Attribute {
         let g = &self.sess.psess.attr_id_generator;
-        attr::mk_attr_word(g, ast::AttrStyle::Outer, name, span)
+        attr::mk_attr_word(g, ast::AttrStyle::Outer, ast::Safety::Default, name, span)
     }
 
     // Builds `#[name = val]`.
@@ -671,12 +674,26 @@ impl<'a> ExtCtxt<'a> {
     // Note: `span` is used for both the identifier and the value.
     pub fn attr_name_value_str(&self, name: Symbol, val: Symbol, span: Span) -> ast::Attribute {
         let g = &self.sess.psess.attr_id_generator;
-        attr::mk_attr_name_value_str(g, ast::AttrStyle::Outer, name, val, span)
+        attr::mk_attr_name_value_str(
+            g,
+            ast::AttrStyle::Outer,
+            ast::Safety::Default,
+            name,
+            val,
+            span,
+        )
     }
 
     // Builds `#[outer(inner)]`.
     pub fn attr_nested_word(&self, outer: Symbol, inner: Symbol, span: Span) -> ast::Attribute {
         let g = &self.sess.psess.attr_id_generator;
-        attr::mk_attr_nested_word(g, ast::AttrStyle::Outer, outer, inner, span)
+        attr::mk_attr_nested_word(
+            g,
+            ast::AttrStyle::Outer,
+            ast::Safety::Default,
+            outer,
+            inner,
+            span,
+        )
     }
 }

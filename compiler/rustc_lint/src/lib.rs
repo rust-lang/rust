@@ -25,9 +25,10 @@
 //!
 //! This API is completely unstable and subject to change.
 
+// tidy-alphabetical-start
+#![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
@@ -35,14 +36,11 @@
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]
-#![feature(trait_upcasting)]
 #![feature(rustc_attrs)]
-#![allow(internal_features)]
+#![feature(rustdoc_internals)]
+#![feature(trait_upcasting)]
+// tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
-
-mod array_into_iter;
 mod async_fn_in_trait;
 pub mod builtin;
 mod context;
@@ -76,18 +74,18 @@ mod passes;
 mod ptr_nulls;
 mod redundant_semicolon;
 mod reference_casting;
+mod shadowed_into_iter;
 mod traits;
 mod types;
 mod unit_bindings;
 mod unused;
 
-pub use array_into_iter::ARRAY_INTO_ITER;
+pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 
 use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
-use array_into_iter::ArrayIntoIter;
 use async_fn_in_trait::AsyncFnInTrait;
 use builtin::*;
 use deref_into_dyn_supertrait::*;
@@ -112,6 +110,7 @@ use pass_by_value::*;
 use ptr_nulls::*;
 use redundant_semicolon::*;
 use reference_casting::*;
+use shadowed_into_iter::ShadowedIntoIter;
 use traits::*;
 use types::*;
 use unit_bindings::*;
@@ -215,7 +214,7 @@ late_lint_methods!(
             DerefNullPtr: DerefNullPtr,
             UnstableFeatures: UnstableFeatures,
             UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
-            ArrayIntoIter: ArrayIntoIter::default(),
+            ShadowedIntoIter: ShadowedIntoIter,
             DropTraitConstraints: DropTraitConstraints,
             TemporaryCStringAsPtr: TemporaryCStringAsPtr,
             NonPanicFmt: NonPanicFmt,
@@ -539,6 +538,16 @@ fn register_builtins(store: &mut LintStore) {
     );
     store.register_removed(
         "const_patterns_without_partial_eq",
+        "converted into hard error, see RFC #3535 \
+         <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
+    );
+    store.register_removed(
+        "indirect_structural_match",
+        "converted into hard error, see RFC #3535 \
+         <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
+    );
+    store.register_removed(
+        "pointer_structural_match",
         "converted into hard error, see RFC #3535 \
          <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
     );

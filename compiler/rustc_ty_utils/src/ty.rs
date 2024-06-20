@@ -10,6 +10,7 @@ use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, Upcast};
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits;
+use tracing::{debug, instrument};
 
 #[instrument(level = "debug", skip(tcx), ret)]
 fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
@@ -76,7 +77,7 @@ fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
 fn adt_sized_constraint<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-) -> Option<ty::EarlyBinder<Ty<'tcx>>> {
+) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
     if let Some(def_id) = def_id.as_local() {
         if let ty::Representability::Infinite(_) = tcx.representability(def_id) {
             return None;
@@ -252,7 +253,7 @@ fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamE
 fn self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Option<EarlyBinder<Ty<'_>>> {
+) -> Option<EarlyBinder<'_, Ty<'_>>> {
     let impl_ =
         tcx.impl_trait_header(def_id).unwrap_or_else(|| bug!("called on inherent impl {def_id:?}"));
 

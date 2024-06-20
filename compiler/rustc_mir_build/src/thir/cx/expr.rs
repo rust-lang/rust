@@ -25,6 +25,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::source_map::Spanned;
 use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use tracing::{debug, info, instrument, trace};
 
 impl<'tcx> Cx<'tcx> {
     pub(crate) fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {

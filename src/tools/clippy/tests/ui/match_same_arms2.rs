@@ -2,9 +2,10 @@
 #![allow(
     clippy::disallowed_names,
     clippy::diverging_sub_expression,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    clippy::match_single_binding,
+    clippy::match_like_matches_macro
 )]
-//@no-rustfix
 fn bar<T>(_: T) {}
 fn foo() -> bool {
     unimplemented!()
@@ -260,4 +261,22 @@ fn main() {
         1 => cfg!(not_enable),
         _ => false,
     };
+}
+
+// issue #8919, fixed on https://github.com/rust-lang/rust/pull/97312
+mod with_lifetime {
+    enum MaybeStaticStr<'a> {
+        Static(&'static str),
+        Borrowed(&'a str),
+    }
+
+    impl<'a> MaybeStaticStr<'a> {
+        fn get(&self) -> &'a str {
+            match *self {
+                MaybeStaticStr::Static(s) => s,
+                MaybeStaticStr::Borrowed(s) => s,
+                //~^ ERROR: this match arm has an identical body to another arm
+            }
+        }
+    }
 }

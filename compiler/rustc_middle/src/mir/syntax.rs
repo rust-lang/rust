@@ -127,6 +127,9 @@ pub enum AnalysisPhase {
     /// * [`StatementKind::AscribeUserType`]
     /// * [`StatementKind::Coverage`] with [`CoverageKind::BlockMarker`] or [`CoverageKind::SpanMarker`]
     /// * [`Rvalue::Ref`] with `BorrowKind::Fake`
+    /// * [`CastKind::PointerCoercion`] with any of the following:
+    ///   * [`PointerCoercion::ArrayToPointer`]
+    ///   * [`PointerCoercion::MutToConstPointer`]
     ///
     /// Furthermore, `Deref` projections must be the first projection within any place (if they
     /// appear at all)
@@ -361,16 +364,19 @@ pub enum StatementKind<'tcx> {
     /// At any point during the execution of a function, each local is either allocated or
     /// unallocated. Except as noted below, all locals except function parameters are initially
     /// unallocated. `StorageLive` statements cause memory to be allocated for the local while
-    /// `StorageDead` statements cause the memory to be freed. Using a local in any way (not only
-    /// reading/writing from it) while it is unallocated is UB.
+    /// `StorageDead` statements cause the memory to be freed. In other words,
+    /// `StorageLive`/`StorageDead` act like the heap operations `allocate`/`deallocate`, but for
+    /// stack-allocated local variables. Using a local in any way (not only reading/writing from it)
+    /// while it is unallocated is UB.
     ///
     /// Some locals have no `StorageLive` or `StorageDead` statements within the entire MIR body.
     /// These locals are implicitly allocated for the full duration of the function. There is a
     /// convenience method at `rustc_mir_dataflow::storage::always_storage_live_locals` for
     /// computing these locals.
     ///
-    /// If the local is already allocated, calling `StorageLive` again is UB. However, for an
-    /// unallocated local an additional `StorageDead` all is simply a nop.
+    /// If the local is already allocated, calling `StorageLive` again will implicitly free the
+    /// local and then allocate fresh uninitilized memory. If a local is already deallocated,
+    /// calling `StorageDead` again is a NOP.
     StorageLive(Local),
 
     /// See `StorageLive` above.
@@ -1008,8 +1014,8 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 /// element:
 ///
 ///  - [`Downcast`](ProjectionElem::Downcast): This projection sets the place's variant index to the
-///    given one, and makes no other changes. A `Downcast` projection on a place with its variant
-///    index already set is not well-formed.
+///    given one, and makes no other changes. A `Downcast` projection must always be followed
+///    immediately by a `Field` projection.
 ///  - [`Field`](ProjectionElem::Field): `Field` projections take their parent place and create a
 ///    place referring to one of the fields of the type. The resulting address is the parent
 ///    address, plus the offset of the field. The type becomes the type of the field. If the parent
@@ -1281,8 +1287,7 @@ pub enum Rvalue<'tcx> {
     ///
     /// This allows for casts from/to a variety of types.
     ///
-    /// **FIXME**: Document exactly which `CastKind`s allow which types of casts. Figure out why
-    /// `ArrayToPointer` and `MutToConstPointer` are special.
+    /// **FIXME**: Document exactly which `CastKind`s allow which types of casts.
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
     /// * `Offset` has the same semantics as [`offset`](pointer::offset), except that the second
@@ -1295,17 +1300,11 @@ pub enum Rvalue<'tcx> {
     ///   truncated as needed.
     /// * The `Bit*` operations accept signed integers, unsigned integers, or bools with matching
     ///   types and return a value of that type.
+    /// * The `FooWithOverflow` are like the `Foo`, but returning `(T, bool)` instead of just `T`,
+    ///   where the `bool` is true if the result is not equal to the infinite-precision result.
     /// * The remaining operations accept signed integers, unsigned integers, or floats with
     ///   matching types and return a value of that type.
     BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
-
-    /// Same as `BinaryOp`, but yields `(T, bool)` with a `bool` indicating an error condition.
-    ///
-    /// For addition, subtraction, and multiplication on integers the error condition is set when
-    /// the infinite precision result would not be equal to the actual result.
-    ///
-    /// Other combinations of types and operators are unsupported.
-    CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     /// Computes a value as described by the operation.
     NullaryOp(NullOp<'tcx>, Ty<'tcx>),
@@ -1368,6 +1367,13 @@ pub enum CastKind {
     PointerWithExposedProvenance,
     /// Pointer related casts that are done by coercions. Note that reference-to-raw-ptr casts are
     /// translated into `&raw mut/const *r`, i.e., they are not actually casts.
+    ///
+    /// The following are allowed in [`AnalysisPhase::Initial`] as they're needed for borrowck,
+    /// but after that are forbidden (including in all phases of runtime MIR):
+    /// * [`PointerCoercion::ArrayToPointer`]
+    /// * [`PointerCoercion::MutToConstPointer`]
+    ///
+    /// Both are runtime nops, so should be [`CastKind::PtrToPtr`] instead in runtime MIR.
     PointerCoercion(PointerCoercion),
     /// Cast into a dyn* object.
     DynStar,
@@ -1440,6 +1446,13 @@ pub enum UnOp {
     Not,
     /// The `-` operator for negation
     Neg,
+    /// Get the metadata `M` from a `*const/mut impl Pointee<Metadata = M>`.
+    ///
+    /// For example, this will give a `()` from `*const i32`, a `usize` from
+    /// `*mut [u8]`, or a pointer to a vtable from a `*const dyn Foo`.
+    ///
+    /// Allowed only in [`MirPhase::Runtime`]; earlier it's an intrinsic.
+    PtrMetadata,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -1449,14 +1462,23 @@ pub enum BinOp {
     Add,
     /// Like `Add`, but with UB on overflow.  (Integers only.)
     AddUnchecked,
+    /// Like `Add`, but returns `(T, bool)` of both the wrapped result
+    /// and a bool indicating whether it overflowed.
+    AddWithOverflow,
     /// The `-` operator (subtraction)
     Sub,
     /// Like `Sub`, but with UB on overflow.  (Integers only.)
     SubUnchecked,
+    /// Like `Sub`, but returns `(T, bool)` of both the wrapped result
+    /// and a bool indicating whether it overflowed.
+    SubWithOverflow,
     /// The `*` operator (multiplication)
     Mul,
     /// Like `Mul`, but with UB on overflow.  (Integers only.)
     MulUnchecked,
+    /// Like `Mul`, but returns `(T, bool)` of both the wrapped result
+    /// and a bool indicating whether it overflowed.
+    MulWithOverflow,
     /// The `/` operator (division)
     ///
     /// For integer types, division by zero is UB, as is `MIN / -1` for signed.
@@ -1480,7 +1502,8 @@ pub enum BinOp {
     BitOr,
     /// The `<<` operator (shift left)
     ///
-    /// The offset is (uniquely) determined as follows:
+    /// The offset is given by `RHS.rem_euclid(LHS::BITS)`.
+    /// In other words, it is (uniquely) determined as follows:
     /// - it is "equal modulo LHS::BITS" to the RHS
     /// - it is in the range `0..LHS::BITS`
     Shl,
@@ -1488,7 +1511,8 @@ pub enum BinOp {
     ShlUnchecked,
     /// The `>>` operator (shift right)
     ///
-    /// The offset is (uniquely) determined as follows:
+    /// The offset is given by `RHS.rem_euclid(LHS::BITS)`.
+    /// In other words, it is (uniquely) determined as follows:
     /// - it is "equal modulo LHS::BITS" to the RHS
     /// - it is in the range `0..LHS::BITS`
     ///

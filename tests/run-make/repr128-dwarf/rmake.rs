@@ -1,15 +1,15 @@
 //@ ignore-windows
 // This test should be replaced with one in tests/debuginfo once GDB or LLDB support 128-bit enums.
 
-use gimli::{AttributeValue, Dwarf, EndianRcSlice, Reader, RunTimeEndian};
+use gimli::{AttributeValue, EndianRcSlice, Reader, RunTimeEndian};
 use object::{Object, ObjectSection};
-use run_make_support::{gimli, object, rustc, tmp_dir};
-use std::borrow::Cow;
+use run_make_support::{fs_wrapper, gimli, object, rustc};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 fn main() {
-    let output = tmp_dir().join("repr128");
+    let output = PathBuf::from("repr128");
     rustc().input("main.rs").output(&output).arg("-Cdebuginfo=2").run();
     // Mach-O uses packed debug info
     let dsym_location = output
@@ -19,8 +19,7 @@ fn main() {
         .join("DWARF")
         .join("repr128");
     let output =
-        std::fs::read(if dsym_location.try_exists().unwrap() { dsym_location } else { output })
-            .unwrap();
+        fs_wrapper::read(if dsym_location.try_exists().unwrap() { dsym_location } else { output });
     let obj = object::File::parse(output.as_slice()).unwrap();
     let endian = if obj.is_little_endian() { RunTimeEndian::Little } else { RunTimeEndian::Big };
     let dwarf = gimli::Dwarf::load(|section| -> Result<_, ()> {

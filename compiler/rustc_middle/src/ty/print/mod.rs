@@ -7,6 +7,7 @@ use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use tracing::{debug, instrument, trace};
 
 // `pretty` is a separate module only for organization.
 mod pretty;
@@ -160,7 +161,7 @@ pub trait Printer<'tcx>: Sized {
                         // If we have any generic arguments to print, we do that
                         // on top of the same path, but without its own generics.
                         _ => {
-                            if !generics.own_params.is_empty() && args.len() >= generics.count() {
+                            if !generics.is_own_empty() && args.len() >= generics.count() {
                                 let args = generics.own_args_no_defaults(self.tcx(), args);
                                 return self.path_generic_args(
                                     |cx| cx.print_def_path(def_id, parent_args),

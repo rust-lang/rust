@@ -5,6 +5,7 @@ use crate::ty::{self, Ty};
 use crate::ty::{GenericArg, GenericArgKind};
 use rustc_data_structures::sso::SsoHashSet;
 use smallvec::{smallvec, SmallVec};
+use tracing::debug;
 
 // The TypeWalker's stack is hot enough that it's worth going to some effort to
 // avoid heap allocations.
@@ -211,38 +212,19 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             }
         },
         GenericArgKind::Lifetime(_) => {}
-        GenericArgKind::Const(parent_ct) => {
-            stack.push(parent_ct.ty().into());
-            match parent_ct.kind() {
-                ty::ConstKind::Infer(_)
-                | ty::ConstKind::Param(_)
-                | ty::ConstKind::Placeholder(_)
-                | ty::ConstKind::Bound(..)
-                | ty::ConstKind::Value(_)
-                | ty::ConstKind::Error(_) => {}
+        GenericArgKind::Const(parent_ct) => match parent_ct.kind() {
+            ty::ConstKind::Infer(_)
+            | ty::ConstKind::Param(_)
+            | ty::ConstKind::Placeholder(_)
+            | ty::ConstKind::Bound(..)
+            | ty::ConstKind::Error(_) => {}
 
-                ty::ConstKind::Expr(expr) => match expr {
-                    ty::Expr::UnOp(_, v) => push_inner(stack, v.into()),
-                    ty::Expr::Binop(_, l, r) => {
-                        push_inner(stack, r.into());
-                        push_inner(stack, l.into())
-                    }
-                    ty::Expr::FunctionCall(func, args) => {
-                        for a in args.iter().rev() {
-                            push_inner(stack, a.into());
-                        }
-                        push_inner(stack, func.into());
-                    }
-                    ty::Expr::Cast(_, c, t) => {
-                        push_inner(stack, t.into());
-                        push_inner(stack, c.into());
-                    }
-                },
+            ty::ConstKind::Value(ty, _) => stack.push(ty.into()),
 
-                ty::ConstKind::Unevaluated(ct) => {
-                    stack.extend(ct.args.iter().rev());
-                }
+            ty::ConstKind::Expr(expr) => stack.extend(expr.args().iter().rev()),
+            ty::ConstKind::Unevaluated(ct) => {
+                stack.extend(ct.args.iter().rev());
             }
-        }
+        },
     }
 }

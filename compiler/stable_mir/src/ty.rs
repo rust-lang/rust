@@ -3,9 +3,10 @@ use super::{
     with, DefId, Error, Symbol,
 };
 use crate::abi::Layout;
+use crate::crate_def::{CrateDef, CrateDefType};
 use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
+use crate::mir::mono::StaticDef;
 use crate::target::MachineInfo;
-use crate::{crate_def::CrateDef, mir::mono::StaticDef};
 use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
@@ -28,11 +29,11 @@ impl Ty {
 
     /// Create a new array type.
     pub fn try_new_array(elem_ty: Ty, size: u64) -> Result<Ty, Error> {
-        Ok(Ty::from_rigid_kind(RigidTy::Array(elem_ty, Const::try_from_target_usize(size)?)))
+        Ok(Ty::from_rigid_kind(RigidTy::Array(elem_ty, TyConst::try_from_target_usize(size)?)))
     }
 
     /// Create a new array type from Const length.
-    pub fn new_array_with_const_len(elem_ty: Ty, len: Const) -> Ty {
+    pub fn new_array_with_const_len(elem_ty: Ty, len: TyConst) -> Ty {
         Ty::from_rigid_kind(RigidTy::Array(elem_ty, len))
     }
 
@@ -101,24 +102,66 @@ impl Ty {
 /// Represents a pattern in the type system
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Pattern {
-    Range { start: Option<Const>, end: Option<Const>, include_end: bool },
+    Range { start: Option<TyConst>, end: Option<TyConst>, include_end: bool },
 }
 
-/// Represents a constant in MIR or from the Type system.
+/// Represents a constant in the type system
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Const {
+pub struct TyConst {
+    pub(crate) kind: TyConstKind,
+    pub id: TyConstId,
+}
+
+impl TyConst {
+    pub fn new(kind: TyConstKind, id: TyConstId) -> TyConst {
+        Self { kind, id }
+    }
+
+    /// Retrieve the constant kind.
+    pub fn kind(&self) -> &TyConstKind {
+        &self.kind
+    }
+
+    /// Creates an interned usize constant.
+    pub fn try_from_target_usize(val: u64) -> Result<Self, Error> {
+        with(|cx| cx.try_new_ty_const_uint(val.into(), UintTy::Usize))
+    }
+
+    /// Try to evaluate to a target `usize`.
+    pub fn eval_target_usize(&self) -> Result<u64, Error> {
+        with(|cx| cx.eval_target_usize_ty(self))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TyConstKind {
+    Param(ParamConst),
+    Bound(DebruijnIndex, BoundVar),
+    Unevaluated(ConstDef, GenericArgs),
+
+    // FIXME: These should be a valtree
+    Value(Ty, Allocation),
+    ZSTValue(Ty),
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct TyConstId(usize);
+
+/// Represents a constant in MIR
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MirConst {
     /// The constant kind.
     pub(crate) kind: ConstantKind,
     /// The constant type.
     pub(crate) ty: Ty,
     /// Used for internal tracking of the internal constant.
-    pub id: ConstId,
+    pub id: MirConstId,
 }
 
-impl Const {
+impl MirConst {
     /// Build a constant. Note that this should only be used by the compiler.
-    pub fn new(kind: ConstantKind, ty: Ty, id: ConstId) -> Const {
-        Const { kind, ty, id }
+    pub fn new(kind: ConstantKind, ty: Ty, id: MirConstId) -> MirConst {
+        MirConst { kind, ty, id }
     }
 
     /// Retrieve the constant kind.
@@ -131,11 +174,6 @@ impl Const {
         self.ty
     }
 
-    /// Creates an interned usize constant.
-    fn try_from_target_usize(val: u64) -> Result<Self, Error> {
-        with(|cx| cx.try_new_const_uint(val.into(), UintTy::Usize))
-    }
-
     /// Try to evaluate to a target `usize`.
     pub fn eval_target_usize(&self) -> Result<u64, Error> {
         with(|cx| cx.eval_target_usize(self))
@@ -143,7 +181,7 @@ impl Const {
 
     /// Create a constant that represents a new zero-sized constant of type T.
     /// Fails if the type is not a ZST or if it doesn't have a known size.
-    pub fn try_new_zero_sized(ty: Ty) -> Result<Const, Error> {
+    pub fn try_new_zero_sized(ty: Ty) -> Result<MirConst, Error> {
         with(|cx| cx.try_new_const_zst(ty))
     }
 
@@ -152,23 +190,23 @@ impl Const {
     /// Note that there is no guarantee today about duplication of the same constant.
     /// I.e.: Calling this function multiple times with the same argument may or may not return
     /// the same allocation.
-    pub fn from_str(value: &str) -> Const {
+    pub fn from_str(value: &str) -> MirConst {
         with(|cx| cx.new_const_str(value))
     }
 
     /// Build a new constant that represents the given boolean value.
-    pub fn from_bool(value: bool) -> Const {
+    pub fn from_bool(value: bool) -> MirConst {
         with(|cx| cx.new_const_bool(value))
     }
 
     /// Build a new constant that represents the given unsigned integer.
-    pub fn try_from_uint(value: u128, uint_ty: UintTy) -> Result<Const, Error> {
+    pub fn try_from_uint(value: u128, uint_ty: UintTy) -> Result<MirConst, Error> {
         with(|cx| cx.try_new_const_uint(value, uint_ty))
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ConstId(usize);
+pub struct MirConstId(usize);
 
 type Ident = Opaque;
 
@@ -190,7 +228,6 @@ pub(crate) type DebruijnIndex = u32;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EarlyParamRegion {
-    pub def_id: RegionDef,
     pub index: u32,
     pub name: Symbol,
 }
@@ -468,6 +505,15 @@ impl TyKind {
     pub fn discriminant_ty(&self) -> Option<Ty> {
         self.rigid().map(|ty| with(|cx| cx.rigid_ty_discriminant_ty(ty)))
     }
+
+    /// Deconstruct a function type if this is one.
+    pub fn fn_def(&self) -> Option<(FnDef, &GenericArgs)> {
+        if let TyKind::RigidTy(RigidTy::FnDef(def, args)) = self {
+            Some((*def, args))
+        } else {
+            None
+        }
+    }
 }
 
 pub struct TypeAndMut {
@@ -485,7 +531,7 @@ pub enum RigidTy {
     Adt(AdtDef, GenericArgs),
     Foreign(ForeignDef),
     Str,
-    Array(Ty, Const),
+    Array(Ty, TyConst),
     Pat(Ty, Pattern),
     Slice(Ty),
     RawPtr(Ty, Mutability),
@@ -527,7 +573,7 @@ pub enum IntTy {
 impl IntTy {
     pub fn num_bytes(self) -> usize {
         match self {
-            IntTy::Isize => crate::target::MachineInfo::target_pointer_width().bytes().into(),
+            IntTy::Isize => crate::target::MachineInfo::target_pointer_width().bytes(),
             IntTy::I8 => 1,
             IntTy::I16 => 2,
             IntTy::I32 => 4,
@@ -550,7 +596,7 @@ pub enum UintTy {
 impl UintTy {
     pub fn num_bytes(self) -> usize {
         match self {
-            UintTy::Usize => crate::target::MachineInfo::target_pointer_width().bytes().into(),
+            UintTy::Usize => crate::target::MachineInfo::target_pointer_width().bytes(),
             UintTy::U8 => 1,
             UintTy::U16 => 2,
             UintTy::U32 => 4,
@@ -593,7 +639,7 @@ impl ForeignModule {
     }
 }
 
-crate_def! {
+crate_def_with_ty! {
     /// Hold information about a ForeignItem in a crate.
     pub ForeignDef;
 }
@@ -611,7 +657,7 @@ pub enum ForeignItemKind {
     Type(Ty),
 }
 
-crate_def! {
+crate_def_with_ty! {
     /// Hold information about a function definition in a crate.
     pub FnDef;
 }
@@ -620,6 +666,52 @@ impl FnDef {
     // Get the function body if available.
     pub fn body(&self) -> Option<Body> {
         with(|ctx| ctx.has_body(self.0).then(|| ctx.mir_body(self.0)))
+    }
+
+    // Check if the function body is available.
+    pub fn has_body(&self) -> bool {
+        with(|ctx| ctx.has_body(self.0))
+    }
+
+    /// Get the information of the intrinsic if this function is a definition of one.
+    pub fn as_intrinsic(&self) -> Option<IntrinsicDef> {
+        with(|cx| cx.intrinsic(self.def_id()))
+    }
+
+    /// Check if the function is an intrinsic.
+    #[inline]
+    pub fn is_intrinsic(&self) -> bool {
+        self.as_intrinsic().is_some()
+    }
+
+    /// Get the function signature for this function definition.
+    pub fn fn_sig(&self) -> PolyFnSig {
+        let kind = self.ty().kind();
+        kind.fn_sig().unwrap()
+    }
+}
+
+crate_def_with_ty! {
+    pub IntrinsicDef;
+}
+
+impl IntrinsicDef {
+    /// Returns the plain name of the intrinsic.
+    /// e.g., `transmute` for `core::intrinsics::transmute`.
+    pub fn fn_name(&self) -> Symbol {
+        with(|cx| cx.intrinsic_name(*self))
+    }
+
+    /// Returns whether the intrinsic has no meaningful body and all backends
+    /// need to shim all calls to it.
+    pub fn must_be_overridden(&self) -> bool {
+        with(|cx| !cx.has_body(self.0))
+    }
+}
+
+impl From<IntrinsicDef> for FnDef {
+    fn from(def: IntrinsicDef) -> Self {
+        FnDef(def.0)
     }
 }
 
@@ -639,7 +731,7 @@ crate_def! {
     pub BrNamedDef;
 }
 
-crate_def! {
+crate_def_with_ty! {
     pub AdtDef;
 }
 
@@ -795,7 +887,7 @@ crate_def! {
     pub GenericDef;
 }
 
-crate_def! {
+crate_def_with_ty! {
     pub ConstDef;
 }
 
@@ -832,7 +924,7 @@ impl std::ops::Index<ParamTy> for GenericArgs {
 }
 
 impl std::ops::Index<ParamConst> for GenericArgs {
-    type Output = Const;
+    type Output = TyConst;
 
     fn index(&self, index: ParamConst) -> &Self::Output {
         self.0[index.index as usize].expect_const()
@@ -843,7 +935,7 @@ impl std::ops::Index<ParamConst> for GenericArgs {
 pub enum GenericArgKind {
     Lifetime(Region),
     Type(Ty),
-    Const(Const),
+    Const(TyConst),
 }
 
 impl GenericArgKind {
@@ -860,7 +952,7 @@ impl GenericArgKind {
     /// Panic if this generic argument is not a const, otherwise
     /// return the const.
     #[track_caller]
-    pub fn expect_const(&self) -> &Const {
+    pub fn expect_const(&self) -> &TyConst {
         match self {
             GenericArgKind::Const(c) => c,
             _ => panic!("{self:?}"),
@@ -879,7 +971,7 @@ impl GenericArgKind {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TermKind {
     Type(Ty),
-    Const(Const),
+    Const(TyConst),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1151,7 +1243,7 @@ impl Allocation {
         match self.read_int()? {
             0 => Ok(false),
             1 => Ok(true),
-            val @ _ => Err(error!("Unexpected value for bool: `{val}`")),
+            val => Err(error!("Unexpected value for bool: `{val}`")),
         }
     }
 
@@ -1168,6 +1260,7 @@ impl Allocation {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ConstantKind {
+    Ty(TyConst),
     Allocated(Allocation),
     Unevaluated(UnevaluatedConst),
     Param(ParamConst),
@@ -1205,6 +1298,7 @@ pub struct TraitDecl {
     pub is_marker: bool,
     pub is_coinductive: bool,
     pub skip_array_during_method_dispatch: bool,
+    pub skip_boxed_slice_during_method_dispatch: bool,
     pub specialization_kind: TraitSpecializationKind,
     pub must_implement_one_of: Option<Vec<Ident>>,
     pub implement_via_object: bool,
@@ -1300,7 +1394,7 @@ pub enum PredicateKind {
     ObjectSafe(TraitDef),
     SubType(SubtypePredicate),
     Coerce(CoercePredicate),
-    ConstEquate(Const, Const),
+    ConstEquate(TyConst, TyConst),
     Ambiguous,
     AliasRelate(TermKind, TermKind, AliasRelationDirection),
 }
@@ -1311,9 +1405,9 @@ pub enum ClauseKind {
     RegionOutlives(RegionOutlivesPredicate),
     TypeOutlives(TypeOutlivesPredicate),
     Projection(ProjectionPredicate),
-    ConstArgHasType(Const, Ty),
+    ConstArgHasType(TyConst, Ty),
     WellFormed(GenericArgKind),
-    ConstEvaluatable(Const),
+    ConstEvaluatable(TyConst),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1391,7 +1485,8 @@ macro_rules! index_impl {
     };
 }
 
-index_impl!(ConstId);
+index_impl!(TyConstId);
+index_impl!(MirConstId);
 index_impl!(Ty);
 index_impl!(Span);
 

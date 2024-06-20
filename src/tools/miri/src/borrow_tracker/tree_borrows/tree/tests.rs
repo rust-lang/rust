@@ -230,6 +230,7 @@ mod spurious_read {
     /// - any access to the same location
     /// - end of one of them being protected
     /// - a retag that would change their relative position
+    ///
     /// The type `TestEvent` models these kinds of events.
     ///
     /// In order to prevent `x` or `y` from losing their protector,
@@ -483,7 +484,7 @@ mod spurious_read {
         /// that causes UB in the target but not in the source.
         /// This implementation simply explores the reachable space
         /// by all sequences of `TestEvent`.
-        /// This function can be instanciated with `RetX` and `RetY`
+        /// This function can be instantiated with `RetX` and `RetY`
         /// among `NoRet` or `AllowRet` to resp. forbid/allow `x`/`y` to lose their
         /// protector.
         fn distinguishable<RetX, RetY>(&self, other: &Self) -> bool

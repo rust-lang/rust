@@ -11,9 +11,11 @@ declare_clippy_lint! {
     /// ### What it does
     /// Triggers when a testing function (marked with the `#[test]` attribute) isn't inside a testing module
     /// (marked with `#[cfg(test)]`).
-    /// ### Why is this bad?
+    ///
+    /// ### Why restrict this?
     /// The idiomatic (and more performant) way of writing tests is inside a testing module (flagged with `#[cfg(test)]`),
     /// having test functions outside of this module is confusing and may lead to them being "hidden".
+    ///
     /// ### Example
     /// ```no_run
     /// #[test]

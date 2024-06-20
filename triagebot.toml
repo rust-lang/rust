@@ -122,6 +122,19 @@ issues).
 """
 label = "O-apple"
 
+# This ping group is meant for situations where a rustc/stdlib change breaks RfL.
+# In that case, we want to notify the RfL group.
+[ping.rust-for-linux]
+alias = ["rfl"]
+message = """\
+Hey Rust for Linux group! It looks like something broke the Rust for Linux integration.
+Could you try to take a look?
+In case it's useful, here are some [instructions] for tackling these sorts of issues.
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/rust-for-linux.html
+"""
+label = "O-rfl"
+
 [prioritize]
 label = "I-prioritize"
 
@@ -317,6 +330,7 @@ trigger_files = [
     "src/tools/compiletest",
     "src/tools/tidy",
     "src/tools/rustdoc-gui-test",
+    "src/tools/libcxx-version",
 ]
 
 [autolabel."T-infra"]
@@ -389,8 +403,11 @@ exclude_labels = [
 
 [autolabel."WG-trait-system-refactor"]
 trigger_files = [
+    "compiler/rustc_middle/src/traits/solve",
+    "compiler/rustc_next_trait_solver",
     "compiler/rustc_trait_selection/src/solve",
-    "compiler/rustc_middle/src/traits/solve"
+    "compiler/rustc_type_ir/src/solve",
+    "tests/ui/traits/next-solver",
 ]
 
 [autolabel."PG-exploit-mitigations"]
@@ -410,6 +427,12 @@ trigger_files = [
     "tests/codegen/stack-protector.rs",
     "tests/ui/sanitizer",
     "tests/ui/stack-protector"
+]
+
+[autolabel."A-run-make"]
+trigger_files = [
+    "tests/run-make",
+    "src/tools/run-make-support"
 ]
 
 [notify-zulip."I-prioritize"]
@@ -453,6 +476,19 @@ message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
 # FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
+#        At the moment, the beta-accepted+T-rustdoc action fully occupies the beta-accepted slot
+#        preventing others from adding more beta-accepted actions.
+[notify-zulip."beta-accepted"]
+required_labels = ["T-rustdoc"]
+zulip_stream = 266220 # #t-rustdoc
+# Put it in the same thread as beta-nominated.
+topic = "beta-nominated: #{number}"
+message_on_add = "PR #{number} has been **accepted** for beta backport."
+message_on_remove = "PR #{number}'s beta-acceptance has been **removed**."
+message_on_close = "PR #{number} has been closed. Thanks for participating!"
+message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
+
+# FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
 #        At the moment, the stable-nominated+T-rustdoc action fully occupies the stable-nominated slot
 #        preventing others from adding more stable-nominated actions.
 [notify-zulip."stable-nominated"]
@@ -473,6 +509,19 @@ don't know
 """,
 ]
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
+message_on_close = "PR #{number} has been closed. Thanks for participating!"
+message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
+
+# FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
+#        At the moment, the stable-accepted+T-rustdoc action fully occupies the stable-accepted slot
+#        preventing others from adding more stable-accepted actions.
+[notify-zulip."stable-accepted"]
+required_labels = ["T-rustdoc"]
+zulip_stream = 266220 # #t-rustdoc
+# Put it in the same thread as stable-nominated.
+topic = "stable-nominated: #{number}"
+message_on_add = "PR #{number} has been **accepted** for stable backport."
+message_on_remove = "PR #{number}'s stable-acceptance has been **removed**."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
@@ -641,7 +690,13 @@ message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
 [mentions."tests/run-make/"]
-message = "Some changes occurred in run-make tests."
+message = """
+This PR modifies `tests/run-make/`. If this PR is trying to port a Makefile
+run-make test to use rmake.rs, please update the
+[run-make port tracking issue](https://github.com/rust-lang/rust/issues/121876)
+so we can track our progress. You can either modify the tracking issue
+directly, or you can comment on the tracking issue and link this PR.
+"""
 cc = ["@jieyouxu"]
 
 [mentions."src/librustdoc/html/static/css/themes/ayu.css"]
@@ -794,6 +849,9 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 [mentions."src/doc/rustc/src/check-cfg.md"]
 cc = ["@Urgau"]
 
+[mentions."src/doc/rustc/src/check-cfg"]
+cc = ["@Urgau"]
+
 [mentions."src/doc/rustc/src/platform-support"]
 cc = ["@Nilstrieb"]
 
@@ -841,6 +899,9 @@ cc = ["@Zalathar"]
 [mentions."tests/coverage"]
 message = "Some changes occurred in coverage tests."
 cc = ["@Zalathar"]
+
+[mentions."src/tools/opt-dist"]
+cc = ["@kobzol"]
 
 [assign]
 warn_non_default_branch = true
@@ -1059,6 +1120,7 @@ project-exploit-mitigations = [
 "/src/tools/cargo" =                                     ["@ehuss"]
 "/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors", "@jieyouxu"]
 "/src/tools/linkchecker" =                               ["@ehuss"]
+"/src/tools/opt-dist" =                                  ["@kobzol"]
 "/src/tools/run-make-support" =                          ["@jieyouxu"]
 "/src/tools/rust-installer" =                            ["bootstrap"]
 "/src/tools/rustbook" =                                  ["@ehuss"]
@@ -1068,6 +1130,7 @@ project-exploit-mitigations = [
 "/src/tools/tidy" =                                      ["bootstrap"]
 "/src/tools/x" =                                         ["bootstrap"]
 "/src/tools/rustdoc-gui-test" =                          ["bootstrap", "@onur-ozkan"]
+"/src/tools/libcxx-version" =                            ["@onur-ozkan"]
 
 # Enable tracking of PR review assignment
 # Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment-tracking.html

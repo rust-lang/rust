@@ -3,7 +3,7 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #[inline(never)]
-fn foo(_: i32) { }
+fn foo(_: i32) {}
 
 // EMIT_MIR switch_int.main.GVN.diff
 // EMIT_MIR switch_int.main.SimplifyConstCondition-after-const-prop.diff

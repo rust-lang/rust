@@ -15,7 +15,7 @@ struct SomeType;
 struct SomeGenericType<T1, T2>(T1, T2);
 
 mod mod1 {
-    use super::{SomeType, SomeGenericType};
+    use super::{SomeGenericType, SomeType};
 
     // Even though the impl is in `mod1`, the methods should end up in the
     // parent module, since that is where their self-type is.
@@ -40,8 +40,7 @@ trait Trait {
 
 // We provide an implementation of `Trait` for all types. The corresponding
 // monomorphizations should end up in whichever module the concrete `T` is.
-impl<T> Trait for T
-{
+impl<T> Trait for T {
     fn foo(&self) {}
 }
 

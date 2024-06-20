@@ -1,5 +1,5 @@
-pub use private::Quz;
 pub use hidden::Bar;
+pub use private::Quz;
 
 mod private {
     pub struct Quz;
@@ -12,5 +12,5 @@ pub mod hidden {
 
 #[macro_export]
 macro_rules! foo {
-    () => {}
+    () => {};
 }

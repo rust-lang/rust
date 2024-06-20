@@ -17,6 +17,7 @@ mod same_item_push;
 mod single_element_loop;
 mod unused_enumerate_index;
 mod utils;
+mod while_float;
 mod while_immutable_condition;
 mod while_let_loop;
 mod while_let_on_iterator;
@@ -418,6 +419,39 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for while loops comparing floating point values.
+    ///
+    /// ### Why is this bad?
+    /// If you increment floating point values, errors can compound,
+    /// so, use integers instead if possible.
+    ///
+    /// ### Known problems
+    /// The lint will catch all while loops comparing floating point
+    /// values without regarding the increment.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let mut x = 0.0;
+    /// while x < 42.0 {
+    ///     x += 1.0;
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let mut x = 0;
+    /// while x < 42 {
+    ///     x += 1;
+    /// }
+    /// ```
+    #[clippy::version = "1.80.0"]
+    pub WHILE_FLOAT,
+    nursery,
+    "while loops comaparing floating point values"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks whether a for loop is being used to push a constant
     /// value into a Vec.
     ///
@@ -641,9 +675,9 @@ declare_clippy_lint! {
     /// Checks for infinite loops in a function where the return type is not `!`
     /// and lint accordingly.
     ///
-    /// ### Why is this bad?
-    /// A loop should be gently exited somewhere, or at least mark its parent function as
-    /// never return (`!`).
+    /// ### Why restrict this?
+    /// Making the return type `!` serves as documentation that the function does not return.
+    /// If the function is not intended to loop infinitely, then this lint may detect a bug.
     ///
     /// ### Example
     /// ```no_run,ignore
@@ -706,6 +740,7 @@ impl_lint_pass!(Loops => [
     NEVER_LOOP,
     MUT_RANGE_BOUND,
     WHILE_IMMUTABLE_CONDITION,
+    WHILE_FLOAT,
     SAME_ITEM_PUSH,
     SINGLE_ELEMENT_LOOP,
     MISSING_SPIN_LOOP,
@@ -762,6 +797,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
 
         if let Some(higher::While { condition, body, span }) = higher::While::hir(expr) {
             while_immutable_condition::check(cx, condition, body);
+            while_float::check(cx, condition);
             missing_spin_loop::check(cx, condition, body);
             manual_while_let_some::check(cx, condition, body, span);
         }

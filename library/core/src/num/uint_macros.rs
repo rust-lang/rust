@@ -184,6 +184,30 @@ macro_rules! uint_impl {
             (!self).trailing_zeros()
         }
 
+        /// Returns the bit pattern of `self` reinterpreted as a signed integer of the same size.
+        ///
+        /// This produces the same result as an `as` cast, but ensures that the bit-width remains
+        /// the same.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(integer_sign_cast)]
+        ///
+        #[doc = concat!("let n = ", stringify!($SelfT), "::MAX;")]
+        ///
+        #[doc = concat!("assert_eq!(n.cast_signed(), -1", stringify!($SignedT), ");")]
+        /// ```
+        #[unstable(feature = "integer_sign_cast", issue = "125882")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn cast_signed(self) -> $SignedT {
+            self as $SignedT
+        }
+
         /// Shifts the bits to the left by a specified amount, `n`,
         /// wrapping the truncated bits to the end of the resulting integer.
         ///
@@ -495,9 +519,19 @@ macro_rules! uint_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_add(self, rhs: Self) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_add`.
-            unsafe { intrinsics::unchecked_add(self, rhs) }
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_add cannot overflow"),
+                (
+                    lhs: $SelfT = self,
+                    rhs: $SelfT = rhs,
+                ) => !lhs.overflowing_add(rhs).1,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_add(self, rhs)
+            }
         }
 
         /// Checked addition with a signed integer. Computes `self + rhs`,
@@ -677,9 +711,19 @@ macro_rules! uint_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_sub(self, rhs: Self) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_sub`.
-            unsafe { intrinsics::unchecked_sub(self, rhs) }
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_sub cannot overflow"),
+                (
+                    lhs: $SelfT = self,
+                    rhs: $SelfT = rhs,
+                ) => !lhs.overflowing_sub(rhs).1,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_sub(self, rhs)
+            }
         }
 
         /// Checked integer multiplication. Computes `self * rhs`, returning
@@ -763,9 +807,19 @@ macro_rules! uint_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_mul(self, rhs: Self) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_mul`.
-            unsafe { intrinsics::unchecked_mul(self, rhs) }
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_mul cannot overflow"),
+                (
+                    lhs: $SelfT = self,
+                    rhs: $SelfT = rhs,
+                ) => !lhs.overflowing_mul(rhs).1,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_mul(self, rhs)
+            }
         }
 
         /// Checked integer division. Computes `self / rhs`, returning `None`
@@ -1118,9 +1172,12 @@ macro_rules! uint_impl {
         pub const fn checked_ilog(self, base: Self) -> Option<u32> {
             if self <= 0 || base <= 1 {
                 None
+            } else if self < base {
+                Some(0)
             } else {
-                let mut n = 0;
-                let mut r = 1;
+                // Since base >= self, n >= 1
+                let mut n = 1;
+                let mut r = base;
 
                 // Optimization for 128 bit wide integers.
                 if Self::BITS == 128 {
@@ -1334,9 +1391,18 @@ macro_rules! uint_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_shl`.
-            unsafe { intrinsics::unchecked_shl(self, rhs) }
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_shl cannot overflow"),
+                (
+                    rhs: u32 = rhs,
+                ) => rhs < <$ActualT>::BITS,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_shl(self, rhs)
+            }
         }
 
         /// Checked shift right. Computes `self >> rhs`, returning `None`
@@ -1423,9 +1489,18 @@ macro_rules! uint_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
-                // SAFETY: the caller must uphold the safety contract for
-                // `unchecked_shr`.
-                unsafe { intrinsics::unchecked_shr(self, rhs) }
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_shr cannot overflow"),
+                (
+                    rhs: u32 = rhs,
+                ) => rhs < <$ActualT>::BITS,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_shr(self, rhs)
+            }
         }
 
         /// Checked exponentiation. Computes `self.pow(exp)`, returning `None` if
@@ -2755,7 +2830,7 @@ macro_rules! uint_impl {
         ///
         /// When return value overflows (i.e., `self > (1 << (N-1))` for type
         /// `uN`), it panics in debug mode and the return value is wrapped to 0 in
-        /// release mode (the only situation in which method can return 0).
+        /// release mode (the only situation in which this method can return 0).
         ///
         /// # Examples
         ///
@@ -2776,7 +2851,7 @@ macro_rules! uint_impl {
             self.one_less_than_next_power_of_two() + 1
         }
 
-        /// Returns the smallest power of two greater than or equal to `n`. If
+        /// Returns the smallest power of two greater than or equal to `self`. If
         /// the next power of two is greater than the type's maximum value,
         /// `None` is returned, otherwise the power of two is wrapped in `Some`.
         ///

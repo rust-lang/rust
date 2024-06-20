@@ -1,10 +1,12 @@
+// tidy-alphabetical-start
+#![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
-#![allow(internal_features)]
 #![feature(associated_type_defaults)]
-#![feature(try_blocks)]
 #![feature(let_chains)]
+#![feature(rustdoc_internals)]
+#![feature(try_blocks)]
+// tidy-alphabetical-end
 
 mod errors;
 
@@ -971,8 +973,12 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 
 impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
-        let old_maybe_typeck_results =
-            self.maybe_typeck_results.replace(self.tcx.typeck_body(body_id));
+        let new_typeck_results = self.tcx.typeck_body(body_id);
+        // Do not try reporting privacy violations if we failed to infer types.
+        if new_typeck_results.tainted_by_errors.is_some() {
+            return;
+        }
+        let old_maybe_typeck_results = self.maybe_typeck_results.replace(new_typeck_results);
         self.visit_body(self.tcx.hir().body(body_id));
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
@@ -1695,7 +1701,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         rustc_ty_utils::sig_types::walk_types(tcx, def_id, &mut visitor);
 
         if let Some(body_id) = tcx.hir().maybe_body_owned_by(def_id) {
-            visitor.visit_nested_body(body_id);
+            visitor.visit_nested_body(body_id.id());
         }
     }
 

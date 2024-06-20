@@ -11,7 +11,7 @@ use thin_vec::ThinVec;
 
 use crate::clean::{self, simplify, Lifetime};
 use crate::clean::{
-    clean_generic_param_def, clean_middle_ty, clean_predicate, clean_trait_ref_with_bindings,
+    clean_generic_param_def, clean_middle_ty, clean_predicate, clean_trait_ref_with_constraints,
     clean_ty_generics,
 };
 use crate::core::DocContext;
@@ -121,7 +121,7 @@ fn synthesize_auto_trait_impl<'tcx>(
         kind: Box::new(clean::ImplItem(Box::new(clean::Impl {
             safety: hir::Safety::Safe,
             generics,
-            trait_: Some(clean_trait_ref_with_bindings(cx, trait_ref, ThinVec::new())),
+            trait_: Some(clean_trait_ref_with_constraints(cx, trait_ref, ThinVec::new())),
             for_: clean_middle_ty(ty::Binder::dummy(ty), cx, None, None),
             items: Vec::new(),
             polarity,

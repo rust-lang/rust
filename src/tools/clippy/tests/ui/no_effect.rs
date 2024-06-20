@@ -1,6 +1,5 @@
 #![feature(fn_traits, unboxed_closures)]
 #![warn(clippy::no_effect_underscore_binding)]
-#![allow(dead_code, path_statements)]
 #![allow(
     clippy::deref_addrof,
     clippy::redundant_field_names,
@@ -33,7 +32,6 @@ impl Neg for Cout {
     }
 }
 
-struct Unit;
 struct Tuple(i32);
 struct Struct {
     field: i32,
@@ -41,10 +39,6 @@ struct Struct {
 enum Enum {
     Tuple(i32),
     Struct { field: i32 },
-}
-struct DropUnit;
-impl Drop for DropUnit {
-    fn drop(&mut self) {}
 }
 struct DropStruct {
     field: i32,
@@ -117,14 +111,8 @@ impl FnOnce<(&str,)> for GreetStruct3 {
 
 fn main() {
     let s = get_struct();
-    let s2 = get_struct();
 
     0;
-    //~^ ERROR: statement with no effect
-    //~| NOTE: `-D clippy::no-effect` implied by `-D warnings`
-    s2;
-    //~^ ERROR: statement with no effect
-    Unit;
     //~^ ERROR: statement with no effect
     Tuple(0);
     //~^ ERROR: statement with no effect
@@ -192,7 +180,6 @@ fn main() {
     unsafe { unsafe_fn() };
     let _used = get_struct();
     let _x = vec![1];
-    DropUnit;
     DropStruct { field: 0 };
     DropTuple(0);
     DropEnum::Tuple(0);

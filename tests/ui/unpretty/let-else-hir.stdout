@@ -9,10 +9,10 @@ extern crate std;
 
 fn foo(x:
         Option<u32>) {
-        let Some(_) = x else
-            {
+    let Some(_) = x else
+        {
 
-            { ::std::rt::begin_panic("explicit panic") }
-        };
-    }
+        { ::std::rt::begin_panic("explicit panic") }
+    };
+}
 fn main() { }

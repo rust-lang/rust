@@ -1,5 +1,5 @@
 #![doc = include_str!("error.md")]
-#![unstable(feature = "error_in_core", issue = "103765")]
+#![stable(feature = "error_in_core", since = "CURRENT_RUSTC_VERSION")]
 
 #[cfg(test)]
 mod tests;
@@ -130,7 +130,6 @@ pub trait Error: Debug + Display {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     /// use core::fmt;
     /// use core::error::{request_ref, Request};
     ///
@@ -361,8 +360,7 @@ impl dyn Error {
 /// Get a string value from an error.
 ///
 /// ```rust
-/// # #![feature(error_generic_member_access)]
-/// # #![feature(error_in_core)]
+/// #![feature(error_generic_member_access)]
 /// use std::error::Error;
 /// use core::error::request_value;
 ///
@@ -385,8 +383,7 @@ where
 /// Get a string reference from an error.
 ///
 /// ```rust
-/// # #![feature(error_generic_member_access)]
-/// # #![feature(error_in_core)]
+/// #![feature(error_generic_member_access)]
 /// use core::error::Error;
 /// use core::error::request_ref;
 ///
@@ -407,9 +404,9 @@ fn request_by_type_tag<'a, I>(err: &'a (impl Error + ?Sized)) -> Option<I::Reifi
 where
     I: tags::Type<'a>,
 {
-    let mut tagged = TaggedOption::<'a, I>(None);
+    let mut tagged = Tagged { tag_id: TypeId::of::<I>(), value: TaggedOption::<'a, I>(None) };
     err.provide(tagged.as_request());
-    tagged.0
+    tagged.value.0
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -458,7 +455,6 @@ where
 ///
 /// ```
 /// #![feature(error_generic_member_access)]
-/// #![feature(error_in_core)]
 /// use core::fmt;
 /// use core::error::Request;
 /// use core::error::request_ref;
@@ -511,16 +507,9 @@ where
 ///
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
 #[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/90435
-pub struct Request<'a>(dyn Erased<'a> + 'a);
+pub struct Request<'a>(Tagged<dyn Erased<'a> + 'a>);
 
 impl<'a> Request<'a> {
-    /// Create a new `&mut Request` from a `&mut dyn Erased` trait object.
-    fn new<'b>(erased: &'b mut (dyn Erased<'a> + 'a)) -> &'b mut Request<'a> {
-        // SAFETY: transmuting `&mut (dyn Erased<'a> + 'a)` to `&mut Request<'a>` is safe since
-        // `Request` is repr(transparent).
-        unsafe { &mut *(erased as *mut dyn Erased<'a> as *mut Request<'a>) }
-    }
-
     /// Provide a value or other type with only static lifetimes.
     ///
     /// # Examples
@@ -529,7 +518,6 @@ impl<'a> Request<'a> {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     ///
     /// use core::error::Request;
     ///
@@ -564,7 +552,6 @@ impl<'a> Request<'a> {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     ///
     /// use core::error::Request;
     ///
@@ -600,7 +587,6 @@ impl<'a> Request<'a> {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     ///
     /// use core::error::Request;
     ///
@@ -633,7 +619,6 @@ impl<'a> Request<'a> {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     ///
     /// use core::error::Request;
     ///
@@ -700,7 +685,6 @@ impl<'a> Request<'a> {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     ///
     /// use core::error::Request;
     /// use core::error::request_value;
@@ -788,7 +772,6 @@ impl<'a> Request<'a> {
     ///
     /// ```rust
     /// #![feature(error_generic_member_access)]
-    /// #![feature(error_in_core)]
     ///
     /// use core::error::Request;
     /// use core::error::request_ref;
@@ -945,32 +928,33 @@ pub(crate) mod tags {
 /// An `Option` with a type tag `I`.
 ///
 /// Since this struct implements `Erased`, the type can be erased to make a dynamically typed
-/// option. The type can be checked dynamically using `Erased::tag_id` and since this is statically
+/// option. The type can be checked dynamically using `Tagged::tag_id` and since this is statically
 /// checked for the concrete type, there is some degree of type safety.
 #[repr(transparent)]
 pub(crate) struct TaggedOption<'a, I: tags::Type<'a>>(pub Option<I::Reified>);
 
-impl<'a, I: tags::Type<'a>> TaggedOption<'a, I> {
+impl<'a, I: tags::Type<'a>> Tagged<TaggedOption<'a, I>> {
     pub(crate) fn as_request(&mut self) -> &mut Request<'a> {
-        Request::new(self as &mut (dyn Erased<'a> + 'a))
+        let erased = self as &mut Tagged<dyn Erased<'a> + 'a>;
+        // SAFETY: transmuting `&mut Tagged<dyn Erased<'a> + 'a>` to `&mut Request<'a>` is safe since
+        // `Request` is repr(transparent).
+        unsafe { &mut *(erased as *mut Tagged<dyn Erased<'a>> as *mut Request<'a>) }
     }
 }
 
 /// Represents a type-erased but identifiable object.
 ///
 /// This trait is exclusively implemented by the `TaggedOption` type.
-unsafe trait Erased<'a>: 'a {
-    /// The `TypeId` of the erased type.
-    fn tag_id(&self) -> TypeId;
+unsafe trait Erased<'a>: 'a {}
+
+unsafe impl<'a, I: tags::Type<'a>> Erased<'a> for TaggedOption<'a, I> {}
+
+struct Tagged<E: ?Sized> {
+    tag_id: TypeId,
+    value: E,
 }
 
-unsafe impl<'a, I: tags::Type<'a>> Erased<'a> for TaggedOption<'a, I> {
-    fn tag_id(&self) -> TypeId {
-        TypeId::of::<I>()
-    }
-}
-
-impl<'a> dyn Erased<'a> + 'a {
+impl<'a> Tagged<dyn Erased<'a> + 'a> {
     /// Returns some reference to the dynamic value if it is tagged with `I`,
     /// or `None` otherwise.
     #[inline]
@@ -978,9 +962,9 @@ impl<'a> dyn Erased<'a> + 'a {
     where
         I: tags::Type<'a>,
     {
-        if self.tag_id() == TypeId::of::<I>() {
+        if self.tag_id == TypeId::of::<I>() {
             // SAFETY: Just checked whether we're pointing to an I.
-            Some(unsafe { &*(self as *const Self).cast::<TaggedOption<'a, I>>() })
+            Some(&unsafe { &*(self as *const Self).cast::<Tagged<TaggedOption<'a, I>>>() }.value)
         } else {
             None
         }
@@ -993,9 +977,12 @@ impl<'a> dyn Erased<'a> + 'a {
     where
         I: tags::Type<'a>,
     {
-        if self.tag_id() == TypeId::of::<I>() {
-            // SAFETY: Just checked whether we're pointing to an I.
-            Some(unsafe { &mut *(self as *mut Self).cast::<TaggedOption<'a, I>>() })
+        if self.tag_id == TypeId::of::<I>() {
+            Some(
+                // SAFETY: Just checked whether we're pointing to an I.
+                &mut unsafe { &mut *(self as *mut Self).cast::<Tagged<TaggedOption<'a, I>>>() }
+                    .value,
+            )
         } else {
             None
         }

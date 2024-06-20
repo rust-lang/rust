@@ -6,17 +6,18 @@ use rustc_middle::mir::interpret::InterpResult;
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::FieldIdx;
 use rustc_target::abi::{FieldsShape, VariantIdx, Variants};
+use tracing::trace;
 
 use std::num::NonZero;
 
 use super::{throw_inval, InterpCx, MPlaceTy, Machine, Projectable};
 
 /// How to traverse a value and what to do when we are at the leaves.
-pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
+pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
     type V: Projectable<'tcx, M::Provenance> + From<MPlaceTy<'tcx, M::Provenance>>;
 
     /// The visitor must have an `InterpCx` in it.
-    fn ecx(&self) -> &InterpCx<'mir, 'tcx, M>;
+    fn ecx(&self) -> &InterpCx<'tcx, M>;
 
     /// `read_discriminant` can be hooked for better error messages.
     #[inline(always)]
@@ -94,7 +95,7 @@ pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
                 // unsized values are never immediate, so we can assert_mem_place
                 let op = v.to_op(self.ecx())?;
                 let dest = op.assert_mem_place();
-                let inner_mplace = self.ecx().unpack_dyn_trait(&dest, data)?.0;
+                let inner_mplace = self.ecx().unpack_dyn_trait(&dest, data)?;
                 trace!("walk_value: dyn object layout: {:#?}", inner_mplace.layout);
                 // recurse with the inner type
                 return self.visit_field(v, 0, &inner_mplace.into());
@@ -103,7 +104,7 @@ pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
                 // DynStar types. Very different from a dyn type (but strangely part of the
                 // same variant in `TyKind`): These are pairs where the 2nd component is the
                 // vtable, and the first component is the data (which must be ptr-sized).
-                let data = self.ecx().unpack_dyn_star(v, data)?.0;
+                let data = self.ecx().unpack_dyn_star(v, data)?;
                 return self.visit_field(v, 0, &data);
             }
             // Slices do not need special handling here: they have `Array` field

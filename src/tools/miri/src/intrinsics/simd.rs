@@ -1,3 +1,5 @@
+use either::Either;
+
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::{mir, ty, ty::FloatTy};
@@ -13,16 +15,16 @@ pub(crate) enum MinMax {
     Max,
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Calls the simd intrinsic `intrinsic`; the `simd_` prefix has already been removed.
     /// Returns `Ok(true)` if the intrinsic was handled.
     fn emulate_simd_intrinsic(
         &mut self,
         intrinsic_name: &str,
         generic_args: ty::GenericArgsRef<'tcx>,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         match intrinsic_name {
@@ -42,6 +44,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "flog2"
             | "flog10"
             | "ctlz"
+            | "ctpop"
             | "cttz"
             | "bswap"
             | "bitreverse"
@@ -68,6 +71,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "round" => Op::Round(rustc_apfloat::Round::NearestTiesToAway),
                     "trunc" => Op::Round(rustc_apfloat::Round::TowardZero),
                     "ctlz" => Op::Numeric(sym::ctlz),
+                    "ctpop" => Op::Numeric(sym::ctpop),
                     "cttz" => Op::Numeric(sym::cttz),
                     "bswap" => Op::Numeric(sym::bswap),
                     "bitreverse" => Op::Numeric(sym::bitreverse),
@@ -80,7 +84,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let val = match which {
                         Op::MirOp(mir_op) => {
                             // This already does NaN adjustments
-                            this.wrapping_unary_op(mir_op, &op)?.to_scalar()
+                            this.unary_op(mir_op, &op)?.to_scalar()
                         }
                         Op::Abs => {
                             // Works for f32 and f64.
@@ -215,8 +219,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "mul" => Op::MirOp(BinOp::Mul),
                     "div" => Op::MirOp(BinOp::Div),
                     "rem" => Op::MirOp(BinOp::Rem),
-                    "shl" => Op::MirOp(BinOp::Shl),
-                    "shr" => Op::MirOp(BinOp::Shr),
+                    "shl" => Op::MirOp(BinOp::ShlUnchecked),
+                    "shr" => Op::MirOp(BinOp::ShrUnchecked),
                     "and" => Op::MirOp(BinOp::BitAnd),
                     "or" => Op::MirOp(BinOp::BitOr),
                     "xor" => Op::MirOp(BinOp::BitXor),
@@ -241,15 +245,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let val = match which {
                         Op::MirOp(mir_op) => {
                             // This does NaN adjustments.
-                            let (val, overflowed) = this.overflowing_binary_op(mir_op, &left, &right)?;
-                            if matches!(mir_op, BinOp::Shl | BinOp::Shr) {
-                                // Shifts have extra UB as SIMD operations that the MIR binop does not have.
-                                // See <https://github.com/rust-lang/rust/issues/91237>.
-                                if overflowed {
-                                    let r_val = right.to_scalar().to_bits(right.layout.size)?;
-                                    throw_ub_format!("overflowing shift by {r_val} in `simd_{intrinsic_name}` in SIMD lane {i}");
+                            let val = this.binary_op(mir_op, &left, &right).map_err(|err| {
+                                match err.kind() {
+                                    InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ShiftOverflow { shift_amount, .. }) => {
+                                        // This resets the interpreter backtrace, but it's not worth avoiding that.
+                                        let shift_amount = match shift_amount {
+                                            Either::Left(v) => v.to_string(),
+                                            Either::Right(v) => v.to_string(),
+                                        };
+                                        err_ub_format!("overflowing shift by {shift_amount} in `simd_{intrinsic_name}` in lane {i}").into()
+                                    }
+                                    _ => err
                                 }
-                            }
+                            })?;
                             if matches!(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
                                 // Special handling for boolean-returning operations
                                 assert_eq!(val.layout.ty, this.tcx.types.bool);
@@ -368,11 +376,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let op = this.read_immediate(&this.project_index(&op, i)?)?;
                     res = match which {
                         Op::MirOp(mir_op) => {
-                            this.wrapping_binary_op(mir_op, &res, &op)?
+                            this.binary_op(mir_op, &res, &op)?
                         }
                         Op::MirOpBool(mir_op) => {
                             let op = imm_from_bool(simd_element_to_bool(op)?);
-                            this.wrapping_binary_op(mir_op, &res, &op)?
+                            this.binary_op(mir_op, &res, &op)?
                         }
                         Op::MinMax(mmop) => {
                             if matches!(res.layout.ty.kind(), ty::Float(_)) {
@@ -383,7 +391,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                     MinMax::Min => BinOp::Le,
                                     MinMax::Max => BinOp::Ge,
                                 };
-                                if this.wrapping_binary_op(mirop, &res, &op)?.to_scalar().to_bool()? {
+                                if this.binary_op(mirop, &res, &op)?.to_scalar().to_bool()? {
                                     res
                                 } else {
                                     op
@@ -412,7 +420,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let mut res = init;
                 for i in 0..op_len {
                     let op = this.read_immediate(&this.project_index(&op, i)?)?;
-                    res = this.wrapping_binary_op(mir_op, &res, &op)?;
+                    res = this.binary_op(mir_op, &res, &op)?;
                 }
                 this.write_immediate(*res, dest)?;
             }
@@ -444,28 +452,54 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let (no, no_len) = this.operand_to_simd(no)?;
                 let (dest, dest_len) = this.mplace_to_simd(dest)?;
                 let bitmask_len = dest_len.next_multiple_of(8);
+                if bitmask_len > 64 {
+                    throw_unsup_format!(
+                        "simd_select_bitmask: vectors larger than 64 elements are currently not supported"
+                    );
+                }
 
-                // The mask must be an integer or an array.
-                assert!(
-                    mask.layout.ty.is_integral()
-                        || matches!(mask.layout.ty.kind(), ty::Array(elemty, _) if elemty == &this.tcx.types.u8)
-                );
-                assert!(bitmask_len <= 64);
-                assert_eq!(bitmask_len, mask.layout.size.bits());
                 assert_eq!(dest_len, yes_len);
                 assert_eq!(dest_len, no_len);
+
+                // Read the mask, either as an integer or as an array.
+                let mask: u64 = match mask.layout.ty.kind() {
+                    ty::Uint(_) => {
+                        // Any larger integer type is fine.
+                        assert!(mask.layout.size.bits() >= bitmask_len);
+                        this.read_scalar(mask)?.to_bits(mask.layout.size)?.try_into().unwrap()
+                    }
+                    ty::Array(elem, _len) if elem == &this.tcx.types.u8 => {
+                        // The array must have exactly the right size.
+                        assert_eq!(mask.layout.size.bits(), bitmask_len);
+                        // Read the raw bytes.
+                        let mask = mask.assert_mem_place(); // arrays cannot be immediate
+                        let mask_bytes =
+                            this.read_bytes_ptr_strip_provenance(mask.ptr(), mask.layout.size)?;
+                        // Turn them into a `u64` in the right way.
+                        let mask_size = mask.layout.size.bytes_usize();
+                        let mut mask_arr = [0u8; 8];
+                        match this.data_layout().endian {
+                            Endian::Little => {
+                                // Fill the first N bytes.
+                                mask_arr[..mask_size].copy_from_slice(mask_bytes);
+                                u64::from_le_bytes(mask_arr)
+                            }
+                            Endian::Big => {
+                                // Fill the last N bytes.
+                                let i = mask_arr.len().strict_sub(mask_size);
+                                mask_arr[i..].copy_from_slice(mask_bytes);
+                                u64::from_be_bytes(mask_arr)
+                            }
+                        }
+                    }
+                    _ => bug!("simd_select_bitmask: invalid mask type {}", mask.layout.ty),
+                };
+
                 let dest_len = u32::try_from(dest_len).unwrap();
                 let bitmask_len = u32::try_from(bitmask_len).unwrap();
-
-                // To read the mask, we transmute it to an integer.
-                // That does the right thing wrt endianness.
-                let mask_ty = this.machine.layouts.uint(mask.layout.size).unwrap();
-                let mask = mask.transmute(mask_ty, this)?;
-                let mask: u64 = this.read_scalar(&mask)?.to_bits(mask_ty.size)?.try_into().unwrap();
-
                 for i in 0..dest_len {
                     let bit_i = simd_bitmask_index(i, dest_len, this.data_layout().endian);
-                    let mask = mask & 1u64.checked_shl(bit_i).unwrap();
+                    let mask = mask & 1u64.strict_shl(bit_i);
                     let yes = this.read_immediate(&this.project_index(&yes, i.into())?)?;
                     let no = this.read_immediate(&this.project_index(&no, i.into())?)?;
                     let dest = this.project_index(&dest, i.into())?;
@@ -477,7 +511,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     // If the mask is "padded", ensure that padding is all-zero.
                     // This deliberately does not use `simd_bitmask_index`; these bits are outside
                     // the bitmask. It does not matter in which order we check them.
-                    let mask = mask & 1u64.checked_shl(i).unwrap();
+                    let mask = mask & 1u64.strict_shl(i);
                     if mask != 0 {
                         throw_ub_format!(
                             "a SIMD bitmask less than 8 bits long must be filled with 0s for the remaining bits"
@@ -490,30 +524,49 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [op] = check_arg_count(args)?;
                 let (op, op_len) = this.operand_to_simd(op)?;
                 let bitmask_len = op_len.next_multiple_of(8);
+                if bitmask_len > 64 {
+                    throw_unsup_format!(
+                        "simd_bitmask: vectors larger than 64 elements are currently not supported"
+                    );
+                }
 
-                // Returns either an unsigned integer or array of `u8`.
-                assert!(
-                    dest.layout.ty.is_integral()
-                        || matches!(dest.layout.ty.kind(), ty::Array(elemty, _) if elemty == &this.tcx.types.u8)
-                );
-                assert!(bitmask_len <= 64);
-                assert_eq!(bitmask_len, dest.layout.size.bits());
                 let op_len = u32::try_from(op_len).unwrap();
-
                 let mut res = 0u64;
                 for i in 0..op_len {
                     let op = this.read_immediate(&this.project_index(&op, i.into())?)?;
                     if simd_element_to_bool(op)? {
-                        res |= 1u64
-                            .checked_shl(simd_bitmask_index(i, op_len, this.data_layout().endian))
-                            .unwrap();
+                        let bit_i = simd_bitmask_index(i, op_len, this.data_layout().endian);
+                        res |= 1u64.strict_shl(bit_i);
                     }
                 }
-                // We have to change the type of the place to be able to write `res` into it. This
-                // transmutes the integer to an array, which does the right thing wrt endianness.
-                let dest =
-                    dest.transmute(this.machine.layouts.uint(dest.layout.size).unwrap(), this)?;
-                this.write_int(res, &dest)?;
+                // Write the result, depending on the `dest` type.
+                // Returns either an unsigned integer or array of `u8`.
+                match dest.layout.ty.kind() {
+                    ty::Uint(_) => {
+                        // Any larger integer type is fine, it will be zero-extended.
+                        assert!(dest.layout.size.bits() >= bitmask_len);
+                        this.write_int(res, dest)?;
+                    }
+                    ty::Array(elem, _len) if elem == &this.tcx.types.u8 => {
+                        // The array must have exactly the right size.
+                        assert_eq!(dest.layout.size.bits(), bitmask_len);
+                        // We have to write the result byte-for-byte.
+                        let res_size = dest.layout.size.bytes_usize();
+                        let res_bytes;
+                        let res_bytes_slice = match this.data_layout().endian {
+                            Endian::Little => {
+                                res_bytes = res.to_le_bytes();
+                                &res_bytes[..res_size] // take the first N bytes
+                            }
+                            Endian::Big => {
+                                res_bytes = res.to_be_bytes();
+                                &res_bytes[res_bytes.len().strict_sub(res_size)..] // take the last N bytes
+                            }
+                        };
+                        this.write_bytes_ptr(dest.ptr(), res_bytes_slice.iter().cloned())?;
+                    }
+                    _ => bug!("simd_bitmask: invalid return type {}", dest.layout.ty),
+                }
             }
             "cast" | "as" | "cast_ptr" | "expose_provenance" | "with_exposed_provenance" => {
                 let [op] = check_arg_count(args)?;
@@ -582,6 +635,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     .expect_const()
                     .eval(*this.tcx, this.param_env(), this.tcx.span)
                     .unwrap()
+                    .1
                     .unwrap_branch();
                 let index_len = index.len();
 
@@ -589,17 +643,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 assert_eq!(index_len as u64, dest_len);
 
                 for i in 0..dest_len {
-                    let src_index: u64 = index[usize::try_from(i).unwrap()]
-                        .unwrap_leaf()
-                        .try_to_u32()
-                        .unwrap()
-                        .into();
+                    let src_index: u64 =
+                        index[usize::try_from(i).unwrap()].unwrap_leaf().to_u32().into();
                     let dest = this.project_index(&dest, i)?;
 
                     let val = if src_index < left_len {
                         this.read_immediate(&this.project_index(&left, src_index)?)?
-                    } else if src_index < left_len.checked_add(right_len).unwrap() {
-                        let right_idx = src_index.checked_sub(left_len).unwrap();
+                    } else if src_index < left_len.strict_add(right_len) {
+                        let right_idx = src_index.strict_sub(left_len);
                         this.read_immediate(&this.project_index(&right, right_idx)?)?
                     } else {
                         throw_ub_format!(
@@ -638,8 +689,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                     let val = if src_index < left_len {
                         this.read_immediate(&this.project_index(&left, src_index)?)?
-                    } else if src_index < left_len.checked_add(right_len).unwrap() {
-                        let right_idx = src_index.checked_sub(left_len).unwrap();
+                    } else if src_index < left_len.strict_add(right_len) {
+                        let right_idx = src_index.strict_sub(left_len);
                         this.read_immediate(&this.project_index(&right, right_idx)?)?
                     } else {
                         throw_ub_format!(
@@ -746,15 +797,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 
     fn fminmax_op(
         &self,
         op: MinMax,
-        left: &ImmTy<'tcx, Provenance>,
-        right: &ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        left: &ImmTy<'tcx>,
+        right: &ImmTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_ref();
         assert_eq!(left.layout.ty, right.layout.ty);
         let ty::Float(float_ty) = left.layout.ty.kind() else {

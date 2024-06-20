@@ -3,7 +3,9 @@
 struct Foo<const N: u32 = 2>;
 
 impl<const N: u32> Foo<N> {
-    fn foo() -> Self { loop {} }
+    fn foo() -> Self {
+        loop {}
+    }
 }
 
 fn main() {

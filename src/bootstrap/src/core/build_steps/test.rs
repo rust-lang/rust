@@ -308,7 +308,7 @@ impl Step for Cargo {
         // Forcibly disable tests using nightly features since any changes to
         // those features won't be able to land.
         cargo.env("CARGO_TEST_DISABLE_NIGHTLY", "1");
-        cargo.env("PATH", &path_for_cargo(builder, compiler));
+        cargo.env("PATH", path_for_cargo(builder, compiler));
 
         #[cfg(feature = "build-metrics")]
         builder.metrics.begin_test_suite(
@@ -429,65 +429,6 @@ impl Step for Rustfmt {
         cargo.add_rustc_lib_path(builder);
 
         run_cargo_test(cargo, &[], &[], "rustfmt", "rustfmt", compiler, host, builder);
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RustDemangler {
-    stage: u32,
-    host: TargetSelection,
-}
-
-impl Step for RustDemangler {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/rust-demangler")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustDemangler { stage: run.builder.top_stage, host: run.target });
-    }
-
-    /// Runs `cargo test` for rust-demangler.
-    fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
-        let host = self.host;
-        let compiler = builder.compiler(stage, host);
-
-        let rust_demangler = builder.ensure(tool::RustDemangler {
-            compiler,
-            target: self.host,
-            extra_features: Vec::new(),
-        });
-        let mut cargo = tool::prepare_tool_cargo(
-            builder,
-            compiler,
-            Mode::ToolRustc,
-            host,
-            "test",
-            "src/tools/rust-demangler",
-            SourceType::InTree,
-            &[],
-        );
-
-        let dir = testdir(builder, compiler.host);
-        t!(fs::create_dir_all(dir));
-
-        cargo.env("RUST_DEMANGLER_DRIVER_PATH", rust_demangler);
-        cargo.add_rustc_lib_path(builder);
-
-        run_cargo_test(
-            cargo,
-            &[],
-            &[],
-            "rust-demangler",
-            "rust-demangler",
-            compiler,
-            host,
-            builder,
-        );
     }
 }
 
@@ -1101,6 +1042,8 @@ impl Step for Tidy {
     /// Once tidy passes, this step also runs `fmt --check` if tests are being run
     /// for the `dev` or `nightly` channels.
     fn run(self, builder: &Builder<'_>) {
+        builder.build.update_submodule(Path::new("src/tools/rustc-perf"));
+
         let mut cmd = builder.tool_cmd(Tool::Tidy);
         cmd.arg(&builder.src);
         cmd.arg(&builder.initial_cargo);
@@ -1140,7 +1083,13 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
                 );
                 crate::exit!(1);
             }
-            crate::core::build_steps::format::format(builder, !builder.config.cmd.bless(), &[]);
+            let all = false;
+            crate::core::build_steps::format::format(
+                builder,
+                !builder.config.cmd.bless(),
+                all,
+                &[],
+            );
         }
 
         builder.info("tidy check");
@@ -1481,12 +1430,6 @@ impl Step for RunMake {
     }
 }
 
-host_test!(RunMakeFullDeps {
-    path: "tests/run-make-fulldeps",
-    mode: "run-make",
-    suite: "run-make-fulldeps"
-});
-
 default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
 
 /// Coverage tests are a bit more complicated than other test suites, because
@@ -1775,23 +1718,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 .arg(builder.ensure(tool::JsonDocLint { compiler: json_compiler, target }));
         }
 
-        if mode == "coverage-map" {
-            let coverage_dump = builder.ensure(tool::CoverageDump {
-                compiler: compiler.with_stage(0),
-                target: compiler.host,
-            });
+        if matches!(mode, "coverage-map" | "coverage-run") {
+            let coverage_dump = builder.tool_exe(Tool::CoverageDump);
             cmd.arg("--coverage-dump-path").arg(coverage_dump);
-        }
-
-        if mode == "coverage-run" {
-            // The demangler doesn't need the current compiler, so we can avoid
-            // unnecessary rebuilds by using the bootstrap compiler instead.
-            let rust_demangler = builder.ensure(tool::RustDemangler {
-                compiler: compiler.with_stage(0),
-                target: compiler.host,
-                extra_features: Vec::new(),
-            });
-            cmd.arg("--rust-demangler-path").arg(rust_demangler);
         }
 
         cmd.arg("--src-base").arg(builder.src.join("tests").join(suite));
@@ -1981,9 +1910,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cmd);
             }
 
-            if !builder.config.dry_run()
-                && (matches!(suite, "run-make" | "run-make-fulldeps") || mode == "coverage-run")
-            {
+            if !builder.config.dry_run() && matches!(mode, "run-make" | "coverage-run") {
                 // The llvm/bin directory contains many useful cross-platform
                 // tools. Pass the path to run-make tests so they can use them.
                 // (The coverage-run tests also need these tools to process
@@ -1995,7 +1922,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 cmd.arg("--llvm-bin-dir").arg(llvm_bin_path);
             }
 
-            if !builder.config.dry_run() && matches!(suite, "run-make" | "run-make-fulldeps") {
+            if !builder.config.dry_run() && mode == "run-make" {
                 // If LLD is available, add it to the PATH
                 if builder.config.lld_enabled {
                     let lld_install_root =
@@ -2015,7 +1942,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         // Only pass correct values for these flags for the `run-make` suite as it
         // requires that a C++ compiler was configured which isn't always the case.
-        if !builder.config.dry_run() && matches!(suite, "run-make" | "run-make-fulldeps") {
+        if !builder.config.dry_run() && mode == "run-make" {
             cmd.arg("--cc")
                 .arg(builder.cc(target))
                 .arg("--cxx")
@@ -2573,7 +2500,7 @@ fn prepare_cargo_test(
         cargo.arg("-p").arg(krate);
     }
 
-    cargo.arg("--").args(&builder.config.test_args()).args(libtest_args);
+    cargo.arg("--").args(builder.config.test_args()).args(libtest_args);
     if !builder.config.verbose_tests {
         cargo.arg("--quiet");
     }
@@ -3061,6 +2988,7 @@ impl Step for Bootstrap {
 
         let mut cmd = Command::new(&builder.initial_cargo);
         cmd.arg("test")
+            .args(["--features", "bootstrap-self-test"])
             .current_dir(builder.src.join("src/bootstrap"))
             .env("RUSTFLAGS", "-Cdebuginfo=2")
             .env("CARGO_TARGET_DIR", builder.out.join("bootstrap"))
@@ -3121,7 +3049,7 @@ impl Step for TierCheck {
             &[],
         );
         cargo.arg(builder.src.join("src/doc/rustc/src/platform-support.md"));
-        cargo.arg(&builder.rustc(self.compiler));
+        cargo.arg(builder.rustc(self.compiler));
         if builder.is_verbose() {
             cargo.arg("--verbose");
         }

@@ -20,7 +20,6 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::par_map;
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_metadata::EncodedMetadata;
@@ -31,6 +30,7 @@ use rustc_middle::middle::exported_symbols;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
+use rustc_middle::mir::BinOp;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
@@ -45,33 +45,34 @@ use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
 
 use itertools::Itertools;
+use tracing::{debug, info};
 
-pub fn bin_op_to_icmp_predicate(op: hir::BinOpKind, signed: bool) -> IntPredicate {
+pub fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
     match op {
-        hir::BinOpKind::Eq => IntPredicate::IntEQ,
-        hir::BinOpKind::Ne => IntPredicate::IntNE,
-        hir::BinOpKind::Lt => {
+        BinOp::Eq => IntPredicate::IntEQ,
+        BinOp::Ne => IntPredicate::IntNE,
+        BinOp::Lt => {
             if signed {
                 IntPredicate::IntSLT
             } else {
                 IntPredicate::IntULT
             }
         }
-        hir::BinOpKind::Le => {
+        BinOp::Le => {
             if signed {
                 IntPredicate::IntSLE
             } else {
                 IntPredicate::IntULE
             }
         }
-        hir::BinOpKind::Gt => {
+        BinOp::Gt => {
             if signed {
                 IntPredicate::IntSGT
             } else {
                 IntPredicate::IntUGT
             }
         }
-        hir::BinOpKind::Ge => {
+        BinOp::Ge => {
             if signed {
                 IntPredicate::IntSGE
             } else {
@@ -86,14 +87,14 @@ pub fn bin_op_to_icmp_predicate(op: hir::BinOpKind, signed: bool) -> IntPredicat
     }
 }
 
-pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> RealPredicate {
+pub fn bin_op_to_fcmp_predicate(op: BinOp) -> RealPredicate {
     match op {
-        hir::BinOpKind::Eq => RealPredicate::RealOEQ,
-        hir::BinOpKind::Ne => RealPredicate::RealUNE,
-        hir::BinOpKind::Lt => RealPredicate::RealOLT,
-        hir::BinOpKind::Le => RealPredicate::RealOLE,
-        hir::BinOpKind::Gt => RealPredicate::RealOGT,
-        hir::BinOpKind::Ge => RealPredicate::RealOGE,
+        BinOp::Eq => RealPredicate::RealOEQ,
+        BinOp::Ne => RealPredicate::RealUNE,
+        BinOp::Lt => RealPredicate::RealOLT,
+        BinOp::Le => RealPredicate::RealOLE,
+        BinOp::Gt => RealPredicate::RealOGT,
+        BinOp::Ge => RealPredicate::RealOGE,
         op => {
             bug!(
                 "comparison_op_to_fcmp_predicate: expected comparison operator, \
@@ -110,7 +111,7 @@ pub fn compare_simd_types<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     rhs: Bx::Value,
     t: Ty<'tcx>,
     ret_ty: Bx::Type,
-    op: hir::BinOpKind,
+    op: BinOp,
 ) -> Bx::Value {
     let signed = match t.kind() {
         ty::Float(_) => {
@@ -162,8 +163,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             // trait upcasting coercion
 
-            let vptr_entry_idx =
-                cx.tcx().vtable_trait_upcasting_coercion_new_vptr_slot((source, target));
+            let vptr_entry_idx = cx.tcx().supertrait_vtable_slot((source, target));
 
             if let Some(entry_idx) = vptr_entry_idx {
                 let ptr_size = bx.data_layout().pointer_size;
@@ -293,12 +293,13 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-/// Returns `rhs` sufficiently masked, truncated, and/or extended so that
-/// it can be used to shift `lhs`.
+/// Returns `rhs` sufficiently masked, truncated, and/or extended so that it can be used to shift
+/// `lhs`: it has the same size as `lhs`, and the value, when interpreted unsigned (no matter its
+/// type), will not exceed the size of `lhs`.
 ///
-/// Shifts in MIR are all allowed to have mismatched LHS & RHS types.
+/// Shifts in MIR are all allowed to have mismatched LHS & RHS types, and signed RHS.
 /// The shift methods in `BuilderMethods`, however, are fully homogeneous
-/// (both parameters and the return type are all the same type).
+/// (both parameters and the return type are all the same size) and assume an unsigned RHS.
 ///
 /// If `is_unchecked` is false, this masks the RHS to ensure it stays in-bounds,
 /// as the `BuilderMethods` shifts are UB for out-of-bounds shift amounts.

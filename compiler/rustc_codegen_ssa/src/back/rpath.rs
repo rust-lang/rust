@@ -3,6 +3,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::try_canonicalize;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use tracing::debug;
 
 pub struct RPathConfig<'a> {
     pub libs: &'a [&'a Path],
@@ -84,6 +85,11 @@ fn get_rpath_relative_to_output(config: &RPathConfig<'_>, lib: &Path) -> OsStrin
     // Strip filenames
     let lib = lib.parent().unwrap();
     let output = config.out_filename.parent().unwrap();
+
+    // If output or lib is empty, just assume it locates in current path
+    let lib = if lib == Path::new("") { Path::new(".") } else { lib };
+    let output = if output == Path::new("") { Path::new(".") } else { output };
+
     let lib = try_canonicalize(lib).unwrap();
     let output = try_canonicalize(output).unwrap();
     let relative = path_relative_from(&lib, &output)

@@ -1,9 +1,7 @@
 #[test]
 #[cfg_attr(ignorecfg, ignore)]
-fn shouldignore() {
-}
+fn shouldignore() {}
 
 #[test]
 #[cfg_attr(noignorecfg, ignore)]
-fn shouldnotignore() {
-}
+fn shouldnotignore() {}

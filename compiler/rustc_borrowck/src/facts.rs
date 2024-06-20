@@ -15,8 +15,31 @@ use std::path::Path;
 #[derive(Copy, Clone, Debug)]
 pub struct RustcFacts;
 
+rustc_index::newtype_index! {
+    /// A (kinda) newtype of `RegionVid` so we can implement `Atom` on it.
+    #[orderable]
+    #[debug_format = "'?{}"]
+    pub struct PoloniusRegionVid {}
+}
+
+impl polonius_engine::Atom for PoloniusRegionVid {
+    fn index(self) -> usize {
+        self.as_usize()
+    }
+}
+impl From<RegionVid> for PoloniusRegionVid {
+    fn from(value: RegionVid) -> Self {
+        Self::from_usize(value.as_usize())
+    }
+}
+impl From<PoloniusRegionVid> for RegionVid {
+    fn from(value: PoloniusRegionVid) -> Self {
+        Self::from_usize(value.as_usize())
+    }
+}
+
 impl polonius_engine::FactTypes for RustcFacts {
-    type Origin = RegionVid;
+    type Origin = PoloniusRegionVid;
     type Loan = BorrowIndex;
     type Point = LocationIndex;
     type Variable = Local;
@@ -119,7 +142,7 @@ trait FactRow {
     ) -> Result<(), Box<dyn Error>>;
 }
 
-impl FactRow for RegionVid {
+impl FactRow for PoloniusRegionVid {
     fn write(
         &self,
         out: &mut dyn Write,

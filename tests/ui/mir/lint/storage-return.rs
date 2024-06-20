@@ -8,12 +8,12 @@ use core::intrinsics::mir::*;
 
 #[custom_mir(dialect = "built")]
 fn main() {
-    mir!(
+    mir! {
         let a: ();
         {
             StorageLive(a);
             RET = a;
             Return()
         }
-    )
+    }
 }

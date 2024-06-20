@@ -13,6 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::{HirId, HirIdMap, Node};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::{Span, DUMMY_SP};
+use tracing::debug;
 
 use std::fmt;
 use std::ops::Deref;

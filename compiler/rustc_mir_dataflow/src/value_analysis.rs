@@ -45,6 +45,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_target::abi::{FieldIdx, VariantIdx};
+use tracing::debug;
 
 use crate::lattice::{HasBottom, HasTop};
 use crate::{
@@ -184,7 +185,6 @@ pub trait ValueAnalysis<'tcx> {
             | Rvalue::Len(..)
             | Rvalue::Cast(..)
             | Rvalue::BinaryOp(..)
-            | Rvalue::CheckedBinaryOp(..)
             | Rvalue::NullaryOp(..)
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..)

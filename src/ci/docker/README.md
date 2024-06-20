@@ -233,7 +233,7 @@ For targets: `aarch64-unknown-linux-gnu`
 - Operating System > Linux kernel version = 4.1.49
 - Binary utilities > Version of binutils = 2.29.1
 - C-library > glibc version = 2.17 -- aarch64 support was introduced in this version
-- C compiler > gcc version = 8.5.0
+- C compiler > gcc version = 13.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `i586-linux-gnu.defconfig`

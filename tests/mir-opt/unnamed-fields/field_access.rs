@@ -17,7 +17,7 @@ struct Foo {
         _: struct {
             d: [u8; 1],
         }
-    }
+    },
 }
 
 #[repr(C)]
@@ -31,9 +31,8 @@ union Bar {
         _: union {
             d: [u8; 1],
         }
-    }
+    },
 }
-
 
 fn access<T>(_: T) {}
 
@@ -70,6 +69,5 @@ fn bar(bar: Bar) {
         access(bar.d);
     }
 }
-
 
 fn main() {}

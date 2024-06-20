@@ -44,6 +44,10 @@ hir_typeck_convert_using_method = try using `{$sugg}` to convert `{$found}` to `
 
 hir_typeck_ctor_is_private = tuple struct constructor `{$def}` is private
 
+hir_typeck_dependency_on_unit_never_type_fallback = this function depends on never type fallback being `()`
+    .note = in edition 2024, the requirement `{$obligation}` will fail
+    .help = specify the types explicitly
+
 hir_typeck_deref_is_empty = this expression `Deref`s to `{$deref_ty}` which implements `is_empty`
 
 hir_typeck_expected_default_return_type = expected `()` because of default return type
@@ -136,6 +140,10 @@ hir_typeck_rpit_change_return_type = you could change the return type to be a bo
 
 hir_typeck_rustcall_incorrect_args =
     functions with the "rust-call" ABI must take a single non-self tuple argument
+
+hir_typeck_self_ctor_from_outer_item = can't reference `Self` constructor from outer item
+    .label = the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
+    .suggestion = replace `Self` with the actual type
 
 hir_typeck_struct_expr_non_exhaustive =
     cannot create non-exhaustive {$what} using struct expression

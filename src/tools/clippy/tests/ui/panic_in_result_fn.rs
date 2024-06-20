@@ -56,6 +56,11 @@ fn function_result_with_panic() -> Result<bool, String> // should emit lint
     panic!("error");
 }
 
+fn in_closure() -> Result<bool, String> {
+    let c = || panic!();
+    c()
+}
+
 fn todo() {
     println!("something");
 }

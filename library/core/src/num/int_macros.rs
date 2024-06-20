@@ -183,6 +183,30 @@ macro_rules! int_impl {
             (self as $UnsignedT).trailing_ones()
         }
 
+        /// Returns the bit pattern of `self` reinterpreted as an unsigned integer of the same size.
+        ///
+        /// This produces the same result as an `as` cast, but ensures that the bit-width remains
+        /// the same.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(integer_sign_cast)]
+        ///
+        #[doc = concat!("let n = -1", stringify!($SelfT), ";")]
+        ///
+        #[doc = concat!("assert_eq!(n.cast_unsigned(), ", stringify!($UnsignedT), "::MAX);")]
+        /// ```
+        #[unstable(feature = "integer_sign_cast", issue = "125882")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn cast_unsigned(self) -> $UnsignedT {
+            self as $UnsignedT
+        }
+
         /// Shifts the bits to the left by a specified amount, `n`,
         /// wrapping the truncated bits to the end of the resulting integer.
         ///
@@ -488,9 +512,19 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_add(self, rhs: Self) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_add`.
-            unsafe { intrinsics::unchecked_add(self, rhs) }
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_add cannot overflow"),
+                (
+                    lhs: $SelfT = self,
+                    rhs: $SelfT = rhs,
+                ) => !lhs.overflowing_add(rhs).1,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_add(self, rhs)
+            }
         }
 
         /// Checked addition with an unsigned integer. Computes `self + rhs`,
@@ -630,9 +664,19 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_sub(self, rhs: Self) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_sub`.
-            unsafe { intrinsics::unchecked_sub(self, rhs) }
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_sub cannot overflow"),
+                (
+                    lhs: $SelfT = self,
+                    rhs: $SelfT = rhs,
+                ) => !lhs.overflowing_sub(rhs).1,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_sub(self, rhs)
+            }
         }
 
         /// Checked subtraction with an unsigned integer. Computes `self - rhs`,
@@ -772,9 +816,19 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_mul(self, rhs: Self) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_mul`.
-            unsafe { intrinsics::unchecked_mul(self, rhs) }
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_mul cannot overflow"),
+                (
+                    lhs: $SelfT = self,
+                    rhs: $SelfT = rhs,
+                ) => !lhs.overflowing_mul(rhs).1,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_mul(self, rhs)
+            }
         }
 
         /// Checked integer division. Computes `self / rhs`, returning `None` if `rhs == 0`
@@ -1111,9 +1165,18 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_neg(self) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_neg`.
-            unsafe { intrinsics::unchecked_sub(0, self) }
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_neg cannot overflow"),
+                (
+                    lhs: $SelfT = self,
+                ) => !lhs.overflowing_neg().1,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_sub(0, self)
+            }
         }
 
         /// Strict negation. Computes `-self`, panicking if `self == MIN`.
@@ -1234,9 +1297,18 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
-                // SAFETY: the caller must uphold the safety contract for
-                // `unchecked_shl`.
-                unsafe { intrinsics::unchecked_shl(self, rhs) }
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_shl cannot overflow"),
+                (
+                    rhs: u32 = rhs,
+                ) => rhs < <$ActualT>::BITS,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_shl(self, rhs)
+            }
         }
 
         /// Checked shift right. Computes `self >> rhs`, returning `None` if `rhs` is
@@ -1323,9 +1395,18 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_shr`.
-            unsafe { intrinsics::unchecked_shr(self, rhs) }
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_shr cannot overflow"),
+                (
+                    rhs: u32 = rhs,
+                ) => rhs < <$ActualT>::BITS,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_shr(self, rhs)
+            }
         }
 
         /// Checked absolute value. Computes `self.abs()`, returning `None` if
@@ -2703,8 +2784,10 @@ macro_rules! int_impl {
         ///
         /// In other words, the result is `self / rhs` rounded to the integer `q`
         /// such that `self >= q * rhs`.
-        /// If `self > 0`, this is equal to round towards zero (the default in Rust);
-        /// if `self < 0`, this is equal to round towards +/- infinity.
+        /// If `self > 0`, this is equal to rounding towards zero (the default in Rust);
+        /// if `self < 0`, this is equal to rounding away from zero (towards +/- infinity).
+        /// If `rhs > 0`, this is equal to rounding towards -infinity;
+        /// if `rhs < 0`, this is equal to rounding towards +infinity.
         ///
         /// # Panics
         ///
@@ -2742,8 +2825,8 @@ macro_rules! int_impl {
         /// Calculates the least nonnegative remainder of `self (mod rhs)`.
         ///
         /// This is done as if by the Euclidean division algorithm -- given
-        /// `r = self.rem_euclid(rhs)`, `self = rhs * self.div_euclid(rhs) + r`, and
-        /// `0 <= r < abs(rhs)`.
+        /// `r = self.rem_euclid(rhs)`, the result satisfies
+        /// `self = rhs * self.div_euclid(rhs) + r` and `0 <= r < abs(rhs)`.
         ///
         /// # Panics
         ///

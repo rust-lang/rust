@@ -1,23 +1,23 @@
 //@ only-wasm32-wasip1
 
-use run_make_support::{rustc, tmp_dir, wasmparser};
+use run_make_support::{fs_wrapper, rustc, wasmparser};
 use std::path::Path;
 
 fn main() {
     rustc().input("foo.rs").target("wasm32-wasip1").run();
-    verify_symbols(&tmp_dir().join("foo.wasm"));
+    verify_symbols(Path::new("foo.wasm"));
     rustc().input("foo.rs").target("wasm32-wasip1").opt().run();
-    verify_symbols(&tmp_dir().join("foo.wasm"));
+    verify_symbols(Path::new("foo.wasm"));
 
     rustc().input("bar.rs").target("wasm32-wasip1").run();
-    verify_symbols(&tmp_dir().join("bar.wasm"));
+    verify_symbols(Path::new("bar.wasm"));
     rustc().input("bar.rs").target("wasm32-wasip1").opt().run();
-    verify_symbols(&tmp_dir().join("bar.wasm"));
+    verify_symbols(Path::new("bar.wasm"));
 }
 
 fn verify_symbols(path: &Path) {
     eprintln!("verify {path:?}");
-    let file = std::fs::read(&path).unwrap();
+    let file = fs_wrapper::read(&path);
 
     for payload in wasmparser::Parser::new(0).parse_all(&file) {
         let payload = payload.unwrap();

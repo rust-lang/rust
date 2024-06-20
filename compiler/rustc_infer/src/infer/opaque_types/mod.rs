@@ -1,11 +1,11 @@
-use super::{DefineOpaqueTypes, InferResult};
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::{self, PredicateObligation};
+use crate::traits::{self, Obligation};
 use hir::def_id::{DefId, LocalDefId};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
+use rustc_middle::traits::solve::Goal;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
@@ -20,6 +20,8 @@ mod table;
 
 pub type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
 pub use table::{OpaqueTypeStorage, OpaqueTypeTable};
+
+use super::DefineOpaqueTypes;
 
 /// Information about the opaque types whose values we
 /// are inferring in this function (these are the `impl Trait` that
@@ -62,11 +64,23 @@ impl<'tcx> InferCtxt<'tcx> {
                 {
                     let def_span = self.tcx.def_span(def_id);
                     let span = if span.contains(def_span) { def_span } else { span };
-                    let code = traits::ObligationCauseCode::OpaqueReturnType(None);
-                    let cause = ObligationCause::new(span, body_id, code);
                     let ty_var = self.next_ty_var(span);
                     obligations.extend(
-                        self.handle_opaque_type(ty, ty_var, &cause, param_env).unwrap().obligations,
+                        self.handle_opaque_type(ty, ty_var, span, param_env)
+                            .unwrap()
+                            .into_iter()
+                            .map(|goal| {
+                                Obligation::new(
+                                    self.tcx,
+                                    ObligationCause::new(
+                                        span,
+                                        body_id,
+                                        traits::ObligationCauseCode::OpaqueReturnType(None),
+                                    ),
+                                    goal.param_env,
+                                    goal.predicate,
+                                )
+                            }),
                     );
                     ty_var
                 }
@@ -80,9 +94,9 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
-        cause: &ObligationCause<'tcx>,
+        span: Span,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> InferResult<'tcx, ()> {
+    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, TypeError<'tcx>> {
         let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
@@ -90,7 +104,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     // See comment on `insert_hidden_type` for why this is sufficient in coherence
                     return Some(self.register_hidden_type(
                         OpaqueTypeKey { def_id, args },
-                        cause.clone(),
+                        span,
                         param_env,
                         b,
                     ));
@@ -143,18 +157,13 @@ impl<'tcx> InferCtxt<'tcx> {
                         && self.tcx.is_type_alias_impl_trait(b_def_id)
                     {
                         self.tcx.dcx().emit_err(OpaqueHiddenTypeDiag {
-                            span: cause.span,
+                            span,
                             hidden_type: self.tcx.def_span(b_def_id),
                             opaque_type: self.tcx.def_span(def_id),
                         });
                     }
                 }
-                Some(self.register_hidden_type(
-                    OpaqueTypeKey { def_id, args },
-                    cause.clone(),
-                    param_env,
-                    b,
-                ))
+                Some(self.register_hidden_type(OpaqueTypeKey { def_id, args }, span, param_env, b))
             }
             _ => None,
         };
@@ -336,7 +345,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .args
                 .iter()
                 .enumerate()
-                .filter(|(i, _)| variances[*i] == ty::Variance::Invariant)
+                .filter(|(i, _)| variances[*i] == ty::Invariant)
                 .filter_map(|(_, arg)| match arg.unpack() {
                     GenericArgKind::Lifetime(r) => Some(r),
                     GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
@@ -432,7 +441,7 @@ where
                 let variances = self.tcx.variances_of(*def_id);
 
                 for (v, s) in std::iter::zip(variances, args.iter()) {
-                    if *v != ty::Variance::Bivariant {
+                    if *v != ty::Bivariant {
                         s.visit_with(self);
                     }
                 }
@@ -464,24 +473,23 @@ impl<'tcx> InferCtxt<'tcx> {
     fn register_hidden_type(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
-        cause: ObligationCause<'tcx>,
+        span: Span,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
-    ) -> InferResult<'tcx, ()> {
-        let mut obligations = Vec::new();
+    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, TypeError<'tcx>> {
+        let mut goals = Vec::new();
 
-        self.insert_hidden_type(opaque_type_key, &cause, param_env, hidden_ty, &mut obligations)?;
+        self.insert_hidden_type(opaque_type_key, span, param_env, hidden_ty, &mut goals)?;
 
         self.add_item_bounds_for_hidden_type(
             opaque_type_key.def_id.to_def_id(),
             opaque_type_key.args,
-            cause,
             param_env,
             hidden_ty,
-            &mut obligations,
+            &mut goals,
         );
 
-        Ok(InferOk { value: (), obligations })
+        Ok(goals)
     }
 
     /// Insert a hidden type into the opaque type storage, making sure
@@ -507,27 +515,21 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn insert_hidden_type(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
-        cause: &ObligationCause<'tcx>,
+        span: Span,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
-        obligations: &mut Vec<PredicateObligation<'tcx>>,
+        goals: &mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> Result<(), TypeError<'tcx>> {
         // Ideally, we'd get the span where *this specific `ty` came
         // from*, but right now we just use the span from the overall
         // value being folded. In simple cases like `-> impl Foo`,
         // these are the same span, but not in cases like `-> (impl
         // Foo, impl Bar)`.
-        let span = cause.span;
         if self.intercrate {
             // During intercrate we do not define opaque types but instead always
             // force ambiguity unless the hidden type is known to not implement
             // our trait.
-            obligations.push(traits::Obligation::new(
-                self.tcx,
-                cause.clone(),
-                param_env,
-                ty::PredicateKind::Ambiguous,
-            ))
+            goals.push(Goal::new(self.tcx, param_env, ty::PredicateKind::Ambiguous))
         } else {
             let prev = self
                 .inner
@@ -535,10 +537,13 @@ impl<'tcx> InferCtxt<'tcx> {
                 .opaque_types()
                 .register(opaque_type_key, OpaqueHiddenType { ty: hidden_ty, span });
             if let Some(prev) = prev {
-                obligations.extend(
-                    self.at(cause, param_env)
+                goals.extend(
+                    self.at(&ObligationCause::dummy_with_span(span), param_env)
                         .eq(DefineOpaqueTypes::Yes, prev, hidden_ty)?
-                        .obligations,
+                        .obligations
+                        .into_iter()
+                        // FIXME: Shuttling between obligations and goals is awkward.
+                        .map(Goal::from),
                 );
             }
         };
@@ -550,10 +555,9 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         def_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
-        cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
-        obligations: &mut Vec<PredicateObligation<'tcx>>,
+        goals: &mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     ) {
         let tcx = self.tcx;
         // Require that the hidden type is well-formed. We have to
@@ -567,12 +571,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // type during MIR borrowck, causing us to infer the wrong
         // lifetime for its member constraints which then results in
         // unexpected region errors.
-        obligations.push(traits::Obligation::new(
-            tcx,
-            cause.clone(),
-            param_env,
-            ty::ClauseKind::WellFormed(hidden_ty.into()),
-        ));
+        goals.push(Goal::new(tcx, param_env, ty::ClauseKind::WellFormed(hidden_ty.into())));
 
         let item_bounds = tcx.explicit_item_bounds(def_id);
         for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
@@ -588,13 +587,18 @@ impl<'tcx> InferCtxt<'tcx> {
                             && !tcx.is_impl_trait_in_trait(projection_ty.def_id)
                             && !self.next_trait_solver() =>
                     {
-                        self.projection_ty_to_infer(
+                        let ty_var = self.next_ty_var(self.tcx.def_span(projection_ty.def_id));
+                        goals.push(Goal::new(
+                            self.tcx,
                             param_env,
-                            projection_ty,
-                            cause.clone(),
-                            0,
-                            obligations,
-                        )
+                            ty::PredicateKind::Clause(ty::ClauseKind::Projection(
+                                ty::ProjectionPredicate {
+                                    projection_term: projection_ty.into(),
+                                    term: ty_var.into(),
+                                },
+                            )),
+                        ));
+                        ty_var
                     }
                     // Replace all other mentions of the same opaque type with the hidden type,
                     // as the bounds must hold on the hidden type after all.
@@ -611,12 +615,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
             // Require that the predicate holds for the concrete type.
             debug!(?predicate);
-            obligations.push(traits::Obligation::new(
-                self.tcx,
-                cause.clone(),
-                param_env,
-                predicate,
-            ));
+            goals.push(Goal::new(self.tcx, param_env, predicate));
         }
     }
 }

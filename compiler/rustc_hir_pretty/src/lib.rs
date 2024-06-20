@@ -1,7 +1,9 @@
 //! HIR pretty-printing is layered on top of AST pretty-printing. A number of
 //! the definitions in this file have equivalents in `rustc_ast_pretty`.
 
+// tidy-alphabetical-start
 #![recursion_limit = "256"]
+// tidy-alphabetical-end
 
 use rustc_ast as ast;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
@@ -11,7 +13,7 @@ use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir as hir;
 use rustc_hir::{
     BindingMode, ByRef, GenericArg, GenericBound, GenericParam, GenericParamKind, HirId,
-    LifetimeParamKind, Node, PatKind, RangeEnd, Term, TraitBoundModifier,
+    LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term, TraitBoundModifier,
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -90,7 +92,7 @@ impl<'a> State<'a> {
             Node::Stmt(a) => self.print_stmt(a),
             Node::PathSegment(a) => self.print_path_segment(a),
             Node::Ty(a) => self.print_type(a),
-            Node::TypeBinding(a) => self.print_type_binding(a),
+            Node::AssocItemConstraint(a) => self.print_assoc_item_constraint(a),
             Node::TraitRef(a) => self.print_trait_ref(a),
             Node::Pat(a) => self.print_pat(a),
             Node::PatField(a) => self.print_patfield(a),
@@ -346,12 +348,12 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(self.attrs(item.hir_id()));
         match item.kind {
-            hir::ForeignItemKind::Fn(decl, arg_names, generics) => {
+            hir::ForeignItemKind::Fn(decl, arg_names, generics, safety) => {
                 self.head("");
                 self.print_fn(
                     decl,
                     hir::FnHeader {
-                        safety: hir::Safety::Safe,
+                        safety,
                         constness: hir::Constness::NotConst,
                         abi: Abi::Rust,
                         asyncness: hir::IsAsync::NotAsync,
@@ -365,7 +367,8 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end() // end the outer fn box
             }
-            hir::ForeignItemKind::Static(t, m) => {
+            hir::ForeignItemKind::Static(t, m, safety) => {
+                self.print_safety(safety);
                 self.head("static");
                 if m.is_mut() {
                     self.word_space("mut");
@@ -1136,7 +1139,7 @@ impl<'a> State<'a> {
         self.print_ident(segment.ident);
 
         let generic_args = segment.args();
-        if !generic_args.args.is_empty() || !generic_args.bindings.is_empty() {
+        if !generic_args.args.is_empty() || !generic_args.constraints.is_empty() {
             self.print_generic_args(generic_args, true);
         }
 
@@ -1454,7 +1457,7 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 // containing cbox, will be closed by print-block at `}`
-                self.cbox(INDENT_UNIT);
+                self.cbox(0);
                 // head-box, will be closed by print-block after `{`
                 self.ibox(0);
                 self.print_block(blk);
@@ -1677,9 +1680,9 @@ impl<'a> State<'a> {
                     });
                 }
 
-                for binding in generic_args.bindings {
+                for constraint in generic_args.constraints {
                     start_or_comma(self);
-                    self.print_type_binding(binding);
+                    self.print_assoc_item_constraint(constraint);
                 }
 
                 if !empty.get() {
@@ -1687,13 +1690,15 @@ impl<'a> State<'a> {
                 }
             }
             hir::GenericArgsParentheses::ParenSugar => {
+                let (inputs, output) = generic_args.paren_sugar_inputs_output().unwrap();
+
                 self.word("(");
-                self.commasep(Inconsistent, generic_args.inputs(), |s, ty| s.print_type(ty));
+                self.commasep(Inconsistent, inputs, |s, ty| s.print_type(ty));
                 self.word(")");
 
                 self.space_if_not_bol();
                 self.word_space("->");
-                self.print_type(generic_args.bindings[0].ty());
+                self.print_type(output);
             }
             hir::GenericArgsParentheses::ReturnTypeNotation => {
                 self.word("(..)");
@@ -1701,19 +1706,19 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_type_binding(&mut self, binding: &hir::TypeBinding<'_>) {
-        self.print_ident(binding.ident);
-        self.print_generic_args(binding.gen_args, false);
+    fn print_assoc_item_constraint(&mut self, constraint: &hir::AssocItemConstraint<'_>) {
+        self.print_ident(constraint.ident);
+        self.print_generic_args(constraint.gen_args, false);
         self.space();
-        match binding.kind {
-            hir::TypeBindingKind::Equality { ref term } => {
+        match constraint.kind {
+            hir::AssocItemConstraintKind::Equality { ref term } => {
                 self.word_space("=");
                 match term {
                     Term::Ty(ty) => self.print_type(ty),
                     Term::Const(ref c) => self.print_anon_const(c),
                 }
             }
-            hir::TypeBindingKind::Constraint { bounds } => {
+            hir::AssocItemConstraintKind::Bound { bounds } => {
                 self.print_bounds(":", bounds);
             }
         }
@@ -2095,7 +2100,21 @@ impl<'a> State<'a> {
                 GenericBound::Outlives(lt) => {
                     self.print_lifetime(lt);
                 }
+                GenericBound::Use(args, _) => {
+                    self.word("use <");
+
+                    self.commasep(Inconsistent, args, |s, arg| s.print_precise_capturing_arg(*arg));
+
+                    self.word(">");
+                }
             }
+        }
+    }
+
+    fn print_precise_capturing_arg(&mut self, arg: PreciseCapturingArg<'_>) {
+        match arg {
+            PreciseCapturingArg::Lifetime(lt) => self.print_lifetime(lt),
+            PreciseCapturingArg::Param(arg) => self.print_ident(arg.ident),
         }
     }
 

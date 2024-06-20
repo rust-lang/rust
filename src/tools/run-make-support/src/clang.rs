@@ -1,16 +1,17 @@
-use std::env;
 use std::path::Path;
-use std::process::Command;
 
-use crate::{bin_name, handle_failed_output, tmp_dir};
+use crate::command::Command;
+use crate::{bin_name, env_var};
 
 /// Construct a new `clang` invocation. `clang` is not always available for all targets.
+#[track_caller]
 pub fn clang() -> Clang {
     Clang::new()
 }
 
 /// A `clang` invocation builder.
 #[derive(Debug)]
+#[must_use]
 pub struct Clang {
     cmd: Command,
 }
@@ -19,9 +20,9 @@ crate::impl_common_helpers!(Clang);
 
 impl Clang {
     /// Construct a new `clang` invocation. `clang` is not always available for all targets.
+    #[track_caller]
     pub fn new() -> Self {
-        let clang =
-            env::var("CLANG").expect("`CLANG` not specified, but this is required to find `clang`");
+        let clang = env_var("CLANG");
         let cmd = Command::new(clang);
         Self { cmd }
     }
@@ -32,11 +33,11 @@ impl Clang {
         self
     }
 
-    /// Specify the name of the executable. The executable will be placed under `$TMPDIR`, and the
-    /// extension will be determined by [`bin_name`].
+    /// Specify the name of the executable. The executable will be placed under the current directory
+    /// and the extension will be determined by [`bin_name`].
     pub fn out_exe(&mut self, name: &str) -> &mut Self {
         self.cmd.arg("-o");
-        self.cmd.arg(tmp_dir().join(bin_name(name)));
+        self.cmd.arg(bin_name(name));
         self
     }
 
@@ -69,10 +70,5 @@ impl Clang {
     pub fn use_ld(&mut self, ld: &str) -> &mut Self {
         self.cmd.arg(format!("-fuse-ld={ld}"));
         self
-    }
-
-    /// Get the [`Output`][::std::process::Output] of the finished process.
-    pub fn command_output(&mut self) -> ::std::process::Output {
-        self.cmd.output().expect("failed to get output of finished process")
     }
 }

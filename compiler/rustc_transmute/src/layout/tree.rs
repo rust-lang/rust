@@ -331,30 +331,55 @@ pub(crate) mod rustc {
             assert!(def.is_enum());
             let layout = ty_and_layout.layout;
 
-            if let Variants::Multiple { tag_field, .. } = layout.variants() {
-                // For enums (but not coroutines), the tag field is
-                // currently always the first field of the layout.
-                assert_eq!(*tag_field, 0);
-            }
+            // Computes the variant of a given index.
+            let layout_of_variant = |index| {
+                let tag = cx.tcx.tag_for_variant((ty_and_layout.ty, index));
+                let variant_def = Def::Variant(def.variant(index));
+                let variant_ty_and_layout = ty_and_layout.for_variant(&cx, index);
+                Self::from_variant(variant_def, tag, variant_ty_and_layout, layout.size, cx)
+            };
 
-            let variants = def.discriminants(cx.tcx()).try_fold(
-                Self::uninhabited(),
-                |variants, (idx, ref discriminant)| {
-                    let tag = cx.tcx.tag_for_variant((ty_and_layout.ty, idx));
-                    let variant_def = Def::Variant(def.variant(idx));
-                    let variant_ty_and_layout = ty_and_layout.for_variant(&cx, idx);
-                    let variant = Self::from_variant(
-                        variant_def,
-                        tag,
-                        variant_ty_and_layout,
-                        layout.size,
-                        cx,
+            // We consider three kinds of enums, each demanding a different
+            // treatment of their layout computation:
+            // 1. enums that are uninhabited ZSTs
+            // 2. enums that delegate their layout to a variant
+            // 3. enums with multiple variants
+            match layout.variants() {
+                Variants::Single { .. }
+                    if layout.abi.is_uninhabited() && layout.size == Size::ZERO =>
+                {
+                    // The layout representation of uninhabited, ZST enums is
+                    // defined to be like that of the `!` type, as opposed of a
+                    // typical enum. Consequently, they cannot be descended into
+                    // as if they typical enums. We therefore special-case this
+                    // scenario and simply return an uninhabited `Tree`.
+                    Ok(Self::uninhabited())
+                }
+                Variants::Single { index } => {
+                    // `Variants::Single` on enums with variants denotes that
+                    // the enum delegates its layout to the variant at `index`.
+                    layout_of_variant(*index)
+                }
+                Variants::Multiple { tag_field, .. } => {
+                    // `Variants::Multiple` denotes an enum with multiple
+                    // variants. The layout of such an enum is the disjunction
+                    // of the layouts of its tagged variants.
+
+                    // For enums (but not coroutines), the tag field is
+                    // currently always the first field of the layout.
+                    assert_eq!(*tag_field, 0);
+
+                    let variants = def.discriminants(cx.tcx()).try_fold(
+                        Self::uninhabited(),
+                        |variants, (idx, ref discriminant)| {
+                            let variant = layout_of_variant(idx)?;
+                            Result::<Self, Err>::Ok(variants.or(variant))
+                        },
                     )?;
-                    Result::<Self, Err>::Ok(variants.or(variant))
-                },
-            )?;
 
-            return Ok(Self::def(Def::Adt(def)).then(variants));
+                    return Ok(Self::def(Def::Adt(def)).then(variants));
+                }
+            }
         }
 
         /// Constructs a `Tree` from a 'variant-like' layout.
@@ -420,7 +445,7 @@ pub(crate) mod rustc {
         fn from_tag(tag: ScalarInt, tcx: TyCtxt<'tcx>) -> Self {
             use rustc_target::abi::Endian;
             let size = tag.size();
-            let bits = tag.assert_bits(size);
+            let bits = tag.to_bits(size);
             let bytes: [u8; 16];
             let bytes = match tcx.data_layout.endian {
                 Endian::Little => {

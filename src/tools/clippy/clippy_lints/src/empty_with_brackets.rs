@@ -11,16 +11,23 @@ declare_clippy_lint! {
     /// ### What it does
     /// Finds structs without fields (a so-called "empty struct") that are declared with brackets.
     ///
-    /// ### Why is this bad?
-    /// Empty brackets after a struct declaration can be omitted.
+    /// ### Why restrict this?
+    /// Empty brackets after a struct declaration can be omitted,
+    /// and it may be desirable to do so consistently for style.
+    ///
+    /// However, removing the brackets also introduces a public constant named after the struct,
+    /// so this is not just a syntactic simplification but an an API change, and adding them back
+    /// is a *breaking* API change.
     ///
     /// ### Example
     /// ```no_run
     /// struct Cookie {}
+    /// struct Biscuit();
     /// ```
     /// Use instead:
     /// ```no_run
     /// struct Cookie;
+    /// struct Biscuit;
     /// ```
     #[clippy::version = "1.62.0"]
     pub EMPTY_STRUCTS_WITH_BRACKETS,
@@ -32,14 +39,20 @@ declare_clippy_lint! {
     /// ### What it does
     /// Finds enum variants without fields that are declared with empty brackets.
     ///
-    /// ### Why is this bad?
-    /// Empty brackets while defining enum variants are redundant and can be omitted.
+    /// ### Why restrict this?
+    /// Empty brackets after a enum variant declaration are redundant and can be omitted,
+    /// and it may be desirable to do so consistently for style.
+    ///
+    /// However, removing the brackets also introduces a public constant named after the variant,
+    /// so this is not just a syntactic simplification but an an API change, and adding them back
+    /// is a *breaking* API change.
     ///
     /// ### Example
     /// ```no_run
     /// enum MyEnum {
     ///     HasData(u8),
-    ///     HasNoData(), // redundant parentheses
+    ///     HasNoData(),       // redundant parentheses
+    ///     NoneHereEither {}, // redundant braces
     /// }
     /// ```
     ///
@@ -48,6 +61,7 @@ declare_clippy_lint! {
     /// enum MyEnum {
     ///     HasData(u8),
     ///     HasNoData,
+    ///     NoneHereEither,
     /// }
     /// ```
     #[clippy::version = "1.77.0"]

@@ -553,7 +553,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     }
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'tcx>) -> bool {
-        if let Some(ty) = p.term().skip_binder().ty() {
+        if let Some(ty) = p.term().skip_binder().as_type() {
             matches!(ty.kind(), ty::Alias(ty::Projection, proj) if proj == &p.skip_binder().projection_term.expect_ty(self.tcx))
         } else {
             false
@@ -765,7 +765,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 unevaluated,
                                 obligation.cause.span,
                             ) {
-                                Ok(Some(valtree)) => Ok(ty::Const::new_value(selcx.tcx(),valtree, c.ty())),
+                                Ok(Some(valtree)) => Ok(ty::Const::new_value(selcx.tcx(),valtree, self.tcx.type_of(unevaluated.def).instantiate(self.tcx, unevaluated.args))),
                                 Ok(None) => {
                                     let tcx = self.tcx;
                                     let reported =

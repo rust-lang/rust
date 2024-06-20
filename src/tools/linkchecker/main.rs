@@ -503,7 +503,7 @@ fn maybe_redirect(source: &str) -> Option<String> {
 
 fn parse_html<Sink: TokenSink>(source: &str, sink: Sink) -> Sink {
     let tendril: ByteTendril = source.as_bytes().into();
-    let mut input = BufferQueue::new();
+    let mut input = BufferQueue::default();
     input.push_back(tendril.try_reinterpret().unwrap());
 
     let mut tok = Tokenizer::new(sink, TokenizerOpts::default());

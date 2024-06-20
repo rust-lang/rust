@@ -376,6 +376,44 @@ that the code sample should be compiled using the respective edition of Rust.
 # fn foo() {}
 ```
 
+### Custom CSS classes for code blocks
+
+```rust
+/// ```custom,{class=language-c}
+/// int main(void) { return 0; }
+/// ```
+pub struct Bar;
+```
+
+The text `int main(void) { return 0; }` is rendered without highlighting in a code block
+with the class `language-c`. This can be used to highlight other languages through JavaScript
+libraries for example.
+
+Without the `custom` attribute, it would be generated as a Rust code example with an additional
+`language-C` CSS class. Therefore, if you specifically don't want it to be a Rust code example,
+don't forget to add the `custom` attribute.
+
+To be noted that you can replace `class=` with `.` to achieve the same result:
+
+```rust
+/// ```custom,{.language-c}
+/// int main(void) { return 0; }
+/// ```
+pub struct Bar;
+```
+
+To be noted, `rust` and `.rust`/`class=rust` have different effects: `rust` indicates that this is
+a Rust code block whereas the two others add a "rust" CSS class on the code block.
+
+You can also use double quotes:
+
+```rust
+/// ```"not rust" {."hello everyone"}
+/// int main(void) { return 0; }
+/// ```
+pub struct Bar;
+```
+
 ## Syntax reference
 
 The *exact* syntax for code blocks, including the edge cases, can be found

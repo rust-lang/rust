@@ -395,11 +395,13 @@ mod desc {
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str = parse_bool;
-    pub const parse_coverage_options: &str = "`block` | `branch` | `mcdc`";
+    pub const parse_coverage_options: &str =
+        "`block` | `branch` | `condition` | `mcdc` | `no-mir-spans`";
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
-    pub const parse_next_solver_config: &str = "a comma separated list of solver configurations: `globally` (default), `coherence`, `dump-tree`, `dump-tree-on-error";
+    pub const parse_next_solver_config: &str =
+        "a comma separated list of solver configurations: `globally` (default), and `coherence`";
     pub const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub const parse_linker_plugin_lto: &str =
@@ -960,7 +962,9 @@ mod parse {
             match option {
                 "block" => slot.level = CoverageLevel::Block,
                 "branch" => slot.level = CoverageLevel::Branch,
+                "condition" => slot.level = CoverageLevel::Condition,
                 "mcdc" => slot.level = CoverageLevel::Mcdc,
+                "no-mir-spans" => slot.no_mir_spans = true,
                 _ => return false,
             }
         }
@@ -1058,7 +1062,6 @@ mod parse {
         if let Some(config) = v {
             let mut coherence = false;
             let mut globally = true;
-            let mut dump_tree = None;
             for c in config.split(',') {
                 match c {
                     "globally" => globally = true,
@@ -1066,31 +1069,13 @@ mod parse {
                         globally = false;
                         coherence = true;
                     }
-                    "dump-tree" => {
-                        if dump_tree.replace(DumpSolverProofTree::Always).is_some() {
-                            return false;
-                        }
-                    }
-                    "dump-tree-on-error" => {
-                        if dump_tree.replace(DumpSolverProofTree::OnError).is_some() {
-                            return false;
-                        }
-                    }
                     _ => return false,
                 }
             }
 
-            *slot = Some(NextSolverConfig {
-                coherence: coherence || globally,
-                globally,
-                dump_tree: dump_tree.unwrap_or_default(),
-            });
+            *slot = Some(NextSolverConfig { coherence: coherence || globally, globally });
         } else {
-            *slot = Some(NextSolverConfig {
-                coherence: true,
-                globally: true,
-                dump_tree: Default::default(),
-            });
+            *slot = Some(NextSolverConfig { coherence: true, globally: true });
         }
 
         true
@@ -1696,6 +1681,8 @@ options! {
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
+    fixed_x18: bool = (false, parse_bool, [TRACKED],
+        "make the x18 register reserved on AArch64 (default: no)"),
     flatten_format_args: bool = (true, parse_bool, [TRACKED],
         "flatten nested format_args!() and literals into a simplified format_args!() call \
         (default: yes)"),

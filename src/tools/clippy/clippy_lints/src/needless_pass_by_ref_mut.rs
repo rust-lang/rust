@@ -1,7 +1,7 @@
 use super::needless_pass_by_value::requires_exact_signature;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
-use clippy_utils::visitors::for_each_expr_with_closures;
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{inherits_cfg, is_from_proc_macro, is_self};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
@@ -117,7 +117,9 @@ fn check_closures<'tcx>(
             .associated_body()
             .map(|(_, body_id)| hir.body(body_id))
         {
-            euv::ExprUseVisitor::for_clippy(cx, closure, &mut *ctx).consume_body(body).into_ok();
+            euv::ExprUseVisitor::for_clippy(cx, closure, &mut *ctx)
+                .consume_body(body)
+                .into_ok();
         }
     }
 }
@@ -194,14 +196,16 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                 async_closures: FxHashSet::default(),
                 tcx: cx.tcx,
             };
-            euv::ExprUseVisitor::for_clippy(cx, fn_def_id, &mut ctx).consume_body(body).into_ok();
+            euv::ExprUseVisitor::for_clippy(cx, fn_def_id, &mut ctx)
+                .consume_body(body)
+                .into_ok();
 
             let mut checked_closures = FxHashSet::default();
 
             // We retrieve all the closures declared in the function because they will not be found
             // by `euv::Delegate`.
             let mut closures: FxHashSet<LocalDefId> = FxHashSet::default();
-            for_each_expr_with_closures(cx, body, |expr| {
+            for_each_expr(cx, body, |expr| {
                 if let ExprKind::Closure(closure) = expr.kind {
                     closures.insert(closure.def_id);
                 }

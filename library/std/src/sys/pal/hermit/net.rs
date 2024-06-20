@@ -175,23 +175,12 @@ impl Socket {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        let mut size: isize = 0;
-
-        for i in bufs.iter_mut() {
-            let ret: isize =
-                cvt(unsafe { netc::read(self.0.as_raw_fd(), i.as_mut_ptr(), i.len()) })?;
-
-            if ret != 0 {
-                size += ret;
-            }
-        }
-
-        Ok(size.try_into().unwrap())
+        self.0.read_vectored(bufs)
     }
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        true
+        self.0.is_read_vectored()
     }
 
     fn recv_from_with_flags(&self, buf: &mut [u8], flags: i32) -> io::Result<(usize, SocketAddr)> {
@@ -220,22 +209,15 @@ impl Socket {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        let sz = cvt(unsafe { netc::write(self.0.as_raw_fd(), buf.as_ptr(), buf.len()) })?;
-        Ok(sz.try_into().unwrap())
+        self.0.write(buf)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let mut size: isize = 0;
-
-        for i in bufs.iter() {
-            size += cvt(unsafe { netc::write(self.0.as_raw_fd(), i.as_ptr(), i.len()) })?;
-        }
-
-        Ok(size.try_into().unwrap())
+        self.0.write_vectored(bufs)
     }
 
     pub fn is_write_vectored(&self) -> bool {
-        true
+        self.0.is_write_vectored()
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>, kind: i32) -> io::Result<()> {
@@ -282,7 +264,7 @@ impl Socket {
             Shutdown::Read => netc::SHUT_RD,
             Shutdown::Both => netc::SHUT_RDWR,
         };
-        cvt(unsafe { netc::shutdown_socket(self.as_raw_fd(), how) })?;
+        cvt(unsafe { netc::shutdown(self.as_raw_fd(), how) })?;
         Ok(())
     }
 

@@ -1,4 +1,3 @@
-#![feature(lazy_cell)]
 #![deny(suspicious_double_ref_op, noop_method_call)]
 
 use std::borrow::Borrow;

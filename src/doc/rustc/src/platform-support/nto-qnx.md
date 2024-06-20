@@ -160,8 +160,7 @@ export exclude_tests='
     --exclude src/tools/linkchecker
     --exclude tests/ui-fulldeps
     --exclude rustc
-    --exclude rustdoc
-    --exclude tests/run-make-fulldeps'
+    --exclude rustdoc'
 
 env $build_env \
     ./x.py test \

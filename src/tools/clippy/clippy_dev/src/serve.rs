@@ -8,7 +8,7 @@ use std::{env, thread};
 /// # Panics
 ///
 /// Panics if the python commands could not be spawned
-pub fn run(port: u16, lint: Option<&String>) -> ! {
+pub fn run(port: u16, lint: Option<String>) -> ! {
     let mut url = Some(match lint {
         None => format!("http://localhost:{port}"),
         Some(lint) => format!("http://localhost:{port}/#{lint}"),

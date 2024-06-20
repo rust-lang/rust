@@ -22,6 +22,8 @@ type WORD = u16;
 type DWORD = u32;
 type BOOL = i32;
 type HANDLE = *mut u8;
+// https://docs.microsoft.com/en-us/windows/console/getstdhandle
+const STD_OUTPUT_HANDLE: DWORD = -11 as _;
 
 #[allow(non_snake_case)]
 #[repr(C)]
@@ -99,16 +101,13 @@ impl<T: Write + Send + 'static> WinConsole<T> {
         accum |= color_to_bits(self.background) << 4;
 
         unsafe {
-            // Magic -11 means stdout, from
-            // https://docs.microsoft.com/en-us/windows/console/getstdhandle
-            //
             // You may be wondering, "but what about stderr?", and the answer
             // to that is that setting terminal attributes on the stdout
             // handle also sets them for stderr, since they go to the same
             // terminal! Admittedly, this is fragile, since stderr could be
             // redirected to a different console. This is good enough for
             // rustc though. See #13400.
-            let out = GetStdHandle(-11i32 as DWORD);
+            let out = GetStdHandle(STD_OUTPUT_HANDLE);
             SetConsoleTextAttribute(out, accum);
         }
     }
@@ -120,9 +119,8 @@ impl<T: Write + Send + 'static> WinConsole<T> {
         let bg;
         unsafe {
             let mut buffer_info = MaybeUninit::<CONSOLE_SCREEN_BUFFER_INFO>::uninit();
-            if GetConsoleScreenBufferInfo(GetStdHandle(-11i32 as DWORD), buffer_info.as_mut_ptr())
-                != 0
-            {
+            let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+            if GetConsoleScreenBufferInfo(handle, buffer_info.as_mut_ptr()) != 0 {
                 let buffer_info = buffer_info.assume_init();
                 fg = bits_to_color(buffer_info.wAttributes);
                 bg = bits_to_color(buffer_info.wAttributes >> 4);

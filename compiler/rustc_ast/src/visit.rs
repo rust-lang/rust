@@ -52,6 +52,16 @@ pub enum BoundKind {
     /// E.g., `trait A: B`
     SuperTraits,
 }
+impl BoundKind {
+    pub fn descr(self) -> &'static str {
+        match self {
+            BoundKind::Bound => "bounds",
+            BoundKind::Impl => "`impl Trait`",
+            BoundKind::TraitObject => "`dyn` trait object bounds",
+            BoundKind::SuperTraits => "supertrait bounds",
+        }
+    }
+}
 
 #[derive(Copy, Clone, Debug)]
 pub enum FnKind<'a> {
@@ -246,8 +256,11 @@ pub trait Visitor<'ast>: Sized {
     fn visit_generic_arg(&mut self, generic_arg: &'ast GenericArg) -> Self::Result {
         walk_generic_arg(self, generic_arg)
     }
-    fn visit_assoc_constraint(&mut self, constraint: &'ast AssocConstraint) -> Self::Result {
-        walk_assoc_constraint(self, constraint)
+    fn visit_assoc_item_constraint(
+        &mut self,
+        constraint: &'ast AssocItemConstraint,
+    ) -> Self::Result {
+        walk_assoc_item_constraint(self, constraint)
     }
     fn visit_attribute(&mut self, attr: &'ast Attribute) -> Self::Result {
         walk_attribute(self, attr)
@@ -331,7 +344,7 @@ impl WalkItemKind for ItemKind {
         match self {
             ItemKind::ExternCrate(_) => {}
             ItemKind::Use(use_tree) => try_visit!(visitor.visit_use_tree(use_tree, item.id, false)),
-            ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
+            ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
                 try_visit!(visitor.visit_ty(ty));
                 visit_opt!(visitor, visit_expr, expr);
             }
@@ -395,7 +408,14 @@ impl WalkItemKind for ItemKind {
             }
             ItemKind::MacCall(mac) => try_visit!(visitor.visit_mac_call(mac)),
             ItemKind::MacroDef(ts) => try_visit!(visitor.visit_mac_def(ts, item.id)),
-            ItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
+            ItemKind::Delegation(box Delegation {
+                id,
+                qself,
+                path,
+                rename,
+                body,
+                from_glob: _,
+            }) => {
                 if let Some(qself) = qself {
                     try_visit!(visitor.visit_ty(&qself.ty));
                 }
@@ -408,10 +428,12 @@ impl WalkItemKind for ItemKind {
                     try_visit!(visitor.visit_ty(&qself.ty));
                 }
                 try_visit!(visitor.visit_path(prefix, item.id));
-                for (ident, rename) in suffixes {
-                    visitor.visit_ident(*ident);
-                    if let Some(rename) = rename {
-                        visitor.visit_ident(*rename);
+                if let Some(suffixes) = suffixes {
+                    for (ident, rename) in suffixes {
+                        visitor.visit_ident(*ident);
+                        if let Some(rename) = rename {
+                            visitor.visit_ident(*rename);
+                        }
                     }
                 }
                 visit_opt!(visitor, visit_block, body);
@@ -494,13 +516,8 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
         TyKind::TraitObject(bounds, ..) => {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::TraitObject);
         }
-        TyKind::ImplTrait(_, bounds, precise_capturing) => {
+        TyKind::ImplTrait(_, bounds) => {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Impl);
-            if let Some((precise_capturing, _span)) = precise_capturing.as_deref() {
-                for arg in precise_capturing {
-                    try_visit!(visitor.visit_precise_capturing_arg(arg));
-                }
-            }
         }
         TyKind::Typeof(expression) => try_visit!(visitor.visit_anon_const(expression)),
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Dummy | TyKind::Err(_) => {}
@@ -558,7 +575,7 @@ where
                 match arg {
                     AngleBracketedArg::Arg(a) => try_visit!(visitor.visit_generic_arg(a)),
                     AngleBracketedArg::Constraint(c) => {
-                        try_visit!(visitor.visit_assoc_constraint(c))
+                        try_visit!(visitor.visit_assoc_item_constraint(c))
                     }
                 }
             }
@@ -582,18 +599,18 @@ where
     }
 }
 
-pub fn walk_assoc_constraint<'a, V: Visitor<'a>>(
+pub fn walk_assoc_item_constraint<'a, V: Visitor<'a>>(
     visitor: &mut V,
-    constraint: &'a AssocConstraint,
+    constraint: &'a AssocItemConstraint,
 ) -> V::Result {
     try_visit!(visitor.visit_ident(constraint.ident));
     visit_opt!(visitor, visit_generic_args, &constraint.gen_args);
     match &constraint.kind {
-        AssocConstraintKind::Equality { term } => match term {
+        AssocItemConstraintKind::Equality { term } => match term {
             Term::Ty(ty) => try_visit!(visitor.visit_ty(ty)),
             Term::Const(c) => try_visit!(visitor.visit_anon_const(c)),
         },
-        AssocConstraintKind::Bound { bounds } => {
+        AssocItemConstraintKind::Bound { bounds } => {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
         }
     }
@@ -655,7 +672,12 @@ impl WalkItemKind for ForeignItemKind {
     ) -> V::Result {
         let &Item { id, span, ident, ref vis, .. } = item;
         match self {
-            ForeignItemKind::Static(box StaticForeignItem { ty, mutability: _, expr }) => {
+            ForeignItemKind::Static(box StaticForeignItem {
+                ty,
+                mutability: _,
+                expr,
+                safety: _,
+            }) => {
                 try_visit!(visitor.visit_ty(ty));
                 visit_opt!(visitor, visit_expr, expr);
             }
@@ -680,6 +702,10 @@ pub fn walk_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a GenericB
     match bound {
         GenericBound::Trait(typ, _modifier) => visitor.visit_poly_trait_ref(typ),
         GenericBound::Outlives(lifetime) => visitor.visit_lifetime(lifetime, LifetimeCtxt::Bound),
+        GenericBound::Use(args, _) => {
+            walk_list!(visitor, visit_precise_capturing_arg, args);
+            V::Result::output()
+        }
     }
 }
 
@@ -820,7 +846,14 @@ impl WalkItemKind for AssocItemKind {
             AssocItemKind::MacCall(mac) => {
                 try_visit!(visitor.visit_mac_call(mac));
             }
-            AssocItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
+            AssocItemKind::Delegation(box Delegation {
+                id,
+                qself,
+                path,
+                rename,
+                body,
+                from_glob: _,
+            }) => {
                 if let Some(qself) = qself {
                     try_visit!(visitor.visit_ty(&qself.ty));
                 }
@@ -833,10 +866,12 @@ impl WalkItemKind for AssocItemKind {
                     try_visit!(visitor.visit_ty(&qself.ty));
                 }
                 try_visit!(visitor.visit_path(prefix, item.id));
-                for (ident, rename) in suffixes {
-                    visitor.visit_ident(*ident);
-                    if let Some(rename) = rename {
-                        visitor.visit_ident(*rename);
+                if let Some(suffixes) = suffixes {
+                    for (ident, rename) in suffixes {
+                        visitor.visit_ident(*ident);
+                        if let Some(rename) = rename {
+                            visitor.visit_ident(*rename);
+                        }
                     }
                 }
                 visit_opt!(visitor, visit_block, body);
@@ -852,10 +887,10 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(
     ctxt: AssocCtxt,
 ) -> V::Result {
     let &Item { id: _, span: _, ident, ref vis, ref attrs, ref kind, tokens: _ } = item;
-    walk_list!(visitor, visit_attribute, attrs);
     try_visit!(visitor.visit_vis(vis));
     try_visit!(visitor.visit_ident(ident));
     try_visit!(kind.walk(item, ctxt, visitor));
+    walk_list!(visitor, visit_attribute, attrs);
     V::Result::output()
 }
 

@@ -397,7 +397,7 @@
             $scope.bySearch = function (lint, index, array) {
                 let searchStr = $scope.search;
                 // It can be `null` I haven't missed this value
-                if (searchStr == null || searchStr.length < 3) {
+                if (searchStr == null) {
                     return true;
                 }
                 searchStr = searchStr.toLowerCase();
@@ -406,7 +406,7 @@
                 }
 
                 // Search by id
-                if (lint.id.indexOf(searchStr.replace("-", "_")) !== -1) {
+                if (lint.id.indexOf(searchStr.replaceAll("-", "_")) !== -1) {
                     return true;
                 }
 

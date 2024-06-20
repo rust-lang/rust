@@ -3,8 +3,7 @@
 //@ needs-sanitizer-dataflow
 //@ compile-flags: -Copt-level=0 -Zsanitizer=dataflow
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
-pub fn foo() {
-}
+pub fn foo() {}
 // CHECK: define{{.*}}foo{{.*}}.dfsan

@@ -31,6 +31,8 @@ use crate::sys_common::IntoInner;
 
 use core::ffi::c_void;
 
+use super::api::{self, WinError};
+
 ////////////////////////////////////////////////////////////////////////////////
 // Command
 ////////////////////////////////////////////////////////////////////////////////
@@ -645,12 +647,12 @@ impl Process {
     pub fn kill(&mut self) -> io::Result<()> {
         let result = unsafe { c::TerminateProcess(self.handle.as_raw_handle(), 1) };
         if result == c::FALSE {
-            let error = unsafe { c::GetLastError() };
+            let error = api::get_last_error();
             // TerminateProcess returns ERROR_ACCESS_DENIED if the process has already been
             // terminated (by us, or for any other reason). So check if the process was actually
             // terminated, and if so, do not return an error.
-            if error != c::ERROR_ACCESS_DENIED || self.try_wait().is_err() {
-                return Err(crate::io::Error::from_raw_os_error(error as i32));
+            if error != WinError::ACCESS_DENIED || self.try_wait().is_err() {
+                return Err(crate::io::Error::from_raw_os_error(error.code as i32));
             }
         }
         Ok(())

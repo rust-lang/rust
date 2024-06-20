@@ -7,7 +7,68 @@ use std::hash::Hash;
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
-use crate::{Canonical, CanonicalVarValues, Interner, Upcast};
+use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
+
+/// Depending on the stage of compilation, we want projection to be
+/// more or less conservative.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+pub enum Reveal {
+    /// At type-checking time, we refuse to project any associated
+    /// type that is marked `default`. Non-`default` ("final") types
+    /// are always projected. This is necessary in general for
+    /// soundness of specialization. However, we *could* allow
+    /// projections in fully-monomorphic cases. We choose not to,
+    /// because we prefer for `default type` to force the type
+    /// definition to be treated abstractly by any consumers of the
+    /// impl. Concretely, that means that the following example will
+    /// fail to compile:
+    ///
+    /// ```compile_fail,E0308
+    /// #![feature(specialization)]
+    /// trait Assoc {
+    ///     type Output;
+    /// }
+    ///
+    /// impl<T> Assoc for T {
+    ///     default type Output = bool;
+    /// }
+    ///
+    /// fn main() {
+    ///     let x: <() as Assoc>::Output = true;
+    /// }
+    /// ```
+    ///
+    /// We also do not reveal the hidden type of opaque types during
+    /// type-checking.
+    UserFacing,
+
+    /// At codegen time, all monomorphic projections will succeed.
+    /// Also, `impl Trait` is normalized to the concrete type,
+    /// which has to be already collected by type-checking.
+    ///
+    /// NOTE: as `impl Trait`'s concrete type should *never*
+    /// be observable directly by the user, `Reveal::All`
+    /// should not be used by checks which may expose
+    /// type equality or type contents to the user.
+    /// There are some exceptions, e.g., around auto traits and
+    /// transmute-checking, which expose some details, but
+    /// not the whole concrete type of the `impl Trait`.
+    All,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum SolverMode {
+    /// Ordinary trait solving, using everywhere except for coherence.
+    Normal,
+    /// Trait solving during coherence. There are a few notable differences
+    /// between coherence and ordinary trait solving.
+    ///
+    /// Most importantly, trait solving during coherence must not be incomplete,
+    /// i.e. return `Err(NoSolution)` for goals for which a solution exists.
+    /// This means that we must not make any guesses or arbitrary choices.
+    Coherence,
+}
 
 pub type CanonicalInput<I, T = <I as Interner>::Predicate> = Canonical<I, QueryInput<I, T>>;
 pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
@@ -20,7 +81,6 @@ pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 pub type QueryResult<I> = Result<CanonicalResponse<I>, NoSolution>;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[derive(TypeFoldable_Generic, TypeVisitable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct NoSolution;
 
@@ -60,7 +120,7 @@ impl<I: Interner, P> Goal<I, P> {
 ///
 /// This is necessary as we treat nested goals different depending on
 /// their source.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum GoalSource {
     Misc,
@@ -94,6 +154,22 @@ pub enum GoalSource {
 pub struct QueryInput<I: Interner, P> {
     pub goal: Goal<I, P>,
     pub predefined_opaques_in_body: I::PredefinedOpaques,
+}
+
+/// Opaques that are defined in the inference context before a query is called.
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Debug(bound = ""),
+    Default(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+pub struct PredefinedOpaquesData<I: Interner> {
+    pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
 }
 
 /// Possible ways the given goal can be proven.
@@ -170,28 +246,22 @@ pub enum CandidateSource<I: Interner> {
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext, TyEncodable, TyDecodable))]
 pub enum BuiltinImplSource {
-    /// Some builtin impl we don't need to differentiate. This should be used
+    /// Some built-in impl we don't need to differentiate. This should be used
     /// unless more specific information is necessary.
     Misc,
-    /// A builtin impl for trait objects.
+    /// A built-in impl for trait objects. The index is only used in winnowing.
+    Object(usize),
+    /// A built-in implementation of `Upcast` for trait objects to other trait objects.
     ///
-    /// The vtable is formed by concatenating together the method lists of
-    /// the base object trait and all supertraits, pointers to supertrait vtable will
-    /// be provided when necessary; this is the start of `upcast_trait_ref`'s methods
-    /// in that vtable.
-    Object { vtable_base: usize },
-    /// The vtable is formed by concatenating together the method lists of
-    /// the base object trait and all supertraits, pointers to supertrait vtable will
-    /// be provided when necessary; this is the position of `upcast_trait_ref`'s vtable
-    /// within that vtable.
-    TraitUpcasting { vtable_vptr_slot: Option<usize> },
+    /// This can be removed when `feature(dyn_upcasting)` is stabilized, since we only
+    /// use it to detect when upcasting traits in hir typeck.
+    TraitUpcasting,
     /// Unsizing a tuple like `(A, B, ..., X)` to `(A, B, ..., Y)` if `X` unsizes to `Y`.
     ///
-    /// This needs to be a separate variant as it is still unstable and we need to emit
-    /// a feature error when using it on stable.
+    /// This can be removed when `feature(tuple_unsizing)` is stabilized, since we only
+    /// use it to detect when unsizing tuples in hir typeck.
     TupleUnsizing,
 }
 
@@ -213,8 +283,48 @@ pub struct Response<I: Interner> {
     pub external_constraints: I::ExternalConstraints,
 }
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+/// Additional constraints returned on success.
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Debug(bound = ""),
+    Default(bound = "")
+)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub struct ExternalConstraintsData<I: Interner> {
+    pub region_constraints: Vec<ty::OutlivesPredicate<I, I::GenericArg>>,
+    pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+    pub normalization_nested_goals: NestedNormalizationGoals<I>,
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Debug(bound = ""),
+    Default(bound = "")
+)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub struct NestedNormalizationGoals<I: Interner>(pub Vec<(GoalSource, Goal<I, I::Predicate>)>);
+
+impl<I: Interner> NestedNormalizationGoals<I> {
+    pub fn empty() -> Self {
+        NestedNormalizationGoals(vec![])
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum Certainty {
     Yes,
@@ -252,7 +362,6 @@ impl Certainty {
 
 /// Why we failed to evaluate a goal.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum MaybeCause {
     /// We failed due to ambiguity. This ambiguity can either
@@ -275,4 +384,13 @@ impl MaybeCause {
             ) => MaybeCause::Overflow { suggest_increasing_limit: a || b },
         }
     }
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(PartialEq(bound = ""), Eq(bound = ""), Debug(bound = ""))]
+pub struct CacheData<I: Interner> {
+    pub result: QueryResult<I>,
+    pub proof_tree: Option<I::CanonicalGoalEvaluationStepRef>,
+    pub additional_depth: usize,
+    pub encountered_overflow: bool,
 }

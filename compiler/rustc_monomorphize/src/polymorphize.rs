@@ -18,6 +18,7 @@ use rustc_middle::ty::{
     GenericArgsRef, Ty, TyCtxt, UnusedGenericParams,
 };
 use rustc_span::symbol::sym;
+use tracing::{debug, instrument};
 
 use crate::errors::UnusedGenericParamsHint;
 
@@ -32,7 +33,7 @@ pub fn provide(providers: &mut Providers) {
 /// parameters are used).
 fn unused_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
-    instance: ty::InstanceDef<'tcx>,
+    instance: ty::InstanceKind<'tcx>,
 ) -> UnusedGenericParams {
     assert!(instance.def_id().is_local());
 
@@ -51,7 +52,7 @@ fn unused_generic_params<'tcx>(
     debug!(?generics);
 
     // Exit early when there are no parameters to be unused.
-    if generics.count() == 0 {
+    if generics.is_empty() {
         return UnusedGenericParams::new_all_used();
     }
 
@@ -87,7 +88,7 @@ fn unused_generic_params<'tcx>(
 fn should_polymorphize<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    instance: ty::InstanceDef<'tcx>,
+    instance: ty::InstanceKind<'tcx>,
 ) -> bool {
     // If an instance's MIR body is not polymorphic then the modified generic parameters that are
     // derived from polymorphization's result won't make any difference.
@@ -96,7 +97,7 @@ fn should_polymorphize<'tcx>(
     }
 
     // Don't polymorphize intrinsics or virtual calls - calling `instance_mir` will panic.
-    if matches!(instance, ty::InstanceDef::Intrinsic(..) | ty::InstanceDef::Virtual(..)) {
+    if matches!(instance, ty::InstanceKind::Intrinsic(..) | ty::InstanceKind::Virtual(..)) {
         return false;
     }
 
@@ -229,7 +230,7 @@ impl<'a, 'tcx> MarkUsedGenericParams<'a, 'tcx> {
     /// a closure, coroutine or constant).
     #[instrument(level = "debug", skip(self, def_id, args))]
     fn visit_child_body(&mut self, def_id: DefId, args: GenericArgsRef<'tcx>) {
-        let instance = ty::InstanceDef::Item(def_id);
+        let instance = ty::InstanceKind::Item(def_id);
         let unused = self.tcx.unused_generic_params(instance);
         debug!(?self.unused_parameters, ?unused);
         for (i, arg) in args.iter().enumerate() {
@@ -260,9 +261,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         self.super_local_decl(local, local_decl);
     }
 
-    fn visit_constant(&mut self, ct: &mir::ConstOperand<'tcx>, location: Location) {
+    fn visit_const_operand(&mut self, ct: &mir::ConstOperand<'tcx>, location: Location) {
         match ct.const_ {
-            mir::Const::Ty(c) => {
+            mir::Const::Ty(_, c) => {
                 c.visit_with(self);
             }
             mir::Const::Unevaluated(mir::UnevaluatedConst { def, args: _, promoted }, ty) => {

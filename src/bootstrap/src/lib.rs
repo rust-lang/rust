@@ -84,13 +84,14 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::ToolRustc), "rust_analyzer", None),
     (Some(Mode::ToolStd), "rust_analyzer", None),
     (Some(Mode::Codegen), "parallel_compiler", None),
+    // NOTE: consider updating `check-cfg` entries in `std/Cargo.toml` too.
+    // cfg(bootstrap) remove these once the bootstrap compiler supports
+    // `lints.rust.unexpected_cfgs.check-cfg`
     (Some(Mode::Std), "stdarch_intel_sde", None),
     (Some(Mode::Std), "no_fp_fmt_parse", None),
     (Some(Mode::Std), "no_global_oom_handling", None),
     (Some(Mode::Std), "no_rc", None),
     (Some(Mode::Std), "no_sync", None),
-    (Some(Mode::Std), "netbsd10", None),
-    (Some(Mode::Std), "backtrace_in_libstd", None),
     /* Extra values not defined in the built-in targets yet, but used in std */
     (Some(Mode::Std), "target_env", Some(&["libnx", "p2"])),
     (Some(Mode::Std), "target_os", Some(&["visionos"])),
@@ -468,7 +469,8 @@ impl Build {
 
             // Make sure we update these before gathering metadata so we don't get an error about missing
             // Cargo.toml files.
-            let rust_submodules = ["src/tools/cargo", "library/backtrace", "library/stdarch"];
+            let rust_submodules =
+                ["src/tools/cargo", "src/doc/book", "library/backtrace", "library/stdarch"];
             for s in rust_submodules {
                 build.update_submodule(Path::new(s));
             }
@@ -518,33 +520,27 @@ impl Build {
             return;
         }
 
-        // check_submodule
-        let checked_out_hash =
-            output(Command::new("git").args(["rev-parse", "HEAD"]).current_dir(&absolute_path));
-        // update_submodules
-        let recorded = output(
-            Command::new("git")
-                .args(["ls-tree", "HEAD"])
-                .arg(relative_path)
-                .current_dir(&self.config.src),
-        );
+        let submodule_git = || helpers::git(Some(&absolute_path));
+
+        // Determine commit checked out in submodule.
+        let checked_out_hash = output(submodule_git().args(["rev-parse", "HEAD"]));
+        let checked_out_hash = checked_out_hash.trim_end();
+        // Determine commit that the submodule *should* have.
+        let recorded =
+            output(helpers::git(Some(&self.src)).args(["ls-tree", "HEAD"]).arg(relative_path));
         let actual_hash = recorded
             .split_whitespace()
             .nth(2)
             .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
 
-        // update_submodule
-        if actual_hash == checked_out_hash.trim_end() {
+        if actual_hash == checked_out_hash {
             // already checked out
             return;
         }
 
         println!("Updating submodule {}", relative_path.display());
         self.run(
-            Command::new("git")
-                .args(["submodule", "-q", "sync"])
-                .arg(relative_path)
-                .current_dir(&self.config.src),
+            helpers::git(Some(&self.src)).args(["submodule", "-q", "sync"]).arg(relative_path),
         );
 
         // Try passing `--progress` to start, then run git again without if that fails.
@@ -552,9 +548,7 @@ impl Build {
             // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
             // even though that has no relation to the upstream for the submodule.
             let current_branch = {
-                let output = self
-                    .config
-                    .git()
+                let output = helpers::git(Some(&self.src))
                     .args(["symbolic-ref", "--short", "HEAD"])
                     .stderr(Stdio::inherit())
                     .output();
@@ -566,7 +560,7 @@ impl Build {
                 }
             };
 
-            let mut git = self.config.git();
+            let mut git = helpers::git(Some(&self.src));
             if let Some(branch) = current_branch {
                 // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
                 // This syntax isn't accepted by `branch.{branch}`. Strip it.
@@ -588,26 +582,22 @@ impl Build {
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
         let has_local_modifications = !self.run_cmd(
-            BootstrapCommand::from(
-                Command::new("git")
-                    .args(["diff-index", "--quiet", "HEAD"])
-                    .current_dir(&absolute_path),
-            )
-            .allow_failure()
-            .output_mode(match self.is_verbose() {
-                true => OutputMode::PrintAll,
-                false => OutputMode::PrintOutput,
-            }),
+            BootstrapCommand::from(submodule_git().args(["diff-index", "--quiet", "HEAD"]))
+                .allow_failure()
+                .output_mode(match self.is_verbose() {
+                    true => OutputMode::PrintAll,
+                    false => OutputMode::PrintOutput,
+                }),
         );
         if has_local_modifications {
-            self.run(Command::new("git").args(["stash", "push"]).current_dir(&absolute_path));
+            self.run(submodule_git().args(["stash", "push"]));
         }
 
-        self.run(Command::new("git").args(["reset", "-q", "--hard"]).current_dir(&absolute_path));
-        self.run(Command::new("git").args(["clean", "-qdfx"]).current_dir(&absolute_path));
+        self.run(submodule_git().args(["reset", "-q", "--hard"]));
+        self.run(submodule_git().args(["clean", "-qdfx"]));
 
         if has_local_modifications {
-            self.run(Command::new("git").args(["stash", "pop"]).current_dir(absolute_path));
+            self.run(submodule_git().args(["stash", "pop"]));
         }
     }
 
@@ -619,10 +609,9 @@ impl Build {
             return;
         }
         let output = output(
-            self.config
-                .git()
+            helpers::git(Some(&self.src))
                 .args(["config", "--file"])
-                .arg(&self.config.src.join(".gitmodules"))
+                .arg(self.config.src.join(".gitmodules"))
                 .args(["--get-regexp", "path"]),
         );
         for line in output.lines() {
@@ -659,10 +648,11 @@ impl Build {
 
         // hardcoded subcommands
         match &self.config.cmd {
-            Subcommand::Format { check } => {
+            Subcommand::Format { check, all } => {
                 return core::build_steps::format::format(
                     &builder::Builder::new(self),
                     *check,
+                    *all,
                     &self.config.paths,
                 );
             }
@@ -1560,10 +1550,14 @@ impl Build {
             // Figure out how many merge commits happened since we branched off master.
             // That's our beta number!
             // (Note that we use a `..` range, not the `...` symmetric difference.)
-            output(self.config.git().arg("rev-list").arg("--count").arg("--merges").arg(format!(
-                "refs/remotes/origin/{}..HEAD",
-                self.config.stage0_metadata.config.nightly_branch
-            )))
+            output(
+                helpers::git(Some(&self.src)).arg("rev-list").arg("--count").arg("--merges").arg(
+                    format!(
+                        "refs/remotes/origin/{}..HEAD",
+                        self.config.stage0_metadata.config.nightly_branch
+                    ),
+                ),
+            )
         });
         let n = count.trim().parse().unwrap();
         self.prerelease_version.set(Some(n));
@@ -1981,15 +1975,13 @@ fn envify(s: &str) -> String {
 /// In case of errors during `git` command execution (e.g., in tarball sources), default values
 /// are used to prevent panics.
 pub fn generate_smart_stamp_hash(dir: &Path, additional_input: &str) -> String {
-    let diff = Command::new("git")
-        .current_dir(dir)
+    let diff = helpers::git(Some(dir))
         .arg("diff")
         .output()
         .map(|o| String::from_utf8(o.stdout).unwrap_or_default())
         .unwrap_or_default();
 
-    let status = Command::new("git")
-        .current_dir(dir)
+    let status = helpers::git(Some(dir))
         .arg("status")
         .arg("--porcelain")
         .arg("-z")

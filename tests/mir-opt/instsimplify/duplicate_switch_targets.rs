@@ -10,7 +10,7 @@ use std::intrinsics::mir::*;
 pub unsafe fn assert_zero(x: u8) -> u8 {
     // CHECK-LABEL: fn assert_zero(
     // CHECK: switchInt({{.*}}) -> [0: {{bb.*}}, otherwise: {{bb.*}}]
-    mir!(
+    mir! {
         {
             match x {
                 0 => retblock,
@@ -25,5 +25,5 @@ pub unsafe fn assert_zero(x: u8) -> u8 {
             RET = x;
             Return()
         }
-    )
+    }
 }

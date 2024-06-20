@@ -7,11 +7,15 @@
 
 use std::future::Future;
 
-type Fut<'a> = impl Future<Output = ()> + 'a;
+mod foo {
+    use std::future::Future;
+    pub type Fut<'a> = impl Future<Output = ()> + 'a;
 
-fn foo<'a>(_: &()) -> Fut<'_> {
-    async {}
+    fn foo<'a>(_: &()) -> Fut<'_> {
+        async {}
+    }
 }
+use foo::*;
 
 trait Test {
     fn hello();

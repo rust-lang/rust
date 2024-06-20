@@ -7,7 +7,7 @@ use std::ptr;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::in_constant;
 use clippy_utils::macros::macro_backtrace;
-use clippy_utils::ty::InteriorMut;
+use clippy_utils::ty::{implements_trait, InteriorMut};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
@@ -18,7 +18,7 @@ use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, InnerSpan, Span, DUMMY_SP};
+use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 
 // FIXME: this is a correctness problem but there's no suitable
@@ -127,19 +127,19 @@ declare_clippy_lint! {
 }
 
 #[derive(Copy, Clone)]
-enum Source {
-    Item { item: Span },
+enum Source<'tcx> {
+    Item { item: Span, ty: Ty<'tcx> },
     Assoc { item: Span },
     Expr { expr: Span },
 }
 
-impl Source {
+impl Source<'_> {
     #[must_use]
     fn lint(&self) -> (&'static Lint, &'static str, Span) {
         match self {
-            Self::Item { item } | Self::Assoc { item, .. } => (
+            Self::Item { item, .. } | Self::Assoc { item, .. } => (
                 DECLARE_INTERIOR_MUTABLE_CONST,
-                "a `const` item should never be interior mutable",
+                "a `const` item should not be interior mutable",
                 *item,
             ),
             Self::Expr { expr } => (
@@ -151,16 +151,24 @@ impl Source {
     }
 }
 
-fn lint(cx: &LateContext<'_>, source: Source) {
+fn lint<'tcx>(cx: &LateContext<'tcx>, source: Source<'tcx>) {
     let (lint, msg, span) = source.lint();
     span_lint_and_then(cx, lint, span, msg, |diag| {
         if span.from_expansion() {
             return; // Don't give suggestions into macros.
         }
         match source {
-            Source::Item { .. } => {
-                let const_kw_span = span.from_inner(InnerSpan::new(0, 5));
-                diag.span_label(const_kw_span, "make this a static item (maybe with lazy_static)");
+            Source::Item { ty, .. } => {
+                let Some(sync_trait) = cx.tcx.lang_items().sync_trait() else {
+                    return;
+                };
+                if implements_trait(cx, ty, sync_trait, &[]) {
+                    diag.help("consider making this a static item");
+                } else {
+                    diag.help(
+                        "consider making this `Sync` so that it can go in a static item or using a `thread_local`",
+                    );
+                }
             },
             Source::Assoc { .. } => (),
             Source::Expr { .. } => {
@@ -199,7 +207,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                 .any(|field| Self::is_value_unfrozen_raw_inner(cx, *field, ty)),
             ty::Adt(def, args) if def.is_enum() => {
                 let (&variant_index, fields) = val.unwrap_branch().split_first().unwrap();
-                let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().try_to_u32().ok().unwrap());
+                let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().to_u32());
                 fields
                     .iter()
                     .copied()
@@ -311,7 +319,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                 && self.interior_mut.is_interior_mut_ty(cx, ty)
                 && Self::is_value_unfrozen_poly(cx, body_id, ty)
             {
-                lint(cx, Source::Item { item: it.span });
+                lint(cx, Source::Item { item: it.span, ty });
             }
         }
     }

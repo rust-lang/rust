@@ -13,9 +13,9 @@ use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `panic!` or assertions in a function of type result.
+    /// Checks for usage of `panic!` or assertions in a function whose return type is `Result`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// For some codebases, it is desirable for functions of type result to return an error instead of crashing. Hence panicking macros should be avoided.
     ///
     /// ### Known problems
@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
 
 fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir::Body<'tcx>) {
     let mut panics = Vec::new();
-    let _: Option<!> = for_each_expr(body.value, |e| {
+    let _: Option<!> = for_each_expr(cx, body.value, |e| {
         let Some(macro_call) = root_macro_call_first_node(cx, e) else {
             return ControlFlow::Continue(Descend::Yes);
         };

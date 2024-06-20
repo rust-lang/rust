@@ -85,7 +85,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     // Use the SCC representative instead of directly using `region`.
                     // See [rustc-dev-guide chapter] § "Strict lifetime equality".
                     let scc = self.constraint_sccs.scc(region.as_var());
-                    let vid = self.scc_representatives[scc];
+                    let vid = self.scc_representative(scc);
                     let named = match self.definitions[vid].origin {
                         // Iterate over all universal regions in a consistent order and find the
                         // *first* equal region. This makes sure that equal lifetimes will have
@@ -213,7 +213,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let scc = self.constraint_sccs.scc(vid);
 
                 // Special handling of higher-ranked regions.
-                if !self.scc_universes[scc].is_root() {
+                if !self.scc_universe(scc).is_root() {
                     match self.scc_values.placeholders_contained_in(scc).enumerate().last() {
                         // If the region contains a single placeholder then they're equal.
                         Some((0, placeholder)) => {
@@ -340,7 +340,7 @@ fn check_opaque_type_well_formed<'tcx>(
         .with_next_trait_solver(next_trait_solver)
         .with_opaque_type_inference(parent_def_id)
         .build();
-    let ocx = ObligationCtxt::new(&infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let identity_args = GenericArgs::identity_for_item(tcx, def_id);
 
     // Require that the hidden type actually fulfills all the bounds of the opaque type, even without

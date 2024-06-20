@@ -3,8 +3,8 @@ use clippy_utils::source::snippet;
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    GenericArg, GenericBound, GenericBounds, ItemKind, PredicateOrigin, TraitBoundModifier, TyKind, TypeBinding,
-    WherePredicate,
+    AssocItemConstraint, GenericArg, GenericBound, GenericBounds, ItemKind, PredicateOrigin, TraitBoundModifier,
+    TyKind, WherePredicate,
 };
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -54,9 +54,9 @@ fn emit_lint(
     poly_trait: &rustc_hir::PolyTraitRef<'_>,
     bounds: GenericBounds<'_>,
     index: usize,
-    // The bindings that were implied, used for suggestion purposes since removing a bound with associated types
-    // means we might need to then move it to a different bound
-    implied_bindings: &[TypeBinding<'_>],
+    // The constraints that were implied, used for suggestion purposes since removing a bound with
+    // associated types means we might need to then move it to a different bound.
+    implied_constraints: &[AssocItemConstraint<'_>],
     bound: &ImplTraitBound<'_>,
 ) {
     let implied_by = snippet(cx, bound.span, "..");
@@ -83,29 +83,29 @@ fn emit_lint(
 
             let mut sugg = vec![(implied_span_extended, String::new())];
 
-            // We also might need to include associated type binding that were specified in the implied bound,
-            // but omitted in the implied-by bound:
+            // We also might need to include associated item constraints that were specified in the implied
+            // bound, but omitted in the implied-by bound:
             // `fn f() -> impl Deref<Target = u8> + DerefMut`
             // If we're going to suggest removing `Deref<..>`, we'll need to put `<Target = u8>` on `DerefMut`
-            let omitted_assoc_tys: Vec<_> = implied_bindings
+            let omitted_constraints: Vec<_> = implied_constraints
                 .iter()
-                .filter(|binding| !bound.bindings.iter().any(|b| b.ident == binding.ident))
+                .filter(|constraint| !bound.constraints.iter().any(|c| c.ident == constraint.ident))
                 .collect();
 
-            if !omitted_assoc_tys.is_empty() {
-                // `<>` needs to be added if there aren't yet any generic arguments or bindings
-                let needs_angle_brackets = bound.args.is_empty() && bound.bindings.is_empty();
-                let insert_span = match (bound.args, bound.bindings) {
-                    ([.., arg], [.., binding]) => arg.span().max(binding.span).shrink_to_hi(),
+            if !omitted_constraints.is_empty() {
+                // `<>` needs to be added if there aren't yet any generic arguments or constraints
+                let needs_angle_brackets = bound.args.is_empty() && bound.constraints.is_empty();
+                let insert_span = match (bound.args, bound.constraints) {
+                    ([.., arg], [.., constraint]) => arg.span().max(constraint.span).shrink_to_hi(),
                     ([.., arg], []) => arg.span().shrink_to_hi(),
-                    ([], [.., binding]) => binding.span.shrink_to_hi(),
+                    ([], [.., constraint]) => constraint.span.shrink_to_hi(),
                     ([], []) => bound.span.shrink_to_hi(),
                 };
 
-                let mut associated_tys_sugg = if needs_angle_brackets {
+                let mut constraints_sugg = if needs_angle_brackets {
                     "<".to_owned()
                 } else {
-                    // If angle brackets aren't needed (i.e., there are already generic arguments or bindings),
+                    // If angle brackets aren't needed (i.e., there are already generic arguments or constraints),
                     // we need to add a comma:
                     // `impl A<B, C >`
                     //             ^ if we insert `Assoc=i32` without a comma here, that'd be invalid syntax:
@@ -113,16 +113,16 @@ fn emit_lint(
                     ", ".to_owned()
                 };
 
-                for (index, binding) in omitted_assoc_tys.into_iter().enumerate() {
+                for (index, constraint) in omitted_constraints.into_iter().enumerate() {
                     if index > 0 {
-                        associated_tys_sugg += ", ";
+                        constraints_sugg += ", ";
                     }
-                    associated_tys_sugg += &snippet(cx, binding.span, "..");
+                    constraints_sugg += &snippet(cx, constraint.span, "..");
                 }
                 if needs_angle_brackets {
-                    associated_tys_sugg += ">";
+                    constraints_sugg += ">";
                 }
-                sugg.push((insert_span, associated_tys_sugg));
+                sugg.push((insert_span, constraints_sugg));
             }
 
             diag.multipart_suggestion_with_style(
@@ -229,8 +229,8 @@ struct ImplTraitBound<'tcx> {
     trait_def_id: DefId,
     /// The generic arguments on the `impl Trait` bound
     args: &'tcx [GenericArg<'tcx>],
-    /// The associated types on this bound
-    bindings: &'tcx [TypeBinding<'tcx>],
+    /// The associated item constraints of this bound
+    constraints: &'tcx [AssocItemConstraint<'tcx>],
 }
 
 /// Given an `impl Trait` type, gets all the supertraits from each bound ("implied bounds").
@@ -253,7 +253,7 @@ fn collect_supertrait_bounds<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds
                 Some(ImplTraitBound {
                     predicates,
                     args: path.args.map_or([].as_slice(), |p| p.args),
-                    bindings: path.args.map_or([].as_slice(), |p| p.bindings),
+                    constraints: path.args.map_or([].as_slice(), |p| p.constraints),
                     trait_def_id,
                     span: bound.span(),
                 })
@@ -310,20 +310,20 @@ fn check<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds<'tcx>) {
         if let GenericBound::Trait(poly_trait, TraitBoundModifier::None) = bound
             && let [.., path] = poly_trait.trait_ref.path.segments
             && let implied_args = path.args.map_or([].as_slice(), |a| a.args)
-            && let implied_bindings = path.args.map_or([].as_slice(), |a| a.bindings)
+            && let implied_constraints = path.args.map_or([].as_slice(), |a| a.constraints)
             && let Some(def_id) = poly_trait.trait_ref.path.res.opt_def_id()
             && let Some(bound) = find_bound_in_supertraits(cx, def_id, implied_args, &supertraits)
             // If the implied bound has a type binding that also exists in the implied-by trait,
             // then we shouldn't lint. See #11880 for an example.
             && let assocs = cx.tcx.associated_items(bound.trait_def_id)
-            && !implied_bindings.iter().any(|binding| {
+            && !implied_constraints.iter().any(|constraint| {
                 assocs
-                    .filter_by_name_unhygienic(binding.ident.name)
+                    .filter_by_name_unhygienic(constraint.ident.name)
                     .next()
                     .is_some_and(|assoc| assoc.kind == ty::AssocKind::Type)
                 })
         {
-            emit_lint(cx, poly_trait, bounds, index, implied_bindings, bound);
+            emit_lint(cx, poly_trait, bounds, index, implied_constraints, bound);
         }
     }
 }

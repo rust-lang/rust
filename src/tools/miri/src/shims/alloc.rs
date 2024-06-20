@@ -17,8 +17,8 @@ pub(super) fn check_alloc_request<'tcx>(size: u64, align: u64) -> InterpResult<'
     Ok(())
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Returns the alignment that `malloc` would guarantee for requests of the given size.
     fn malloc_align(&self, size: u64) -> Align {
         let this = self.eval_context_ref();
@@ -67,7 +67,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Emulates calling the internal __rust_* allocator functions
     fn emulate_allocator(
         &mut self,
-        default: impl FnOnce(&mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx>,
+        default: impl FnOnce(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
@@ -87,16 +87,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             AllocatorKind::Default => {
                 default(this)?;
-                Ok(EmulateItemResult::NeedsJumping)
+                Ok(EmulateItemResult::NeedsReturn)
             }
         }
     }
 
-    fn malloc(
-        &mut self,
-        size: u64,
-        zero_init: bool,
-    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+    fn malloc(&mut self, size: u64, zero_init: bool) -> InterpResult<'tcx, Pointer> {
         let this = self.eval_context_mut();
         let align = this.malloc_align(size);
         let ptr = this.allocate_ptr(Size::from_bytes(size), align, MiriMemoryKind::C.into())?;
@@ -111,7 +107,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(ptr.into())
     }
 
-    fn free(&mut self, ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx> {
+    fn posix_memalign(
+        &mut self,
+        memptr: &OpTy<'tcx>,
+        align: &OpTy<'tcx>,
+        size: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+        let memptr = this.deref_pointer(memptr)?;
+        let align = this.read_target_usize(align)?;
+        let size = this.read_target_usize(size)?;
+
+        // Align must be power of 2, and also at least ptr-sized (POSIX rules).
+        // But failure to adhere to this is not UB, it's an error condition.
+        if !align.is_power_of_two() || align < this.pointer_size().bytes() {
+            Ok(this.eval_libc("EINVAL"))
+        } else {
+            let ptr = this.allocate_ptr(
+                Size::from_bytes(size),
+                Align::from_bytes(align).unwrap(),
+                MiriMemoryKind::C.into(),
+            )?;
+            this.write_pointer(ptr, &memptr)?;
+            Ok(Scalar::from_i32(0))
+        }
+    }
+
+    fn free(&mut self, ptr: Pointer) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if !this.ptr_is_null(ptr)? {
             this.deallocate_ptr(ptr, None, MiriMemoryKind::C.into())?;
@@ -119,11 +141,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(())
     }
 
-    fn realloc(
-        &mut self,
-        old_ptr: Pointer<Option<Provenance>>,
-        new_size: u64,
-    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+    fn realloc(&mut self, old_ptr: Pointer, new_size: u64) -> InterpResult<'tcx, Pointer> {
         let this = self.eval_context_mut();
         let new_align = this.malloc_align(new_size);
         if this.ptr_is_null(old_ptr)? {
@@ -144,6 +162,47 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 )?;
                 Ok(new_ptr.into())
             }
+        }
+    }
+
+    fn aligned_alloc(
+        &mut self,
+        align: &OpTy<'tcx>,
+        size: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Pointer> {
+        let this = self.eval_context_mut();
+        let align = this.read_target_usize(align)?;
+        let size = this.read_target_usize(size)?;
+
+        // Alignment must be a power of 2, and "supported by the implementation".
+        // We decide that "supported by the implementation" means that the
+        // size must be a multiple of the alignment. (This restriction seems common
+        // enough that it is stated on <https://en.cppreference.com/w/c/memory/aligned_alloc>
+        // as a general rule, but the actual standard has no such rule.)
+        // If any of these are violated, we have to return NULL.
+        // All fundamental alignments must be supported.
+        //
+        // macOS and Illumos are buggy in that they require the alignment
+        // to be at least the size of a pointer, so they do not support all fundamental
+        // alignments. We do not emulate those platform bugs.
+        //
+        // Linux also sets errno to EINVAL, but that's non-standard behavior that we do not
+        // emulate.
+        // FreeBSD says some of these cases are UB but that's violating the C standard.
+        // http://en.cppreference.com/w/cpp/memory/c/aligned_alloc
+        // Linux: https://linux.die.net/man/3/aligned_alloc
+        // FreeBSD: https://man.freebsd.org/cgi/man.cgi?query=aligned_alloc&apropos=0&sektion=3&manpath=FreeBSD+9-current&format=html
+        match size.checked_rem(align) {
+            Some(0) if align.is_power_of_two() => {
+                let align = align.max(this.malloc_align(size).bytes());
+                let ptr = this.allocate_ptr(
+                    Size::from_bytes(size),
+                    Align::from_bytes(align).unwrap(),
+                    MiriMemoryKind::C.into(),
+                )?;
+                Ok(ptr.into())
+            }
+            _ => Ok(Pointer::null()),
         }
     }
 }

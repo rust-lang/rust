@@ -1,8 +1,8 @@
 use crate::compiler_interface::with;
 use crate::mir::pretty::function_body;
 use crate::ty::{
-    AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region, RigidTy, Ty, TyKind,
-    VariantIdx,
+    AdtDef, ClosureDef, CoroutineDef, GenericArgs, MirConst, Movability, Region, RigidTy, Ty,
+    TyConst, TyKind, VariantIdx,
 };
 use crate::{Error, Opaque, Span, Symbol};
 use std::io;
@@ -346,6 +346,15 @@ impl BinOp {
 pub enum UnOp {
     Not,
     Neg,
+    PtrMetadata,
+}
+
+impl UnOp {
+    /// Return the type of this operation for the given input Ty.
+    /// This function does not perform type checking, and it currently doesn't handle SIMD.
+    pub fn ty(&self, arg_ty: Ty) -> Ty {
+        with(|ctx| ctx.unop_ty(*self, arg_ty))
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -515,7 +524,7 @@ pub enum Rvalue {
     /// Corresponds to source code like `[x; 32]`.
     ///
     /// [#74836]: https://github.com/rust-lang/rust/issues/74836
-    Repeat(Operand, Const),
+    Repeat(Operand, TyConst),
 
     /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
     ///
@@ -580,7 +589,10 @@ impl Rvalue {
                 let ty = op.ty(lhs_ty, rhs_ty);
                 Ok(Ty::new_tuple(&[ty, Ty::bool_ty()]))
             }
-            Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, operand) => operand.ty(locals),
+            Rvalue::UnaryOp(op, operand) => {
+                let arg_ty = operand.ty(locals)?;
+                Ok(op.ty(arg_ty))
+            }
             Rvalue::Discriminant(place) => {
                 let place_ty = place.ty(locals)?;
                 place_ty
@@ -625,7 +637,7 @@ pub enum AggregateKind {
 pub enum Operand {
     Copy(Place),
     Move(Place),
-    Constant(Constant),
+    Constant(ConstOperand),
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -639,6 +651,13 @@ impl From<Local> for Place {
     fn from(local: Local) -> Self {
         Place { local, projection: vec![] }
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstOperand {
+    pub span: Span,
+    pub user_ty: Option<UserTypeAnnotationIndex>,
+    pub const_: MirConst,
 }
 
 /// Debug information pertaining to a user variable.
@@ -700,13 +719,6 @@ pub struct VarDebugInfoFragment {
 pub enum VarDebugInfoContents {
     Place(Place),
     Const(ConstOperand),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ConstOperand {
-    pub span: Span,
-    pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub const_: Const,
 }
 
 // In MIR ProjectionElem is parameterized on the second Field argument and the Index argument. This
@@ -816,13 +828,6 @@ pub const RETURN_LOCAL: Local = 0;
 pub type FieldIdx = usize;
 
 type UserTypeAnnotationIndex = usize;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Constant {
-    pub span: Span,
-    pub user_ty: Option<UserTypeAnnotationIndex>,
-    pub literal: Const,
-}
 
 /// The possible branch sites of a [TerminatorKind::SwitchInt].
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -989,9 +994,9 @@ impl Operand {
     }
 }
 
-impl Constant {
+impl ConstOperand {
     pub fn ty(&self) -> Ty {
-        self.literal.ty()
+        self.const_.ty()
     }
 }
 

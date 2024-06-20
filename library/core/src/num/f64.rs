@@ -327,6 +327,11 @@ pub mod consts {
     #[unstable(feature = "more_float_constants", issue = "103883")]
     pub const FRAC_1_SQRT_PI: f64 = 0.564189583547756286948079451560772586_f64;
 
+    /// 1/sqrt(2π)
+    #[doc(alias = "FRAC_1_SQRT_TAU")]
+    #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const FRAC_1_SQRT_2PI: f64 = 0.398942280401432677939946059934381868_f64;
+
     /// 2/π
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_2_PI: f64 = 0.636619772367581343075535053490057448_f64;
@@ -912,8 +917,8 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_radians(self) -> f64 {
-        let value: f64 = consts::PI;
-        self * (value / 180.0)
+        const RADS_PER_DEG: f64 = consts::PI / 180.0;
+        self * RADS_PER_DEG
     }
 
     /// Returns the maximum of the two numbers, ignoring NaN.

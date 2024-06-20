@@ -20,7 +20,6 @@
 #[cfg(test)]
 mod tests;
 
-pub mod backtrace;
 pub mod fs;
 pub mod io;
 pub mod lazy_box;

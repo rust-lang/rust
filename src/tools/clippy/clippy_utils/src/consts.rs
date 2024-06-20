@@ -812,14 +812,10 @@ pub fn mir_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::Const<'tcx>) -> 
         (ConstValue::Scalar(Scalar::Int(int)), _) => match result.ty().kind() {
             ty::Adt(adt_def, _) if adt_def.is_struct() => Some(Constant::Adt(result)),
             ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
-            ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.assert_bits(int.size()))),
-            ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(
-                int.try_into().expect("invalid f32 bit representation"),
-            ))),
-            ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
-                int.try_into().expect("invalid f64 bit representation"),
-            ))),
-            ty::RawPtr(_, _) => Some(Constant::RawPtr(int.assert_bits(int.size()))),
+            ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.to_bits(int.size()))),
+            ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(int.into()))),
+            ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(int.into()))),
+            ty::RawPtr(_, _) => Some(Constant::RawPtr(int.to_bits(int.size()))),
             _ => None,
         },
         (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Str) => {

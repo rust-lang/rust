@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
-use rustc_errors::DiagCtxt;
+use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::SyntaxExtension;
 use rustc_fs_util::try_canonicalize;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
@@ -20,13 +20,14 @@ use rustc_middle::bug;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
-use rustc_session::lint;
+use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{PanicStrategy, Target, TargetTriple};
+use tracing::{debug, info, trace};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::error::Error;
@@ -90,8 +91,8 @@ impl<'a, 'tcx> std::ops::Deref for CrateLoader<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
-    fn dcx(&self) -> &'tcx DiagCtxt {
-        &self.tcx.dcx()
+    fn dcx(&self) -> DiagCtxtHandle<'tcx> {
+        self.tcx.dcx()
     }
 }
 
@@ -580,7 +581,6 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 self.tcx.crate_types().iter().all(|c| *c == CrateType::Rlib),
                 hash,
                 extra_filename,
-                false, // is_host
                 path_kind,
             );
 
@@ -975,15 +975,14 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             }
 
             self.sess.psess.buffer_lint(
-                    lint::builtin::UNUSED_CRATE_DEPENDENCIES,
-                    span,
-                    ast::CRATE_NODE_ID,
-                    format!(
-                        "external crate `{}` unused in `{}`: remove the dependency or add `use {} as _;`",
-                        name,
-                        self.tcx.crate_name(LOCAL_CRATE),
-                        name),
-                );
+                lint::builtin::UNUSED_CRATE_DEPENDENCIES,
+                span,
+                ast::CRATE_NODE_ID,
+                BuiltinLintDiag::UnusedCrateDependency {
+                    extern_crate: name_interned,
+                    local_crate: self.tcx.crate_name(LOCAL_CRATE),
+                },
+            );
         }
     }
 
@@ -1020,7 +1019,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 lint::builtin::WASM_C_ABI,
                 span,
                 ast::CRATE_NODE_ID,
-                crate::fluent_generated::metadata_wasm_c_abi,
+                BuiltinLintDiag::WasmCAbi,
             );
         }
     }

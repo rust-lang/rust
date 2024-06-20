@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level,
+    codes::*, Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
     SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -493,15 +493,6 @@ pub(crate) struct OuterAttributeNotAllowedOnIfElse {
 
     #[suggestion(applicability = "machine-applicable", code = "")]
     pub attributes: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_outer_attr_ambiguous)]
-pub(crate) struct AmbiguousOuterAttributes {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: WrapInParentheses,
 }
 
 #[derive(Diagnostic)]
@@ -1061,7 +1052,7 @@ pub(crate) struct ExpectedIdentifier {
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedIdentifier {
     #[track_caller]
-    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = Diag::new(
@@ -1121,7 +1112,7 @@ pub(crate) struct ExpectedSemi {
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedSemi {
     #[track_caller]
-    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = Diag::new(
@@ -2708,12 +2699,13 @@ pub(crate) struct SingleColonImportPath {
 
 #[derive(Diagnostic)]
 #[diag(parse_bad_item_kind)]
-#[help]
 pub(crate) struct BadItemKind {
     #[primary_span]
     pub span: Span,
     pub descr: &'static str,
     pub ctx: &'static str,
+    #[help]
+    pub help: Option<()>,
 }
 
 #[derive(Diagnostic)]
@@ -2996,5 +2988,12 @@ pub(crate) struct AsyncImpl {
 pub(crate) struct ExprRArrowCall {
     #[primary_span]
     #[suggestion(style = "short", applicability = "machine-applicable", code = ".")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_dot_dot_range_attribute)]
+pub(crate) struct DotDotRangeAttribute {
+    #[primary_span]
     pub span: Span,
 }

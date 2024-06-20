@@ -4,128 +4,128 @@ use crate::*;
 use helpers::check_arg_count;
 
 pub enum AtomicOp {
-    /// The `bool` indicates whether the result of the operation should be negated
-    /// (must be a boolean-typed operation).
+    /// The `bool` indicates whether the result of the operation should be negated (`UnOp::Not`,
+    /// must be a boolean-typed operation).
     MirOp(mir::BinOp, bool),
     Max,
     Min,
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Calls the atomic intrinsic `intrinsic`; the `atomic_` prefix has already been removed.
     /// Returns `Ok(true)` if the intrinsic was handled.
     fn emulate_atomic_intrinsic(
         &mut self,
         intrinsic_name: &str,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
         let intrinsic_structure: Vec<_> = intrinsic_name.split('_').collect();
 
-        fn read_ord<'tcx>(ord: &str) -> InterpResult<'tcx, AtomicReadOrd> {
-            Ok(match ord {
+        fn read_ord(ord: &str) -> AtomicReadOrd {
+            match ord {
                 "seqcst" => AtomicReadOrd::SeqCst,
                 "acquire" => AtomicReadOrd::Acquire,
                 "relaxed" => AtomicReadOrd::Relaxed,
-                _ => throw_unsup_format!("unsupported read ordering `{ord}`"),
-            })
+                _ => panic!("invalid read ordering `{ord}`"),
+            }
         }
 
-        fn write_ord<'tcx>(ord: &str) -> InterpResult<'tcx, AtomicWriteOrd> {
-            Ok(match ord {
+        fn write_ord(ord: &str) -> AtomicWriteOrd {
+            match ord {
                 "seqcst" => AtomicWriteOrd::SeqCst,
                 "release" => AtomicWriteOrd::Release,
                 "relaxed" => AtomicWriteOrd::Relaxed,
-                _ => throw_unsup_format!("unsupported write ordering `{ord}`"),
-            })
+                _ => panic!("invalid write ordering `{ord}`"),
+            }
         }
 
-        fn rw_ord<'tcx>(ord: &str) -> InterpResult<'tcx, AtomicRwOrd> {
-            Ok(match ord {
+        fn rw_ord(ord: &str) -> AtomicRwOrd {
+            match ord {
                 "seqcst" => AtomicRwOrd::SeqCst,
                 "acqrel" => AtomicRwOrd::AcqRel,
                 "acquire" => AtomicRwOrd::Acquire,
                 "release" => AtomicRwOrd::Release,
                 "relaxed" => AtomicRwOrd::Relaxed,
-                _ => throw_unsup_format!("unsupported read-write ordering `{ord}`"),
-            })
+                _ => panic!("invalid read-write ordering `{ord}`"),
+            }
         }
 
-        fn fence_ord<'tcx>(ord: &str) -> InterpResult<'tcx, AtomicFenceOrd> {
-            Ok(match ord {
+        fn fence_ord(ord: &str) -> AtomicFenceOrd {
+            match ord {
                 "seqcst" => AtomicFenceOrd::SeqCst,
                 "acqrel" => AtomicFenceOrd::AcqRel,
                 "acquire" => AtomicFenceOrd::Acquire,
                 "release" => AtomicFenceOrd::Release,
-                _ => throw_unsup_format!("unsupported fence ordering `{ord}`"),
-            })
+                _ => panic!("invalid fence ordering `{ord}`"),
+            }
         }
 
         match &*intrinsic_structure {
-            ["load", ord] => this.atomic_load(args, dest, read_ord(ord)?)?,
-            ["store", ord] => this.atomic_store(args, write_ord(ord)?)?,
+            ["load", ord] => this.atomic_load(args, dest, read_ord(ord))?,
+            ["store", ord] => this.atomic_store(args, write_ord(ord))?,
 
-            ["fence", ord] => this.atomic_fence_intrinsic(args, fence_ord(ord)?)?,
-            ["singlethreadfence", ord] => this.compiler_fence_intrinsic(args, fence_ord(ord)?)?,
+            ["fence", ord] => this.atomic_fence_intrinsic(args, fence_ord(ord))?,
+            ["singlethreadfence", ord] => this.compiler_fence_intrinsic(args, fence_ord(ord))?,
 
-            ["xchg", ord] => this.atomic_exchange(args, dest, rw_ord(ord)?)?,
+            ["xchg", ord] => this.atomic_exchange(args, dest, rw_ord(ord))?,
             ["cxchg", ord1, ord2] =>
-                this.atomic_compare_exchange(args, dest, rw_ord(ord1)?, read_ord(ord2)?)?,
+                this.atomic_compare_exchange(args, dest, rw_ord(ord1), read_ord(ord2))?,
             ["cxchgweak", ord1, ord2] =>
-                this.atomic_compare_exchange_weak(args, dest, rw_ord(ord1)?, read_ord(ord2)?)?,
+                this.atomic_compare_exchange_weak(args, dest, rw_ord(ord1), read_ord(ord2))?,
 
             ["or", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitOr, false), rw_ord(ord)?)?,
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitOr, false), rw_ord(ord))?,
             ["xor", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitXor, false), rw_ord(ord)?)?,
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitXor, false), rw_ord(ord))?,
             ["and", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, false), rw_ord(ord)?)?,
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, false), rw_ord(ord))?,
             ["nand", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, true), rw_ord(ord)?)?,
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, true), rw_ord(ord))?,
             ["xadd", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Add, false), rw_ord(ord)?)?,
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Add, false), rw_ord(ord))?,
             ["xsub", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Sub, false), rw_ord(ord)?)?,
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Sub, false), rw_ord(ord))?,
             ["min", ord] => {
                 // Later we will use the type to indicate signed vs unsigned,
                 // so make sure it matches the intrinsic name.
                 assert!(matches!(args[1].layout.ty.kind(), ty::Int(_)));
-                this.atomic_rmw_op(args, dest, AtomicOp::Min, rw_ord(ord)?)?;
+                this.atomic_rmw_op(args, dest, AtomicOp::Min, rw_ord(ord))?;
             }
             ["umin", ord] => {
                 // Later we will use the type to indicate signed vs unsigned,
                 // so make sure it matches the intrinsic name.
                 assert!(matches!(args[1].layout.ty.kind(), ty::Uint(_)));
-                this.atomic_rmw_op(args, dest, AtomicOp::Min, rw_ord(ord)?)?;
+                this.atomic_rmw_op(args, dest, AtomicOp::Min, rw_ord(ord))?;
             }
             ["max", ord] => {
                 // Later we will use the type to indicate signed vs unsigned,
                 // so make sure it matches the intrinsic name.
                 assert!(matches!(args[1].layout.ty.kind(), ty::Int(_)));
-                this.atomic_rmw_op(args, dest, AtomicOp::Max, rw_ord(ord)?)?;
+                this.atomic_rmw_op(args, dest, AtomicOp::Max, rw_ord(ord))?;
             }
             ["umax", ord] => {
                 // Later we will use the type to indicate signed vs unsigned,
                 // so make sure it matches the intrinsic name.
                 assert!(matches!(args[1].layout.ty.kind(), ty::Uint(_)));
-                this.atomic_rmw_op(args, dest, AtomicOp::Max, rw_ord(ord)?)?;
+                this.atomic_rmw_op(args, dest, AtomicOp::Max, rw_ord(ord))?;
             }
 
             _ => return Ok(EmulateItemResult::NotSupported),
         }
-        Ok(EmulateItemResult::NeedsJumping)
+        Ok(EmulateItemResult::NeedsReturn)
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextPrivExt<'tcx> for MiriInterpCx<'tcx> {}
+trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     fn atomic_load(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         atomic: AtomicReadOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -140,11 +140,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         Ok(())
     }
 
-    fn atomic_store(
-        &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        atomic: AtomicWriteOrd,
-    ) -> InterpResult<'tcx> {
+    fn atomic_store(&mut self, args: &[OpTy<'tcx>], atomic: AtomicWriteOrd) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let [place, val] = check_arg_count(args)?;
@@ -159,7 +155,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
 
     fn compiler_fence_intrinsic(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
+        args: &[OpTy<'tcx>],
         atomic: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
         let [] = check_arg_count(args)?;
@@ -170,7 +166,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
 
     fn atomic_fence_intrinsic(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
+        args: &[OpTy<'tcx>],
         atomic: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -181,8 +177,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
 
     fn atomic_rmw_op(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         atomic_op: AtomicOp,
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx> {
@@ -213,8 +209,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                 this.write_immediate(*old, dest)?; // old value is returned
                 Ok(())
             }
-            AtomicOp::MirOp(op, neg) => {
-                let old = this.atomic_rmw_op_immediate(&place, &rhs, op, neg, atomic)?;
+            AtomicOp::MirOp(op, not) => {
+                let old = this.atomic_rmw_op_immediate(&place, &rhs, op, not, atomic)?;
                 this.write_immediate(*old, dest)?; // old value is returned
                 Ok(())
             }
@@ -223,8 +219,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
 
     fn atomic_exchange(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -240,8 +236,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
 
     fn atomic_compare_exchange_impl(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         success: AtomicRwOrd,
         fail: AtomicReadOrd,
         can_fail_spuriously: bool,
@@ -269,8 +265,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
 
     fn atomic_compare_exchange(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         success: AtomicRwOrd,
         fail: AtomicReadOrd,
     ) -> InterpResult<'tcx> {
@@ -279,8 +275,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
 
     fn atomic_compare_exchange_weak(
         &mut self,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         success: AtomicRwOrd,
         fail: AtomicReadOrd,
     ) -> InterpResult<'tcx> {

@@ -1,6 +1,6 @@
 #![feature(extern_types)]
 
-extern {
+extern "C" {
     /// No inner information
     pub type Foo;
 }

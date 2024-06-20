@@ -133,6 +133,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 .expect_const()
                 .eval(fx.tcx, ty::ParamEnv::reveal_all(), span)
                 .unwrap()
+                .1
                 .unwrap_branch();
 
             assert_eq!(x.layout(), y.layout());
@@ -146,8 +147,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             let total_len = lane_count * 2;
 
-            let indexes =
-                idx.iter().map(|idx| idx.unwrap_leaf().try_to_u32().unwrap()).collect::<Vec<u32>>();
+            let indexes = idx.iter().map(|idx| idx.unwrap_leaf().to_u32()).collect::<Vec<u32>>();
 
             for &idx in &indexes {
                 assert!(u64::from(idx) < total_len, "idx {} out of range 0..{}", idx, total_len);
@@ -281,9 +281,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 fx.tcx.dcx().span_fatal(span, "Index argument for `simd_insert` is not a constant");
             };
 
-            let idx: u32 = idx_const
-                .try_to_u32()
-                .unwrap_or_else(|_| panic!("kind not scalar: {:?}", idx_const));
+            let idx: u32 = idx_const.to_u32();
             let (lane_count, _lane_ty) = base.layout().ty.simd_size_and_type(fx.tcx);
             if u64::from(idx) >= lane_count {
                 fx.tcx.dcx().span_fatal(
@@ -329,9 +327,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 return;
             };
 
-            let idx = idx_const
-                .try_to_u32()
-                .unwrap_or_else(|_| panic!("kind not scalar: {:?}", idx_const));
+            let idx = idx_const.to_u32();
             let (lane_count, _lane_ty) = v.layout().ty.simd_size_and_type(fx.tcx);
             if u64::from(idx) >= lane_count {
                 fx.tcx.dcx().span_fatal(
@@ -348,6 +344,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         | sym::simd_bswap
         | sym::simd_bitreverse
         | sym::simd_ctlz
+        | sym::simd_ctpop
         | sym::simd_cttz => {
             intrinsic_args!(fx, args => (a); intrinsic);
 
@@ -367,6 +364,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 (ty::Uint(_) | ty::Int(_), sym::simd_bswap) => fx.bcx.ins().bswap(lane),
                 (ty::Uint(_) | ty::Int(_), sym::simd_bitreverse) => fx.bcx.ins().bitrev(lane),
                 (ty::Uint(_) | ty::Int(_), sym::simd_ctlz) => fx.bcx.ins().clz(lane),
+                (ty::Uint(_) | ty::Int(_), sym::simd_ctpop) => fx.bcx.ins().popcnt(lane),
                 (ty::Uint(_) | ty::Int(_), sym::simd_cttz) => fx.bcx.ins().ctz(lane),
 
                 _ => unreachable!(),

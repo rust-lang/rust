@@ -1,12 +1,10 @@
-#![doc(rust_logo)]
-#![feature(rustdoc_internals)]
-#![feature(lazy_cell)]
-#![feature(rustc_attrs)]
-#![feature(type_alias_impl_trait)]
+// tidy-alphabetical-start
 #![allow(internal_features)]
-
-#[macro_use]
-extern crate tracing;
+#![doc(rust_logo)]
+#![feature(rustc_attrs)]
+#![feature(rustdoc_internals)]
+#![feature(type_alias_impl_trait)]
+// tidy-alphabetical-end
 
 use fluent_bundle::FluentResource;
 use fluent_syntax::parser::ParserError;
@@ -20,6 +18,7 @@ use std::fmt;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use tracing::{instrument, trace};
 
 #[cfg(not(parallel_compiler))]
 use std::cell::LazyCell as Lazy;
@@ -364,17 +363,6 @@ impl From<&'static str> for DiagMessage {
 impl From<Cow<'static, str>> for DiagMessage {
     fn from(s: Cow<'static, str>) -> Self {
         DiagMessage::Str(s)
-    }
-}
-
-/// A workaround for must_produce_diag ICEs when formatting types in disabled lints.
-///
-/// Delays formatting until `.into(): DiagMessage` is used.
-pub struct DelayDm<F>(pub F);
-
-impl<F: FnOnce() -> String> From<DelayDm<F>> for DiagMessage {
-    fn from(DelayDm(f): DelayDm<F>) -> Self {
-        DiagMessage::from(f())
     }
 }
 

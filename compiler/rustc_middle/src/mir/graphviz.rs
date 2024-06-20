@@ -19,7 +19,7 @@ where
             if tcx.is_const_fn_raw(*def_id) {
                 vec![tcx.optimized_mir(*def_id), tcx.mir_for_ctfe(*def_id)]
             } else {
-                vec![tcx.instance_mir(ty::InstanceDef::Item(*def_id))]
+                vec![tcx.instance_mir(ty::InstanceKind::Item(*def_id))]
             }
         })
         .collect::<Vec<_>>();

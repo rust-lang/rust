@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use std::mem;
 use std::ops::ControlFlow;
 
@@ -5,17 +6,20 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
-    self, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
-    ObligationCause, ObligationCauseCode, PredicateObligation, SelectionError, TraitEngine,
+    self, FromSolverError, MismatchedProjectionTypes, Obligation, ObligationCause,
+    ObligationCauseCode, PredicateObligation, SelectionError, TraitEngine,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as _};
 use rustc_span::symbol::sym;
 
-use super::eval_ctxt::GenerateProofTree;
+use crate::traits::{FulfillmentError, FulfillmentErrorCode, ScrubbedTraitError};
+
+use super::infcx::SolverDelegate;
 use super::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
-use super::{Certainty, InferCtxtEvalExt};
+use super::Certainty;
 
 /// A trait engine using the new trait solver.
 ///
@@ -28,7 +32,7 @@ use super::{Certainty, InferCtxtEvalExt};
 ///
 /// It is also likely that we want to use slightly different datastructures
 /// here as this will have to deal with far more root goals than `evaluate_all`.
-pub struct FulfillmentCtxt<'tcx> {
+pub struct FulfillmentCtxt<'tcx, E: 'tcx> {
     obligations: ObligationStorage<'tcx>,
 
     /// The snapshot in which this context was created. Using the context
@@ -36,6 +40,7 @@ pub struct FulfillmentCtxt<'tcx> {
     /// gets rolled back. Because of this we explicitly check that we only
     /// use the context in exactly this snapshot.
     usable_in_snapshot: usize,
+    _errors: PhantomData<E>,
 }
 
 #[derive(Default)]
@@ -79,7 +84,9 @@ impl<'tcx> ObligationStorage<'tcx> {
             // change.
             self.overflowed.extend(self.pending.extract_if(|o| {
                 let goal = o.clone().into();
-                let result = infcx.evaluate_root_goal(goal, GenerateProofTree::Never).0;
+                let result = <&SolverDelegate<'tcx>>::from(infcx)
+                    .evaluate_root_goal(goal, GenerateProofTree::No)
+                    .0;
                 match result {
                     Ok((has_changed, _)) => has_changed,
                     _ => false,
@@ -89,8 +96,8 @@ impl<'tcx> ObligationStorage<'tcx> {
     }
 }
 
-impl<'tcx> FulfillmentCtxt<'tcx> {
-    pub fn new(infcx: &InferCtxt<'tcx>) -> FulfillmentCtxt<'tcx> {
+impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
+    pub fn new(infcx: &InferCtxt<'tcx>) -> FulfillmentCtxt<'tcx, E> {
         assert!(
             infcx.next_trait_solver(),
             "new trait solver fulfillment context created when \
@@ -99,6 +106,7 @@ impl<'tcx> FulfillmentCtxt<'tcx> {
         FulfillmentCtxt {
             obligations: Default::default(),
             usable_in_snapshot: infcx.num_open_snapshots(),
+            _errors: PhantomData,
         }
     }
 
@@ -118,7 +126,10 @@ impl<'tcx> FulfillmentCtxt<'tcx> {
     }
 }
 
-impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
+impl<'tcx, E> TraitEngine<'tcx, E> for FulfillmentCtxt<'tcx, E>
+where
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+{
     #[instrument(level = "trace", skip(self, infcx))]
     fn register_predicate_obligation(
         &mut self,
@@ -129,24 +140,22 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         self.obligations.register(obligation);
     }
 
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        let mut errors: Vec<_> = self
-            .obligations
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+        self.obligations
             .pending
             .drain(..)
-            .map(|obligation| fulfillment_error_for_stalled(infcx, obligation))
-            .collect();
-
-        errors.extend(self.obligations.overflowed.drain(..).map(|obligation| FulfillmentError {
-            obligation: find_best_leaf_obligation(infcx, &obligation, true),
-            code: FulfillmentErrorCode::Ambiguity { overflow: Some(true) },
-            root_obligation: obligation,
-        }));
-
-        errors
+            .map(|obligation| NextSolverError::Ambiguity(obligation))
+            .chain(
+                self.obligations
+                    .overflowed
+                    .drain(..)
+                    .map(|obligation| NextSolverError::Overflow(obligation)),
+            )
+            .map(|e| E::from_solver_error(infcx, e))
+            .collect()
     }
 
-    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
+    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = Vec::new();
         for i in 0.. {
@@ -159,12 +168,17 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
             let mut has_changed = false;
             for obligation in self.obligations.unstalled_for_select() {
                 let goal = obligation.clone().into();
-                let result = infcx.evaluate_root_goal(goal, GenerateProofTree::IfEnabled).0;
+                let result = <&SolverDelegate<'tcx>>::from(infcx)
+                    .evaluate_root_goal(goal, GenerateProofTree::No)
+                    .0;
                 self.inspect_evaluated_obligation(infcx, &obligation, &result);
                 let (changed, certainty) = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
-                        errors.push(fulfillment_error_for_no_solution(infcx, obligation));
+                        errors.push(E::from_solver_error(
+                            infcx,
+                            NextSolverError::TrueError(obligation),
+                        ));
                         continue;
                     }
                 };
@@ -192,6 +206,39 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         _: &InferCtxt<'tcx>,
     ) -> Vec<PredicateObligation<'tcx>> {
         self.obligations.take_pending()
+    }
+}
+
+pub enum NextSolverError<'tcx> {
+    TrueError(PredicateObligation<'tcx>),
+    Ambiguity(PredicateObligation<'tcx>),
+    Overflow(PredicateObligation<'tcx>),
+}
+
+impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for FulfillmentError<'tcx> {
+    fn from_solver_error(infcx: &InferCtxt<'tcx>, error: NextSolverError<'tcx>) -> Self {
+        match error {
+            NextSolverError::TrueError(obligation) => {
+                fulfillment_error_for_no_solution(infcx, obligation)
+            }
+            NextSolverError::Ambiguity(obligation) => {
+                fulfillment_error_for_stalled(infcx, obligation)
+            }
+            NextSolverError::Overflow(obligation) => {
+                fulfillment_error_for_overflow(infcx, obligation)
+            }
+        }
+    }
+}
+
+impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for ScrubbedTraitError<'tcx> {
+    fn from_solver_error(_infcx: &InferCtxt<'tcx>, error: NextSolverError<'tcx>) -> Self {
+        match error {
+            NextSolverError::TrueError(_) => ScrubbedTraitError::TrueError,
+            NextSolverError::Ambiguity(_) | NextSolverError::Overflow(_) => {
+                ScrubbedTraitError::Ambiguity
+            }
+        }
     }
 }
 
@@ -246,7 +293,10 @@ fn fulfillment_error_for_stalled<'tcx>(
     root_obligation: PredicateObligation<'tcx>,
 ) -> FulfillmentError<'tcx> {
     let (code, refine_obligation) = infcx.probe(|_| {
-        match infcx.evaluate_root_goal(root_obligation.clone().into(), GenerateProofTree::Never).0 {
+        match <&SolverDelegate<'tcx>>::from(infcx)
+            .evaluate_root_goal(root_obligation.clone().into(), GenerateProofTree::No)
+            .0
+        {
             Ok((_, Certainty::Maybe(MaybeCause::Ambiguity))) => {
                 (FulfillmentErrorCode::Ambiguity { overflow: None }, true)
             }
@@ -276,6 +326,17 @@ fn fulfillment_error_for_stalled<'tcx>(
             root_obligation.clone()
         },
         code,
+        root_obligation,
+    }
+}
+
+fn fulfillment_error_for_overflow<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    root_obligation: PredicateObligation<'tcx>,
+) -> FulfillmentError<'tcx> {
+    FulfillmentError {
+        obligation: find_best_leaf_obligation(infcx, &root_obligation, true),
+        code: FulfillmentErrorCode::Ambiguity { overflow: Some(true) },
         root_obligation,
     }
 }
@@ -380,7 +441,10 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             source: CandidateSource::Impl(impl_def_id),
             result: _,
         } = candidate.kind()
-            && goal.infcx().tcx.has_attr(impl_def_id, sym::do_not_recommend)
+            && goal
+                .infcx()
+                .tcx
+                .has_attrs_with_path(impl_def_id, &[sym::diagnostic, sym::do_not_recommend])
         {
             return ControlFlow::Break(self.obligation.clone());
         }
@@ -404,9 +468,10 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     polarity: ty::PredicatePolarity::Positive,
                 }))
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {
-                ChildMode::WellFormedObligation
-            }
+            ty::PredicateKind::Clause(
+                ty::ClauseKind::WellFormed(_) | ty::ClauseKind::Projection(..),
+            )
+            | ty::PredicateKind::AliasRelate(..) => ChildMode::PassThrough,
             _ => {
                 return ControlFlow::Break(self.obligation.clone());
             }
@@ -440,7 +505,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                 (_, GoalSource::InstantiateHigherRanked) => {
                     obligation = self.obligation.clone();
                 }
-                (ChildMode::WellFormedObligation, _) => {
+                (ChildMode::PassThrough, _) => {
                     obligation = make_obligation(self.obligation.cause.clone());
                 }
             }
@@ -458,6 +523,32 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             self.with_derived_obligation(obligation, |this| nested_goal.visit_with(this))?;
         }
 
+        // alias-relate may fail because the lhs or rhs can't be normalized,
+        // and therefore is treated as rigid.
+        if let Some(ty::PredicateKind::AliasRelate(lhs, rhs, _)) = pred_kind.no_bound_vars() {
+            if let Some(obligation) = goal
+                .infcx()
+                .visit_proof_tree_at_depth(
+                    goal.goal().with(goal.infcx().tcx, ty::ClauseKind::WellFormed(lhs.into())),
+                    goal.depth() + 1,
+                    self,
+                )
+                .break_value()
+            {
+                return ControlFlow::Break(obligation);
+            } else if let Some(obligation) = goal
+                .infcx()
+                .visit_proof_tree_at_depth(
+                    goal.goal().with(goal.infcx().tcx, ty::ClauseKind::WellFormed(rhs.into())),
+                    goal.depth() + 1,
+                    self,
+                )
+                .break_value()
+            {
+                return ControlFlow::Break(obligation);
+            }
+        }
+
         ControlFlow::Break(self.obligation.clone())
     }
 }
@@ -471,7 +562,7 @@ enum ChildMode<'tcx> {
     // Skip trying to derive an `ObligationCause` from this obligation, and
     // report *all* sub-obligations as if they came directly from the parent
     // obligation.
-    WellFormedObligation,
+    PassThrough,
 }
 
 fn derive_cause<'tcx>(

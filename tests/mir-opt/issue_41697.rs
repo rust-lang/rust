@@ -14,9 +14,8 @@ trait Foo {
     fn get(&self) -> [u8; 2];
 }
 
-
 // EMIT_MIR issue_41697.{impl#0}-{constant#0}.SimplifyCfg-promote-consts.after.mir
-impl Foo for [u8; 1+1] {
+impl Foo for [u8; 1 + 1] {
     fn get(&self) -> [u8; 2] {
         *self
     }
@@ -33,7 +32,7 @@ fn unsize_nested_fat_ptr(x: Arc<Foo + Send>) -> Arc<Foo> {
 }
 
 fn main() {
-    let x: Box<Bar<Foo + Send>> = Box::new(Bar([1,2]));
+    let x: Box<Bar<Foo + Send>> = Box::new(Bar([1, 2]));
     assert_eq!(unsize_fat_ptr(&*x).0.get(), [1, 2]);
 
     let x: Arc<Foo + Send> = Arc::new([3, 4]);

@@ -16,7 +16,6 @@ fn take_fn_pointer<T1, T2>(f: fn(T1, T2), x: T1, y: T2) {
 //~ MONO_ITEM fn start
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-
     //~ MONO_ITEM fn take_fn_once::<u32, &str, fn(u32, &str) {function::<u32, &str>}>
     //~ MONO_ITEM fn function::<u32, &str>
     //~ MONO_ITEM fn <fn(u32, &str) {function::<u32, &str>} as std::ops::FnOnce<(u32, &str)>>::call_once - shim(fn(u32, &str) {function::<u32, &str>})

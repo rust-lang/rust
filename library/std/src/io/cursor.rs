@@ -328,7 +328,7 @@ where
     fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let prev_written = cursor.written();
 
-        Read::read_buf(&mut self.fill_buf()?, cursor.reborrow())?;
+        Read::read_buf(&mut self.remaining_slice(), cursor.reborrow())?;
 
         self.pos += (cursor.written() - prev_written) as u64;
 
@@ -352,17 +352,24 @@ where
     }
 
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
-        let n = buf.len();
-        Read::read_exact(&mut self.remaining_slice(), buf)?;
-        self.pos += n as u64;
-        Ok(())
+        let result = Read::read_exact(&mut self.remaining_slice(), buf);
+
+        match result {
+            Ok(_) => self.pos += buf.len() as u64,
+            // The only possible error condition is EOF, so place the cursor at "EOF"
+            Err(_) => self.pos = self.inner.as_ref().len() as u64,
+        }
+
+        result
     }
 
-    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
-        let n = cursor.capacity();
-        Read::read_buf_exact(&mut self.remaining_slice(), cursor)?;
-        self.pos += n as u64;
-        Ok(())
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        let prev_written = cursor.written();
+
+        let result = Read::read_buf_exact(&mut self.remaining_slice(), cursor.reborrow());
+        self.pos += (cursor.written() - prev_written) as u64;
+
+        result
     }
 
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {

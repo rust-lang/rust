@@ -429,7 +429,7 @@ impl<E> Report<E> {
     ///    1: rust_out::main::_doctest_main_src_error_rs_1158_0
     ///    2: rust_out::main
     ///    3: core::ops::function::FnOnce::call_once
-    ///    4: std::sys_common::backtrace::__rust_begin_short_backtrace
+    ///    4: std::sys::backtrace::__rust_begin_short_backtrace
     ///    5: std::rt::lang_start::{{closure}}
     ///    6: std::panicking::try
     ///    7: std::rt::lang_start_internal

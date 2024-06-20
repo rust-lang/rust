@@ -1,27 +1,18 @@
-warning: the feature `precise_capturing` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/capture-parent-arg.rs:1:12
-   |
-LL | #![feature(precise_capturing)]
-   |            ^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #123432 <https://github.com/rust-lang/rust/issues/123432> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error: `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
-  --> $DIR/capture-parent-arg.rs:28:37
+  --> $DIR/capture-parent-arg.rs:27:31
    |
 LL | impl<'a> W<'a> {
    |      -- this lifetime parameter is captured
-LL |     fn bad1() -> impl use<> Into<<W<'a> as Tr>::Assoc> {}
-   |                  -------------------^^---------------- lifetime captured due to being mentioned in the bounds of the `impl Trait`
+LL |     fn bad1() -> impl Into<<W<'a> as Tr>::Assoc> + use<> {}
+   |                  -------------^^------------------------ lifetime captured due to being mentioned in the bounds of the `impl Trait`
 
 error: `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
-  --> $DIR/capture-parent-arg.rs:34:18
+  --> $DIR/capture-parent-arg.rs:33:18
    |
 LL | impl<'a> W<'a> {
    |      -- this lifetime parameter is captured
-LL |     fn bad2() -> impl use<> Into<<Self as Tr>::Assoc> {}
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime captured due to being mentioned in the bounds of the `impl Trait`
+LL |     fn bad2() -> impl Into<<Self as Tr>::Assoc> + use<> {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime captured due to being mentioned in the bounds of the `impl Trait`
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 

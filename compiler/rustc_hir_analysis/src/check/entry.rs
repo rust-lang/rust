@@ -133,7 +133,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             main_diagnostics_def_id,
             ObligationCauseCode::MainFunctionType,
         );
-        let ocx = traits::ObligationCtxt::new(&infcx);
+        let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
         let norm_return_ty = ocx.normalize(&cause, param_env, return_ty);
         ocx.register_bound(cause, param_env, norm_return_ty, term_did);
         let errors = ocx.select_all_or_error();

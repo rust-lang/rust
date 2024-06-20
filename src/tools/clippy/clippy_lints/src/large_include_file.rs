@@ -10,10 +10,12 @@ use rustc_span::sym;
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for the inclusion of large files via `include_bytes!()`
-    /// and `include_str!()`
+    /// or `include_str!()`.
     ///
-    /// ### Why is this bad?
-    /// Including large files can increase the size of the binary
+    /// ### Why restrict this?
+    /// Including large files can undesirably increase the size of the binary produced by the compiler.
+    /// This lint may be used to catch mistakes where an unexpectedly large file is included, or
+    /// temporarily to obtain a list of all large files.
     ///
     /// ### Example
     /// ```rust,ignore

@@ -19,7 +19,9 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
+use rustc_parse::{
+    new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal, validate_attr,
+};
 use rustc_passes::{abi_test, hir_stats, layout_test};
 use rustc_resolve::Resolver;
 use rustc_session::code_stats::VTableSizeInfo;
@@ -39,13 +41,17 @@ use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use std::{env, fs, iter};
+use tracing::{info, instrument};
 
 pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
-    let krate = sess.time("parse_crate", || match &sess.io.input {
-        Input::File(file) => parse_crate_from_file(file, &sess.psess),
-        Input::Str { input, name } => {
-            parse_crate_from_source_str(name.clone(), input.clone(), &sess.psess)
-        }
+    let krate = sess.time("parse_crate", || {
+        let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
+            Input::File(file) => new_parser_from_file(&sess.psess, file, None),
+            Input::Str { input, name } => {
+                new_parser_from_source_str(&sess.psess, name.clone(), input.clone())
+            }
+        });
+        parser.parse_crate_mod()
     })?;
 
     if sess.opts.unstable_opts.input_stats {
@@ -750,7 +756,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 || tcx.hir().body_const_context(def_id).is_some()
             {
                 tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
-                tcx.ensure().unused_generic_params(ty::InstanceDef::Item(def_id.to_def_id()));
+                tcx.ensure().unused_generic_params(ty::InstanceKind::Item(def_id.to_def_id()));
             }
         }
     });
@@ -831,7 +837,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         let traits = tcx.traits(LOCAL_CRATE);
 
         for &tr in traits {
-            if !tcx.check_is_object_safe(tr) {
+            if !tcx.is_object_safe(tr) {
                 continue;
             }
 

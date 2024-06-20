@@ -21,11 +21,7 @@
    LL|       |// Variant using regular `if` instead of let-else.
    LL|       |// This doesn't trigger the original ICE, but might help detect regressions.
    LL|      0|fn _if(cond: bool) {
-   LL|      0|    if cond {
-   LL|      0|        loop {}
-   LL|       |    } else {
-   LL|      0|        loop {}
-   LL|       |    }
+   LL|      0|    if cond { loop {} } else { loop {} }
    LL|       |}
    LL|       |
    LL|       |#[coverage(off)]

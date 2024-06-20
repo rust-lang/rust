@@ -336,7 +336,7 @@ impl UnconditionalRecursion {
                         // We need to use typeck here to infer the actual function being called.
                         && let body_def_id = cx.tcx.hir().enclosing_body_owner(call_expr.hir_id)
                         && let Some(body_owner) = cx.tcx.hir().maybe_body_owned_by(body_def_id)
-                        && let typeck = cx.tcx.typeck_body(body_owner)
+                        && let typeck = cx.tcx.typeck_body(body_owner.id())
                         && let Some(call_def_id) = typeck.type_dependent_def_id(call_expr.hir_id)
                     {
                         self.default_impl_for_type.insert(self_def_id, call_def_id);

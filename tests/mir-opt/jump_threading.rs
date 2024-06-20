@@ -157,7 +157,7 @@ fn custom_discr(x: bool) -> u8 {
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 fn multiple_match(x: u8) -> u8 {
     // CHECK-LABEL: fn multiple_match(
-    mir!(
+    mir! {
         {
             // CHECK: bb0: {
             // CHECK:     switchInt([[x:_.*]]) -> [3: bb1, otherwise: bb2];
@@ -220,7 +220,7 @@ fn multiple_match(x: u8) -> u8 {
             RET = 11;
             Return()
         }
-    )
+    }
 }
 
 /// Both 1-3-4 and 2-3-4 are threadable. As 1 and 2 are the only predecessors of 3,
@@ -228,7 +228,7 @@ fn multiple_match(x: u8) -> u8 {
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 fn duplicate_chain(x: bool) -> u8 {
     // CHECK-LABEL: fn duplicate_chain(
-    mir!(
+    mir! {
         let a: u8;
         {
             // CHECK: bb0: {
@@ -278,7 +278,7 @@ fn duplicate_chain(x: bool) -> u8 {
             RET = 9;
             Return()
         }
-    )
+    }
 }
 
 #[rustc_layout_scalar_valid_range_start(1)]
@@ -292,7 +292,7 @@ fn mutate_discriminant() -> u8 {
     // CHECK-NOT: goto -> {{bb.*}};
     // CHECK: switchInt(
     // CHECK-NOT: goto -> {{bb.*}};
-    mir!(
+    mir! {
         let x: Option<NonZeroUsize>;
         {
             SetDiscriminant(x, 1);
@@ -313,7 +313,7 @@ fn mutate_discriminant() -> u8 {
             RET = 2;
             Unreachable()
         }
-    )
+    }
 }
 
 /// Verify that we do not try to reason when there are mutable pointers involved.
@@ -330,11 +330,7 @@ fn mutable_ref() -> bool {
     let a = std::ptr::addr_of_mut!(x);
     x = 7;
     unsafe { *a = 8 };
-    if x == 7 {
-        true
-    } else {
-        false
-    }
+    if x == 7 { true } else { false }
 }
 
 /// This function has 2 TOs: 1-3-4 and 0-1-3-4-6.
@@ -342,7 +338,7 @@ fn mutable_ref() -> bool {
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 fn renumbered_bb(x: bool) -> u8 {
     // CHECK-LABEL: fn renumbered_bb(
-    mir!(
+    mir! {
         let a: bool;
         let b: bool;
         {
@@ -398,7 +394,7 @@ fn renumbered_bb(x: bool) -> u8 {
         // Duplicate of bb4.
         // CHECK: bb9: {
         // CHECK-NEXT: goto -> bb6;
-    )
+    }
 }
 
 /// This function has 3 TOs: 1-4-5, 0-1-4-7-5-8 and 3-4-7-5-6
@@ -408,7 +404,7 @@ fn renumbered_bb(x: bool) -> u8 {
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 fn disappearing_bb(x: u8) -> u8 {
     // CHECK-LABEL: fn disappearing_bb(
-    mir!(
+    mir! {
         let a: bool;
         let b: bool;
         {
@@ -450,7 +446,7 @@ fn disappearing_bb(x: u8) -> u8 {
         // CHECK: goto -> bb5;
         // CHECK: bb10: {
         // CHECK: goto -> bb6;
-    )
+    }
 }
 
 /// Verify that we can thread jumps when we assign from an aggregate constant.
@@ -461,18 +457,14 @@ fn aggregate(x: u8) -> u8 {
     const FOO: (u8, u8) = (5, 13);
 
     let (a, b) = FOO;
-    if a == 7 {
-        b
-    } else {
-        a
-    }
+    if a == 7 { b } else { a }
 }
 
 /// Verify that we can leverage the existence of an `Assume` terminator.
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 fn assume(a: u8, b: bool) -> u8 {
     // CHECK-LABEL: fn assume(
-    mir!(
+    mir! {
         {
             // CHECK: bb0: {
             // CHECK-NEXT: switchInt(_1) -> [7: bb1, otherwise: bb2]
@@ -511,7 +503,7 @@ fn assume(a: u8, b: bool) -> u8 {
         }
         // CHECK: bb6: {
         // CHECK-NEXT: goto -> bb5;
-    )
+    }
 }
 
 fn main() {

@@ -66,6 +66,7 @@ mod map_flatten;
 mod map_identity;
 mod map_unwrap_or;
 mod mut_mutex_lock;
+mod needless_character_iteration;
 mod needless_collect;
 mod needless_option_as_deref;
 mod needless_option_take;
@@ -93,7 +94,6 @@ mod seek_from_current;
 mod seek_to_start_instead_of_rewind;
 mod single_char_add_str;
 mod single_char_insert_string;
-mod single_char_pattern;
 mod single_char_push_string;
 mod skip_while_next;
 mod stable_sort_primitive;
@@ -133,6 +133,7 @@ use bind_instead_of_map::BindInsteadOfMap;
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::macros::FormatArgsStorage;
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
@@ -256,7 +257,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `.unwrap()` or `.unwrap_err()` calls on `Result`s and `.unwrap()` call on `Option`s.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// It is better to handle the `None` or `Err` case,
     /// or at least call `.expect(_)` with a more helpful message. Still, for a lot of
     /// quick-and-dirty code, `unwrap` is a good choice, which is why this lint is
@@ -332,7 +333,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `.expect()` or `.expect_err()` calls on `Result`s and `.expect()` call on `Option`s.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Usually it is better to handle the `None` or `Err` case.
     /// Still, for a lot of quick-and-dirty code, `expect` is a good choice, which is why
     /// this lint is `Allow` by default.
@@ -1028,8 +1029,8 @@ declare_clippy_lint! {
     /// (`Rc`, `Arc`, `rc::Weak`, or `sync::Weak`), and suggests calling Clone via unified
     /// function syntax instead (e.g., `Rc::clone(foo)`).
     ///
-    /// ### Why is this bad?
-    /// Calling '.clone()' on an Rc, Arc, or Weak
+    /// ### Why restrict this?
+    /// Calling `.clone()` on an `Rc`, `Arc`, or `Weak`
     /// can obscure the fact that only the pointer is being cloned, not the underlying
     /// data.
     ///
@@ -1050,7 +1051,7 @@ declare_clippy_lint! {
     #[clippy::version = "pre 1.29.0"]
     pub CLONE_ON_REF_PTR,
     restriction,
-    "using 'clone' on a ref-counted pointer"
+    "using `clone` on a ref-counted pointer"
 }
 
 declare_clippy_lint! {
@@ -1137,38 +1138,6 @@ declare_clippy_lint! {
     pub NEW_RET_NO_SELF,
     style,
     "not returning type containing `Self` in a `new` method"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for string methods that receive a single-character
-    /// `str` as an argument, e.g., `_.split("x")`.
-    ///
-    /// ### Why is this bad?
-    /// While this can make a perf difference on some systems,
-    /// benchmarks have proven inconclusive. But at least using a
-    /// char literal makes it clear that we are looking at a single
-    /// character.
-    ///
-    /// ### Known problems
-    /// Does not catch multi-byte unicode characters. This is by
-    /// design, on many machines, splitting by a non-ascii char is
-    /// actually slower. Please do your own measurements instead of
-    /// relying solely on the results of this lint.
-    ///
-    /// ### Example
-    /// ```rust,ignore
-    /// _.split("x");
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust,ignore
-    /// _.split('x');
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub SINGLE_CHAR_PATTERN,
-    pedantic,
-    "using a single-character str where a char could be used, e.g., `_.split(\"x\")`"
 }
 
 declare_clippy_lint! {
@@ -1358,7 +1327,7 @@ declare_clippy_lint! {
     /// Checks for usage of `.get().unwrap()` (or
     /// `.get_mut().unwrap`) on a standard library type which implements `Index`
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Using the Index trait (`[]`) is more clear and more
     /// concise.
     ///
@@ -1742,7 +1711,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `FileType::is_file()`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// When people testing a file type with `FileType::is_file`
     /// they are testing whether a path is something they can get bytes from. But
     /// `is_file` doesn't cover special file types in unix-like systems, and doesn't cover
@@ -2687,8 +2656,9 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for instances of `map_err(|_| Some::Enum)`
     ///
-    /// ### Why is this bad?
-    /// This `map_err` throws away the original error rather than allowing the enum to contain and report the cause of the error
+    /// ### Why restrict this?
+    /// This `map_err` throws away the original error rather than allowing the enum to
+    /// contain and report the cause of the error.
     ///
     /// ### Example
     /// Before:
@@ -3144,7 +3114,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of File::read_to_end and File::read_to_string.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// `fs::{read, read_to_string}` provide the same functionality when `buf` is empty with fewer imports and no intermediate values.
     /// See also: [fs::read docs](https://doc.rust-lang.org/std/fs/fn.read.html), [fs::read_to_string docs](https://doc.rust-lang.org/std/fs/fn.read_to_string.html)
     ///
@@ -4082,17 +4052,40 @@ declare_clippy_lint! {
     /// ```no_run
     /// println!("the string is empty");
     /// ```
-    #[clippy::version = "1.78.0"]
+    #[clippy::version = "1.79.0"]
     pub CONST_IS_EMPTY,
     suspicious,
     "is_empty() called on strings known at compile time"
 }
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks if an iterator is used to check if a string is ascii.
+    ///
+    /// ### Why is this bad?
+    /// The `str` type already implements the `is_ascii` method.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// "foo".chars().all(|c| c.is_ascii());
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// "foo".is_ascii();
+    /// ```
+    #[clippy::version = "1.80.0"]
+    pub NEEDLESS_CHARACTER_ITERATION,
+    suspicious,
+    "is_ascii() called on a char iterator"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
     allow_expect_in_tests: bool,
     allow_unwrap_in_tests: bool,
     allowed_dotfiles: FxHashSet<String>,
+    format_args: FormatArgsStorage,
 }
 
 impl Methods {
@@ -4103,6 +4096,7 @@ impl Methods {
         allow_expect_in_tests: bool,
         allow_unwrap_in_tests: bool,
         mut allowed_dotfiles: FxHashSet<String>,
+        format_args: FormatArgsStorage,
     ) -> Self {
         allowed_dotfiles.extend(DEFAULT_ALLOWED_DOTFILES.iter().map(ToString::to_string));
 
@@ -4112,6 +4106,7 @@ impl Methods {
             allow_expect_in_tests,
             allow_unwrap_in_tests,
             allowed_dotfiles,
+            format_args,
         }
     }
 }
@@ -4141,7 +4136,6 @@ impl_lint_pass!(Methods => [
     FLAT_MAP_OPTION,
     INEFFICIENT_TO_STRING,
     NEW_RET_NO_SELF,
-    SINGLE_CHAR_PATTERN,
     SINGLE_CHAR_ADD_STR,
     SEARCH_IS_SOME,
     FILTER_NEXT,
@@ -4249,6 +4243,7 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_RESULT_MAP_OR_ELSE,
     MANUAL_C_STR_LITERALS,
     UNNECESSARY_GET_THEN_CHECK,
+    NEEDLESS_CHARACTER_ITERATION,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4281,13 +4276,20 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
                 or_fun_call::check(cx, expr, method_span, method_call.ident.as_str(), receiver, args);
-                expect_fun_call::check(cx, expr, method_span, method_call.ident.as_str(), receiver, args);
+                expect_fun_call::check(
+                    cx,
+                    &self.format_args,
+                    expr,
+                    method_span,
+                    method_call.ident.as_str(),
+                    receiver,
+                    args,
+                );
                 clone_on_copy::check(cx, expr, method_call.ident.name, receiver, args);
                 clone_on_ref_ptr::check(cx, expr, method_call.ident.name, receiver, args);
                 inefficient_to_string::check(cx, expr, method_call.ident.name, receiver, args);
                 single_char_add_str::check(cx, expr, receiver, args);
                 into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, receiver);
-                single_char_pattern::check(cx, expr, method_call.ident.name, receiver, args);
                 unnecessary_to_owned::check(cx, expr, method_call.ident.name, receiver, args, &self.msrv);
             },
             ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
@@ -4448,6 +4450,7 @@ impl Methods {
                 },
                 ("all", [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
+                    needless_character_iteration::check(cx, expr, recv, arg, true);
                     if let Some(("cloned", recv2, [], _, _)) = method_call(recv) {
                         iter_overeager_cloned::check(
                             cx,
@@ -4468,6 +4471,7 @@ impl Methods {
                 },
                 ("any", [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
+                    needless_character_iteration::check(cx, expr, recv, arg, false);
                     match method_call(recv) {
                         Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
                             cx,

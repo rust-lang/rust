@@ -438,7 +438,6 @@ impl<'tcx> Rvalue<'tcx> {
                 _,
             )
             | Rvalue::BinaryOp(_, _)
-            | Rvalue::CheckedBinaryOp(_, _)
             | Rvalue::NullaryOp(_, _)
             | Rvalue::UnaryOp(_, _)
             | Rvalue::Discriminant(_)

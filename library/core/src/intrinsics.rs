@@ -65,7 +65,6 @@
 
 use crate::marker::DiscriminantKind;
 use crate::marker::Tuple;
-use crate::mem::align_of;
 use crate::ptr;
 use crate::ub_checks;
 
@@ -987,7 +986,7 @@ pub const unsafe fn assume(b: bool) {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_checks_ub)]
+#[miri::intrinsic_fallback_is_spec]
 pub const fn likely(b: bool) -> bool {
     b
 }
@@ -1007,7 +1006,7 @@ pub const fn likely(b: bool) -> bool {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_checks_ub)]
+#[miri::intrinsic_fallback_is_spec]
 pub const fn unlikely(b: bool) -> bool {
     b
 }
@@ -1483,10 +1482,10 @@ extern "rust-intrinsic" {
     ///
     /// # Safety
     ///
-    /// Both the starting and resulting pointer must be either in bounds or one
-    /// byte past the end of an allocated object. If either pointer is out of
-    /// bounds or arithmetic overflow occurs then any further use of the
-    /// returned value will result in undefined behavior.
+    /// If the computed offset is non-zero, then both the starting and resulting pointer must be
+    /// either in bounds or at the end of an allocated object. If either pointer is out
+    /// of bounds or arithmetic overflow occurs then any further use of the returned value will
+    /// result in undefined behavior.
     ///
     /// The stabilized version of this intrinsic is [`pointer::offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]
@@ -1502,7 +1501,7 @@ extern "rust-intrinsic" {
     /// # Safety
     ///
     /// Unlike the `offset` intrinsic, this intrinsic does not restrict the
-    /// resulting pointer to point into or one byte past the end of an allocated
+    /// resulting pointer to point into or at the end of an allocated
     /// object, and it wraps with two's complement arithmetic. The resulting
     /// value is not necessarily valid to be used to actually access memory.
     ///
@@ -2483,7 +2482,7 @@ extern "rust-intrinsic" {
 #[rustc_nounwind]
 #[rustc_do_not_const_check]
 #[inline]
-#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_checks_ub)]
+#[miri::intrinsic_fallback_is_spec]
 pub const fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8 {
     (ptr == other) as u8
 }
@@ -2748,7 +2747,7 @@ pub const fn ub_checks() -> bool {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_checks_ub)]
+#[miri::intrinsic_fallback_is_spec]
 pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
     // const eval overrides this function, but runtime code for now just returns null pointers.
     // See <https://github.com/rust-lang/rust/issues/93935>.
@@ -2769,7 +2768,7 @@ pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_checks_ub)]
+#[miri::intrinsic_fallback_is_spec]
 pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {
     // Runtime NOP
 }
@@ -2819,6 +2818,20 @@ impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*const T> for *const P {
 }
 impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
     type Metadata = <P as ptr::Pointee>::Metadata;
+}
+
+/// Lowers in MIR to `Rvalue::UnaryOp` with `UnOp::PtrMetadata`.
+///
+/// This is used to implement functions like `ptr::metadata`.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *const P) -> M {
+    // To implement a fallback we'd have to assume the layout of the pointer,
+    // but the whole point of this intrinsic is that we shouldn't do that.
+    unreachable!()
 }
 
 // Some functions are defined here because they accidentally got made
@@ -3030,8 +3043,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
-            and the specified memory ranges do not overlap",
+            "ptr::copy requires that both pointer arguments are aligned and non-null",
             (
                 src: *const () = src as *const (),
                 dst: *mut () = dst as *mut (),

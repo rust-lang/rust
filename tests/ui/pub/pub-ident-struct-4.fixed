@@ -1,6 +1,7 @@
 //@ run-rustfix
 
-pub struct T(#[allow(dead_code)] String);
+#[allow(dead_code)]
+pub struct T(String);
 //~^ ERROR missing `struct` for struct definition
 
 fn main() {}

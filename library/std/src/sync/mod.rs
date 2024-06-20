@@ -133,10 +133,14 @@
 //! - [`Mutex`]: Mutual Exclusion mechanism, which ensures that at
 //!   most one thread at a time is able to access some data.
 //!
-//! - [`Once`]: Used for a thread-safe, one-time global initialization routine
+//! - [`Once`]: Used for a thread-safe, one-time global initialization routine.
+//!   Mostly useful for implementing other types like `OnceLock`.
 //!
 //! - [`OnceLock`]: Used for thread-safe, one-time initialization of a
-//!   global variable.
+//!   variable, with potentially different initializers based on the caller.
+//!
+//! - [`LazyLock`]: Used for thread-safe, one-time initialization of a
+//!   variable, using one nullary initializer function provided at creation.
 //!
 //! - [`RwLock`]: Provides a mutual exclusion mechanism which allows
 //!   multiple readers at the same time, while allowing only one
@@ -179,7 +183,7 @@ pub use self::rwlock::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "1.80.0")]
 pub use self::lazy_lock::LazyLock;
 #[stable(feature = "once_cell", since = "1.70.0")]
 pub use self::once_lock::OnceLock;

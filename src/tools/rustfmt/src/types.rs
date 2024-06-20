@@ -140,7 +140,7 @@ pub(crate) enum SegmentParam<'a> {
     Const(&'a ast::AnonConst),
     LifeTime(&'a ast::Lifetime),
     Type(&'a ast::Ty),
-    Binding(&'a ast::AssocConstraint),
+    Binding(&'a ast::AssocItemConstraint),
 }
 
 impl<'a> SegmentParam<'a> {
@@ -175,9 +175,9 @@ impl<'a> Rewrite for SegmentParam<'a> {
     }
 }
 
-impl Rewrite for ast::AssocConstraint {
+impl Rewrite for ast::AssocItemConstraint {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        use ast::AssocConstraintKind::{Bound, Equality};
+        use ast::AssocItemConstraintKind::{Bound, Equality};
 
         let mut result = String::with_capacity(128);
         result.push_str(rewrite_ident(context, self.ident));
@@ -205,14 +205,14 @@ impl Rewrite for ast::AssocConstraint {
     }
 }
 
-impl Rewrite for ast::AssocConstraintKind {
+impl Rewrite for ast::AssocItemConstraintKind {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self {
-            ast::AssocConstraintKind::Equality { term } => match term {
+            ast::AssocItemConstraintKind::Equality { term } => match term {
                 Term::Ty(ty) => ty.rewrite(context, shape),
                 Term::Const(c) => c.rewrite(context, shape),
             },
-            ast::AssocConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
+            ast::AssocItemConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
         }
     }
 }
@@ -563,6 +563,8 @@ impl Rewrite for ast::GenericBound {
                     .map(|s| if has_paren { format!("({})", s) } else { s })
             }
             ast::GenericBound::Outlives(ref lifetime) => lifetime.rewrite(context, shape),
+            // FIXME(precise_capturing): Should implement formatting before stabilization.
+            ast::GenericBound::Use(..) => None,
         }
     }
 }
@@ -843,11 +845,7 @@ impl Rewrite for ast::Ty {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
             }
             ast::TyKind::ImplicitSelf => Some(String::from("")),
-            ast::TyKind::ImplTrait(_, ref it, ref captures) => {
-                // FIXME(precise_capturing): Implement formatting.
-                if captures.is_some() {
-                    return None;
-                }
+            ast::TyKind::ImplTrait(_, ref it) => {
                 // Empty trait is not a parser error.
                 if it.is_empty() {
                     return Some("impl".to_owned());
@@ -932,6 +930,8 @@ fn is_generic_bounds_in_order(generic_bounds: &[ast::GenericBound]) -> bool {
     let is_trait = |b: &ast::GenericBound| match b {
         ast::GenericBound::Outlives(..) => false,
         ast::GenericBound::Trait(..) => true,
+        // FIXME(precise_capturing): This ordering fn should be reworked.
+        ast::GenericBound::Use(..) => false,
     };
     let is_lifetime = |b: &ast::GenericBound| !is_trait(b);
     let last_trait_index = generic_bounds.iter().rposition(is_trait);
@@ -966,6 +966,8 @@ fn join_bounds_inner(
     let is_bound_extendable = |s: &str, b: &ast::GenericBound| match b {
         ast::GenericBound::Outlives(..) => true,
         ast::GenericBound::Trait(..) => last_line_extendable(s),
+        // FIXME(precise_capturing): This ordering fn should be reworked.
+        ast::GenericBound::Use(..) => true,
     };
 
     // Whether a GenericBound item is a PathSegment segment that includes internal array
@@ -1110,8 +1112,7 @@ fn join_bounds_inner(
 
 pub(crate) fn opaque_ty(ty: &Option<ptr::P<ast::Ty>>) -> Option<&ast::GenericBounds> {
     ty.as_ref().and_then(|t| match &t.kind {
-        // FIXME(precise_capturing): Implement support here
-        ast::TyKind::ImplTrait(_, bounds, _) => Some(bounds),
+        ast::TyKind::ImplTrait(_, bounds) => Some(bounds),
         _ => None,
     })
 }

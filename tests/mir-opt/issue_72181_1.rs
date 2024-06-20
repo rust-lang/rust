@@ -14,9 +14,7 @@ fn f(v: Void) -> ! {
 
 // EMIT_MIR issue_72181_1.main.built.after.mir
 fn main() {
-    let v: Void = unsafe {
-        std::mem::transmute::<(), Void>(())
-    };
+    let v: Void = unsafe { std::mem::transmute::<(), Void>(()) };
 
     f(v);
 }

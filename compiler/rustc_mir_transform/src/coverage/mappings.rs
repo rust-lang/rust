@@ -5,6 +5,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, ConditionInfo, CoverageKind};
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
+use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
@@ -48,7 +49,7 @@ pub(super) struct MCDCDecision {
     pub(super) span: Span,
     pub(super) end_bcbs: BTreeSet<BasicCoverageBlock>,
     pub(super) bitmap_idx: u32,
-    pub(super) conditions_num: u16,
+    pub(super) num_conditions: u16,
     pub(super) decision_depth: u16,
 }
 
@@ -63,30 +64,34 @@ pub(super) struct ExtractedMappings {
 
 /// Extracts coverage-relevant spans from MIR, and associates them with
 /// their corresponding BCBs.
-pub(super) fn extract_all_mapping_info_from_mir(
-    mir_body: &mir::Body<'_>,
+pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir_body: &mir::Body<'tcx>,
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
 ) -> ExtractedMappings {
-    if hir_info.is_async_fn {
-        // An async function desugars into a function that returns a future,
-        // with the user code wrapped in a closure. Any spans in the desugared
-        // outer function will be unhelpful, so just keep the signature span
-        // and ignore all of the spans in the MIR body.
-        let mut mappings = ExtractedMappings::default();
-        if let Some(span) = hir_info.fn_sig_span_extended {
-            mappings.code_mappings.push(CodeMapping { span, bcb: START_BCB });
-        }
-        return mappings;
-    }
-
     let mut code_mappings = vec![];
     let mut branch_pairs = vec![];
     let mut mcdc_bitmap_bytes = 0;
     let mut mcdc_branches = vec![];
     let mut mcdc_decisions = vec![];
 
-    extract_refined_covspans(mir_body, hir_info, basic_coverage_blocks, &mut code_mappings);
+    if hir_info.is_async_fn || tcx.sess.coverage_no_mir_spans() {
+        // An async function desugars into a function that returns a future,
+        // with the user code wrapped in a closure. Any spans in the desugared
+        // outer function will be unhelpful, so just keep the signature span
+        // and ignore all of the spans in the MIR body.
+        //
+        // When debugging flag `-Zcoverage-options=no-mir-spans` is set, we need
+        // to give the same treatment to _all_ functions, because `llvm-cov`
+        // seems to ignore functions that don't have any ordinary code spans.
+        if let Some(span) = hir_info.fn_sig_span_extended {
+            code_mappings.push(CodeMapping { span, bcb: START_BCB });
+        }
+    } else {
+        // Extract coverage spans from MIR statements/terminators as normal.
+        extract_refined_covspans(mir_body, hir_info, basic_coverage_blocks, &mut code_mappings);
+    }
 
     branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, basic_coverage_blocks));
 
@@ -268,13 +273,13 @@ pub(super) fn extract_mcdc_mappings(
             // the bitmap, rounded up to a whole number of bytes.
             // The decision's "bitmap index" points to its first byte in the bitmap.
             let bitmap_idx = *mcdc_bitmap_bytes;
-            *mcdc_bitmap_bytes += (1_u32 << decision.conditions_num).div_ceil(8);
+            *mcdc_bitmap_bytes += (1_u32 << decision.num_conditions).div_ceil(8);
 
             Some(MCDCDecision {
                 span,
                 end_bcbs,
                 bitmap_idx,
-                conditions_num: decision.conditions_num as u16,
+                num_conditions: decision.num_conditions as u16,
                 decision_depth: decision.decision_depth,
             })
         },

@@ -16,7 +16,7 @@ pub type TlsKey = u128;
 pub struct TlsEntry<'tcx> {
     /// The data for this key. None is used to represent NULL.
     /// (We normalize this early to avoid having to do a NULL-ptr-test each time we access the data.)
-    data: BTreeMap<ThreadId, Scalar<Provenance>>,
+    data: BTreeMap<ThreadId, Scalar>,
     dtor: Option<ty::Instance<'tcx>>,
 }
 
@@ -38,7 +38,7 @@ pub struct TlsData<'tcx> {
 
     /// A single per thread destructor of the thread local storage (that's how
     /// things work on macOS) with a data argument.
-    macos_thread_dtors: BTreeMap<ThreadId, (ty::Instance<'tcx>, Scalar<Provenance>)>,
+    macos_thread_dtors: BTreeMap<ThreadId, (ty::Instance<'tcx>, Scalar)>,
 }
 
 impl<'tcx> Default for TlsData<'tcx> {
@@ -86,7 +86,7 @@ impl<'tcx> TlsData<'tcx> {
         key: TlsKey,
         thread_id: ThreadId,
         cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    ) -> InterpResult<'tcx, Scalar> {
         match self.keys.get(&key) {
             Some(TlsEntry { data, .. }) => {
                 let value = data.get(&thread_id).copied();
@@ -101,7 +101,7 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         key: TlsKey,
         thread_id: ThreadId,
-        new_data: Scalar<Provenance>,
+        new_data: Scalar,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx> {
         match self.keys.get_mut(&key) {
@@ -132,7 +132,7 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         thread: ThreadId,
         dtor: ty::Instance<'tcx>,
-        data: Scalar<Provenance>,
+        data: Scalar,
     ) -> InterpResult<'tcx> {
         if self.macos_thread_dtors.insert(thread, (dtor, data)).is_some() {
             throw_unsup_format!(
@@ -165,7 +165,7 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         key: Option<TlsKey>,
         thread_id: ThreadId,
-    ) -> Option<(ty::Instance<'tcx>, Scalar<Provenance>, TlsKey)> {
+    ) -> Option<(ty::Instance<'tcx>, Scalar, TlsKey)> {
         use std::ops::Bound::*;
 
         let thread_local = &mut self.keys;
@@ -228,14 +228,14 @@ enum TlsDtorsStatePriv<'tcx> {
     PthreadDtors(RunningDtorState),
     /// For Windows Dtors, we store the list of functions that we still have to call.
     /// These are functions from the magic `.CRT$XLB` linker section.
-    WindowsDtors(Vec<ImmTy<'tcx, Provenance>>),
+    WindowsDtors(Vec<ImmTy<'tcx>>),
     Done,
 }
 
 impl<'tcx> TlsDtorsState<'tcx> {
     pub fn on_stack_empty(
         &mut self,
-        this: &mut MiriInterpCx<'_, 'tcx>,
+        this: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Poll<()>> {
         use TlsDtorsStatePriv::*;
         let new_state = 'new_state: {
@@ -282,7 +282,7 @@ impl<'tcx> TlsDtorsState<'tcx> {
                     }
                 }
                 Done => {
-                    this.machine.tls.delete_all_thread_tls(this.get_active_thread());
+                    this.machine.tls.delete_all_thread_tls(this.active_thread());
                     return Ok(Poll::Ready(()));
                 }
             }
@@ -293,11 +293,11 @@ impl<'tcx> TlsDtorsState<'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Schedule TLS destructors for Windows.
     /// On windows, TLS destructors are managed by std.
-    fn lookup_windows_tls_dtors(&mut self) -> InterpResult<'tcx, Vec<ImmTy<'tcx, Provenance>>> {
+    fn lookup_windows_tls_dtors(&mut self) -> InterpResult<'tcx, Vec<ImmTy<'tcx>>> {
         let this = self.eval_context_mut();
 
         // Windows has a special magic linker section that is run on certain events.
@@ -305,7 +305,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(this.lookup_link_section(".CRT$XLB")?)
     }
 
-    fn schedule_windows_tls_dtor(&mut self, dtor: ImmTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn schedule_windows_tls_dtor(&mut self, dtor: ImmTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let dtor = dtor.to_scalar().to_pointer(this)?;
@@ -332,7 +332,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// executed.
     fn schedule_macos_tls_dtor(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let thread_id = this.get_active_thread();
+        let thread_id = this.active_thread();
         if let Some((instance, data)) = this.machine.tls.macos_thread_dtors.remove(&thread_id) {
             trace!("Running macos dtor {:?} on {:?} at {:?}", instance, data, thread_id);
 
@@ -354,7 +354,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         state: &mut RunningDtorState,
     ) -> InterpResult<'tcx, Poll<()>> {
         let this = self.eval_context_mut();
-        let active_thread = this.get_active_thread();
+        let active_thread = this.active_thread();
 
         // Fetch next dtor after `key`.
         let dtor = match this.machine.tls.fetch_tls_dtor(state.last_key, active_thread) {

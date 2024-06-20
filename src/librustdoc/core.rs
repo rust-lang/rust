@@ -3,7 +3,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter};
 use rustc_errors::json::JsonEmitter;
-use rustc_errors::{codes::*, ErrorGuaranteed, TerminalUrl};
+use rustc_errors::{codes::*, DiagCtxtHandle, ErrorGuaranteed, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -284,9 +284,9 @@ pub(crate) fn create_config(
                 }
 
                 let hir = tcx.hir();
-                let body = hir.body(hir.body_owned_by(def_id));
+                let body = hir.body_owned_by(def_id);
                 debug!("visiting body for {def_id:?}");
-                EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
+                EmitIgnoredResolutionErrors::new(tcx).visit_body(&body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),
@@ -372,14 +372,14 @@ pub(crate) fn run_global_ctxt(
         tcx.node_lint(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
             DocContext::as_local_hir_id(tcx, krate.module.item_id).unwrap(),
-            "no documentation found for this crate's top-level module",
             |lint| {
+                lint.primary_message("no documentation found for this crate's top-level module");
                 lint.help(help);
             },
         );
     }
 
-    fn report_deprecated_attr(name: &str, dcx: &rustc_errors::DiagCtxt, sp: Span) {
+    fn report_deprecated_attr(name: &str, dcx: DiagCtxtHandle<'_>, sp: Span) {
         let mut msg =
             dcx.struct_span_warn(sp, format!("the `#![doc({name})]` attribute is deprecated"));
         msg.note(

@@ -8,22 +8,25 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, LangItem};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
 use rustc_target::abi::{ReprOptions, VariantIdx, FIRST_VARIANT};
+use tracing::{debug, info, trace};
 
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::str;
 
-use super::{Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr};
+use super::{
+    AsyncDestructor, Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr,
+};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 pub struct AdtFlags(u16);
@@ -197,6 +200,37 @@ impl<'tcx> AdtDef<'tcx> {
     }
 }
 
+impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
+    fn def_id(self) -> DefId {
+        self.did()
+    }
+
+    fn is_struct(self) -> bool {
+        self.is_struct()
+    }
+
+    fn struct_tail_ty(self, interner: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        Some(interner.type_of(self.non_enum_variant().tail_opt()?.did))
+    }
+
+    fn is_phantom_data(self) -> bool {
+        self.is_phantom_data()
+    }
+
+    fn all_field_tys(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = Ty<'tcx>>> {
+        ty::EarlyBinder::bind(
+            self.all_fields().map(move |field| tcx.type_of(field.did).skip_binder()),
+        )
+    }
+
+    fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        self.sized_constraint(tcx)
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable, TyEncodable, TyDecodable)]
 pub enum AdtKind {
     Struct,
@@ -248,16 +282,16 @@ impl AdtDefData {
         if tcx.has_attr(did, sym::fundamental) {
             flags |= AdtFlags::IS_FUNDAMENTAL;
         }
-        if Some(did) == tcx.lang_items().phantom_data() {
+        if tcx.is_lang_item(did, LangItem::PhantomData) {
             flags |= AdtFlags::IS_PHANTOM_DATA;
         }
-        if Some(did) == tcx.lang_items().owned_box() {
+        if tcx.is_lang_item(did, LangItem::OwnedBox) {
             flags |= AdtFlags::IS_BOX;
         }
-        if Some(did) == tcx.lang_items().manually_drop() {
+        if tcx.is_lang_item(did, LangItem::ManuallyDrop) {
             flags |= AdtFlags::IS_MANUALLY_DROP;
         }
-        if Some(did) == tcx.lang_items().unsafe_cell_type() {
+        if tcx.is_lang_item(did, LangItem::UnsafeCell) {
             flags |= AdtFlags::IS_UNSAFE_CELL;
         }
         if is_anonymous {
@@ -576,9 +610,15 @@ impl<'tcx> AdtDef<'tcx> {
         tcx.adt_destructor(self.did())
     }
 
+    // FIXME: consider combining this method with `AdtDef::destructor` and removing
+    // this version
+    pub fn async_destructor(self, tcx: TyCtxt<'tcx>) -> Option<AsyncDestructor> {
+        tcx.adt_async_destructor(self.did())
+    }
+
     /// Returns a type such that `Self: Sized` if and only if that type is `Sized`,
     /// or `None` if the type is always sized.
-    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<Ty<'tcx>>> {
+    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
         if self.is_struct() { tcx.adt_sized_constraint(self.did()) } else { None }
     }
 }

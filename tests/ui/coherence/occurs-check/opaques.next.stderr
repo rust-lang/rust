@@ -11,7 +11,7 @@ error[E0282]: type annotations needed
   --> $DIR/opaques.rs:13:20
    |
 LL |     pub fn cast<T>(x: Container<Alias<T>, T>) -> Container<T, T> {
-   |                    ^ cannot infer type for associated type `<T as Trait<T>>::Assoc`
+   |                    ^ cannot infer type
 
 error: aborting due to 2 previous errors
 

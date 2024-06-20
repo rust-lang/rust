@@ -1,14 +1,15 @@
 //! Greatest lower bound. See [`lattice`].
 
+use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 
-use super::combine::{CombineFields, ObligationEmittingRelation};
+use super::combine::{CombineFields, PredicateEmittingRelation};
 use super::lattice::{self, LatticeDir};
 use super::StructurallyRelateAliases;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
-use crate::traits::{ObligationCause, PredicateObligations};
+use crate::traits::ObligationCause;
 
 /// "Greatest lower bound" (common subtype)
 pub struct Glb<'combine, 'infcx, 'tcx> {
@@ -21,7 +22,7 @@ impl<'combine, 'infcx, 'tcx> Glb<'combine, 'infcx, 'tcx> {
     }
 }
 
-impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
+impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Glb<'_, '_, 'tcx> {
     fn tag(&self) -> &'static str {
         "Glb"
     }
@@ -30,10 +31,10 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
         self.fields.tcx()
     }
 
-    fn relate_with_variance<T: Relate<'tcx>>(
+    fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
         &mut self,
         variance: ty::Variance,
-        _info: ty::VarianceDiagInfo<'tcx>,
+        _info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
@@ -81,7 +82,7 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
         b: ty::Binder<'tcx, T>,
     ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
-        T: Relate<'tcx>,
+        T: Relate<TyCtxt<'tcx>>,
     {
         // GLB of a binder and itself is just itself
         if a == b {
@@ -93,12 +94,7 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
             // When higher-ranked types are involved, computing the GLB is
             // very challenging, switch to invariance. This is obviously
             // overly conservative but works ok in practice.
-            self.relate_with_variance(
-                ty::Variance::Invariant,
-                ty::VarianceDiagInfo::default(),
-                a,
-                b,
-            )?;
+            self.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)?;
             Ok(a)
         } else {
             Ok(ty::Binder::dummy(self.relate(a.skip_binder(), b.skip_binder())?))
@@ -127,7 +123,7 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 
     }
 }
 
-impl<'tcx> ObligationEmittingRelation<'tcx> for Glb<'_, '_, 'tcx> {
+impl<'tcx> PredicateEmittingRelation<'tcx> for Glb<'_, '_, 'tcx> {
     fn span(&self) -> Span {
         self.fields.trace.span()
     }
@@ -147,11 +143,14 @@ impl<'tcx> ObligationEmittingRelation<'tcx> for Glb<'_, '_, 'tcx> {
         self.fields.register_predicates(obligations);
     }
 
-    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
+    fn register_goals(
+        &mut self,
+        obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) {
         self.fields.register_obligations(obligations);
     }
 
-    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+    fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
         self.register_predicates([ty::Binder::dummy(ty::PredicateKind::AliasRelate(
             a.into(),
             b.into(),

@@ -1,9 +1,7 @@
+// tidy-alphabetical-start
 #![feature(array_windows)]
 #![feature(is_sorted)]
-#![allow(rustc::potential_query_instability)]
-
-#[macro_use]
-extern crate tracing;
+// tidy-alphabetical-end
 
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;

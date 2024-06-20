@@ -75,7 +75,7 @@ pub fn _slice_ref(a: &[u8]) -> i32 {
 #[no_mangle]
 pub fn _slice_ref_borrow() -> i32 {
     // CHECK: ret i32 6
-    _slice_ref(&[0;3])
+    _slice_ref(&[0; 3])
 }
 
 // CHECK-LABEL: @_slice_ref_arg(

@@ -1,4 +1,4 @@
-use std::io::{Result as IoResult, Read};
+use std::io::{Read, Result as IoResult};
 
 pub struct Aaaaaaa;
 
@@ -29,7 +29,10 @@ impl<T: Read> Ddddddd<T> {
     pub fn ggggggg(self) -> u64 {
         1
     }
-    pub fn hhhhhhh() -> Self where T: Default {
+    pub fn hhhhhhh() -> Self
+    where
+        T: Default,
+    {
         Ddddddd(T::default())
     }
 }

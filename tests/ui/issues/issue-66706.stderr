@@ -1,8 +1,8 @@
-error: expected `,`, found `&`
+error: expected one of `,` or `|`, found `&`
   --> $DIR/issue-66706.rs:2:16
    |
 LL |     [0; [|_: _ &_| ()].len()]
-   |               -^ expected `,`
+   |               -^ expected one of `,` or `|`
    |               |
    |               help: missing `,`
 
@@ -12,11 +12,11 @@ error: expected identifier, found reserved identifier `_`
 LL |     [0; [|f @ &ref _| {} ; 0 ].len() ];
    |                    ^ expected identifier, found reserved identifier
 
-error: expected `,`, found `&`
+error: expected one of `,` or `|`, found `&`
   --> $DIR/issue-66706.rs:13:17
    |
 LL |     [0; [|&_: _ &_| {}; 0 ].len()]
-   |                -^ expected `,`
+   |                -^ expected one of `,` or `|`
    |                |
    |                help: missing `,`
 

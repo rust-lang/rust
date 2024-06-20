@@ -3,129 +3,123 @@
 #![feature(dyn_star)]
 #![feature(allocator_api)]
 
+use std::marker::PhantomPinned;
 use std::mem::MaybeUninit;
 use std::num::NonZero;
-use std::marker::PhantomPinned;
 use std::ptr::NonNull;
 
 pub struct S {
-  _field: [i32; 8],
+    _field: [i32; 8],
 }
 
 pub struct UnsafeInner {
-  _field: std::cell::UnsafeCell<i16>,
+    _field: std::cell::UnsafeCell<i16>,
 }
 
 pub struct NotUnpin {
-  _field: i32,
-  _marker: PhantomPinned,
+    _field: i32,
+    _marker: PhantomPinned,
 }
 
 pub enum MyBool {
-  True,
-  False,
+    True,
+    False,
 }
 
 // CHECK: noundef zeroext i1 @boolean(i1 noundef zeroext %x)
 #[no_mangle]
 pub fn boolean(x: bool) -> bool {
-  x
+    x
 }
 
 // CHECK: i8 @maybeuninit_boolean(i8 %x)
 #[no_mangle]
 pub fn maybeuninit_boolean(x: MaybeUninit<bool>) -> MaybeUninit<bool> {
-  x
+    x
 }
 
 // CHECK: noundef zeroext i1 @enum_bool(i1 noundef zeroext %x)
 #[no_mangle]
 pub fn enum_bool(x: MyBool) -> MyBool {
-  x
+    x
 }
 
 // CHECK: i8 @maybeuninit_enum_bool(i8 %x)
 #[no_mangle]
 pub fn maybeuninit_enum_bool(x: MaybeUninit<MyBool>) -> MaybeUninit<MyBool> {
-  x
+    x
 }
 
 // CHECK: noundef i32 @char(i32 noundef %x)
 #[no_mangle]
 pub fn char(x: char) -> char {
-  x
+    x
 }
 
 // CHECK: i32 @maybeuninit_char(i32 %x)
 #[no_mangle]
 pub fn maybeuninit_char(x: MaybeUninit<char>) -> MaybeUninit<char> {
-  x
+    x
 }
 
 // CHECK: noundef i64 @int(i64 noundef %x)
 #[no_mangle]
 pub fn int(x: u64) -> u64 {
-  x
+    x
 }
 
 // CHECK: noundef i64 @nonzero_int(i64 noundef %x)
 #[no_mangle]
 pub fn nonzero_int(x: NonZero<u64>) -> NonZero<u64> {
-  x
+    x
 }
 
 // CHECK: noundef i64 @option_nonzero_int(i64 noundef %x)
 #[no_mangle]
 pub fn option_nonzero_int(x: Option<NonZero<u64>>) -> Option<NonZero<u64>> {
-  x
+    x
 }
 
 // CHECK: @readonly_borrow(ptr noalias noundef readonly align 4 dereferenceable(4) %_1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-pub fn readonly_borrow(_: &i32) {
-}
+pub fn readonly_borrow(_: &i32) {}
 
 // CHECK: noundef align 4 dereferenceable(4) ptr @readonly_borrow_ret()
 #[no_mangle]
 pub fn readonly_borrow_ret() -> &'static i32 {
-  loop {}
+    loop {}
 }
 
 // CHECK: @static_borrow(ptr noalias noundef readonly align 4 dereferenceable(4) %_1)
 // static borrow may be captured
 #[no_mangle]
-pub fn static_borrow(_: &'static i32) {
-}
+pub fn static_borrow(_: &'static i32) {}
 
 // CHECK: @named_borrow(ptr noalias noundef readonly align 4 dereferenceable(4) %_1)
 // borrow with named lifetime may be captured
 #[no_mangle]
-pub fn named_borrow<'r>(_: &'r i32) {
-}
+pub fn named_borrow<'r>(_: &'r i32) {}
 
 // CHECK: @unsafe_borrow(ptr noundef nonnull align 2 %_1)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
-pub fn unsafe_borrow(_: &UnsafeInner) {
-}
+pub fn unsafe_borrow(_: &UnsafeInner) {}
 
 // CHECK: @mutable_unsafe_borrow(ptr noalias noundef align 2 dereferenceable(2) %_1)
 // ... unless this is a mutable borrow, those never alias
 #[no_mangle]
-pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
-}
+pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {}
 
 // CHECK: @mutable_borrow(ptr noalias noundef align 4 dereferenceable(4) %_1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-pub fn mutable_borrow(_: &mut i32) {
-}
+pub fn mutable_borrow(_: &mut i32) {}
 
 // CHECK: noundef align 4 dereferenceable(4) ptr @mutable_borrow_ret()
 #[no_mangle]
 pub fn mutable_borrow_ret() -> &'static mut i32 {
-  loop {}
+    loop {}
 }
 
 #[no_mangle]
@@ -133,53 +127,44 @@ pub fn mutable_borrow_ret() -> &'static mut i32 {
 // This one is *not* `noalias` because it might be self-referential.
 // It is also not `dereferenceable` due to
 // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>.
-pub fn mutable_notunpin_borrow(_: &mut NotUnpin) {
-}
+pub fn mutable_notunpin_borrow(_: &mut NotUnpin) {}
 
 // CHECK: @notunpin_borrow(ptr noalias noundef readonly align 4 dereferenceable(4) %_1)
 // But `&NotUnpin` behaves perfectly normal.
 #[no_mangle]
-pub fn notunpin_borrow(_: &NotUnpin) {
-}
+pub fn notunpin_borrow(_: &NotUnpin) {}
 
 // CHECK: @indirect_struct(ptr noalias nocapture noundef readonly align 4 dereferenceable(32) %_1)
 #[no_mangle]
-pub fn indirect_struct(_: S) {
-}
+pub fn indirect_struct(_: S) {}
 
 // CHECK: @borrowed_struct(ptr noalias noundef readonly align 4 dereferenceable(32) %_1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-pub fn borrowed_struct(_: &S) {
-}
+pub fn borrowed_struct(_: &S) {}
 
 // CHECK: @option_borrow(ptr noalias noundef readonly align 4 dereferenceable_or_null(4) %x)
 #[no_mangle]
-pub fn option_borrow(x: Option<&i32>) {
-}
+pub fn option_borrow(x: Option<&i32>) {}
 
 // CHECK: @option_borrow_mut(ptr noalias noundef align 4 dereferenceable_or_null(4) %x)
 #[no_mangle]
-pub fn option_borrow_mut(x: Option<&mut i32>) {
-}
+pub fn option_borrow_mut(x: Option<&mut i32>) {}
 
 // CHECK: @raw_struct(ptr noundef %_1)
 #[no_mangle]
-pub fn raw_struct(_: *const S) {
-}
+pub fn raw_struct(_: *const S) {}
 
 // CHECK: @raw_option_nonnull_struct(ptr noundef %_1)
 #[no_mangle]
-pub fn raw_option_nonnull_struct(_: Option<NonNull<S>>) {
-}
-
+pub fn raw_option_nonnull_struct(_: Option<NonNull<S>>) {}
 
 // `Box` can get deallocated during execution of the function, so it should
 // not get `dereferenceable`.
 // CHECK: noundef nonnull align 4 ptr @_box(ptr noalias noundef nonnull align 4 %x)
 #[no_mangle]
 pub fn _box(x: Box<i32>) -> Box<i32> {
-  x
+    x
 }
 
 // With a custom allocator, it should *not* have `noalias`. (See
@@ -188,106 +173,93 @@ pub fn _box(x: Box<i32>) -> Box<i32> {
 // CHECK: @_box_custom(ptr noundef nonnull align 4 %x.0, ptr noalias noundef nonnull readonly align 1 %x.1)
 #[no_mangle]
 pub fn _box_custom(x: Box<i32, &std::alloc::Global>) {
-  drop(x)
+    drop(x)
 }
 
 // CHECK: noundef nonnull align 4 ptr @notunpin_box(ptr noundef nonnull align 4 %x)
 #[no_mangle]
 pub fn notunpin_box(x: Box<NotUnpin>) -> Box<NotUnpin> {
-  x
+    x
 }
 
 // CHECK: @struct_return(ptr{{( dead_on_unwind)?}} noalias nocapture noundef{{( writable)?}} sret([32 x i8]) align 4 dereferenceable(32){{( %_0)?}})
 #[no_mangle]
 pub fn struct_return() -> S {
-  S {
-    _field: [0, 0, 0, 0, 0, 0, 0, 0]
-  }
+    S { _field: [0, 0, 0, 0, 0, 0, 0, 0] }
 }
 
 // Hack to get the correct size for the length part in slices
 // CHECK: @helper([[USIZE:i[0-9]+]] noundef %_1)
 #[no_mangle]
-pub fn helper(_: usize) {
-}
+pub fn helper(_: usize) {}
 
 // CHECK: @slice(ptr noalias noundef nonnull readonly align 1 %_1.0, [[USIZE]] noundef %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-pub fn slice(_: &[u8]) {
-}
+pub fn slice(_: &[u8]) {}
 
 // CHECK: @mutable_slice(ptr noalias noundef nonnull align 1 %_1.0, [[USIZE]] noundef %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-pub fn mutable_slice(_: &mut [u8]) {
-}
+pub fn mutable_slice(_: &mut [u8]) {}
 
 // CHECK: @unsafe_slice(ptr noundef nonnull align 2 %_1.0, [[USIZE]] noundef %_1.1)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
-pub fn unsafe_slice(_: &[UnsafeInner]) {
-}
+pub fn unsafe_slice(_: &[UnsafeInner]) {}
 
 // CHECK: @raw_slice(ptr noundef %_1.0, [[USIZE]] noundef %_1.1)
 #[no_mangle]
-pub fn raw_slice(_: *const [u8]) {
-}
+pub fn raw_slice(_: *const [u8]) {}
 
 // CHECK: @str(ptr noalias noundef nonnull readonly align 1 %_1.0, [[USIZE]] noundef %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-pub fn str(_: &[u8]) {
-}
+pub fn str(_: &[u8]) {}
 
 // CHECK: @trait_borrow(ptr noundef nonnull align 1 %_1.0, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}) %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-pub fn trait_borrow(_: &dyn Drop) {
-}
+pub fn trait_borrow(_: &dyn Drop) {}
 
 // CHECK: @option_trait_borrow(ptr noundef align 1 %x.0, ptr %x.1)
 #[no_mangle]
-pub fn option_trait_borrow(x: Option<&dyn Drop>) {
-}
+pub fn option_trait_borrow(x: Option<&dyn Drop>) {}
 
 // CHECK: @option_trait_borrow_mut(ptr noundef align 1 %x.0, ptr %x.1)
 #[no_mangle]
-pub fn option_trait_borrow_mut(x: Option<&mut dyn Drop>) {
-}
+pub fn option_trait_borrow_mut(x: Option<&mut dyn Drop>) {}
 
 // CHECK: @trait_raw(ptr noundef %_1.0, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}) %_1.1)
 #[no_mangle]
-pub fn trait_raw(_: *const dyn Drop) {
-}
+pub fn trait_raw(_: *const dyn Drop) {}
 
 // CHECK: @trait_box(ptr noalias noundef nonnull align 1{{( %0)?}}, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}){{( %1)?}})
 #[no_mangle]
-pub fn trait_box(_: Box<dyn Drop + Unpin>) {
-}
+pub fn trait_box(_: Box<dyn Drop + Unpin>) {}
 
 // CHECK: { ptr, ptr } @trait_option(ptr noalias noundef align 1 %x.0, ptr %x.1)
 #[no_mangle]
 pub fn trait_option(x: Option<Box<dyn Drop + Unpin>>) -> Option<Box<dyn Drop + Unpin>> {
-  x
+    x
 }
 
 // CHECK: { ptr, [[USIZE]] } @return_slice(ptr noalias noundef nonnull readonly align 2 %x.0, [[USIZE]] noundef %x.1)
 #[no_mangle]
 pub fn return_slice(x: &[u16]) -> &[u16] {
-  x
+    x
 }
 
 // CHECK: { i16, i16 } @enum_id_1(i16 noundef %x.0, i16 %x.1)
 #[no_mangle]
 pub fn enum_id_1(x: Option<Result<u16, u16>>) -> Option<Result<u16, u16>> {
-  x
+    x
 }
 
 // CHECK: { i1, i8 } @enum_id_2(i1 noundef zeroext %x.0, i8 %x.1)
 #[no_mangle]
 pub fn enum_id_2(x: Option<u8>) -> Option<u8> {
-  x
+    x
 }
 
 // CHECK: { ptr, {{.+}} } @dyn_star(ptr noundef %x.0, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}) %x.1)
@@ -295,5 +267,5 @@ pub fn enum_id_2(x: Option<u8>) -> Option<u8> {
 // so do like the `trait_box` test and just match on `{{.+}}` for the vtable.
 #[no_mangle]
 pub fn dyn_star(x: dyn* Drop) -> dyn* Drop {
-  x
+    x
 }

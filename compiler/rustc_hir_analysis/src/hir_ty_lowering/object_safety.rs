@@ -1,5 +1,7 @@
 use crate::bounds::Bounds;
-use crate::hir_ty_lowering::{GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds};
+use crate::hir_ty_lowering::{
+    GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds, RegionInferReason,
+};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
@@ -141,9 +143,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // `trait_object_dummy_self`, so check for that.
                         let references_self = match pred.skip_binder().term.unpack() {
                             ty::TermKind::Ty(ty) => ty.walk().any(|arg| arg == dummy_self.into()),
-                            ty::TermKind::Const(c) => {
-                                c.ty().walk().any(|arg| arg == dummy_self.into())
-                            }
+                            // FIXME(associated_const_equality): We should walk the const instead of not doing anything
+                            ty::TermKind::Const(_) => false,
                         };
 
                         // If the projection output contains `Self`, force the user to
@@ -321,30 +322,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // Use explicitly-specified region bound.
         let region_bound = if !lifetime.is_elided() {
-            self.lower_lifetime(lifetime, None)
+            self.lower_lifetime(lifetime, RegionInferReason::ObjectLifetimeDefault)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
                 if tcx.named_bound_var(lifetime.hir_id).is_some() {
-                    self.lower_lifetime(lifetime, None)
+                    self.lower_lifetime(lifetime, RegionInferReason::ObjectLifetimeDefault)
                 } else {
-                    self.re_infer(None, span).unwrap_or_else(|| {
-                        let err = struct_span_code_err!(
-                            tcx.dcx(),
-                            span,
-                            E0228,
-                            "the lifetime bound for this object type cannot be deduced \
-                             from context; please supply an explicit bound"
-                        );
-                        let e = if borrowed {
-                            // We will have already emitted an error E0106 complaining about a
-                            // missing named lifetime in `&dyn Trait`, so we elide this one.
-                            err.delay_as_bug()
+                    self.re_infer(
+                        span,
+                        if borrowed {
+                            RegionInferReason::ObjectLifetimeDefault
                         } else {
-                            err.emit()
-                        };
-                        self.set_tainted_by_errors(e);
-                        ty::Region::new_error(tcx, e)
-                    })
+                            RegionInferReason::BorrowedObjectLifetimeDefault
+                        },
+                    )
                 }
             })
         };

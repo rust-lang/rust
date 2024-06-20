@@ -22,10 +22,6 @@ use rustc_span::def_id::DefId;
 
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::util::{self, closure_trait_ref_and_return_type};
-use crate::traits::vtable::{
-    count_own_vtable_entries, prepare_vtable_segments, vtable_trait_first_method_offset,
-    VtblSegment,
-};
 use crate::traits::{
     ImplDerivedCause, ImplSource, ImplSourceUserDefinedData, Normalized, Obligation,
     ObligationCause, PolyTraitObligation, PredicateObligation, Selection, SelectionError,
@@ -258,16 +254,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Vec<PredicateObligation<'tcx>> {
         debug!(?obligation, ?has_nested, "confirm_builtin_candidate");
 
-        let lang_items = self.tcx().lang_items();
+        let tcx = self.tcx();
         let obligations = if has_nested {
             let trait_def = obligation.predicate.def_id();
-            let conditions = if Some(trait_def) == lang_items.sized_trait() {
+            let conditions = if tcx.is_lang_item(trait_def, LangItem::Sized) {
                 self.sized_conditions(obligation)
-            } else if Some(trait_def) == lang_items.copy_trait() {
+            } else if tcx.is_lang_item(trait_def, LangItem::Copy) {
                 self.copy_clone_conditions(obligation)
-            } else if Some(trait_def) == lang_items.clone_trait() {
+            } else if tcx.is_lang_item(trait_def, LangItem::Clone) {
                 self.copy_clone_conditions(obligation)
-            } else if Some(trait_def) == lang_items.fused_iterator_trait() {
+            } else if tcx.is_lang_item(trait_def, LangItem::FusedIterator) {
                 self.fused_iterator_conditions(obligation)
             } else {
                 bug!("unexpected builtin trait {:?}", trait_def)
@@ -338,7 +334,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let make_freeze_obl = |ty| {
                         let trait_ref = ty::TraitRef::new(
                             tcx,
-                            tcx.lang_items().freeze_trait().unwrap(),
+                            tcx.require_lang_item(LangItem::Freeze, None),
                             [ty::GenericArg::from(ty)],
                         );
                         Obligation::with_depth(
@@ -619,7 +615,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // higher-ranked things.
             // Prevent, e.g., `dyn Iterator<Item = str>`.
             for bound in self.tcx().item_bounds(assoc_type).transpose_iter() {
-                let arg_bound = if defs.count() == 0 {
+                let arg_bound = if defs.is_empty() {
                     bound.instantiate(tcx, trait_predicate.trait_ref.args)
                 } else {
                     let mut args = smallvec::SmallVec::with_capacity(defs.count());
@@ -665,9 +661,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 tcx,
                                 ty::INNERMOST,
                                 ty::BoundVar::from_usize(bound_vars.len() - 1),
-                                tcx.type_of(param.def_id)
-                                    .no_bound_vars()
-                                    .expect("const parameter types cannot be generic"),
                             )
                             .into()
                         }
@@ -692,13 +685,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?nested, "object nested obligations");
 
-        let vtable_base = vtable_trait_first_method_offset(
-            tcx,
-            unnormalized_upcast_trait_ref,
-            ty::Binder::dummy(object_trait_ref),
-        );
-
-        Ok(ImplSource::Builtin(BuiltinImplSource::Object { vtable_base: vtable_base }, nested))
+        Ok(ImplSource::Builtin(BuiltinImplSource::Object(index), nested))
     }
 
     fn confirm_fn_pointer_candidate(
@@ -1128,36 +1115,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             )?
             .expect("did not expect ambiguity during confirmation");
 
-        let vtable_segment_callback = {
-            let mut vptr_offset = 0;
-            move |segment| {
-                match segment {
-                    VtblSegment::MetadataDSA => {
-                        vptr_offset += TyCtxt::COMMON_VTABLE_ENTRIES.len();
-                    }
-                    VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                        vptr_offset += count_own_vtable_entries(tcx, trait_ref);
-                        if trait_ref == unnormalized_upcast_principal {
-                            if emit_vptr {
-                                return ControlFlow::Break(Some(vptr_offset));
-                            } else {
-                                return ControlFlow::Break(None);
-                            }
-                        }
-
-                        if emit_vptr {
-                            vptr_offset += 1;
-                        }
-                    }
-                }
-                ControlFlow::Continue(())
-            }
-        };
-
-        let vtable_vptr_slot =
-            prepare_vtable_segments(tcx, source_principal, vtable_segment_callback).unwrap();
-
-        Ok(ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { vtable_vptr_slot }, nested))
+        Ok(ImplSource::Builtin(BuiltinImplSource::TraitUpcasting, nested))
     }
 
     fn confirm_builtin_unsize_candidate(
@@ -1222,7 +1180,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `T` -> `Trait`
             (_, &ty::Dynamic(data, r, ty::Dyn)) => {
                 let mut object_dids = data.auto_traits().chain(data.principal_def_id());
-                if let Some(did) = object_dids.find(|did| !tcx.check_is_object_safe(*did)) {
+                if let Some(did) = object_dids.find(|did| !tcx.is_object_safe(*did)) {
                     return Err(TraitNotObjectSafe(did));
                 }
 
@@ -1447,7 +1405,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Foreign(_) => {}
 
                 // `ManuallyDrop` is trivially drop
-                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().manually_drop() => {}
+                ty::Adt(def, _) if def.is_manually_drop() => {}
 
                 // These types are built-in, so we can fast-track by registering
                 // nested predicates for their constituent type(s)

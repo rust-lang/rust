@@ -65,6 +65,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::CrateDepKind;
 use rustc_session::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
+use tracing::info;
 
 pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
     tcx.crate_types()

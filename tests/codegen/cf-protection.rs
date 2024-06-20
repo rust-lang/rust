@@ -13,12 +13,11 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang="sized"]
-trait Sized { }
+#[lang = "sized"]
+trait Sized {}
 
 // A basic test function.
-pub fn test() {
-}
+pub fn test() {}
 
 // undefined-NOT: !"cf-protection-branch"
 // undefined-NOT: !"cf-protection-return"

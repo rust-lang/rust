@@ -332,7 +332,6 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
             "tests/mir-opt",
             "tests/pretty",
             "tests/run-make",
-            "tests/run-make-fulldeps",
             "tests/run-pass-valgrind",
             "tests/rustdoc",
             "tests/rustdoc-gui",
@@ -737,7 +736,6 @@ impl<'a> Builder<'a> {
                 tool::Rls,
                 tool::RustAnalyzer,
                 tool::RustAnalyzerProcMacroSrv,
-                tool::RustDemangler,
                 tool::Rustdoc,
                 tool::Clippy,
                 tool::CargoClippy,
@@ -775,7 +773,6 @@ impl<'a> Builder<'a> {
                 clippy::RemoteTestServer,
                 clippy::Rls,
                 clippy::RustAnalyzer,
-                clippy::RustDemangler,
                 clippy::Rustdoc,
                 clippy::Rustfmt,
                 clippy::RustInstaller,
@@ -828,7 +825,6 @@ impl<'a> Builder<'a> {
                 test::RustAnalyzer,
                 test::ErrorIndex,
                 test::Distcheck,
-                test::RunMakeFullDeps,
                 test::Nomicon,
                 test::Reference,
                 test::RustdocBook,
@@ -844,7 +840,6 @@ impl<'a> Builder<'a> {
                 test::Miri,
                 test::CargoMiri,
                 test::Clippy,
-                test::RustDemangler,
                 test::CompiletestTest,
                 test::CrateRunMakeSupport,
                 test::RustdocJSStd,
@@ -888,6 +883,7 @@ impl<'a> Builder<'a> {
                 doc::Tidy,
                 doc::Bootstrap,
                 doc::Releases,
+                doc::RunMakeSupport,
             ),
             Kind::Dist => describe!(
                 dist::Docs,
@@ -904,7 +900,6 @@ impl<'a> Builder<'a> {
                 dist::Rls,
                 dist::RustAnalyzer,
                 dist::Rustfmt,
-                dist::RustDemangler,
                 dist::Clippy,
                 dist::Miri,
                 dist::LlvmTools,
@@ -931,7 +926,6 @@ impl<'a> Builder<'a> {
                 install::Cargo,
                 install::RustAnalyzer,
                 install::Rustfmt,
-                install::RustDemangler,
                 install::Clippy,
                 install::Miri,
                 install::LlvmTools,
@@ -1044,7 +1038,8 @@ impl<'a> Builder<'a> {
             // custom build of rustdoc maybe? link to the latest stable docs just in case
             _ => "stable",
         };
-        "https://doc.rust-lang.org/".to_owned() + channel
+
+        format!("https://doc.rust-lang.org/{channel}")
     }
 
     fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
@@ -1555,7 +1550,6 @@ impl<'a> Builder<'a> {
         // features but cargo isn't involved in the #[path] process and so cannot pass the
         // complete list of features, so for that reason we don't enable checking of
         // features for std crates.
-        cargo.arg("-Zcheck-cfg");
         if mode == Mode::Std {
             rustflags.arg("--check-cfg=cfg(feature,values(any()))");
         }

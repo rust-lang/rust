@@ -1,34 +1,15 @@
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
-  --> $DIR/issue-67830.rs:21:62
+  --> $DIR/issue-67830.rs:20:64
    |
-LL | fn test() -> impl for<'a> MyFn<&'a A, Output=impl Iterator + 'a> {
-   |                                                              ^^
+LL | fn test() -> impl for<'a> MyFn<&'a A, Output = impl Iterator + 'a> {
+   |                                                                ^^
    |
 note: lifetime declared here
-  --> $DIR/issue-67830.rs:21:23
+  --> $DIR/issue-67830.rs:20:23
    |
-LL | fn test() -> impl for<'a> MyFn<&'a A, Output=impl Iterator + 'a> {
+LL | fn test() -> impl for<'a> MyFn<&'a A, Output = impl Iterator + 'a> {
    |                       ^^
 
-error: implementation of `FnOnce` is not general enough
-  --> $DIR/issue-67830.rs:23:5
-   |
-LL |     Wrap(|a| Some(a).into_iter())
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
-   |
-   = note: closure with signature `fn(&'2 A) -> std::option::IntoIter<&A>` must implement `FnOnce<(&'1 A,)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 A,)>`, for some specific lifetime `'2`
-
-error: implementation of `FnOnce` is not general enough
-  --> $DIR/issue-67830.rs:23:5
-   |
-LL |     Wrap(|a| Some(a).into_iter())
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
-   |
-   = note: closure with signature `fn(&'2 A) -> std::option::IntoIter<&A>` must implement `FnOnce<(&'1 A,)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 A,)>`, for some specific lifetime `'2`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 3 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0657`.

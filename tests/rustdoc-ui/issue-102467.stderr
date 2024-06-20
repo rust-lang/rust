@@ -1,22 +1,22 @@
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/issue-102467.rs:7:17
    |
 LL |     type A: S<C<X = 0i32> = 34>;
-   |                 ^^^^^^^^ associated type not allowed here
+   |                 ^^^^^^^^ associated item constraint not allowed here
    |
-help: consider removing this type binding
+help: consider removing this associated item binding
    |
 LL |     type A: S<C<X = 0i32> = 34>;
    |                ~~~~~~~~~~
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/issue-102467.rs:7:17
    |
 LL |     type A: S<C<X = 0i32> = 34>;
-   |                 ^^^^^^^^ associated type not allowed here
+   |                 ^^^^^^^^ associated item constraint not allowed here
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider removing this type binding
+help: consider removing this associated item binding
    |
 LL |     type A: S<C<X = 0i32> = 34>;
    |                ~~~~~~~~~~

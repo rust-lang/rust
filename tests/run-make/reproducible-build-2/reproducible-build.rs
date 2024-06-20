@@ -18,6 +18,8 @@
 // - Trait object shims
 // - Fn Pointer shims
 
+// ignore-tidy-linelength
+
 #![allow(dead_code, warnings)]
 
 extern crate reproducible_build_aux;
@@ -40,7 +42,7 @@ impl<T1, T2> Drop for Struct<T1, T2> {
 pub enum Enum {
     Variant1,
     Variant2(u32),
-    Variant3 { x: u32 }
+    Variant3 { x: u32 },
 }
 
 struct TupleStruct(i8, i16, i32, i64);
@@ -67,19 +69,14 @@ fn main() {
     generic_fn::<char, Struct<u32, u64>>();
     generic_fn::<Struct<u64, u32>, reproducible_build_aux::Struct<u32, u64>>();
 
-    let dropped = Struct {
-        x: "",
-        y: 'a',
-    };
+    let dropped = Struct { x: "", y: 'a' };
 
     let _ = Enum::Variant1;
     let _ = Enum::Variant2(0);
     let _ = Enum::Variant3 { x: 0 };
     let _ = TupleStruct(1, 2, 3, 4);
 
-    let closure  = |x| {
-        x + 1i32
-    };
+    let closure = |x| x + 1i32;
 
     fn inner<F: Fn(i32) -> i32>(f: F) -> i32 {
         f(STATIC)
@@ -94,13 +91,13 @@ fn main() {
         f(0);
     }
 
-    with_fn_once_adapter(|_:i32| { });
+    with_fn_once_adapter(|_: i32| {});
 
     reproducible_build_aux::regular_fn(STATIC);
     reproducible_build_aux::generic_fn::<u32, char>();
     reproducible_build_aux::generic_fn::<char, Struct<u32, u64>>();
-    reproducible_build_aux::generic_fn::<Struct<u64, u32>,
-                                         reproducible_build_aux::Struct<u32, u64>>();
+    reproducible_build_aux::generic_fn::<Struct<u64, u32>, reproducible_build_aux::Struct<u32, u64>>(
+    );
 
     let _ = reproducible_build_aux::Enum::Variant1;
     let _ = reproducible_build_aux::Enum::Variant2(0);

@@ -1,5 +1,5 @@
 #[link(name = "exporter", kind = "raw-dylib")]
-extern {
+extern "C" {
     #[link_ordinal(13)]
     fn imported_function();
     #[link_ordinal(5)]

@@ -11,7 +11,6 @@ fn main() {
 
     let _ = vec![1, 2, 3].into_iter();
     let _ = (&vec![1, 2, 3]).into_iter(); //~ ERROR: equivalent to `.iter()
-    let _ = vec![1, 2, 3].into_boxed_slice().into_iter(); //~ ERROR: equivalent to `.iter()
     let _ = std::rc::Rc::from(&[X][..]).into_iter(); //~ ERROR: equivalent to `.iter()
     let _ = std::sync::Arc::from(&[X][..]).into_iter(); //~ ERROR: equivalent to `.iter()
 

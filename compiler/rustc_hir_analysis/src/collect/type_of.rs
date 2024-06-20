@@ -220,9 +220,10 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                     .position(|arg| arg.hir_id() == hir_id)
                     .map(|index| (index, seg))
                     .or_else(|| {
-                        args.bindings
+                        args.constraints
                             .iter()
-                            .filter_map(TypeBinding::opt_const)
+                            .copied()
+                            .filter_map(AssocItemConstraint::ct)
                             .position(|ct| ct.hir_id == hir_id)
                             .map(|idx| (idx, seg))
                     })
@@ -309,7 +310,7 @@ fn get_path_containing_arg_in_pat<'hir>(
     arg_path
 }
 
-pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty<'_>> {
+pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, Ty<'_>> {
     use rustc_hir::*;
     use rustc_middle::ty::Ty;
 
@@ -463,7 +464,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            ForeignItemKind::Static(t, _) => icx.lower_ty(t),
+            ForeignItemKind::Static(t, _, _) => icx.lower_ty(t),
             ForeignItemKind::Type => Ty::new_foreign(tcx, def_id.to_def_id()),
         },
 
@@ -502,7 +503,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
             bug!("unexpected sort of node in type_of(): {:?}", x);
         }
     };
-    if let Err(e) = icx.check_tainted_by_errors() {
+    if let Err(e) = icx.check_tainted_by_errors()
+        && !output.references_error()
+    {
         ty::EarlyBinder::bind(Ty::new_error(tcx, e))
     } else {
         ty::EarlyBinder::bind(output)
@@ -512,7 +515,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
 pub(super) fn type_of_opaque(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Result<ty::EarlyBinder<Ty<'_>>, CyclePlaceholder> {
+) -> Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
     if let Some(def_id) = def_id.as_local() {
         use rustc_hir::*;
 

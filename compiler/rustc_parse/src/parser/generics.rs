@@ -62,7 +62,7 @@ impl<'a> Parser<'a> {
                 let snapshot = self.create_snapshot_for_diagnostic();
                 match self.parse_ty() {
                     Ok(p) => {
-                        if let TyKind::ImplTrait(_, bounds, None) = &p.kind {
+                        if let TyKind::ImplTrait(_, bounds) = &p.kind {
                             let span = impl_span.to(self.token.span.shrink_to_lo());
                             let mut err = self.dcx().struct_span_err(
                                 span,

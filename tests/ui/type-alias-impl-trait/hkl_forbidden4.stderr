@@ -1,3 +1,32 @@
+error: item does not constrain `FutNothing::{opaque#0}`, but has it in its signature
+  --> $DIR/hkl_forbidden4.rs:19:10
+   |
+LL | async fn call<F>(_f: F)
+   |          ^^^^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/hkl_forbidden4.rs:10:23
+   |
+LL | type FutNothing<'a> = impl 'a + Future<Output = ()>;
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item does not constrain `FutNothing::{opaque#0}`, but has it in its signature
+  --> $DIR/hkl_forbidden4.rs:23:1
+   |
+LL | / {
+LL | |
+LL | |
+LL | | }
+   | |_^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/hkl_forbidden4.rs:10:23
+   |
+LL | type FutNothing<'a> = impl 'a + Future<Output = ()>;
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: unconstrained opaque type
   --> $DIR/hkl_forbidden4.rs:10:23
    |
@@ -16,12 +45,13 @@ LL |     call(operation).await
    |     ^^^^^^^^^^^^^^^
 
 error[E0792]: expected generic lifetime parameter, found `'any`
-  --> $DIR/hkl_forbidden4.rs:22:1
+  --> $DIR/hkl_forbidden4.rs:23:1
    |
 LL |   type FutNothing<'a> = impl 'a + Future<Output = ()>;
    |                   -- this generic parameter must be used with a generic lifetime parameter
 ...
 LL | / {
+LL | |
 LL | |
 LL | | }
    | |_^
@@ -38,6 +68,6 @@ note: previous use here
 LL |     call(operation).await
    |     ^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0792`.

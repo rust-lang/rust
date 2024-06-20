@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/nested-rpit-hrtb.rs:57:77
+  --> $DIR/nested-rpit-hrtb.rs:56:77
    |
 LL | fn two_htrb_outlives() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> {}
    |                                                                             ^^ undeclared lifetime
@@ -15,7 +15,7 @@ LL | fn two_htrb_outlives<'b>() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Siz
    |                     ++++
 
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/nested-rpit-hrtb.rs:65:82
+  --> $DIR/nested-rpit-hrtb.rs:64:82
    |
 LL | fn two_htrb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}
    |                                                                                  ^^ undeclared lifetime
@@ -65,29 +65,20 @@ note: lifetime declared here
 LL | fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
    |                                         ^^
 
-error: implementation of `Bar` is not general enough
-  --> $DIR/nested-rpit-hrtb.rs:32:78
-   |
-LL | fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
-   |                                                                              ^^ implementation of `Bar` is not general enough
-   |
-   = note: `()` must implement `Bar<'a>`
-   = note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
-
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
-  --> $DIR/nested-rpit-hrtb.rs:36:73
+  --> $DIR/nested-rpit-hrtb.rs:35:73
    |
 LL | fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
    |                                                                         ^^
    |
 note: lifetime declared here
-  --> $DIR/nested-rpit-hrtb.rs:36:44
+  --> $DIR/nested-rpit-hrtb.rs:35:44
    |
 LL | fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
    |                                            ^^
 
 error[E0277]: the trait bound `for<'a> &'a (): Qux<'b>` is not satisfied
-  --> $DIR/nested-rpit-hrtb.rs:46:79
+  --> $DIR/nested-rpit-hrtb.rs:45:79
    |
 LL | fn one_hrtb_mention_fn_trait_param_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Qux<'b>> {}
    |                                                                               ^^^^^^^^^^^^ the trait `for<'a> Qux<'b>` is not implemented for `&'a ()`
@@ -96,7 +87,7 @@ LL | fn one_hrtb_mention_fn_trait_param_uses<'b>() -> impl for<'a> Bar<'a, Assoc
    = help: for that trait implementation, expected `()`, found `&'a ()`
 
 error: implementation of `Bar` is not general enough
-  --> $DIR/nested-rpit-hrtb.rs:50:93
+  --> $DIR/nested-rpit-hrtb.rs:49:93
    |
 LL | fn one_hrtb_mention_fn_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'b> {}
    |                                                                                             ^^ implementation of `Bar` is not general enough
@@ -105,7 +96,7 @@ LL | fn one_hrtb_mention_fn_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = 
    = note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
 
 error[E0277]: the trait bound `for<'a, 'b> &'a (): Qux<'b>` is not satisfied
-  --> $DIR/nested-rpit-hrtb.rs:61:64
+  --> $DIR/nested-rpit-hrtb.rs:60:64
    |
 LL | fn two_htrb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Qux<'b>> {}
    |                                                                ^^^^^^^^^^^^^^^^^^^^ the trait `for<'a, 'b> Qux<'b>` is not implemented for `&'a ()`
@@ -113,16 +104,7 @@ LL | fn two_htrb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b>
    = help: the trait `Qux<'_>` is implemented for `()`
    = help: for that trait implementation, expected `()`, found `&'a ()`
 
-error: implementation of `Bar` is not general enough
-  --> $DIR/nested-rpit-hrtb.rs:65:86
-   |
-LL | fn two_htrb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}
-   |                                                                                      ^^ implementation of `Bar` is not general enough
-   |
-   = note: `()` must implement `Bar<'a>`
-   = note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
-
-error: aborting due to 11 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0261, E0277, E0657.
 For more information about an error, try `rustc --explain E0261`.

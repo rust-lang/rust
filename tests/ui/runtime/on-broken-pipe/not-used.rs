@@ -1,5 +1,6 @@
 //@ run-pass
 //@ aux-build:sigpipe-utils.rs
+//@ only-unix because SIGPIPE is a unix thing
 
 fn main() {
     extern crate sigpipe_utils;

@@ -17,6 +17,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
     SuggestionStyle,
@@ -31,7 +32,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use rustc_middle::ty;
 
@@ -507,7 +508,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 let ast::AngleBracketedArg::Constraint(constraint) = param else {
                     continue;
                 };
-                let ast::AssocConstraintKind::Bound { bounds } = &constraint.kind else {
+                let ast::AssocItemConstraintKind::Bound { bounds } = &constraint.kind else {
                     continue;
                 };
                 for bound in bounds {
@@ -828,7 +829,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         auto-traits; structs and enums can't be bound in that way",
                 );
                 if bounds.iter().all(|bound| match bound {
-                    ast::GenericBound::Outlives(_) => true,
+                    ast::GenericBound::Outlives(_) | ast::GenericBound::Use(..) => true,
                     ast::GenericBound::Trait(tr, _) => tr.span == base_error.span,
                 }) {
                     let mut sugg = vec![];
@@ -1020,12 +1021,14 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             },
         );
         let is_assoc_fn = self.self_type_is_available();
+        let self_from_macro = "a `self` parameter, but a macro invocation can only \
+                               access identifiers it receives from parameters";
         if let Some((fn_kind, span)) = &self.diag_metadata.current_function {
             // The current function has a `self` parameter, but we were unable to resolve
             // a reference to `self`. This can only happen if the `self` identifier we
             // are resolving came from a different hygiene context.
             if fn_kind.decl().inputs.get(0).is_some_and(|p| p.is_self()) {
-                err.span_label(*span, "this function has a `self` parameter, but a macro invocation can only access identifiers it receives from parameters");
+                err.span_label(*span, format!("this function has {self_from_macro}"));
             } else {
                 let doesnt = if is_assoc_fn {
                     let (span, sugg) = fn_kind
@@ -1067,14 +1070,18 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
             }
         } else if let Some(item_kind) = self.diag_metadata.current_item {
-            err.span_label(
-                item_kind.ident.span,
-                format!(
-                    "`self` not allowed in {} {}",
-                    item_kind.kind.article(),
-                    item_kind.kind.descr()
-                ),
-            );
+            if matches!(item_kind.kind, ItemKind::Delegation(..)) {
+                err.span_label(item_kind.span, format!("delegation supports {self_from_macro}"));
+            } else {
+                err.span_label(
+                    item_kind.ident.span,
+                    format!(
+                        "`self` not allowed in {} {}",
+                        item_kind.kind.article(),
+                        item_kind.kind.descr()
+                    ),
+                );
+            }
         }
         true
     }
@@ -1102,14 +1109,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 Side::Start => (segment.ident.span.between(range.span), " @ ".into()),
                 Side::End => (range.span.to(segment.ident.span), format!("{} @ ..", segment.ident)),
             };
-            err.subdiagnostic(
-                self.r.dcx(),
-                errors::UnexpectedResUseAtOpInSlicePatWithRangeSugg {
-                    span,
-                    ident: segment.ident,
-                    snippet,
-                },
-            );
+            err.subdiagnostic(errors::UnexpectedResUseAtOpInSlicePatWithRangeSugg {
+                span,
+                ident: segment.ident,
+                snippet,
+            });
         }
 
         enum Side {
@@ -1201,13 +1205,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         });
 
         if let Some(param) = param {
-            err.subdiagnostic(
-                self.r.dcx(),
-                errors::UnexpectedResChangeTyToConstParamSugg {
-                    span: param.shrink_to_lo(),
-                    applicability,
-                },
-            );
+            err.subdiagnostic(errors::UnexpectedResChangeTyToConstParamSugg {
+                span: param.shrink_to_lo(),
+                applicability,
+            });
         }
     }
 
@@ -2040,8 +2041,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn { called },
                         ast::AssocItemKind::Type(..) => AssocSuggestion::AssocType,
                         ast::AssocItemKind::Delegation(..)
-                            if self.r.delegation_fn_sigs[&self.r.local_def_id(assoc_item.id)]
-                                .has_self =>
+                            if self
+                                .r
+                                .delegation_fn_sigs
+                                .get(&self.r.local_def_id(assoc_item.id))
+                                .map_or(false, |sig| sig.has_self) =>
                         {
                             AssocSuggestion::MethodWithSelf { called }
                         }
@@ -2651,15 +2655,15 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     let deletion_span =
                         if param.bounds.is_empty() { deletion_span() } else { None };
 
-                    self.r.lint_buffer.buffer_lint_with_diagnostic(
+                    self.r.lint_buffer.buffer_lint(
                         lint::builtin::SINGLE_USE_LIFETIMES,
                         param.id,
                         param.ident.span,
-                        format!("lifetime parameter `{}` only used once", param.ident),
                         lint::BuiltinLintDiag::SingleUseLifetime {
                             param_span: param.ident.span,
                             use_span: Some((use_span, elidable)),
                             deletion_span,
+                            ident: param.ident,
                         },
                     );
                 }
@@ -2669,15 +2673,15 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
                     // if the lifetime originates from expanded code, we won't be able to remove it #104432
                     if deletion_span.is_some_and(|sp| !sp.in_derive_expansion()) {
-                        self.r.lint_buffer.buffer_lint_with_diagnostic(
+                        self.r.lint_buffer.buffer_lint(
                             lint::builtin::UNUSED_LIFETIMES,
                             param.id,
                             param.ident.span,
-                            format!("lifetime parameter `{}` never used", param.ident),
                             lint::BuiltinLintDiag::SingleUseLifetime {
                                 param_span: param.ident.span,
                                 use_span: None,
                                 deletion_span,
+                                ident: param.ident,
                             },
                         );
                     }
@@ -2714,8 +2718,17 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         self.suggest_introducing_lifetime(
             &mut err,
             Some(lifetime_ref.ident.name.as_str()),
-            |err, _, span, message, suggestion| {
-                err.span_suggestion(span, message, suggestion, Applicability::MaybeIncorrect);
+            |err, _, span, message, suggestion, span_suggs| {
+                err.multipart_suggestion_with_style(
+                    message,
+                    std::iter::once((span, suggestion)).chain(span_suggs.clone()).collect(),
+                    Applicability::MaybeIncorrect,
+                    if span_suggs.is_empty() {
+                        SuggestionStyle::ShowCode
+                    } else {
+                        SuggestionStyle::ShowAlways
+                    },
+                );
                 true
             },
         );
@@ -2726,13 +2739,20 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         name: Option<&str>,
-        suggest: impl Fn(&mut Diag<'_>, bool, Span, Cow<'static, str>, String) -> bool,
+        suggest: impl Fn(
+            &mut Diag<'_>,
+            bool,
+            Span,
+            Cow<'static, str>,
+            String,
+            Vec<(Span, String)>,
+        ) -> bool,
     ) {
         let mut suggest_note = true;
         for rib in self.lifetime_ribs.iter().rev() {
             let mut should_continue = true;
             match rib.kind {
-                LifetimeRibKind::Generics { binder: _, span, kind } => {
+                LifetimeRibKind::Generics { binder, span, kind } => {
                     // Avoid suggesting placing lifetime parameters on constant items unless the relevant
                     // feature is enabled. Suggest the parent item as a possible location if applicable.
                     if let LifetimeBinderKind::ConstItem = kind
@@ -2761,11 +2781,53 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             | LifetimeBinderKind::PolyTrait
                             | LifetimeBinderKind::WhereBound
                     );
+
+                    let mut rm_inner_binders: FxIndexSet<Span> = Default::default();
                     let (span, sugg) = if span.is_empty() {
+                        let mut binder_idents: FxIndexSet<Ident> = Default::default();
+                        binder_idents.insert(Ident::from_str(name.unwrap_or("'a")));
+
+                        // We need to special case binders in the following situation:
+                        // Change `T: for<'a> Trait<T> + 'b` to `for<'a, 'b> T: Trait<T> + 'b`
+                        // T: for<'a> Trait<T> + 'b
+                        //    ^^^^^^^  remove existing inner binder `for<'a>`
+                        // for<'a, 'b> T: Trait<T> + 'b
+                        // ^^^^^^^^^^^  suggest outer binder `for<'a, 'b>`
+                        if let LifetimeBinderKind::WhereBound = kind
+                            && let Some(ast::WherePredicate::BoundPredicate(
+                                ast::WhereBoundPredicate { bounded_ty, bounds, .. },
+                            )) = self.diag_metadata.current_where_predicate
+                            && bounded_ty.id == binder
+                        {
+                            for bound in bounds {
+                                if let ast::GenericBound::Trait(poly_trait_ref, _) = bound
+                                    && let span = poly_trait_ref
+                                        .span
+                                        .with_hi(poly_trait_ref.trait_ref.path.span.lo())
+                                    && !span.is_empty()
+                                {
+                                    rm_inner_binders.insert(span);
+                                    poly_trait_ref.bound_generic_params.iter().for_each(|v| {
+                                        binder_idents.insert(v.ident);
+                                    });
+                                }
+                            }
+                        }
+
+                        let binders_sugg = binder_idents.into_iter().enumerate().fold(
+                            "".to_string(),
+                            |mut binders, (i, x)| {
+                                if i != 0 {
+                                    binders += ", ";
+                                }
+                                binders += x.as_str();
+                                binders
+                            },
+                        );
                         let sugg = format!(
                             "{}<{}>{}",
                             if higher_ranked { "for" } else { "" },
-                            name.unwrap_or("'a"),
+                            binders_sugg,
                             if higher_ranked { " " } else { "" },
                         );
                         (span, sugg)
@@ -2780,13 +2842,28 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         let sugg = format!("{}, ", name.unwrap_or("'a"));
                         (span, sugg)
                     };
+
                     if higher_ranked {
                         let message = Cow::from(format!(
                             "consider making the {} lifetime-generic with a new `{}` lifetime",
                             kind.descr(),
                             name.unwrap_or("'a"),
                         ));
-                        should_continue = suggest(err, true, span, message, sugg);
+                        should_continue = suggest(
+                            err,
+                            true,
+                            span,
+                            message,
+                            sugg,
+                            if !rm_inner_binders.is_empty() {
+                                rm_inner_binders
+                                    .into_iter()
+                                    .map(|v| (v, "".to_string()))
+                                    .collect::<Vec<_>>()
+                            } else {
+                                vec![]
+                            },
+                        );
                         err.note_once(
                             "for more information on higher-ranked polymorphism, visit \
                              https://doc.rust-lang.org/nomicon/hrtb.html",
@@ -2794,10 +2871,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     } else if let Some(name) = name {
                         let message =
                             Cow::from(format!("consider introducing lifetime `{name}` here"));
-                        should_continue = suggest(err, false, span, message, sugg);
+                        should_continue = suggest(err, false, span, message, sugg, vec![]);
                     } else {
                         let message = Cow::from("consider introducing a named lifetime parameter");
-                        should_continue = suggest(err, false, span, message, sugg);
+                        should_continue = suggest(err, false, span, message, sugg, vec![]);
                     }
                 }
                 LifetimeRibKind::Item | LifetimeRibKind::ConstParamTy => break,
@@ -3033,11 +3110,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 self.suggest_introducing_lifetime(
                     err,
                     None,
-                    |err, higher_ranked, span, message, intro_sugg| {
+                    |err, higher_ranked, span, message, intro_sugg, _| {
                         err.multipart_suggestion_verbose(
                             message,
                             std::iter::once((span, intro_sugg))
-                                .chain(spans_suggs.iter().cloned())
+                                .chain(spans_suggs.clone())
                                 .collect(),
                             Applicability::MaybeIncorrect,
                         );
@@ -3127,7 +3204,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 .inputs
                                 .iter()
                                 .filter_map(|param| match &param.ty.kind {
-                                    TyKind::ImplTrait(_, bounds, _) => Some(bounds),
+                                    TyKind::ImplTrait(_, bounds) => Some(bounds),
                                     _ => None,
                                 })
                                 .flat_map(|bounds| bounds.into_iter())
@@ -3161,11 +3238,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             self.suggest_introducing_lifetime(
                                 err,
                                 None,
-                                |err, higher_ranked, span, message, intro_sugg| {
+                                |err, higher_ranked, span, message, intro_sugg, _| {
                                     err.multipart_suggestion_verbose(
                                         message,
                                         std::iter::once((span, intro_sugg))
-                                            .chain(spans_suggs.iter().cloned())
+                                            .chain(spans_suggs.clone())
                                             .collect(),
                                         Applicability::MaybeIncorrect,
                                     );
@@ -3309,7 +3386,6 @@ fn mk_where_bound_predicate(
     poly_trait_ref: &ast::PolyTraitRef,
     ty: &Ty,
 ) -> Option<ast::WhereBoundPredicate> {
-    use rustc_span::DUMMY_SP;
     let modified_segments = {
         let mut segments = path.segments.clone();
         let [preceding @ .., second_last, last] = segments.as_mut_slice() else {
@@ -3317,11 +3393,11 @@ fn mk_where_bound_predicate(
         };
         let mut segments = ThinVec::from(preceding);
 
-        let added_constraint = ast::AngleBracketedArg::Constraint(ast::AssocConstraint {
+        let added_constraint = ast::AngleBracketedArg::Constraint(ast::AssocItemConstraint {
             id: DUMMY_NODE_ID,
             ident: last.ident,
             gen_args: None,
-            kind: ast::AssocConstraintKind::Equality {
+            kind: ast::AssocItemConstraintKind::Equality {
                 term: ast::Term::Ty(ast::ptr::P(ast::Ty {
                     kind: ast::TyKind::Path(None, poly_trait_ref.trait_ref.path.clone()),
                     id: DUMMY_NODE_ID,

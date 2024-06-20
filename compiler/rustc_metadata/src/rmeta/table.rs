@@ -2,6 +2,7 @@ use crate::rmeta::*;
 
 use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
+use tracing::trace;
 
 pub(super) trait IsDefault: Default {
     fn is_default(&self) -> bool;
@@ -155,10 +156,14 @@ fixed_size_enum! {
         ( Impl { of_trait: false }                 )
         ( Impl { of_trait: true }                  )
         ( Closure                                  )
-        ( Static { mutability: ast::Mutability::Not, nested: false } )
-        ( Static { mutability: ast::Mutability::Mut, nested: false } )
-        ( Static { mutability: ast::Mutability::Not, nested: true } )
-        ( Static { mutability: ast::Mutability::Mut, nested: true } )
+        ( Static { safety: hir::Safety::Unsafe, mutability: ast::Mutability::Not, nested: false } )
+        ( Static { safety: hir::Safety::Safe, mutability: ast::Mutability::Not, nested: false } )
+        ( Static { safety: hir::Safety::Unsafe, mutability: ast::Mutability::Mut, nested: false } )
+        ( Static { safety: hir::Safety::Safe, mutability: ast::Mutability::Mut, nested: false } )
+        ( Static { safety: hir::Safety::Unsafe, mutability: ast::Mutability::Not, nested: true } )
+        ( Static { safety: hir::Safety::Safe, mutability: ast::Mutability::Not, nested: true } )
+        ( Static { safety: hir::Safety::Unsafe, mutability: ast::Mutability::Mut, nested: true } )
+        ( Static { safety: hir::Safety::Safe, mutability: ast::Mutability::Mut, nested: true } )
         ( Ctor(CtorOf::Struct, CtorKind::Fn)       )
         ( Ctor(CtorOf::Struct, CtorKind::Const)    )
         ( Ctor(CtorOf::Variant, CtorKind::Fn)      )

@@ -1,0 +1,19 @@
+error[E0432]: unresolved import `spam`
+  --> $DIR/import-from-missing-star-3.rs:2:9
+   |
+LL |     use spam::*;
+   |         ^^^^ maybe a missing crate `spam`?
+   |
+   = help: consider adding `extern crate spam` to use the `spam` crate
+
+error[E0432]: unresolved import `spam`
+  --> $DIR/import-from-missing-star-3.rs:27:13
+   |
+LL |         use spam::*;
+   |             ^^^^ maybe a missing crate `spam`?
+   |
+   = help: consider adding `extern crate spam` to use the `spam` crate
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

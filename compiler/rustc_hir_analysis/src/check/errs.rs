@@ -41,7 +41,8 @@ fn path_if_static_mut(tcx: TyCtxt<'_>, expr: &hir::Expr<'_>) -> Option<String> {
     if let hir::ExprKind::Path(qpath) = expr.kind
         && let hir::QPath::Resolved(_, path) = qpath
         && let hir::def::Res::Def(def_kind, _) = path.res
-        && let hir::def::DefKind::Static { mutability: Mutability::Mut, nested: false } = def_kind
+        && let hir::def::DefKind::Static { safety: _, mutability: Mutability::Mut, nested: false } =
+            def_kind
     {
         return Some(qpath_to_string(&tcx, &qpath));
     }
@@ -62,7 +63,7 @@ fn handle_static_mut_ref(
         } else {
             (errors::StaticMutRefSugg::Shared { span, var }, "shared")
         };
-        tcx.sess.psess.dcx.emit_err(errors::StaticMutRef { span, sugg, shared });
+        tcx.dcx().emit_err(errors::StaticMutRef { span, sugg, shared });
     } else {
         let (sugg, shared) = if mutable == Mutability::Mut {
             (errors::RefOfMutStaticSugg::Mut { span, var }, "mutable")

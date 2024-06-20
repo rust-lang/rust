@@ -8,6 +8,7 @@ use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
+use tracing::{instrument, trace};
 
 use crate::errors::{DuplicateArg, NotParam};
 
@@ -108,7 +109,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn collect_taits_declared_in_body(&mut self) {
-        let body = self.tcx.hir().body(self.tcx.hir().body_owned_by(self.item)).value;
+        let body = self.tcx.hir().body_owned_by(self.item).value;
         struct TaitInBodyFinder<'a, 'tcx> {
             collector: &'a mut OpaqueTypeCollector<'tcx>,
         }

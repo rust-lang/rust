@@ -1,5 +1,7 @@
-use super::lazy::LazyKeyInner;
-use crate::fmt;
+//! On some targets like wasm there's no threads, so no need to generate
+//! thread locals and we can instead just use plain statics!
+
+use crate::cell::UnsafeCell;
 
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals)]
@@ -9,98 +11,85 @@ use crate::fmt;
 pub macro thread_local_inner {
     // used to generate the `LocalKey` value for const-initialized thread locals
     (@key $t:ty, const $init:expr) => {{
-        #[inline] // see comments below
-        #[deny(unsafe_op_in_unsafe_fn)]
-        unsafe fn __getit(
-            _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
-        ) -> $crate::option::Option<&'static $t> {
-            const INIT_EXPR: $t = $init;
-
-            // wasm without atomics maps directly to `static mut`, and dtors
-            // aren't implemented because thread dtors aren't really a thing
-            // on wasm right now
-            //
-            // FIXME(#84224) this should come after the `target_thread_local`
-            // block.
-            static mut VAL: $t = INIT_EXPR;
-            // SAFETY: we only ever create shared references, so there's no mutable aliasing.
-            unsafe { $crate::option::Option::Some(&*$crate::ptr::addr_of!(VAL)) }
-        }
+        const __INIT: $t = $init;
 
         unsafe {
-            $crate::thread::LocalKey::new(__getit)
+            use $crate::thread::LocalKey;
+            use $crate::thread::local_impl::EagerStorage;
+
+            LocalKey::new(|_| {
+                static VAL: EagerStorage<$t> = EagerStorage { value: __INIT };
+                &VAL.value
+            })
         }
     }},
 
     // used to generate the `LocalKey` value for `thread_local!`
-    (@key $t:ty, $init:expr) => {
-        {
-            #[inline]
-            fn __init() -> $t { $init }
-            #[inline]
-            unsafe fn __getit(
-                init: $crate::option::Option<&mut $crate::option::Option<$t>>,
-            ) -> $crate::option::Option<&'static $t> {
-                static __KEY: $crate::thread::local_impl::Key<$t> =
-                    $crate::thread::local_impl::Key::new();
+    (@key $t:ty, $init:expr) => {{
+        #[inline]
+        fn __init() -> $t { $init }
 
-                unsafe {
-                    __KEY.get(move || {
-                        if let $crate::option::Option::Some(init) = init {
-                            if let $crate::option::Option::Some(value) = init.take() {
-                                return value;
-                            } else if $crate::cfg!(debug_assertions) {
-                                $crate::unreachable!("missing default value");
-                            }
-                        }
-                        __init()
-                    })
-                }
-            }
+        unsafe {
+            use $crate::thread::LocalKey;
+            use $crate::thread::local_impl::LazyStorage;
 
-            unsafe {
-                $crate::thread::LocalKey::new(__getit)
-            }
+            LocalKey::new(|init| {
+                static VAL: LazyStorage<$t> = LazyStorage::new();
+                VAL.get(init, __init)
+            })
         }
-    },
+    }},
     ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $($init:tt)*) => {
         $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
             $crate::thread::local_impl::thread_local_inner!(@key $t, $($init)*);
     },
 }
 
-/// On some targets like wasm there's no threads, so no need to generate
-/// thread locals and we can instead just use plain statics!
-
-pub struct Key<T> {
-    inner: LazyKeyInner<T>,
+#[allow(missing_debug_implementations)]
+pub struct EagerStorage<T> {
+    pub value: T,
 }
 
-unsafe impl<T> Sync for Key<T> {}
+// SAFETY: the target doesn't have threads.
+unsafe impl<T> Sync for EagerStorage<T> {}
 
-impl<T> fmt::Debug for Key<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Key").finish_non_exhaustive()
+#[allow(missing_debug_implementations)]
+pub struct LazyStorage<T> {
+    value: UnsafeCell<Option<T>>,
+}
+
+impl<T> LazyStorage<T> {
+    pub const fn new() -> LazyStorage<T> {
+        LazyStorage { value: UnsafeCell::new(None) }
+    }
+
+    /// Get a pointer to the TLS value, potentially initializing it with the
+    /// provided parameters.
+    ///
+    /// The resulting pointer may not be used after reentrant inialialization
+    /// has occurred.
+    #[inline]
+    pub fn get(&'static self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
+        let value = unsafe { &*self.value.get() };
+        match value {
+            Some(v) => v,
+            None => self.initialize(i, f),
+        }
+    }
+
+    #[cold]
+    fn initialize(&'static self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
+        let value = i.and_then(Option::take).unwrap_or_else(f);
+        // Destroy the old value, after updating the TLS variable as the
+        // destructor might reference it.
+        // FIXME(#110897): maybe panic on recursive initialization.
+        unsafe {
+            self.value.get().replace(Some(value));
+        }
+        // SAFETY: we just set this to `Some`.
+        unsafe { (*self.value.get()).as_ref().unwrap_unchecked() }
     }
 }
 
-impl<T> Key<T> {
-    pub const fn new() -> Key<T> {
-        Key { inner: LazyKeyInner::new() }
-    }
-
-    pub unsafe fn get(&self, init: impl FnOnce() -> T) -> Option<&'static T> {
-        // SAFETY: The caller must ensure no reference is ever handed out to
-        // the inner cell nor mutable reference to the Option<T> inside said
-        // cell. This make it safe to hand a reference, though the lifetime
-        // of 'static is itself unsafe, making the get method unsafe.
-        let value = unsafe {
-            match self.inner.get() {
-                Some(ref value) => value,
-                None => self.inner.initialize(init),
-            }
-        };
-
-        Some(value)
-    }
-}
+// SAFETY: the target doesn't have threads.
+unsafe impl<T> Sync for LazyStorage<T> {}

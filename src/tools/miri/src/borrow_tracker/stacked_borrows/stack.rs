@@ -2,6 +2,7 @@
 use std::ops::Range;
 
 use rustc_data_structures::fx::FxHashSet;
+use tracing::trace;
 
 use crate::borrow_tracker::{
     stacked_borrows::{Item, Permission},
@@ -9,7 +10,7 @@ use crate::borrow_tracker::{
 };
 use crate::ProvenanceExtra;
 
-/// Exactly what cache size we should use is a difficult tradeoff. There will always be some
+/// Exactly what cache size we should use is a difficult trade-off. There will always be some
 /// workload which has a `BorTag` working set which exceeds the size of the cache, and ends up
 /// falling back to linear searches of the borrow stack very often.
 /// The cost of making this value too large is that the loop in `Stack::insert` which ensures the

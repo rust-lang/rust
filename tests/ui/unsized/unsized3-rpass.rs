@@ -87,7 +87,7 @@ pub fn main() {
         let obj: Box<St> = Box::new(St { f: 42 });
         let obj: &Tr = &*obj;
         let data: Box<_> = Box::new(Qux_ { f: St { f: 234 } });
-        let x: &Qux = &*ptr::from_raw_parts::<Qux>((&*data as *const _).cast(), ptr::metadata(obj));
+        let x: &Qux = &*ptr::from_raw_parts::<Qux>(&*data as *const _, ptr::metadata(obj));
         assert_eq!(x.f.foo(), 234);
     }
 }

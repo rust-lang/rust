@@ -282,7 +282,7 @@ fn push_expected_errors(
 
     // Add notes for the backtrace
     for span in primary_spans {
-        for frame in &span.expansion {
+        if let Some(frame) = &span.expansion {
             push_backtrace(expected_errors, frame, file_name);
         }
     }
@@ -315,7 +315,7 @@ fn push_backtrace(
         });
     }
 
-    for previous_expansion in &expansion.span.expansion {
+    if let Some(previous_expansion) = &expansion.span.expansion {
         push_backtrace(expected_errors, previous_expansion, file_name);
     }
 }

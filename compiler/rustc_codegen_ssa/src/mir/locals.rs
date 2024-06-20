@@ -7,6 +7,8 @@ use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use std::ops::{Index, IndexMut};
+use tracing::{debug, warn};
+
 pub(super) struct Locals<'tcx, V> {
     values: IndexVec<mir::Local, LocalRef<'tcx, V>>,
 }

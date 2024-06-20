@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(portable_simd, adt_const_params, core_intrinsics)]
+#![feature(portable_simd, adt_const_params, core_intrinsics, repr_simd)]
 #![allow(incomplete_features, internal_features)]
 use std::intrinsics::simd as intrinsics;
 use std::ptr;
@@ -318,6 +318,83 @@ fn simd_mask() {
         assert_eq!(selected1, i32x4::from_array([0, 0, 0, 1]));
         assert_eq!(selected2, selected1);
     }
+
+    // Non-power-of-2 multi-byte mask.
+    #[repr(simd, packed)]
+    #[allow(non_camel_case_types)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    struct i32x10([i32; 10]);
+    impl i32x10 {
+        fn splat(x: i32) -> Self {
+            Self([x; 10])
+        }
+    }
+    unsafe {
+        let mask = i32x10([!0, !0, 0, !0, 0, 0, !0, 0, !0, 0]);
+        let mask_bits = if cfg!(target_endian = "little") { 0b0101001011 } else { 0b1101001010 };
+        let mask_bytes =
+            if cfg!(target_endian = "little") { [0b01001011, 0b01] } else { [0b11, 0b01001010] };
+
+        let bitmask1: u16 = simd_bitmask(mask);
+        let bitmask2: [u8; 2] = simd_bitmask(mask);
+        assert_eq!(bitmask1, mask_bits);
+        assert_eq!(bitmask2, mask_bytes);
+
+        let selected1 = simd_select_bitmask::<u16, _>(
+            mask_bits,
+            i32x10::splat(!0), // yes
+            i32x10::splat(0),  // no
+        );
+        let selected2 = simd_select_bitmask::<[u8; 2], _>(
+            mask_bytes,
+            i32x10::splat(!0), // yes
+            i32x10::splat(0),  // no
+        );
+        assert_eq!(selected1, mask);
+        assert_eq!(selected2, mask);
+    }
+
+    // Test for a mask where the next multiple of 8 is not a power of two.
+    #[repr(simd, packed)]
+    #[allow(non_camel_case_types)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    struct i32x20([i32; 20]);
+    impl i32x20 {
+        fn splat(x: i32) -> Self {
+            Self([x; 20])
+        }
+    }
+    unsafe {
+        let mask = i32x20([!0, !0, 0, !0, 0, 0, !0, 0, !0, 0, 0, 0, 0, !0, !0, !0, !0, !0, !0, !0]);
+        let mask_bits = if cfg!(target_endian = "little") {
+            0b11111110000101001011
+        } else {
+            0b11010010100001111111
+        };
+        let mask_bytes = if cfg!(target_endian = "little") {
+            [0b01001011, 0b11100001, 0b1111]
+        } else {
+            [0b1101, 0b00101000, 0b01111111]
+        };
+
+        let bitmask1: u32 = simd_bitmask(mask);
+        let bitmask2: [u8; 3] = simd_bitmask(mask);
+        assert_eq!(bitmask1, mask_bits);
+        assert_eq!(bitmask2, mask_bytes);
+
+        let selected1 = simd_select_bitmask::<u32, _>(
+            mask_bits,
+            i32x20::splat(!0), // yes
+            i32x20::splat(0),  // no
+        );
+        let selected2 = simd_select_bitmask::<[u8; 3], _>(
+            mask_bytes,
+            i32x20::splat(!0), // yes
+            i32x20::splat(0),  // no
+        );
+        assert_eq!(selected1, mask);
+        assert_eq!(selected2, mask);
+    }
 }
 
 fn simd_cast() {
@@ -506,6 +583,21 @@ fn simd_intrinsics() {
         assert!(!simd_reduce_all(i32x2::from_array([0, -1])));
 
         assert_eq!(
+            simd_ctlz(i32x4::from_array([0, i32::MAX, i32::MIN, -1_i32])),
+            i32x4::from_array([32, 1, 0, 0])
+        );
+
+        assert_eq!(
+            simd_ctpop(i32x4::from_array([0, i32::MAX, i32::MIN, -1_i32])),
+            i32x4::from_array([0, 31, 1, 32])
+        );
+
+        assert_eq!(
+            simd_cttz(i32x4::from_array([0, i32::MAX, i32::MIN, -1_i32])),
+            i32x4::from_array([32, 0, 31, 0])
+        );
+
+        assert_eq!(
             simd_select(i8x4::from_array([0, -1, -1, 0]), a, b),
             i32x4::from_array([1, 10, 10, 4])
         );
@@ -566,11 +658,32 @@ fn simd_masked_loadstore() {
     assert_eq!(buf, [2, 3, 4]);
 }
 
+fn simd_ops_non_pow2() {
+    // Just a little smoke test for operations on non-power-of-two vectors.
+    #[repr(simd, packed)]
+    #[derive(Copy, Clone)]
+    pub struct SimdPacked<T, const N: usize>([T; N]);
+    #[repr(simd)]
+    #[derive(Copy, Clone)]
+    pub struct SimdPadded<T, const N: usize>([T; N]);
+
+    let x = SimdPacked([1u32; 3]);
+    let y = SimdPacked([2u32; 3]);
+    let z = unsafe { intrinsics::simd_add(x, y) };
+    assert_eq!({ z.0 }, [3u32; 3]);
+
+    let x = SimdPadded([1u32; 3]);
+    let y = SimdPadded([2u32; 3]);
+    let z = unsafe { intrinsics::simd_add(x, y) };
+    assert_eq!(z.0, [3u32; 3]);
+}
+
 fn main() {
     simd_mask();
     simd_ops_f32();
     simd_ops_f64();
     simd_ops_i32();
+    simd_ops_non_pow2();
     simd_cast();
     simd_swizzle();
     simd_gather_scatter();

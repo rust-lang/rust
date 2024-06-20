@@ -390,7 +390,7 @@ struct DisplayFmtWrapper {
     warning_text: S,
 }
 
-/// Formating of the permissions on each range.
+/// Formatting of the permissions on each range.
 ///
 /// Example:
 /// ```rust,ignore (private type)
@@ -422,7 +422,7 @@ struct DisplayFmtPermission {
     range_sep: S,
 }
 
-/// Formating of the tree structure.
+/// Formatting of the tree structure.
 ///
 /// Example:
 /// ```rust,ignore (private type)
@@ -487,7 +487,7 @@ struct DisplayFmtAccess {
     meh: S,
 }
 
-/// All parameters to determine how the tree is formated.
+/// All parameters to determine how the tree is formatted.
 struct DisplayFmt {
     wrapper: DisplayFmtWrapper,
     perm: DisplayFmtPermission,

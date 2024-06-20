@@ -1,26 +1,24 @@
+// tidy-alphabetical-start
+#![allow(internal_features)]
+#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
-#![allow(internal_features)]
+#![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(error_iter)]
 #![feature(extract_if)]
-#![feature(coroutines)]
+#![feature(if_let_guard)]
 #![feature(iter_from_coroutine)]
 #![feature(let_chains)]
-#![feature(if_let_guard)]
-#![feature(proc_macro_internals)]
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
-#![feature(trusted_len)]
-#![feature(try_blocks)]
 #![feature(never_type)]
-#![allow(rustc::potential_query_instability)]
+#![feature(proc_macro_internals)]
+#![feature(rustdoc_internals)]
+#![feature(trusted_len)]
+// tidy-alphabetical-end
 
 extern crate proc_macro;
-
-#[macro_use]
-extern crate tracing;
 
 pub use rmeta::provide;
 

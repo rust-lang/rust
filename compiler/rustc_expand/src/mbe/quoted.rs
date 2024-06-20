@@ -62,7 +62,10 @@ pub(super) fn parse(
         match tree {
             TokenTree::MetaVar(start_sp, ident) if parsing_patterns => {
                 let span = match trees.next() {
-                    Some(&tokenstream::TokenTree::Token(Token { kind: token::Colon, span }, _)) => {
+                    Some(&tokenstream::TokenTree::Token(
+                        Token { kind: token::Colon, span: colon_span },
+                        _,
+                    )) => {
                         match trees.next() {
                             Some(tokenstream::TokenTree::Token(token, _)) => match token.ident() {
                                 Some((fragment, _)) => {
@@ -126,10 +129,12 @@ pub(super) fn parse(
                                 }
                                 _ => token.span,
                             },
-                            tree => tree.map_or(span, tokenstream::TokenTree::span),
+                            Some(tree) => tree.span(),
+                            None => colon_span,
                         }
                     }
-                    tree => tree.map_or(start_sp, tokenstream::TokenTree::span),
+                    Some(tree) => tree.span(),
+                    None => start_sp,
                 };
 
                 result.push(TokenTree::MetaVarDecl(span, ident, None));
@@ -147,6 +152,13 @@ fn maybe_emit_macro_metavar_expr_feature(features: &Features, sess: &Session, sp
     if !features.macro_metavar_expr {
         let msg = "meta-variable expressions are unstable";
         feature_err(sess, sym::macro_metavar_expr, span, msg).emit();
+    }
+}
+
+fn maybe_emit_macro_metavar_expr_concat_feature(features: &Features, sess: &Session, span: Span) {
+    if !features.macro_metavar_expr_concat {
+        let msg = "the `concat` meta-variable expression is unstable";
+        feature_err(sess, sym::macro_metavar_expr_concat, span, msg).emit();
     }
 }
 
@@ -176,7 +188,7 @@ fn parse_tree<'a>(
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
         // `tree` is a `$` token. Look at the next token in `trees`
-        &tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }, _) => {
+        &tokenstream::TokenTree::Token(Token { kind: token::Dollar, span: dollar_span }, _) => {
             // FIXME: Handle `Invisible`-delimited groups in a more systematic way
             // during parsing.
             let mut next = outer_trees.next();
@@ -209,14 +221,22 @@ fn parse_tree<'a>(
                                         err.emit();
                                         // Returns early the same read `$` to avoid spanning
                                         // unrelated diagnostics that could be performed afterwards
-                                        return TokenTree::token(token::Dollar, span);
+                                        return TokenTree::token(token::Dollar, dollar_span);
                                     }
                                     Ok(elem) => {
-                                        maybe_emit_macro_metavar_expr_feature(
-                                            features,
-                                            sess,
-                                            delim_span.entire(),
-                                        );
+                                        if let MetaVarExpr::Concat(_) = elem {
+                                            maybe_emit_macro_metavar_expr_concat_feature(
+                                                features,
+                                                sess,
+                                                delim_span.entire(),
+                                            );
+                                        } else {
+                                            maybe_emit_macro_metavar_expr_feature(
+                                                features,
+                                                sess,
+                                                delim_span.entire(),
+                                            );
+                                        }
                                         return TokenTree::MetaVarExpr(delim_span, elem);
                                     }
                                 }
@@ -251,7 +271,7 @@ fn parse_tree<'a>(
                 // special metavariable that names the crate of the invocation.
                 Some(tokenstream::TokenTree::Token(token, _)) if token.is_ident() => {
                     let (ident, is_raw) = token.ident().unwrap();
-                    let span = ident.span.with_lo(span.lo());
+                    let span = ident.span.with_lo(dollar_span.lo());
                     if ident.name == kw::Crate && matches!(is_raw, IdentIsRaw::No) {
                         TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
                     } else {
@@ -260,16 +280,19 @@ fn parse_tree<'a>(
                 }
 
                 // `tree` is followed by another `$`. This is an escaped `$`.
-                Some(&tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }, _)) => {
+                Some(&tokenstream::TokenTree::Token(
+                    Token { kind: token::Dollar, span: dollar_span2 },
+                    _,
+                )) => {
                     if parsing_patterns {
                         span_dollar_dollar_or_metavar_in_the_lhs_err(
                             sess,
-                            &Token { kind: token::Dollar, span },
+                            &Token { kind: token::Dollar, span: dollar_span2 },
                         );
                     } else {
-                        maybe_emit_macro_metavar_expr_feature(features, sess, span);
+                        maybe_emit_macro_metavar_expr_feature(features, sess, dollar_span2);
                     }
-                    TokenTree::token(token::Dollar, span)
+                    TokenTree::token(token::Dollar, dollar_span2)
                 }
 
                 // `tree` is followed by some other token. This is an error.
@@ -281,7 +304,7 @@ fn parse_tree<'a>(
                 }
 
                 // There are no more tokens. Just return the `$` we already have.
-                None => TokenTree::token(token::Dollar, span),
+                None => TokenTree::token(token::Dollar, dollar_span),
             }
         }
 

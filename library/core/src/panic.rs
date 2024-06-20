@@ -12,6 +12,8 @@ use crate::any::Any;
 pub use self::location::Location;
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use self::panic_info::PanicInfo;
+#[unstable(feature = "panic_info_message", issue = "66745")]
+pub use self::panic_info::PanicMessage;
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub use self::unwind_safe::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 
@@ -144,7 +146,7 @@ pub macro unreachable_2021 {
 /// use.
 #[unstable(feature = "std_internals", issue = "none")]
 #[doc(hidden)]
-pub unsafe trait PanicPayload {
+pub unsafe trait PanicPayload: crate::fmt::Display {
     /// Take full ownership of the contents.
     /// The return type is actually `Box<dyn Any + Send>`, but we cannot use `Box` in core.
     ///
@@ -157,4 +159,9 @@ pub unsafe trait PanicPayload {
 
     /// Just borrow the contents.
     fn get(&mut self) -> &(dyn Any + Send);
+
+    /// Try to borrow the contents as `&str`, if possible without doing any allocations.
+    fn as_str(&mut self) -> Option<&str> {
+        None
+    }
 }

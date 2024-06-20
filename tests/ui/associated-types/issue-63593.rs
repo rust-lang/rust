@@ -1,3 +1,7 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+
 #![feature(associated_type_defaults)]
 
 // Tests that `Self` is not assumed to implement `Sized` when used as an

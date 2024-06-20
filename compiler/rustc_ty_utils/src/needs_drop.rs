@@ -9,6 +9,7 @@ use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::sym;
+use tracing::debug;
 
 use crate::errors::NeedsDropOverflow;
 
@@ -21,6 +22,21 @@ fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>
     let adt_has_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.destructor(tcx).map(|_| DtorType::Significant);
     let res = drop_tys_helper(tcx, query.value, query.param_env, adt_has_dtor, false)
+        .filter(filter_array_elements(tcx, query.param_env))
+        .next()
+        .is_some();
+
+    debug!("needs_drop_raw({:?}) = {:?}", query, res);
+    res
+}
+
+fn needs_async_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    // If we don't know a type doesn't need async drop, for example if it's a
+    // type parameter without a `Copy` bound, then we conservatively return that
+    // it needs async drop.
+    let adt_has_async_dtor =
+        |adt_def: ty::AdtDef<'tcx>| adt_def.async_destructor(tcx).map(|_| DtorType::Significant);
+    let res = drop_tys_helper(tcx, query.value, query.param_env, adt_has_async_dtor, false)
         .filter(filter_array_elements(tcx, query.param_env))
         .next()
         .is_some();
@@ -388,6 +404,7 @@ fn adt_significant_drop_tys(
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         needs_drop_raw,
+        needs_async_drop_raw,
         has_significant_drop_raw,
         adt_drop_tys,
         adt_significant_drop_tys,

@@ -7,11 +7,7 @@ pub fn array_bound<const N: usize>(index: usize, slice: &[u8; N]) -> u8 {
     // CHECK-LABEL: fn array_bound(
     // CHECK: [[len:_.*]] = const N;
     // CHECK: Lt(move {{_.*}}, move [[len]]);
-    if index < slice.len() {
-        slice[index]
-    } else {
-        42
-    }
+    if index < slice.len() { slice[index] } else { 42 }
 }
 
 // EMIT_MIR lower_array_len.array_bound_mut.NormalizeArrayLen.diff

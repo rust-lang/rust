@@ -302,8 +302,7 @@ impl<'cx, 'tcx> LoanInvalidationsGenerator<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, box (operand1, operand2))
-            | Rvalue::CheckedBinaryOp(_bin_op, box (operand1, operand2)) => {
+            Rvalue::BinaryOp(_bin_op, box (operand1, operand2)) => {
                 self.consume_operand(location, operand1);
                 self.consume_operand(location, operand2);
             }

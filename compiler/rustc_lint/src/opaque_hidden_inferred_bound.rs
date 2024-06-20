@@ -46,6 +46,8 @@ declare_lint! {
     /// fn test() -> impl Trait<Assoc = Tait> {
     ///     42
     /// }
+    ///
+    /// fn main() {}
     /// ```
     ///
     /// {{produces}}
@@ -83,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 };
                 // Only check types, since those are the only things that may
                 // have opaques in them anyways.
-                let Some(proj_term) = proj.term.ty() else { return };
+                let Some(proj_term) = proj.term.as_type() else { return };
 
                 // HACK: `impl Trait<Assoc = impl Trait2>` from an RPIT is "ok"...
                 if let ty::Alias(ty::Opaque, opaque_ty) = *proj_term.kind()

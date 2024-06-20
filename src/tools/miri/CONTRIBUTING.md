@@ -223,7 +223,7 @@ will eventually sync those changes back into this repository.
 When working on Miri in the rustc tree, here's how you can run tests:
 
 ```
-./x.py test miri --stage 0
+./x.py test miri
 ```
 
 `--bless` will work, too.
@@ -231,7 +231,7 @@ When working on Miri in the rustc tree, here's how you can run tests:
 You can also directly run Miri on a Rust source file:
 
 ```
-./x.py run miri --stage 0 --args src/tools/miri/tests/pass/hello.rs
+./x.py run miri --stage 1 --args src/tools/miri/tests/pass/hello.rs
 ```
 
 ## Advanced topic: Syncing with the rustc repo
@@ -287,7 +287,22 @@ https. Add the following to your `.gitconfig`:
     pushInsteadOf = https://github.com/
 ```
 
-## Internal environment variables
+## Further environment variables
+
+The following environment variables are relevant to `./miri`:
+
+* `MIRI_AUTO_OPS` indicates whether the automatic execution of rustfmt, clippy and toolchain setup
+  (as controlled by the `./auto-*` files) should be skipped. If it is set to `no`, they are skipped.
+  This is used to allow automated IDE actions to avoid the auto ops.
+* `MIRI_LOG`, `MIRI_BACKTRACE` control logging and backtrace printing during Miri executions.
+* `MIRI_TEST_THREADS` (recognized by `./miri test`) sets the number of threads to use for running
+  tests. By default, the number of cores is used.
+* `MIRI_SKIP_UI_CHECKS` (recognized by `./miri test`) disables checking that the `stderr` or
+  `stdout` files match the actual output.
+
+Furthermore, the usual environment variables recognized by `cargo miri` also work for `./miri`, e.g.
+`MIRI_LIB_SRC`. Note that `MIRIFLAGS` is ignored by `./miri test` as each test controls the flags it
+is run with.
 
 The following environment variables are *internal* and must not be used by
 anyone but Miri itself. They are used to communicate between different Miri

@@ -15,8 +15,10 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for raw string literals where a string literal can be used instead.
     ///
-    /// ### Why is this bad?
-    /// It's just unnecessary, but there are many cases where using a raw string literal is more
+    /// ### Why restrict this?
+    /// For consistent style by using simpler string literals whenever possible.
+    ///
+    /// However, there are many cases where using a raw string literal is more
     /// idiomatic than a string literal, so it's opt-in.
     ///
     /// ### Example

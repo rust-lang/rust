@@ -1317,6 +1317,34 @@ bitflags::bitflags! {
 rustc_data_structures::external_bitflags_debug! { SanitizerSet }
 
 impl SanitizerSet {
+    // Taken from LLVM's sanitizer compatibility logic:
+    // https://github.com/llvm/llvm-project/blob/release/18.x/clang/lib/Driver/SanitizerArgs.cpp#L512
+    const MUTUALLY_EXCLUSIVE: &'static [(SanitizerSet, SanitizerSet)] = &[
+        (SanitizerSet::ADDRESS, SanitizerSet::MEMORY),
+        (SanitizerSet::ADDRESS, SanitizerSet::THREAD),
+        (SanitizerSet::ADDRESS, SanitizerSet::HWADDRESS),
+        (SanitizerSet::ADDRESS, SanitizerSet::MEMTAG),
+        (SanitizerSet::ADDRESS, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::ADDRESS, SanitizerSet::SAFESTACK),
+        (SanitizerSet::LEAK, SanitizerSet::MEMORY),
+        (SanitizerSet::LEAK, SanitizerSet::THREAD),
+        (SanitizerSet::LEAK, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::LEAK, SanitizerSet::SAFESTACK),
+        (SanitizerSet::MEMORY, SanitizerSet::THREAD),
+        (SanitizerSet::MEMORY, SanitizerSet::HWADDRESS),
+        (SanitizerSet::MEMORY, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::MEMORY, SanitizerSet::SAFESTACK),
+        (SanitizerSet::THREAD, SanitizerSet::HWADDRESS),
+        (SanitizerSet::THREAD, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::THREAD, SanitizerSet::SAFESTACK),
+        (SanitizerSet::HWADDRESS, SanitizerSet::MEMTAG),
+        (SanitizerSet::HWADDRESS, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::HWADDRESS, SanitizerSet::SAFESTACK),
+        (SanitizerSet::CFI, SanitizerSet::KCFI),
+        (SanitizerSet::MEMTAG, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::KERNELADDRESS, SanitizerSet::SAFESTACK),
+    ];
+
     /// Return sanitizer's name
     ///
     /// Returns none if the flags is a set of sanitizers numbering not exactly one.
@@ -1336,6 +1364,13 @@ impl SanitizerSet {
             SanitizerSet::HWADDRESS => "hwaddress",
             _ => return None,
         })
+    }
+
+    pub fn mutually_exclusive(self) -> Option<(SanitizerSet, SanitizerSet)> {
+        Self::MUTUALLY_EXCLUSIVE
+            .into_iter()
+            .find(|&(a, b)| self.contains(*a) && self.contains(*b))
+            .copied()
     }
 }
 
@@ -1612,6 +1647,7 @@ supported_targets! {
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
     ("aarch64-unknown-redox", aarch64_unknown_redox),
+    ("i686-unknown-redox", i686_unknown_redox),
     ("x86_64-unknown-redox", x86_64_unknown_redox),
 
     ("i386-apple-ios", i386_apple_ios),
@@ -1730,6 +1766,10 @@ supported_targets! {
     ("aarch64-unknown-uefi", aarch64_unknown_uefi),
 
     ("nvptx64-nvidia-cuda", nvptx64_nvidia_cuda),
+
+    ("xtensa-esp32-none-elf", xtensa_esp32_none_elf),
+    ("xtensa-esp32s2-none-elf", xtensa_esp32s2_none_elf),
+    ("xtensa-esp32s3-none-elf", xtensa_esp32s3_none_elf),
 
     ("i686-wrs-vxworks", i686_wrs_vxworks),
     ("x86_64-wrs-vxworks", x86_64_wrs_vxworks),
@@ -3332,7 +3372,7 @@ impl Target {
 
                 // Additionally look in the sysroot under `lib/rustlib/<triple>/target.json`
                 // as a fallback.
-                let rustlib_path = crate::target_rustlib_path(sysroot, target_triple);
+                let rustlib_path = crate::relative_target_rustlib_path(sysroot, target_triple);
                 let p = PathBuf::from_iter([
                     Path::new(sysroot),
                     Path::new(&rustlib_path),

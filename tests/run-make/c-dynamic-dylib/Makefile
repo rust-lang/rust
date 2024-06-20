@@ -4,7 +4,7 @@
 # ignore-cross-compile
 include ../tools.mk
 
-# ignore-macos
+# ignore-apple
 #
 # This hits an assertion in the linker on older versions of osx apparently
 

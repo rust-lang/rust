@@ -154,24 +154,25 @@ impl EncodedSourceFileId {
 
 impl<'sess> OnDiskCache<'sess> {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
-    pub fn new(sess: &'sess Session, data: Mmap, start_pos: usize) -> Self {
-        debug_assert!(sess.opts.incremental.is_some());
+    ///
+    /// The serialized cache has some basic integrity checks, if those checks indicate that the
+    /// on-disk data is corrupt, an error is returned.
+    pub fn new(sess: &'sess Session, data: Mmap, start_pos: usize) -> Result<Self, ()> {
+        assert!(sess.opts.incremental.is_some());
 
-        // Wrap in a scope so we can borrow `data`.
-        let footer: Footer = {
-            let mut decoder = MemDecoder::new(&data, start_pos);
+        let mut decoder = MemDecoder::new(&data, start_pos)?;
 
-            // Decode the *position* of the footer, which can be found in the
-            // last 8 bytes of the file.
-            let footer_pos = decoder
-                .with_position(decoder.len() - IntEncodedWithFixedSize::ENCODED_SIZE, |decoder| {
-                    IntEncodedWithFixedSize::decode(decoder).0 as usize
-                });
-            // Decode the file footer, which contains all the lookup tables, etc.
-            decoder.with_position(footer_pos, |decoder| decode_tagged(decoder, TAG_FILE_FOOTER))
-        };
+        // Decode the *position* of the footer, which can be found in the
+        // last 8 bytes of the file.
+        let footer_pos = decoder
+            .with_position(decoder.len() - IntEncodedWithFixedSize::ENCODED_SIZE, |decoder| {
+                IntEncodedWithFixedSize::decode(decoder).0 as usize
+            });
+        // Decode the file footer, which contains all the lookup tables, etc.
+        let footer: Footer =
+            decoder.with_position(footer_pos, |decoder| decode_tagged(decoder, TAG_FILE_FOOTER));
 
-        Self {
+        Ok(Self {
             serialized_data: RwLock::new(Some(data)),
             file_index_to_stable_id: footer.file_index_to_stable_id,
             file_index_to_file: Default::default(),
@@ -184,7 +185,7 @@ impl<'sess> OnDiskCache<'sess> {
             expn_data: footer.expn_data,
             foreign_expn_data: footer.foreign_expn_data,
             hygiene_context: Default::default(),
-        }
+        })
     }
 
     pub fn new_empty(source_map: &'sess SourceMap) -> Self {
@@ -437,7 +438,8 @@ impl<'sess> OnDiskCache<'sess> {
         let serialized_data = self.serialized_data.read();
         let mut decoder = CacheDecoder {
             tcx,
-            opaque: MemDecoder::new(serialized_data.as_deref().unwrap_or(&[]), pos.to_usize()),
+            opaque: MemDecoder::new(serialized_data.as_deref().unwrap_or(&[]), pos.to_usize())
+                .unwrap(),
             source_map: self.source_map,
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
@@ -558,7 +560,7 @@ impl<'a, 'tcx> TyDecoder for CacheDecoder<'a, 'tcx> {
     {
         debug_assert!(pos < self.opaque.len());
 
-        let new_opaque = MemDecoder::new(self.opaque.data(), pos);
+        let new_opaque = self.opaque.split_at(pos);
         let old_opaque = mem::replace(&mut self.opaque, new_opaque);
         let r = f(self);
         self.opaque = old_opaque;
@@ -750,7 +752,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx UnordSet<LocalDefId> 
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx UnordMap<DefId, ty::EarlyBinder<Ty<'tcx>>>
+    for &'tcx UnordMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>
 {
     #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {

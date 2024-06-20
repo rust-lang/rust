@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for multiple inherent implementations of a struct
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Splitting the implementation of a type makes the code harder to navigate.
     ///
     /// ### Example

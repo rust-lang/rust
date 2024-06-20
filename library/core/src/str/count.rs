@@ -24,7 +24,7 @@ const UNROLL_INNER: usize = 4;
 
 #[inline]
 pub(super) fn count_chars(s: &str) -> usize {
-    if s.len() < USIZE_SIZE * UNROLL_INNER {
+    if cfg!(feature = "optimize_for_size") || s.len() < USIZE_SIZE * UNROLL_INNER {
         // Avoid entering the optimized implementation for strings where the
         // difference is not likely to matter, or where it might even be slower.
         // That said, a ton of thought was not spent on the particular threshold

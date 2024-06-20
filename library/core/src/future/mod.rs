@@ -37,7 +37,7 @@ pub use ready::{ready, Ready};
 #[stable(feature = "future_poll_fn", since = "1.64.0")]
 pub use poll_fn::{poll_fn, PollFn};
 
-#[unstable(feature = "async_drop", issue = "none")]
+#[unstable(feature = "async_drop", issue = "126482")]
 pub use async_drop::{async_drop, async_drop_in_place, AsyncDrop, AsyncDropInPlace};
 
 /// This type is needed because:

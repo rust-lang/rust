@@ -6,9 +6,10 @@ use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Abi, VariantIdx};
+use tracing::{debug, instrument, trace};
 
 use super::eval_queries::{mk_eval_cx_to_read_const_val, op_to_const};
-use super::machine::CompileTimeEvalContext;
+use super::machine::CompileTimeInterpCx;
 use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
 use crate::const_eval::CanAccessMutGlobal;
 use crate::errors::MaxNumNodesInConstErr;
@@ -20,7 +21,7 @@ use crate::interpret::{
 
 #[instrument(skip(ecx), level = "debug")]
 fn branches<'tcx>(
-    ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
+    ecx: &CompileTimeInterpCx<'tcx>,
     place: &MPlaceTy<'tcx>,
     n: usize,
     variant: Option<VariantIdx>,
@@ -58,7 +59,7 @@ fn branches<'tcx>(
 
 #[instrument(skip(ecx), level = "debug")]
 fn slice_branches<'tcx>(
-    ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
+    ecx: &CompileTimeInterpCx<'tcx>,
     place: &MPlaceTy<'tcx>,
     num_nodes: &mut usize,
 ) -> ValTreeCreationResult<'tcx> {
@@ -76,7 +77,7 @@ fn slice_branches<'tcx>(
 
 #[instrument(skip(ecx), level = "debug")]
 fn const_to_valtree_inner<'tcx>(
-    ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
+    ecx: &CompileTimeInterpCx<'tcx>,
     place: &MPlaceTy<'tcx>,
     num_nodes: &mut usize,
 ) -> ValTreeCreationResult<'tcx> {
@@ -94,10 +95,10 @@ fn const_to_valtree_inner<'tcx>(
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
             let val = ecx.read_immediate(place)?;
-            let val = val.to_scalar();
+            let val = val.to_scalar_int().unwrap();
             *num_nodes += 1;
 
-            Ok(ty::ValTree::Leaf(val.assert_int()))
+            Ok(ty::ValTree::Leaf(val))
         }
 
         ty::Pat(base, ..) => {
@@ -124,7 +125,7 @@ fn const_to_valtree_inner<'tcx>(
             let val = val.to_scalar();
             // We are in the CTFE machine, so ptr-to-int casts will fail.
             // This can only be `Ok` if `val` already is an integer.
-            let Ok(val) = val.try_to_int() else {
+            let Ok(val) = val.try_to_scalar_int() else {
                 return Err(ValTreeCreationError::NonSupportedType);
             };
             // It's just a ScalarInt!
@@ -218,7 +219,7 @@ fn reconstruct_place_meta<'tcx>(
 
 #[instrument(skip(ecx), level = "debug", ret)]
 fn create_valtree_place<'tcx>(
-    ecx: &mut CompileTimeEvalContext<'tcx, 'tcx>,
+    ecx: &mut CompileTimeInterpCx<'tcx>,
     layout: TyAndLayout<'tcx>,
     valtree: ty::ValTree<'tcx>,
 ) -> MPlaceTy<'tcx> {
@@ -363,7 +364,7 @@ pub fn valtree_to_const_value<'tcx>(
 
 /// Put a valtree into memory and return a reference to that.
 fn valtree_to_ref<'tcx>(
-    ecx: &mut CompileTimeEvalContext<'tcx, 'tcx>,
+    ecx: &mut CompileTimeInterpCx<'tcx>,
     valtree: ty::ValTree<'tcx>,
     pointee_ty: Ty<'tcx>,
 ) -> Immediate {
@@ -379,7 +380,7 @@ fn valtree_to_ref<'tcx>(
 
 #[instrument(skip(ecx), level = "debug")]
 fn valtree_into_mplace<'tcx>(
-    ecx: &mut CompileTimeEvalContext<'tcx, 'tcx>,
+    ecx: &mut CompileTimeInterpCx<'tcx>,
     place: &MPlaceTy<'tcx>,
     valtree: ty::ValTree<'tcx>,
 ) {
@@ -410,7 +411,7 @@ fn valtree_into_mplace<'tcx>(
                 ty::Adt(def, _) if def.is_enum() => {
                     // First element of valtree corresponds to variant
                     let scalar_int = branches[0].unwrap_leaf();
-                    let variant_idx = VariantIdx::from_u32(scalar_int.try_to_u32().unwrap());
+                    let variant_idx = VariantIdx::from_u32(scalar_int.to_u32());
                     let variant = def.variant(variant_idx);
                     debug!(?variant);
 
@@ -456,6 +457,6 @@ fn valtree_into_mplace<'tcx>(
     }
 }
 
-fn dump_place<'tcx>(ecx: &CompileTimeEvalContext<'tcx, 'tcx>, place: &MPlaceTy<'tcx>) {
+fn dump_place<'tcx>(ecx: &CompileTimeInterpCx<'tcx>, place: &MPlaceTy<'tcx>) {
     trace!("{:?}", ecx.dump_place(&PlaceTy::from(place.clone())));
 }

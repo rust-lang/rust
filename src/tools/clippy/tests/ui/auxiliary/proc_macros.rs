@@ -58,7 +58,7 @@ fn group_with_span(delimiter: Delimiter, stream: TokenStream, span: Span) -> Gro
 const ESCAPE_CHAR: char = '$';
 
 /// Takes a single token followed by a sequence of tokens. Returns the sequence of tokens with their
-/// span set to that of the first token. Tokens may be escaped with either `#ident` or `#(tokens)`.
+/// span set to that of the first token. Tokens may be escaped with either `$ident` or `$(tokens)`.
 #[proc_macro]
 pub fn with_span(input: TokenStream) -> TokenStream {
     let mut iter = input.into_iter();
@@ -72,7 +72,7 @@ pub fn with_span(input: TokenStream) -> TokenStream {
 }
 
 /// Takes a sequence of tokens and return the tokens with the span set such that they appear to be
-/// from an external macro. Tokens may be escaped with either `#ident` or `#(tokens)`.
+/// from an external macro. Tokens may be escaped with either `$ident` or `$(tokens)`.
 #[proc_macro]
 pub fn external(input: TokenStream) -> TokenStream {
     let mut res = TokenStream::new();
@@ -84,7 +84,7 @@ pub fn external(input: TokenStream) -> TokenStream {
 }
 
 /// Copies all the tokens, replacing all their spans with the given span. Tokens can be escaped
-/// either by `#ident` or `#(tokens)`.
+/// either by `$ident` or `$(tokens)`.
 fn write_with_span(s: Span, mut input: IntoIter, out: &mut TokenStream) -> Result<()> {
     while let Some(tt) = input.next() {
         match tt {

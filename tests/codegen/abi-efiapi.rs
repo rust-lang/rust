@@ -17,12 +17,12 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang="sized"]
-trait Sized { }
-#[lang="freeze"]
-trait Freeze { }
-#[lang="copy"]
-trait Copy { }
+#[lang = "sized"]
+trait Sized {}
+#[lang = "freeze"]
+trait Freeze {}
+#[lang = "copy"]
+trait Copy {}
 
 //x86_64: define win64cc void @has_efiapi
 //i686: define void @has_efiapi

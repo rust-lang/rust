@@ -7,6 +7,10 @@ use clap::{arg, ArgMatches, Command};
 
 use mdbook::errors::Result as Result3;
 use mdbook::MDBook;
+use mdbook_i18n_helpers::preprocessors::Gettext;
+
+use mdbook_trpl_listing::TrplListing;
+use mdbook_trpl_note::TrplNote;
 
 fn main() {
     let crate_version = concat!("v", crate_version!());
@@ -15,6 +19,11 @@ fn main() {
 "The output directory for your book\n(Defaults to ./book when omitted)")
     .required(false)
     .value_parser(clap::value_parser!(PathBuf));
+
+    let l_arg = arg!(-l --"lang" <LANGUAGE>
+"The output language")
+    .required(false)
+    .value_parser(clap::value_parser!(String));
 
     let dir_arg = arg!([dir] "Root directory for the book\n\
                               (Defaults to the current directory when omitted)")
@@ -30,6 +39,7 @@ fn main() {
             Command::new("build")
                 .about("Build the book from the markdown files")
                 .arg(d_arg)
+                .arg(l_arg)
                 .arg(&dir_arg),
         )
         .subcommand(
@@ -60,11 +70,25 @@ pub fn build(args: &ArgMatches) -> Result3<()> {
     let book_dir = get_book_dir(args);
     let mut book = load_book(&book_dir)?;
 
+    if let Some(lang) = args.get_one::<String>("lang") {
+        let gettext = Gettext;
+        book.with_preprocessor(gettext);
+        book.config.set("book.language", lang).unwrap();
+    }
+
     // Set this to allow us to catch bugs in advance.
     book.config.build.create_missing = false;
 
     if let Some(dest_dir) = args.get_one::<PathBuf>("dest-dir") {
         book.config.build.build_dir = dest_dir.into();
+    }
+
+    if book.config.get_preprocessor("trpl-note").is_some() {
+        book.with_preprocessor(TrplNote);
+    }
+
+    if book.config.get_preprocessor("trpl-listing").is_some() {
+        book.with_preprocessor(TrplListing);
     }
 
     book.build()?;

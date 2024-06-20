@@ -1,6 +1,7 @@
 use crate::errors;
 use crate::util::expr_to_spanned_string;
 use ast::token::IdentIsRaw;
+use lint::BuiltinLintDiag;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
@@ -45,7 +46,7 @@ pub fn parse_asm_args<'a>(
     sp: Span,
     is_global_asm: bool,
 ) -> PResult<'a, AsmArgs> {
-    let dcx = &p.psess.dcx;
+    let dcx = p.dcx();
 
     if p.token == token::Eof {
         return Err(dcx.create_err(errors::AsmRequiresTemplate { span: sp }));
@@ -306,7 +307,7 @@ pub fn parse_asm_args<'a>(
 fn err_duplicate_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
     // Tool-only output
     let full_span = if p.token.kind == token::Comma { span.to(p.token.span) } else { span };
-    p.psess.dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
+    p.dcx().emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
 }
 
 /// Try to set the provided option in the provided `AsmArgs`.
@@ -378,7 +379,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
     p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
     if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-        return Err(p.psess.dcx.create_err(errors::NonABI { span: p.token.span }));
+        return Err(p.dcx().create_err(errors::NonABI { span: p.token.span }));
     }
 
     let mut new_abis = Vec::new();
@@ -389,7 +390,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
             }
             Err(opt_lit) => {
                 let span = opt_lit.map_or(p.token.span, |lit| lit.span);
-                let mut err = p.psess.dcx.struct_span_err(span, "expected string literal");
+                let mut err = p.dcx().struct_span_err(span, "expected string literal");
                 err.span_label(span, "not a string literal");
                 return Err(err);
             }
@@ -513,7 +514,7 @@ fn expand_preparsed_asm(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".intel_syntax"),
                     ecx.current_expansion.lint_node_id,
-                    "avoid using `.intel_syntax`, Intel syntax is the default",
+                    BuiltinLintDiag::AvoidUsingIntelSyntax,
                 );
             }
             if template_str.contains(".att_syntax") {
@@ -521,7 +522,7 @@ fn expand_preparsed_asm(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".att_syntax"),
                     ecx.current_expansion.lint_node_id,
-                    "avoid using `.att_syntax`, prefer using `options(att_syntax)` instead",
+                    BuiltinLintDiag::AvoidUsingAttSyntax,
                 );
             }
         }

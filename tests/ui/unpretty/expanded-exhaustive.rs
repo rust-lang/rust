@@ -25,6 +25,7 @@
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(unnamed_fields)]
+#![feature(unsafe_extern_blocks)]
 #![feature(yeet_expr)]
 #![allow(incomplete_features)]
 
@@ -473,8 +474,8 @@ mod items {
 
     /// ItemKind::ForeignMod
     mod item_foreign_mod {
-        extern "C++" {}
-        extern {}
+        unsafe extern "C++" {}
+        unsafe extern {}
     }
 
     /// ItemKind::GlobalAsm

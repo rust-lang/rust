@@ -23,5 +23,11 @@ LL | |         1: 3u32,
 LL | |     };
    | |_____^ help: try: `TupleStruct(1u32, 3u32, 2u8)`
 
-error: aborting due to 2 previous errors
+error: used a field initializer for a tuple struct
+  --> tests/ui/numbered_fields.rs:49:13
+   |
+LL |     let _ = TupleStructVec { 0: vec![0, 1, 2, 3] };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `TupleStructVec(vec![0, 1, 2, 3])`
+
+error: aborting due to 3 previous errors
 

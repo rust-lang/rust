@@ -174,6 +174,25 @@ fn check_inverted_bool_in_condition(
     );
 }
 
+fn check_simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind
+        && !expr.span.from_expansion()
+        && !inner.span.from_expansion()
+        && let Some(suggestion) = simplify_not(cx, inner)
+        && cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
+    {
+        span_lint_and_sugg(
+            cx,
+            NONMINIMAL_BOOL,
+            expr.span,
+            "this boolean expression can be simplified",
+            "try",
+            suggestion,
+            Applicability::MachineApplicable,
+        );
+    }
+}
+
 struct NonminimalBoolVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
 }
@@ -232,6 +251,11 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 _ => (),
             }
         }
+
+        if self.cx.typeck_results().expr_ty(e).is_never() {
+            return Err("contains never type".to_owned());
+        }
+
         for (n, expr) in self.terminals.iter().enumerate() {
             if eq_expr_value(self.cx, e, expr) {
                 #[expect(clippy::cast_possible_truncation)]
@@ -542,8 +566,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 }
             };
             if improvements.is_empty() {
-                let mut visitor = NotSimplificationVisitor { cx: self.cx };
-                visitor.visit_expr(e);
+                check_simplify_not(self.cx, e);
             } else {
                 nonminimal_bool_lint(
                     improvements
@@ -585,31 +608,4 @@ fn implements_ord(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     cx.tcx
         .get_diagnostic_item(sym::Ord)
         .map_or(false, |id| implements_trait(cx, ty, id, &[]))
-}
-
-struct NotSimplificationVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind
-            && !expr.span.from_expansion()
-            && !inner.span.from_expansion()
-            && let Some(suggestion) = simplify_not(self.cx, inner)
-            && self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
-        {
-            span_lint_and_sugg(
-                self.cx,
-                NONMINIMAL_BOOL,
-                expr.span,
-                "this boolean expression can be simplified",
-                "try",
-                suggestion,
-                Applicability::MachineApplicable,
-            );
-        }
-
-        walk_expr(self, expr);
-    }
 }

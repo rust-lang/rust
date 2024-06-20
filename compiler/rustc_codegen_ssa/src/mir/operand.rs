@@ -16,6 +16,7 @@ use std::fmt;
 
 use arrayvec::ArrayVec;
 use either::Either;
+use tracing::debug;
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -564,6 +565,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 for elem in place_ref.projection.iter() {
                     match elem {
                         mir::ProjectionElem::Field(ref f, _) => {
+                            debug_assert!(
+                                !o.layout.ty.is_any_ptr(),
+                                "Bad PlaceRef: destructing pointers should use cast/PtrMetadata, \
+                                 but tried to access field {f:?} of pointer {o:?}",
+                            );
                             o = o.extract_field(bx, f.index());
                         }
                         mir::ProjectionElem::Index(_)

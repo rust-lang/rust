@@ -1,5 +1,5 @@
 //@ ignore-windows
-//@ ignore-macos
+//@ ignore-apple
 //@ ignore-wasi wasi codegens the main symbol differently
 
 //@ compile-flags: -g -C no-prepopulate-passes

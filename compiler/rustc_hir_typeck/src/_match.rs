@@ -207,10 +207,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir = self.tcx.hir();
 
         // First, check that we're actually in the tail of a function.
-        let Some(body_id) = hir.maybe_body_owned_by(self.body_id) else {
+        let Some(body) = hir.maybe_body_owned_by(self.body_id) else {
             return;
         };
-        let body = hir.body(body_id);
         let hir::ExprKind::Block(block, _) = body.value.kind else {
             return;
         };
@@ -235,7 +234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ret_ty = ret_coercion.borrow().expected_ty();
                 let ret_ty = self.infcx.shallow_resolve(ret_ty);
                 self.can_coerce(arm_ty, ret_ty)
-                    && prior_arm.map_or(true, |(_, ty, _)| self.can_coerce(ty, ret_ty))
+                    && prior_arm.is_none_or(|(_, ty, _)| self.can_coerce(ty, ret_ty))
                     // The match arms need to unify for the case of `impl Trait`.
                     && !matches!(ret_ty.kind(), ty::Alias(ty::Opaque, ..))
             }
@@ -247,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let semi = expr.span.shrink_to_hi().with_hi(semi_span.hi());
         let sugg = crate::errors::RemoveSemiForCoerce { expr: expr.span, ret, semi };
-        diag.subdiagnostic(self.dcx(), sugg);
+        diag.subdiagnostic(sugg);
     }
 
     /// When the previously checked expression (the scrutinee) diverges,

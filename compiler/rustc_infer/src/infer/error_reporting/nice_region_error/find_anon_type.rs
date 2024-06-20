@@ -1,5 +1,6 @@
 use core::ops::ControlFlow;
 use rustc_hir as hir;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
@@ -23,10 +24,11 @@ use rustc_middle::ty::{self, Region, TyCtxt};
 /// for e.g., `&u8` and `Vec<&u8>`.
 pub fn find_anon_type<'tcx>(
     tcx: TyCtxt<'tcx>,
+    generic_param_scope: LocalDefId,
     region: Region<'tcx>,
     br: &ty::BoundRegionKind,
 ) -> Option<(&'tcx hir::Ty<'tcx>, &'tcx hir::FnSig<'tcx>)> {
-    let anon_reg = tcx.is_suitable_region(region)?;
+    let anon_reg = tcx.is_suitable_region(generic_param_scope, region)?;
     let fn_sig = tcx.hir_node_by_def_id(anon_reg.def_id).fn_sig()?;
 
     fn_sig

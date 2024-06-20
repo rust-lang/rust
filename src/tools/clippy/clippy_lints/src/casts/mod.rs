@@ -303,7 +303,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for casts of a function pointer to any integer type.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Casting a function pointer to an integer can have surprising results and can occur
     /// accidentally if parentheses are omitted from a function call. If you aren't doing anything
     /// low-level with function pointers then you can opt-out of casting functions to integers in
@@ -535,8 +535,8 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for the usage of `as _` conversion using inferred type.
     ///
-    /// ### Why is this bad?
-    /// The conversion might include lossy conversion and dangerous cast that might go
+    /// ### Why restrict this?
+    /// The conversion might include lossy conversion or a dangerous cast that might go
     /// undetected due to the type being inferred.
     ///
     /// The lint is allowed by default as using `_` is less wordy than always specifying the type.

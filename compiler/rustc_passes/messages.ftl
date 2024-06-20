@@ -341,7 +341,7 @@ passes_implied_feature_not_exist =
     feature `{$implied_by}` implying `{$feature}` does not exist
 
 passes_incorrect_do_not_recommend_location =
-    `#[do_not_recommend]` can only be placed on trait implementations
+    `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
 
 passes_incorrect_meta_item = expected a quoted string literal
 passes_incorrect_meta_item_suggestion = consider surrounding this with quotes
@@ -383,6 +383,10 @@ passes_invalid_attr_at_crate_level =
 
 passes_invalid_attr_at_crate_level_item =
     the inner attribute doesn't annotate this {$kind}
+
+passes_invalid_attr_unsafe = `{$name}` is not an unsafe attribute
+    .suggestion = remove the `unsafe(...)`
+    .note = extraneous unsafe is not allowed in attributes
 
 passes_invalid_macro_export_arguments = `{$name}` isn't a valid `#[macro_export]` argument
 
@@ -590,6 +594,15 @@ passes_pass_by_value =
     .label = is not a struct, enum or type alias
 
 passes_proc_macro_bad_sig = {$kind} has incorrect signature
+
+passes_remove_fields =
+    consider removing { $num ->
+      [one] this
+     *[other] these
+    } { $num ->
+      [one] field
+     *[other] fields
+    }
 
 passes_repr_conflicting =
     conflicting representation hints

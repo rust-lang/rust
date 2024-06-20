@@ -25,8 +25,11 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                 Some(sp) => sp,
                 None => item.attr_span(tcx),
             };
-            tcx.node_span_lint(crate::lint::INVALID_HTML_TAGS, hir_id, sp, msg, |lint| {
+            tcx.node_span_lint(crate::lint::INVALID_HTML_TAGS, hir_id, sp, |lint| {
                 use rustc_lint_defs::Applicability;
+
+                lint.primary_message(msg);
+
                 // If a tag looks like `<this>`, it might actually be a generic.
                 // We don't try to detect stuff `<like, this>` because that's not valid HTML,
                 // and we don't try to detect stuff `<like this>` because that's not valid Rust.

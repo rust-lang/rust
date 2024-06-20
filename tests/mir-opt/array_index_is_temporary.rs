@@ -9,7 +9,6 @@ unsafe fn foo(z: *mut usize) -> u32 {
     99
 }
 
-
 // EMIT_MIR array_index_is_temporary.main.SimplifyCfg-pre-optimizations.after.mir
 fn main() {
     // CHECK-LABEL: fn main(

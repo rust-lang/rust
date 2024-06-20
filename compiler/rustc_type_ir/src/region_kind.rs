@@ -1,12 +1,22 @@
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
-use rustc_macros::{TyDecodable, TyEncodable};
+use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use std::fmt;
 
-use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
+use crate::{DebruijnIndex, Interner};
 
 use self::RegionKind::*;
+
+rustc_index::newtype_index! {
+    /// A **region** **v**ariable **ID**.
+    #[encodable]
+    #[orderable]
+    #[debug_format = "'?{}"]
+    #[gate_rustc_only]
+    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    pub struct RegionVid {}
+}
 
 /// Representation of regions. Note that the NLL checker uses a distinct
 /// representation of regions. For this reason, it internally replaces all the
@@ -144,7 +154,7 @@ pub enum RegionKind<I: Interner> {
     /// parameters via `tcx.liberate_late_bound_regions`. They are then treated
     /// the same way as `ReEarlyParam` while inside of the function.
     ///
-    /// See <https://rustc-dev-guide.rust-lang.org/early-late-bound-summary.html> for
+    /// See <https://rustc-dev-guide.rust-lang.org/early-late-bound-params/early-late-bound-summary.html> for
     /// more info about early and late bound lifetime parameters.
     ReLateParam(I::LateParamRegion),
 
@@ -152,7 +162,7 @@ pub enum RegionKind<I: Interner> {
     ReStatic,
 
     /// A region variable. Should not exist outside of type inference.
-    ReVar(I::InferRegion),
+    ReVar(RegionVid),
 
     /// A placeholder region -- the higher-ranked version of `ReLateParam`.
     /// Should not exist outside of type inference.
@@ -208,12 +218,9 @@ impl<I: Interner> PartialEq for RegionKind<I> {
     }
 }
 
-impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        match this.data {
+impl<I: Interner> fmt::Debug for RegionKind<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
             ReEarlyParam(data) => write!(f, "{data:?}"),
 
             ReBound(binder_id, bound_region) => {
@@ -225,7 +232,7 @@ impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
 
             ReStatic => f.write_str("'static"),
 
-            ReVar(vid) => write!(f, "{:?}", &this.wrap(vid)),
+            ReVar(vid) => write!(f, "{:?}", &vid),
 
             RePlaceholder(placeholder) => write!(f, "{placeholder:?}"),
 
@@ -238,11 +245,6 @@ impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
         }
     }
 }
-impl<I: Interner> fmt::Debug for RegionKind<I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        WithInfcx::with_no_infcx(self).fmt(f)
-    }
-}
 
 #[cfg(feature = "nightly")]
 // This is not a derived impl because a derive would require `I: HashStable`
@@ -251,7 +253,6 @@ where
     I::EarlyParamRegion: HashStable<CTX>,
     I::BoundRegion: HashStable<CTX>,
     I::LateParamRegion: HashStable<CTX>,
-    I::InferRegion: HashStable<CTX>,
     I::PlaceholderRegion: HashStable<CTX>,
 {
     #[inline]

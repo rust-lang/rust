@@ -142,6 +142,14 @@ pub unsafe fn create_module<'ll>(
         }
     }
 
+    if llvm_version < (19, 0, 0) {
+        if sess.target.arch == "loongarch64" {
+            // LLVM 19 updates the LoongArch64 data layout.
+            // See https://github.com/llvm/llvm-project/pull/93814
+            target_data_layout = target_data_layout.replace("-n32:64", "-n64");
+        }
+    }
+
     // Ensure the data-layout values hardcoded remain the defaults.
     {
         let tm = crate::back::write::create_informational_target_machine(tcx.sess);

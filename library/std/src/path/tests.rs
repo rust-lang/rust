@@ -127,6 +127,16 @@ fn into() {
 }
 
 #[test]
+fn test_pathbuf_leak() {
+    let string = "/have/a/cake".to_owned();
+    let (len, cap) = (string.len(), string.capacity());
+    let buf = PathBuf::from(string);
+    let leaked = buf.leak();
+    assert_eq!(leaked.as_os_str().as_encoded_bytes(), b"/have/a/cake");
+    unsafe { drop(String::from_raw_parts(leaked.as_mut_os_str() as *mut OsStr as _, len, cap)) }
+}
+
+#[test]
 #[cfg(unix)]
 pub fn test_decompositions_unix() {
     t!("",
@@ -1801,6 +1811,29 @@ fn test_windows_absolute() {
         Path::new(r"C:\path..\to\file").as_os_str()
     );
     assert_eq!(absolute(r"COM1").unwrap().as_os_str(), Path::new(r"\\.\COM1").as_os_str());
+}
+
+#[test]
+#[should_panic = "path separator"]
+fn test_extension_path_sep() {
+    let mut path = PathBuf::from("path/to/file");
+    path.set_extension("d/../../../../../etc/passwd");
+}
+
+#[test]
+#[should_panic = "path separator"]
+#[cfg(windows)]
+fn test_extension_path_sep_alternate() {
+    let mut path = PathBuf::from("path/to/file");
+    path.set_extension("d\\test");
+}
+
+#[test]
+#[cfg(not(windows))]
+fn test_extension_path_sep_alternate() {
+    let mut path = PathBuf::from("path/to/file");
+    path.set_extension("d\\test");
+    assert_eq!(path, Path::new("path/to/file.d\\test"));
 }
 
 #[bench]

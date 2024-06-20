@@ -123,8 +123,8 @@ impl [u8] {
     /// assert_eq!(b"  ".trim_ascii_start(), b"");
     /// assert_eq!(b"".trim_ascii_start(), b"");
     /// ```
-    #[stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
+    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
     #[inline]
     pub const fn trim_ascii_start(&self) -> &[u8] {
         let mut bytes = self;
@@ -152,8 +152,8 @@ impl [u8] {
     /// assert_eq!(b"  ".trim_ascii_end(), b"");
     /// assert_eq!(b"".trim_ascii_end(), b"");
     /// ```
-    #[stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
+    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
     #[inline]
     pub const fn trim_ascii_end(&self) -> &[u8] {
         let mut bytes = self;
@@ -182,8 +182,8 @@ impl [u8] {
     /// assert_eq!(b"  ".trim_ascii(), b"");
     /// assert_eq!(b"".trim_ascii(), b"");
     /// ```
-    #[stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
+    #[rustc_const_stable(feature = "byte_slice_trim_ascii", since = "1.80.0")]
     #[inline]
     pub const fn trim_ascii(&self) -> &[u8] {
         self.trim_ascii_start().trim_ascii_end()

@@ -213,9 +213,9 @@
 //! [array]: prim@array
 //! [slice]: prim@slice
 
-#![cfg_attr(not(feature = "restricted-std"), stable(feature = "rust1", since = "1.0.0"))]
+#![cfg_attr(not(restricted_std), stable(feature = "rust1", since = "1.0.0"))]
 #![cfg_attr(
-    feature = "restricted-std",
+    restricted_std,
     unstable(
         feature = "restricted_std",
         issue = "none",
@@ -324,7 +324,6 @@
 #![feature(core_io_borrowed_buf)]
 #![feature(duration_constants)]
 #![feature(error_generic_member_access)]
-#![feature(error_in_core)]
 #![feature(error_iter)]
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_wrapper)]
@@ -395,7 +394,6 @@
 #![feature(edition_panic)]
 #![feature(format_args_nl)]
 #![feature(get_many_mut)]
-#![feature(lazy_cell)]
 #![feature(log_syntax)]
 #![feature(test)]
 #![feature(trace_macros)]
@@ -435,6 +433,7 @@ extern crate alloc as alloc_crate;
 // so include it here even if it's unused.
 #[doc(masked)]
 #[allow(unused_extern_crates)]
+#[cfg(not(all(windows, target_env = "msvc")))]
 extern crate libc;
 
 // We always need an unwinder currently for backtraces

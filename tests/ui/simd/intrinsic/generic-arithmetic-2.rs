@@ -30,6 +30,7 @@ extern "rust-intrinsic" {
     fn simd_bswap<T>(x: T) -> T;
     fn simd_bitreverse<T>(x: T) -> T;
     fn simd_ctlz<T>(x: T) -> T;
+    fn simd_ctpop<T>(x: T) -> T;
     fn simd_cttz<T>(x: T) -> T;
 }
 
@@ -77,7 +78,6 @@ fn main() {
         simd_cttz(x);
         simd_cttz(y);
 
-
         simd_add(0, 0);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_sub(0, 0);
@@ -108,24 +108,25 @@ fn main() {
         simd_cttz(0);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
 
-
         simd_shl(z, z);
-//~^ ERROR unsupported operation on `f32x4` with element `f32`
+        //~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_shr(z, z);
-//~^ ERROR unsupported operation on `f32x4` with element `f32`
+        //~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_and(z, z);
-//~^ ERROR unsupported operation on `f32x4` with element `f32`
+        //~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_or(z, z);
-//~^ ERROR unsupported operation on `f32x4` with element `f32`
+        //~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_xor(z, z);
-//~^ ERROR unsupported operation on `f32x4` with element `f32`
+        //~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_bswap(z);
-//~^ ERROR unsupported operation on `f32x4` with element `f32`
+        //~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_bitreverse(z);
-//~^ ERROR unsupported operation on `f32x4` with element `f32`
+        //~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_ctlz(z);
-//~^ ERROR unsupported operation on `f32x4` with element `f32`
+        //~^ ERROR unsupported operation on `f32x4` with element `f32`
+        simd_ctpop(z);
+        //~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_cttz(z);
-//~^ ERROR unsupported operation on `f32x4` with element `f32`
+        //~^ ERROR unsupported operation on `f32x4` with element `f32`
     }
 }

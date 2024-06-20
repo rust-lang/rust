@@ -13,13 +13,20 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for functions that are only used once. Does not lint tests.
     ///
-    /// ### Why is this bad?
-    /// It's usually not, splitting a function into multiple parts often improves readability and in
-    /// the case of generics, can prevent the compiler from duplicating the function dozens of
-    /// time; instead, only duplicating a thunk. But this can prevent segmentation across a
-    /// codebase, where many small functions are used only once.
+    /// ### Why restrict this?
+    /// If a function is only used once (perhaps because it used to be used more widely),
+    /// then the code could be simplified by moving that function's code into its caller.
     ///
-    /// Note: If this lint is used, prepare to allow this a lot.
+    /// However, there are reasons not to do this everywhere:
+    ///
+    /// * Splitting a large function into multiple parts often improves readability
+    ///   by giving names to its parts.
+    /// * A function’s signature might serve a necessary purpose, such as constraining
+    ///   the type of a closure passed to it.
+    /// * Generic functions might call non-generic functions to reduce duplication
+    ///   in the produced machine code.
+    ///
+    /// If this lint is used, prepare to `#[allow]` it a lot.
     ///
     /// ### Example
     /// ```no_run
@@ -79,7 +86,6 @@ impl SingleCallFn {
                 .tcx
                 .hir()
                 .maybe_body_owned_by(fn_def_id)
-                .map(|body| cx.tcx.hir().body(body))
                 .map_or(true, |body| is_in_test_function(cx.tcx, body.value.hir_id))
             || match cx.tcx.hir_node(fn_hir_id) {
                 Node::Item(item) => is_from_proc_macro(cx, item),

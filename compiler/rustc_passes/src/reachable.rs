@@ -32,11 +32,12 @@ use rustc_hir::Node;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::middle::privacy::{self, Level};
-use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc};
+use rustc_middle::mir::interpret::{ConstAllocation, ErrorHandled, GlobalAlloc};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ExistentialTraitRef, TyCtxt};
 use rustc_privacy::DefIdVisitor;
 use rustc_session::config::CrateType;
+use tracing::debug;
 
 /// Determines whether this item is recursive for reachability. See `is_recursively_reachable_local`
 /// below for details.
@@ -156,6 +157,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 }
                 hir::ImplItemKind::Type(_) => false,
             },
+            Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => true,
             _ => false,
         }
     }
@@ -204,11 +206,24 @@ impl<'tcx> ReachableContext<'tcx> {
                         }
                     }
 
-                    // Reachable constants will be inlined into other crates
-                    // unconditionally, so we need to make sure that their
-                    // contents are also reachable.
                     hir::ItemKind::Const(_, _, init) => {
-                        self.visit_nested_body(init);
+                        // Only things actually ending up in the final constant value are reachable
+                        // for codegen. Everything else is only needed during const-eval, so even if
+                        // const-eval happens in a downstream crate, all they need is
+                        // `mir_for_ctfe`.
+                        match self.tcx.const_eval_poly_to_alloc(item.owner_id.def_id.into()) {
+                            Ok(alloc) => {
+                                let alloc = self.tcx.global_alloc(alloc.alloc_id).unwrap_memory();
+                                self.propagate_from_alloc(alloc);
+                            }
+                            // We can't figure out which value the constant will evaluate to. In
+                            // lieu of that, we have to consider everything mentioned in the const
+                            // initializer reachable, since it *may* end up in the final value.
+                            Err(ErrorHandled::TooGeneric(_)) => self.visit_nested_body(init),
+                            // If there was an error evaluating the const, nothing can be reachable
+                            // via it, and anyway compilation will fail.
+                            Err(ErrorHandled::Reported(..)) => {}
+                        }
                     }
                     hir::ItemKind::Static(..) => {
                         if let Ok(alloc) = self.tcx.eval_static_initializer(item.owner_id.def_id) {

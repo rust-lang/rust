@@ -38,9 +38,9 @@ declare_clippy_lint! {
     /// Checks for whole number float literals that
     /// cannot be represented as the underlying type without loss.
     ///
-    /// ### Why is this bad?
-    /// Rust will silently lose precision during
-    /// conversion to a float.
+    /// ### Why restrict this?
+    /// If the value was intended to be exact, it will not be.
+    /// This may be especially surprising when the lost precision is to the left of the decimal point.
     ///
     /// ### Example
     /// ```no_run
@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                 return;
             }
 
-            if is_whole && !sym_str.contains(|c| c == 'e' || c == 'E') {
+            if is_whole && !sym_str.contains(['e', 'E']) {
                 // Normalize the literal by stripping the fractional portion
                 if sym_str.split('.').next().unwrap() != float_str {
                     // If the type suffix is missing the suggestion would be

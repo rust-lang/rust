@@ -13,9 +13,9 @@ type R = Result<u64, i32>;
 // optimization that picks up the `?` desugaring, as `SimplifyArmIdentity` does not.
 #[no_mangle]
 pub fn try_identity(x: R) -> R {
-// CHECK: start:
-// FIXME(JakobDegen): Broken by deaggregation change CHECK-NOT\: br {{.*}}
-// CHECK ret void
+    // CHECK: start:
+    // FIXME(JakobDegen): Broken by deaggregation change CHECK-NOT\: br {{.*}}
+    // CHECK ret void
     let y = match into_result(x) {
         Err(e) => return from_error(From::from(e)),
         Ok(v) => v,

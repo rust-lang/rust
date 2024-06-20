@@ -19,7 +19,7 @@
           StorageLive(_3);
           _3 = const 1_u8;
           StorageLive(_4);
--         _4 = CheckedAdd(_2, _3);
+-         _4 = AddWithOverflow(_2, _3);
 -         assert(!move (_4.1: bool), "attempt to compute `{} + {}`, which would overflow", _2, _3) -> [success: bb1, unwind continue];
 +         _4 = const (0_u8, true);
 +         assert(!const true, "attempt to compute `{} + {}`, which would overflow", const u8::MAX, const 1_u8) -> [success: bb1, unwind continue];

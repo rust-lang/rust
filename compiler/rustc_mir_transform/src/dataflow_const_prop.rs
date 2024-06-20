@@ -10,7 +10,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{
     Map, PlaceIndex, State, TrackElem, ValueAnalysis, ValueAnalysisWrapper, ValueOrPlace,
@@ -69,7 +69,7 @@ struct ConstAnalysis<'a, 'tcx> {
     map: Map,
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
-    ecx: InterpCx<'tcx, 'tcx, DummyMachine>,
+    ecx: InterpCx<'tcx, DummyMachine>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
@@ -142,11 +142,10 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     _ => return,
                 };
                 if let Some(variant_target_idx) = variant_target {
-                    for (field_index, operand) in operands.iter().enumerate() {
-                        if let Some(field) = self.map().apply(
-                            variant_target_idx,
-                            TrackElem::Field(FieldIdx::from_usize(field_index)),
-                        ) {
+                    for (field_index, operand) in operands.iter_enumerated() {
+                        if let Some(field) =
+                            self.map().apply(variant_target_idx, TrackElem::Field(field_index))
+                        {
                             self.assign_operand(state, field, operand);
                         }
                     }
@@ -165,7 +164,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     }
                 }
             }
-            Rvalue::CheckedBinaryOp(op, box (left, right)) => {
+            Rvalue::BinaryOp(op, box (left, right)) if op.is_overflowing() => {
                 // Flood everything now, so we can use `insert_value_idx` directly later.
                 state.flood(target.as_ref(), self.map());
 
@@ -184,7 +183,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     if let Some(overflow_target) = overflow_target {
                         let overflow = match overflow {
                             FlatSet::Top => FlatSet::Top,
-                            FlatSet::Elem(overflow) => FlatSet::Elem(Scalar::from_bool(overflow)),
+                            FlatSet::Elem(overflow) => FlatSet::Elem(overflow),
                             FlatSet::Bottom => FlatSet::Bottom,
                         };
                         // We have flooded `target` earlier.
@@ -204,7 +203,8 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     && let operand_ty = operand.ty(self.local_decls, self.tcx)
                     && let Some(operand_ty) = operand_ty.builtin_deref(true)
                     && let ty::Array(_, len) = operand_ty.kind()
-                    && let Some(len) = Const::Ty(*len).try_eval_scalar_int(self.tcx, self.param_env)
+                    && let Some(len) = Const::Ty(self.tcx.types.usize, *len)
+                        .try_eval_scalar_int(self.tcx, self.param_env)
                 {
                     state.insert_value_idx(target_len, FlatSet::Elem(len.into()), self.map());
                 }
@@ -222,7 +222,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
             Rvalue::Len(place) => {
                 let place_ty = place.ty(self.local_decls, self.tcx);
                 if let ty::Array(_, len) = place_ty.ty.kind() {
-                    Const::Ty(*len)
+                    Const::Ty(self.tcx.types.usize, *len)
                         .try_eval_scalar(self.tcx, self.param_env)
                         .map_or(FlatSet::Top, FlatSet::Elem)
                 } else if let [ProjectionElem::Deref] = place.projection[..] {
@@ -264,15 +264,16 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     FlatSet::Top => FlatSet::Top,
                 }
             }
-            Rvalue::BinaryOp(op, box (left, right)) => {
+            Rvalue::BinaryOp(op, box (left, right)) if !op.is_overflowing() => {
                 // Overflows must be ignored here.
+                // The overflowing operators are handled in `handle_assign`.
                 let (val, _overflow) = self.binary_op(state, *op, left, right);
                 val
             }
             Rvalue::UnaryOp(op, operand) => match self.eval_operand(operand, state) {
                 FlatSet::Elem(value) => self
                     .ecx
-                    .wrapping_unary_op(*op, &value)
+                    .unary_op(*op, &value)
                     .map_or(FlatSet::Top, |val| self.wrap_immediate(*val)),
                 FlatSet::Bottom => FlatSet::Bottom,
                 FlatSet::Top => FlatSet::Top,
@@ -284,9 +285,11 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 let val = match null_op {
                     NullOp::SizeOf if layout.is_sized() => layout.size.bytes(),
                     NullOp::AlignOf if layout.is_sized() => layout.align.abi.bytes(),
-                    NullOp::OffsetOf(fields) => {
-                        layout.offset_of_subfield(&self.ecx, fields.iter()).bytes()
-                    }
+                    NullOp::OffsetOf(fields) => self
+                        .ecx
+                        .tcx
+                        .offset_of_subfield(self.ecx.param_env(), layout, fields.iter())
+                        .bytes(),
                     _ => return ValueOrPlace::Value(FlatSet::Top),
                 };
                 FlatSet::Elem(Scalar::from_target_usize(val, &self.tcx))
@@ -323,7 +326,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
             // This allows the set of visited edges to grow monotonically with the lattice.
             FlatSet::Bottom => TerminatorEdges::None,
             FlatSet::Elem(scalar) => {
-                let choice = scalar.assert_bits(scalar.size());
+                let choice = scalar.assert_scalar_int().to_bits_unchecked();
                 TerminatorEdges::Single(targets.target_for_value(choice))
             }
             FlatSet::Top => TerminatorEdges::SwitchInt { discr, targets },
@@ -437,7 +440,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         op: BinOp,
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
-    ) -> (FlatSet<Scalar>, FlatSet<bool>) {
+    ) -> (FlatSet<Scalar>, FlatSet<Scalar>) {
         let left = self.eval_operand(left, state);
         let right = self.eval_operand(right, state);
 
@@ -445,9 +448,17 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             (FlatSet::Bottom, _) | (_, FlatSet::Bottom) => (FlatSet::Bottom, FlatSet::Bottom),
             // Both sides are known, do the actual computation.
             (FlatSet::Elem(left), FlatSet::Elem(right)) => {
-                match self.ecx.overflowing_binary_op(op, &left, &right) {
-                    Ok((val, overflow)) => {
-                        (FlatSet::Elem(val.to_scalar()), FlatSet::Elem(overflow))
+                match self.ecx.binary_op(op, &left, &right) {
+                    // Ideally this would return an Immediate, since it's sometimes
+                    // a pair and sometimes not. But as a hack we always return a pair
+                    // and just make the 2nd component `Bottom` when it does not exist.
+                    Ok(val) => {
+                        if matches!(val.layout.abi, Abi::ScalarPair(..)) {
+                            let (val, overflow) = val.to_scalar_pair();
+                            (FlatSet::Elem(val), FlatSet::Elem(overflow))
+                        } else {
+                            (FlatSet::Elem(val.to_scalar()), FlatSet::Bottom)
+                        }
                     }
                     _ => (FlatSet::Top, FlatSet::Top),
                 }
@@ -473,7 +484,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                         (FlatSet::Elem(arg_scalar), FlatSet::Bottom)
                     }
                     BinOp::Mul if layout.ty.is_integral() && arg_value == 0 => {
-                        (FlatSet::Elem(arg_scalar), FlatSet::Elem(false))
+                        (FlatSet::Elem(arg_scalar), FlatSet::Elem(Scalar::from_bool(false)))
                     }
                     _ => (FlatSet::Top, FlatSet::Top),
                 }
@@ -556,7 +567,7 @@ impl<'tcx, 'locals> Collector<'tcx, 'locals> {
 
     fn try_make_constant(
         &self,
-        ecx: &mut InterpCx<'tcx, 'tcx, DummyMachine>,
+        ecx: &mut InterpCx<'tcx, DummyMachine>,
         place: Place<'tcx>,
         state: &State<FlatSet<Scalar>>,
         map: &Map,
@@ -598,7 +609,7 @@ fn propagatable_scalar(
     map: &Map,
 ) -> Option<Scalar> {
     if let FlatSet::Elem(value) = state.get_idx(place, map)
-        && value.try_to_int().is_ok()
+        && value.try_to_scalar_int().is_ok()
     {
         // Do not attempt to propagate pointers, as we may fail to preserve their identity.
         Some(value)
@@ -609,7 +620,7 @@ fn propagatable_scalar(
 
 #[instrument(level = "trace", skip(ecx, state, map))]
 fn try_write_constant<'tcx>(
-    ecx: &mut InterpCx<'_, 'tcx, DummyMachine>,
+    ecx: &mut InterpCx<'tcx, DummyMachine>,
     dest: &PlaceTy<'tcx>,
     place: PlaceIndex,
     ty: Ty<'tcx>,
@@ -659,7 +670,7 @@ fn try_write_constant<'tcx>(
                 let FlatSet::Elem(Scalar::Int(discr)) = state.get_idx(discr, map) else {
                     throw_machine_stop_str!("discriminant with provenance")
                 };
-                let discr_bits = discr.assert_bits(discr.size());
+                let discr_bits = discr.to_bits(discr.size());
                 let Some((variant, _)) = def.discriminants(*ecx.tcx).find(|(_, var)| discr_bits == var.val) else {
                     throw_machine_stop_str!("illegal discriminant for enum")
                 };
@@ -827,7 +838,7 @@ impl<'tcx> MutVisitor<'tcx> for Patch<'tcx> {
 struct OperandCollector<'tcx, 'map, 'locals, 'a> {
     state: &'a State<FlatSet<Scalar>>,
     visitor: &'a mut Collector<'tcx, 'locals>,
-    ecx: &'map mut InterpCx<'tcx, 'tcx, DummyMachine>,
+    ecx: &'map mut InterpCx<'tcx, DummyMachine>,
     map: &'map Map,
 }
 

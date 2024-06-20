@@ -1,5 +1,5 @@
-trait Foo { }
+trait Foo {}
 
-trait Bar { }
+trait Bar {}
 
-impl<'a> Foo for Bar + 'a { }
+impl<'a> Foo for Bar + 'a {}

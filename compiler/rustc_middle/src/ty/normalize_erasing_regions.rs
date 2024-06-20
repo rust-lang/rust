@@ -11,6 +11,7 @@ use crate::traits::query::NoSolution;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use crate::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use tracing::{debug, instrument};
 
 #[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
 pub enum NormalizationError<'tcx> {
@@ -124,7 +125,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_args: GenericArgsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: EarlyBinder<T>,
+        value: EarlyBinder<'tcx, T>,
     ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -142,7 +143,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_args: GenericArgsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: EarlyBinder<T>,
+        value: EarlyBinder<'tcx, T>,
     ) -> Result<T, NormalizationError<'tcx>>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,

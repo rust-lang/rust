@@ -131,6 +131,10 @@ def test_cargo_miri_run():
         cargo_miri("run") + ["--target-dir=custom-run", "--", "--target-dir=target/custom-run"],
         "run.args.stdout.ref", "run.custom-target-dir.stderr.ref",
     )
+    test("`cargo miri run --package=test-local-crate-detection` (test local crate detection)",
+         cargo_miri("run") + ["--package=test-local-crate-detection"],
+         "run.local_crate.stdout.ref", "run.local_crate.stderr.ref",
+    )
 
 def test_cargo_miri_test():
     # rustdoc is not run on foreign targets

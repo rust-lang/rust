@@ -13,7 +13,7 @@ use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
 
 use rustc_ast as ast;
-use rustc_attr::{ConstStability, StabilityLevel};
+use rustc_attr::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -420,8 +420,8 @@ impl clean::GenericArgs {
     fn print<'a, 'tcx: 'a>(&'a self, cx: &'a Context<'tcx>) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             match self {
-                clean::GenericArgs::AngleBracketed { args, bindings } => {
-                    if !args.is_empty() || !bindings.is_empty() {
+                clean::GenericArgs::AngleBracketed { args, constraints } => {
+                    if !args.is_empty() || !constraints.is_empty() {
                         if f.alternate() {
                             f.write_str("<")?;
                         } else {
@@ -439,15 +439,15 @@ impl clean::GenericArgs {
                                 write!(f, "{}", arg.print(cx))?;
                             }
                         }
-                        for binding in bindings.iter() {
+                        for constraint in constraints.iter() {
                             if comma {
                                 f.write_str(", ")?;
                             }
                             comma = true;
                             if f.alternate() {
-                                write!(f, "{:#}", binding.print(cx))?;
+                                write!(f, "{:#}", constraint.print(cx))?;
                             } else {
-                                write!(f, "{}", binding.print(cx))?;
+                                write!(f, "{}", constraint.print(cx))?;
                             }
                         }
                         if f.alternate() {
@@ -1438,13 +1438,9 @@ impl clean::FnDecl {
         {
             write!(f, "\n{}", Indent(n + 4))?;
         }
+
+        let last_input_index = self.inputs.values.len().checked_sub(1);
         for (i, input) in self.inputs.values.iter().enumerate() {
-            if i > 0 {
-                match line_wrapping_indent {
-                    None => write!(f, ", ")?,
-                    Some(n) => write!(f, ",\n{}", Indent(n + 4))?,
-                };
-            }
             if let Some(selfty) = input.to_self() {
                 match selfty {
                     clean::SelfValue => {
@@ -1477,18 +1473,25 @@ impl clean::FnDecl {
                 write!(f, "{}: ", input.name)?;
                 input.type_.print(cx).fmt(f)?;
             }
+            match (line_wrapping_indent, last_input_index) {
+                (_, None) => (),
+                (None, Some(last_i)) if i != last_i => write!(f, ", ")?,
+                (None, Some(_)) => (),
+                (Some(n), Some(last_i)) if i != last_i => write!(f, ",\n{}", Indent(n + 4))?,
+                (Some(_), Some(_)) => write!(f, ",\n")?,
+            }
         }
 
         if self.c_variadic {
             match line_wrapping_indent {
                 None => write!(f, ", ...")?,
-                Some(n) => write!(f, "\n{}...", Indent(n + 4))?,
+                Some(n) => write!(f, "{}...\n", Indent(n + 4))?,
             };
         }
 
         match line_wrapping_indent {
             None => write!(f, ")")?,
-            Some(n) => write!(f, "\n{})", Indent(n))?,
+            Some(n) => write!(f, "{})", Indent(n))?,
         };
 
         self.print_output(cx).fmt(f)
@@ -1633,17 +1636,24 @@ impl PrintWithSpace for hir::Mutability {
 
 pub(crate) fn print_constness_with_space(
     c: &hir::Constness,
-    s: Option<ConstStability>,
+    overall_stab: Option<StableSince>,
+    const_stab: Option<ConstStability>,
 ) -> &'static str {
-    match (c, s) {
-        // const stable or when feature(staged_api) is not set
-        (
-            hir::Constness::Const,
-            Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }),
-        )
-        | (hir::Constness::Const, None) => "const ",
-        // const unstable or not const
-        _ => "",
+    match c {
+        hir::Constness::Const => match (overall_stab, const_stab) {
+            // const stable...
+            (_, Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }))
+            // ...or when feature(staged_api) is not set...
+            | (_, None)
+            // ...or when const unstable, but overall unstable too
+            | (None, Some(ConstStability { level: StabilityLevel::Unstable { .. }, .. })) => {
+                "const "
+            }
+            // const unstable (and overall stable)
+            (Some(_), Some(ConstStability { level: StabilityLevel::Unstable { .. }, .. })) => "",
+        },
+        // not const
+        hir::Constness::NotConst => "",
     }
 }
 
@@ -1699,7 +1709,7 @@ impl clean::ImportSource {
     }
 }
 
-impl clean::TypeBinding {
+impl clean::AssocItemConstraint {
     pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
@@ -1708,11 +1718,11 @@ impl clean::TypeBinding {
             f.write_str(self.assoc.name.as_str())?;
             self.assoc.args.print(cx).fmt(f)?;
             match self.kind {
-                clean::TypeBindingKind::Equality { ref term } => {
+                clean::AssocItemConstraintKind::Equality { ref term } => {
                     f.write_str(" = ")?;
                     term.print(cx).fmt(f)?;
                 }
-                clean::TypeBindingKind::Constraint { ref bounds } => {
+                clean::AssocItemConstraintKind::Bound { ref bounds } => {
                     if !bounds.is_empty() {
                         f.write_str(": ")?;
                         print_generic_bounds(bounds, cx).fmt(f)?;

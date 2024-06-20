@@ -28,7 +28,7 @@ use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{looks_like_rust_object_file, ModuleCodegen, ModuleKind};
 use rustc_data_structures::memmap::Mmap;
-use rustc_errors::{DiagCtxt, FatalError};
+use rustc_errors::{DiagCtxtHandle, FatalError};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
@@ -59,7 +59,7 @@ struct LtoData {
 
 fn prepare_lto(
     cgcx: &CodegenContext<GccCodegenBackend>,
-    dcx: &DiagCtxt,
+    dcx: DiagCtxtHandle<'_>,
 ) -> Result<LtoData, FatalError> {
     let export_threshold = match cgcx.lto {
         // We're just doing LTO for our one crate
@@ -179,12 +179,13 @@ pub(crate) fn run_fat(
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<LtoModuleCodegen<GccCodegenBackend>, FatalError> {
     let dcx = cgcx.create_dcx();
-    let lto_data = prepare_lto(cgcx, &dcx)?;
+    let dcx = dcx.handle();
+    let lto_data = prepare_lto(cgcx, dcx)?;
     /*let symbols_below_threshold =
     lto_data.symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();*/
     fat_lto(
         cgcx,
-        &dcx,
+        dcx,
         modules,
         cached_modules,
         lto_data.upstream_modules,
@@ -195,7 +196,7 @@ pub(crate) fn run_fat(
 
 fn fat_lto(
     cgcx: &CodegenContext<GccCodegenBackend>,
-    _dcx: &DiagCtxt,
+    _dcx: DiagCtxtHandle<'_>,
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,

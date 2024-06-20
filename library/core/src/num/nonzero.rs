@@ -517,9 +517,13 @@ macro_rules! nonzero_integer {
             /// ```
             /// # use std::num::NonZero;
             /// #
-            #[doc = concat!("let n = NonZero::<", stringify!($Int), ">::new(", $leading_zeros_test, ").unwrap();")]
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let n = NonZero::<", stringify!($Int), ">::new(", $leading_zeros_test, ")?;")]
             ///
             /// assert_eq!(n.leading_zeros(), 0);
+            /// # Some(())
+            /// # }
             /// ```
             #[stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
             #[rustc_const_stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
@@ -545,9 +549,13 @@ macro_rules! nonzero_integer {
             /// ```
             /// # use std::num::NonZero;
             /// #
-            #[doc = concat!("let n = NonZero::<", stringify!($Int), ">::new(0b0101000).unwrap();")]
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let n = NonZero::<", stringify!($Int), ">::new(0b0101000)?;")]
             ///
             /// assert_eq!(n.trailing_zeros(), 3);
+            /// # Some(())
+            /// # }
             /// ```
             #[stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
             #[rustc_const_stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
@@ -1051,7 +1059,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             unsafe { Self::new_unchecked(self.get().unchecked_add(other)) }
         }
 
-        /// Returns the smallest power of two greater than or equal to n.
+        /// Returns the smallest power of two greater than or equal to `self`.
         /// Checks for overflow and returns [`None`]
         /// if the next power of two is greater than the type’s maximum value.
         /// As a consequence, the result cannot wrap to zero.
@@ -1101,9 +1109,13 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// ```
         /// # use std::num::NonZero;
         /// #
-        #[doc = concat!("assert_eq!(NonZero::new(7", stringify!($Int), ").unwrap().ilog2(), 2);")]
-        #[doc = concat!("assert_eq!(NonZero::new(8", stringify!($Int), ").unwrap().ilog2(), 3);")]
-        #[doc = concat!("assert_eq!(NonZero::new(9", stringify!($Int), ").unwrap().ilog2(), 3);")]
+        /// # fn main() { test().unwrap(); }
+        /// # fn test() -> Option<()> {
+        #[doc = concat!("assert_eq!(NonZero::new(7", stringify!($Int), ")?.ilog2(), 2);")]
+        #[doc = concat!("assert_eq!(NonZero::new(8", stringify!($Int), ")?.ilog2(), 3);")]
+        #[doc = concat!("assert_eq!(NonZero::new(9", stringify!($Int), ")?.ilog2(), 3);")]
+        /// # Some(())
+        /// # }
         /// ```
         #[stable(feature = "int_log", since = "1.67.0")]
         #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
@@ -1126,9 +1138,13 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// ```
         /// # use std::num::NonZero;
         /// #
-        #[doc = concat!("assert_eq!(NonZero::new(99", stringify!($Int), ").unwrap().ilog10(), 1);")]
-        #[doc = concat!("assert_eq!(NonZero::new(100", stringify!($Int), ").unwrap().ilog10(), 2);")]
-        #[doc = concat!("assert_eq!(NonZero::new(101", stringify!($Int), ").unwrap().ilog10(), 2);")]
+        /// # fn main() { test().unwrap(); }
+        /// # fn test() -> Option<()> {
+        #[doc = concat!("assert_eq!(NonZero::new(99", stringify!($Int), ")?.ilog10(), 1);")]
+        #[doc = concat!("assert_eq!(NonZero::new(100", stringify!($Int), ")?.ilog10(), 2);")]
+        #[doc = concat!("assert_eq!(NonZero::new(101", stringify!($Int), ")?.ilog10(), 2);")]
+        /// # Some(())
+        /// # }
         /// ```
         #[stable(feature = "int_log", since = "1.67.0")]
         #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
@@ -1187,10 +1203,16 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// Basic usage:
         ///
         /// ```
-        #[doc = concat!("let eight = std::num::NonZero::new(8", stringify!($Int), ").unwrap();")]
+        /// # use std::num::NonZero;
+        /// #
+        /// # fn main() { test().unwrap(); }
+        /// # fn test() -> Option<()> {
+        #[doc = concat!("let eight = NonZero::new(8", stringify!($Int), ")?;")]
         /// assert!(eight.is_power_of_two());
-        #[doc = concat!("let ten = std::num::NonZero::new(10", stringify!($Int), ").unwrap();")]
+        #[doc = concat!("let ten = NonZero::new(10", stringify!($Int), ")?;")]
         /// assert!(!ten.is_power_of_two());
+        /// # Some(())
+        /// # }
         /// ```
         #[must_use]
         #[stable(feature = "nonzero_is_power_of_two", since = "1.59.0")]

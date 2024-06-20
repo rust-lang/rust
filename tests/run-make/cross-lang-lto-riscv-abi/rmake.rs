@@ -1,9 +1,12 @@
 //! Make sure that cross-language LTO works on riscv targets,
 //! which requires extra `target-abi` metadata to be emitted.
-//@ needs-matching-clang
+//@ needs-force-clang-based-tests
 //@ needs-llvm-components riscv
 
-use run_make_support::{bin_name, clang, llvm_readobj, rustc, tmp_dir};
+// FIXME(#126180): This test doesn't actually run anywhere, because the only
+// CI job that sets RUSTBUILD_FORCE_CLANG_BASED_TESTS runs very few tests.
+
+use run_make_support::{bin_name, clang, llvm_readobj, rustc};
 use std::{
     env,
     path::PathBuf,
@@ -30,11 +33,11 @@ fn check_target(target: &str, clang_target: &str, carch: &str, is_double_float: 
         .no_stdlib()
         .out_exe("riscv-xlto")
         .input("cstart.c")
-        .input(tmp_dir().join("libriscv_xlto.rlib"))
+        .input("libriscv_xlto.rlib")
         .run();
 
     // Check that the built binary has correct float abi
-    let executable = tmp_dir().join(bin_name("riscv-xlto"));
+    let executable = bin_name("riscv-xlto");
     let output = llvm_readobj().input(&executable).file_header().run();
     let stdout = String::from_utf8_lossy(&output.stdout);
     eprintln!("obj:\n{}", stdout);
