@@ -120,7 +120,6 @@ use types::*;
 use unit_bindings::*;
 use unused::*;
 
-/// Useful for other parts of the compiler / Clippy.
 pub use builtin::{MissingDoc, SoftLints};
 pub use context::{CheckLintNameResult, FindLintError, LintStore};
 pub use context::{EarlyContext, LateContext, LintContext};

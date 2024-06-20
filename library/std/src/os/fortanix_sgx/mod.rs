@@ -28,7 +28,6 @@ pub mod usercalls {
         pub use crate::sys::abi::usercalls::raw::{do_usercall, Usercalls as UsercallNrs};
         pub use crate::sys::abi::usercalls::raw::{Register, RegisterArgument, ReturnValue};
 
-        // fortanix-sgx-abi re-exports
         pub use crate::sys::abi::usercalls::raw::Error;
         pub use crate::sys::abi::usercalls::raw::{
             ByteBuffer, Cancel, FifoDescriptor, Return, Usercall,

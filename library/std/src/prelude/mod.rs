@@ -95,6 +95,9 @@
 //! [book-enums]: ../../book/ch06-01-defining-an-enum.html
 //! [book-iter]: ../../book/ch13-02-iterators.html
 
+// No formatting: this file is nothing but re-exports, and their order is worth preserving.
+#![cfg_attr(rustfmt, rustfmt::skip)]
+
 #![stable(feature = "rust1", since = "1.0.0")]
 
 mod common;
