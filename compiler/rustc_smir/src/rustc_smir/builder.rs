@@ -3,6 +3,7 @@
 //! We first retrieve and monomorphize the rustc body representation, i.e., we generate a
 //! monomorphic body using internal representation.
 //! After that, we convert the internal representation into a stable one.
+
 use crate::rustc_smir::{Stable, Tables};
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;

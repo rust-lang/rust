@@ -1,4 +1,5 @@
 //! Errors emitted by `rustc_hir_typeck`.
+
 use std::borrow::Cow;
 
 use crate::fluent_generated as fluent;

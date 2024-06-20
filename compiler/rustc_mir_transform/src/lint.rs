@@ -1,6 +1,7 @@
 //! This pass statically detects code which has undefined behaviour or is likely to be erroneous.
 //! It can be used to locate problems in MIR building or optimizations. It assumes that all code
 //! can be executed, so it has false positives.
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};

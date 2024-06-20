@@ -1,4 +1,5 @@
 //! Related to out filenames of compilation (e.g. binaries).
+
 use crate::config::{self, CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use crate::errors::{
     self, CrateNameDoesNotMatch, CrateNameEmpty, CrateNameInvalid, FileIsNotWriteable,

@@ -1,4 +1,5 @@
 //! A readers-writer lock implementation backed by the SOLID kernel extension.
+
 use crate::sys::pal::{
     abi,
     itron::{

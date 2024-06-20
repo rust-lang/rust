@@ -1,4 +1,5 @@
 //! Deeply normalize types using the old trait solver.
+
 use super::error_reporting::OverflowCause;
 use super::error_reporting::TypeErrCtxtExt;
 use super::SelectionContext;

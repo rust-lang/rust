@@ -1,6 +1,7 @@
 //! Collects trait impls for each item in the crate. For example, if a crate
 //! defines a struct that implements a trait, this pass will note that the
 //! struct implements that trait.
+
 use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;
