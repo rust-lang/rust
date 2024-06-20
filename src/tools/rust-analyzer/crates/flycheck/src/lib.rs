@@ -386,6 +386,7 @@ impl FlycheckActor {
                 "did  cancel flycheck"
             );
             command_handle.cancel();
+            self.command_receiver.take();
             self.report_progress(Progress::DidCancel);
             self.status = FlycheckStatus::Finished;
         }
