@@ -433,6 +433,7 @@ fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Com
     command
 }
 
+/// This struct contains information needed for running a doctest.
 struct RunnableDoctest {
     full_test_code: String,
     full_test_line_offset: usize,
