@@ -323,6 +323,13 @@ pub struct BuiltinTypeAliasGenericBounds<'a, 'b> {
     pub sub: Option<SuggestChangingAssocTypes<'a, 'b>>,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_macro_expr_fragment_specifier_2024_migration)]
+pub struct MacroExprFragment2024 {
+    #[suggestion(code = "expr_2021", applicability = "machine-applicable")]
+    pub suggestion: Span,
+}
+
 pub struct BuiltinTypeAliasGenericBoundsSuggestion {
     pub suggestions: Vec<(Span, String)>,
 }
