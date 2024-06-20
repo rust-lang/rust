@@ -110,5 +110,4 @@ pub const VEC_POP: [&str; 4] = ["alloc", "vec", "Vec", "pop"];
 pub const WAKER: [&str; 4] = ["core", "task", "wake", "Waker"];
 pub const OPTION_UNWRAP: [&str; 4] = ["core", "option", "Option", "unwrap"];
 pub const OPTION_EXPECT: [&str; 4] = ["core", "option", "Option", "expect"];
-#[expect(clippy::invalid_paths)] // not sure why it thinks this, it works so
 pub const BOOL_THEN: [&str; 4] = ["core", "bool", "<impl bool>", "then"];
