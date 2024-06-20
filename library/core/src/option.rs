@@ -797,7 +797,8 @@ impl<T> Option<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "option_as_slice", since = "1.75.0")]
-    pub fn as_slice(&self) -> &[T] {
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    pub const fn as_slice(&self) -> &[T] {
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to
         // `slice::from_ref`, and thus is safe.
@@ -811,7 +812,7 @@ impl<T> Option<T> {
         unsafe {
             slice::from_raw_parts(
                 (self as *const Self).byte_add(core::mem::offset_of!(Self, Some.0)).cast(),
-                usize::from(self.is_some()),
+                self.is_some() as usize,
             )
         }
     }
@@ -851,7 +852,8 @@ impl<T> Option<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "option_as_slice", since = "1.75.0")]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    pub const fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to
         // `slice::from_mut`, and thus is safe.
@@ -867,7 +869,7 @@ impl<T> Option<T> {
         unsafe {
             slice::from_raw_parts_mut(
                 (self as *mut Self).byte_add(core::mem::offset_of!(Self, Some.0)).cast(),
-                usize::from(self.is_some()),
+                self.is_some() as usize,
             )
         }
     }
