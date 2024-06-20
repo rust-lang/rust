@@ -151,8 +151,6 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<()
         expanded_args: options.expanded_args.clone(),
     };
 
-    let test_args = options.test_args.clone();
-    let nocapture = options.nocapture;
     let externs = options.externs.clone();
     let json_unused_externs = options.json_unused_externs;
 
@@ -202,15 +200,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<()
         })
     })?;
 
-    run_tests(
-        test_args,
-        nocapture,
-        opts,
-        &rustdoc_options,
-        &unused_extern_reports,
-        standalone_tests,
-        mergeable_tests,
-    );
+    run_tests(opts, &rustdoc_options, &unused_extern_reports, standalone_tests, mergeable_tests);
 
     let compiling_test_count = compiling_test_count.load(Ordering::SeqCst);
 
@@ -256,16 +246,16 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<()
 }
 
 pub(crate) fn run_tests(
-    mut test_args: Vec<String>,
-    nocapture: bool,
     opts: GlobalTestOptions,
     rustdoc_options: &Arc<RustdocOptions>,
     unused_extern_reports: &Arc<Mutex<Vec<UnusedExterns>>>,
     mut standalone_tests: Vec<test::TestDescAndFn>,
     mergeable_tests: FxHashMap<Edition, Vec<(DocTest, ScrapedDoctest)>>,
 ) {
+    let mut test_args = Vec::with_capacity(rustdoc_options.test_args.len() + 1);
     test_args.insert(0, "rustdoctest".to_string());
-    if nocapture {
+    test_args.extend_from_slice(&rustdoc_options.test_args);
+    if rustdoc_options.nocapture {
         test_args.push("--nocapture".to_string());
     }
 
@@ -283,7 +273,7 @@ pub(crate) fn run_tests(
 
         let rustdoc_test_options = IndividualTestOptions::new(
             &rustdoc_options,
-            &format!("merged_doctest_{edition}"),
+            &Some(format!("merged_doctest_{edition}")),
             PathBuf::from(format!("doctest_{edition}.rs")),
         );
 
@@ -685,10 +675,10 @@ struct IndividualTestOptions {
 }
 
 impl IndividualTestOptions {
-    fn new(options: &RustdocOptions, test_id: &str, test_path: PathBuf) -> Self {
+    fn new(options: &RustdocOptions, test_id: &Option<String>, test_path: PathBuf) -> Self {
         let outdir = if let Some(ref path) = options.persist_doctests {
             let mut path = path.clone();
-            path.push(&test_id);
+            path.push(&test_id.as_deref().unwrap_or_else(|| "<doctest>"));
 
             if let Err(err) = std::fs::create_dir_all(&path) {
                 eprintln!("Couldn't create directory for doctest executables: {err}");
@@ -858,11 +848,8 @@ fn generate_test_desc_and_fn(
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
 ) -> test::TestDescAndFn {
     let target_str = rustdoc_options.target.to_string();
-    let rustdoc_test_options = IndividualTestOptions::new(
-        &rustdoc_options,
-        test.test_id.as_deref().unwrap_or_else(|| "<doctest>"),
-        scraped_test.path(),
-    );
+    let rustdoc_test_options =
+        IndividualTestOptions::new(&rustdoc_options, &test.test_id, scraped_test.path());
 
     debug!("creating test {}: {}", scraped_test.name, scraped_test.text);
     test::TestDescAndFn {
