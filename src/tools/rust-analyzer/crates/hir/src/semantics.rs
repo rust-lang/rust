@@ -772,7 +772,7 @@ impl<'db> SemanticsImpl<'db> {
                             let exp_info = macro_file.expansion_info(self.db.upcast());
 
                             let InMacroFile { file_id, value } = exp_info.expanded();
-                            if let InFile { file_id, value: Some(value) } = exp_info.call_node() {
+                            if let InFile { file_id, value: Some(value) } = exp_info.arg() {
                                 self.cache(value.ancestors().last().unwrap(), file_id);
                             }
                             self.cache(value, file_id.into());
@@ -786,7 +786,7 @@ impl<'db> SemanticsImpl<'db> {
             // FIXME: uncached parse
             // Create the source analyzer for the macro call scope
             let Some(sa) = expansion_info
-                .call_node()
+                .arg()
                 .value
                 .and_then(|it| self.analyze_no_infer(&it.ancestors().last().unwrap()))
             else {
@@ -1145,7 +1145,7 @@ impl<'db> SemanticsImpl<'db> {
                             .expansion_info_cache
                             .entry(macro_file)
                             .or_insert_with(|| macro_file.expansion_info(self.db.upcast()));
-                        expansion_info.call_node().transpose()
+                        expansion_info.arg().map(|node| node?.parent()).transpose()
                     })
                 }
             }
