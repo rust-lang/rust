@@ -118,8 +118,6 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
     let CreateRunnableDoctests { opts, rustdoc_options, standalone_tests, mergeable_tests, .. } =
         collector;
     crate::doctest::run_tests(
-        options.test_args,
-        options.nocapture,
         opts,
         &rustdoc_options,
         &Arc::new(Mutex::new(Vec::new())),
