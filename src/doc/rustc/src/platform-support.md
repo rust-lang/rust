@@ -330,7 +330,7 @@ target | std | host | notes
 `powerpc-unknown-linux-gnuspe` | ✓ |  | PowerPC SPE Linux
 `powerpc-unknown-linux-musl` | ? |  | PowerPC Linux with musl 1.2.3
 [`powerpc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD 32-bit powerpc systems
-`powerpc-unknown-openbsd` | ? |  |
+[`powerpc-unknown-openbsd`](platform-support/powerpc-unknown-openbsd.md) | * |  |
 `powerpc-wrs-vxworks-spe` | ? |  |
 `powerpc-wrs-vxworks` | ? |  |
 `powerpc64-unknown-freebsd` | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
