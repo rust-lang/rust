@@ -1,7 +1,7 @@
 //! calculate cognitive complexity and warn about overly complex functions
 
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{get_async_fn_body, is_async_fn, LimitStack};
@@ -12,7 +12,7 @@ use rustc_hir::{Body, Expr, ExprKind, FnDecl};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -50,7 +50,6 @@ impl CognitiveComplexity {
 impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
 
 impl CognitiveComplexity {
-    #[expect(clippy::cast_possible_truncation)]
     fn check<'tcx>(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -100,17 +99,12 @@ impl CognitiveComplexity {
                 FnKind::ItemFn(ident, _, _) | FnKind::Method(ident, _) => ident.span,
                 FnKind::Closure => {
                     let header_span = body_span.with_hi(decl.output.span().lo());
-                    let pos = snippet_opt(cx, header_span).and_then(|snip| {
-                        let low_offset = snip.find('|')?;
-                        let high_offset = 1 + snip.get(low_offset + 1..)?.find('|')?;
-                        let low = header_span.lo() + BytePos(low_offset as u32);
-                        let high = low + BytePos(high_offset as u32 + 1);
-
-                        Some((low, high))
-                    });
-
-                    if let Some((low, high)) = pos {
-                        Span::new(low, high, header_span.ctxt(), header_span.parent())
+                    #[expect(clippy::range_plus_one)]
+                    if let Some(range) = header_span.map_range(cx, |src, range| {
+                        let mut idxs = src.get(range.clone())?.match_indices('|');
+                        Some(range.start + idxs.next()?.0..range.start + idxs.next()?.0 + 1)
+                    }) {
+                        range.with_ctxt(header_span.ctxt())
                     } else {
                         return;
                     }

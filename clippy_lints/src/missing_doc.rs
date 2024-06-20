@@ -8,7 +8,7 @@
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use rustc_ast::ast::{self, MetaItem, MetaItemKind};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -266,8 +266,5 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 }
 
 fn span_to_snippet_contains_docs(cx: &LateContext<'_>, search_span: Span) -> bool {
-    let Some(snippet) = snippet_opt(cx, search_span) else {
-        return false;
-    };
-    snippet.lines().rev().any(|line| line.trim().starts_with("///"))
+    search_span.check_source_text(cx, |src| src.lines().rev().any(|line| line.trim().starts_with("///")))
 }
