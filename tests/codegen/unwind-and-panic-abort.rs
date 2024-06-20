@@ -1,7 +1,6 @@
 //@ compile-flags: -C panic=abort
 
 #![crate_type = "lib"]
-#![feature(c_unwind)]
 
 extern "C-unwind" {
     fn bar();

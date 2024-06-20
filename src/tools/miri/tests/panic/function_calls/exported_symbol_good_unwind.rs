@@ -2,7 +2,7 @@
 // found in this form" errors works without `-C prefer-dynamic` (`panic!` calls foreign function
 // `__rust_start_panic`).
 // no-prefer-dynamic
-#![feature(c_unwind, unboxed_closures)]
+#![feature(unboxed_closures)]
 
 use std::panic;
 

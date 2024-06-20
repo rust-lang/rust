@@ -1,4 +1,3 @@
-#![feature(c_unwind)]
 #![allow(unused_assignments)]
 
 extern "C" fn might_abort(should_abort: bool) {

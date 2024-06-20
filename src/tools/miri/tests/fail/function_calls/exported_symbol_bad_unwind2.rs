@@ -4,7 +4,7 @@
 //@normalize-stderr-test: "\n +[0-9]+:[^\n]+" -> ""
 //@normalize-stderr-test: "\n +at [^\n]+" -> ""
 //@[definition,both]error-in-other-file: aborted execution
-#![feature(rustc_attrs, c_unwind)]
+#![feature(rustc_attrs)]
 
 #[cfg_attr(any(definition, both), rustc_nounwind)]
 #[no_mangle]
