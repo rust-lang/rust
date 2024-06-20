@@ -1,4 +1,6 @@
-//@ compile-flags: --diagnostic-width=60 -Zwrite-long-types-to-disk=yes
+//@ revisions: ascii unicode
+//@[ascii] compile-flags: --diagnostic-width=60 -Zwrite-long-types-to-disk=yes
+//@[unicode] compile-flags: -Zunstable-options=yes --error-format=human-unicode --diagnostic-width=60 -Zwrite-long-types-to-disk=yes
 //@ normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 
 mod a {
@@ -46,7 +48,7 @@ fn main() {
             Ok("")
         ))))))))))))))))))))))))))))))
     ))))))))))))))))))))))))))))));
-    //~^^^^^ ERROR E0308
+    //[ascii]~^^^^^ ERROR E0308
 
     let _ = Some(Ok(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(
         Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(Some(
@@ -59,7 +61,7 @@ fn main() {
             Ok(Ok(Ok(Ok(Ok(Ok(Ok("")))))))
         ))))))))))))))))))))))))))))))
     ))))))))))))))))))))))));
-    //~^^^^^ ERROR E0308
+    //[ascii]~^^^^^ ERROR E0308
 
     let x: Atype<
       Btype<
@@ -86,12 +88,12 @@ fn main() {
       >,
       i32
     > = ();
-    //~^ ERROR E0308
+    //[ascii]~^ ERROR E0308
 
     let _: () = Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(
         Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(
             Ok(Ok(Ok(Ok(Ok(Ok(Ok("")))))))
         ))))))))))))))))))))))))))))))
     ))))))))))))))))))))))));
-    //~^^^^^ ERROR E0308
+    //[ascii]~^^^^^ ERROR E0308
 }
