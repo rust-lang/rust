@@ -44,6 +44,11 @@ impl<'a> BootstrapCommand<'a> {
         Self { failure_behavior: BehaviorOnFailure::Ignore, ..self }
     }
 
+    /// Do not print the output of the command, unless it fails.
+    pub fn quiet(self) -> Self {
+        self.output_mode(OutputMode::PrintOnFailure)
+    }
+
     pub fn output_mode(self, output_mode: OutputMode) -> Self {
         Self { output_mode, ..self }
     }

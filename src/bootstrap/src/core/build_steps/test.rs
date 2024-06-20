@@ -2342,11 +2342,11 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
     let test_args = builder.config.test_args().join(" ");
     cmd.arg("--test-args").arg(test_args);
 
-    if builder.config.verbose_tests {
-        builder.run_delaying_failure(&mut cmd)
-    } else {
-        builder.run_quiet_delaying_failure(&mut cmd)
+    let mut cmd = BootstrapCommand::from(&mut cmd).delay_failure();
+    if !builder.config.verbose_tests {
+        cmd = cmd.quiet();
     }
+    builder.run_tracked(cmd).is_success()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

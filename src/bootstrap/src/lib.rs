@@ -958,6 +958,7 @@ impl Build {
         })
     }
 
+    /// Execute a command and return its output.
     fn run_tracked(&self, command: BootstrapCommand<'_>) -> CommandOutput {
         if self.config.dry_run() {
             return CommandOutput::default();
@@ -1035,15 +1036,6 @@ impl Build {
                 false => OutputMode::PrintOutput,
             },
         ))
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
-    /// Exits if the command failed to execute at all, otherwise returns its
-    /// `status.success()`.
-    fn run_quiet_delaying_failure(&self, cmd: &mut Command) -> bool {
-        self.run_cmd(
-            BootstrapCommand::from(cmd).delay_failure().output_mode(OutputMode::PrintOnFailure),
-        )
     }
 
     /// A centralized function for running commands that do not return output.
