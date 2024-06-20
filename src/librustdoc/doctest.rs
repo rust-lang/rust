@@ -267,50 +267,53 @@ pub(crate) fn run_tests(
         if doctests.is_empty() {
             continue;
         }
-        doctests.sort_by(|(_, a), (_, b)| a.name.cmp(&b.name));
+        // If there is only one mergeable doctest, the cost to run it would be higher than just
+        // running it alonside standalone doctests.
+        if doctests.len() > 1 {
+            doctests.sort_by(|(_, a), (_, b)| a.name.cmp(&b.name));
 
-        let mut tests_runner = runner::DocTestRunner::new();
+            let mut tests_runner = runner::DocTestRunner::new();
 
-        let rustdoc_test_options = IndividualTestOptions::new(
-            &rustdoc_options,
-            &Some(format!("merged_doctest_{edition}")),
-            PathBuf::from(format!("doctest_{edition}.rs")),
-        );
+            let rustdoc_test_options = IndividualTestOptions::new(
+                &rustdoc_options,
+                &Some(format!("merged_doctest_{edition}")),
+                PathBuf::from(format!("doctest_{edition}.rs")),
+            );
 
-        for (doctest, scraped_test) in &doctests {
-            tests_runner.add_test(doctest, scraped_test, &target_str);
-        }
-        if let Ok(success) = tests_runner.run_merged_tests(
-            rustdoc_test_options,
-            edition,
-            &opts,
-            &test_args,
-            rustdoc_options,
-        ) {
-            ran_edition_tests += 1;
-            if !success {
-                nb_errors += 1;
+            for (doctest, scraped_test) in &doctests {
+                tests_runner.add_test(doctest, scraped_test, &target_str);
             }
-            continue;
-        } else {
+            if let Ok(success) = tests_runner.run_merged_tests(
+                rustdoc_test_options,
+                edition,
+                &opts,
+                &test_args,
+                rustdoc_options,
+            ) {
+                ran_edition_tests += 1;
+                if !success {
+                    nb_errors += 1;
+                }
+                continue;
+            }
             // We failed to compile all compatible tests as one so we push them into the
             // `standalone_tests` doctests.
             debug!("Failed to compile compatible doctests for edition {} all at once", edition);
-            for (doctest, scraped_test) in doctests {
-                doctest.generate_unique_doctest(
-                    &scraped_test.text,
-                    scraped_test.langstr.test_harness,
-                    &opts,
-                    Some(&opts.crate_name),
-                );
-                standalone_tests.push(generate_test_desc_and_fn(
-                    doctest,
-                    scraped_test,
-                    opts.clone(),
-                    Arc::clone(&rustdoc_options),
-                    unused_extern_reports.clone(),
-                ));
-            }
+        }
+        for (doctest, scraped_test) in doctests {
+            doctest.generate_unique_doctest(
+                &scraped_test.text,
+                scraped_test.langstr.test_harness,
+                &opts,
+                Some(&opts.crate_name),
+            );
+            standalone_tests.push(generate_test_desc_and_fn(
+                doctest,
+                scraped_test,
+                opts.clone(),
+                Arc::clone(&rustdoc_options),
+                unused_extern_reports.clone(),
+            ));
         }
     }
 

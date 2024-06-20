@@ -1,11 +1,11 @@
 
 running 1 test
-test $DIR/failed-doctest-should-panic.rs - Foo (line 9) - should panic ... FAILED
+test $DIR/failed-doctest-should-panic.rs - Foo (line 9) ... FAILED
 
 failures:
 
 ---- $DIR/failed-doctest-should-panic.rs - Foo (line 9) stdout ----
-note: test did not panic as expected
+Test executable succeeded, but it's marked `should_panic`.
 
 failures:
     $DIR/failed-doctest-should-panic.rs - Foo (line 9)
