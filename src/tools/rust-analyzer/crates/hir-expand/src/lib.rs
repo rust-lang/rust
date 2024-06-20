@@ -710,8 +710,8 @@ impl ExpansionInfo {
         self.expanded.clone()
     }
 
-    pub fn call_node(&self) -> InFile<Option<SyntaxNode>> {
-        self.arg.with_value(self.arg.value.as_ref().and_then(SyntaxNode::parent))
+    pub fn arg(&self) -> InFile<Option<&SyntaxNode>> {
+        self.arg.as_ref().map(|it| it.as_ref())
     }
 
     pub fn call_file(&self) -> HirFileId {

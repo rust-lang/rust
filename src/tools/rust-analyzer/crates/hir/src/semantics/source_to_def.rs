@@ -434,7 +434,7 @@ impl SourceToDefCtx<'_, '_> {
                     .entry(macro_file)
                     .or_insert_with(|| macro_file.expansion_info(this.db.upcast()));
 
-                expansion_info.call_node().map(|node| node?.parent()).transpose()
+                expansion_info.arg().map(|node| node?.parent()).transpose()
             }
         };
         let mut node = node.cloned();
