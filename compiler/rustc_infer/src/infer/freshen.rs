@@ -30,6 +30,7 @@
 //! solving a set of constraints. In contrast, the type inferencer assigns a value to each type
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
+
 use super::InferCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;

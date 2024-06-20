@@ -1,4 +1,5 @@
 //! Calculates information used for the --show-coverage flag.
+
 use crate::clean;
 use crate::core::DocContext;
 use crate::html::markdown::{find_testable_code, ErrorCodes};

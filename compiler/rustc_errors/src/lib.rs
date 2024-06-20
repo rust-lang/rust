@@ -1437,6 +1437,24 @@ impl DiagCtxtInner {
 
     // Return value is only `Some` if the level is `Error` or `DelayedBug`.
     fn emit_diagnostic(&mut self, mut diagnostic: DiagInner) -> Option<ErrorGuaranteed> {
+        match diagnostic.level {
+            Expect(expect_id) | ForceWarning(Some(expect_id)) => {
+                // The `LintExpectationId` can be stable or unstable depending on when it was
+                // created. Diagnostics created before the definition of `HirId`s are unstable and
+                // can not yet be stored. Instead, they are buffered until the `LintExpectationId`
+                // is replaced by a stable one by the `LintLevelsBuilder`.
+                if let LintExpectationId::Unstable { .. } = expect_id {
+                    // We don't call TRACK_DIAGNOSTIC because we wait for the
+                    // unstable ID to be updated, whereupon the diagnostic will be
+                    // passed into this method again.
+                    self.unstable_expect_diagnostics.push(diagnostic);
+                    return None;
+                }
+                // Continue through to the `Expect`/`ForceWarning` case below.
+            }
+            _ => {}
+        }
+
         if diagnostic.has_future_breakage() {
             // Future breakages aren't emitted if they're `Level::Allow`,
             // but they still need to be constructed and stashed below,
@@ -1512,16 +1530,8 @@ impl DiagCtxtInner {
                 return None;
             }
             Expect(expect_id) | ForceWarning(Some(expect_id)) => {
-                // Diagnostics created before the definition of `HirId`s are
-                // unstable and can not yet be stored. Instead, they are
-                // buffered until the `LintExpectationId` is replaced by a
-                // stable one by the `LintLevelsBuilder`.
                 if let LintExpectationId::Unstable { .. } = expect_id {
-                    // We don't call TRACK_DIAGNOSTIC because we wait for the
-                    // unstable ID to be updated, whereupon the diagnostic will
-                    // be passed into this method again.
-                    self.unstable_expect_diagnostics.push(diagnostic);
-                    return None;
+                    unreachable!(); // this case was handled at the top of this function
                 }
                 self.fulfilled_expectations.insert(expect_id.normalize());
                 if let Expect(_) = diagnostic.level {

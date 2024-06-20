@@ -1,6 +1,7 @@
 //! A simple markdown parser that can write formatted text to the terminal
 //!
 //! Entrypoint is `MdStream::parse_str(...)`
+
 use std::io;
 
 use termcolor::{Buffer, BufferWriter, ColorChoice};

@@ -1,6 +1,7 @@
 //! Locals are in a private module as updating `LocalRef::Operand` has to
 //! be careful wrt to subtyping. To deal with this we only allow updates by using
 //! `FunctionCx::overwrite_local` which handles it automatically.
+
 use crate::mir::{FunctionCx, LocalRef};
 use crate::traits::BuilderMethods;
 use rustc_index::IndexVec;

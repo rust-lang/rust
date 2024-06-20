@@ -1,3 +1,5 @@
+#![feature(f128)]
+#![feature(f16)]
 #![warn(clippy::modulo_arithmetic)]
 #![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::modulo_one)]
 
@@ -14,6 +16,19 @@ fn main() {
     //~| NOTE: double check for expected result especially when interoperating with differ
     (1.1 + 2.3) % (1.1 - 2.3);
     //~^ ERROR: you are using modulo operator on constants with different signs: `3.400 %
+    //~| NOTE: double check for expected result especially when interoperating with differ
+
+    // Lint on floating point numbers
+    let a_f16: f16 = -1.6;
+    let mut b_f16: f16 = 2.1;
+    a_f16 % b_f16;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
+    b_f16 % a_f16;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
+    b_f16 %= a_f16;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
     //~| NOTE: double check for expected result especially when interoperating with differ
 
     // Lint on floating point numbers
@@ -38,6 +53,18 @@ fn main() {
     //~^ ERROR: you are using modulo operator on types that might have different signs
     //~| NOTE: double check for expected result especially when interoperating with differ
     b_f64 %= a_f64;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
+
+    let a_f128: f128 = -1.6;
+    let mut b_f128: f128 = 2.1;
+    a_f128 % b_f128;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
+    b_f128 % a_f128;
+    //~^ ERROR: you are using modulo operator on types that might have different signs
+    //~| NOTE: double check for expected result especially when interoperating with differ
+    b_f128 %= a_f128;
     //~^ ERROR: you are using modulo operator on types that might have different signs
     //~| NOTE: double check for expected result especially when interoperating with differ
 
