@@ -1,4 +1,5 @@
-//@ known-bug: rust-lang/rust#125799
+//! Used to ICE rust-lang/rust#125799 due to `isize` != `()`
+//! not being detected early due to the conflicting impls.
 //@ only-x86_64
 
 trait Trait<T> {
@@ -10,6 +11,7 @@ impl<T> Trait<T> for Vec<T> {
 }
 
 impl Trait<u8> for Vec<u8> {}
+//~^ ERROR: conflicting implementations
 
 const BAR: <Vec<u8> as Trait<u8>>::Assoc = 3;
 

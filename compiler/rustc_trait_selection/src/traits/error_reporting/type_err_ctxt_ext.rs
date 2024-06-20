@@ -179,6 +179,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
                     let guar = self.report_fulfillment_error(error);
+                    self.infcx.set_tainted_by_errors(guar);
                     reported = Some(guar);
                     // We want to ignore desugarings here: spans are equivalent even
                     // if one is the result of a desugaring and the other is not.
@@ -2686,22 +2687,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
             }
 
-            // Given some `ConstArgHasType(?x, usize)`, we should not emit an error such as
-            // "type annotations needed: cannot satisfy the constant `_` has type `usize`"
-            // Instead we should emit a normal error suggesting the user to turbofish the
-            // const parameter that is currently being inferred. Unfortunately we cannot
-            // nicely emit such an error so we delay an ICE incase nobody else reports it
-            // for us.
-            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
-                return self.tcx.sess.dcx().span_delayed_bug(
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ..)) => self
+                .emit_inference_failure_err(
+                    obligation.cause.body_id,
                     span,
-                    format!(
-                        "`ambiguous ConstArgHasType({:?}, {:?}) unaccompanied by inference error`",
-                        ct, ty
-                    ),
-                );
-            }
-
+                    ct.into(),
+                    ErrorCode::E0284,
+                    true,
+                ),
             ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })
                 if term.is_infer() =>
             {
