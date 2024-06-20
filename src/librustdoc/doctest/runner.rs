@@ -235,36 +235,18 @@ fn main() {returns_result} {{
         output,
         "
 #[rustc_test_marker = {test_name:?}]
-pub const TEST: test::TestDescAndFn = test::TestDescAndFn {{
-    desc: test::TestDesc {{
-        name: test::StaticTestName({test_name:?}),
-        ignore: {ignore},
-        ignore_message: None,
-        source_file: {file:?},
-        start_line: {line},
-        start_col: 0,
-        end_line: 0,
-        end_col: 0,
-        compile_fail: false,
-        no_run: {no_run},
-        should_panic: test::ShouldPanic::{should_panic},
-        test_type: test::TestType::DocTest,
-    }},
-    testfn: test::StaticTestFn(
-        #[coverage(off)]
-        || {{{runner}}},
-    )
-}};
+pub const TEST: test::TestDescAndFn = test::TestDescAndFn::new_doctest(
+{test_name:?}, {ignore}, {file:?}, {line}, {no_run}, {should_panic},
+test::StaticTestFn(
+    #[coverage(off)]
+    || {{{runner}}},
+));
 }}",
         test_name = scraped_test.name,
         file = scraped_test.path(),
         line = scraped_test.line,
         no_run = scraped_test.langstr.no_run,
-        should_panic = if !scraped_test.langstr.no_run && scraped_test.langstr.should_panic {
-            "Yes"
-        } else {
-            "No"
-        },
+        should_panic = !scraped_test.langstr.no_run && scraped_test.langstr.should_panic,
         // Setting `no_run` to `true` in `TestDesc` still makes the test run, so we simply
         // don't give it the function to run.
         runner = if not_running {
