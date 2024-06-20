@@ -900,7 +900,11 @@ pub enum NonterminalKind {
     PatWithOr,
     Expr,
     /// Matches an expression using the rules from edition 2021 and earlier.
-    Expr2021,
+    Expr2021 {
+        /// Keep track of whether the user used `:expr` or `:expr_2021` and we inferred it from the
+        /// edition of the span. This is used for diagnostics AND feature gating.
+        inferred: bool,
+    },
     Ty,
     Ident,
     Lifetime,
@@ -929,8 +933,13 @@ impl NonterminalKind {
                 Edition::Edition2021 | Edition::Edition2024 => NonterminalKind::PatWithOr,
             },
             sym::pat_param => NonterminalKind::PatParam { inferred: false },
-            sym::expr => NonterminalKind::Expr,
-            sym::expr_2021 if edition().at_least_rust_2021() => NonterminalKind::Expr2021,
+            sym::expr => match edition() {
+                Edition::Edition2015 | Edition::Edition2018 | Edition::Edition2021 => {
+                    NonterminalKind::Expr2021 { inferred: true }
+                }
+                Edition::Edition2024 => NonterminalKind::Expr,
+            },
+            sym::expr_2021 => NonterminalKind::Expr2021 { inferred: false },
             sym::ty => NonterminalKind::Ty,
             sym::ident => NonterminalKind::Ident,
             sym::lifetime => NonterminalKind::Lifetime,
@@ -949,8 +958,8 @@ impl NonterminalKind {
             NonterminalKind::Stmt => sym::stmt,
             NonterminalKind::PatParam { inferred: false } => sym::pat_param,
             NonterminalKind::PatParam { inferred: true } | NonterminalKind::PatWithOr => sym::pat,
-            NonterminalKind::Expr => sym::expr,
-            NonterminalKind::Expr2021 => sym::expr_2021,
+            NonterminalKind::Expr | NonterminalKind::Expr2021 { inferred: true } => sym::expr,
+            NonterminalKind::Expr2021 { inferred: false } => sym::expr_2021,
             NonterminalKind::Ty => sym::ty,
             NonterminalKind::Ident => sym::ident,
             NonterminalKind::Lifetime => sym::lifetime,

@@ -36,7 +36,7 @@ impl<'a> Parser<'a> {
         }
 
         match kind {
-            NonterminalKind::Expr2021 => {
+            NonterminalKind::Expr2021 { inferred: _ } => {
                 token.can_begin_expr()
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Let)
@@ -47,7 +47,6 @@ impl<'a> Parser<'a> {
                 token.can_begin_expr()
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Let)
-                && (!token.is_keyword(kw::Const) || token.span.edition().at_least_rust_2024())
             }
             NonterminalKind::Ty => token.can_begin_type(),
             NonterminalKind::Ident => get_macro_ident(token).is_some(),
@@ -149,7 +148,7 @@ impl<'a> Parser<'a> {
                 })?)
             }
 
-            NonterminalKind::Expr | NonterminalKind::Expr2021 => {
+            NonterminalKind::Expr | NonterminalKind::Expr2021 { inferred: _ } => {
                 NtExpr(self.parse_expr_force_collect()?)
             }
             NonterminalKind::Literal => {
