@@ -24,7 +24,7 @@ pub struct PanicInfo<'a> {
 /// that were given to the `panic!()` macro.
 ///
 /// See [`PanicInfo::message`].
-#[unstable(feature = "panic_info_message", issue = "66745")]
+#[stable(feature = "panic_info_message", since = "CURRENT_RUSTC_VERSION")]
 pub struct PanicMessage<'a> {
     message: fmt::Arguments<'a>,
 }
@@ -57,7 +57,7 @@ impl<'a> PanicInfo<'a> {
     /// }
     /// ```
     #[must_use]
-    #[unstable(feature = "panic_info_message", issue = "66745")]
+    #[stable(feature = "panic_info_message", since = "CURRENT_RUSTC_VERSION")]
     pub fn message(&self) -> PanicMessage<'_> {
         PanicMessage { message: self.message }
     }
@@ -164,7 +164,7 @@ impl<'a> PanicMessage<'a> {
     /// For most cases with placeholders, this function will return `None`.
     ///
     /// See [`fmt::Arguments::as_str`] for details.
-    #[unstable(feature = "panic_info_message", issue = "66745")]
+    #[stable(feature = "panic_info_message", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]
     #[must_use]
     #[inline]
@@ -173,7 +173,7 @@ impl<'a> PanicMessage<'a> {
     }
 }
 
-#[unstable(feature = "panic_info_message", issue = "66745")]
+#[stable(feature = "panic_info_message", since = "CURRENT_RUSTC_VERSION")]
 impl Display for PanicMessage<'_> {
     #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -181,7 +181,7 @@ impl Display for PanicMessage<'_> {
     }
 }
 
-#[unstable(feature = "panic_info_message", issue = "66745")]
+#[stable(feature = "panic_info_message", since = "CURRENT_RUSTC_VERSION")]
 impl fmt::Debug for PanicMessage<'_> {
     #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {

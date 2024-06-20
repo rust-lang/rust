@@ -341,7 +341,6 @@
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(panic_can_unwind)]
-#![feature(panic_info_message)]
 #![feature(panic_internals)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
