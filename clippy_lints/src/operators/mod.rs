@@ -627,7 +627,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for getting the remainder of a division by one or minus
+    /// Checks for getting the remainder of integer division by one or minus
     /// one.
     ///
     /// ### Why is this bad?
@@ -646,7 +646,7 @@ declare_clippy_lint! {
     #[clippy::version = "pre 1.29.0"]
     pub MODULO_ONE,
     correctness,
-    "taking a number modulo +/-1, which can either panic/overflow or always returns 0"
+    "taking an integer modulo +/-1, which can either panic/overflow or always returns 0"
 }
 
 declare_clippy_lint! {
