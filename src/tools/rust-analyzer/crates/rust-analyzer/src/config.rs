@@ -2531,21 +2531,12 @@ macro_rules! _impl_for_config_data {
                 #[allow(non_snake_case)]
                 $vis fn $field(&self, source_root: Option<SourceRootId>) -> &$ty {
                     let mut par: Option<SourceRootId> = source_root;
-                    let mut traversals = 0;
                     while let Some(source_root_id) = par {
                         par = self.source_root_parent_map.get(&source_root_id).copied();
                         if let Some((config, _)) = self.ratoml_files.get(&source_root_id) {
                             if let Some(value) = config.$field.as_ref() {
                                 return value;
                             }
-                        }
-                        // Prevent infinite loops caused by cycles by giving up when it's
-                        // clear that we must have either visited all source roots or
-                        // encountered a cycle.
-                        traversals += 1;
-                        if traversals >= self.source_root_parent_map.len() {
-                            // i.e. no source root contains the config we're looking for
-                            break;
                         }
                     }
 
