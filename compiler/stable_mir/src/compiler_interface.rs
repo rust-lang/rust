@@ -215,6 +215,9 @@ pub trait Context {
     /// Get an instance ABI.
     fn instance_abi(&self, def: InstanceDef) -> Result<FnAbi, Error>;
 
+    /// Get the ABI of a function pointer.
+    fn fn_ptr_abi(&self, fn_ptr: PolyFnSig) -> Result<FnAbi, Error>;
+
     /// Get the layout of a type.
     fn ty_layout(&self, ty: Ty) -> Result<Layout, Error>;
 

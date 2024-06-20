@@ -2,7 +2,7 @@ use super::{
     mir::{Body, Mutability, Safety},
     with, DefId, Error, Symbol,
 };
-use crate::abi::Layout;
+use crate::abi::{FnAbi, Layout};
 use crate::crate_def::{CrateDef, CrateDefType};
 use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
 use crate::mir::mono::StaticDef;
@@ -995,6 +995,16 @@ pub struct AliasTerm {
 }
 
 pub type PolyFnSig = Binder<FnSig>;
+
+impl PolyFnSig {
+    /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
+    ///
+    /// NB: this doesn't handle virtual calls - those should use `Instance::fn_abi`
+    /// instead, where the instance is an `InstanceKind::Virtual`.
+    pub fn fn_ptr_abi(self) -> Result<FnAbi, Error> {
+        with(|cx| cx.fn_ptr_abi(self))
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FnSig {
