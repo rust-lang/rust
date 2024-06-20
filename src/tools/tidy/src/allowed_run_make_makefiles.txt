@@ -96,7 +96,6 @@ run-make/libtest-json/Makefile
 run-make/libtest-junit/Makefile
 run-make/libtest-padding/Makefile
 run-make/libtest-thread-limit/Makefile
-run-make/link-args-order/Makefile
 run-make/link-cfg/Makefile
 run-make/link-framework/Makefile
 run-make/link-path-order/Makefile
@@ -105,12 +104,10 @@ run-make/llvm-ident/Makefile
 run-make/long-linker-command-lines-cmd-exe/Makefile
 run-make/long-linker-command-lines/Makefile
 run-make/longjmp-across-rust/Makefile
-run-make/ls-metadata/Makefile
 run-make/lto-dylib-dep/Makefile
 run-make/lto-empty/Makefile
 run-make/lto-linkage-used-attr/Makefile
 run-make/lto-no-link-whole-rlib/Makefile
-run-make/lto-readonly-lib/Makefile
 run-make/lto-smoke-c/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/macos-fat-archive/Makefile
