@@ -1,4 +1,3 @@
-//@ known-bug: rust-lang/rust#126521
 macro_rules! foo {
     ($val:ident) => {
         true;
@@ -7,5 +6,6 @@ macro_rules! foo {
 
 fn main() {
     #[expect(semicolon_in_expressions_from_macros)]
+    //~^ ERROR the `#[expect]` attribute is an experimental feature
     let _ = foo!(x);
 }
