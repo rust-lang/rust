@@ -203,3 +203,12 @@ impl Spanned for ast::NestedMetaItem {
         self.span()
     }
 }
+
+impl Spanned for ast::PreciseCapturingArg {
+    fn span(&self) -> Span {
+        match self {
+            ast::PreciseCapturingArg::Lifetime(lt) => lt.ident.span,
+            ast::PreciseCapturingArg::Arg(path, _) => path.span,
+        }
+    }
+}
