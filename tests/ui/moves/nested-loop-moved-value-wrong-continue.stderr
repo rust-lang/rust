@@ -26,7 +26,7 @@ help: consider moving the expression out of the loop so it is only moved once
 LL ~     for foo in foos { let mut value = baz.push(foo);
 LL ~     for bar in &bars { if foo == *bar {
 LL |
- ...
+...
 LL |
 LL ~         value;
    |
@@ -69,7 +69,7 @@ help: consider moving the expression out of the loop so it is only moved once
 LL ~         let mut value = baz.push(foo);
 LL ~         for bar in &bars {
 LL |
- ...
+...
 LL |             if foo == *bar {
 LL ~                 value;
    |

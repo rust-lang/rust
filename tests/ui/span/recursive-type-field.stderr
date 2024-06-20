@@ -17,7 +17,7 @@ help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
 LL ~     bar: Box<Bar<'a>>,
 LL |     b: Rc<Bar<'a>>,
- ...
+...
 LL | struct Bar<'a> {
 LL ~     y: (Box<Foo<'a>>, Box<Foo<'a>>),
    |

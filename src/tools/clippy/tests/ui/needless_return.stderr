@@ -518,7 +518,7 @@ help: remove `return`
    |
 LL ~             10
 LL |         },
- ...
+...
 LL |         },
 LL ~     }
    |

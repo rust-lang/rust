@@ -14,7 +14,7 @@ help: consider introducing a named lifetime parameter
    |
 LL ~ fn main<'a>() {
 LL |     eq::< dyn for<'a> Foo<(&'a isize,), Output=&'a isize>,
- ...
+...
 LL |
 LL ~     let _: dyn Foo(&'a isize, &'a usize) -> &'a usize;
    |

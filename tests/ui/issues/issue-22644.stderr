@@ -64,7 +64,7 @@ help: try comparing the cast value
    |
 LL ~     println!("{}", (a
 LL |
- ...
+...
 LL |
 LL ~                    usize)
    |
