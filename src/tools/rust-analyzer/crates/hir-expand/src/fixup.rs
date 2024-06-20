@@ -277,7 +277,7 @@ pub(crate) fn fixup_syntax(
                 },
                 ast::RecordExprField(it) => {
                     if let Some(colon) = it.colon_token() {
-                        if it.name_ref().is_some() {
+                        if it.name_ref().is_some() && it.expr().is_none() {
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
                                     text: "__ra_fixup".into(),
@@ -839,6 +839,20 @@ fn foo() {
 "#,
             expect![[r#"
 fn foo () {R {f : __ra_fixup}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn no_fixup_record_ctor_field() {
+        check(
+            r#"
+fn foo() {
+    R { f: a }
+}
+"#,
+            expect![[r#"
+fn foo () {R {f : a}}
 "#]],
         )
     }
