@@ -1259,7 +1259,7 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Unsafe)
             && self.is_keyword_ahead(1, &[kw::Extern])
             && self.look_ahead(
-                2 + self.look_ahead(2, |t| t.can_begin_literal_maybe_minus() as usize),
+                2 + self.look_ahead(2, |t| t.can_begin_string_literal() as usize),
                 |t| t.kind == token::OpenDelim(Delimiter::Brace),
             )
     }
@@ -2448,7 +2448,7 @@ impl<'a> Parser<'a> {
                 })
             // `extern ABI fn`
             || self.check_keyword_case(kw::Extern, case)
-                && self.look_ahead(1, |t| t.can_begin_literal_maybe_minus())
+                && self.look_ahead(1, |t| t.can_begin_string_literal())
                 && (self.look_ahead(2, |t| t.is_keyword_case(kw::Fn, case)) ||
                     // this branch is only for better diagnostic in later, `pub` is not allowed here
                     (self.may_recover()
