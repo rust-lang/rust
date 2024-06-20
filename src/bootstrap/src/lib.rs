@@ -23,7 +23,7 @@ use std::fmt::Display;
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::{Command, Stdio};
 use std::str;
 use std::sync::OnceLock;
 
