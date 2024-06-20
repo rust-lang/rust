@@ -1669,6 +1669,51 @@ error: foo
 }
 
 #[test]
+fn multiline_notes() {
+    test_harness(
+        r#"
+fn foo() {
+  a { b { c } d }
+}
+"#,
+        vec![
+            SpanLabel {
+                start: Position { string: "a", count: 1 },
+                end: Position { string: "d", count: 1 },
+                label: "`a` is a good letter",
+            },
+        ],
+        vec![(None, "foo\nbar"), (None, "foo\nbar")],
+        r#"
+error: foo
+ --> test.rs:3:3
+  |
+3 |   a { b { c } d }
+  |   ^^^^^^^^^^^^^ `a` is a good letter
+  |
+  = note: foo
+          bar
+  = note: foo
+          bar
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │   a { b { c } d }
+  │   ━━━━━━━━━━━━━ `a` is a good letter
+  │
+  ├ note: foo
+          bar
+  ╰ note: foo
+          bar
+
+"#,
+    );
+}
+
+#[test]
 fn multiple_labels_secondary_without_message() {
     test_harness(
         r#"
