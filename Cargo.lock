@@ -4905,6 +4905,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags 2.5.0",
  "derivative",
+ "indexmap",
  "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_index",

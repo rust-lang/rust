@@ -1,7 +1,8 @@
 use std::ops::ControlFlow;
 
-use rustc_data_structures::stack::ensure_sufficient_stack;
+#[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
@@ -88,7 +89,7 @@ where
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""), Debug(bound = ""), Default(bound = ""))]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
-#[derive(TyDecodable, TyEncodable, HashStable_NoContext)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 // FIXME: This can be made crate-private once `EvalCtxt` also lives in this crate.
 pub struct NestedGoals<I: Interner> {
     /// These normalizes-to goals are treated specially during the evaluation
@@ -116,7 +117,8 @@ impl<I: Interner> NestedGoals<I> {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Hash, HashStable_NoContext, Clone, Copy)]
+#[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum GenerateProofTree {
     Yes,
     No,
@@ -689,14 +691,15 @@ where
             fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
                 match t.kind() {
                     ty::Infer(ty::TyVar(vid)) => {
-                        if let ty::TermKind::Ty(term) = self.term.kind()
-                            && let ty::Infer(ty::TyVar(term_vid)) = term.kind()
-                            && self.infcx.root_ty_var(vid) == self.infcx.root_ty_var(term_vid)
-                        {
-                            ControlFlow::Break(())
-                        } else {
-                            self.check_nameable(self.infcx.universe_of_ty(vid).unwrap())
+                        if let ty::TermKind::Ty(term) = self.term.kind() {
+                            if let ty::Infer(ty::TyVar(term_vid)) = term.kind() {
+                                if self.infcx.root_ty_var(vid) == self.infcx.root_ty_var(term_vid) {
+                                    return ControlFlow::Break(());
+                                }
+                            }
                         }
+
+                        self.check_nameable(self.infcx.universe_of_ty(vid).unwrap())
                     }
                     ty::Placeholder(p) => self.check_nameable(p.universe()),
                     _ => {
@@ -712,14 +715,18 @@ where
             fn visit_const(&mut self, c: I::Const) -> Self::Result {
                 match c.kind() {
                     ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                        if let ty::TermKind::Const(term) = self.term.kind()
-                            && let ty::ConstKind::Infer(ty::InferConst::Var(term_vid)) = term.kind()
-                            && self.infcx.root_const_var(vid) == self.infcx.root_const_var(term_vid)
-                        {
-                            ControlFlow::Break(())
-                        } else {
-                            self.check_nameable(self.infcx.universe_of_ct(vid).unwrap())
+                        if let ty::TermKind::Const(term) = self.term.kind() {
+                            if let ty::ConstKind::Infer(ty::InferConst::Var(term_vid)) = term.kind()
+                            {
+                                if self.infcx.root_const_var(vid)
+                                    == self.infcx.root_const_var(term_vid)
+                                {
+                                    return ControlFlow::Break(());
+                                }
+                            }
                         }
+
+                        self.check_nameable(self.infcx.universe_of_ct(vid).unwrap())
                     }
                     ty::ConstKind::Placeholder(p) => self.check_nameable(p.universe()),
                     _ => {

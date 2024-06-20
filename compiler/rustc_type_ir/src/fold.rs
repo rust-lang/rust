@@ -49,9 +49,10 @@ use rustc_index::{Idx, IndexVec};
 use std::mem;
 use tracing::debug;
 
+use crate::data_structures::Lrc;
 use crate::inherent::*;
 use crate::visit::{TypeVisitable, TypeVisitableExt as _};
-use crate::{self as ty, Interner, Lrc};
+use crate::{self as ty, Interner};
 
 #[cfg(feature = "nightly")]
 type Never = !;
