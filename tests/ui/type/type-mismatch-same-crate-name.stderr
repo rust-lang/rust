@@ -33,7 +33,7 @@ LL |         a::try_bar(bar2);
    |         arguments to this function are incorrect
    |
    = note: expected struct `Box<(dyn main::a::Bar + 'static)>`
-              found struct `Box<dyn main::a::Bar>`
+   |          found struct `Box<dyn main::a::Bar>`
    = note: perhaps two different versions of crate `crate_a1` are being used?
 note: function defined here
   --> $DIR/auxiliary/crate_a1.rs:11:8

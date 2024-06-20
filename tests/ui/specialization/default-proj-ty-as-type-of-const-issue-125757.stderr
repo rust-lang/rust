@@ -27,7 +27,7 @@ LL | impl<const C: usize> Wrapper<C> {}
    |                              ^ expected associated type, found `usize`
    |
    = note: expected associated type `<i32 as Trait>::Type`
-                         found type `usize`
+   |                     found type `usize`
    = help: consider constraining the associated type `<i32 as Trait>::Type` to `usize`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 

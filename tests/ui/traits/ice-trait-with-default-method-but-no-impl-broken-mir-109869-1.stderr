@@ -7,7 +7,7 @@ LL |         (T::from(from), ())
    |         ^^^^^^^^^^^^^^^^^^^ expected `dyn Span`, found `(T, ())`
    |
    = note: expected trait object `(dyn Span<T> + 'static)`
-                     found tuple `(T, ())`
+   |                 found tuple `(T, ())`
    = help: `(T, ())` implements `Span` so you could box the found value and coerce it to the trait object `Box<dyn Span>`, you will have to change the expected type as well
 help: call `Into::into` on this expression to convert `(T, ())` into `(dyn Span<T> + 'static)`
    |

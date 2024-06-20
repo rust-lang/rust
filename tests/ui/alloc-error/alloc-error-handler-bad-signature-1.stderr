@@ -36,7 +36,7 @@ LL | |  }
    | |__- expected `!` because of return type
    |
    = note:   expected type `!`
-           found unit type `()`
+   |       found unit type `()`
    = note: this error originates in the attribute macro `alloc_error_handler` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

@@ -5,8 +5,8 @@ LL |     <u8 as Baz>::Quaks: Bar,
    |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `[u16; 3]`
    |
    = help: the following other types implement trait `Bar`:
-             [[u16; 3]; 3]
-             [u16; 4]
+   |         [[u16; 3]; 3]
+   |         [u16; 4]
    = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
@@ -20,8 +20,8 @@ LL |     [<u8 as Baz>::Quaks; 2]: Bar,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
    |
    = help: the following other types implement trait `Bar`:
-             [[u16; 3]; 3]
-             [u16; 4]
+   |         [[u16; 3]; 3]
+   |         [u16; 4]
    = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |

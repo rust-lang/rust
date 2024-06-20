@@ -23,7 +23,7 @@ LL |     for _ in HashMap::new().iter().cloned() {}
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(&_, &_)`, found `&_`
    |
    = note:  expected tuple `(&_, &_)`
-           found reference `&_`
+   |       found reference `&_`
    = note: required for `Cloned<std::collections::hash_map::Iter<'_, _, _>>` to implement `Iterator`
    = note: required for `Cloned<std::collections::hash_map::Iter<'_, _, _>>` to implement `IntoIterator`
 

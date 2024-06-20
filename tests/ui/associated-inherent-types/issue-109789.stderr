@@ -14,7 +14,7 @@ LL | fn bar(_: Foo<for<'a> fn(&'a ())>::Assoc) {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
    |
    = note: expected struct `Foo<fn(&'static ())>`
-              found struct `Foo<for<'a> fn(&'a ())>`
+   |          found struct `Foo<for<'a> fn(&'a ())>`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: higher-ranked subtype error

@@ -8,7 +8,7 @@ LL |     eq(foo::<u8>, bar::<u8>);
    |     arguments to this function are incorrect
    |
    = note: expected fn item `fn(_) -> _ {foo::<u8>}`
-              found fn item `fn(_) -> _ {bar::<u8>}`
+   |          found fn item `fn(_) -> _ {bar::<u8>}`
    = note: different fn items have unique types, even if their signatures are the same
 note: function defined here
   --> $DIR/fn-item-type.rs:11:4
@@ -30,7 +30,7 @@ LL |     eq(foo::<u8>, foo::<i8>);
    |     arguments to this function are incorrect
    |
    = note: expected fn item `fn(_) -> _ {foo::<u8>}`
-              found fn item `fn(_) -> _ {foo::<i8>}`
+   |          found fn item `fn(_) -> _ {foo::<i8>}`
    = note: different fn items have unique types, even if their signatures are the same
 note: function defined here
   --> $DIR/fn-item-type.rs:11:4
@@ -52,7 +52,7 @@ LL |     eq(bar::<String>, bar::<Vec<u8>>);
    |     arguments to this function are incorrect
    |
    = note: expected fn item `fn(_) -> _ {bar::<String>}`
-              found fn item `fn(_) -> _ {bar::<Vec<u8>>}`
+   |          found fn item `fn(_) -> _ {bar::<Vec<u8>>}`
    = note: different fn items have unique types, even if their signatures are the same
 note: function defined here
   --> $DIR/fn-item-type.rs:11:4
@@ -74,7 +74,7 @@ LL |     eq(<u8 as Foo>::foo, <u16 as Foo>::foo);
    |     arguments to this function are incorrect
    |
    = note: expected fn item `fn() {<u8 as Foo>::foo}`
-              found fn item `fn() {<u16 as Foo>::foo}`
+   |          found fn item `fn() {<u16 as Foo>::foo}`
    = note: different fn items have unique types, even if their signatures are the same
 note: function defined here
   --> $DIR/fn-item-type.rs:11:4
@@ -96,7 +96,7 @@ LL |     eq(foo::<u8>, bar::<u8> as fn(isize) -> isize);
    |     arguments to this function are incorrect
    |
    = note: expected fn item `fn(_) -> _ {foo::<u8>}`
-           found fn pointer `fn(_) -> _`
+   |       found fn pointer `fn(_) -> _`
    = help: consider casting the fn item to a fn pointer: `foo::<u8> as fn(isize) -> isize`
 note: function defined here
   --> $DIR/fn-item-type.rs:11:4

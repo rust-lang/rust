@@ -9,7 +9,7 @@ LL | | for<'a>    fn(&'a u32, &'a u32) -> &'a u32) }
    | |_____________________________________________- in this macro invocation
    |
    = note: expected enum `Option<for<'a, 'b> fn(&'a _, &'b _) -> &'a _>`
-              found enum `Option<for<'a> fn(&'a _, &'a _) -> &'a _>`
+   |          found enum `Option<for<'a> fn(&'a _, &'a _) -> &'a _>`
    = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error

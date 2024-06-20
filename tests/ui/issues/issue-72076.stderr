@@ -5,7 +5,7 @@ LL |     fn f() -> Self::S {}
    |                       ^^ expected associated type, found `()`
    |
    = note: expected associated type `<Self as X>::S`
-                    found unit type `()`
+   |                found unit type `()`
    = help: consider constraining the associated type `<Self as X>::S` to `()` or calling a method that returns `<Self as X>::S`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 

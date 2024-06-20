@@ -19,7 +19,7 @@ LL |  |     ))))))))))))))))))))))))))))));
    |  |__________________________________^ expected `Atype<Btype<..., ...>, ...>`, found `Result<Result<..., ...>, ...>`
    |
    = note: expected struct `Atype<Btype<..., ...>, ...>`
-                found enum `Result<Result<..., ...>, ...>`
+   |            found enum `Result<Result<..., ...>, ...>`
    = note: the full type name has been written to '$TEST_BUILD_DIR/diagnostic-width/long-E0308/long-E0308.long-type-hash.txt'
    = note: consider using `--verbose` to print the full type name to the console
 
@@ -35,7 +35,7 @@ LL | |     ))))))))))))))))))))))));
    | |____________________________^ expected `Option<Result<..., ...>>`, found `Result<Result<..., ...>, ...>`
    |
    = note: expected enum `Option<Result<..., ...>>`
-              found enum `Result<Result<..., ...>, ...>`
+   |          found enum `Result<Result<..., ...>, ...>`
    = note: the full type name has been written to '$TEST_BUILD_DIR/diagnostic-width/long-E0308/long-E0308.long-type-hash.txt'
    = note: consider using `--verbose` to print the full type name to the console
 
@@ -55,7 +55,7 @@ LL | |     > = ();
    |       expected due to this
    |
    = note: expected struct `Atype<Btype<..., ...>, ...>`
-           found unit type `()`
+   |       found unit type `()`
    = note: the full type name has been written to '$TEST_BUILD_DIR/diagnostic-width/long-E0308/long-E0308.long-type-hash.txt'
    = note: consider using `--verbose` to print the full type name to the console
 
@@ -73,7 +73,7 @@ LL | |     ))))))))))))))))))))))));
    | |____________________________^ expected `()`, found `Result<Result<..., ...>, ...>`
    |
    = note: expected unit type `()`
-                   found enum `Result<Result<..., ...>, ...>`
+   |               found enum `Result<Result<..., ...>, ...>`
    = note: the full type name has been written to '$TEST_BUILD_DIR/diagnostic-width/long-E0308/long-E0308.long-type-hash.txt'
    = note: consider using `--verbose` to print the full type name to the console
 

@@ -1316,7 +1316,7 @@ impl HumanEmitter {
         padding: usize,
         label: &str,
         override_style: Option<Style>,
-    ) {
+    ) -> usize {
         // The extra 5 ` ` is padding that's always needed to align to the `note: `:
         //
         //   error: message
@@ -1380,6 +1380,7 @@ impl HumanEmitter {
                 buffer.append(line_number, text, style_or_override(*style, override_style));
             }
         }
+        line_number
     }
 
     #[instrument(level = "trace", skip(self, args), ret)]
@@ -1408,7 +1409,27 @@ impl HumanEmitter {
                 buffer.append(0, level.to_str(), Style::MainHeaderMsg);
                 buffer.append(0, ": ", Style::NoStyle);
             }
-            self.msgs_to_buffer(&mut buffer, msgs, args, max_line_num_len, "note", None);
+            let printed_lines = self.msgs_to_buffer(&mut buffer, msgs, args, max_line_num_len, "note", None);
+            if is_cont {
+                // There's another note after this one, associated to the subwindow above.
+                // We write additional vertical lines to join them:
+                //   ╭▸ test.rs:3:3
+                //   │
+                // 3 │   code
+                //   │   ━━━━
+                //   │
+                //   ├ note: foo
+                //   │       bar
+                //   ╰ note: foo
+                //           bar
+                for i in 1..=printed_lines {
+                    self.draw_col_separator_no_space(
+                        &mut buffer,
+                        i,
+                        max_line_num_len + 1,
+                    );
+                }
+            }
         } else {
             let mut label_width = 0;
             // The failure note level itself does not provide any useful diagnostic information

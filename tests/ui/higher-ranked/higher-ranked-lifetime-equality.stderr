@@ -14,7 +14,7 @@ LL |     let foo: Foo<Two> = foo;
    |                         ^^^ one type is more general than the other
    |
    = note: expected struct `my_api::Foo<for<'a, 'b> fn(&'a (), &'b ())>`
-              found struct `my_api::Foo<for<'a> fn(&'a (), &'a ())>`
+   |          found struct `my_api::Foo<for<'a> fn(&'a (), &'a ())>`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors

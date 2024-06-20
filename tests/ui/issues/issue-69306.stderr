@@ -107,7 +107,7 @@ LL |         Self(x)
    |         arguments to this function are incorrect
    |
    = note: expected type parameter `T`
-              found type parameter `U`
+   |          found type parameter `U`
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 note: tuple struct defined here
@@ -129,7 +129,7 @@ LL |         Self(x)
    |         ^^^^^^^ expected `S2<U>`, found `S2<T>`
    |
    = note: expected struct `S2<U>`
-              found struct `S2<T>`
+   |          found struct `S2<T>`
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 

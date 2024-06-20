@@ -9,7 +9,7 @@ LL |     "this should not suggest impl Trait"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&str`
    |
    = note: expected type parameter `T`
-                   found reference `&'static str`
+   |               found reference `&'static str`
    = note: the caller chooses a type for `T` which can be different from `&'static str`
 
 error[E0308]: mismatched types
@@ -23,7 +23,7 @@ LL |     "this will not suggest it, because that would probably be wrong"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&str`
    |
    = note: expected type parameter `T`
-                   found reference `&'static str`
+   |               found reference `&'static str`
    = note: the caller chooses a type for `T` which can be different from `&'static str`
 
 error[E0308]: mismatched types
@@ -38,7 +38,7 @@ LL |     "don't suggest this, because Option<T> places additional constraints"
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&str`
    |
    = note: expected type parameter `T`
-                   found reference `&'static str`
+   |               found reference `&'static str`
    = note: the caller chooses a type for `T` which can be different from `&'static str`
 
 error[E0308]: mismatched types
@@ -55,7 +55,7 @@ LL |     "don't suggest this, because the generic param is used in the bound."
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&str`
    |
    = note: expected type parameter `T`
-                   found reference `&'static str`
+   |               found reference `&'static str`
    = note: the caller chooses a type for `T` which can be different from `&'static str`
 
 error: aborting due to 4 previous errors

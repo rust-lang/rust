@@ -27,7 +27,7 @@ LL |     accepts_trait(b);
    |     required by a bound introduced by this call
    |
    = note:    expected unit type `()`
-           found associated type `<B as Trait>::Associated`
+   |       found associated type `<B as Trait>::Associated`
    = help: consider constraining the associated type `<B as Trait>::Associated` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `accepts_trait`
@@ -65,7 +65,7 @@ LL |     accepts_trait(d);
    |     required by a bound introduced by this call
    |
    = note:    expected unit type `()`
-           found associated type `<D as Trait>::Associated`
+   |       found associated type `<D as Trait>::Associated`
    = help: consider constraining the associated type `<D as Trait>::Associated` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `accepts_trait`
@@ -123,7 +123,7 @@ LL |     accepts_generic_trait(g);
    |     required by a bound introduced by this call
    |
    = note:    expected unit type `()`
-           found associated type `<G as GenericTrait<()>>::Associated`
+   |       found associated type `<G as GenericTrait<()>>::Associated`
    = help: consider constraining the associated type `<G as GenericTrait<()>>::Associated` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `accepts_generic_trait`
@@ -213,7 +213,7 @@ LL |     accepts_trait(returns_opaque_derived_foo());
    |     required by a bound introduced by this call
    |
    = note:    expected unit type `()`
-           found associated type `<impl DerivedTrait + Foo as Trait>::Associated`
+   |       found associated type `<impl DerivedTrait + Foo as Trait>::Associated`
    = help: consider constraining the associated type `<impl DerivedTrait + Foo as Trait>::Associated` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `accepts_trait`
@@ -280,7 +280,7 @@ LL |     accepts_generic_trait(returns_opaque_generic_duplicate());
    |     required by a bound introduced by this call
    |
    = note:    expected unit type `()`
-           found associated type `<impl GenericTrait<()> + GenericTrait<u8> as GenericTrait<()>>::Associated`
+   |       found associated type `<impl GenericTrait<()> + GenericTrait<u8> as GenericTrait<()>>::Associated`
    = help: consider constraining the associated type `<impl GenericTrait<()> + GenericTrait<u8> as GenericTrait<()>>::Associated` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `accepts_generic_trait`

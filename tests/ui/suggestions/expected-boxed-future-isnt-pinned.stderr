@@ -23,7 +23,7 @@ LL |     Box::new(x)
    |     ^^^^^^^^^^^ expected `Pin<Box<...>>`, found `Box<F>`
    |
    = note: expected struct `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>`
-              found struct `Box<F>`
+   |          found struct `Box<F>`
    = help: use `Box::pin`
 
 error[E0308]: mismatched types

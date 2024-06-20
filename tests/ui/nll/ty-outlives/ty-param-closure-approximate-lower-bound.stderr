@@ -5,10 +5,10 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^
    |
    = note: defining type: generic::<T>::{closure#0} with closure args [
-               i16,
-               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'?1 &'^0 ()>>, &'^1 T)),
-               (),
-           ]
+   |           i16,
+   |           for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'?1 &'^0 ()>>, &'^1 T)),
+   |           (),
+   |       ]
    = note: number of external vids: 2
    = note: where T: '?1
 
@@ -27,10 +27,10 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^
    |
    = note: defining type: generic_fail::<T>::{closure#0} with closure args [
-               i16,
-               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'?1 &'^0 ()>>, &'^1 T)),
-               (),
-           ]
+   |           i16,
+   |           for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'?1 &'^0 ()>>, &'^1 T)),
+   |           (),
+   |       ]
    = note: late-bound region is '?2
    = note: number of external vids: 3
    = note: where T: '?1

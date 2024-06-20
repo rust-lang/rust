@@ -5,7 +5,7 @@ LL | fn fuz() -> (usize, Trait) { (42, Struct) }
    |                                   ^^^^^^ expected `dyn Trait`, found `Struct`
    |
    = note: expected trait object `(dyn Trait + 'static)`
-                    found struct `Struct`
+   |                found struct `Struct`
    = help: `Struct` implements `Trait` so you could box the found value and coerce it to the trait object `Box<dyn Trait>`, you will have to change the expected type as well
 
 error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
@@ -27,7 +27,7 @@ LL | fn bar() -> (usize, dyn Trait) { (42, Struct) }
    |                                       ^^^^^^ expected `dyn Trait`, found `Struct`
    |
    = note: expected trait object `(dyn Trait + 'static)`
-                    found struct `Struct`
+   |                found struct `Struct`
    = help: `Struct` implements `Trait` so you could box the found value and coerce it to the trait object `Box<dyn Trait>`, you will have to change the expected type as well
 
 error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
@@ -131,7 +131,7 @@ LL |         return Struct;
    |                ^^^^^^ expected `Box<dyn Trait>`, found `Struct`
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
-              found struct `Struct`
+   |          found struct `Struct`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
@@ -148,7 +148,7 @@ LL |     42
    |     ^^ expected `Box<dyn Trait>`, found integer
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
-                found type `{integer}`
+   |            found type `{integer}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
@@ -165,7 +165,7 @@ LL |         return 0;
    |                ^ expected `Box<dyn Trait>`, found integer
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
-                found type `{integer}`
+   |            found type `{integer}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
@@ -182,7 +182,7 @@ LL |     42
    |     ^^ expected `Box<dyn Trait>`, found integer
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
-                found type `{integer}`
+   |            found type `{integer}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
@@ -199,7 +199,7 @@ LL |         Struct
    |         ^^^^^^ expected `Box<dyn Trait>`, found `Struct`
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
-              found struct `Struct`
+   |          found struct `Struct`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
@@ -216,7 +216,7 @@ LL |         42
    |         ^^ expected `Box<dyn Trait>`, found integer
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
-                found type `{integer}`
+   |            found type `{integer}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
@@ -233,7 +233,7 @@ LL |         0
    |         ^ expected `Box<dyn Trait>`, found integer
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
-                found type `{integer}`
+   |            found type `{integer}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
@@ -250,7 +250,7 @@ LL |         42
    |         ^^ expected `Box<dyn Trait>`, found integer
    |
    = note: expected struct `Box<(dyn Trait + 'static)>`
-                found type `{integer}`
+   |            found type `{integer}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |

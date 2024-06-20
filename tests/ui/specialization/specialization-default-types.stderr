@@ -30,7 +30,7 @@ LL |     Example::generate(t)
    |     ^^^^^^^^^^^^^^^^^^^^ expected `Box<T>`, found associated type
    |
    = note:       expected struct `Box<T>`
-           found associated type `<T as Example>::Output`
+   |       found associated type `<T as Example>::Output`
    = help: consider constraining the associated type `<T as Example>::Output` to `Box<T>`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 

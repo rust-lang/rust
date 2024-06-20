@@ -46,7 +46,7 @@ LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
    |
    = note: expected associated type `<T as Trait<'static>>::Assoc`
-              found associated type `<T as Trait<'a>>::Assoc`
+   |          found associated type `<T as Trait<'a>>::Assoc`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 5 previous errors

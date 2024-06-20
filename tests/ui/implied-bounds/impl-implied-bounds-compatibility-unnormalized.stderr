@@ -15,7 +15,7 @@ note: ...so that the method type is compatible with trait
 LL |     fn get<'s>(s: &'s str, _: <&'static &'s () as Project>::Ty) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected `fn(&'s _, ()) -> &'static _`
-              found `fn(&_, ()) -> &'static _`
+   |          found `fn(&_, ()) -> &'static _`
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that the reference type `&'static &()` does not outlive the data it points at
   --> $DIR/impl-implied-bounds-compatibility-unnormalized.rs:11:5
