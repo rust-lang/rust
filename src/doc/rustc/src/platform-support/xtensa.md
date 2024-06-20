@@ -1,4 +1,4 @@
-# `xtensa-*`
+# `xtensa-*-none-elf`
 
 **Tier: 3**
 
@@ -20,6 +20,8 @@ The target names follow this format: `xtensa-$CPU`, where `$CPU` specifies the t
 | `xtensa-esp32s3-none-elf` | [ESP32-S3](https://www.espressif.com/en/products/socs/esp32-s3) |
 
 
-## Building the target
+Xtensa targets that support `std` are documented in the [ESP-IDF platform support document](esp-idf.md)
+
+## Building the targets
 
 The targets can be built by installing the [Xtensa enabled Rust channel](https://github.com/esp-rs/rust/). See instructions in the [RISC-V and Xtensa Targets section of the The Rust on ESP Book](https://docs.esp-rs.org/book/installation/riscv-and-xtensa.html).
