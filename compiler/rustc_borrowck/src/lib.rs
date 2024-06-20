@@ -310,11 +310,11 @@ fn do_mir_borrowck<'tcx>(
         promoted_mbcx.report_move_errors();
         diags = promoted_mbcx.diags;
 
-        struct MoveVisitor<'a, 'cx, 'tcx> {
-            ctxt: &'a mut MirBorrowckCtxt<'cx, 'tcx>,
+        struct MoveVisitor<'a, 'b, 'cx, 'tcx> {
+            ctxt: &'a mut MirBorrowckCtxt<'b, 'cx, 'tcx>,
         }
 
-        impl<'tcx> Visitor<'tcx> for MoveVisitor<'_, '_, 'tcx> {
+        impl<'tcx> Visitor<'tcx> for MoveVisitor<'_, '_, '_, 'tcx> {
             fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
                 if let Operand::Move(place) = operand {
                     self.ctxt.check_movable_place(location, *place);
@@ -528,15 +528,15 @@ impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
     }
 }
 
-struct MirBorrowckCtxt<'cx, 'tcx> {
+struct MirBorrowckCtxt<'a, 'cx, 'tcx> {
     infcx: &'cx BorrowckInferCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    body: &'cx Body<'tcx>,
-    move_data: &'cx MoveData<'tcx>,
+    body: &'a Body<'tcx>,
+    move_data: &'a MoveData<'tcx>,
 
     /// Map from MIR `Location` to `LocationIndex`; created
     /// when MIR borrowck begins.
-    location_table: &'cx LocationTable,
+    location_table: &'a LocationTable,
 
     movable_coroutine: bool,
     /// This keeps track of whether local variables are free-ed when the function
@@ -605,7 +605,9 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
 // 2. loans made in overlapping scopes do not conflict
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
-impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorrowckCtxt<'cx, 'tcx> {
+impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R>
+    for MirBorrowckCtxt<'_, 'cx, 'tcx>
+{
     type FlowState = Flows<'cx, 'tcx>;
 
     fn visit_statement_before_primary_effect(
@@ -969,8 +971,8 @@ impl InitializationRequiringAction {
     }
 }
 
-impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
-    fn body(&self) -> &'cx Body<'tcx> {
+impl<'a, 'cx, 'tcx> MirBorrowckCtxt<'a, 'cx, 'tcx> {
+    fn body(&self) -> &'a Body<'tcx> {
         self.body
     }
 
@@ -2002,7 +2004,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         fn check_parent_of_field<'cx, 'tcx>(
-            this: &mut MirBorrowckCtxt<'cx, 'tcx>,
+            this: &mut MirBorrowckCtxt<'_, 'cx, 'tcx>,
             location: Location,
             base: PlaceRef<'tcx>,
             span: Span,
@@ -2476,7 +2478,7 @@ mod diags {
         }
     }
 
-    impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
+    impl<'cx, 'tcx> MirBorrowckCtxt<'_, 'cx, 'tcx> {
         pub fn buffer_error(&mut self, diag: Diag<'tcx>) {
             self.diags.buffer_error(diag);
         }
