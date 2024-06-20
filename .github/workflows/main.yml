@@ -66,6 +66,9 @@ jobs:
             env:
               TARGET_TRIPLE: aarch64-unknown-linux-gnu
             apt_deps: gcc-aarch64-linux-gnu qemu-user
+          - os: macos-latest
+            env:
+              TARGET_TRIPLE: aarch64-apple-darwin
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: s390x-unknown-linux-gnu
@@ -214,6 +217,9 @@ jobs:
           - os: macos-latest
             env:
               TARGET_TRIPLE: x86_64-apple-darwin
+          - os: macos-latest
+            env:
+              TARGET_TRIPLE: aarch64-apple-darwin
           # cross-compile from Linux to Windows using mingw
           - os: ubuntu-latest
             env:
