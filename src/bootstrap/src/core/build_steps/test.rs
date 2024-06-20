@@ -156,7 +156,10 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         let _guard =
             builder.msg(Kind::Test, compiler.stage, "Linkcheck", bootstrap_host, bootstrap_host);
         let _time = helpers::timeit(builder);
-        builder.run_delaying_failure(linkchecker.arg(builder.out.join(host.triple).join("doc")));
+        builder.run_tracked(
+            BootstrapCommand::from(linkchecker.arg(builder.out.join(host.triple).join("doc")))
+                .delay_failure(),
+        );
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -213,8 +216,11 @@ impl Step for HtmlCheck {
             builder,
         ));
 
-        builder.run_delaying_failure(
-            builder.tool_cmd(Tool::HtmlChecker).arg(builder.doc_out(self.target)),
+        builder.run_tracked(
+            BootstrapCommand::from(
+                builder.tool_cmd(Tool::HtmlChecker).arg(builder.doc_out(self.target)),
+            )
+            .delay_failure(),
         );
     }
 }
@@ -261,7 +267,7 @@ impl Step for Cargotest {
             .env("RUSTC", builder.rustc(compiler))
             .env("RUSTDOC", builder.rustdoc(compiler));
         add_rustdoc_cargo_linker_args(cmd, builder, compiler.host, LldThreads::No);
-        builder.run_delaying_failure(cmd);
+        builder.run_tracked(BootstrapCommand::from(cmd).delay_failure());
     }
 }
 
@@ -813,7 +819,7 @@ impl Step for RustdocTheme {
             .env("RUSTC_BOOTSTRAP", "1");
         cmd.args(linker_args(builder, self.compiler.host, LldThreads::No));
 
-        builder.run_delaying_failure(&mut cmd);
+        builder.run_tracked(BootstrapCommand::from(&mut cmd).delay_failure());
     }
 }
 
@@ -1093,7 +1099,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         }
 
         builder.info("tidy check");
-        builder.run_delaying_failure(&mut cmd);
+        builder.run_tracked(BootstrapCommand::from(&mut cmd).delay_failure());
 
         builder.info("x.py completions check");
         let [bash, zsh, fish, powershell] = ["x.py.sh", "x.py.zsh", "x.py.fish", "x.py.ps1"]
@@ -2179,7 +2185,8 @@ impl BookTest {
             compiler.host,
         );
         let _time = helpers::timeit(builder);
-        let toolstate = if builder.run_delaying_failure(&mut rustbook_cmd) {
+        let cmd = BootstrapCommand::from(&mut rustbook_cmd).delay_failure();
+        let toolstate = if builder.run_tracked(cmd).is_success() {
             ToolState::TestPass
         } else {
             ToolState::TestFail
@@ -2371,7 +2378,8 @@ impl Step for RustcGuide {
 
         let src = builder.src.join(relative_path);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-        let toolstate = if builder.run_delaying_failure(rustbook_cmd.arg("linkcheck").arg(&src)) {
+        let cmd = BootstrapCommand::from(rustbook_cmd.arg("linkcheck").arg(&src)).delay_failure();
+        let toolstate = if builder.run_tracked(cmd).is_success() {
             ToolState::TestPass
         } else {
             ToolState::TestFail
@@ -2985,7 +2993,7 @@ impl Step for Bootstrap {
             .current_dir(builder.src.join("src/bootstrap/"));
         // NOTE: we intentionally don't pass test_args here because the args for unittest and cargo test are mutually incompatible.
         // Use `python -m unittest` manually if you want to pass arguments.
-        builder.run_delaying_failure(&mut check_bootstrap);
+        builder.run_tracked(BootstrapCommand::from(&mut check_bootstrap).delay_failure());
 
         let mut cmd = Command::new(&builder.initial_cargo);
         cmd.arg("test")
@@ -3062,7 +3070,7 @@ impl Step for TierCheck {
             self.compiler.host,
             self.compiler.host,
         );
-        builder.run_delaying_failure(&mut cargo.into());
+        builder.run_tracked(BootstrapCommand::from(&mut cargo.into()).delay_failure());
     }
 }
 
@@ -3148,7 +3156,7 @@ impl Step for RustInstaller {
         cmd.env("CARGO", &builder.initial_cargo);
         cmd.env("RUSTC", &builder.initial_rustc);
         cmd.env("TMP_DIR", &tmpdir);
-        builder.run_delaying_failure(&mut cmd);
+        builder.run_tracked(BootstrapCommand::from(&mut cmd).delay_failure());
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

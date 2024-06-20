@@ -28,7 +28,7 @@ pub enum OutputMode {
 pub struct BootstrapCommand<'a> {
     pub command: &'a mut Command,
     pub failure_behavior: BehaviorOnFailure,
-    pub output_mode: OutputMode,
+    pub output_mode: Option<OutputMode>,
 }
 
 impl<'a> BootstrapCommand<'a> {
@@ -50,17 +50,13 @@ impl<'a> BootstrapCommand<'a> {
     }
 
     pub fn output_mode(self, output_mode: OutputMode) -> Self {
-        Self { output_mode, ..self }
+        Self { output_mode: Some(output_mode), ..self }
     }
 }
 
 impl<'a> From<&'a mut Command> for BootstrapCommand<'a> {
     fn from(command: &'a mut Command) -> Self {
-        Self {
-            command,
-            failure_behavior: BehaviorOnFailure::Exit,
-            output_mode: OutputMode::PrintAll,
-        }
+        Self { command, failure_behavior: BehaviorOnFailure::Exit, output_mode: None }
     }
 }
 
