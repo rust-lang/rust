@@ -958,7 +958,7 @@ impl Build {
         })
     }
 
-    fn run_tracked(&self, command: BootstrapCommand) -> CommandOutput {
+    fn run_tracked(&self, command: BootstrapCommand<'_>) -> CommandOutput {
         if self.config.dry_run() {
             return CommandOutput::default();
         }
@@ -970,7 +970,7 @@ impl Build {
                 command.command.status().map(|status| status.into()),
                 matches!(mode, OutputMode::PrintAll),
             ),
-            OutputMode::SuppressOnSuccess => (command.command.output().map(|o| o.into()), true),
+            OutputMode::PrintOnFailure => (command.command.output().map(|o| o.into()), true),
         };
 
         let output = match output {
@@ -1038,18 +1038,11 @@ impl Build {
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
-    fn run_quiet(&self, cmd: &mut Command) {
-        self.run_cmd(
-            BootstrapCommand::from(cmd).fail_fast().output_mode(OutputMode::SuppressOnSuccess),
-        );
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn run_quiet_delaying_failure(&self, cmd: &mut Command) -> bool {
         self.run_cmd(
-            BootstrapCommand::from(cmd).delay_failure().output_mode(OutputMode::SuppressOnSuccess),
+            BootstrapCommand::from(cmd).delay_failure().output_mode(OutputMode::PrintOnFailure),
         )
     }
 
@@ -1071,7 +1064,7 @@ impl Build {
                 }),
                 matches!(mode, OutputMode::PrintAll),
             ),
-            OutputMode::SuppressOnSuccess => (command.command.output(), true),
+            OutputMode::PrintOnFailure => (command.command.output(), true),
         };
 
         let output = match output {

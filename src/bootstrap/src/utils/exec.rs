@@ -20,7 +20,7 @@ pub enum OutputMode {
     /// Print the output (by inheriting stdout/stderr).
     PrintOutput,
     /// Suppress the output if the command succeeds, otherwise print the output.
-    SuppressOnSuccess,
+    PrintOnFailure,
 }
 
 /// Wrapper around `std::process::Command`.

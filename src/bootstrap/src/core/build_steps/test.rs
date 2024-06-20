@@ -26,7 +26,7 @@ use crate::core::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::flags::get_completion;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::TargetSelection;
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::{BootstrapCommand, OutputMode};
 use crate::utils::helpers::{
     self, add_link_lib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
     linker_args, linker_flags, output, t, target_supports_cranelift_backend, up_to_date,
@@ -2312,7 +2312,8 @@ impl Step for ErrorIndex {
         let guard =
             builder.msg(Kind::Test, compiler.stage, "error-index", compiler.host, compiler.host);
         let _time = helpers::timeit(builder);
-        builder.run_quiet(&mut tool);
+        builder
+            .run_tracked(BootstrapCommand::from(&mut tool).output_mode(OutputMode::PrintOnFailure));
         drop(guard);
         // The tests themselves need to link to std, so make sure it is
         // available.
