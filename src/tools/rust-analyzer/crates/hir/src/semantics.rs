@@ -19,8 +19,12 @@ use hir_def::{
     AsMacroCall, DefWithBodyId, FunctionId, MacroId, TraitId, VariantId,
 };
 use hir_expand::{
-    attrs::collect_attrs, db::ExpandDatabase, files::InRealFile, name::AsName, InMacroFile,
-    MacroCallId, MacroFileId, MacroFileIdExt,
+    attrs::collect_attrs,
+    builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
+    db::ExpandDatabase,
+    files::InRealFile,
+    name::AsName,
+    InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -319,6 +323,48 @@ impl<'db> SemanticsImpl<'db> {
         } else {
             sa.expand(self.db, macro_call)?
         };
+
+        let node = self.parse_or_expand(file_id.into());
+        Some(node)
+    }
+
+    /// Expands the macro if it isn't one of the built-in ones that expand to custom syntax or dummy
+    /// expansions.
+    pub fn expand_allowed_builtins(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
+        let sa = self.analyze_no_infer(macro_call.syntax())?;
+
+        let macro_call = InFile::new(sa.file_id, macro_call);
+        let file_id = if let Some(call) =
+            <ast::MacroCall as crate::semantics::ToDef>::to_def(self, macro_call)
+        {
+            call.as_macro_file()
+        } else {
+            sa.expand(self.db, macro_call)?
+        };
+        let macro_call = self.db.lookup_intern_macro_call(file_id.macro_call_id);
+
+        let skip = matches!(
+            macro_call.def.kind,
+            hir_expand::MacroDefKind::BuiltIn(
+                _,
+                BuiltinFnLikeExpander::Column
+                    | BuiltinFnLikeExpander::File
+                    | BuiltinFnLikeExpander::ModulePath
+                    | BuiltinFnLikeExpander::Asm
+                    | BuiltinFnLikeExpander::LlvmAsm
+                    | BuiltinFnLikeExpander::GlobalAsm
+                    | BuiltinFnLikeExpander::LogSyntax
+                    | BuiltinFnLikeExpander::TraceMacros
+                    | BuiltinFnLikeExpander::FormatArgs
+                    | BuiltinFnLikeExpander::FormatArgsNl
+                    | BuiltinFnLikeExpander::ConstFormatArgs,
+            ) | hir_expand::MacroDefKind::BuiltInEager(_, EagerExpander::CompileError)
+        );
+        if skip {
+            // these macros expand to custom builtin syntax and/or dummy things, no point in
+            // showing these to the user
+            return None;
+        }
 
         let node = self.parse_or_expand(file_id.into());
         Some(node)
