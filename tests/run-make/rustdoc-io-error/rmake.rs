@@ -6,8 +6,8 @@
 // permissions so that it is not writable. We have to take special care to set
 // the permissions back to normal so that it's able to be deleted later.
 
-// On windows, the `set_readonly` functions doesn't work on folders.
-//@ ignore-windows
+//@ ignore-windows - the `set_readonly` functions doesn't work on folders.
+//@ ignore-arm - weird file perms on armhf-gnu
 
 use run_make_support::{path, rustdoc};
 use std::fs;
