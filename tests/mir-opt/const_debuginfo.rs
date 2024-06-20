@@ -1,4 +1,4 @@
-//@ test-mir-pass: SingleUseConsts
+//@ test-mir-pass: SingleUseConsts-final
 //@ compile-flags: -C overflow-checks=no -Zmir-enable-passes=+GVN -Zdump-mir-exclude-alloc-bytes
 
 #![allow(unused)]
@@ -8,7 +8,7 @@ struct Point {
     y: u32,
 }
 
-// EMIT_MIR const_debuginfo.main.SingleUseConsts.diff
+// EMIT_MIR const_debuginfo.main.SingleUseConsts-final.diff
 fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: debug x => const 1_u8;

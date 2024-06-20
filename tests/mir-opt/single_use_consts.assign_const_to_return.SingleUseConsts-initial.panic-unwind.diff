@@ -1,5 +1,5 @@
-- // MIR for `assign_const_to_return` before SingleUseConsts
-+ // MIR for `assign_const_to_return` after SingleUseConsts
+- // MIR for `assign_const_to_return` before SingleUseConsts-initial
++ // MIR for `assign_const_to_return` after SingleUseConsts-initial
   
   fn assign_const_to_return() -> bool {
       let mut _0: bool;

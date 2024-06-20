@@ -18,11 +18,21 @@ use rustc_middle::ty::TyCtxt;
 ///
 /// It also removes *never*-used constants, since it had all the information
 /// needed to do that too, including updating the debug info.
-pub struct SingleUseConsts;
+pub enum SingleUseConsts {
+    Initial,
+    Final,
+}
 
 impl<'tcx> MirPass<'tcx> for SingleUseConsts {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
+    }
+
+    fn name(&self) -> &'static str {
+        match self {
+            SingleUseConsts::Initial => "SingleUseConsts-initial",
+            SingleUseConsts::Final => "SingleUseConsts-final",
+        }
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

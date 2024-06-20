@@ -1,5 +1,5 @@
-- // MIR for `match_const_debug` before SingleUseConsts
-+ // MIR for `match_const_debug` after SingleUseConsts
+- // MIR for `match_const_debug` before SingleUseConsts-initial
++ // MIR for `match_const_debug` after SingleUseConsts-initial
   
   fn match_const_debug() -> &str {
       let mut _0: &str;

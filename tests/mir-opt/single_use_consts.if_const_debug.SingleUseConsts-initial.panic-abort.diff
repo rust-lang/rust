@@ -1,5 +1,5 @@
-- // MIR for `if_const_debug` before SingleUseConsts
-+ // MIR for `if_const_debug` after SingleUseConsts
+- // MIR for `if_const_debug` before SingleUseConsts-initial
++ // MIR for `if_const_debug` after SingleUseConsts-initial
   
   fn if_const_debug() -> i32 {
       let mut _0: i32;
@@ -16,7 +16,7 @@
 -         _1 = const <T as MyTrait>::ASSOC_BOOL;
 +         nop;
           StorageLive(_2);
-          _2 = do_whatever() -> [return: bb1, unwind continue];
+          _2 = do_whatever() -> [return: bb1, unwind unreachable];
       }
   
       bb1: {

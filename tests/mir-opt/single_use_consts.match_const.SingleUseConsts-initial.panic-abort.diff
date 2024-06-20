@@ -1,5 +1,5 @@
-- // MIR for `match_const` before SingleUseConsts
-+ // MIR for `match_const` after SingleUseConsts
+- // MIR for `match_const` before SingleUseConsts-initial
++ // MIR for `match_const` after SingleUseConsts-initial
   
   fn match_const() -> &str {
       let mut _0: &str;

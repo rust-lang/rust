@@ -1,5 +1,5 @@
-- // MIR for `main` before SingleUseConsts
-+ // MIR for `main` after SingleUseConsts
+- // MIR for `main` before SingleUseConsts-final
++ // MIR for `main` after SingleUseConsts-final
   
   fn main() -> () {
       let mut _0: ();
