@@ -1446,10 +1446,12 @@ pub enum UnOp {
     Not,
     /// The `-` operator for negation
     Neg,
-    /// Get the metadata `M` from a `*const/mut impl Pointee<Metadata = M>`.
+    /// Gets the metadata `M` from a `*const`/`*mut`/`&`/`&mut` to
+    /// `impl Pointee<Metadata = M>`.
     ///
     /// For example, this will give a `()` from `*const i32`, a `usize` from
-    /// `*mut [u8]`, or a pointer to a vtable from a `*const dyn Foo`.
+    /// `&mut [u8]`, or a `ptr::DynMetadata<dyn Foo>` (internally a pointer)
+    /// from a `*mut dyn Foo`.
     ///
     /// Allowed only in [`MirPhase::Runtime`]; earlier it's an intrinsic.
     PtrMetadata,

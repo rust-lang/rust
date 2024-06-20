@@ -7,7 +7,9 @@
 #![feature(custom_mir)]
 #![feature(core_intrinsics)]
 #![feature(freeze)]
+#![allow(ambiguous_wide_pointer_comparisons)]
 #![allow(unconditional_panic)]
+#![allow(unused)]
 
 use std::intrinsics::mir::*;
 use std::marker::Freeze;
@@ -816,6 +818,22 @@ fn casts_before_aggregate_raw_ptr(x: *const u32) -> *const [u8] {
     std::intrinsics::aggregate_raw_ptr(x, 4)
 }
 
+fn manual_slice_mut_len(x: &mut [i32]) -> usize {
+    // CHECK-LABEL: fn manual_slice_mut_len
+    // CHECK: _0 = PtrMetadata(_1);
+    let x: *mut [i32] = x;
+    let x: *const [i32] = x;
+    std::intrinsics::ptr_metadata(x)
+}
+
+// `.len()` on arrays ends up being something like this
+fn array_len(x: &mut [i32; 42]) -> usize {
+    // CHECK-LABEL: fn array_len
+    // CHECK: _0 = const 42_usize;
+    let x: &[i32] = x;
+    std::intrinsics::ptr_metadata(x)
+}
+
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -880,3 +898,5 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.meta_of_ref_to_slice.GVN.diff
 // EMIT_MIR gvn.slice_from_raw_parts_as_ptr.GVN.diff
 // EMIT_MIR gvn.casts_before_aggregate_raw_ptr.GVN.diff
+// EMIT_MIR gvn.manual_slice_mut_len.GVN.diff
+// EMIT_MIR gvn.array_len.GVN.diff
