@@ -1034,79 +1034,8 @@ impl Build {
 
     /// A centralized function for running commands that do not return output.
     pub(crate) fn run_cmd<'a, C: Into<BootstrapCommand<'a>>>(&self, cmd: C) -> bool {
-        if self.config.dry_run() {
-            return true;
-        }
-
         let command = cmd.into();
-        self.verbose(|| println!("running: {command:?}"));
-
-        let output_mode = command.output_mode.unwrap_or_else(|| match self.is_verbose() {
-            true => OutputMode::PrintAll,
-            false => OutputMode::PrintOutput,
-        });
-        let (output, print_error) = match output_mode {
-            mode @ (OutputMode::PrintAll | OutputMode::PrintOutput) => (
-                command.command.status().map(|status| Output {
-                    status,
-                    stdout: Vec::new(),
-                    stderr: Vec::new(),
-                }),
-                matches!(mode, OutputMode::PrintAll),
-            ),
-            OutputMode::PrintOnFailure => (command.command.output(), true),
-        };
-
-        let output = match output {
-            Ok(output) => output,
-            Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", command, e)),
-        };
-        let result = if !output.status.success() {
-            if print_error {
-                println!(
-                    "\n\nCommand did not execute successfully.\
-                    \nExpected success, got: {}",
-                    output.status,
-                );
-
-                if !self.is_verbose() {
-                    println!("Add `-v` to see more details.\n");
-                }
-
-                self.verbose(|| {
-                    println!(
-                        "\nSTDOUT ----\n{}\n\
-                        STDERR ----\n{}\n",
-                        String::from_utf8_lossy(&output.stdout),
-                        String::from_utf8_lossy(&output.stderr)
-                    )
-                });
-            }
-            Err(())
-        } else {
-            Ok(())
-        };
-
-        match result {
-            Ok(_) => true,
-            Err(_) => {
-                match command.failure_behavior {
-                    BehaviorOnFailure::DelayFail => {
-                        if self.fail_fast {
-                            exit!(1);
-                        }
-
-                        let mut failures = self.delayed_failures.borrow_mut();
-                        failures.push(format!("{command:?}"));
-                    }
-                    BehaviorOnFailure::Exit => {
-                        exit!(1);
-                    }
-                    BehaviorOnFailure::Ignore => {}
-                }
-                false
-            }
-        }
+        self.run_tracked(command).is_success()
     }
 
     /// Check if verbosity is greater than the `level`
