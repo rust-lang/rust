@@ -97,10 +97,8 @@ impl Layout {
     }
 
     /// Internal helper constructor to skip revalidating alignment validity.
-    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-    #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
-    pub const fn from_size_alignment(size: usize, align: Alignment) -> Result<Self, LayoutError> {
+    const fn from_size_alignment(size: usize, align: Alignment) -> Result<Self, LayoutError> {
         if size > Self::max_size_for_align(align) {
             return Err(LayoutError);
         }
