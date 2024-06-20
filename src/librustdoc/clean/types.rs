@@ -639,14 +639,14 @@ impl Item {
             hir::FnHeader { safety: sig.safety(), abi: sig.abi(), constness, asyncness }
         }
         let header = match *self.kind {
-            ItemKind::ForeignFunctionItem(_) => {
+            ItemKind::ForeignFunctionItem(_, safety) => {
                 let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
                     safety: if abi == Abi::RustIntrinsic {
                         intrinsic_operation_unsafety(tcx, def_id.expect_local())
                     } else {
-                        hir::Safety::Unsafe
+                        safety
                     },
                     abi,
                     constness: if tcx.is_const_fn(def_id)
@@ -842,9 +842,9 @@ pub(crate) enum ItemKind {
     StructFieldItem(Type),
     VariantItem(Variant),
     /// `fn`s from an extern block
-    ForeignFunctionItem(Box<Function>),
+    ForeignFunctionItem(Box<Function>, hir::Safety),
     /// `static`s from an extern block
-    ForeignStaticItem(Static),
+    ForeignStaticItem(Static, hir::Safety),
     /// `type`s from an extern block
     ForeignTypeItem,
     MacroItem(Macro),
@@ -893,8 +893,8 @@ impl ItemKind {
             | TyMethodItem(_)
             | MethodItem(_, _)
             | StructFieldItem(_)
-            | ForeignFunctionItem(_)
-            | ForeignStaticItem(_)
+            | ForeignFunctionItem(_, _)
+            | ForeignStaticItem(_, _)
             | ForeignTypeItem
             | MacroItem(_)
             | ProcMacroItem(_)
@@ -924,8 +924,8 @@ impl ItemKind {
                 | StaticItem(_)
                 | ConstantItem(_, _, _)
                 | TraitAliasItem(_)
-                | ForeignFunctionItem(_)
-                | ForeignStaticItem(_)
+                | ForeignFunctionItem(_, _)
+                | ForeignStaticItem(_, _)
                 | ForeignTypeItem
                 | MacroItem(_)
                 | ProcMacroItem(_)

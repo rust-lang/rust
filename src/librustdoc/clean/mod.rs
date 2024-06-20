@@ -3077,9 +3077,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            // FIXME(missing_unsafe_on_extern) handle safety of foreign fns.
-            // Safety was added as part of the implementation of unsafe extern blocks PR #124482
-            hir::ForeignItemKind::Fn(decl, names, generics, _) => {
+            hir::ForeignItemKind::Fn(decl, names, generics, safety) => {
                 let (generics, decl) = enter_impl_trait(cx, |cx| {
                     // NOTE: generics must be cleaned before args
                     let generics = clean_generics(generics, cx);
@@ -3087,13 +3085,12 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
                     let decl = clean_fn_decl_with_args(cx, decl, None, args);
                     (generics, decl)
                 });
-                ForeignFunctionItem(Box::new(Function { decl, generics }))
+                ForeignFunctionItem(Box::new(Function { decl, generics }), safety)
             }
-            // FIXME(missing_unsafe_on_extern) handle safety of foreign statics.
-            // Safety was added as part of the implementation of unsafe extern blocks PR #124482
-            hir::ForeignItemKind::Static(ty, mutability, _) => {
-                ForeignStaticItem(Static { type_: clean_ty(ty, cx), mutability, expr: None })
-            }
+            hir::ForeignItemKind::Static(ty, mutability, safety) => ForeignStaticItem(
+                Static { type_: clean_ty(ty, cx), mutability, expr: None },
+                safety,
+            ),
             hir::ForeignItemKind::Type => ForeignTypeItem,
         };
 

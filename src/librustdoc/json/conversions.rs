@@ -310,14 +310,16 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         EnumItem(e) => ItemEnum::Enum(e.into_tcx(tcx)),
         VariantItem(v) => ItemEnum::Variant(v.into_tcx(tcx)),
         FunctionItem(f) => ItemEnum::Function(from_function(f, true, header.unwrap(), tcx)),
-        ForeignFunctionItem(f) => ItemEnum::Function(from_function(f, false, header.unwrap(), tcx)),
+        ForeignFunctionItem(f, _) => {
+            ItemEnum::Function(from_function(f, false, header.unwrap(), tcx))
+        }
         TraitItem(t) => ItemEnum::Trait((*t).into_tcx(tcx)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_tcx(tcx)),
         MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), tcx)),
         TyMethodItem(m) => ItemEnum::Function(from_function(m, false, header.unwrap(), tcx)),
         ImplItem(i) => ItemEnum::Impl((*i).into_tcx(tcx)),
         StaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
-        ForeignStaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
+        ForeignStaticItem(s, _) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignTypeItem => ItemEnum::ForeignType,
         TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_tcx(tcx)),
         OpaqueTyItem(t) => ItemEnum::OpaqueTy(t.into_tcx(tcx)),
