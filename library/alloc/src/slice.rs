@@ -193,7 +193,7 @@ impl<T> [T] {
     /// The current implementation is based on [driftsort] by Orson Peters and Lukas Bergdoll, which
     /// combines the fast average case of quicksort with the fast worst case and partial run
     /// detection of mergesort, achieving linear time on fully sorted and reversed inputs. On inputs
-    /// with k distinct elements, the expected time to sort the data is *O(*n* \* log(*k*))*.
+    /// with k distinct elements, the expected time to sort the data is *O*(*n* \* log(*k*)).
     ///
     /// The auxiliary memory allocation behavior depends on the input length. Short slices are
     /// handled without allocation, medium sized slices allocate `self.len()` and beyond that it
@@ -252,7 +252,7 @@ impl<T> [T] {
     /// The current implementation is based on [driftsort] by Orson Peters and Lukas Bergdoll, which
     /// combines the fast average case of quicksort with the fast worst case and partial run
     /// detection of mergesort, achieving linear time on fully sorted and reversed inputs. On inputs
-    /// with k distinct elements, the expected time to sort the data is *O(*n* \* log(*k*))*.
+    /// with k distinct elements, the expected time to sort the data is *O*(*n* \* log(*k*)).
     ///
     /// The auxiliary memory allocation behavior depends on the input length. Short slices are
     /// handled without allocation, medium sized slices allocate `self.len()` and beyond that it
@@ -298,7 +298,7 @@ impl<T> [T] {
     /// The current implementation is based on [driftsort] by Orson Peters and Lukas Bergdoll, which
     /// combines the fast average case of quicksort with the fast worst case and partial run
     /// detection of mergesort, achieving linear time on fully sorted and reversed inputs. On inputs
-    /// with k distinct elements, the expected time to sort the data is *O(*n* \* log(*k*))*.
+    /// with k distinct elements, the expected time to sort the data is *O*(*n* \* log(*k*)).
     ///
     /// The auxiliary memory allocation behavior depends on the input length. Short slices are
     /// handled without allocation, medium sized slices allocate `self.len()` and beyond that it
