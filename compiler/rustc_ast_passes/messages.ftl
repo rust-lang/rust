@@ -30,6 +30,9 @@ ast_passes_auto_super_lifetime = auto traits cannot have super traits or lifetim
 
 ast_passes_bad_c_variadic = only foreign or `unsafe extern "C"` functions may be C-variadic
 
+ast_passes_bare_fn_invalid_safety = function pointers cannot be declared with `safe` safety qualifier
+    .suggestion = remove safe from this item
+
 ast_passes_body_in_extern = incorrect `{$kind}` inside `extern` block
     .cannot_have = cannot have a body
     .invalid = the invalid body
@@ -166,6 +169,9 @@ ast_passes_invalid_unnamed_field =
 ast_passes_invalid_unnamed_field_ty =
     unnamed fields can only have struct or union types
     .label = not a struct or union
+
+ast_passes_item_invalid_safety = items outside of `unsafe extern {"{ }"}` cannot be declared with `safe` safety qualifier
+    .suggestion = remove safe from this item
 
 ast_passes_item_underscore = `{$kind}` items in this context need a name
     .label = `_` is not a valid name for this `{$kind}` item
