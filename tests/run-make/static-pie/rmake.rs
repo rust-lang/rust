@@ -8,13 +8,40 @@
 use std::process::Command;
 
 use run_make_support::llvm_readobj;
+use run_make_support::regex::Regex;
 use run_make_support::rustc;
 use run_make_support::{cmd, run_with_args, target};
 
-fn ok_compiler_version(compiler: &str) -> bool {
-    let check_file = format!("check_{compiler}_version.sh");
+// Minimum major versions supporting -static-pie
+const GCC_VERSION: u32 = 8;
+const CLANG_VERSION: u32 = 9;
 
-    Command::new(check_file).status().is_ok_and(|status| status.success())
+// Return `true` if the `compiler` version supports `-static-pie`.
+fn ok_compiler_version(compiler: &str) -> bool {
+    let (trigger, version_threshold) = match compiler {
+        "clang" => ("__clang_major__", CLANG_VERSION),
+        "gcc" => ("__GNUC__", GCC_VERSION),
+        other => panic!("unexpected compiler '{other}', expected 'clang' or 'gcc'"),
+    };
+
+    if Command::new(compiler).spawn().is_err() {
+        eprintln!("No {compiler} version detected");
+        return false;
+    }
+
+    let compiler_output =
+        cmd(compiler).stdin(trigger).arg("-").arg("-E").arg("-x").arg("c").run().stdout_utf8();
+    let re = Regex::new(r"(?m)^(\d+)").unwrap();
+    let version: u32 =
+        re.captures(&compiler_output).unwrap().get(1).unwrap().as_str().parse().unwrap();
+
+    if version >= version_threshold {
+        eprintln!("{compiler} supports -static-pie");
+        true
+    } else {
+        eprintln!("{compiler} too old to support -static-pie, skipping test");
+        false
+    }
 }
 
 fn test(compiler: &str) {
