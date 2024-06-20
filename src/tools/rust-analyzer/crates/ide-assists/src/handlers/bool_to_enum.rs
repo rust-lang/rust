@@ -1,3 +1,4 @@
+use either::Either;
 use hir::{ImportPathConfig, ModuleDef};
 use ide_db::{
     assists::{AssistId, AssistKind},
@@ -93,27 +94,30 @@ struct BoolNodeData {
 fn find_bool_node(ctx: &AssistContext<'_>) -> Option<BoolNodeData> {
     let name: ast::Name = ctx.find_node_at_offset()?;
 
-    if let Some(let_stmt) = name.syntax().ancestors().find_map(ast::LetStmt::cast) {
-        let bind_pat = match let_stmt.pat()? {
-            ast::Pat::IdentPat(pat) => pat,
-            _ => {
-                cov_mark::hit!(not_applicable_in_non_ident_pat);
-                return None;
-            }
-        };
-        let def = ctx.sema.to_def(&bind_pat)?;
+    if let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
+        let def = ctx.sema.to_def(&ident_pat)?;
         if !def.ty(ctx.db()).is_bool() {
             cov_mark::hit!(not_applicable_non_bool_local);
             return None;
         }
 
-        Some(BoolNodeData {
-            target_node: let_stmt.syntax().clone(),
-            name,
-            ty_annotation: let_stmt.ty(),
-            initializer: let_stmt.initializer(),
-            definition: Definition::Local(def),
-        })
+        let local_definition = Definition::Local(def);
+        match ident_pat.syntax().parent().and_then(Either::<ast::Param, ast::LetStmt>::cast)? {
+            Either::Left(param) => Some(BoolNodeData {
+                target_node: param.syntax().clone(),
+                name,
+                ty_annotation: param.ty(),
+                initializer: None,
+                definition: local_definition,
+            }),
+            Either::Right(let_stmt) => Some(BoolNodeData {
+                target_node: let_stmt.syntax().clone(),
+                name,
+                ty_annotation: let_stmt.ty(),
+                initializer: let_stmt.initializer(),
+                definition: local_definition,
+            }),
+        }
     } else if let Some(const_) = name.syntax().parent().and_then(ast::Const::cast) {
         let def = ctx.sema.to_def(&const_)?;
         if !def.ty(ctx.db()).is_bool() {
