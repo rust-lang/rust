@@ -4,5 +4,16 @@ error: extern block cannot be declared unsafe
 LL | unsafe extern "C" {
    | ^^^^^^
 
-error: aborting due to 1 previous error
+error[E0658]: `unsafe extern {}` blocks and `safe` keyword are experimental
+  --> $DIR/feature-gate-unsafe-extern-blocks.rs:9:5
+   |
+LL |     safe fn foo();
+   |     ^^^^
+   |
+   = note: see issue #123743 <https://github.com/rust-lang/rust/issues/123743> for more information
+   = help: add `#![feature(unsafe_extern_blocks)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

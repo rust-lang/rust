@@ -1214,6 +1214,9 @@ impl<'a> Parser<'a> {
         if self.eat_keyword_case(kw::Unsafe, case) {
             Safety::Unsafe(self.prev_token.uninterpolated_span())
         } else if self.eat_keyword_case(kw::Safe, case) {
+            self.psess
+                .gated_spans
+                .gate(sym::unsafe_extern_blocks, self.prev_token.uninterpolated_span());
             Safety::Safe(self.prev_token.uninterpolated_span())
         } else {
             Safety::Default
