@@ -1,58 +1,45 @@
 #![feature(coverage_attribute)]
+//@ edition: 2021
 
 // Tests the error messages produced (or not produced) by various unusual
 // uses of the `#[coverage(..)]` attribute.
 
-// FIXME(#126658): Multiple coverage attributes with the same value are useless,
-// and should probably produce a diagnostic.
-#[coverage(off)]
+#[coverage(off)] //~ ERROR multiple `coverage` attributes
 #[coverage(off)]
 fn multiple_consistent() {}
 
-// FIXME(#126658): When there are multiple inconsistent coverage attributes,
-// it's unclear which one will prevail.
-#[coverage(off)]
+#[coverage(off)] //~ ERROR multiple `coverage` attributes
 #[coverage(on)]
 fn multiple_inconsistent() {}
 
-#[coverage] //~ ERROR expected `coverage(off)` or `coverage(on)`
+#[coverage] //~ ERROR malformed `coverage` attribute input
 fn bare_word() {}
 
-// FIXME(#126658): This shows as multiple different errors, one of which suggests
-// writing bare `#[coverage]`, which is not allowed.
-#[coverage = true]
-//~^ ERROR expected `coverage(off)` or `coverage(on)`
-//~| ERROR malformed `coverage` attribute input
-//~| HELP the following are the possible correct uses
-//~| SUGGESTION #[coverage(on|off)]
+#[coverage = true] //~ ERROR malformed `coverage` attribute input
 fn key_value() {}
 
-#[coverage()] //~ ERROR expected `coverage(off)` or `coverage(on)`
+#[coverage()] //~ ERROR malformed `coverage` attribute input
 fn list_empty() {}
 
-#[coverage(off, off)] //~ ERROR expected `coverage(off)` or `coverage(on)`
+#[coverage(off, off)] //~ ERROR malformed `coverage` attribute input
 fn list_consistent() {}
 
-#[coverage(off, on)] //~ ERROR expected `coverage(off)` or `coverage(on)`
+#[coverage(off, on)] //~ ERROR malformed `coverage` attribute input
 fn list_inconsistent() {}
 
-#[coverage(bogus)] //~ ERROR expected `coverage(off)` or `coverage(on)`
+#[coverage(bogus)] //~ ERROR malformed `coverage` attribute input
 fn bogus_word() {}
 
-#[coverage(bogus, off)] //~ ERROR expected `coverage(off)` or `coverage(on)`
+#[coverage(bogus, off)] //~ ERROR malformed `coverage` attribute input
 fn bogus_word_before() {}
 
-#[coverage(off, bogus)] //~ ERROR expected `coverage(off)` or `coverage(on)`
+#[coverage(off, bogus)] //~ ERROR malformed `coverage` attribute input
 fn bogus_word_after() {}
 
-#[coverage(off,)]
+#[coverage(off,)] // (OK!)
 fn comma_after() {}
 
-// FIXME(#126658): This shows as multiple different errors.
-#[coverage(,off)]
-//~^ ERROR expected identifier, found `,`
-//~| HELP remove this comma
-//~| ERROR expected `coverage(off)` or `coverage(on)`
+#[coverage(,off)] //~ ERROR expected identifier, found `,`
 fn comma_before() {}
 
 fn main() {}
