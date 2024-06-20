@@ -1,4 +1,5 @@
 //! Benchmarking module.
+
 use super::{
     event::CompletedTest,
     options::BenchMode,

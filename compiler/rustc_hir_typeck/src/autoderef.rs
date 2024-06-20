@@ -1,4 +1,5 @@
-//! Some helper functions for `AutoDeref`
+//! Some helper functions for `AutoDeref`.
+
 use super::method::MethodCallee;
 use super::{FnCtxt, PlaceOp};
 

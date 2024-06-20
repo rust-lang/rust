@@ -1,4 +1,5 @@
 //! Test exhaustiveness checking.
+
 use common::*;
 use rustc_pattern_analysis::{
     pat::{DeconstructedPat, WitnessPat},

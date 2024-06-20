@@ -1,5 +1,6 @@
 //! As explained in [`crate::usefulness`], values and patterns are made from constructors applied to
 //! fields. This file defines types that represent patterns in this way.
+
 use std::fmt;
 
 use smallvec::{smallvec, SmallVec};
