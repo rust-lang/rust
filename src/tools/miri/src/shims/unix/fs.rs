@@ -395,7 +395,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Isolation check is done via `FileDescriptor` trait.
 
         let seek_from = if whence == this.eval_libc_i32("SEEK_SET") {
-            SeekFrom::Start(u64::try_from(offset).unwrap())
+            if offset < 0 {
+                // Negative offsets return `EINVAL`.
+                let einval = this.eval_libc("EINVAL");
+                this.set_last_error(einval)?;
+                return Ok(Scalar::from_i64(-1));
+            } else {
+                SeekFrom::Start(u64::try_from(offset).unwrap())
+            }
         } else if whence == this.eval_libc_i32("SEEK_CUR") {
             SeekFrom::Current(i64::try_from(offset).unwrap())
         } else if whence == this.eval_libc_i32("SEEK_END") {
