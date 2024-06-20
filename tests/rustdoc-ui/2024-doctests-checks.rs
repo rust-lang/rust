@@ -2,7 +2,7 @@
 //@ compile-flags: --test --test-args=--test-threads=1 -Zunstable-options --edition 2024
 //@ normalize-stdout-test: "tests/rustdoc-ui" -> "$$DIR"
 //@ normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
-//@ normalize-stdout-test "wrong-ast.rs:\d+:\d+" -> "wrong-ast.rs:$$LINE:$$COL"
+//@ normalize-stdout-test ".rs:\d+:\d+" -> ".rs:$$LINE:$$COL"
 
 /// This one should fail: crate attributes should remain crate attributes
 /// in standalone doctests.
