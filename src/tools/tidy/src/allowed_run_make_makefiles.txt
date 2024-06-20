@@ -13,7 +13,6 @@ run-make/cdylib-fewer-symbols/Makefile
 run-make/compiler-lookup-paths-2/Makefile
 run-make/compiler-lookup-paths/Makefile
 run-make/compiler-rt-works-on-mingw/Makefile
-run-make/compressed-debuginfo/Makefile
 run-make/crate-hash-rustc-version/Makefile
 run-make/crate-name-priority/Makefile
 run-make/cross-lang-lto-clang/Makefile
@@ -21,7 +20,6 @@ run-make/cross-lang-lto-pgo-smoketest/Makefile
 run-make/cross-lang-lto-upstream-rlibs/Makefile
 run-make/cross-lang-lto/Makefile
 run-make/debug-assertions/Makefile
-run-make/debugger-visualizer-dep-info/Makefile
 run-make/dep-info-doesnt-run-much/Makefile
 run-make/dep-info-spaces/Makefile
 run-make/dep-info/Makefile
@@ -38,7 +36,6 @@ run-make/export-executable-symbols/Makefile
 run-make/extern-diff-internal-name/Makefile
 run-make/extern-flag-disambiguates/Makefile
 run-make/extern-flag-pathless/Makefile
-run-make/extern-flag-rename-transitive/Makefile
 run-make/extern-fn-explicit-align/Makefile
 run-make/extern-fn-generic/Makefile
 run-make/extern-fn-mangle/Makefile
@@ -49,10 +46,8 @@ run-make/extern-fn-with-packed-struct/Makefile
 run-make/extern-fn-with-union/Makefile
 run-make/extern-multiple-copies/Makefile
 run-make/extern-multiple-copies2/Makefile
-run-make/extern-overrides-distribution/Makefile
 run-make/extra-filename-with-temp-outputs/Makefile
 run-make/fmt-write-bloat/Makefile
-run-make/forced-unwind-terminate-pof/Makefile
 run-make/foreign-double-unwind/Makefile
 run-make/foreign-exceptions/Makefile
 run-make/foreign-rust-exceptions/Makefile
@@ -96,7 +91,6 @@ run-make/libtest-json/Makefile
 run-make/libtest-junit/Makefile
 run-make/libtest-padding/Makefile
 run-make/libtest-thread-limit/Makefile
-run-make/link-args-order/Makefile
 run-make/link-cfg/Makefile
 run-make/link-framework/Makefile
 run-make/link-path-order/Makefile
@@ -105,19 +99,16 @@ run-make/llvm-ident/Makefile
 run-make/long-linker-command-lines-cmd-exe/Makefile
 run-make/long-linker-command-lines/Makefile
 run-make/longjmp-across-rust/Makefile
-run-make/ls-metadata/Makefile
 run-make/lto-dylib-dep/Makefile
 run-make/lto-empty/Makefile
 run-make/lto-linkage-used-attr/Makefile
 run-make/lto-no-link-whole-rlib/Makefile
-run-make/lto-readonly-lib/Makefile
 run-make/lto-smoke-c/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/macos-fat-archive/Makefile
 run-make/manual-link/Makefile
 run-make/many-crates-but-no-match/Makefile
 run-make/metadata-dep-info/Makefile
-run-make/metadata-flag-frobs-symbols/Makefile
 run-make/min-global-align/Makefile
 run-make/mingw-export-call-convention/Makefile
 run-make/mismatching-target-triples/Makefile
