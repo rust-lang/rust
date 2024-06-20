@@ -542,12 +542,12 @@ impl<'a> Parser<'a> {
                     None => PatKind::Path(qself, path),
                 }
             }
-        } else if let token::Lifetime(lt) = self.token.kind
+        } else if let Some(lt) = self.token.lifetime()
             // In pattern position, we're totally fine with using "next token isn't colon"
             // as a heuristic. We could probably just always try to recover if it's a lifetime,
             // because we never have `'a: label {}` in a pattern position anyways, but it does
             // keep us from suggesting something like `let 'a: Ty = ..` => `let 'a': Ty = ..`
-            && could_be_unclosed_char_literal(Ident::with_dummy_span(lt))
+            && could_be_unclosed_char_literal(lt)
             && !self.look_ahead(1, |token| matches!(token.kind, token::Colon))
         {
             // Recover a `'a` as a `'a'` literal
@@ -683,12 +683,12 @@ impl<'a> Parser<'a> {
     /// Parse `&pat` / `&mut pat`.
     fn parse_pat_deref(&mut self, expected: Option<Expected>) -> PResult<'a, PatKind> {
         self.expect_and()?;
-        if let token::Lifetime(name) = self.token.kind {
+        if let Some(lifetime) = self.token.lifetime() {
             self.bump(); // `'a`
 
             self.dcx().emit_err(UnexpectedLifetimeInPattern {
                 span: self.prev_token.span,
-                symbol: name,
+                symbol: lifetime.name,
                 suggestion: self.prev_token.span.until(self.token.span),
             });
         }

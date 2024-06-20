@@ -10,21 +10,6 @@ use rustc_span::{symbol::Ident, Span, Symbol};
 use crate::fluent_generated as fluent;
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_keyword_lifetime)]
-pub struct KeywordLifetime {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_invalid_label)]
-pub struct InvalidLabel {
-    #[primary_span]
-    pub span: Span,
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_visibility_not_permitted, code = E0449)]
 pub struct VisibilityNotPermitted {
     #[primary_span]
