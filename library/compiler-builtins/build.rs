@@ -165,6 +165,7 @@ fn configure_check_cfg() {
         "__bswapdi2",
         "__bswapti2",
         "__clzsi2",
+        "__clzdi2",
         "__divdi3",
         "__divsi3",
         "__divmoddi4",
@@ -382,7 +383,6 @@ mod c {
             sources.extend(&[
                 ("__absvti2", "absvti2.c"),
                 ("__addvti3", "addvti3.c"),
-                ("__clzti2", "clzti2.c"),
                 ("__cmpti2", "cmpti2.c"),
                 ("__ctzti2", "ctzti2.c"),
                 ("__ffsti2", "ffsti2.c"),

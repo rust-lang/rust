@@ -65,31 +65,70 @@ fn fuzz_values() {
 
 #[test]
 fn leading_zeros() {
-    use compiler_builtins::int::__clzsi2;
-    use compiler_builtins::int::leading_zeros::{
-        usize_leading_zeros_default, usize_leading_zeros_riscv,
-    };
-    fuzz(N, |x: usize| {
-        let lz = x.leading_zeros() as usize;
-        let lz0 = __clzsi2(x);
-        let lz1 = usize_leading_zeros_default(x);
-        let lz2 = usize_leading_zeros_riscv(x);
-        if lz0 != lz {
-            panic!("__clzsi2({}): std: {}, builtins: {}", x, lz, lz0);
-        }
-        if lz1 != lz {
-            panic!(
-                "usize_leading_zeros_default({}): std: {}, builtins: {}",
-                x, lz, lz1
-            );
-        }
-        if lz2 != lz {
-            panic!(
-                "usize_leading_zeros_riscv({}): std: {}, builtins: {}",
-                x, lz, lz2
-            );
-        }
-    })
+    use compiler_builtins::int::leading_zeros::{leading_zeros_default, leading_zeros_riscv};
+    {
+        use compiler_builtins::int::leading_zeros::__clzsi2;
+        fuzz(N, |x: u32| {
+            if x == 0 {
+                return; // undefined value for an intrinsic
+            }
+            let lz = x.leading_zeros() as usize;
+            let lz0 = __clzsi2(x);
+            let lz1 = leading_zeros_default(x);
+            let lz2 = leading_zeros_riscv(x);
+            if lz0 != lz {
+                panic!("__clzsi2({}): std: {}, builtins: {}", x, lz, lz0);
+            }
+            if lz1 != lz {
+                panic!(
+                    "leading_zeros_default({}): std: {}, builtins: {}",
+                    x, lz, lz1
+                );
+            }
+            if lz2 != lz {
+                panic!("leading_zeros_riscv({}): std: {}, builtins: {}", x, lz, lz2);
+            }
+        });
+    }
+
+    {
+        use compiler_builtins::int::leading_zeros::__clzdi2;
+        fuzz(N, |x: u64| {
+            if x == 0 {
+                return; // undefined value for an intrinsic
+            }
+            let lz = x.leading_zeros() as usize;
+            let lz0 = __clzdi2(x);
+            let lz1 = leading_zeros_default(x);
+            let lz2 = leading_zeros_riscv(x);
+            if lz0 != lz {
+                panic!("__clzdi2({}): std: {}, builtins: {}", x, lz, lz0);
+            }
+            if lz1 != lz {
+                panic!(
+                    "leading_zeros_default({}): std: {}, builtins: {}",
+                    x, lz, lz1
+                );
+            }
+            if lz2 != lz {
+                panic!("leading_zeros_riscv({}): std: {}, builtins: {}", x, lz, lz2);
+            }
+        });
+    }
+
+    {
+        use compiler_builtins::int::leading_zeros::__clzti2;
+        fuzz(N, |x: u128| {
+            if x == 0 {
+                return; // undefined value for an intrinsic
+            }
+            let lz = x.leading_zeros() as usize;
+            let lz0 = __clzti2(x);
+            if lz0 != lz {
+                panic!("__clzti2({}): std: {}, builtins: {}", x, lz, lz0);
+            }
+        });
+    }
 }
 
 #[test]
