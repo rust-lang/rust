@@ -3,9 +3,8 @@
 //@ run-flags: --list --format json -Zunstable-options
 //@ run-pass
 //@ check-run-results
+//@ check-run-stdout-is-json-lines
 //@ only-nightly
-//@ normalize-stdout-test: "fake-test-src-base/test-attrs/" -> "$$DIR/"
-//@ normalize-stdout-test: "fake-test-src-base\\test-attrs\\" -> "$$DIR/"
 
 // Checks the listing of tests with --format json.
 
