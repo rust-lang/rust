@@ -241,11 +241,236 @@ def concat_multi_lines(f):
 
 
 LINE_PATTERN = re.compile(r'''
-    (?<=(?<!\S))(?P<invalid>!?)@(?P<negated>!?)
-    (?P<cmd>[A-Za-z]+(?:-[A-Za-z]+)*)
+    //@\s+
+    (?P<negated>!?)(?P<cmd>[A-Za-z]+(?:-[A-Za-z]+)*)
     (?P<args>.*)$
 ''', re.X | re.UNICODE)
 
+# Equivalent to `src/tools/compiletest/src/header.rs` constant of the same name.
+KNOWN_DIRECTIVE_NAMES = [
+    # tidy-alphabetical-start
+    "assembly-output",
+    "aux-bin",
+    "aux-build",
+    "aux-codegen-backend",
+    "aux-crate",
+    "build-aux-docs",
+    "build-fail",
+    "build-pass",
+    "check-fail",
+    "check-pass",
+    "check-run-results",
+    "check-stdout",
+    "check-test-line-numbers-match",
+    "compare-output-lines-by-subset",
+    "compile-flags",
+    "dont-check-compiler-stderr",
+    "dont-check-compiler-stdout",
+    "dont-check-failure-status",
+    "edition",
+    "error-pattern",
+    "exec-env",
+    "failure-status",
+    "filecheck-flags",
+    "forbid-output",
+    "force-host",
+    "ignore-16bit",
+    "ignore-32bit",
+    "ignore-64bit",
+    "ignore-aarch64",
+    "ignore-aarch64-unknown-linux-gnu",
+    "ignore-android",
+    "ignore-apple",
+    "ignore-arm",
+    "ignore-avr",
+    "ignore-beta",
+    "ignore-cdb",
+    "ignore-compare-mode-next-solver",
+    "ignore-compare-mode-polonius",
+    "ignore-cross-compile",
+    "ignore-debug",
+    "ignore-eabi",
+    "ignore-emscripten",
+    "ignore-endian-big",
+    "ignore-freebsd",
+    "ignore-fuchsia",
+    "ignore-gdb",
+    "ignore-gdb-version",
+    "ignore-gnu",
+    "ignore-haiku",
+    "ignore-horizon",
+    "ignore-i686-pc-windows-msvc",
+    "ignore-ios",
+    "ignore-linux",
+    "ignore-lldb",
+    "ignore-llvm-version",
+    "ignore-loongarch64",
+    "ignore-macabi",
+    "ignore-macos",
+    "ignore-mode-assembly",
+    "ignore-mode-codegen",
+    "ignore-mode-codegen-units",
+    "ignore-mode-coverage-map",
+    "ignore-mode-coverage-run",
+    "ignore-mode-crashes",
+    "ignore-mode-debuginfo",
+    "ignore-mode-incremental",
+    "ignore-mode-js-doc-test",
+    "ignore-mode-mir-opt",
+    "ignore-mode-pretty",
+    "ignore-mode-run-make",
+    "ignore-mode-run-pass-valgrind",
+    "ignore-mode-rustdoc",
+    "ignore-mode-rustdoc-json",
+    "ignore-mode-ui",
+    "ignore-mode-ui-fulldeps",
+    "ignore-msp430",
+    "ignore-msvc",
+    "ignore-musl",
+    "ignore-netbsd",
+    "ignore-nightly",
+    "ignore-none",
+    "ignore-nto",
+    "ignore-nvptx64",
+    "ignore-nvptx64-nvidia-cuda",
+    "ignore-openbsd",
+    "ignore-pass",
+    "ignore-remote",
+    "ignore-riscv64",
+    "ignore-s390x",
+    "ignore-sgx",
+    "ignore-spirv",
+    "ignore-stable",
+    "ignore-stage1",
+    "ignore-stage2",
+    "ignore-test",
+    "ignore-thumb",
+    "ignore-thumbv8m.base-none-eabi",
+    "ignore-thumbv8m.main-none-eabi",
+    "ignore-tvos",
+    "ignore-unix",
+    "ignore-unknown",
+    "ignore-uwp",
+    "ignore-visionos",
+    "ignore-vxworks",
+    "ignore-wasi",
+    "ignore-wasm",
+    "ignore-wasm32",
+    "ignore-wasm32-bare",
+    "ignore-wasm64",
+    "ignore-watchos",
+    "ignore-windows",
+    "ignore-windows-gnu",
+    "ignore-x32",
+    "ignore-x86",
+    "ignore-x86_64",
+    "ignore-x86_64-unknown-linux-gnu",
+    "incremental",
+    "known-bug",
+    "llvm-cov-flags",
+    "min-cdb-version",
+    "min-gdb-version",
+    "min-lldb-version",
+    "min-llvm-version",
+    "min-system-llvm-version",
+    "needs-asm-support",
+    "needs-dlltool",
+    "needs-dynamic-linking",
+    "needs-force-clang-based-tests",
+    "needs-git-hash",
+    "needs-llvm-components",
+    "needs-profiler-support",
+    "needs-relocation-model-pic",
+    "needs-run-enabled",
+    "needs-rust-lld",
+    "needs-rust-lldb",
+    "needs-sanitizer-address",
+    "needs-sanitizer-cfi",
+    "needs-sanitizer-dataflow",
+    "needs-sanitizer-hwaddress",
+    "needs-sanitizer-kcfi",
+    "needs-sanitizer-leak",
+    "needs-sanitizer-memory",
+    "needs-sanitizer-memtag",
+    "needs-sanitizer-safestack",
+    "needs-sanitizer-shadow-call-stack",
+    "needs-sanitizer-support",
+    "needs-sanitizer-thread",
+    "needs-threads",
+    "needs-unwind",
+    "needs-wasmtime",
+    "needs-xray",
+    "no-auto-check-cfg",
+    "no-prefer-dynamic",
+    "normalize-stderr-32bit",
+    "normalize-stderr-64bit",
+    "normalize-stderr-test",
+    "normalize-stdout-test",
+    "only-16bit",
+    "only-32bit",
+    "only-64bit",
+    "only-aarch64",
+    "only-apple",
+    "only-arm",
+    "only-avr",
+    "only-beta",
+    "only-bpf",
+    "only-cdb",
+    "only-gnu",
+    "only-i686-pc-windows-msvc",
+    "only-ios",
+    "only-linux",
+    "only-loongarch64",
+    "only-loongarch64-unknown-linux-gnu",
+    "only-macos",
+    "only-mips",
+    "only-mips64",
+    "only-msp430",
+    "only-msvc",
+    "only-nightly",
+    "only-nvptx64",
+    "only-riscv64",
+    "only-sparc",
+    "only-sparc64",
+    "only-stable",
+    "only-thumb",
+    "only-tvos",
+    "only-unix",
+    "only-visionos",
+    "only-wasm32",
+    "only-wasm32-bare",
+    "only-wasm32-wasip1",
+    "only-watchos",
+    "only-windows",
+    "only-x86",
+    "only-x86_64",
+    "only-x86_64-fortanix-unknown-sgx",
+    "only-x86_64-pc-windows-gnu",
+    "only-x86_64-pc-windows-msvc",
+    "only-x86_64-unknown-linux-gnu",
+    "pp-exact",
+    "pretty-compare-only",
+    "pretty-expanded",
+    "pretty-mode",
+    "regex-error-pattern",
+    "remap-src-base",
+    "revisions",
+    "run-fail",
+    "run-flags",
+    "run-pass",
+    "run-rustfix",
+    "rustc-env",
+    "rustfix-only-machine-applicable",
+    "should-fail",
+    "should-ice",
+    "stderr-per-bitwidth",
+    "test-mir-pass",
+    "unset-exec-env",
+    "unset-rustc-env",
+    # Used by the tidy check `unknown_revision`.
+    "unused-revision-names",
+    # tidy-alphabetical-end
+]
 
 def get_commands(template):
     with io.open(template, encoding='utf-8') as f:
@@ -254,17 +479,9 @@ def get_commands(template):
             if not m:
                 continue
 
-            negated = (m.group('negated') == '!')
             cmd = m.group('cmd')
-            if m.group('invalid') == '!':
-                print_err(
-                    lineno,
-                    line,
-                    'Invalid command: `!@{0}{1}`, (help: try with `@!{1}`)'.format(
-                        '!' if negated else '',
-                        cmd,
-                    ),
-                )
+            negated = (m.group('negated') == '!')
+            if not negated and cmd in KNOWN_DIRECTIVE_NAMES:
                 continue
             args = m.group('args')
             if args and not args[:1].isspace():
@@ -549,7 +766,7 @@ def get_nb_matching_elements(cache, c, regexp, stop_at_first):
 def check_files_in_folder(c, cache, folder, files):
     files = files.strip()
     if not files.startswith('[') or not files.endswith(']'):
-        raise InvalidCheck("Expected list as second argument of @{} (ie '[]')".format(c.cmd))
+        raise InvalidCheck("Expected list as second argument of {} (ie '[]')".format(c.cmd))
 
     folder = cache.get_absolute_path(folder)
 
@@ -558,7 +775,7 @@ def check_files_in_folder(c, cache, folder, files):
     files_set = set()
     for file in files:
         if file in files_set:
-            raise InvalidCheck("Duplicated file `{}` in @{}".format(file, c.cmd))
+            raise InvalidCheck("Duplicated file `{}` in {}".format(file, c.cmd))
         files_set.add(file)
     folder_set = set([f for f in os.listdir(folder) if f != "." and f != ".."])
 
@@ -590,7 +807,7 @@ def check_command(c, cache):
         if c.cmd in ['has', 'hasraw', 'matches', 'matchesraw']:  # string test
             regexp = c.cmd.startswith('matches')
 
-            # @has <path> = file existence
+            # has <path> = file existence
             if len(c.args) == 1 and not regexp and 'raw' not in c.cmd:
                 try:
                     cache.get_file(c.args[0])
@@ -598,40 +815,40 @@ def check_command(c, cache):
                 except FailedCheck as err:
                     cerr = str(err)
                     ret = False
-            # @hasraw/matchesraw <path> <pat> = string test
+            # hasraw/matchesraw <path> <pat> = string test
             elif len(c.args) == 2 and 'raw' in c.cmd:
                 cerr = "`PATTERN` did not match"
                 ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
-            # @has/matches <path> <pat> <match> = XML tree test
+            # has/matches <path> <pat> <match> = XML tree test
             elif len(c.args) == 3 and 'raw' not in c.cmd:
                 cerr = "`XPATH PATTERN` did not match"
                 ret = get_nb_matching_elements(cache, c, regexp, True) != 0
             else:
-                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+                raise InvalidCheck('Invalid number of {} arguments'.format(c.cmd))
 
         elif c.cmd == 'files': # check files in given folder
-            if len(c.args) != 2: # @files <folder path> <file list>
-                raise InvalidCheck("Invalid number of @{} arguments".format(c.cmd))
+            if len(c.args) != 2: # files <folder path> <file list>
+                raise InvalidCheck("Invalid number of {} arguments".format(c.cmd))
             elif c.negated:
-                raise InvalidCheck("@{} doesn't support negative check".format(c.cmd))
+                raise InvalidCheck("{} doesn't support negative check".format(c.cmd))
             ret = check_files_in_folder(c, cache, c.args[0], c.args[1])
 
         elif c.cmd == 'count':  # count test
-            if len(c.args) == 3:  # @count <path> <pat> <count> = count test
+            if len(c.args) == 3:  # count <path> <pat> <count> = count test
                 expected = int(c.args[2])
                 found = get_tree_count(cache.get_tree(c.args[0]), c.args[1])
                 cerr = "Expected {} occurrences but found {}".format(expected, found)
                 ret = expected == found
-            elif len(c.args) == 4:  # @count <path> <pat> <text> <count> = count test
+            elif len(c.args) == 4:  # count <path> <pat> <text> <count> = count test
                 expected = int(c.args[3])
                 found = get_nb_matching_elements(cache, c, False, False)
                 cerr = "Expected {} occurrences but found {}".format(expected, found)
                 ret = found == expected
             else:
-                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+                raise InvalidCheck('Invalid number of {} arguments'.format(c.cmd))
 
         elif c.cmd == 'snapshot':  # snapshot test
-            if len(c.args) == 3:  # @snapshot <snapshot-name> <html-path> <xpath>
+            if len(c.args) == 3:  # snapshot <snapshot-name> <html-path> <xpath>
                 [snapshot_name, html_path, pattern] = c.args
                 tree = cache.get_tree(html_path)
                 xpath = normalize_xpath(pattern)
@@ -654,10 +871,10 @@ def check_command(c, cache):
                 else:
                     raise FailedCheck('Expected 1 match, but found {}'.format(len(subtrees)))
             else:
-                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+                raise InvalidCheck('Invalid number of {} arguments'.format(c.cmd))
 
         elif c.cmd == 'has-dir':  # has-dir test
-            if len(c.args) == 1:  # @has-dir <path> = has-dir test
+            if len(c.args) == 1:  # has-dir <path> = has-dir test
                 try:
                     cache.get_dir(c.args[0])
                     ret = True
@@ -665,22 +882,22 @@ def check_command(c, cache):
                     cerr = str(err)
                     ret = False
             else:
-                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+                raise InvalidCheck('Invalid number of {} arguments'.format(c.cmd))
 
         elif c.cmd == 'valid-html':
-            raise InvalidCheck('Unimplemented @valid-html')
+            raise InvalidCheck('Unimplemented valid-html')
 
         elif c.cmd == 'valid-links':
-            raise InvalidCheck('Unimplemented @valid-links')
+            raise InvalidCheck('Unimplemented valid-links')
 
         else:
-            raise InvalidCheck('Unrecognized @{}'.format(c.cmd))
+            raise InvalidCheck('Unrecognized {}'.format(c.cmd))
 
         if ret == c.negated:
             raise FailedCheck(cerr)
 
     except FailedCheck as err:
-        message = '@{}{} check failed'.format('!' if c.negated else '', c.cmd)
+        message = '{}{} check failed'.format('!' if c.negated else '', c.cmd)
         print_err(c.lineno, c.context, str(err), message)
     except InvalidCheck as err:
         print_err(c.lineno, c.context, str(err))

@@ -954,6 +954,25 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     // tidy-alphabetical-end
 ];
 
+const KNOWN_RUSTDOC_DIRECTIVE_NAMES: &[&str] = &[
+    "count",
+    "!count",
+    "files",
+    "!files",
+    "has",
+    "!has",
+    "has-dir",
+    "!has-dir",
+    "hasraw",
+    "!hasraw",
+    "matches",
+    "!matches",
+    "matchesraw",
+    "!matchesraw",
+    "snapshot",
+    "!snapshot",
+];
+
 /// The broken-down contents of a line containing a test header directive,
 /// which [`iter_header`] passes to its callback function.
 ///
@@ -988,20 +1007,30 @@ pub(crate) struct CheckDirectiveResult<'ln> {
     trailing_directive: Option<&'ln str>,
 }
 
-pub(crate) fn check_directive(directive_ln: &str) -> CheckDirectiveResult<'_> {
+pub(crate) fn check_directive<'a>(
+    directive_ln: &'a str,
+    is_rustdoc: bool,
+    original_line: &str,
+) -> CheckDirectiveResult<'a> {
     let (directive_name, post) = directive_ln.split_once([':', ' ']).unwrap_or((directive_ln, ""));
 
     let trailing = post.trim().split_once(' ').map(|(pre, _)| pre).unwrap_or(post);
+    let is_known = |s: &str| {
+        KNOWN_DIRECTIVE_NAMES.contains(&s)
+            || (is_rustdoc
+                && original_line.starts_with("//@")
+                && KNOWN_RUSTDOC_DIRECTIVE_NAMES.contains(&s))
+    };
     let trailing_directive = {
         // 1. is the directive name followed by a space? (to exclude `:`)
         matches!(directive_ln.get(directive_name.len()..), Some(s) if s.starts_with(' '))
             // 2. is what is after that directive also a directive (ex: "only-x86 only-arm")
-            && KNOWN_DIRECTIVE_NAMES.contains(&trailing)
+            && is_known(trailing)
     }
     .then_some(trailing);
 
     CheckDirectiveResult {
-        is_known_directive: KNOWN_DIRECTIVE_NAMES.contains(&directive_name),
+        is_known_directive: is_known(&directive_name),
         directive_name: directive_ln,
         trailing_directive,
     }
@@ -1072,7 +1101,7 @@ fn iter_header(
                 let directive_ln = non_revisioned_directive_line.trim();
 
                 let CheckDirectiveResult { is_known_directive, trailing_directive, .. } =
-                    check_directive(directive_ln);
+                    check_directive(directive_ln, mode == Mode::Rustdoc, ln);
 
                 if !is_known_directive {
                     *poisoned = true;
@@ -1125,7 +1154,7 @@ fn iter_header(
             let rest = rest.trim_start();
 
             let CheckDirectiveResult { is_known_directive, directive_name, .. } =
-                check_directive(rest);
+                check_directive(rest, mode == Mode::Rustdoc, ln);
 
             if is_known_directive {
                 *poisoned = true;
