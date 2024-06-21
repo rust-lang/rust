@@ -2,7 +2,7 @@ error[E0116]: cannot define inherent `impl` for a type outside of the crate wher
   --> $DIR/trait-or-new-type-instead.rs:1:1
    |
 LL | impl<T> Option<T> {
-   | ^^^^^^^^^^^^^^^^^ impl for type defined outside of crate.
+   | ^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
    |
    = note: define and implement a trait or new type instead
 
