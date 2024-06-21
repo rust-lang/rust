@@ -1178,7 +1178,7 @@ impl<'a> TyLoweringContext<'a> {
                             let ty = if let Some(target_param_idx) = target_param_idx {
                                 let mut counter = 0;
                                 let generics = self.generics().expect("generics in scope");
-                                for (idx, data) in generics.params.type_or_consts.iter() {
+                                for (idx, data) in generics.iter_self_type_or_consts() {
                                     // Count the number of `impl Trait` things that appear before
                                     // the target of our `bound`.
                                     // Our counter within `impl_trait_mode` should be that number
@@ -1480,7 +1480,7 @@ fn named_associated_type_shorthand_candidates<R>(
             // Handle `Self::Type` referring to own associated type in trait definitions
             if let GenericDefId::TraitId(trait_id) = param_id.parent() {
                 let trait_generics = generics(db.upcast(), trait_id.into());
-                if trait_generics.params[param_id.local_id()].is_trait_self() {
+                if trait_generics[param_id.local_id()].is_trait_self() {
                     let def_generics = generics(db.upcast(), def);
                     let starting_idx = match def {
                         GenericDefId::TraitId(_) => 0,
