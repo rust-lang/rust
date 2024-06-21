@@ -45,25 +45,17 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return Ok(EmulateItemResult::NotSupported);
                 }
 
+                let [cb_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
+
                 let op = if unprefixed_name.starts_with("add") {
                     mir::BinOp::AddWithOverflow
                 } else {
                     mir::BinOp::SubWithOverflow
                 };
 
-                let [cb_in, a, b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
-                let cb_in = this.read_scalar(cb_in)?.to_u8()? != 0;
-                let a = this.read_immediate(a)?;
-                let b = this.read_immediate(b)?;
-
-                let (sum, overflow1) = this.binary_op(op, &a, &b)?.to_pair(this);
-                let (sum, overflow2) =
-                    this.binary_op(op, &sum, &ImmTy::from_uint(cb_in, a.layout))?.to_pair(this);
-                let cb_out = overflow1.to_scalar().to_bool()? | overflow2.to_scalar().to_bool()?;
-
-                let d1 = this.project_field(dest, 0)?;
-                let d2 = this.project_field(dest, 1)?;
-                write_twice(this, &d1, Scalar::from_u8(cb_out.into()), &d2, sum)?;
+                let (sum, cb_out) = carrying_add(this, cb_in, a, b, op)?;
+                this.write_scalar(cb_out, &this.project_field(dest, 0)?)?;
+                this.write_immediate(*sum, &this.project_field(dest, 1)?)?;
             }
 
             // Used to implement the `_addcarryx_u{32, 64}` functions. They are semantically identical with the `_addcarry_u{32, 64}` functions,
@@ -77,23 +69,10 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
 
                 let [c_in, a, b, out] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
-                let c_in = this.read_scalar(c_in)?.to_u8()? != 0;
-                let a = this.read_immediate(a)?;
-                let b = this.read_immediate(b)?;
 
-                let (sum, overflow1) =
-                    this.binary_op(mir::BinOp::AddWithOverflow, &a, &b)?.to_pair(this);
-                let (sum, overflow2) = this
-                    .binary_op(
-                        mir::BinOp::AddWithOverflow,
-                        &sum,
-                        &ImmTy::from_uint(c_in, a.layout),
-                    )?
-                    .to_pair(this);
-                let c_out = overflow1.to_scalar().to_bool()? | overflow2.to_scalar().to_bool()?;
-
-                let out = this.deref_pointer_as(out, sum.layout)?;
-                write_twice(this, dest, Scalar::from_u8(c_out.into()), &out, sum)?;
+                let (sum, c_out) = carrying_add(this, c_in, a, b, mir::BinOp::AddWithOverflow)?;
+                this.write_scalar(c_out, dest)?;
+                this.write_immediate(*sum, &this.deref_pointer_as(out, sum.layout)?)?;
             }
 
             // Used to implement the `_mm_pause` function.
@@ -1369,15 +1348,26 @@ fn psign<'tcx>(
     Ok(())
 }
 
-/// Write two values `v1` and `v2` to the places `d1` and `d2`.
-fn write_twice<'tcx>(
+/// Calcultates either `a + b + cb_in` or `a - b - cb_in` depending on the value
+/// of `op` and returns both the sum and the overflow bit. `op` is expected to be
+/// either one of `mir::BinOp::AddWithOverflow` and `mir::BinOp::SubWithOverflow`.
+fn carrying_add<'tcx>(
     this: &mut crate::MiriInterpCx<'tcx>,
-    d1: &MPlaceTy<'tcx>,
-    v1: Scalar,
-    d2: &MPlaceTy<'tcx>,
-    v2: ImmTy<'tcx>,
-) -> InterpResult<'tcx, ()> {
-    this.write_scalar(v1, d1)?;
-    this.write_immediate(*v2, d2)?;
-    Ok(())
+    cb_in: &OpTy<'tcx>,
+    a: &OpTy<'tcx>,
+    b: &OpTy<'tcx>,
+    op: mir::BinOp,
+) -> InterpResult<'tcx, (ImmTy<'tcx>, Scalar)> {
+    assert!(op == mir::BinOp::AddWithOverflow || op == mir::BinOp::SubWithOverflow);
+
+    let cb_in = this.read_scalar(cb_in)?.to_u8()? != 0;
+    let a = this.read_immediate(a)?;
+    let b = this.read_immediate(b)?;
+
+    let (sum, overflow1) = this.binary_op(op, &a, &b)?.to_pair(this);
+    let (sum, overflow2) =
+        this.binary_op(op, &sum, &ImmTy::from_uint(cb_in, a.layout))?.to_pair(this);
+    let cb_out = overflow1.to_scalar().to_bool()? | overflow2.to_scalar().to_bool()?;
+
+    Ok((sum, Scalar::from_u8(cb_out.into())))
 }
