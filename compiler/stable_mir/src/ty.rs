@@ -608,8 +608,10 @@ impl UintTy {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FloatTy {
+    F16,
     F32,
     F64,
+    F128,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
