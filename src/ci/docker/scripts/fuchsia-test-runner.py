@@ -112,7 +112,7 @@ def atomic_link(link: Path, target: Path):
             os.remove(tmp_file)
 
 
-@dataclass(kw_only=True)
+@dataclass
 class TestEnvironment:
     rust_build_dir: Path
     sdk_dir: Path
