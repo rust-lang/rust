@@ -2665,7 +2665,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// Ensures a value is in the entry by inserting the result of a fallible default function
     /// if empty, and returns a mutable reference to the value in the entry.
     ///
-    /// This methods works identically to [`or_insert_with`] except that the default function
+    /// This method works identically to [`or_insert_with`] except that the default function
     /// should return a `Result` and, in the case of an error, the error is propagated.
     ///
     /// [`or_insert_with`]: Self::or_insert_with
@@ -2726,7 +2726,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// This method allows for generating key-derived values for insertion by providing the default
     /// function a reference to the key that was moved during the `entry(key)` method call.
     ///
-    /// This methods works identically to [`or_insert_with_key`] except that the default function
+    /// This method works identically to [`or_insert_with_key`] except that the default function
     /// should return a `Result` and, in the case of an error, the error is propagated.
     ///
     /// [`or_insert_with_key`]: Self::or_insert_with_key
