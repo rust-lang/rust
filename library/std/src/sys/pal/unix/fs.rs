@@ -20,14 +20,14 @@ use crate::sys::time::SystemTime;
 use crate::sys::{cvt, cvt_r};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
-#[cfg(any(all(target_os = "linux", target_env = "gnu"), target_vendor = "apple"))]
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::syscall;
 #[cfg(target_os = "android")]
 use crate::sys::weak::weak;
 
 use libc::{c_int, mode_t};
 
-#[cfg(any(all(target_os = "linux", target_env = "gnu"), target_vendor = "apple"))]
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
 use libc::c_char;
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
@@ -1891,8 +1891,6 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 
 #[cfg(target_vendor = "apple")]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    use crate::sync::atomic::{AtomicBool, Ordering};
-
     const COPYFILE_ALL: libc::copyfile_flags_t = libc::COPYFILE_METADATA | libc::COPYFILE_DATA;
 
     struct FreeOnDrop(libc::copyfile_state_t);
@@ -1907,39 +1905,21 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         }
     }
 
-    // MacOS prior to 10.12 don't support `fclonefileat`
-    // We store the availability in a global to avoid unnecessary syscalls
-    static HAS_FCLONEFILEAT: AtomicBool = AtomicBool::new(true);
-    syscall! {
-        // Mirrors `libc::fclonefileat`
-        fn fclonefileat(
-            srcfd: libc::c_int,
-            dst_dirfd: libc::c_int,
-            dst: *const c_char,
-            flags: libc::c_int
-        ) -> libc::c_int
-    }
-
     let (reader, reader_metadata) = open_from(from)?;
 
-    // Opportunistically attempt to create a copy-on-write clone of `from`
-    // using `fclonefileat`.
-    if HAS_FCLONEFILEAT.load(Ordering::Relaxed) {
-        let clonefile_result = run_path_with_cstr(to, &|to| {
-            cvt(unsafe { fclonefileat(reader.as_raw_fd(), libc::AT_FDCWD, to.as_ptr(), 0) })
-        });
-        match clonefile_result {
-            Ok(_) => return Ok(reader_metadata.len()),
-            Err(err) => match err.raw_os_error() {
-                // `fclonefileat` will fail on non-APFS volumes, if the
-                // destination already exists, or if the source and destination
-                // are on different devices. In all these cases `fcopyfile`
-                // should succeed.
-                Some(libc::ENOTSUP) | Some(libc::EEXIST) | Some(libc::EXDEV) => (),
-                Some(libc::ENOSYS) => HAS_FCLONEFILEAT.store(false, Ordering::Relaxed),
-                _ => return Err(err),
-            },
-        }
+    let clonefile_result = run_path_with_cstr(to, &|to| {
+        cvt(unsafe { libc::fclonefileat(reader.as_raw_fd(), libc::AT_FDCWD, to.as_ptr(), 0) })
+    });
+    match clonefile_result {
+        Ok(_) => return Ok(reader_metadata.len()),
+        Err(e) => match e.raw_os_error() {
+            // `fclonefileat` will fail on non-APFS volumes, if the
+            // destination already exists, or if the source and destination
+            // are on different devices. In all these cases `fcopyfile`
+            // should succeed.
+            Some(libc::ENOTSUP) | Some(libc::EEXIST) | Some(libc::EXDEV) => (),
+            _ => return Err(e),
+        },
     }
 
     // Fall back to using `fcopyfile` if `fclonefileat` does not succeed.
