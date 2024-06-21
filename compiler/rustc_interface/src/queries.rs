@@ -1,24 +1,19 @@
 use crate::errors::{FailedWritingFile, RustcErrorFatal, RustcErrorUnexpectedAnnotation};
 use crate::interface::{Compiler, Result};
-use crate::{errors, passes, util};
+use crate::{errors, passes};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, OnceLock, WorkerLocal};
-use rustc_hir::def_id::{StableCrateId, StableCrateIdMap, LOCAL_CRATE};
-use rustc_hir::definitions::Definitions;
-use rustc_incremental::setup_dep_graph;
-use rustc_metadata::creader::CStore;
+use rustc_data_structures::sync::{OnceLock, WorkerLocal};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::{GlobalCtxt, TyCtxt};
 use rustc_serialize::opaque::FileEncodeResult;
-use rustc_session::config::{self, CrateType, OutputFilenames, OutputType};
-use rustc_session::cstore::Untracked;
-use rustc_session::output::{collect_crate_types, find_crate_name};
+use rustc_session::config::{self, OutputFilenames, OutputType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use std::any::Any;
@@ -106,77 +101,20 @@ impl<'tcx> Queries<'tcx> {
     }
 
     pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
-        self.parse.compute(|| {
-            passes::parse(&self.compiler.sess).map_err(|parse_error| parse_error.emit())
-        })
+        self.parse.compute(|| passes::parse(&self.compiler.sess))
     }
 
     pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
         self.gcx.compute(|| {
-            let sess = &self.compiler.sess;
+            let krate = self.parse()?.steal();
 
-            let mut krate = self.parse()?.steal();
-
-            rustc_builtin_macros::cmdline_attrs::inject(
-                &mut krate,
-                &sess.psess,
-                &sess.opts.unstable_opts.crate_attr,
-            );
-
-            let pre_configured_attrs =
-                rustc_expand::config::pre_configure_attrs(sess, &krate.attrs);
-
-            // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
-            let crate_name = find_crate_name(sess, &pre_configured_attrs);
-            let crate_types = collect_crate_types(sess, &pre_configured_attrs);
-            let stable_crate_id = StableCrateId::new(
-                crate_name,
-                crate_types.contains(&CrateType::Executable),
-                sess.opts.cg.metadata.clone(),
-                sess.cfg_version,
-            );
-            let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
-            let dep_graph = setup_dep_graph(sess)?;
-
-            let cstore = FreezeLock::new(Box::new(CStore::new(
-                self.compiler.codegen_backend.metadata_loader(),
-            )) as _);
-            let definitions = FreezeLock::new(Definitions::new(stable_crate_id));
-
-            let stable_crate_ids = FreezeLock::new(StableCrateIdMap::default());
-            let untracked = Untracked {
-                cstore,
-                source_span: AppendOnlyIndexVec::new(),
-                definitions,
-                stable_crate_ids,
-            };
-
-            let qcx = passes::create_global_ctxt(
+            passes::create_global_ctxt(
                 self.compiler,
-                crate_types,
-                stable_crate_id,
-                dep_graph,
-                untracked,
+                krate,
                 &self.gcx_cell,
                 &self.arena,
                 &self.hir_arena,
-            );
-
-            qcx.enter(|tcx| {
-                let feed = tcx.create_crate_num(stable_crate_id).unwrap();
-                assert_eq!(feed.key(), LOCAL_CRATE);
-                feed.crate_name(crate_name);
-
-                let feed = tcx.feed_unit_query();
-                feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
-                    sess,
-                    &pre_configured_attrs,
-                    crate_name,
-                )));
-                feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
-                feed.output_filenames(Arc::new(outputs));
-            });
-            Ok(qcx)
+            )
         })
     }
 
