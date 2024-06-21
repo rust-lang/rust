@@ -969,12 +969,49 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     Ok(())
 }
 
+/// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
+/// to write UI tests that actually test that compilation succeeds without reporting
+/// an error.
+fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
+    let Some((def_id, _)) = tcx.entry_fn(()) else { return };
+    for attr in tcx.get_attrs(def_id, sym::rustc_error) {
+        match attr.meta_item_list() {
+            // Check if there is a `#[rustc_error(delayed_bug_from_inside_query)]`.
+            Some(list)
+                if list.iter().any(|list_item| {
+                    matches!(
+                        list_item.ident().map(|i| i.name),
+                        Some(sym::delayed_bug_from_inside_query)
+                    )
+                }) =>
+            {
+                tcx.ensure().trigger_delayed_bug(def_id);
+            }
+
+            // Bare `#[rustc_error]`.
+            None => {
+                tcx.dcx().emit_fatal(errors::RustcErrorFatal { span: tcx.def_span(def_id) });
+            }
+
+            // Some other attribute.
+            Some(_) => {
+                tcx.dcx().emit_warn(errors::RustcErrorUnexpectedAnnotation {
+                    span: tcx.def_span(def_id),
+                });
+            }
+        }
+    }
+}
+
 /// Runs the codegen backend, after which the AST and analysis can
 /// be discarded.
-pub fn start_codegen<'tcx>(
+pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
 ) -> Box<dyn Any> {
+    // Hook for UI tests.
+    check_for_rustc_errors_attr(tcx);
+
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
     let (metadata, need_metadata_module) = rustc_metadata::fs::encode_and_write_metadata(tcx);
