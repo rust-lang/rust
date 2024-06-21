@@ -77,12 +77,12 @@ where
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id);
             ecx.record_impl_args(impl_args);
-            let impl_trait_ref = impl_trait_ref.instantiate(tcx, &impl_args);
+            let impl_trait_ref = impl_trait_ref.instantiate(tcx, impl_args);
 
             ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
             let where_clause_bounds = tcx
                 .predicates_of(impl_def_id)
-                .iter_instantiated(tcx, &impl_args)
+                .iter_instantiated(tcx, impl_args)
                 .map(|pred| goal.with(tcx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
@@ -186,7 +186,7 @@ where
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             let nested_obligations = tcx
                 .predicates_of(goal.predicate.def_id())
-                .iter_instantiated(tcx, &goal.predicate.trait_ref.args)
+                .iter_instantiated(tcx, goal.predicate.trait_ref.args)
                 .map(|p| goal.with(tcx, p));
             // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
             ecx.add_goals(GoalSource::Misc, nested_obligations);
@@ -373,7 +373,7 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
-        let [closure_fn_kind_ty, goal_kind_ty] = **goal.predicate.trait_ref.args else {
+        let [closure_fn_kind_ty, goal_kind_ty] = *goal.predicate.trait_ref.args.as_slice() else {
             panic!();
         };
 
@@ -783,7 +783,7 @@ where
             // (i.e. the principal, all of the associated types match, and any auto traits)
             ecx.add_goals(
                 GoalSource::ImplWhereBound,
-                b_data.into_iter().map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty))),
+                b_data.iter().map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty))),
             );
 
             // The type must be `Sized` to be unsized.
@@ -851,7 +851,7 @@ where
             };
 
         self.probe_trait_candidate(source).enter(|ecx| {
-            for bound in b_data {
+            for bound in b_data.iter() {
                 match bound.skip_binder() {
                     // Check that a's supertrait (upcast_principal) is compatible
                     // with the target (b_ty).
@@ -953,18 +953,15 @@ where
 
         let tail_field_ty = def.struct_tail_ty(tcx).unwrap();
 
-        let a_tail_ty = tail_field_ty.instantiate(tcx, &a_args);
-        let b_tail_ty = tail_field_ty.instantiate(tcx, &b_args);
+        let a_tail_ty = tail_field_ty.instantiate(tcx, a_args);
+        let b_tail_ty = tail_field_ty.instantiate(tcx, b_args);
 
         // Instantiate just the unsizing params from B into A. The type after
         // this instantiation must be equal to B. This is so we don't unsize
         // unrelated type parameters.
-        let new_a_args = tcx.mk_args_from_iter(
-            a_args
-                .iter()
-                .enumerate()
-                .map(|(i, a)| if unsizing_params.contains(i as u32) { b_args[i] } else { *a }),
-        );
+        let new_a_args = tcx.mk_args_from_iter(a_args.iter().enumerate().map(|(i, a)| {
+            if unsizing_params.contains(i as u32) { b_args.get(i).unwrap() } else { a }
+        }));
         let unsized_a_ty = Ty::new_adt(tcx, def, new_a_args);
 
         // Finally, we require that `TailA: Unsize<TailB>` for the tail field
@@ -1005,7 +1002,7 @@ where
         let Goal { predicate: (_a_ty, b_ty), .. } = goal;
 
         let (&a_last_ty, a_rest_tys) = a_tys.split_last().unwrap();
-        let &b_last_ty = b_tys.last().unwrap();
+        let b_last_ty = b_tys.last().unwrap();
 
         // Instantiate just the tail field of B., and require that they're equal.
         let unsized_a_ty =

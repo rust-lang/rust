@@ -85,7 +85,7 @@ impl<I: Interner> TraitRef<I> {
 
     pub fn from_method(interner: I, trait_id: I::DefId, args: I::GenericArgs) -> TraitRef<I> {
         let generics = interner.generics_of(trait_id);
-        TraitRef::new(interner, trait_id, args.into_iter().take(generics.count()))
+        TraitRef::new(interner, trait_id, args.iter().take(generics.count()))
     }
 
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
@@ -102,7 +102,7 @@ impl<I: Interner> TraitRef<I> {
         TraitRef::new(
             interner,
             self.def_id,
-            [self_ty.into()].into_iter().chain(self.args.into_iter().skip(1)),
+            [self_ty.into()].into_iter().chain(self.args.iter().skip(1)),
         )
     }
 
@@ -320,7 +320,7 @@ impl<I: Interner> ExistentialTraitRef<I> {
 
         ExistentialTraitRef {
             def_id: trait_ref.def_id,
-            args: interner.mk_args(&trait_ref.args[1..]),
+            args: interner.mk_args(&trait_ref.args.as_slice()[1..]),
         }
     }
 
@@ -332,11 +332,7 @@ impl<I: Interner> ExistentialTraitRef<I> {
         // otherwise the escaping vars would be captured by the binder
         // debug_assert!(!self_ty.has_escaping_bound_vars());
 
-        TraitRef::new(
-            interner,
-            self.def_id,
-            [self_ty.into()].into_iter().chain(self.args.into_iter()),
-        )
+        TraitRef::new(interner, self.def_id, [self_ty.into()].into_iter().chain(self.args.iter()))
     }
 }
 
@@ -379,7 +375,7 @@ impl<I: Interner> ExistentialProjection<I> {
     pub fn trait_ref(&self, interner: I) -> ExistentialTraitRef<I> {
         let def_id = interner.parent(self.def_id);
         let args_count = interner.generics_of(def_id).count() - 1;
-        let args = interner.mk_args(&self.args[..args_count]);
+        let args = interner.mk_args(&self.args.as_slice()[..args_count]);
         ExistentialTraitRef { def_id, args }
     }
 
@@ -391,7 +387,7 @@ impl<I: Interner> ExistentialProjection<I> {
             projection_term: AliasTerm::new(
                 interner,
                 self.def_id,
-                [self_ty.into()].into_iter().chain(self.args),
+                [self_ty.into()].iter().chain(self.args.iter()),
             ),
             term: self.term,
         }
@@ -403,7 +399,7 @@ impl<I: Interner> ExistentialProjection<I> {
 
         Self {
             def_id: projection_predicate.projection_term.def_id,
-            args: interner.mk_args(&projection_predicate.projection_term.args[1..]),
+            args: interner.mk_args(&projection_predicate.projection_term.args.as_slice()[1..]),
             term: projection_predicate.term,
         }
     }
@@ -578,7 +574,7 @@ impl<I: Interner> AliasTerm<I> {
         AliasTerm::new(
             interner,
             self.def_id,
-            [self_ty.into()].into_iter().chain(self.args.into_iter().skip(1)),
+            [self_ty.into()].into_iter().chain(self.args.iter().skip(1)),
         )
     }
 

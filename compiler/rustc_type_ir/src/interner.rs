@@ -34,16 +34,11 @@ pub trait Interner:
     type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
 
     type GenericArgs: GenericArgs<Self>;
-    type GenericArgsSlice: Copy + Debug + Hash + Eq + Deref<Target = [Self::GenericArg]>;
+    type GenericArgsSlice: Copy + Debug + Hash + Eq + SliceLike<Item = Self::GenericArg>;
     type GenericArg: GenericArg<Self>;
     type Term: Term<Self>;
 
-    type BoundVarKinds: Copy
-        + Debug
-        + Hash
-        + Eq
-        + Deref<Target: Deref<Target = [Self::BoundVarKind]>>
-        + Default;
+    type BoundVarKinds: Copy + Debug + Hash + Eq + SliceLike<Item = Self::BoundVarKind> + Default;
     type BoundVarKind: Copy + Debug + Hash + Eq;
 
     type PredefinedOpaques: Copy
@@ -63,7 +58,7 @@ pub trait Interner:
         + Default
         + Eq
         + TypeVisitable<Self>
-        + Deref<Target: Deref<Target = [Self::LocalDefId]>>;
+        + SliceLike<Item = Self::LocalDefId>;
     type CanonicalGoalEvaluationStepRef: Copy
         + Debug
         + Hash
@@ -74,8 +69,7 @@ pub trait Interner:
         + Debug
         + Hash
         + Eq
-        + IntoIterator<Item = ty::CanonicalVarInfo<Self>>
-        + Deref<Target: Deref<Target = [ty::CanonicalVarInfo<Self>]>>
+        + SliceLike<Item = ty::CanonicalVarInfo<Self>>
         + Default;
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
 
@@ -138,11 +132,7 @@ pub trait Interner:
     type GenericsOf: GenericsOf<Self>;
     fn generics_of(self, def_id: Self::DefId) -> Self::GenericsOf;
 
-    type VariancesOf: Copy
-        + Debug
-        + Deref<Target = [ty::Variance]>
-        // FIXME: This is terrible!
-        + IntoIterator<Item: Deref<Target = ty::Variance>>;
+    type VariancesOf: Copy + Debug + SliceLike<Item = ty::Variance>;
     fn variances_of(self, def_id: Self::DefId) -> Self::VariancesOf;
 
     fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;

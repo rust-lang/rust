@@ -283,7 +283,7 @@ pub struct CanonicalVarValues<I: Interner> {
 
 impl<I: Interner> CanonicalVarValues<I> {
     pub fn is_identity(&self) -> bool {
-        self.var_values.into_iter().enumerate().all(|(bv, arg)| match arg.kind() {
+        self.var_values.iter().enumerate().all(|(bv, arg)| match arg.kind() {
             ty::GenericArgKind::Lifetime(r) => {
                 matches!(r.kind(), ty::ReBound(ty::INNERMOST, br) if br.var().as_usize() == bv)
             }
@@ -298,7 +298,7 @@ impl<I: Interner> CanonicalVarValues<I> {
 
     pub fn is_identity_modulo_regions(&self) -> bool {
         let mut var = ty::BoundVar::ZERO;
-        for arg in self.var_values {
+        for arg in self.var_values.iter() {
             match arg.kind() {
                 ty::GenericArgKind::Lifetime(r) => {
                     if matches!(r.kind(), ty::ReBound(ty::INNERMOST, br) if var == br.var()) {
@@ -332,7 +332,7 @@ impl<I: Interner> CanonicalVarValues<I> {
     // the identity response.
     pub fn make_identity(tcx: I, infos: I::CanonicalVars) -> CanonicalVarValues<I> {
         CanonicalVarValues {
-            var_values: tcx.mk_args_from_iter(infos.into_iter().enumerate().map(
+            var_values: tcx.mk_args_from_iter(infos.iter().enumerate().map(
                 |(i, info)| -> I::GenericArg {
                     match info.kind {
                         CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {
@@ -371,10 +371,10 @@ impl<I: Interner> CanonicalVarValues<I> {
 
 impl<'a, I: Interner> IntoIterator for &'a CanonicalVarValues<I> {
     type Item = I::GenericArg;
-    type IntoIter = <I::GenericArgs as IntoIterator>::IntoIter;
+    type IntoIter = <I::GenericArgs as SliceLike>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.var_values.into_iter()
+        self.var_values.iter()
     }
 }
 
@@ -382,6 +382,6 @@ impl<I: Interner> Index<ty::BoundVar> for CanonicalVarValues<I> {
     type Output = I::GenericArg;
 
     fn index(&self, value: ty::BoundVar) -> &I::GenericArg {
-        &self.var_values[value.as_usize()]
+        &self.var_values.as_slice()[value.as_usize()]
     }
 }

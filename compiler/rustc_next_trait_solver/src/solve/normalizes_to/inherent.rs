@@ -29,7 +29,7 @@ where
         self.eq(
             goal.param_env,
             inherent.self_ty(),
-            tcx.type_of(impl_def_id).instantiate(tcx, &impl_args),
+            tcx.type_of(impl_def_id).instantiate(tcx, impl_args),
         )?;
 
         // Equate IAT with the RHS of the project goal
@@ -44,11 +44,11 @@ where
         self.add_goals(
             GoalSource::Misc,
             tcx.predicates_of(inherent.def_id)
-                .iter_instantiated(tcx, &inherent_args)
+                .iter_instantiated(tcx, inherent_args)
                 .map(|pred| goal.with(tcx, pred)),
         );
 
-        let normalized = tcx.type_of(inherent.def_id).instantiate(tcx, &inherent_args);
+        let normalized = tcx.type_of(inherent.def_id).instantiate(tcx, inherent_args);
         self.instantiate_normalizes_to_term(goal, normalized.into());
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }

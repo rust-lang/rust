@@ -388,7 +388,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Tuple(t) => {
                 write!(f, "(")?;
                 let mut count = 0;
-                for ty in *t {
+                for ty in t.iter() {
                     if count > 0 {
                         write!(f, ", ")?;
                     }
@@ -496,7 +496,7 @@ impl<I: Interner> AliasTy<I> {
         AliasTy::new(
             interner,
             self.def_id,
-            [self_ty.into()].into_iter().chain(self.args.into_iter().skip(1)),
+            [self_ty.into()].into_iter().chain(self.args.iter().skip(1)),
         )
     }
 
@@ -544,7 +544,7 @@ impl<I: Interner> AliasTy<I> {
         interner: I,
     ) -> I::GenericArgs {
         debug_assert_eq!(self.kind(interner), AliasTyKind::Inherent);
-        interner.mk_args_from_iter(impl_args.into_iter().chain(self.args.into_iter().skip(1)))
+        interner.mk_args_from_iter(impl_args.iter().chain(self.args.iter().skip(1)))
     }
 }
 

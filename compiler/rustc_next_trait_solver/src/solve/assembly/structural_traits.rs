@@ -58,7 +58,7 @@ where
 
         ty::Tuple(tys) => {
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-            Ok(tys.into_iter().map(ty::Binder::dummy).collect())
+            Ok(tys.iter().map(ty::Binder::dummy).collect())
         }
 
         ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
@@ -79,23 +79,21 @@ where
             .cx()
             .bound_coroutine_hidden_types(def_id)
             .into_iter()
-            .map(|bty| bty.instantiate(tcx, &args))
+            .map(|bty| bty.instantiate(tcx, args))
             .collect()),
 
         // For `PhantomData<T>`, we pass `T`.
         ty::Adt(def, args) if def.is_phantom_data() => Ok(vec![ty::Binder::dummy(args.type_at(0))]),
 
-        ty::Adt(def, args) => Ok(def
-            .all_field_tys(tcx)
-            .iter_instantiated(tcx, &args)
-            .map(ty::Binder::dummy)
-            .collect()),
+        ty::Adt(def, args) => {
+            Ok(def.all_field_tys(tcx).iter_instantiated(tcx, args).map(ty::Binder::dummy).collect())
+        }
 
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
             // We can resolve the `impl Trait` to its concrete type,
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
-            Ok(vec![ty::Binder::dummy(tcx.type_of(def_id).instantiate(tcx, &args))])
+            Ok(vec![ty::Binder::dummy(tcx.type_of(def_id).instantiate(tcx, args))])
         }
     }
 }
@@ -147,7 +145,7 @@ where
 
         // impl Sized for ()
         // impl Sized for (T1, T2, .., Tn) where Tn: Sized if n >= 1
-        ty::Tuple(tys) => Ok(tys.last().map_or_else(Vec::new, |&ty| vec![ty::Binder::dummy(ty)])),
+        ty::Tuple(tys) => Ok(tys.last().map_or_else(Vec::new, |ty| vec![ty::Binder::dummy(ty)])),
 
         // impl Sized for Adt<Args...> where sized_constraint(Adt)<Args...>: Sized
         //   `sized_constraint(Adt)` is the deepest struct trail that can be determined
@@ -160,7 +158,7 @@ where
         //   if the ADT is sized for all possible args.
         ty::Adt(def, args) => {
             if let Some(sized_crit) = def.sized_constraint(ecx.cx()) {
-                Ok(vec![ty::Binder::dummy(sized_crit.instantiate(ecx.cx(), &args))])
+                Ok(vec![ty::Binder::dummy(sized_crit.instantiate(ecx.cx(), args))])
             } else {
                 Ok(vec![])
             }
@@ -213,7 +211,7 @@ where
         }
 
         // impl Copy/Clone for (T1, T2, .., Tn) where T1: Copy/Clone, T2: Copy/Clone, .. Tn: Copy/Clone
-        ty::Tuple(tys) => Ok(tys.into_iter().map(ty::Binder::dummy).collect()),
+        ty::Tuple(tys) => Ok(tys.iter().map(ty::Binder::dummy).collect()),
 
         // impl Copy/Clone for Closure where Self::TupledUpvars: Copy/Clone
         ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
@@ -242,7 +240,7 @@ where
             .cx()
             .bound_coroutine_hidden_types(def_id)
             .into_iter()
-            .map(|bty| bty.instantiate(ecx.cx(), &args))
+            .map(|bty| bty.instantiate(ecx.cx(), args))
             .collect()),
     }
 }
@@ -259,7 +257,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
             let sig = tcx.fn_sig(def_id);
             if sig.skip_binder().is_fn_trait_compatible() && !tcx.has_target_features(def_id) {
                 Ok(Some(
-                    sig.instantiate(tcx, &args)
+                    sig.instantiate(tcx, args)
                         .map_bound(|sig| (Ty::new_tup(tcx, &sig.inputs()), sig.output())),
                 ))
             } else {
@@ -669,7 +667,7 @@ where
     let tcx = ecx.cx();
     let mut requirements = vec![];
     requirements
-        .extend(tcx.super_predicates_of(trait_ref.def_id).iter_instantiated(tcx, &trait_ref.args));
+        .extend(tcx.super_predicates_of(trait_ref.def_id).iter_instantiated(tcx, trait_ref.args));
 
     // FIXME(associated_const_equality): Also add associated consts to
     // the requirements here.
@@ -680,13 +678,12 @@ where
             continue;
         }
 
-        requirements.extend(
-            tcx.item_bounds(associated_type_def_id).iter_instantiated(tcx, &trait_ref.args),
-        );
+        requirements
+            .extend(tcx.item_bounds(associated_type_def_id).iter_instantiated(tcx, trait_ref.args));
     }
 
     let mut replace_projection_with = HashMap::default();
-    for bound in object_bounds {
+    for bound in object_bounds.iter() {
         if let ty::ExistentialPredicate::Projection(proj) = bound.skip_binder() {
             let proj = proj.with_self_ty(tcx, trait_ref.self_ty());
             let old_ty = replace_projection_with.insert(proj.def_id(), bound.rebind(proj));
