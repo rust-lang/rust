@@ -6,7 +6,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::Interner;
 use tracing::debug;
 
-use crate::infcx::SolverDelegate;
+use crate::delegate::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::{
     CacheData, CanonicalInput, Certainty, QueryResult, SolverMode, FIXPOINT_STEP_LIMIT,
@@ -255,12 +255,12 @@ impl<I: Interner> SearchGraph<I> {
     ///
     /// Given some goal which is proven via the `prove_goal` closure, this
     /// handles caching, overflow, and coinductive cycles.
-    pub(super) fn with_new_goal<Infcx: SolverDelegate<Interner = I>>(
+    pub(super) fn with_new_goal<D: SolverDelegate<Interner = I>>(
         &mut self,
         tcx: I,
         input: CanonicalInput<I>,
-        inspect: &mut ProofTreeBuilder<Infcx>,
-        mut prove_goal: impl FnMut(&mut Self, &mut ProofTreeBuilder<Infcx>) -> QueryResult<I>,
+        inspect: &mut ProofTreeBuilder<D>,
+        mut prove_goal: impl FnMut(&mut Self, &mut ProofTreeBuilder<D>) -> QueryResult<I>,
     ) -> QueryResult<I> {
         self.check_invariants();
         // Check for overflow.
@@ -416,12 +416,12 @@ impl<I: Interner> SearchGraph<I> {
     /// Try to fetch a previously computed result from the global cache,
     /// making sure to only do so if it would match the result of reevaluating
     /// this goal.
-    fn lookup_global_cache<Infcx: SolverDelegate<Interner = I>>(
+    fn lookup_global_cache<D: SolverDelegate<Interner = I>>(
         &mut self,
         tcx: I,
         input: CanonicalInput<I>,
         available_depth: SolverLimit,
-        inspect: &mut ProofTreeBuilder<Infcx>,
+        inspect: &mut ProofTreeBuilder<D>,
     ) -> Option<QueryResult<I>> {
         let CacheData { result, proof_tree, additional_depth, encountered_overflow } = self
             .global_cache(tcx)
@@ -465,16 +465,16 @@ impl<I: Interner> SearchGraph<I> {
     /// of this we continuously recompute the cycle until the result
     /// of the previous iteration is equal to the final result, at which
     /// point we are done.
-    fn fixpoint_step_in_task<Infcx, F>(
+    fn fixpoint_step_in_task<D, F>(
         &mut self,
         tcx: I,
         input: CanonicalInput<I>,
-        inspect: &mut ProofTreeBuilder<Infcx>,
+        inspect: &mut ProofTreeBuilder<D>,
         prove_goal: &mut F,
     ) -> StepResult<I>
     where
-        Infcx: SolverDelegate<Interner = I>,
-        F: FnMut(&mut Self, &mut ProofTreeBuilder<Infcx>) -> QueryResult<I>,
+        D: SolverDelegate<Interner = I>,
+        F: FnMut(&mut Self, &mut ProofTreeBuilder<D>) -> QueryResult<I>,
     {
         let result = prove_goal(self, inspect);
         let stack_entry = self.pop_stack();

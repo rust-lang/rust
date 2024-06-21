@@ -2840,7 +2840,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ParamToVarFolder<'a, 'tcx> {
-            fn interner(&self) -> TyCtxt<'tcx> {
+            fn cx(&self) -> TyCtxt<'tcx> {
                 self.infcx.tcx
             }
 

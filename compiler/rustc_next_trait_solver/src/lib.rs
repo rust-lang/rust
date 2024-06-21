@@ -5,6 +5,6 @@
 //! So if you got to this crate from the old solver, it's totally normal.
 
 pub mod canonicalizer;
-pub mod infcx;
+pub mod delegate;
 pub mod resolve;
 pub mod solve;
