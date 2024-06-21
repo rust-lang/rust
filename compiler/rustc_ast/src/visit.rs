@@ -672,12 +672,7 @@ impl WalkItemKind for ForeignItemKind {
     ) -> V::Result {
         let &Item { id, span, ident, ref vis, .. } = item;
         match self {
-            ForeignItemKind::Static(box StaticForeignItem {
-                ty,
-                mutability: _,
-                expr,
-                safety: _,
-            }) => {
+            ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
                 try_visit!(visitor.visit_ty(ty));
                 visit_opt!(visitor, visit_expr, expr);
             }
