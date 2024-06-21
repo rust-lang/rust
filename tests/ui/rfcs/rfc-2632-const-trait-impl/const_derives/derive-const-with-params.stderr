@@ -1,3 +1,12 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/derive-const-with-params.rs:5:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error: const `impl` for trait `PartialEq` which is not marked with `#[const_trait]`
   --> $DIR/derive-const-with-params.rs:7:16
    |
@@ -34,7 +43,7 @@ LL | #[derive_const(PartialEq)]
    |                ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
    = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0207, E0284.
 For more information about an error, try `rustc --explain E0207`.

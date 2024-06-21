@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
 
 pub const fn equals_self<T: PartialEq>(t: &T) -> bool {
     *t == *t

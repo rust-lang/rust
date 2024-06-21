@@ -3,7 +3,12 @@
 // gate-test-effects
 // ^ effects doesn't have a gate so we will trick tidy into thinking this is a gate test
 
-#![feature(const_trait_impl, effects, core_intrinsics, const_eval_select)]
+#![feature(
+    const_trait_impl,
+    effects, //~ WARN the feature `effects` is incomplete
+    core_intrinsics,
+    const_eval_select
+)]
 
 // ensure we are passing in the correct host effect in always const contexts.
 

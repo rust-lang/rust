@@ -1,3 +1,12 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/staged-api.rs:4:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error: trait implementations cannot be const stable yet
   --> $DIR/staged-api.rs:19:1
    |
@@ -45,5 +54,5 @@ LL |     Unstable::func();
    |
    = help: const-stable functions can only call other const-stable functions
 
-error: aborting due to 5 previous errors
+error: aborting due to 5 previous errors; 1 warning emitted
 

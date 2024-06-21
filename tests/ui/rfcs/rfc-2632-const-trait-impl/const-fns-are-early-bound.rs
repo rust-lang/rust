@@ -7,7 +7,7 @@
 #![feature(
     auto_traits,
     const_trait_impl,
-    effects,
+    effects,  //~ WARN the feature `effects` is incomplete
     lang_items,
     no_core,
     staged_api,

@@ -1,4 +1,4 @@
-#![feature(const_trait_impl, effects, min_specialization, rustc_attrs)]
+#![feature(const_trait_impl, effects, min_specialization, rustc_attrs)] //~ WARN the feature `effects` is incomplete
 
 #[rustc_specialization_trait]
 #[const_trait]
