@@ -132,6 +132,49 @@ fn leading_zeros() {
 }
 
 #[test]
+fn trailing_zeros() {
+    use compiler_builtins::int::trailing_zeros::{__ctzdi2, __ctzsi2, __ctzti2, trailing_zeros};
+    fuzz(N, |x: u32| {
+        if x == 0 {
+            return; // undefined value for an intrinsic
+        }
+        let tz = x.trailing_zeros() as usize;
+        let tz0 = __ctzsi2(x);
+        let tz1 = trailing_zeros(x);
+        if tz0 != tz {
+            panic!("__ctzsi2({}): std: {}, builtins: {}", x, tz, tz0);
+        }
+        if tz1 != tz {
+            panic!("trailing_zeros({}): std: {}, builtins: {}", x, tz, tz1);
+        }
+    });
+    fuzz(N, |x: u64| {
+        if x == 0 {
+            return; // undefined value for an intrinsic
+        }
+        let tz = x.trailing_zeros() as usize;
+        let tz0 = __ctzdi2(x);
+        let tz1 = trailing_zeros(x);
+        if tz0 != tz {
+            panic!("__ctzdi2({}): std: {}, builtins: {}", x, tz, tz0);
+        }
+        if tz1 != tz {
+            panic!("trailing_zeros({}): std: {}, builtins: {}", x, tz, tz1);
+        }
+    });
+    fuzz(N, |x: u128| {
+        if x == 0 {
+            return; // undefined value for an intrinsic
+        }
+        let tz = x.trailing_zeros() as usize;
+        let tz0 = __ctzti2(x);
+        if tz0 != tz {
+            panic!("__ctzti2({}): std: {}, builtins: {}", x, tz, tz0);
+        }
+    });
+}
+
+#[test]
 #[cfg(not(target_arch = "avr"))]
 fn bswap() {
     use compiler_builtins::int::bswap::{__bswapdi2, __bswapsi2};
