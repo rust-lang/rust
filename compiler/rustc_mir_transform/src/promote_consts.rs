@@ -60,7 +60,7 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
         let ccx = ConstCx::new(tcx, body);
         let (mut temps, all_candidates) = collect_temps_and_candidates(&ccx);
 
-        let promotable_candidates = validate_candidates(&ccx, &mut temps, &all_candidates);
+        let promotable_candidates = validate_candidates(&ccx, &mut temps, all_candidates);
 
         let promoted = promote_candidates(body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);
@@ -98,8 +98,8 @@ struct Collector<'a, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
+    #[instrument(level = "debug", skip(self))]
     fn visit_local(&mut self, index: Local, context: PlaceContext, location: Location) {
-        debug!("visit_local: index={:?} context={:?} location={:?}", index, context, location);
         // We're only interested in temporaries and the return place
         match self.ccx.body.local_kind(index) {
             LocalKind::Arg => return,
@@ -111,20 +111,15 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         // then it's constant and thus drop is noop.
         // Non-uses are also irrelevant.
         if context.is_drop() || !context.is_use() {
-            debug!(
-                "visit_local: context.is_drop={:?} context.is_use={:?}",
-                context.is_drop(),
-                context.is_use(),
-            );
+            debug!(is_drop = context.is_drop(), is_use = context.is_use());
             return;
         }
 
         let temp = &mut self.temps[index];
-        debug!("visit_local: temp={:?}", temp);
+        debug!(?temp);
         *temp = match *temp {
             TempState::Undefined => match context {
-                PlaceContext::MutatingUse(MutatingUseContext::Store)
-                | PlaceContext::MutatingUse(MutatingUseContext::Call) => {
+                PlaceContext::MutatingUse(MutatingUseContext::Store | MutatingUseContext::Call) => {
                     TempState::Defined { location, uses: 0, valid: Err(()) }
                 }
                 _ => TempState::Unpromotable,
@@ -137,7 +132,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
                     | PlaceContext::NonMutatingUse(_) => true,
                     PlaceContext::MutatingUse(_) | PlaceContext::NonUse(_) => false,
                 };
-                debug!("visit_local: allowed_use={:?}", allowed_use);
+                debug!(?allowed_use);
                 if allowed_use {
                     *uses += 1;
                     return;
@@ -146,6 +141,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
             }
             TempState::Unpromotable | TempState::PromotedOut => TempState::Unpromotable,
         };
+        debug!(?temp);
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
@@ -695,15 +691,12 @@ impl<'tcx> Validator<'_, 'tcx> {
 fn validate_candidates(
     ccx: &ConstCx<'_, '_>,
     temps: &mut IndexSlice<Local, TempState>,
-    candidates: &[Candidate],
+    mut candidates: Vec<Candidate>,
 ) -> Vec<Candidate> {
     let mut validator = Validator { ccx, temps, promotion_safe_blocks: None };
 
+    candidates.retain(|&candidate| validator.validate_candidate(candidate).is_ok());
     candidates
-        .iter()
-        .copied()
-        .filter(|&candidate| validator.validate_candidate(candidate).is_ok())
-        .collect()
 }
 
 struct Promoter<'a, 'tcx> {
@@ -972,7 +965,12 @@ fn promote_candidates<'tcx>(
     candidates: Vec<Candidate>,
 ) -> IndexVec<Promoted, Body<'tcx>> {
     // Visit candidates in reverse, in case they're nested.
-    debug!("promote_candidates({:?})", candidates);
+    debug!(promote_candidates = ?candidates);
+
+    // eagerly fail fast
+    if candidates.is_empty() {
+        return IndexVec::new();
+    }
 
     let mut promotions = IndexVec::new();
 
