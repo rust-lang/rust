@@ -442,8 +442,8 @@ lint_macro_expanded_macro_exports_accessed_by_absolute_paths = macro-expanded `m
     .note = the macro is defined here
 
 lint_macro_expr_fragment_specifier_2024_migration =
-    the `expr` fragment specifier will accept more expressions in the 2024 edition.
-    .suggestion = to keep the existing behavior, use the `expr_2021` fragment specifier.
+    the `expr` fragment specifier will accept more expressions in the 2024 edition
+    .suggestion = to keep the existing behavior, use the `expr_2021` fragment specifier
 lint_macro_is_private = macro `{$ident}` is private
 
 lint_macro_rule_never_used = rule #{$n} of macro `{$name}` is never used
