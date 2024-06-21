@@ -219,28 +219,6 @@
 </p></details>
 
 
-<details><summary>["AVX512IFMA52"]</summary><p>
-
-  * [ ] [`_mm512_mask_madd52hi_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_madd52hi_epu64)
-  * [ ] [`_mm512_mask_madd52lo_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_madd52lo_epu64)
-  * [ ] [`_mm512_maskz_madd52hi_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_madd52hi_epu64)
-  * [ ] [`_mm512_maskz_madd52lo_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_madd52lo_epu64)
-</p></details>
-
-
-<details><summary>["AVX512IFMA52", "AVX512VL"]</summary><p>
-
-  * [ ] [`_mm256_mask_madd52hi_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_madd52hi_epu64)
-  * [ ] [`_mm256_mask_madd52lo_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_madd52lo_epu64)
-  * [ ] [`_mm256_maskz_madd52hi_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_madd52hi_epu64)
-  * [ ] [`_mm256_maskz_madd52lo_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_madd52lo_epu64)
-  * [ ] [`_mm_mask_madd52hi_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_madd52hi_epu64)
-  * [ ] [`_mm_mask_madd52lo_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_madd52lo_epu64)
-  * [ ] [`_mm_maskz_madd52hi_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_madd52hi_epu64)
-  * [ ] [`_mm_maskz_madd52lo_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_madd52lo_epu64)
-</p></details>
-
-
 <details><summary>["AVX512_BF16", "AVX512F"]</summary><p>
 
   * [ ] [`_mm512_cvtpbh_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtpbh_ps)
