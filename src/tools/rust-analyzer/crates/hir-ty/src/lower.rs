@@ -45,6 +45,7 @@ use hir_def::{
 use hir_expand::{name::Name, ExpandResult};
 use intern::Interned;
 use la_arena::{Arena, ArenaMap};
+use once_cell::unsync::OnceCell;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
@@ -58,12 +59,13 @@ use crate::{
         unknown_const_as_generic,
     },
     db::HirDatabase,
-    error_lifetime, make_binders,
+    error_lifetime,
+    generics::{generics, Generics},
+    make_binders,
     mapping::{from_chalk_trait_id, lt_to_placeholder_idx, ToChalk},
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::{
-        self, all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
-        Generics, InTypeConstIdMetadata,
+        all_super_trait_refs, associated_type_by_name_including_super_traits, InTypeConstIdMetadata,
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, Const, ConstScalar, DebruijnIndex, DynTy,
     FnAbi, FnPointer, FnSig, FnSubst, ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime,
@@ -121,6 +123,7 @@ impl ImplTraitLoweringState {
 pub struct TyLoweringContext<'a> {
     pub db: &'a dyn HirDatabase,
     resolver: &'a Resolver,
+    generics: OnceCell<Option<Generics>>,
     in_binders: DebruijnIndex,
     // FIXME: Should not be an `Option` but `Resolver` currently does not return owners in all cases
     // where expected
@@ -152,6 +155,7 @@ impl<'a> TyLoweringContext<'a> {
         Self {
             db,
             resolver,
+            generics: OnceCell::new(),
             owner,
             in_binders,
             impl_trait_mode,
@@ -174,6 +178,7 @@ impl<'a> TyLoweringContext<'a> {
             impl_trait_mode,
             expander: RefCell::new(expander),
             unsized_types: RefCell::new(unsized_types),
+            generics: self.generics.clone(),
             ..*self
         };
         let result = f(&new_ctx);
@@ -245,8 +250,10 @@ impl<'a> TyLoweringContext<'a> {
         )
     }
 
-    fn generics(&self) -> Option<Generics> {
-        Some(generics(self.db.upcast(), self.resolver.generic_def()?))
+    fn generics(&self) -> Option<&Generics> {
+        self.generics
+            .get_or_init(|| self.resolver.generic_def().map(|def| generics(self.db.upcast(), def)))
+            .as_ref()
     }
 
     pub fn lower_ty_ext(&self, type_ref: &TypeRef) -> (Ty, Option<TypeNs>) {
@@ -374,7 +381,7 @@ impl<'a> TyLoweringContext<'a> {
                         counter.set(idx + count_impl_traits(type_ref) as u16);
                         let (
                             _parent_params,
-                            self_params,
+                            self_param,
                             type_params,
                             const_params,
                             _impl_trait_params,
@@ -385,7 +392,7 @@ impl<'a> TyLoweringContext<'a> {
                             .provenance_split();
                         TyKind::BoundVar(BoundVar::new(
                             self.in_binders,
-                            idx as usize + self_params + type_params + const_params,
+                            idx as usize + self_param as usize + type_params + const_params,
                         ))
                         .intern(Interner)
                     }
@@ -705,7 +712,8 @@ impl<'a> TyLoweringContext<'a> {
                     None,
                 );
 
-                let len_self = utils::generics(self.db.upcast(), associated_ty.into()).len_self();
+                let len_self =
+                    crate::generics::generics(self.db.upcast(), associated_ty.into()).len_self();
 
                 let substs = Substitution::from_iter(
                     Interner,
@@ -815,14 +823,14 @@ impl<'a> TyLoweringContext<'a> {
         let def_generics = generics(self.db.upcast(), def);
         let (
             parent_params,
-            self_params,
+            self_param,
             type_params,
             const_params,
             impl_trait_params,
             lifetime_params,
         ) = def_generics.provenance_split();
         let item_len =
-            self_params + type_params + const_params + impl_trait_params + lifetime_params;
+            self_param as usize + type_params + const_params + impl_trait_params + lifetime_params;
         let total_len = parent_params + item_len;
 
         let ty_error = TyKind::Error.intern(Interner).cast(Interner);
@@ -830,18 +838,16 @@ impl<'a> TyLoweringContext<'a> {
         let mut def_generic_iter = def_generics.iter_id();
 
         let fill_self_params = || {
-            for x in explicit_self_ty
-                .into_iter()
-                .map(|x| x.cast(Interner))
-                .chain(iter::repeat(ty_error.clone()))
-                .take(self_params)
-            {
+            if self_param {
+                let self_ty =
+                    explicit_self_ty.map(|x| x.cast(Interner)).unwrap_or_else(|| ty_error.clone());
+
                 if let Some(id) = def_generic_iter.next() {
                     assert!(matches!(
                         id,
                         GenericParamId::TypeParamId(_) | GenericParamId::LifetimeParamId(_)
                     ));
-                    substs.push(x);
+                    substs.push(self_ty);
                 }
             }
         };
@@ -852,11 +858,11 @@ impl<'a> TyLoweringContext<'a> {
                 fill_self_params();
             }
             let expected_num = if generic_args.has_self_type {
-                self_params + type_params + const_params
+                self_param as usize + type_params + const_params
             } else {
                 type_params + const_params
             };
-            let skip = if generic_args.has_self_type && self_params == 0 { 1 } else { 0 };
+            let skip = if generic_args.has_self_type && !self_param { 1 } else { 0 };
             // if args are provided, it should be all of them, but we can't rely on that
             for arg in generic_args
                 .args
@@ -866,7 +872,7 @@ impl<'a> TyLoweringContext<'a> {
                 .take(expected_num)
             {
                 if let Some(id) = def_generic_iter.next() {
-                    if let Some(x) = generic_arg_to_chalk(
+                    let arg = generic_arg_to_chalk(
                         self.db,
                         id,
                         arg,
@@ -874,13 +880,9 @@ impl<'a> TyLoweringContext<'a> {
                         |_, type_ref| self.lower_ty(type_ref),
                         |_, const_ref, ty| self.lower_const(const_ref, ty),
                         |_, lifetime_ref| self.lower_lifetime(lifetime_ref),
-                    ) {
-                        had_explicit_args = true;
-                        substs.push(x);
-                    } else {
-                        // we just filtered them out
-                        never!("Unexpected lifetime argument");
-                    }
+                    );
+                    had_explicit_args = true;
+                    substs.push(arg);
                 }
             }
 
@@ -893,7 +895,7 @@ impl<'a> TyLoweringContext<'a> {
                 // Taking into the fact that def_generic_iter will always have lifetimes at the end
                 // Should have some test cases tho to test this behaviour more properly
                 if let Some(id) = def_generic_iter.next() {
-                    if let Some(x) = generic_arg_to_chalk(
+                    let arg = generic_arg_to_chalk(
                         self.db,
                         id,
                         arg,
@@ -901,13 +903,9 @@ impl<'a> TyLoweringContext<'a> {
                         |_, type_ref| self.lower_ty(type_ref),
                         |_, const_ref, ty| self.lower_const(const_ref, ty),
                         |_, lifetime_ref| self.lower_lifetime(lifetime_ref),
-                    ) {
-                        had_explicit_args = true;
-                        substs.push(x);
-                    } else {
-                        // Never return a None explicitly
-                        never!("Unexpected None by generic_arg_to_chalk");
-                    }
+                    );
+                    had_explicit_args = true;
+                    substs.push(arg);
                 }
             }
         } else {
@@ -1176,7 +1174,7 @@ impl<'a> TyLoweringContext<'a> {
                             let ty = if let Some(target_param_idx) = target_param_idx {
                                 let mut counter = 0;
                                 let generics = self.generics().expect("generics in scope");
-                                for (idx, data) in generics.params.type_or_consts.iter() {
+                                for (idx, data) in generics.iter_self_type_or_consts() {
                                     // Count the number of `impl Trait` things that appear before
                                     // the target of our `bound`.
                                     // Our counter within `impl_trait_mode` should be that number
@@ -1478,7 +1476,7 @@ fn named_associated_type_shorthand_candidates<R>(
             // Handle `Self::Type` referring to own associated type in trait definitions
             if let GenericDefId::TraitId(trait_id) = param_id.parent() {
                 let trait_generics = generics(db.upcast(), trait_id.into());
-                if trait_generics.params[param_id.local_id()].is_trait_self() {
+                if trait_generics[param_id.local_id()].is_trait_self() {
                     let def_generics = generics(db.upcast(), def);
                     let starting_idx = match def {
                         GenericDefId::TraitId(_) => 0,
@@ -2168,7 +2166,6 @@ pub(crate) fn lower_to_chalk_mutability(m: hir_def::type_ref::Mutability) -> Mut
 /// Checks if the provided generic arg matches its expected kind, then lower them via
 /// provided closures. Use unknown if there was kind mismatch.
 ///
-/// Returns `Some` of the lowered generic arg. `None` if the provided arg is a lifetime.
 pub(crate) fn generic_arg_to_chalk<'a, T>(
     db: &dyn HirDatabase,
     kind_id: GenericParamId,
@@ -2177,7 +2174,7 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
     for_type: impl FnOnce(&mut T, &TypeRef) -> Ty + 'a,
     for_const: impl FnOnce(&mut T, &ConstRef, Ty) -> Const + 'a,
     for_lifetime: impl FnOnce(&mut T, &LifetimeRef) -> Lifetime + 'a,
-) -> Option<crate::GenericArg> {
+) -> crate::GenericArg {
     let kind = match kind_id {
         GenericParamId::TypeParamId(_) => ParamKind::Type,
         GenericParamId::ConstParamId(id) => {
@@ -2186,7 +2183,7 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
         }
         GenericParamId::LifetimeParamId(_) => ParamKind::Lifetime,
     };
-    Some(match (arg, kind) {
+    match (arg, kind) {
         (GenericArg::Type(type_ref), ParamKind::Type) => for_type(this, type_ref).cast(Interner),
         (GenericArg::Const(c), ParamKind::Const(c_ty)) => for_const(this, c, c_ty).cast(Interner),
         (GenericArg::Lifetime(lifetime_ref), ParamKind::Lifetime) => {
@@ -2199,11 +2196,12 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
             // as types. Maybe here is not the best place to do it, but
             // it works.
             if let TypeRef::Path(p) = t {
-                let p = p.mod_path()?;
-                if p.kind == PathKind::Plain {
-                    if let [n] = p.segments() {
-                        let c = ConstRef::Path(n.clone());
-                        return Some(for_const(this, &c, c_ty).cast(Interner));
+                if let Some(p) = p.mod_path() {
+                    if p.kind == PathKind::Plain {
+                        if let [n] = p.segments() {
+                            let c = ConstRef::Path(n.clone());
+                            return for_const(this, &c, c_ty).cast(Interner);
+                        }
                     }
                 }
             }
@@ -2212,17 +2210,17 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
         (GenericArg::Lifetime(_), ParamKind::Const(c_ty)) => unknown_const_as_generic(c_ty),
         (GenericArg::Type(_), ParamKind::Lifetime) => error_lifetime().cast(Interner),
         (GenericArg::Const(_), ParamKind::Lifetime) => error_lifetime().cast(Interner),
-    })
+    }
 }
 
-pub(crate) fn const_or_path_to_chalk(
+pub(crate) fn const_or_path_to_chalk<'g>(
     db: &dyn HirDatabase,
     resolver: &Resolver,
     owner: TypeOwnerId,
     expected_ty: Ty,
     value: &ConstRef,
     mode: ParamLoweringMode,
-    args: impl FnOnce() -> Option<Generics>,
+    args: impl FnOnce() -> Option<&'g Generics>,
     debruijn: DebruijnIndex,
 ) -> Const {
     match value {

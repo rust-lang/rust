@@ -12,11 +12,10 @@ use stdx::never;
 use crate::{
     builder::ParamKind,
     consteval, error_lifetime,
+    generics::generics,
     method_resolution::{self, VisibleFromModule},
-    to_chalk_trait_id,
-    utils::generics,
-    InferenceDiagnostic, Interner, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
-    TyKind, ValueTyDefId,
+    to_chalk_trait_id, InferenceDiagnostic, Interner, Substitution, TraitRef, TraitRefExt, Ty,
+    TyBuilder, TyExt, TyKind, ValueTyDefId,
 };
 
 use super::{ExprOrPatId, InferenceContext};
@@ -64,7 +63,7 @@ impl InferenceContext<'_> {
                 it.into()
             }
             ValueNs::ImplSelf(impl_id) => {
-                let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
+                let generics = crate::generics::generics(self.db.upcast(), impl_id.into());
                 let substs = generics.placeholder_subst(self.db);
                 let ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
                 if let Some((AdtId::StructId(struct_id), substs)) = ty.as_adt() {

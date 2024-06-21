@@ -21,8 +21,8 @@ use crate::{
     consteval::{intern_const_scalar, unknown_const},
     db::{HirDatabase, InternedClosure},
     from_placeholder_idx,
+    generics::{generics, Generics},
     infer::normalize,
-    utils::{generics, Generics},
     ClosureId, Const, Interner, ProjectionTy, Substitution, TraitEnvironment, Ty, TyKind,
 };
 

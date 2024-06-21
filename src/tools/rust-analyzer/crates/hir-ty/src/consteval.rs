@@ -15,10 +15,9 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, infer::InferenceContext, lower::ParamLoweringMode,
-    mir::monomorphize_mir_body_bad, to_placeholder_idx, utils::Generics, Const, ConstData,
-    ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution, TraitEnvironment, Ty,
-    TyBuilder,
+    db::HirDatabase, generics::Generics, infer::InferenceContext, lower::ParamLoweringMode,
+    mir::monomorphize_mir_body_bad, to_placeholder_idx, Const, ConstData, ConstScalar, ConstValue,
+    GenericArg, Interner, MemoryMap, Substitution, TraitEnvironment, Ty, TyBuilder,
 };
 
 use super::mir::{interpret_mir, lower_to_mir, pad16, MirEvalError, MirLowerError};
@@ -72,12 +71,12 @@ impl From<MirEvalError> for ConstEvalError {
     }
 }
 
-pub(crate) fn path_to_const(
+pub(crate) fn path_to_const<'g>(
     db: &dyn HirDatabase,
     resolver: &Resolver,
     path: &Path,
     mode: ParamLoweringMode,
-    args: impl FnOnce() -> Option<Generics>,
+    args: impl FnOnce() -> Option<&'g Generics>,
     debruijn: DebruijnIndex,
     expected_ty: Ty,
 ) -> Option<Const> {
@@ -90,7 +89,7 @@ pub(crate) fn path_to_const(
                 }
                 ParamLoweringMode::Variable => {
                     let args = args();
-                    match args.as_ref().and_then(|args| args.type_or_const_param_idx(p.into())) {
+                    match args.and_then(|args| args.type_or_const_param_idx(p.into())) {
                         Some(it) => ConstValue::BoundVar(BoundVar::new(debruijn, it)),
                         None => {
                             never!(

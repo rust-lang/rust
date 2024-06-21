@@ -923,6 +923,7 @@ pub enum GenericDefId {
     ImplId(ImplId),
     // enum variants cannot have generics themselves, but their parent enums
     // can, and this makes some code easier to write
+    // FIXME: Try to remove this as that will reduce the amount of query slots generated per enum?
     EnumVariantId(EnumVariantId),
     // consts can have type parameters from their parents (i.e. associated consts of traits)
     ConstId(ConstId),

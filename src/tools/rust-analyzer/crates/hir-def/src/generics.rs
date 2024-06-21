@@ -11,7 +11,7 @@ use hir_expand::{
     ExpandResult,
 };
 use intern::Interned;
-use la_arena::Arena;
+use la_arena::{Arena, RawIdx};
 use once_cell::unsync::Lazy;
 use stdx::impl_from;
 use syntax::ast::{self, HasGenericParams, HasName, HasTypeBounds};
@@ -27,6 +27,9 @@ use crate::{
     AdtId, ConstParamId, GenericDefId, HasModule, ItemTreeLoc, LifetimeParamId,
     LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
 };
+
+const SELF_PARAM_ID_IN_SELF: la_arena::Idx<TypeOrConstParamData> =
+    LocalTypeOrConstParamId::from_raw(RawIdx::from_u32(0));
 
 /// Data about a generic type parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -441,15 +444,18 @@ impl GenericParamsCollector {
 
 impl GenericParams {
     /// Number of Generic parameters (type_or_consts + lifetimes)
+    #[inline]
     pub fn len(&self) -> usize {
         self.type_or_consts.len() + self.lifetimes.len()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
     /// Iterator of type_or_consts field
+    #[inline]
     pub fn iter_type_or_consts(
         &self,
     ) -> impl DoubleEndedIterator<Item = (LocalTypeOrConstParamId, &TypeOrConstParamData)> {
@@ -457,6 +463,7 @@ impl GenericParams {
     }
 
     /// Iterator of lifetimes field
+    #[inline]
     pub fn iter_lt(
         &self,
     ) -> impl DoubleEndedIterator<Item = (LocalLifetimeParamId, &LifetimeParamData)> {
@@ -605,17 +612,18 @@ impl GenericParams {
         })
     }
 
-    pub fn find_trait_self_param(&self) -> Option<LocalTypeOrConstParamId> {
-        self.type_or_consts.iter().find_map(|(id, p)| {
-            matches!(
-                p,
-                TypeOrConstParamData::TypeParamData(TypeParamData {
-                    provenance: TypeParamProvenance::TraitSelf,
-                    ..
-                })
-            )
-            .then(|| id)
-        })
+    pub fn trait_self_param(&self) -> Option<LocalTypeOrConstParamId> {
+        if self.type_or_consts.is_empty() {
+            return None;
+        }
+        matches!(
+            self.type_or_consts[SELF_PARAM_ID_IN_SELF],
+            TypeOrConstParamData::TypeParamData(TypeParamData {
+                provenance: TypeParamProvenance::TraitSelf,
+                ..
+            })
+        )
+        .then(|| SELF_PARAM_ID_IN_SELF)
     }
 
     pub fn find_lifetime_by_name(
