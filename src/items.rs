@@ -1915,6 +1915,7 @@ pub(crate) fn rewrite_struct_field(
 
 pub(crate) struct StaticParts<'a> {
     prefix: &'a str,
+    safety: ast::Safety,
     vis: &'a ast::Visibility,
     ident: symbol::Ident,
     ty: &'a ast::Ty,
@@ -1926,11 +1927,12 @@ pub(crate) struct StaticParts<'a> {
 
 impl<'a> StaticParts<'a> {
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
-        let (defaultness, prefix, ty, mutability, expr) = match &item.kind {
-            ast::ItemKind::Static(s) => (None, "static", &s.ty, s.mutability, &s.expr),
+        let (defaultness, prefix, safety, ty, mutability, expr) = match &item.kind {
+            ast::ItemKind::Static(s) => (None, "static", s.safety, &s.ty, s.mutability, &s.expr),
             ast::ItemKind::Const(c) => (
                 Some(c.defaultness),
                 "const",
+                ast::Safety::Default,
                 &c.ty,
                 ast::Mutability::Not,
                 &c.expr,
@@ -1939,6 +1941,7 @@ impl<'a> StaticParts<'a> {
         };
         StaticParts {
             prefix,
+            safety,
             vis: &item.vis,
             ident: item.ident,
             ty,
@@ -1956,6 +1959,7 @@ impl<'a> StaticParts<'a> {
         };
         StaticParts {
             prefix: "const",
+            safety: ast::Safety::Default,
             vis: &ti.vis,
             ident: ti.ident,
             ty,
@@ -1973,6 +1977,7 @@ impl<'a> StaticParts<'a> {
         };
         StaticParts {
             prefix: "const",
+            safety: ast::Safety::Default,
             vis: &ii.vis,
             ident: ii.ident,
             ty,
@@ -1989,11 +1994,13 @@ fn rewrite_static(
     static_parts: &StaticParts<'_>,
     offset: Indent,
 ) -> Option<String> {
+    println!("rewriting static");
     let colon = colon_spaces(context.config);
     let mut prefix = format!(
-        "{}{}{} {}{}{}",
+        "{}{}{}{} {}{}{}",
         format_visibility(context, static_parts.vis),
         static_parts.defaultness.map_or("", format_defaultness),
+        format_safety(static_parts.safety),
         static_parts.prefix,
         format_mutability(static_parts.mutability),
         rewrite_ident(context, static_parts.ident),
@@ -3338,10 +3345,12 @@ impl Rewrite for ast::ForeignItem {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function kw here.
                 let vis = format_visibility(context, &self.vis);
+                let safety = format_safety(static_foreign_item.safety);
                 let mut_str = format_mutability(static_foreign_item.mutability);
                 let prefix = format!(
-                    "{}static {}{}:",
+                    "{}{}static {}{}:",
                     vis,
+                    safety,
                     mut_str,
                     rewrite_ident(context, self.ident)
                 );
