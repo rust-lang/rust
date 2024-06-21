@@ -1456,10 +1456,10 @@ impl DiagCtxtInner {
         }
 
         if diagnostic.has_future_breakage() {
-            // Future breakages aren't emitted if they're `Level::Allow`,
-            // but they still need to be constructed and stashed below,
-            // so they'll trigger the must_produce_diag check.
-            assert!(matches!(diagnostic.level, Error | Warning | Allow));
+            // Future breakages aren't emitted if they're `Level::Allow` or
+            // `Level::Expect`, but they still need to be constructed and
+            // stashed below, so they'll trigger the must_produce_diag check.
+            assert!(matches!(diagnostic.level, Error | Warning | Allow | Expect(_)));
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
