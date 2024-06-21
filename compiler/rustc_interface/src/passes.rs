@@ -1008,7 +1008,14 @@ fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
 pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-) -> Box<dyn Any> {
+) -> Result<Box<dyn Any>> {
+    // Don't do code generation if there were any errors. Likewise if
+    // there were any delayed bugs, because codegen will likely cause
+    // more ICEs, obscuring the original problem.
+    if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
+        return Err(guar);
+    }
+
     // Hook for UI tests.
     check_for_rustc_errors_attr(tcx);
 
@@ -1034,7 +1041,7 @@ pub(crate) fn start_codegen<'tcx>(
         }
     }
 
-    codegen
+    Ok(codegen)
 }
 
 fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {

@@ -126,14 +126,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn codegen_and_build_linker(&'tcx self) -> Result<Linker> {
         self.global_ctxt()?.enter(|tcx| {
-            // Don't do code generation if there were any errors. Likewise if
-            // there were any delayed bugs, because codegen will likely cause
-            // more ICEs, obscuring the original problem.
-            if let Some(guar) = self.compiler.sess.dcx().has_errors_or_delayed_bugs() {
-                return Err(guar);
-            }
-
-            let ongoing_codegen = passes::start_codegen(&*self.compiler.codegen_backend, tcx);
+            let ongoing_codegen = passes::start_codegen(&*self.compiler.codegen_backend, tcx)?;
 
             Ok(Linker {
                 dep_graph: tcx.dep_graph.clone(),
