@@ -330,18 +330,15 @@ pub(crate) fn make_single_type_binders<T: HasInterner<Interner = Interner>>(
     )
 }
 
-pub(crate) fn make_binders_with_count<T: HasInterner<Interner = Interner>>(
+pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
     db: &dyn HirDatabase,
-    count: usize,
     generics: &Generics,
     value: T,
 ) -> Binders<T> {
-    let it = generics.iter_id().take(count);
-
     Binders::new(
         VariableKinds::from_iter(
             Interner,
-            it.map(|x| match x {
+            generics.iter_id().map(|x| match x {
                 hir_def::GenericParamId::ConstParamId(id) => {
                     chalk_ir::VariableKind::Const(db.const_param_ty(id))
                 }
@@ -353,14 +350,6 @@ pub(crate) fn make_binders_with_count<T: HasInterner<Interner = Interner>>(
         ),
         value,
     )
-}
-
-pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
-    db: &dyn HirDatabase,
-    generics: &Generics,
-    value: T,
-) -> Binders<T> {
-    make_binders_with_count(db, usize::MAX, generics, value)
 }
 
 // FIXME: get rid of this, just replace it by FnPointer

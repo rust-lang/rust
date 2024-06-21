@@ -8,7 +8,7 @@
 use std::{
     cell::{Cell, RefCell, RefMut},
     iter,
-    ops::Not as _,
+    ops::{self, Not as _},
 };
 
 use base_db::{
@@ -1693,9 +1693,11 @@ pub(crate) fn trait_environment_query(
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenericPredicates(Option<Arc<[Binders<QuantifiedWhereClause>]>>);
 
-impl GenericPredicates {
-    pub fn iter(&self) -> impl Iterator<Item = &Binders<QuantifiedWhereClause>> + '_ + Clone {
-        self.0.as_ref().into_iter().flat_map(Arc::as_ref)
+impl ops::Deref for GenericPredicates {
+    type Target = [Binders<crate::QuantifiedWhereClause>];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_deref().unwrap_or(&[])
     }
 }
 
@@ -1767,68 +1769,84 @@ fn implicitly_sized_clauses<'a, 'subst: 'a>(
     })
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GenericDefaults(Option<Arc<[Binders<crate::GenericArg>]>>);
+
+impl ops::Deref for GenericDefaults {
+    type Target = [Binders<crate::GenericArg>];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_deref().unwrap_or(&[])
+    }
+}
+
 /// Resolve the default type params from generics
-pub(crate) fn generic_defaults_query(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-) -> Arc<[Binders<crate::GenericArg>]> {
-    let resolver = def.resolver(db.upcast());
+pub(crate) fn generic_defaults_query(db: &dyn HirDatabase, def: GenericDefId) -> GenericDefaults {
     let generic_params = generics(db.upcast(), def);
+    if generic_params.len() == 0 {
+        return GenericDefaults(None);
+    }
+    let resolver = def.resolver(db.upcast());
     let parent_start_idx = generic_params.len_self();
 
     let ctx = TyLoweringContext::new(db, &resolver, def.into())
         .with_impl_trait_mode(ImplTraitLoweringMode::Disallowed)
         .with_type_param_mode(ParamLoweringMode::Variable);
-    Arc::from_iter(generic_params.iter().enumerate().map(|(idx, (id, p))| {
-        match p {
-            GenericParamDataRef::TypeParamData(p) => {
-                let mut ty =
-                    p.default.as_ref().map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
-                // Each default can only refer to previous parameters.
-                // Type variable default referring to parameter coming
-                // after it is forbidden (FIXME: report diagnostic)
-                ty = fallback_bound_vars(ty, idx, parent_start_idx);
-                crate::make_binders(db, &generic_params, ty.cast(Interner))
-            }
-            GenericParamDataRef::ConstParamData(p) => {
-                let GenericParamId::ConstParamId(id) = id else {
-                    unreachable!("Unexpected lifetime or type argument")
-                };
+    GenericDefaults(Some(Arc::from_iter(generic_params.iter().enumerate().map(
+        |(idx, (id, p))| {
+            match p {
+                GenericParamDataRef::TypeParamData(p) => {
+                    let ty = p.default.as_ref().map_or(TyKind::Error.intern(Interner), |ty| {
+                        // Each default can only refer to previous parameters.
+                        // Type variable default referring to parameter coming
+                        // after it is forbidden (FIXME: report diagnostic)
+                        fallback_bound_vars(ctx.lower_ty(ty), idx, parent_start_idx)
+                    });
+                    crate::make_binders(db, &generic_params, ty.cast(Interner))
+                }
+                GenericParamDataRef::ConstParamData(p) => {
+                    let GenericParamId::ConstParamId(id) = id else {
+                        unreachable!("Unexpected lifetime or type argument")
+                    };
 
-                let mut val = p.default.as_ref().map_or_else(
-                    || unknown_const_as_generic(db.const_param_ty(id)),
-                    |c| {
-                        let c = ctx.lower_const(c, ctx.lower_ty(&p.ty));
-                        c.cast(Interner)
-                    },
-                );
-                // Each default can only refer to previous parameters, see above.
-                val = fallback_bound_vars(val, idx, parent_start_idx);
-                make_binders(db, &generic_params, val)
+                    let mut val = p.default.as_ref().map_or_else(
+                        || unknown_const_as_generic(db.const_param_ty(id)),
+                        |c| {
+                            let c = ctx.lower_const(c, ctx.lower_ty(&p.ty));
+                            c.cast(Interner)
+                        },
+                    );
+                    // Each default can only refer to previous parameters, see above.
+                    val = fallback_bound_vars(val, idx, parent_start_idx);
+                    make_binders(db, &generic_params, val)
+                }
+                GenericParamDataRef::LifetimeParamData(_) => {
+                    make_binders(db, &generic_params, error_lifetime().cast(Interner))
+                }
             }
-            GenericParamDataRef::LifetimeParamData(_) => {
-                make_binders(db, &generic_params, error_lifetime().cast(Interner))
-            }
-        }
-    }))
+        },
+    ))))
 }
 
 pub(crate) fn generic_defaults_recover(
     db: &dyn HirDatabase,
     _cycle: &Cycle,
     def: &GenericDefId,
-) -> Arc<[Binders<crate::GenericArg>]> {
+) -> GenericDefaults {
     let generic_params = generics(db.upcast(), *def);
+    if generic_params.len() == 0 {
+        return GenericDefaults(None);
+    }
     // FIXME: this code is not covered in tests.
     // we still need one default per parameter
-    Arc::from_iter(generic_params.iter_id().map(|id| {
+    GenericDefaults(Some(Arc::from_iter(generic_params.iter_id().map(|id| {
         let val = match id {
             GenericParamId::TypeParamId(_) => TyKind::Error.intern(Interner).cast(Interner),
             GenericParamId::ConstParamId(id) => unknown_const_as_generic(db.const_param_ty(id)),
             GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
         };
         crate::make_binders(db, &generic_params, val)
-    }))
+    }))))
 }
 
 fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
