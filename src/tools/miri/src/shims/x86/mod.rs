@@ -441,8 +441,7 @@ fn apply_random_float_error<F: rustc_apfloat::Float>(
 ) -> F {
     let rng = this.machine.rng.get_mut();
     // generates rand(0, 2^64) * 2^(scale - 64) = rand(0, 1) * 2^scale
-    let err =
-        F::from_u128(rng.gen::<u64>().into()).value.scalbn(err_scale.checked_sub(64).unwrap());
+    let err = F::from_u128(rng.gen::<u64>().into()).value.scalbn(err_scale.strict_sub(64));
     // give it a random sign
     let err = if rng.gen::<bool>() { -err } else { err };
     // multiple the value with (1+err)
@@ -793,7 +792,7 @@ fn split_simd_to_128bit_chunks<'tcx, P: Projectable<'tcx, Provenance>>(
 
     assert_eq!(simd_layout.size.bits() % 128, 0);
     let num_chunks = simd_layout.size.bits() / 128;
-    let items_per_chunk = simd_len.checked_div(num_chunks).unwrap();
+    let items_per_chunk = simd_len.strict_div(num_chunks);
 
     // Transmute to `[[T; items_per_chunk]; num_chunks]`
     let chunked_layout = this
@@ -841,13 +840,11 @@ fn horizontal_bin_op<'tcx>(
         for j in 0..items_per_chunk {
             // `j` is the index in `dest`
             // `k` is the index of the 2-item chunk in `src`
-            let (k, src) =
-                if j < middle { (j, &left) } else { (j.checked_sub(middle).unwrap(), &right) };
+            let (k, src) = if j < middle { (j, &left) } else { (j.strict_sub(middle), &right) };
             // `base_i` is the index of the first item of the 2-item chunk in `src`
-            let base_i = k.checked_mul(2).unwrap();
+            let base_i = k.strict_mul(2);
             let lhs = this.read_immediate(&this.project_index(src, base_i)?)?;
-            let rhs =
-                this.read_immediate(&this.project_index(src, base_i.checked_add(1).unwrap())?)?;
+            let rhs = this.read_immediate(&this.project_index(src, base_i.strict_add(1))?)?;
 
             let res = if saturating {
                 Immediate::from(this.saturating_arith(which, &lhs, &rhs)?)
@@ -900,7 +897,7 @@ fn conditional_dot_product<'tcx>(
         // for the initial value because the representation of 0.0 is all zero bits.
         let mut sum = ImmTy::from_int(0u8, element_layout);
         for j in 0..items_per_chunk {
-            if imm & (1 << j.checked_add(4).unwrap()) != 0 {
+            if imm & (1 << j.strict_add(4)) != 0 {
                 let left = this.read_immediate(&this.project_index(&left, j)?)?;
                 let right = this.read_immediate(&this.project_index(&right, j)?)?;
 
@@ -971,7 +968,7 @@ fn test_high_bits_masked<'tcx>(
 
     assert_eq!(op_len, mask_len);
 
-    let high_bit_offset = op.layout.field(this, 0).size.bits().checked_sub(1).unwrap();
+    let high_bit_offset = op.layout.field(this, 0).size.bits().strict_sub(1);
 
     let mut direct = true;
     let mut negated = true;
@@ -1002,7 +999,7 @@ fn mask_load<'tcx>(
     assert_eq!(dest_len, mask_len);
 
     let mask_item_size = mask.layout.field(this, 0).size;
-    let high_bit_offset = mask_item_size.bits().checked_sub(1).unwrap();
+    let high_bit_offset = mask_item_size.bits().strict_sub(1);
 
     let ptr = this.read_pointer(ptr)?;
     for i in 0..dest_len {
@@ -1035,7 +1032,7 @@ fn mask_store<'tcx>(
     assert_eq!(value_len, mask_len);
 
     let mask_item_size = mask.layout.field(this, 0).size;
-    let high_bit_offset = mask_item_size.bits().checked_sub(1).unwrap();
+    let high_bit_offset = mask_item_size.bits().strict_sub(1);
 
     let ptr = this.read_pointer(ptr)?;
     for i in 0..value_len {
@@ -1077,15 +1074,15 @@ fn mpsadbw<'tcx>(
     let (_, _, right) = split_simd_to_128bit_chunks(this, right)?;
     let (_, dest_items_per_chunk, dest) = split_simd_to_128bit_chunks(this, dest)?;
 
-    assert_eq!(op_items_per_chunk, dest_items_per_chunk.checked_mul(2).unwrap());
+    assert_eq!(op_items_per_chunk, dest_items_per_chunk.strict_mul(2));
 
     let imm = this.read_scalar(imm)?.to_uint(imm.layout.size)?;
     // Bit 2 of `imm` specifies the offset for indices of `left`.
     // The offset is 0 when the bit is 0 or 4 when the bit is 1.
-    let left_offset = u64::try_from((imm >> 2) & 1).unwrap().checked_mul(4).unwrap();
+    let left_offset = u64::try_from((imm >> 2) & 1).unwrap().strict_mul(4);
     // Bits 0..=1 of `imm` specify the offset for indices of
     // `right` in blocks of 4 elements.
-    let right_offset = u64::try_from(imm & 0b11).unwrap().checked_mul(4).unwrap();
+    let right_offset = u64::try_from(imm & 0b11).unwrap().strict_mul(4);
 
     for i in 0..num_chunks {
         let left = this.project_index(&left, i)?;
@@ -1093,18 +1090,16 @@ fn mpsadbw<'tcx>(
         let dest = this.project_index(&dest, i)?;
 
         for j in 0..dest_items_per_chunk {
-            let left_offset = left_offset.checked_add(j).unwrap();
+            let left_offset = left_offset.strict_add(j);
             let mut res: u16 = 0;
             for k in 0..4 {
                 let left = this
-                    .read_scalar(&this.project_index(&left, left_offset.checked_add(k).unwrap())?)?
+                    .read_scalar(&this.project_index(&left, left_offset.strict_add(k))?)?
                     .to_u8()?;
                 let right = this
-                    .read_scalar(
-                        &this.project_index(&right, right_offset.checked_add(k).unwrap())?,
-                    )?
+                    .read_scalar(&this.project_index(&right, right_offset.strict_add(k))?)?
                     .to_u8()?;
-                res = res.checked_add(left.abs_diff(right).into()).unwrap();
+                res = res.strict_add(left.abs_diff(right).into());
             }
             this.write_scalar(Scalar::from_u16(res), &this.project_index(&dest, j)?)?;
         }
@@ -1138,8 +1133,7 @@ fn pmulhrsw<'tcx>(
         let right = this.read_scalar(&this.project_index(&right, i)?)?.to_i16()?;
         let dest = this.project_index(&dest, i)?;
 
-        let res =
-            (i32::from(left).checked_mul(right.into()).unwrap() >> 14).checked_add(1).unwrap() >> 1;
+        let res = (i32::from(left).strict_mul(right.into()) >> 14).strict_add(1) >> 1;
 
         // The result of this operation can overflow a signed 16-bit integer.
         // When `left` and `right` are -0x8000, the result is 0x8000.
@@ -1235,7 +1229,7 @@ fn pack_generic<'tcx>(
     let (_, _, right) = split_simd_to_128bit_chunks(this, right)?;
     let (_, dest_items_per_chunk, dest) = split_simd_to_128bit_chunks(this, dest)?;
 
-    assert_eq!(dest_items_per_chunk, op_items_per_chunk.checked_mul(2).unwrap());
+    assert_eq!(dest_items_per_chunk, op_items_per_chunk.strict_mul(2));
 
     for i in 0..num_chunks {
         let left = this.project_index(&left, i)?;
@@ -1246,8 +1240,7 @@ fn pack_generic<'tcx>(
             let left = this.read_scalar(&this.project_index(&left, j)?)?;
             let right = this.read_scalar(&this.project_index(&right, j)?)?;
             let left_dest = this.project_index(&dest, j)?;
-            let right_dest =
-                this.project_index(&dest, j.checked_add(op_items_per_chunk).unwrap())?;
+            let right_dest = this.project_index(&dest, j.strict_add(op_items_per_chunk))?;
 
             let left_res = f(left)?;
             let right_res = f(right)?;

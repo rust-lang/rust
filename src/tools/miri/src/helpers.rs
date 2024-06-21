@@ -973,7 +973,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an out-of-bounds access.
         let string_length = u64::try_from(c_str.len()).unwrap();
-        let string_length = string_length.checked_add(1).unwrap();
+        let string_length = string_length.strict_add(1);
         if size < string_length {
             return Ok((false, string_length));
         }
@@ -1037,7 +1037,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required
         // 0x0000 terminator to memory would cause an out-of-bounds access.
         let string_length = u64::try_from(wide_str.len()).unwrap();
-        let string_length = string_length.checked_add(1).unwrap();
+        let string_length = string_length.strict_add(1);
         if size < string_length {
             return Ok((false, string_length));
         }
@@ -1406,7 +1406,7 @@ pub(crate) fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
     if success {
         // If the function succeeds, the return value is the number of characters stored in the target buffer,
         // not including the terminating null character.
-        u32::try_from(len.checked_sub(1).unwrap()).unwrap()
+        u32::try_from(len.strict_sub(1)).unwrap()
     } else {
         // If the target buffer was not large enough to hold the data, the return value is the buffer size, in characters,
         // required to hold the string and its terminating null character.

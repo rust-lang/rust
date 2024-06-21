@@ -303,7 +303,7 @@ pub fn create_ecx<'tcx>(
         let mut argvs = Vec::<Immediate<Provenance>>::with_capacity(config.args.len());
         for arg in config.args.iter() {
             // Make space for `0` terminator.
-            let size = u64::try_from(arg.len()).unwrap().checked_add(1).unwrap();
+            let size = u64::try_from(arg.len()).unwrap().strict_add(1);
             let arg_type = Ty::new_array(tcx, tcx.types.u8, size);
             let arg_place =
                 ecx.allocate(ecx.layout_of(arg_type)?, MiriMemoryKind::Machine.into())?;

@@ -116,7 +116,7 @@ impl FileDescription for SocketPair {
         };
         let mut writebuf = writebuf.borrow_mut();
         let data_size = writebuf.buf.len();
-        let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.checked_sub(data_size).unwrap();
+        let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
         if available_space == 0 {
             if self.is_nonblock {
                 // Non-blocking socketpair with a full buffer.

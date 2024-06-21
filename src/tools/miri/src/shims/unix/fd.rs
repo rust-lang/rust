@@ -240,7 +240,7 @@ impl FdTable {
         let new_fd = candidate_new_fd.unwrap_or_else(|| {
             // find_map ran out of BTreeMap entries before finding a free fd, use one plus the
             // maximum fd in the map
-            self.fds.last_key_value().map(|(fd, _)| fd.checked_add(1).unwrap()).unwrap_or(min_fd)
+            self.fds.last_key_value().map(|(fd, _)| fd.strict_add(1)).unwrap_or(min_fd)
         });
 
         self.fds.try_insert(new_fd, file_handle).unwrap();

@@ -97,7 +97,7 @@ impl GlobalStateInner {
 fn align_addr(addr: u64, align: u64) -> u64 {
     match addr % align {
         0 => addr,
-        rem => addr.checked_add(align).unwrap() - rem,
+        rem => addr.strict_add(align) - rem,
     }
 }
 
