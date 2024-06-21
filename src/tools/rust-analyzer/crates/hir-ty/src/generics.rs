@@ -50,11 +50,15 @@ impl Generics {
     }
 
     pub(crate) fn iter_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
-        self.iter().map(|(id, _)| id)
+        self.iter_self_id().chain(self.iter_parent_id())
     }
 
     pub(crate) fn iter_self_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
         self.iter_self().map(|(id, _)| id)
+    }
+
+    fn iter_parent_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
+        self.iter_parent().map(|(id, _)| id)
     }
 
     pub(crate) fn iter_self_type_or_consts(
@@ -81,7 +85,7 @@ impl Generics {
     }
 
     /// Iterator over types and const params of parent.
-    pub(crate) fn iter_parent(
+    fn iter_parent(
         &self,
     ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamDataRef<'_>)> + '_ {
         self.parent_generics().into_iter().flat_map(|it| {
@@ -108,7 +112,6 @@ impl Generics {
         let mut type_params = 0;
         let mut impl_trait_params = 0;
         let mut const_params = 0;
-        let mut lifetime_params = 0;
         self.params.iter_type_or_consts().for_each(|(_, data)| match data {
             TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                 TypeParamProvenance::TypeParamList => type_params += 1,
@@ -118,52 +121,44 @@ impl Generics {
             TypeOrConstParamData::ConstParamData(_) => const_params += 1,
         });
 
-        self.params.iter_lt().for_each(|(_, _)| lifetime_params += 1);
+        let lifetime_params = self.params.iter_lt().count();
 
         let parent_len = self.parent_generics().map_or(0, Generics::len);
         (parent_len, self_param, type_params, const_params, impl_trait_params, lifetime_params)
     }
 
     pub(crate) fn type_or_const_param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {
-        Some(self.find_type_or_const_param(param)?.0)
+        self.find_type_or_const_param(param)
     }
 
-    fn find_type_or_const_param(
-        &self,
-        param: TypeOrConstParamId,
-    ) -> Option<(usize, &TypeOrConstParamData)> {
+    fn find_type_or_const_param(&self, param: TypeOrConstParamId) -> Option<usize> {
         if param.parent == self.def {
             let idx = param.local_id.into_raw().into_u32() as usize;
-            if idx >= self.params.type_or_consts.len() {
-                return None;
-            }
-            Some((idx, &self.params.type_or_consts[param.local_id]))
+            debug_assert!(idx <= self.params.type_or_consts.len());
+            Some(idx)
         } else {
+            debug_assert_eq!(self.parent_generics().map(|it| it.def), Some(param.parent));
             self.parent_generics()
                 .and_then(|g| g.find_type_or_const_param(param))
                 // Remember that parent parameters come after parameters for self.
-                .map(|(idx, data)| (self.len_self() + idx, data))
+                .map(|idx| self.len_self() + idx)
         }
     }
 
     pub(crate) fn lifetime_idx(&self, lifetime: LifetimeParamId) -> Option<usize> {
-        Some(self.find_lifetime(lifetime)?.0)
+        self.find_lifetime(lifetime)
     }
 
-    fn find_lifetime(&self, lifetime: LifetimeParamId) -> Option<(usize, &LifetimeParamData)> {
+    fn find_lifetime(&self, lifetime: LifetimeParamId) -> Option<usize> {
         if lifetime.parent == self.def {
             let idx = lifetime.local_id.into_raw().into_u32() as usize;
-            if idx >= self.params.lifetimes.len() {
-                return None;
-            }
-            Some((
-                self.params.type_or_consts.len() + idx,
-                &self.params.lifetimes[lifetime.local_id],
-            ))
+            debug_assert!(idx <= self.params.lifetimes.len());
+            Some(self.params.type_or_consts.len() + idx)
         } else {
+            debug_assert_eq!(self.parent_generics().map(|it| it.def), Some(lifetime.parent));
             self.parent_generics()
                 .and_then(|g| g.find_lifetime(lifetime))
-                .map(|(idx, data)| (self.len_self() + idx, data))
+                .map(|idx| self.len_self() + idx)
         }
     }
 

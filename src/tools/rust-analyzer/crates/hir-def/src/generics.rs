@@ -444,15 +444,18 @@ impl GenericParamsCollector {
 
 impl GenericParams {
     /// Number of Generic parameters (type_or_consts + lifetimes)
+    #[inline]
     pub fn len(&self) -> usize {
         self.type_or_consts.len() + self.lifetimes.len()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
     /// Iterator of type_or_consts field
+    #[inline]
     pub fn iter_type_or_consts(
         &self,
     ) -> impl DoubleEndedIterator<Item = (LocalTypeOrConstParamId, &TypeOrConstParamData)> {
@@ -460,6 +463,7 @@ impl GenericParams {
     }
 
     /// Iterator of lifetimes field
+    #[inline]
     pub fn iter_lt(
         &self,
     ) -> impl DoubleEndedIterator<Item = (LocalLifetimeParamId, &LifetimeParamData)> {
@@ -608,7 +612,7 @@ impl GenericParams {
         })
     }
 
-    pub fn find_trait_self_param(&self) -> Option<LocalTypeOrConstParamId> {
+    pub fn trait_self_param(&self) -> Option<LocalTypeOrConstParamId> {
         if self.type_or_consts.is_empty() {
             return None;
         }

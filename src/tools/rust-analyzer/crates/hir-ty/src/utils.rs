@@ -155,7 +155,7 @@ impl Iterator for ClauseElaborator<'_> {
 fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
     let resolver = trait_.resolver(db);
     let generic_params = db.generic_params(trait_.into());
-    let trait_self = generic_params.find_trait_self_param();
+    let trait_self = generic_params.trait_self_param();
     generic_params
         .where_predicates
         .iter()
@@ -188,7 +188,7 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(Tra
 
 fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef, cb: impl FnMut(TraitRef)) {
     let generic_params = db.generic_params(trait_ref.hir_trait_id().into());
-    let trait_self = match generic_params.find_trait_self_param() {
+    let trait_self = match generic_params.trait_self_param() {
         Some(p) => TypeOrConstParamId { parent: trait_ref.hir_trait_id().into(), local_id: p },
         None => return,
     };
