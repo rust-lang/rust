@@ -28018,6 +28018,7 @@ pub unsafe fn _mm512_stream_ps(mem_addr: *mut f32, a: __m512) {
         "vmovntps [{mem_addr}], {a}",
         mem_addr = in(reg) mem_addr,
         a = in(zmm_reg) a,
+        options(nostack, preserves_flags),
     );
 }
 
@@ -28043,6 +28044,7 @@ pub unsafe fn _mm512_stream_pd(mem_addr: *mut f64, a: __m512d) {
         "vmovntps [{mem_addr}], {a}",
         mem_addr = in(reg) mem_addr,
         a = in(zmm_reg) a,
+        options(nostack, preserves_flags),
     );
 }
 
@@ -28068,6 +28070,7 @@ pub unsafe fn _mm512_stream_si512(mem_addr: *mut i64, a: __m512i) {
         "vmovntps [{mem_addr}], {a}",
         mem_addr = in(reg) mem_addr,
         a = in(zmm_reg) a,
+        options(nostack, preserves_flags),
     );
 }
 

@@ -2006,6 +2006,7 @@ pub unsafe fn _mm_stream_ps(mem_addr: *mut f32, a: __m128) {
         "movntps [{mem_addr}], {a}",
         mem_addr = in(reg) mem_addr,
         a = in(xmm_reg) a,
+        options(nostack, preserves_flags),
     );
 }
 

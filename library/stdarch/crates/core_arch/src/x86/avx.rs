@@ -1722,6 +1722,7 @@ pub unsafe fn _mm256_stream_si256(mem_addr: *mut __m256i, a: __m256i) {
         "vmovntps [{mem_addr}], {a}",
         mem_addr = in(reg) mem_addr,
         a = in(ymm_reg) a,
+        options(nostack, preserves_flags),
     );
 }
 
@@ -1749,6 +1750,7 @@ pub unsafe fn _mm256_stream_pd(mem_addr: *mut f64, a: __m256d) {
         "vmovntps [{mem_addr}], {a}",
         mem_addr = in(reg) mem_addr,
         a = in(ymm_reg) a,
+        options(nostack, preserves_flags),
     );
 }
 
@@ -1777,6 +1779,7 @@ pub unsafe fn _mm256_stream_ps(mem_addr: *mut f32, a: __m256) {
         "vmovntps [{mem_addr}], {a}",
         mem_addr = in(reg) mem_addr,
         a = in(ymm_reg) a,
+        options(nostack, preserves_flags),
     );
 }
 

@@ -82,6 +82,7 @@ pub unsafe fn _mm_stream_si64(mem_addr: *mut i64, a: i64) {
         "movnti [{mem_addr}], {a}",
         mem_addr = in(reg) mem_addr,
         a = in(reg) a,
+        options(nostack, preserves_flags),
     );
 }
 

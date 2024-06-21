@@ -1335,6 +1335,7 @@ pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
         "movntps [{mem_addr}], {a}",
         mem_addr = in(reg) mem_addr,
         a = in(xmm_reg) a,
+        options(nostack, preserves_flags),
     );
 }
 
@@ -1361,6 +1362,7 @@ pub unsafe fn _mm_stream_si32(mem_addr: *mut i32, a: i32) {
         "movnti [{mem_addr}], {a:e}", // `:e` for 32bit value
         mem_addr = in(reg) mem_addr,
         a = in(reg) a,
+        options(nostack, preserves_flags),
     );
 }
 
@@ -2560,6 +2562,7 @@ pub unsafe fn _mm_stream_pd(mem_addr: *mut f64, a: __m128d) {
         "movntps [{mem_addr}], {a}",
         mem_addr = in(reg) mem_addr,
         a = in(xmm_reg) a,
+        options(nostack, preserves_flags),
     );
 }
 
