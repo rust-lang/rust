@@ -108,4 +108,8 @@ impl AllocBytes for MiriAllocBytes {
     fn as_mut_ptr(&mut self) -> *mut u8 {
         self.ptr
     }
+
+    fn as_ptr(&self) -> *const u8 {
+        self.ptr
+    }
 }
