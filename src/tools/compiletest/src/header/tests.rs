@@ -33,20 +33,11 @@ fn make_test_description<R: Read>(
 
 #[test]
 fn test_parse_normalize_rule() {
-    let good_data = &[
-        (
-            r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)""#,
-            "something (32 bits)",
-            "something ($WORD bits)",
-        ),
-        // FIXME(#126370): A colon after the header name should be mandatory,
-        // but currently is not, and there are many tests that lack the colon.
-        (
-            r#"normalize-stderr-32bit "something (32 bits)" -> "something ($WORD bits)""#,
-            "something (32 bits)",
-            "something ($WORD bits)",
-        ),
-    ];
+    let good_data = &[(
+        r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)""#,
+        "something (32 bits)",
+        "something ($WORD bits)",
+    )];
 
     for &(input, expected_regex, expected_replacement) in good_data {
         let parsed = parse_normalize_rule(input);
@@ -56,6 +47,7 @@ fn test_parse_normalize_rule() {
     }
 
     let bad_data = &[
+        r#"normalize-stderr-32bit "something (32 bits)" -> "something ($WORD bits)""#,
         r#"normalize-stderr-16bit: something (16 bits) -> something ($WORD bits)"#,
         r#"normalize-stderr-32bit: something (32 bits) -> something ($WORD bits)"#,
         r#"normalize-stderr-32bit: "something (32 bits) -> something ($WORD bits)"#,
