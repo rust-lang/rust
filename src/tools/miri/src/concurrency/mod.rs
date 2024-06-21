@@ -1,3 +1,4 @@
+pub mod cpu_affinity;
 pub mod data_race;
 pub mod init_once;
 mod range_object_map;
