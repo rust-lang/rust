@@ -795,8 +795,7 @@ checksum = "55b672471b4e9f9e95499ea597ff64941a309b2cdbffcc46f2cc5e2d971fd335"
 [[package]]
 name = "compiler_builtins"
 version = "0.1.112"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b15acab2bb4fe4dad1f1e31f3d9e714f50ef561a0f87dd8a9da004f14d455e1a"
+source = "git+https://github.com/tgross35/compiler-builtins.git?branch=libm-sse-fix#9ba77d1583e6de5ab9cf7c9b82827ba8fcb9062f"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",

@@ -110,3 +110,6 @@ check-cfg = [
     # of declared features, we therefor expect any feature cfg
     'cfg(feature, values(any()))',
 ]
+
+[patch.crates-io]
+compiler_builtins = { git = "https://github.com/tgross35/compiler-builtins.git", branch = "libm-sse-fix"}

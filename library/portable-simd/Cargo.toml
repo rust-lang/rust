@@ -5,3 +5,6 @@ members = [
     "crates/std_float",
     "crates/test_helpers",
 ]
+
+[patch.crates-io]
+compiler_builtins = { git = "https://github.com/tgross35/compiler-builtins.git", branch = "libm-sse-fix"}

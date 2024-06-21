@@ -19,3 +19,6 @@ compiler_builtins = "0.1.0"
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
 libc = { version = "0.2", default-features = false }
+
+[patch.crates-io]
+compiler_builtins = { git = "https://github.com/tgross35/compiler-builtins.git", branch = "libm-sse-fix"}

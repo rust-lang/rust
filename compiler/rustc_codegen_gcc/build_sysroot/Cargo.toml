@@ -20,3 +20,7 @@ rustc-std-workspace-std = { path = "./sysroot_src/library/rustc-std-workspace-st
 [profile.release]
 debug = true
 #lto = "fat" # TODO(antoyo): re-enable when the failing LTO tests regarding proc-macros are fixed.
+
+
+[patch.crates-io]
+compiler_builtins = { git = "https://github.com/tgross35/compiler-builtins.git", branch = "libm-sse-fix"}
