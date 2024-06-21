@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `printf` in this scope
+error[E0425]: cannot find function `printf`
   --> $DIR/suggest_print_over_printf.rs:5:5
    |
 LL |     printf("%d", x);

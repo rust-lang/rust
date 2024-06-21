@@ -18,9 +18,9 @@ macro_rules! mac2 {
 
 fn foo() {
     mac1! { does_not_exist!() }
-    //~^ ERROR cannot find macro `does_not_exist` in this scope
+    //~^ ERROR cannot find macro `does_not_exist`
     mac2! { does_not_exist!() }
-    //~^ ERROR cannot find macro `does_not_exist` in this scope
+    //~^ ERROR cannot find macro `does_not_exist`
 }
 
 fn main() {}

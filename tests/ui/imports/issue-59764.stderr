@@ -226,7 +226,7 @@ help: a macro with this name exists at the root of the crate
 LL | use issue_59764::makro;
    |     ~~~~~~~~~~~~~~~~~~
 
-error[E0425]: cannot find function `bar` in this scope
+error[E0425]: cannot find function `bar`
   --> $DIR/issue-59764.rs:133:5
    |
 LL |     bar();

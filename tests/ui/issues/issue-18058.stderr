@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Undefined` in this scope
+error[E0412]: cannot find type `Undefined`
   --> $DIR/issue-18058.rs:1:6
    |
 LL | impl Undefined {}

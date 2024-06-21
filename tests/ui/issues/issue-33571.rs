@@ -1,6 +1,6 @@
 #[derive(Clone,
-         Sync, //~ ERROR cannot find derive macro `Sync` in this scope
-               //~| ERROR cannot find derive macro `Sync` in this scope
+         Sync, //~ ERROR cannot find derive macro `Sync`
+               //~| ERROR cannot find derive macro `Sync`
          Copy)]
 enum Foo {}
 

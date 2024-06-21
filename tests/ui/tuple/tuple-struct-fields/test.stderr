@@ -6,7 +6,7 @@ LL |     struct S2(pub((foo)) ());
    |                         |
    |                         help: missing `,`
 
-error[E0412]: cannot find type `foo` in this scope
+error[E0412]: cannot find type `foo`
   --> $DIR/test.rs:4:20
    |
 LL |     struct S2(pub((foo)) ());

@@ -5,7 +5,7 @@ async fn foo() {
 //~| NOTE for more on editions, read https://doc.rust-lang.org/edition-guide
 
     let x = async {};
-    //~^ ERROR cannot find struct, variant or union type `async` in this scope
+    //~^ ERROR cannot find struct, variant or union type `async`
     //~| NOTE `async` blocks are only allowed in Rust 2018 or later
     let y = async { //~ NOTE `async` blocks are only allowed in Rust 2018 or later
         let x = 42;

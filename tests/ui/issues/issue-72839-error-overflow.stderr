@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `missing_var` in this scope
+error[E0425]: cannot find value `missing_var`
   --> $DIR/issue-72839-error-overflow.rs:18:8
    |
 LL |     if missing_var % 8 == 0 {}

@@ -5,7 +5,7 @@
 
 fn bug<const N: Nat>(&self)
 //~^ ERROR `self` parameter is only allowed in associated functions
-//~^^ ERROR cannot find type `Nat` in this scope
+//~^^ ERROR cannot find type `Nat`
 where
     for<const N: usize = 3, T = u32> [(); COT::BYTES]:,
     //~^ ERROR only lifetime parameters can be used in this context

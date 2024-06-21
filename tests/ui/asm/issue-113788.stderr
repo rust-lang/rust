@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `PEB` in this scope
+error[E0412]: cannot find type `PEB`
   --> $DIR/issue-113788.rs:5:21
    |
 LL |     let peb: *const PEB;

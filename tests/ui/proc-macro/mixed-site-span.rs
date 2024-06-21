@@ -12,13 +12,13 @@ fn main() {
         let local_use = 1;
         proc_macro_rules!();
         //~^ ERROR use of undeclared label `'label_use`
-        //~| ERROR cannot find value `local_use` in this scope
+        //~| ERROR cannot find value `local_use`
         ItemDef; // OK
-        local_def; //~ ERROR cannot find value `local_def` in this scope
+        local_def; //~ ERROR cannot find value `local_def`
     }
 }
 
 macro_rules! pass_dollar_crate {
-    () => (proc_macro_rules!($crate);) //~ ERROR cannot find type `ItemUse` in crate `$crate`
+    () => (proc_macro_rules!($crate);) //~ ERROR cannot find type `ItemUse`
 }
 pass_dollar_crate!();

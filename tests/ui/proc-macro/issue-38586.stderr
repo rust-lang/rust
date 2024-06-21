@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `foo` in this scope
+error[E0425]: cannot find value `foo`
   --> $DIR/issue-38586.rs:6:10
    |
 LL | #[derive(A)]

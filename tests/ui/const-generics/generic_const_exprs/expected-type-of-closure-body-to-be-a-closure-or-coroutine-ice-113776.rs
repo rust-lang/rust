@@ -9,7 +9,7 @@ use core::ops::SubAssign;
 fn f<T>(
     data: &[(); {
          let f: F = async { 1 };
-         //~^ ERROR cannot find type `F` in this scope
+         //~^ ERROR cannot find type `F`
 
          1
      }],

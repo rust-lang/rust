@@ -1,14 +1,14 @@
-error[E0425]: cannot find value `debug` in this scope
+error[E0425]: cannot find value `debug`
   --> $DIR/bad-expr-path.rs:4:9
    |
 LL |     log(debug, m1::arguments);
    |         ^^^^^ not found in this scope
 
-error[E0425]: cannot find value `arguments` in module `m1`
+error[E0425]: cannot find value `arguments`
   --> $DIR/bad-expr-path.rs:4:20
    |
 LL |     log(debug, m1::arguments);
-   |                    ^^^^^^^^^ not found in `m1`
+   |                    ^^^^^^^^^ not found in module `m1`
 
 error[E0580]: `main` function has wrong type
   --> $DIR/bad-expr-path.rs:3:1
@@ -19,7 +19,7 @@ LL | fn main(arguments: Vec<String>) {
    = note: expected signature `fn()`
               found signature `fn(Vec<String>)`
 
-error[E0425]: cannot find function `log` in this scope
+error[E0425]: cannot find function `log`
   --> $DIR/bad-expr-path.rs:4:5
    |
 LL |     log(debug, m1::arguments);

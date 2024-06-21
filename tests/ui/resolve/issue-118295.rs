@@ -1,5 +1,5 @@
 macro_rules! {}
-//~^ ERROR cannot find macro `macro_rules` in this scope
+//~^ ERROR cannot find macro `macro_rules`
 //~| NOTE maybe you have forgotten to define a name for this `macro_rules!`
 
 fn main() {}

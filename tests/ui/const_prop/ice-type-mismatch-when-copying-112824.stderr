@@ -6,7 +6,7 @@ LL | pub struct Opcode2(&'a S);
    |                   |
    |                   help: consider introducing lifetime `'a` here: `<'a>`
 
-error[E0412]: cannot find type `S` in this scope
+error[E0412]: cannot find type `S`
   --> $DIR/ice-type-mismatch-when-copying-112824.rs:5:24
    |
 LL | pub struct Opcode2(&'a S);

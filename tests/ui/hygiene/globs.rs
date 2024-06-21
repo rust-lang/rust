@@ -12,14 +12,14 @@ macro m($($t:tt)*) {
     $($t)*
     use foo::*;
     f();
-    g(); //~ ERROR cannot find function `g` in this scope
+    g(); //~ ERROR cannot find function `g`
 }
 
 fn main() {
     m! {
         use bar::*;
         g();
-        f(); //~ ERROR cannot find function `f` in this scope
+        f(); //~ ERROR cannot find function `f`
     }
 }
 
@@ -58,11 +58,11 @@ macro n($i:ident) {
             }
         }
 
-        n!(f); //~ ERROR cannot find function `f` in this scope
+        n!(f); //~ ERROR cannot find function `f`
         n_with_super!(f);
         mod test2 {
             super::n! {
-                f //~ ERROR cannot find function `f` in this scope
+                f //~ ERROR cannot find function `f`
             }
             super::n_with_super! {
                 f

@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `elf` in this scope
+error[E0425]: cannot find value `elf`
   --> $DIR/E0425.rs:3:9
    |
 LL |         elf;

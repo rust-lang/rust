@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `cmp` in this scope
+error[E0425]: cannot find function `cmp`
   --> $DIR/fn-to-method.rs:8:13
    |
 LL |     let x = cmp(&1, &2);
@@ -9,7 +9,7 @@ help: use the `.` operator to call the method `Ord::cmp` on `&{integer}`
 LL |     let x = (&1).cmp(&2);
    |             ~  ~~~~~~~~~
 
-error[E0425]: cannot find function `len` in this scope
+error[E0425]: cannot find function `len`
   --> $DIR/fn-to-method.rs:12:13
    |
 LL |     let y = len([1, 2, 3]);
@@ -21,7 +21,7 @@ LL -     let y = len([1, 2, 3]);
 LL +     let y = [1, 2, 3].len();
    |
 
-error[E0425]: cannot find function `bar` in this scope
+error[E0425]: cannot find function `bar`
   --> $DIR/fn-to-method.rs:16:13
    |
 LL |     let z = bar(Foo);

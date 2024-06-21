@@ -7,7 +7,7 @@ LL |     pub(crate) async fn new(
    = help: pass `--edition 2021` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0412]: cannot find type `Duration` in this scope
+error[E0412]: cannot find type `Duration`
   --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-96258.rs:10:19
    |
 LL |         interval: Duration,

@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `Foo` in this scope
+error[E0425]: cannot find value `Foo`
   --> $DIR/cfg-rustdoc.rs:5:13
    |
 LL |     let f = Foo;

@@ -14,7 +14,7 @@ mod alias {
 
 fn foo(l: crate::alias::Foo) {
     match l {
-        Cons(..) => {} //~ ERROR: cannot find tuple struct or tuple variant `Cons` in this scope
+        Cons(..) => {} //~ ERROR: cannot find tuple struct or tuple variant `Cons`
     }
 }
 

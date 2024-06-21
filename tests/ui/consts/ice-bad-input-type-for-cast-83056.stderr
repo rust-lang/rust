@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `T` in this scope
+error[E0412]: cannot find type `T`
   --> $DIR/ice-bad-input-type-for-cast-83056.rs:5:11
    |
 LL | struct S([bool; f as usize]);

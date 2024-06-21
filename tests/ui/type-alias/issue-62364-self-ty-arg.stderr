@@ -1,4 +1,4 @@
-error[E0411]: cannot find type `Self` in this scope
+error[E0411]: cannot find type `Self`
   --> $DIR/issue-62364-self-ty-arg.rs:5:29
    |
 LL | type Alias<'a> = Struct<&'a Self>;

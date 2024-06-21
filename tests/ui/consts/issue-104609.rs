@@ -1,6 +1,6 @@
 fn foo() {
     oops;
-    //~^ ERROR: cannot find value `oops` in this scope
+    //~^ ERROR: cannot find value `oops`
 }
 
 unsafe fn bar() {

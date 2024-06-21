@@ -2,7 +2,7 @@
 
 pub type Tait = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;
 //~^ ERROR use of undeclared lifetime name `'db`
-//~| ERROR cannot find type `LocalKey` in this scope
+//~| ERROR cannot find type `LocalKey`
 //~| ERROR unconstrained opaque type
 //~| ERROR unconstrained opaque type
 

@@ -9,7 +9,7 @@ help: expressions must be enclosed in braces to be used as const generic argumen
 LL |     x::<#[a]{ y::<z> }>
    |             +        +
 
-error[E0425]: cannot find value `x` in this scope
+error[E0425]: cannot find value `x`
   --> $DIR/issue-103143.rs:2:5
    |
 LL |     x::<#[a]y::<z>>

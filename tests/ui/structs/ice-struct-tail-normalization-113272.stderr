@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Missing` in this scope
+error[E0412]: cannot find type `Missing`
   --> $DIR/ice-struct-tail-normalization-113272.rs:5:25
    |
 LL | impl Trait for () where Missing: Trait {}

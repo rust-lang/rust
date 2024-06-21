@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `this` in this scope
+error[E0425]: cannot find value `this`
   --> $DIR/issue-103474.rs:23:9
    |
 LL |         this.i
@@ -13,7 +13,7 @@ help: if you meant to use `self`, you are also missing a `self` receiver argumen
 LL |     fn needs_self(&self) {
    |                   +++++
 
-error[E0425]: cannot find function `first` in this scope
+error[E0425]: cannot find function `first`
   --> $DIR/issue-103474.rs:6:9
    |
 LL |         first()
@@ -24,7 +24,7 @@ help: consider using the method on `Self`
 LL |         self.first()
    |         +++++
 
-error[E0425]: cannot find function `no_method_err` in this scope
+error[E0425]: cannot find function `no_method_err`
   --> $DIR/issue-103474.rs:11:9
    |
 LL |         no_method_err()

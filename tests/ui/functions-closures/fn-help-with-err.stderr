@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `oops` in this scope
+error[E0425]: cannot find value `oops`
   --> $DIR/fn-help-with-err.rs:13:35
    |
 LL |     let arc = std::sync::Arc::new(oops);

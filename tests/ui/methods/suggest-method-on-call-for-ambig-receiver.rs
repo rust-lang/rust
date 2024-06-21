@@ -8,7 +8,7 @@ fn separate_arms() {
         }
         Some(right) => {
             consume(right);
-            //~^ ERROR cannot find function `consume` in this scope
+            //~^ ERROR cannot find function `consume`
         }
     }
 }

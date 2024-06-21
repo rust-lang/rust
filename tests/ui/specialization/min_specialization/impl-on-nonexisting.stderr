@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `NonExistent` in this scope
+error[E0412]: cannot find type `NonExistent`
   --> $DIR/impl-on-nonexisting.rs:4:16
    |
 LL | impl Trait for NonExistent {}

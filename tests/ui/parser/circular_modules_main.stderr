@@ -4,11 +4,11 @@ error: circular modules: $DIR/circular_modules_main.rs -> $DIR/circular_modules_
 LL | mod circular_modules_main;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0425]: cannot find function `hi_str` in module `circular_modules_main`
+error[E0425]: cannot find function `hi_str`
   --> $DIR/circular_modules_hello.rs:7:43
    |
 LL |     println!("{}", circular_modules_main::hi_str());
-   |                                           ^^^^^^ not found in `circular_modules_main`
+   |                                           ^^^^^^ not found in module `circular_modules_main`
    |
 help: consider importing this function
    |

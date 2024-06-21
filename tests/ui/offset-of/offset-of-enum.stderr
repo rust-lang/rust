@@ -7,7 +7,7 @@ LL |     offset_of!(Alpha::One, 0);
    |                not a type
    |                help: try using the variant's enum: `Alpha`
 
-error[E0412]: cannot find type `Beta` in this scope
+error[E0412]: cannot find type `Beta`
   --> $DIR/offset-of-enum.rs:17:16
    |
 LL |     offset_of!(Beta, One);

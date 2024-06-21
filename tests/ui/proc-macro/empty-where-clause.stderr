@@ -1,16 +1,16 @@
-error[E0412]: cannot find type `MissingType1` in this scope
+error[E0412]: cannot find type `MissingType1`
   --> $DIR/empty-where-clause.rs:8:12
    |
 LL |     field: MissingType1
    |            ^^^^^^^^^^^^ not found in this scope
 
-error[E0412]: cannot find type `MissingType2` in this scope
+error[E0412]: cannot find type `MissingType2`
   --> $DIR/empty-where-clause.rs:12:20
    |
 LL | struct TupleStruct(MissingType2) where;
    |                    ^^^^^^^^^^^^ not found in this scope
 
-error[E0412]: cannot find type `MissingType3` in this scope
+error[E0412]: cannot find type `MissingType3`
   --> $DIR/empty-where-clause.rs:15:13
    |
 LL |     Variant(MissingType3)

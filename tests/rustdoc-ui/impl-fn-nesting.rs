@@ -9,28 +9,28 @@ pub trait NeedsBody {
 
 /// This function has docs
 pub fn f<B: UnknownBound>(a: UnknownType, b: B) {
-//~^ ERROR cannot find trait `UnknownBound` in this scope
-//~| ERROR cannot find type `UnknownType` in this scope
+//~^ ERROR cannot find trait `UnknownBound`
+//~| ERROR cannot find type `UnknownType`
     impl UnknownTrait for ValidType {} //~ ERROR cannot find trait `UnknownTrait`
     impl<T: UnknownBound> UnknownTrait for T {}
-    //~^ ERROR cannot find trait `UnknownBound` in this scope
-    //~| ERROR cannot find trait `UnknownTrait` in this scope
+    //~^ ERROR cannot find trait `UnknownBound`
+    //~| ERROR cannot find trait `UnknownTrait`
     impl ValidTrait for UnknownType {}
-    //~^ ERROR cannot find type `UnknownType` in this scope
+    //~^ ERROR cannot find type `UnknownType`
     impl ValidTrait for ValidType where ValidTrait: UnknownBound {}
-    //~^ ERROR cannot find trait `UnknownBound` in this scope
+    //~^ ERROR cannot find trait `UnknownBound`
 
     /// This impl has documentation
     impl NeedsBody for ValidType {
         type Item = UnknownType;
-        //~^ ERROR cannot find type `UnknownType` in this scope
+        //~^ ERROR cannot find type `UnknownType`
 
         /// This function has documentation
         fn f() {
             <UnknownTypeShouldBeIgnored>::a();
             content::shouldnt::matter();
             unknown_macro!();
-            //~^ ERROR cannot find macro `unknown_macro` in this scope
+            //~^ ERROR cannot find macro `unknown_macro`
 
             /// This is documentation for a macro
             macro_rules! can_define_macros_here_too {
@@ -42,7 +42,7 @@ pub fn f<B: UnknownBound>(a: UnknownType, b: B) {
 
             /// This also is documented.
             pub fn doubly_nested(c: UnknownType) {
-            //~^ ERROR cannot find type `UnknownType` in this scope
+            //~^ ERROR cannot find type `UnknownType`
             }
         }
     }

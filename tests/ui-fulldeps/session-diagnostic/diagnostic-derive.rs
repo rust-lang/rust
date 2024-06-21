@@ -73,7 +73,7 @@ struct InvalidLitNestedAttr {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense, code = E0123)]
-//~^ ERROR cannot find value `nonsense` in module `crate::fluent_generated`
+//~^ ERROR cannot find value `nonsense`
 struct InvalidNestedStructAttr {}
 
 #[derive(Diagnostic)]
@@ -805,7 +805,7 @@ struct SuggestionsInvalidItem {
     sub: Span,
 }
 
-#[derive(Diagnostic)] //~ ERROR cannot find value `__code_34` in this scope
+#[derive(Diagnostic)] //~ ERROR cannot find value `__code_34`
 #[diag(no_crate_example)]
 struct SuggestionsInvalidLiteral {
     #[suggestion(code = 3)]

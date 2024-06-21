@@ -1,10 +1,10 @@
-error[E0425]: cannot find value `fina` in this scope
+error[E0425]: cannot find value `fina`
   --> $DIR/suggestion-raw-68962.rs:7:5
    |
 LL |     fina;
    |     ^^^^ help: a local variable with a similar name exists: `r#final`
 
-error[E0425]: cannot find function `f` in this scope
+error[E0425]: cannot find function `f`
   --> $DIR/suggestion-raw-68962.rs:10:5
    |
 LL | fn r#fn() {}

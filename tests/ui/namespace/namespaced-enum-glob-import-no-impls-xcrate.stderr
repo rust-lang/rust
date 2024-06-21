@@ -1,22 +1,22 @@
-error[E0425]: cannot find function `foo` in module `m`
+error[E0425]: cannot find function `foo`
   --> $DIR/namespaced-enum-glob-import-no-impls-xcrate.rs:12:8
    |
 LL |     m::foo();
-   |        ^^^ not found in `m`
+   |        ^^^ not found in module `m`
 
-error[E0425]: cannot find function `bar` in module `m`
+error[E0425]: cannot find function `bar`
   --> $DIR/namespaced-enum-glob-import-no-impls-xcrate.rs:14:8
    |
 LL |     m::bar();
-   |        ^^^ not found in `m`
+   |        ^^^ not found in module `m`
 
-error[E0425]: cannot find function `foo` in this scope
+error[E0425]: cannot find function `foo`
   --> $DIR/namespaced-enum-glob-import-no-impls-xcrate.rs:11:5
    |
 LL |     foo();
    |     ^^^ not found in this scope
 
-error[E0425]: cannot find function `bar` in this scope
+error[E0425]: cannot find function `bar`
   --> $DIR/namespaced-enum-glob-import-no-impls-xcrate.rs:13:5
    |
 LL |     bar();

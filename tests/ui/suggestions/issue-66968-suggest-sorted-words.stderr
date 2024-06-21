@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `a_variable_longer_name` in this scope
+error[E0425]: cannot find value `a_variable_longer_name`
   --> $DIR/issue-66968-suggest-sorted-words.rs:3:20
    |
 LL |     println!("{}", a_variable_longer_name);

@@ -553,13 +553,13 @@ error: cannot find attribute `bar` in this scope
 LL |     #[bar("...")]
    |       ^^^
 
-error[E0425]: cannot find value `slug` in module `crate::fluent_generated`
+error[E0425]: cannot find value `slug`
   --> $DIR/subdiagnostic-derive.rs:126:9
    |
 LL | #[label(slug)]
-   |         ^^^^ not found in `crate::fluent_generated`
+   |         ^^^^ not found in module `crate::fluent_generated`
 
-error[E0425]: cannot find value `__code_29` in this scope
+error[E0425]: cannot find value `__code_29`
   --> $DIR/subdiagnostic-derive.rs:714:10
    |
 LL | #[derive(Subdiagnostic)]

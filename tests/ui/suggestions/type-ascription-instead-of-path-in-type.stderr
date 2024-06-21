@@ -1,4 +1,4 @@
-error[E0405]: cannot find trait `B` in this scope
+error[E0405]: cannot find trait `B`
   --> $DIR/type-ascription-instead-of-path-in-type.rs:6:18
    |
 LL |     let _: Vec<A:B> = A::B;

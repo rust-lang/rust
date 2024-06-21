@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Dst` in this scope
+error[E0412]: cannot find type `Dst`
   --> $DIR/unknown_dst.rs:18:36
    |
 LL |     assert::is_transmutable::<Src, Dst>();

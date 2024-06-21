@@ -1,4 +1,4 @@
-error[E0422]: cannot find struct, variant or union type `Oops` in this scope
+error[E0422]: cannot find struct, variant or union type `Oops`
   --> $DIR/unresolved-struct-with-fru.rs:9:18
    |
 LL |         let s2 = Oops { a: 2, ..s1 };

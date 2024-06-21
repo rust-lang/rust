@@ -10,7 +10,7 @@ error: malformed loop label
 LL |     d: for _ in 0..1 {
    |     ^ help: use the correct loop label format: `'d`
 
-error[E0425]: cannot find value `b` in this scope
+error[E0425]: cannot find value `b`
   --> $DIR/label_misspelled_2.rs:8:15
    |
 LL |     'b: for _ in 0..1 {
@@ -21,7 +21,7 @@ LL |         break b;
    |               not found in this scope
    |               help: use the similarly named label: `'b`
 
-error[E0425]: cannot find value `d` in this scope
+error[E0425]: cannot find value `d`
   --> $DIR/label_misspelled_2.rs:14:15
    |
 LL |     d: for _ in 0..1 {

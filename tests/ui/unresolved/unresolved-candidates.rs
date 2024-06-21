@@ -7,7 +7,7 @@ mod b {
 }
 
 mod c {
-    impl Trait for () {} //~ ERROR cannot find trait `Trait` in this scope
+    impl Trait for () {} //~ ERROR cannot find trait `Trait`
 }
 
 fn main() {}

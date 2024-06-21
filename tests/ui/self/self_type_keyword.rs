@@ -19,7 +19,7 @@ pub fn main() {
         ref mut Self => (),
         //~^ ERROR expected identifier, found keyword `Self`
         Self!() => (),
-        //~^ ERROR cannot find macro `Self` in this scope
+        //~^ ERROR cannot find macro `Self`
         Foo { Self } => (),
         //~^ ERROR expected identifier, found keyword `Self`
         //~| ERROR mismatched types

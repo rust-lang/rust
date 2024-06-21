@@ -4,7 +4,7 @@ use std::ops::Deref;
 
 pub trait Tr {
     fn w() -> impl Deref<Target = Missing<impl Sized>>;
-    //~^ ERROR cannot find type `Missing` in this scope
+    //~^ ERROR cannot find type `Missing`
 }
 
 impl Tr for () {

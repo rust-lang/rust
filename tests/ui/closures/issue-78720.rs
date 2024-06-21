@@ -11,7 +11,7 @@ trait FilterBase2 {
 
 struct Map2<Segment2> {
     _func: F,
-    //~^ ERROR cannot find type `F` in this scope
+    //~^ ERROR cannot find type `F`
 }
 
 impl<F> FilterBase2 for F {}

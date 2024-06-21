@@ -9,10 +9,10 @@ mod inner {
     }
 
     fn bare_global(_: ::nonexistant) {
-        //~^ ERROR cannot find type `nonexistant` in the crate root
+        //~^ ERROR cannot find type `nonexistant`
     }
     fn bare_crate(_: crate::nonexistant) {
-        //~^ ERROR cannot find type `nonexistant` in the crate root
+        //~^ ERROR cannot find type `nonexistant`
     }
 }
 

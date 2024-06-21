@@ -3,7 +3,7 @@ mod foo {
     struct S1(pub(in foo) (), pub(T), pub(crate) (), pub(((), T)));
     struct S2(pub((foo)) ());
     //~^ ERROR expected one of `)` or `,`, found `(`
-    //~| ERROR cannot find type `foo` in this scope
+    //~| ERROR cannot find type `foo`
 }
 
 fn main() {}

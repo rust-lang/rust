@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `cx` in this scope
+error[E0425]: cannot find value `cx`
   --> $DIR/unresolved_static_type_field.rs:9:11
    |
 LL |     cx: bool,

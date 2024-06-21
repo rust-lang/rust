@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `as_str` in this scope
+error[E0412]: cannot find type `as_str`
   --> $DIR/mir-build-2021-closure-capture-ice-110453-2.rs:8:47
    |
 LL | pub fn dup(f: impl Fn(i32) -> i32) -> impl Fn(as_str) -> i32 {

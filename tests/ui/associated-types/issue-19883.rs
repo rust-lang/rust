@@ -7,7 +7,7 @@ trait From<Src> {
 trait To: Sized {
     fn to<Dst: From<Self>>(self) ->
         <Dst as From<Self>>::Dst
-        //~^ ERROR cannot find associated type `Dst` in trait `From`
+        //~^ ERROR cannot find associated type `Dst`
     {
         From::from(self)
     }

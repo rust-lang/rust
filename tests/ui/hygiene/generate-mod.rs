@@ -16,8 +16,8 @@ macro genmod_transparent() {
     type A = FromOutside;
     struct Outer;
     mod inner {
-        type A = FromOutside; //~ ERROR cannot find type `FromOutside` in this scope
-        type Inner = Outer; //~ ERROR cannot find type `Outer` in this scope
+        type A = FromOutside; //~ ERROR cannot find type `FromOutside`
+        type Inner = Outer; //~ ERROR cannot find type `Outer`
     }
 }
 
@@ -25,15 +25,15 @@ macro_rules! genmod_legacy { () => {
     type A = FromOutside;
     struct Outer;
     mod inner {
-        type A = FromOutside; //~ ERROR cannot find type `FromOutside` in this scope
-        type Inner = Outer; //~ ERROR cannot find type `Outer` in this scope
+        type A = FromOutside; //~ ERROR cannot find type `FromOutside`
+        type Inner = Outer; //~ ERROR cannot find type `Outer`
     }
 }}
 
 fn check() {
     struct FromOutside;
-    genmod!(FromOutside, Outer); //~ ERROR cannot find type `FromOutside` in this scope
-                                 //~| ERROR cannot find type `Outer` in this scope
+    genmod!(FromOutside, Outer); //~ ERROR cannot find type `FromOutside`
+                                 //~| ERROR cannot find type `Outer`
 }
 
 fn check_transparent() {

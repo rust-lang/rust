@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Path` in this scope
+error[E0412]: cannot find type `Path`
   --> $DIR/use_suggestion_placement.rs:18:16
    |
 LL |     type Bar = Path;
@@ -9,7 +9,7 @@ help: consider importing this struct
 LL +     use std::path::Path;
    |
 
-error[E0425]: cannot find value `A` in this scope
+error[E0425]: cannot find value `A`
   --> $DIR/use_suggestion_placement.rs:23:13
    |
 LL |     let _ = A;
@@ -20,7 +20,7 @@ help: consider importing this constant
 LL + use m::A;
    |
 
-error[E0412]: cannot find type `HashMap` in this scope
+error[E0412]: cannot find type `HashMap`
   --> $DIR/use_suggestion_placement.rs:28:23
    |
 LL |     type Dict<K, V> = HashMap<K, V>;

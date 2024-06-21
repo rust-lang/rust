@@ -29,11 +29,11 @@ impl Trait for S {
     //~| ERROR expected method or associated constant, found associated type `Trait::Type`
     reuse <F as Trait>::baz;
     //~^ ERROR method `baz` is not a member of trait `Trait`
-    //~| ERROR cannot find method or associated constant `baz` in trait `Trait`
+    //~| ERROR cannot find method or associated constant `baz`
     reuse <F as Trait>::bar;
 
     reuse foo { &self.0 }
-    //~^ ERROR cannot find function `foo` in this scope
+    //~^ ERROR cannot find function `foo`
 }
 
 mod prefix {}

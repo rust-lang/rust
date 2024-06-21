@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `n` in this scope
+error[E0412]: cannot find type `n`
   --> $DIR/issue-90871.rs:4:22
    |
 LL |     type_ascribe!(2, n([u8; || 1]))

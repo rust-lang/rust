@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Foo` in this scope
+error[E0412]: cannot find type `Foo`
   --> $DIR/normalization-of-unknown-type.rs:24:5
    |
 LL |     Foo: Filter,

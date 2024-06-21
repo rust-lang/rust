@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `error` in this scope
+error[E0425]: cannot find value `error`
   --> $DIR/cast-errors-issue-43825.rs:2:17
    |
 LL |     let error = error;

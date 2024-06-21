@@ -6,6 +6,6 @@
 #![crate_type="lib"]
 
 pub fn dup(f: impl Fn(i32) -> i32) -> impl Fn(as_str) -> i32 {
-//~^ ERROR cannot find type `as_str` in this scope
+//~^ ERROR cannot find type `as_str`
     move |a| f(a * 2)
 }

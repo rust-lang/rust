@@ -1,34 +1,34 @@
-error[E0425]: cannot find value `z` in this scope
+error[E0425]: cannot find value `z`
   --> $DIR/fn-to-method-deeply-nested.rs:8:9
    |
 LL |         z????????????????????????????????????????????????????????????????????????????????????????
    |         ^ not found in this scope
 
-error[E0425]: cannot find function `e` in this scope
+error[E0425]: cannot find function `e`
   --> $DIR/fn-to-method-deeply-nested.rs:2:13
    |
 LL |     a(b(c(d(e(
    |             ^ not found in this scope
 
-error[E0425]: cannot find function `d` in this scope
+error[E0425]: cannot find function `d`
   --> $DIR/fn-to-method-deeply-nested.rs:2:11
    |
 LL |     a(b(c(d(e(
    |           ^ not found in this scope
 
-error[E0425]: cannot find function `c` in this scope
+error[E0425]: cannot find function `c`
   --> $DIR/fn-to-method-deeply-nested.rs:2:9
    |
 LL |     a(b(c(d(e(
    |         ^ not found in this scope
 
-error[E0425]: cannot find function `b` in this scope
+error[E0425]: cannot find function `b`
   --> $DIR/fn-to-method-deeply-nested.rs:2:7
    |
 LL |     a(b(c(d(e(
    |       ^ not found in this scope
 
-error[E0425]: cannot find function `a` in this scope
+error[E0425]: cannot find function `a`
   --> $DIR/fn-to-method-deeply-nested.rs:2:5
    |
 LL |     a(b(c(d(e(

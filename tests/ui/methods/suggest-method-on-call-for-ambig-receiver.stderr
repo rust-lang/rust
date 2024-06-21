@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `consume` in this scope
+error[E0425]: cannot find function `consume`
   --> $DIR/suggest-method-on-call-for-ambig-receiver.rs:10:13
    |
 LL |             consume(right);

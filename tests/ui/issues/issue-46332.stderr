@@ -1,4 +1,4 @@
-error[E0422]: cannot find struct, variant or union type `TyUInt` in this scope
+error[E0422]: cannot find struct, variant or union type `TyUInt`
   --> $DIR/issue-46332.rs:9:5
    |
 LL | struct TyUint {}

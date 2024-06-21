@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `rust` in this scope
+error[E0425]: cannot find value `rust`
   --> $DIR/track.rs:LL:CC
    |
 LL |     break rust

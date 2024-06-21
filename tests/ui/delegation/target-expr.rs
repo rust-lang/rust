@@ -36,5 +36,5 @@ fn main() {
     self.0;
     //~^ ERROR expected value, found module `self`
     let z = x;
-    //~^ ERROR cannot find value `x` in this scope
+    //~^ ERROR cannot find value `x`
 }

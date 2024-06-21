@@ -347,11 +347,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     } else {
                         suggestion
                     };
-                (format!("not found in {mod_str}"), override_suggestion)
+                (format!("not found in {mod_prefix}{mod_str}"), override_suggestion)
             };
 
             BaseError {
-                msg: format!("cannot find {expected} `{item_str}` in {mod_prefix}{mod_str}"),
+                msg: format!("cannot find {expected} `{item_str}`"),
                 fallback_label,
                 span: item_span,
                 span_label,

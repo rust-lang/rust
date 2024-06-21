@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `T` in this scope
+error[E0412]: cannot find type `T`
   --> $DIR/autoderef-with-param-env-error.rs:3:5
    |
 LL |     T: Send,

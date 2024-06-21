@@ -1,6 +1,6 @@
 struct Foo {
     val: MissingType,
-    //~^ ERROR cannot find type `MissingType` in this scope
+    //~^ ERROR cannot find type `MissingType`
 }
 
 fn main() {

@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `debug` in this scope
+error[E0425]: cannot find value `debug`
   --> $DIR/bad-expr-path2.rs:6:9
    |
 LL |     log(debug, m1::arguments);
@@ -19,7 +19,7 @@ LL | fn main(arguments: Vec<String>) {
    = note: expected signature `fn()`
               found signature `fn(Vec<String>)`
 
-error[E0425]: cannot find function `log` in this scope
+error[E0425]: cannot find function `log`
   --> $DIR/bad-expr-path2.rs:6:5
    |
 LL |     log(debug, m1::arguments);

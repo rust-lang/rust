@@ -7,7 +7,7 @@ fn main() {
 
 fn banana(a: <T<const N: usize>>::BAR) {}
 //~^ ERROR unexpected `const` parameter declaration
-//~| ERROR cannot find type `T` in this scope
+//~| ERROR cannot find type `T`
 fn chaenomeles() {
     path::path::Struct::<const N: usize>()
     //~^ ERROR unexpected `const` parameter declaration

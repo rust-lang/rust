@@ -7,5 +7,5 @@ struct TyInt {}
 
 fn main() {
     TyUInt {};
-    //~^ ERROR cannot find struct, variant or union type `TyUInt` in this scope
+    //~^ ERROR cannot find struct, variant or union type `TyUInt`
 }

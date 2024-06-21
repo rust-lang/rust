@@ -16,13 +16,13 @@ LL |         reuse F::foo4 { &self.0 }
    |         |        help: there is an associated function with a similar name: `foo1`
    |         not a member of trait `Trait`
 
-error[E0425]: cannot find function `foo4` in `S`
+error[E0425]: cannot find function `foo4`
   --> $DIR/explicit-paths.rs:29:14
    |
 LL |     reuse S::foo4;
    |              ^^^^ not found in `S`
 
-error[E0425]: cannot find function `foo4` in `F`
+error[E0425]: cannot find function `foo4`
   --> $DIR/explicit-paths.rs:40:18
    |
 LL |         reuse F::foo4 { &self.0 }
@@ -34,7 +34,7 @@ note: function `fn_to_other::foo4` exists but is inaccessible
 LL |     reuse S::foo4;
    |     ^^^^^^^^^^^^^^ not accessible
 
-error[E0425]: cannot find function `foo4` in `F`
+error[E0425]: cannot find function `foo4`
   --> $DIR/explicit-paths.rs:53:18
    |
 LL |         reuse F::foo4 { &self.0 }
@@ -46,7 +46,7 @@ note: function `fn_to_other::foo4` exists but is inaccessible
 LL |     reuse S::foo4;
    |     ^^^^^^^^^^^^^^ not accessible
 
-error[E0425]: cannot find function `foo4` in `F`
+error[E0425]: cannot find function `foo4`
   --> $DIR/explicit-paths.rs:67:18
    |
 LL |         reuse F::foo4 { &F }

@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `A` in this scope
+error[E0412]: cannot find type `A`
   --> $DIR/associated-types-eq-1.rs:10:12
    |
 LL | fn foo2<I: Foo>(x: I) {

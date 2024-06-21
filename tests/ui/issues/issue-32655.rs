@@ -1,6 +1,6 @@
 macro_rules! foo (
     () => (
-        #[derive_Clone] //~ ERROR cannot find attribute `derive_Clone` in this scope
+        #[derive_Clone] //~ ERROR cannot find attribute `derive_Clone`
         struct T;
     );
 );
@@ -12,7 +12,7 @@ macro_rules! bar (
 foo!();
 
 bar!(
-    #[derive_Clone] //~ ERROR cannot find attribute `derive_Clone` in this scope
+    #[derive_Clone] //~ ERROR cannot find attribute `derive_Clone`
     struct S;
 );
 

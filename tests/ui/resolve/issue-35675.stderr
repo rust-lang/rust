@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Apple` in this scope
+error[E0412]: cannot find type `Apple`
   --> $DIR/issue-35675.rs:7:29
    |
 LL | fn should_return_fruit() -> Apple {
@@ -9,7 +9,7 @@ help: there is an enum variant `Fruit::Apple`; try using the variant's enum
 LL | fn should_return_fruit() -> Fruit {
    |                             ~~~~~
 
-error[E0425]: cannot find function, tuple struct or tuple variant `Apple` in this scope
+error[E0425]: cannot find function, tuple struct or tuple variant `Apple`
   --> $DIR/issue-35675.rs:9:5
    |
 LL |     Apple(5)
@@ -29,7 +29,7 @@ LL | fn should_return_fruit_too() -> Fruit::Apple {
    |                                 not a type
    |                                 help: try using the variant's enum: `Fruit`
 
-error[E0425]: cannot find function, tuple struct or tuple variant `Apple` in this scope
+error[E0425]: cannot find function, tuple struct or tuple variant `Apple`
   --> $DIR/issue-35675.rs:15:5
    |
 LL |     Apple(5)
@@ -49,7 +49,7 @@ LL | fn foo() -> Ok {
    |             not a type
    |             help: try using the variant's enum: `std::result::Result`
 
-error[E0412]: cannot find type `Variant3` in this scope
+error[E0412]: cannot find type `Variant3`
   --> $DIR/issue-35675.rs:24:13
    |
 LL | fn bar() -> Variant3 {

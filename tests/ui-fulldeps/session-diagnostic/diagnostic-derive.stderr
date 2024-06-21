@@ -596,13 +596,13 @@ error: cannot find attribute `multipart_suggestion` in this scope
 LL |     #[multipart_suggestion(no_crate_suggestion)]
    |       ^^^^^^^^^^^^^^^^^^^^
 
-error[E0425]: cannot find value `nonsense` in module `crate::fluent_generated`
+error[E0425]: cannot find value `nonsense`
   --> $DIR/diagnostic-derive.rs:75:8
    |
 LL | #[diag(nonsense, code = E0123)]
-   |        ^^^^^^^^ not found in `crate::fluent_generated`
+   |        ^^^^^^^^ not found in module `crate::fluent_generated`
 
-error[E0425]: cannot find value `__code_34` in this scope
+error[E0425]: cannot find value `__code_34`
   --> $DIR/diagnostic-derive.rs:808:10
    |
 LL | #[derive(Diagnostic)]

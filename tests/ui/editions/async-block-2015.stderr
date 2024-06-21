@@ -29,7 +29,7 @@ LL |         42
    = help: pass `--edition 2021` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0422]: cannot find struct, variant or union type `async` in this scope
+error[E0422]: cannot find struct, variant or union type `async`
   --> $DIR/async-block-2015.rs:7:13
    |
 LL |     let x = async {};

@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `this` in this scope
+error[E0425]: cannot find value `this`
   --> $DIR/issue-5099.rs:3:9
    |
 LL |         this.a
@@ -13,7 +13,7 @@ help: if you meant to use `self`, you are also missing a `self` receiver argumen
 LL |     fn a(&self) -> A {
    |          +++++
 
-error[E0425]: cannot find value `this` in this scope
+error[E0425]: cannot find value `this`
   --> $DIR/issue-5099.rs:6:9
    |
 LL |         this.b(x);
@@ -28,7 +28,7 @@ help: if you meant to use `self`, you are also missing a `self` receiver argumen
 LL |     fn b(&self, x: i32) {
    |          ++++++
 
-error[E0425]: cannot find value `this` in this scope
+error[E0425]: cannot find value `this`
   --> $DIR/issue-5099.rs:9:20
    |
 LL |         let _ = || this.a;

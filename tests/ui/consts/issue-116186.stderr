@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `N` in this scope
+error[E0425]: cannot find value `N`
   --> $DIR/issue-116186.rs:4:28
    |
 LL | fn something(path: [usize; N]) -> impl Clone {

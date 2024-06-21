@@ -83,7 +83,7 @@ help: there is an associated function `full_of_✨` with a similar name
 LL |     👀::full_of_✨()
    |         ~~~~~~~~~~
 
-error[E0425]: cannot find function `i_like_to_😄_a_lot` in this scope
+error[E0425]: cannot find function `i_like_to_😄_a_lot`
   --> $DIR/emoji-identifiers.rs:13:13
    |
 LL | fn i_like_to_😅_a_lot() -> 👀 {

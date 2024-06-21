@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `C` in this scope
+error[E0412]: cannot find type `C`
   --> $DIR/glob-conflict-cross-crate-2.rs:8:13
    |
 LL |     let _a: C = 1;

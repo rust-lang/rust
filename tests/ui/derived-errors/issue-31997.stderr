@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `bar` in this scope
+error[E0425]: cannot find function `bar`
   --> $DIR/issue-31997.rs:14:21
    |
 LL |     try!(closure(|| bar(core::ptr::null_mut())));

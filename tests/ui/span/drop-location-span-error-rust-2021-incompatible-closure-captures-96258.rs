@@ -8,7 +8,7 @@ impl Numberer {
     pub(crate) async fn new(
     //~^ ERROR `async fn` is not permitted in Rust 2015
         interval: Duration,
-        //~^ ERROR cannot find type `Duration` in this scope
+        //~^ ERROR cannot find type `Duration`
     ) -> Numberer {
         Numberer {}
     }

@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `a` in this scope
+error[E0425]: cannot find value `a`
   --> $DIR/expr_before_ident_pat.rs:10:12
    |
 LL |     funny!(a, a);

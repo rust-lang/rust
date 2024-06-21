@@ -1,16 +1,16 @@
-error[E0425]: cannot find value `p` in this scope
+error[E0425]: cannot find value `p`
   --> $DIR/issue-93835.rs:4:19
    |
 LL |     type_ascribe!(p, a<p:p<e=6>>);
    |                   ^ not found in this scope
 
-error[E0412]: cannot find type `a` in this scope
+error[E0412]: cannot find type `a`
   --> $DIR/issue-93835.rs:4:22
    |
 LL |     type_ascribe!(p, a<p:p<e=6>>);
    |                      ^ not found in this scope
 
-error[E0405]: cannot find trait `p` in this scope
+error[E0405]: cannot find trait `p`
   --> $DIR/issue-93835.rs:4:26
    |
 LL |     type_ascribe!(p, a<p:p<e=6>>);

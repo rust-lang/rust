@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `missing` in this scope
+error[E0425]: cannot find function `missing`
   --> $DIR/no-fallback-multiple-impls.rs:12:5
    |
 LL |     missing();

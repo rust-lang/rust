@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `A_CONST` in this scope
+error[E0425]: cannot find value `A_CONST`
   --> $DIR/assoc-const-without-self.rs:7:9
    |
 LL |         A_CONST

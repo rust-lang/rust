@@ -10,7 +10,7 @@ fn foo() -> String {
 fn bar() -> String {
     #[attr]
     [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>() //~ ERROR expected `;`, found `#`
-    #[attr] //~ ERROR cannot find attribute `attr` in this scope
+    #[attr] //~ ERROR cannot find attribute `attr`
     String::new()
 }
 
