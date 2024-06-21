@@ -2,10 +2,10 @@
 //@[next] compile-flags: -Znext-solver
 //@[next] failure-status: 101
 //@[next] known-bug: unknown
-//@[next] normalize-stderr-test "note: .*\n\n" -> ""
-//@[next] normalize-stderr-test "thread 'rustc' panicked.*\n.*\n" -> ""
-//@[next] normalize-stderr-test "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "
-//@[next] normalize-stderr-test "delayed at .*" -> ""
+//@[next] normalize-stderr-test: "note: .*\n\n" -> ""
+//@[next] normalize-stderr-test: "thread 'rustc' panicked.*\n.*\n" -> ""
+//@[next] normalize-stderr-test: "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "
+//@[next] normalize-stderr-test: "delayed at .*" -> ""
 //@[next] rustc-env:RUST_BACKTRACE=0
 //@ check-pass
 

@@ -3,7 +3,7 @@
 //@ check-pass
 //@ compile-flags:-Z unstable-options --test --no-run --test-args=--test-threads=1
 //@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
-//@ normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ normalize-stdout-test: "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 /// ```
 /// let a = true;

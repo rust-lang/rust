@@ -1,7 +1,7 @@
 //@ check-fail
 // Tests error conditions for specifying diagnostics using #[derive(Diagnostic)]
-//@ normalize-stderr-test "the following other types implement trait `IntoDiagArg`:(?:.*\n){0,9}\s+and \d+ others" -> "normalized in stderr"
-//@ normalize-stderr-test "(COMPILER_DIR/.*\.rs):[0-9]+:[0-9]+" -> "$1:LL:CC"
+//@ normalize-stderr-test: "the following other types implement trait `IntoDiagArg`:(?:.*\n){0,9}\s+and \d+ others" -> "normalized in stderr"
+//@ normalize-stderr-test: "(COMPILER_DIR/.*\.rs):[0-9]+:[0-9]+" -> "$1:LL:CC"
 
 // The proc_macro2 crate handles spans differently when on beta/stable release rather than nightly,
 // changing the output of this test. Since Diagnostic is strictly internal to the compiler
