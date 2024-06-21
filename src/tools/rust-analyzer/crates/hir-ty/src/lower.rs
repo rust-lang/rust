@@ -375,7 +375,7 @@ impl<'a> TyLoweringContext<'a> {
                         counter.set(idx + count_impl_traits(type_ref) as u16);
                         let (
                             _parent_params,
-                            self_params,
+                            self_param,
                             type_params,
                             const_params,
                             _impl_trait_params,
@@ -386,7 +386,7 @@ impl<'a> TyLoweringContext<'a> {
                             .provenance_split();
                         TyKind::BoundVar(BoundVar::new(
                             self.in_binders,
-                            idx as usize + self_params + type_params + const_params,
+                            idx as usize + self_param as usize + type_params + const_params,
                         ))
                         .intern(Interner)
                     }
@@ -817,14 +817,14 @@ impl<'a> TyLoweringContext<'a> {
         let def_generics = generics(self.db.upcast(), def);
         let (
             parent_params,
-            self_params,
+            self_param,
             type_params,
             const_params,
             impl_trait_params,
             lifetime_params,
         ) = def_generics.provenance_split();
         let item_len =
-            self_params + type_params + const_params + impl_trait_params + lifetime_params;
+            self_param as usize + type_params + const_params + impl_trait_params + lifetime_params;
         let total_len = parent_params + item_len;
 
         let ty_error = TyKind::Error.intern(Interner).cast(Interner);
@@ -832,18 +832,16 @@ impl<'a> TyLoweringContext<'a> {
         let mut def_generic_iter = def_generics.iter_id();
 
         let fill_self_params = || {
-            for x in explicit_self_ty
-                .into_iter()
-                .map(|x| x.cast(Interner))
-                .chain(iter::repeat(ty_error.clone()))
-                .take(self_params)
-            {
+            if self_param {
+                let self_ty =
+                    explicit_self_ty.map(|x| x.cast(Interner)).unwrap_or_else(|| ty_error.clone());
+
                 if let Some(id) = def_generic_iter.next() {
                     assert!(matches!(
                         id,
                         GenericParamId::TypeParamId(_) | GenericParamId::LifetimeParamId(_)
                     ));
-                    substs.push(x);
+                    substs.push(self_ty);
                 }
             }
         };
@@ -854,11 +852,11 @@ impl<'a> TyLoweringContext<'a> {
                 fill_self_params();
             }
             let expected_num = if generic_args.has_self_type {
-                self_params + type_params + const_params
+                self_param as usize + type_params + const_params
             } else {
                 type_params + const_params
             };
-            let skip = if generic_args.has_self_type && self_params == 0 { 1 } else { 0 };
+            let skip = if generic_args.has_self_type && !self_param { 1 } else { 0 };
             // if args are provided, it should be all of them, but we can't rely on that
             for arg in generic_args
                 .args
@@ -868,7 +866,7 @@ impl<'a> TyLoweringContext<'a> {
                 .take(expected_num)
             {
                 if let Some(id) = def_generic_iter.next() {
-                    if let Some(x) = generic_arg_to_chalk(
+                    let arg = generic_arg_to_chalk(
                         self.db,
                         id,
                         arg,
@@ -876,13 +874,9 @@ impl<'a> TyLoweringContext<'a> {
                         |_, type_ref| self.lower_ty(type_ref),
                         |_, const_ref, ty| self.lower_const(const_ref, ty),
                         |_, lifetime_ref| self.lower_lifetime(lifetime_ref),
-                    ) {
-                        had_explicit_args = true;
-                        substs.push(x);
-                    } else {
-                        // we just filtered them out
-                        never!("Unexpected lifetime argument");
-                    }
+                    );
+                    had_explicit_args = true;
+                    substs.push(arg);
                 }
             }
 
@@ -895,7 +889,7 @@ impl<'a> TyLoweringContext<'a> {
                 // Taking into the fact that def_generic_iter will always have lifetimes at the end
                 // Should have some test cases tho to test this behaviour more properly
                 if let Some(id) = def_generic_iter.next() {
-                    if let Some(x) = generic_arg_to_chalk(
+                    let arg = generic_arg_to_chalk(
                         self.db,
                         id,
                         arg,
@@ -903,13 +897,9 @@ impl<'a> TyLoweringContext<'a> {
                         |_, type_ref| self.lower_ty(type_ref),
                         |_, const_ref, ty| self.lower_const(const_ref, ty),
                         |_, lifetime_ref| self.lower_lifetime(lifetime_ref),
-                    ) {
-                        had_explicit_args = true;
-                        substs.push(x);
-                    } else {
-                        // Never return a None explicitly
-                        never!("Unexpected None by generic_arg_to_chalk");
-                    }
+                    );
+                    had_explicit_args = true;
+                    substs.push(arg);
                 }
             }
         } else {
@@ -2170,7 +2160,6 @@ pub(crate) fn lower_to_chalk_mutability(m: hir_def::type_ref::Mutability) -> Mut
 /// Checks if the provided generic arg matches its expected kind, then lower them via
 /// provided closures. Use unknown if there was kind mismatch.
 ///
-/// Returns `Some` of the lowered generic arg. `None` if the provided arg is a lifetime.
 pub(crate) fn generic_arg_to_chalk<'a, T>(
     db: &dyn HirDatabase,
     kind_id: GenericParamId,
@@ -2179,7 +2168,7 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
     for_type: impl FnOnce(&mut T, &TypeRef) -> Ty + 'a,
     for_const: impl FnOnce(&mut T, &ConstRef, Ty) -> Const + 'a,
     for_lifetime: impl FnOnce(&mut T, &LifetimeRef) -> Lifetime + 'a,
-) -> Option<crate::GenericArg> {
+) -> crate::GenericArg {
     let kind = match kind_id {
         GenericParamId::TypeParamId(_) => ParamKind::Type,
         GenericParamId::ConstParamId(id) => {
@@ -2188,7 +2177,7 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
         }
         GenericParamId::LifetimeParamId(_) => ParamKind::Lifetime,
     };
-    Some(match (arg, kind) {
+    match (arg, kind) {
         (GenericArg::Type(type_ref), ParamKind::Type) => for_type(this, type_ref).cast(Interner),
         (GenericArg::Const(c), ParamKind::Const(c_ty)) => for_const(this, c, c_ty).cast(Interner),
         (GenericArg::Lifetime(lifetime_ref), ParamKind::Lifetime) => {
@@ -2201,11 +2190,12 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
             // as types. Maybe here is not the best place to do it, but
             // it works.
             if let TypeRef::Path(p) = t {
-                let p = p.mod_path()?;
-                if p.kind == PathKind::Plain {
-                    if let [n] = p.segments() {
-                        let c = ConstRef::Path(n.clone());
-                        return Some(for_const(this, &c, c_ty).cast(Interner));
+                if let Some(p) = p.mod_path() {
+                    if p.kind == PathKind::Plain {
+                        if let [n] = p.segments() {
+                            let c = ConstRef::Path(n.clone());
+                            return for_const(this, &c, c_ty).cast(Interner);
+                        }
                     }
                 }
             }
@@ -2214,7 +2204,7 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
         (GenericArg::Lifetime(_), ParamKind::Const(c_ty)) => unknown_const_as_generic(c_ty),
         (GenericArg::Type(_), ParamKind::Lifetime) => error_lifetime().cast(Interner),
         (GenericArg::Const(_), ParamKind::Lifetime) => error_lifetime().cast(Interner),
-    })
+    }
 }
 
 pub(crate) fn const_or_path_to_chalk(

@@ -53,6 +53,10 @@ impl Generics {
         self.iter().map(|(id, _)| id)
     }
 
+    pub(crate) fn iter_self_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
+        self.iter_self().map(|(id, _)| id)
+    }
+
     pub(crate) fn iter_self_type_or_consts(
         &self,
     ) -> impl DoubleEndedIterator<Item = (LocalTypeOrConstParamId, &TypeOrConstParamData)> {
@@ -99,8 +103,8 @@ impl Generics {
     }
 
     /// (parent total, self param, type params, const params, impl trait list, lifetimes)
-    pub(crate) fn provenance_split(&self) -> (usize, usize, usize, usize, usize, usize) {
-        let mut self_params = 0;
+    pub(crate) fn provenance_split(&self) -> (usize, bool, usize, usize, usize, usize) {
+        let mut self_param = false;
         let mut type_params = 0;
         let mut impl_trait_params = 0;
         let mut const_params = 0;
@@ -108,7 +112,7 @@ impl Generics {
         self.params.iter_type_or_consts().for_each(|(_, data)| match data {
             TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                 TypeParamProvenance::TypeParamList => type_params += 1,
-                TypeParamProvenance::TraitSelf => self_params += 1,
+                TypeParamProvenance::TraitSelf => self_param |= true,
                 TypeParamProvenance::ArgumentImplTrait => impl_trait_params += 1,
             },
             TypeOrConstParamData::ConstParamData(_) => const_params += 1,
@@ -117,7 +121,7 @@ impl Generics {
         self.params.iter_lt().for_each(|(_, _)| lifetime_params += 1);
 
         let parent_len = self.parent_generics().map_or(0, Generics::len);
-        (parent_len, self_params, type_params, const_params, impl_trait_params, lifetime_params)
+        (parent_len, self_param, type_params, const_params, impl_trait_params, lifetime_params)
     }
 
     pub(crate) fn type_or_const_param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {

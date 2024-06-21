@@ -989,7 +989,7 @@ impl HirDisplay for Ty {
 
                 if parameters.len(Interner) > 0 {
                     let generics = generics(db.upcast(), def.into());
-                    let (parent_len, self_, type_, const_, impl_, lifetime) =
+                    let (parent_len, self_param, type_, const_, impl_, lifetime) =
                         generics.provenance_split();
                     let parameters = parameters.as_slice(Interner);
                     // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
@@ -997,7 +997,7 @@ impl HirDisplay for Ty {
                         // `parameters` are in the order of fn's params (including impl traits), fn's lifetimes
                         // parent's params (those from enclosing impl or trait, if any).
                         let (fn_params, other) =
-                            parameters.split_at(self_ + type_ + const_ + lifetime);
+                            parameters.split_at(self_param as usize + type_ + const_ + lifetime);
                         let (_impl, parent_params) = other.split_at(impl_);
                         debug_assert_eq!(parent_params.len(), parent_len);
 
