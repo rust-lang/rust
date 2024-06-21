@@ -1409,7 +1409,8 @@ impl HumanEmitter {
                 buffer.append(0, level.to_str(), Style::MainHeaderMsg);
                 buffer.append(0, ": ", Style::NoStyle);
             }
-            let printed_lines = self.msgs_to_buffer(&mut buffer, msgs, args, max_line_num_len, "note", None);
+            let printed_lines =
+                self.msgs_to_buffer(&mut buffer, msgs, args, max_line_num_len, "note", None);
             if is_cont {
                 // There's another note after this one, associated to the subwindow above.
                 // We write additional vertical lines to join them:
@@ -1423,11 +1424,7 @@ impl HumanEmitter {
                 //   ╰ note: foo
                 //           bar
                 for i in 1..=printed_lines {
-                    self.draw_col_separator_no_space(
-                        &mut buffer,
-                        i,
-                        max_line_num_len + 1,
-                    );
+                    self.draw_col_separator_no_space(&mut buffer, i, max_line_num_len + 1);
                 }
             }
         } else {

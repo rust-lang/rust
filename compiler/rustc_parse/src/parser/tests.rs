@@ -1676,13 +1676,11 @@ fn foo() {
   a { b { c } d }
 }
 "#,
-        vec![
-            SpanLabel {
-                start: Position { string: "a", count: 1 },
-                end: Position { string: "d", count: 1 },
-                label: "`a` is a good letter",
-            },
-        ],
+        vec![SpanLabel {
+            start: Position { string: "a", count: 1 },
+            end: Position { string: "d", count: 1 },
+            label: "`a` is a good letter",
+        }],
         vec![(None, "foo\nbar"), (None, "foo\nbar")],
         r#"
 error: foo
