@@ -10,25 +10,7 @@ error[E0080]: evaluation of constant value failed
 LL |     const _A: bool = TypeId::of::<u8>() < TypeId::of::<u16>();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling non-const function `<TypeId as PartialOrd>::lt`
 
-error[E0308]: mismatched types
-  --> $DIR/const_cmp_type_id.rs:8:13
-   |
-LL |     assert!(TypeId::of::<u8>() == TypeId::of::<u8>());
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `host`, found `true`
-   |
-   = note: expected constant `host`
-              found constant `true`
+error: aborting due to 2 previous errors
 
-error[E0308]: mismatched types
-  --> $DIR/const_cmp_type_id.rs:9:13
-   |
-LL |     assert!(TypeId::of::<()>() != TypeId::of::<u8>());
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `host`, found `true`
-   |
-   = note: expected constant `host`
-              found constant `true`
-
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0080, E0131, E0308.
+Some errors have detailed explanations: E0080, E0131.
 For more information about an error, try `rustc --explain E0080`.

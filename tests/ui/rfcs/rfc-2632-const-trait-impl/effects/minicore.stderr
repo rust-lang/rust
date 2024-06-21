@@ -1,0 +1,9 @@
+error[E0094]: intrinsic has wrong number of const parameters: found 1, expected 0
+  --> $DIR/minicore.rs:517:27
+   |
+LL | const fn const_eval_select<ARG: Tuple, F, G, RET>(
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^ expected 0 const parameters
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0094`.

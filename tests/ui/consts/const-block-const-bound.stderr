@@ -1,3 +1,9 @@
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-block-const-bound.rs:8:22
+   |
+LL | const fn f<T: ~const Destruct>(x: T) {}
+   |                      ^^^^^^^^
+
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
   --> $DIR/const-block-const-bound.rs:8:32
    |
@@ -6,6 +12,6 @@ LL | const fn f<T: ~const Destruct>(x: T) {}
    |                                |
    |                                the destructor for this type cannot be evaluated in constant functions
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0493`.
