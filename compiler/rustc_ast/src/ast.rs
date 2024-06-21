@@ -975,7 +975,9 @@ impl UnOp {
     }
 }
 
-/// A statement
+/// A statement. No `attrs` or `tokens` fields because each `StmtKind` variant
+/// contains an AST node with those fields. (Except for `StmtKind::Empty`,
+/// which never has attrs or tokens)
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Stmt {
     pub id: NodeId,
@@ -3161,13 +3163,16 @@ pub struct Delegation {
     pub path: Path,
     pub rename: Option<Ident>,
     pub body: Option<P<Block>>,
+    /// The item was expanded from a glob delegation item.
+    pub from_glob: bool,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct DelegationMac {
     pub qself: Option<P<QSelf>>,
     pub prefix: Path,
-    pub suffixes: ThinVec<(Ident, Option<Ident>)>,
+    // Some for list delegation, and None for glob delegation.
+    pub suffixes: Option<ThinVec<(Ident, Option<Ident>)>>,
     pub body: Option<P<Block>>,
 }
 
@@ -3177,38 +3182,6 @@ pub struct StaticItem {
     pub safety: Safety,
     pub mutability: Mutability,
     pub expr: Option<P<Expr>>,
-}
-
-/// A static item in `extern` block.
-// This struct is identical to StaticItem for now but it's going to have a safety attribute.
-#[derive(Clone, Encodable, Decodable, Debug)]
-pub struct StaticForeignItem {
-    pub ty: P<Ty>,
-    pub safety: Safety,
-    pub mutability: Mutability,
-    pub expr: Option<P<Expr>>,
-}
-
-impl From<StaticItem> for StaticForeignItem {
-    fn from(static_item: StaticItem) -> StaticForeignItem {
-        StaticForeignItem {
-            ty: static_item.ty,
-            safety: static_item.safety,
-            mutability: static_item.mutability,
-            expr: static_item.expr,
-        }
-    }
-}
-
-impl From<StaticForeignItem> for StaticItem {
-    fn from(static_item: StaticForeignItem) -> StaticItem {
-        StaticItem {
-            ty: static_item.ty,
-            safety: static_item.safety,
-            mutability: static_item.mutability,
-            expr: static_item.expr,
-        }
-    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3294,7 +3267,7 @@ pub enum ItemKind {
     ///
     /// E.g. `reuse <Type as Trait>::name { target_expr_template }`.
     Delegation(Box<Delegation>),
-    /// A list delegation item (`reuse prefix::{a, b, c}`).
+    /// A list or glob delegation item (`reuse prefix::{a, b, c}`, `reuse prefix::*`).
     /// Treated similarly to a macro call and expanded early.
     DelegationMac(Box<DelegationMac>),
 }
@@ -3375,7 +3348,7 @@ pub enum AssocItemKind {
     MacCall(P<MacCall>),
     /// An associated delegation item.
     Delegation(Box<Delegation>),
-    /// An associated delegation item list.
+    /// An associated list or glob delegation item.
     DelegationMac(Box<DelegationMac>),
 }
 
@@ -3425,7 +3398,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ForeignItemKind {
     /// A foreign static item (`static FOO: u8`).
-    Static(Box<StaticForeignItem>),
+    Static(Box<StaticItem>),
     /// An foreign function.
     Fn(Box<Fn>),
     /// An foreign type.

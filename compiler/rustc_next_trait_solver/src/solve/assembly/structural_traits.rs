@@ -2,7 +2,7 @@
 //! traits, `Copy`/`Clone`.
 
 use rustc_ast_ir::{Movability, Mutability};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
@@ -304,9 +304,10 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
             let kind_ty = args.kind_ty();
             let sig = args.coroutine_closure_sig().skip_binder();
 
-            let coroutine_ty = if let Some(closure_kind) = kind_ty.to_opt_closure_kind()
-                && !args.tupled_upvars_ty().is_ty_var()
-            {
+            // FIXME: let_chains
+            let kind = kind_ty.to_opt_closure_kind();
+            let coroutine_ty = if kind.is_some() && !args.tupled_upvars_ty().is_ty_var() {
+                let closure_kind = kind.unwrap();
                 if !closure_kind.extends(goal_kind) {
                     return Err(NoSolution);
                 }
@@ -411,10 +412,11 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
             let kind_ty = args.kind_ty();
             let sig = args.coroutine_closure_sig().skip_binder();
             let mut nested = vec![];
-            let coroutine_ty = if let Some(closure_kind) = kind_ty.to_opt_closure_kind()
-                && !args.tupled_upvars_ty().is_ty_var()
-            {
-                if !closure_kind.extends(goal_kind) {
+
+            // FIXME: let_chains
+            let kind = kind_ty.to_opt_closure_kind();
+            let coroutine_ty = if kind.is_some() && !args.tupled_upvars_ty().is_ty_var() {
+                if !kind.unwrap().extends(goal_kind) {
                     return Err(NoSolution);
                 }
 
@@ -683,7 +685,7 @@ where
         );
     }
 
-    let mut replace_projection_with = FxHashMap::default();
+    let mut replace_projection_with = HashMap::default();
     for bound in object_bounds {
         if let ty::ExistentialPredicate::Projection(proj) = bound.skip_binder() {
             let proj = proj.with_self_ty(tcx, trait_ref.self_ty());
@@ -713,7 +715,7 @@ where
 struct ReplaceProjectionWith<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> {
     ecx: &'a EvalCtxt<'a, Infcx>,
     param_env: I::ParamEnv,
-    mapping: FxHashMap<I::DefId, ty::Binder<I, ty::ProjectionPredicate<I>>>,
+    mapping: HashMap<I::DefId, ty::Binder<I, ty::ProjectionPredicate<I>>>,
     nested: Vec<Goal<I, I::Predicate>>,
 }
 
@@ -725,24 +727,28 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
     }
 
     fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-        if let ty::Alias(ty::Projection, alias_ty) = ty.kind()
-            && let Some(replacement) = self.mapping.get(&alias_ty.def_id)
-        {
-            // We may have a case where our object type's projection bound is higher-ranked,
-            // but the where clauses we instantiated are not. We can solve this by instantiating
-            // the binder at the usage site.
-            let proj = self.ecx.instantiate_binder_with_infer(*replacement);
-            // FIXME: Technically this equate could be fallible...
-            self.nested.extend(
-                self.ecx
-                    .eq_and_get_goals(
-                        self.param_env,
-                        alias_ty,
-                        proj.projection_term.expect_ty(self.ecx.interner()),
-                    )
-                    .expect("expected to be able to unify goal projection with dyn's projection"),
-            );
-            proj.term.expect_ty()
+        if let ty::Alias(ty::Projection, alias_ty) = ty.kind() {
+            if let Some(replacement) = self.mapping.get(&alias_ty.def_id) {
+                // We may have a case where our object type's projection bound is higher-ranked,
+                // but the where clauses we instantiated are not. We can solve this by instantiating
+                // the binder at the usage site.
+                let proj = self.ecx.instantiate_binder_with_infer(*replacement);
+                // FIXME: Technically this equate could be fallible...
+                self.nested.extend(
+                    self.ecx
+                        .eq_and_get_goals(
+                            self.param_env,
+                            alias_ty,
+                            proj.projection_term.expect_ty(self.ecx.interner()),
+                        )
+                        .expect(
+                            "expected to be able to unify goal projection with dyn's projection",
+                        ),
+                );
+                proj.term.expect_ty()
+            } else {
+                ty.super_fold_with(self)
+            }
         } else {
             ty.super_fold_with(self)
         }

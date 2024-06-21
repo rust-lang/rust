@@ -1,4 +1,5 @@
-/// Functionality for terminators and helper types that appear in terminators.
+//! Functionality for terminators and helper types that appear in terminators.
+
 use rustc_hir::LangItem;
 use smallvec::{smallvec, SmallVec};
 

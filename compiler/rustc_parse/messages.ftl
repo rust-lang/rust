@@ -133,6 +133,8 @@ parse_dot_dot_dot_for_remaining_fields = expected field pattern, found `{$token_
 parse_dot_dot_dot_range_to_pattern_not_allowed = range-to patterns with `...` are not allowed
     .suggestion = use `..=` instead
 
+parse_dot_dot_range_attribute = attributes are not allowed on range expressions starting with `..`
+
 parse_dotdotdot = unexpected token: `...`
     .suggest_exclusive_range = use `..` for an exclusive range
     .suggest_inclusive_range = or `..=` for an inclusive range

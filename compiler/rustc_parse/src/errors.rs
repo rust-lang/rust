@@ -2699,12 +2699,13 @@ pub(crate) struct SingleColonImportPath {
 
 #[derive(Diagnostic)]
 #[diag(parse_bad_item_kind)]
-#[help]
 pub(crate) struct BadItemKind {
     #[primary_span]
     pub span: Span,
     pub descr: &'static str,
     pub ctx: &'static str,
+    #[help]
+    pub help: Option<()>,
 }
 
 #[derive(Diagnostic)]
@@ -2987,5 +2988,12 @@ pub(crate) struct AsyncImpl {
 pub(crate) struct ExprRArrowCall {
     #[primary_span]
     #[suggestion(style = "short", applicability = "machine-applicable", code = ".")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_dot_dot_range_attribute)]
+pub(crate) struct DotDotRangeAttribute {
+    #[primary_span]
     pub span: Span,
 }

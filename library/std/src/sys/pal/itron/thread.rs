@@ -1,5 +1,6 @@
 //! Thread implementation backed by μITRON tasks. Assumes `acre_tsk` and
 //! `exd_tsk` are available.
+
 use super::{
     abi,
     error::{expect_success, expect_success_aborting, ItronError},

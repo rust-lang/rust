@@ -1,0 +1,25 @@
+error[E0201]: duplicate definitions with name `method`:
+  --> $DIR/glob-glob-conflict.rs:26:5
+   |
+LL |     fn method(&self) -> u8;
+   |     ----------------------- item in trait
+...
+LL |     reuse Trait1::*;
+   |     ---------------- previous definition here
+LL |     reuse Trait2::*;
+   |     ^^^^^^^^^^^^^^^^ duplicate definition
+
+error[E0201]: duplicate definitions with name `method`:
+  --> $DIR/glob-glob-conflict.rs:30:5
+   |
+LL |     fn method(&self) -> u8;
+   |     ----------------------- item in trait
+...
+LL |     reuse Trait1::*;
+   |     ---------------- previous definition here
+LL |     reuse Trait1::*;
+   |     ^^^^^^^^^^^^^^^^ duplicate definition
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0201`.

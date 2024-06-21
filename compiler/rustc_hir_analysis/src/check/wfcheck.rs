@@ -119,16 +119,7 @@ where
 
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
-        let err = infcx.err_ctxt().report_fulfillment_errors(errors);
-        if tcx.dcx().has_errors().is_some() {
-            return Err(err);
-        } else {
-            // HACK(oli-obk): tests/ui/specialization/min_specialization/specialize_on_type_error.rs
-            // causes an delayed bug during normalization, without reporting an error, so we need
-            // to act as if no error happened, in order to let our callers continue and report an
-            // error later in check_impl_items_against_trait.
-            return Ok(());
-        }
+        return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
     debug!(?assumed_wf_types);

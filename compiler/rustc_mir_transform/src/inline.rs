@@ -1,4 +1,5 @@
-//! Inlining pass for MIR functions
+//! Inlining pass for MIR functions.
+
 use crate::deref_separator::deref_finder;
 use rustc_attr::InlineAttr;
 use rustc_hir::def::DefKind;

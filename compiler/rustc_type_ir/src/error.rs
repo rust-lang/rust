@@ -30,7 +30,7 @@ impl<T> ExpectedFound<T> {
     Debug(bound = "")
 )]
 #[derive(TypeVisitable_Generic)]
-#[rustc_pass_by_value]
+#[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum TypeError<I: Interner> {
     Mismatch,
     ConstnessMismatch(ExpectedFound<ty::BoundConstness>),

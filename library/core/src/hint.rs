@@ -263,7 +263,7 @@ pub fn spin_loop() {
 /// extent to which it can block optimisations may vary depending upon the platform and code-gen
 /// backend used. Programs cannot rely on `black_box` for *correctness*, beyond it behaving as the
 /// identity function. As such, it **must not be relied upon to control critical program behavior.**
-/// This _immediately_ precludes any direct use of this function for cryptographic or security
+/// This also means that this function does not offer any guarantees for cryptographic or security
 /// purposes.
 ///
 /// [`std::convert::identity`]: crate::convert::identity

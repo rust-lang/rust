@@ -460,7 +460,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let res = ScalarInt::truncate_from_uint(res, layout.size).0;
                 Ok(ImmTy::from_scalar(res.into(), layout))
             }
-            ty::RawPtr(..) => {
+            ty::RawPtr(..) | ty::Ref(..) => {
                 assert_eq!(un_op, PtrMetadata);
                 let (_, meta) = val.to_scalar_and_meta();
                 Ok(match meta {

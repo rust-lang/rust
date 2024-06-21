@@ -1677,11 +1677,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
     /// session, if it still exists. This is used during incremental compilation to
     /// turn a deserialized `DefPathHash` into its current `DefId`.
-    pub fn def_path_hash_to_def_id(
-        self,
-        hash: DefPathHash,
-        err_msg: &dyn std::fmt::Debug,
-    ) -> DefId {
+    pub fn def_path_hash_to_def_id(self, hash: DefPathHash) -> Option<DefId> {
         debug!("def_path_hash_to_def_id({:?})", hash);
 
         let stable_crate_id = hash.stable_crate_id();
@@ -1689,13 +1685,9 @@ impl<'tcx> TyCtxt<'tcx> {
         // If this is a DefPathHash from the local crate, we can look up the
         // DefId in the tcx's `Definitions`.
         if stable_crate_id == self.stable_crate_id(LOCAL_CRATE) {
-            self.untracked
-                .definitions
-                .read()
-                .local_def_path_hash_to_def_id(hash, err_msg)
-                .to_def_id()
+            Some(self.untracked.definitions.read().local_def_path_hash_to_def_id(hash)?.to_def_id())
         } else {
-            self.def_path_hash_to_def_id_extern(hash, stable_crate_id)
+            Some(self.def_path_hash_to_def_id_extern(hash, stable_crate_id))
         }
     }
 

@@ -73,8 +73,6 @@ const_eval_division_by_zero =
     dividing by zero
 const_eval_division_overflow =
     overflow in signed division (dividing MIN by -1)
-const_eval_double_storage_live =
-    StorageLive on a local that was already live
 
 const_eval_dyn_call_not_a_method =
     `dyn` call trying to call something that is not a method

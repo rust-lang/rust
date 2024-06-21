@@ -19,6 +19,7 @@ use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use rustc_ast::{Block, ForeignItem, ForeignItemKind, Impl, Item, ItemKind, NodeId};
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
+use rustc_expand::base::ResolverExpand;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
@@ -1358,6 +1359,14 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     self.visit_invoc_in_module(item.id);
                 }
                 AssocCtxt::Impl => {
+                    let invoc_id = item.id.placeholder_to_expn_id();
+                    if !self.r.glob_delegation_invoc_ids.contains(&invoc_id) {
+                        self.r
+                            .impl_unexpanded_invocations
+                            .entry(self.r.invocation_parent(invoc_id))
+                            .or_default()
+                            .insert(invoc_id);
+                    }
                     self.visit_invoc(item.id);
                 }
             }
@@ -1379,18 +1388,21 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             self.r.feed_visibility(feed, vis);
         }
 
+        let ns = match item.kind {
+            AssocItemKind::Const(..) | AssocItemKind::Delegation(..) | AssocItemKind::Fn(..) => {
+                ValueNS
+            }
+            AssocItemKind::Type(..) => TypeNS,
+            AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(..) => bug!(), // handled above
+        };
         if ctxt == AssocCtxt::Trait {
-            let ns = match item.kind {
-                AssocItemKind::Const(..)
-                | AssocItemKind::Delegation(..)
-                | AssocItemKind::Fn(..) => ValueNS,
-                AssocItemKind::Type(..) => TypeNS,
-                AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(..) => bug!(), // handled above
-            };
-
             let parent = self.parent_scope.module;
             let expansion = self.parent_scope.expansion;
             self.r.define(parent, item.ident, ns, (self.res(def_id), vis, item.span, expansion));
+        } else if !matches!(&item.kind, AssocItemKind::Delegation(deleg) if deleg.from_glob) {
+            let impl_def_id = self.r.tcx.local_parent(local_def_id);
+            let key = BindingKey::new(item.ident.normalize_to_macros_2_0(), ns);
+            self.r.impl_binding_keys.entry(impl_def_id).or_default().insert(key);
         }
 
         visit::walk_assoc_item(self, item, ctxt);

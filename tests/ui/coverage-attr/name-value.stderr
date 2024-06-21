@@ -1,0 +1,219 @@
+error: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:15:1
+   |
+LL | #[coverage = "off"]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(on|off)]
+   | ~~~~~~~~~~~~~~~~~~~
+LL | #[coverage]
+   | ~~~~~~~~~~~
+
+error: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:19:5
+   |
+LL |     #![coverage = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL |     #![coverage(on|off)]
+   |     ~~~~~~~~~~~~~~~~~~~~
+LL |     #![coverage]
+   |     ~~~~~~~~~~~~
+
+error: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:22:1
+   |
+LL | #[coverage = "off"]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(on|off)]
+   |
+LL | #[coverage]
+   |
+
+error: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:29:5
+   |
+LL |     #[coverage = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL |     #[coverage(on|off)]
+   |
+LL |     #[coverage]
+   |
+
+error: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:27:1
+   |
+LL | #[coverage = "off"]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(on|off)]
+   | ~~~~~~~~~~~~~~~~~~~
+LL | #[coverage]
+   | ~~~~~~~~~~~
+
+error: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:37:5
+   |
+LL |     #[coverage = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL |     #[coverage(on|off)]
+   |
+LL |     #[coverage]
+   |
+
+error: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:42:5
+   |
+LL |     #[coverage = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL |     #[coverage(on|off)]
+   |
+LL |     #[coverage]
+   |
+
+error: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:35:1
+   |
+LL | #[coverage = "off"]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(on|off)]
+   | ~~~~~~~~~~~~~~~~~~~
+LL | #[coverage]
+   | ~~~~~~~~~~~
+
+error: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:50:5
+   |
+LL |     #[coverage = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL |     #[coverage(on|off)]
+   |
+LL |     #[coverage]
+   |
+
+error: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:55:5
+   |
+LL |     #[coverage = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL |     #[coverage(on|off)]
+   |
+LL |     #[coverage]
+   |
+
+error: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:48:1
+   |
+LL | #[coverage = "off"]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(on|off)]
+   | ~~~~~~~~~~~~~~~~~~~
+LL | #[coverage]
+   | ~~~~~~~~~~~
+
+error: malformed `coverage` attribute input
+  --> $DIR/name-value.rs:61:1
+   |
+LL | #[coverage = "off"]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(on|off)]
+   |
+LL | #[coverage]
+   |
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/name-value.rs:22:1
+   |
+LL | #[coverage = "off"]
+   | ^^^^^^^^^^^^^^^^^^^
+...
+LL | struct MyStruct;
+   | ---------------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/name-value.rs:37:5
+   |
+LL |     #[coverage = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^
+...
+LL |     const X: u32;
+   |     ------------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/name-value.rs:42:5
+   |
+LL |     #[coverage = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^
+...
+LL |     type T;
+   |     ------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/name-value.rs:29:5
+   |
+LL |     #[coverage = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^
+...
+LL |     const X: u32 = 7;
+   |     ----------------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/name-value.rs:50:5
+   |
+LL |     #[coverage = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^
+...
+LL |     const X: u32 = 8;
+   |     ----------------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/name-value.rs:55:5
+   |
+LL |     #[coverage = "off"]
+   |     ^^^^^^^^^^^^^^^^^^^
+...
+LL |     type T = ();
+   |     ------------ not coverable code
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/name-value.rs:61:1
+   |
+LL | #[coverage = "off"]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 19 previous errors
+
+For more information about this error, try `rustc --explain E0788`.

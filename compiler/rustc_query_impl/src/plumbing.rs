@@ -620,7 +620,9 @@ macro_rules! define_queries {
                                 tcx,
                                 {
                                     let ret = call_provider!([$($modifiers)*][tcx, $name, key]);
-                                    tracing::trace!(?ret);
+                                    rustc_middle::ty::print::with_reduced_queries!({
+                                        tracing::trace!(?ret);
+                                    });
                                     ret
                                 }
                             )

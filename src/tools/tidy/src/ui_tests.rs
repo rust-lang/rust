@@ -1,6 +1,7 @@
 //! Tidy check to ensure below in UI test directories:
 //! - the number of entries in each directory must be less than `ENTRY_LIMIT`
 //! - there are no stray `.stderr` files
+
 use ignore::Walk;
 use std::collections::{BTreeSet, HashMap};
 use std::ffi::OsStr;

@@ -144,8 +144,9 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
             }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
             ItemKind::Use(..) => return visit::walk_item(self, i),
-            ItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
-            ItemKind::DelegationMac(..) => unreachable!(),
+            ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
+                return self.visit_macro_invoc(i.id);
+            }
         };
         let def_id = self.create_def(i.id, i.ident.name, def_kind, i.span);
 
@@ -216,12 +217,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         let def_kind = match fi.kind {
-            ForeignItemKind::Static(box StaticForeignItem {
-                ty: _,
-                mutability,
-                expr: _,
-                safety,
-            }) => {
+            ForeignItemKind::Static(box StaticItem { ty: _, mutability, expr: _, safety }) => {
                 let safety = match safety {
                     ast::Safety::Unsafe(_) | ast::Safety::Default => hir::Safety::Unsafe,
                     ast::Safety::Safe(_) => hir::Safety::Safe,
@@ -294,8 +290,9 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
             AssocItemKind::Fn(..) | AssocItemKind::Delegation(..) => DefKind::AssocFn,
             AssocItemKind::Const(..) => DefKind::AssocConst,
             AssocItemKind::Type(..) => DefKind::AssocTy,
-            AssocItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
-            AssocItemKind::DelegationMac(..) => unreachable!(),
+            AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
+                return self.visit_macro_invoc(i.id);
+            }
         };
 
         let def = self.create_def(i.id, i.ident.name, def_kind, i.span);
@@ -341,6 +338,9 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span)
             }
             ExprKind::ConstBlock(ref constant) => {
+                for attr in &expr.attrs {
+                    visit::walk_attribute(self, attr);
+                }
                 let def = self.create_def(
                     constant.id,
                     kw::Empty,

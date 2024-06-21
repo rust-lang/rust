@@ -581,12 +581,21 @@
     revisions: xtensa_esp32_none_elf
     [xtensa_esp32_none_elf] compile-flags: --target xtensa-esp32-none-elf
     [xtensa_esp32_none_elf] needs-llvm-components: xtensa
+    revisions: xtensa_esp32_espidf
+    [xtensa_esp32_espidf] compile-flags: --target xtensa-esp32s2-espidf
+    [xtensa_esp32_espidf] needs-llvm-components: xtensa
     revisions: xtensa_esp32s2_none_elf
     [xtensa_esp32s2_none_elf] compile-flags: --target xtensa-esp32s2-none-elf
     [xtensa_esp32s2_none_elf] needs-llvm-components: xtensa
+    revisions: xtensa_esp32s2_espidf
+    [xtensa_esp32s2_espidf] compile-flags: --target xtensa-esp32s2-espidf
+    [xtensa_esp32s2_espidf] needs-llvm-components: xtensa
     revisions: xtensa_esp32s3_none_elf
     [xtensa_esp32s3_none_elf] compile-flags: --target xtensa-esp32s3-none-elf
     [xtensa_esp32s3_none_elf] needs-llvm-components: xtensa
+    revisions: xtensa_esp32s3_espidf
+    [xtensa_esp32s3_espidf] compile-flags: --target xtensa-esp32s3-espidf
+    [xtensa_esp32s3_espidf] needs-llvm-components: xtensa
 */
 // Sanity-check that each target can produce assembly code.
 

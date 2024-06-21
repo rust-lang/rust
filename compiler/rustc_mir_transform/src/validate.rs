@@ -1116,12 +1116,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     UnOp::PtrMetadata => {
                         if !matches!(self.mir_phase, MirPhase::Runtime(_)) {
                             // It would probably be fine to support this in earlier phases,
-                            // but at the time of writing it's only ever introduced from intrinsic lowering,
+                            // but at the time of writing it's only ever introduced from intrinsic lowering
+                            // or other runtime-phase optimization passes,
                             // so earlier things can just `bug!` on it.
                             self.fail(location, "PtrMetadata should be in runtime MIR only");
                         }
 
-                        check_kinds!(a, "Cannot PtrMetadata non-pointer type {:?}", ty::RawPtr(..));
+                        check_kinds!(
+                            a,
+                            "Cannot PtrMetadata non-pointer non-reference type {:?}",
+                            ty::RawPtr(..) | ty::Ref(..)
+                        );
                     }
                 }
             }
@@ -1188,6 +1193,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             "CastKind::{kind:?} output must be a raw const pointer, not {:?}",
                             ty::RawPtr(_, Mutability::Not)
                         );
+                        if self.mir_phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup) {
+                            self.fail(location, format!("After borrowck, MIR disallows {kind:?}"));
+                        }
                     }
                     CastKind::PointerCoercion(PointerCoercion::ArrayToPointer) => {
                         // FIXME: Check pointee types
@@ -1201,6 +1209,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             "CastKind::{kind:?} output must be a raw pointer, not {:?}",
                             ty::RawPtr(..)
                         );
+                        if self.mir_phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup) {
+                            self.fail(location, format!("After borrowck, MIR disallows {kind:?}"));
+                        }
                     }
                     CastKind::PointerCoercion(PointerCoercion::Unsize) => {
                         // This is used for all `CoerceUnsized` types,
@@ -1212,7 +1223,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         if !input_valid || !target_valid {
                             self.fail(
                                 location,
-                                format!("Wrong cast kind {kind:?} for the type {op_ty}",),
+                                format!("Wrong cast kind {kind:?} for the type {op_ty}"),
                             );
                         }
                     }

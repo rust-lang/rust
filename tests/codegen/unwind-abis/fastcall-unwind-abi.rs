@@ -1,7 +1,7 @@
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=i686-pc-windows-msvc --crate-type=rlib -Cno-prepopulate-passes
 #![no_core]
-#![feature(no_core, lang_items, c_unwind)]
+#![feature(no_core, lang_items)]
 #[lang = "sized"]
 trait Sized {}
 

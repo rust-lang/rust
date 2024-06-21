@@ -1,20 +1,20 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-//@ test-mir-pass: NormalizeArrayLen
+//@ test-mir-pass: GVN
 //@ compile-flags: -Zmir-enable-passes=+LowerSliceLenCalls
 
-// EMIT_MIR lower_array_len.array_bound.NormalizeArrayLen.diff
+// EMIT_MIR lower_array_len.array_bound.GVN.diff
 pub fn array_bound<const N: usize>(index: usize, slice: &[u8; N]) -> u8 {
     // CHECK-LABEL: fn array_bound(
     // CHECK: [[len:_.*]] = const N;
-    // CHECK: Lt(move {{_.*}}, move [[len]]);
+    // CHECK: Lt(_1, move [[len]]);
     if index < slice.len() { slice[index] } else { 42 }
 }
 
-// EMIT_MIR lower_array_len.array_bound_mut.NormalizeArrayLen.diff
+// EMIT_MIR lower_array_len.array_bound_mut.GVN.diff
 pub fn array_bound_mut<const N: usize>(index: usize, slice: &mut [u8; N]) -> u8 {
     // CHECK-LABEL: fn array_bound_mut(
     // CHECK: [[len:_.*]] = const N;
-    // CHECK: Lt(move {{_.*}}, move [[len]]);
+    // CHECK: Lt(_1, move [[len]]);
     if index < slice.len() {
         slice[index]
     } else {
@@ -24,21 +24,21 @@ pub fn array_bound_mut<const N: usize>(index: usize, slice: &mut [u8; N]) -> u8 
     }
 }
 
-// EMIT_MIR lower_array_len.array_len.NormalizeArrayLen.diff
+// EMIT_MIR lower_array_len.array_len.GVN.diff
 pub fn array_len<const N: usize>(arr: &[u8; N]) -> usize {
     // CHECK-LABEL: fn array_len(
     // CHECK: _0 = const N;
     arr.len()
 }
 
-// EMIT_MIR lower_array_len.array_len_by_value.NormalizeArrayLen.diff
+// EMIT_MIR lower_array_len.array_len_by_value.GVN.diff
 pub fn array_len_by_value<const N: usize>(arr: [u8; N]) -> usize {
     // CHECK-LABEL: fn array_len_by_value(
     // CHECK: _0 = const N;
     arr.len()
 }
 
-// EMIT_MIR lower_array_len.array_len_reborrow.NormalizeArrayLen.diff
+// EMIT_MIR lower_array_len.array_len_reborrow.GVN.diff
 pub fn array_len_reborrow<const N: usize>(mut arr: [u8; N]) -> usize {
     // CHECK-LABEL: fn array_len_reborrow(
     // CHECK: _0 = const N;
@@ -47,7 +47,7 @@ pub fn array_len_reborrow<const N: usize>(mut arr: [u8; N]) -> usize {
     arr.len()
 }
 
-// EMIT_MIR lower_array_len.array_len_raw.NormalizeArrayLen.diff
+// EMIT_MIR lower_array_len.array_len_raw.GVN.diff
 pub fn array_len_raw<const N: usize>(arr: [u8; N]) -> usize {
     // CHECK-LABEL: fn array_len_raw(
     // CHECK: _0 = const N;

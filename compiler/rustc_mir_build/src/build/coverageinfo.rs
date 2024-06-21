@@ -118,17 +118,35 @@ impl BranchInfoBuilder {
         }
     }
 
-    fn add_two_way_branch<'tcx>(
+    fn register_two_way_branch<'tcx>(
         &mut self,
+        tcx: TyCtxt<'tcx>,
         cfg: &mut CFG<'tcx>,
         source_info: SourceInfo,
         true_block: BasicBlock,
         false_block: BasicBlock,
     ) {
-        let true_marker = self.markers.inject_block_marker(cfg, source_info, true_block);
-        let false_marker = self.markers.inject_block_marker(cfg, source_info, false_block);
+        // Separate path for handling branches when MC/DC is enabled.
+        if let Some(mcdc_info) = self.mcdc_info.as_mut() {
+            let inject_block_marker =
+                |source_info, block| self.markers.inject_block_marker(cfg, source_info, block);
+            mcdc_info.visit_evaluated_condition(
+                tcx,
+                source_info,
+                true_block,
+                false_block,
+                inject_block_marker,
+            );
+        } else {
+            let true_marker = self.markers.inject_block_marker(cfg, source_info, true_block);
+            let false_marker = self.markers.inject_block_marker(cfg, source_info, false_block);
 
-        self.branch_spans.push(BranchSpan { span: source_info.span, true_marker, false_marker });
+            self.branch_spans.push(BranchSpan {
+                span: source_info.span,
+                true_marker,
+                false_marker,
+            });
+        }
     }
 
     pub(crate) fn into_done(self) -> Option<Box<mir::coverage::BranchInfo>> {
@@ -205,7 +223,14 @@ impl<'tcx> Builder<'_, 'tcx> {
             mir::TerminatorKind::if_(mir::Operand::Copy(place), true_block, false_block),
         );
 
-        branch_info.add_two_way_branch(&mut self.cfg, source_info, true_block, false_block);
+        // Separate path for handling branches when MC/DC is enabled.
+        branch_info.register_two_way_branch(
+            self.tcx,
+            &mut self.cfg,
+            source_info,
+            true_block,
+            false_block,
+        );
 
         let join_block = self.cfg.start_new_block();
         self.cfg.goto(true_block, source_info, join_block);
@@ -236,22 +261,13 @@ impl<'tcx> Builder<'_, 'tcx> {
 
         let source_info = SourceInfo { span: self.thir[expr_id].span, scope: self.source_scope };
 
-        // Separate path for handling branches when MC/DC is enabled.
-        if let Some(mcdc_info) = branch_info.mcdc_info.as_mut() {
-            let inject_block_marker = |source_info, block| {
-                branch_info.markers.inject_block_marker(&mut self.cfg, source_info, block)
-            };
-            mcdc_info.visit_evaluated_condition(
-                self.tcx,
-                source_info,
-                then_block,
-                else_block,
-                inject_block_marker,
-            );
-            return;
-        }
-
-        branch_info.add_two_way_branch(&mut self.cfg, source_info, then_block, else_block);
+        branch_info.register_two_way_branch(
+            self.tcx,
+            &mut self.cfg,
+            source_info,
+            then_block,
+            else_block,
+        );
     }
 
     /// If branch coverage is enabled, inject marker statements into `true_block`
@@ -270,6 +286,12 @@ impl<'tcx> Builder<'_, 'tcx> {
         // FIXME(#124144) This may need special handling when MC/DC is enabled.
 
         let source_info = SourceInfo { span: pattern.span, scope: self.source_scope };
-        branch_info.add_two_way_branch(&mut self.cfg, source_info, true_block, false_block);
+        branch_info.register_two_way_branch(
+            self.tcx,
+            &mut self.cfg,
+            source_info,
+            true_block,
+            false_block,
+        );
     }
 }

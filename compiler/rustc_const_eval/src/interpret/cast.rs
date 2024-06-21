@@ -70,9 +70,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             CastKind::PointerCoercion(
                 PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
             ) => {
-                // These are NOPs, but can be wide pointers.
-                let v = self.read_immediate(src)?;
-                self.write_immediate(*v, dest)?;
+                bug!("{cast_kind:?} casts are for borrowck only, not runtime MIR");
             }
 
             CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {

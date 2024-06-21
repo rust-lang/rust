@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 #[cfg(not(panic = "abort"))]
 mod drop_checks {
     //! These tests mainly make sure the elements are correctly dropped.
+
     use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering::SeqCst};
 
     #[derive(Debug)]

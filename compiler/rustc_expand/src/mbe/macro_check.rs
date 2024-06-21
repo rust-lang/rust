@@ -104,6 +104,7 @@
 //! Kleene operators under which a meta-variable is repeating is the concatenation of the stacks
 //! stored when entering a macro definition starting from the state in which the meta-variable is
 //! bound.
+
 use crate::errors;
 use crate::mbe::{KleeneToken, TokenTree};
 

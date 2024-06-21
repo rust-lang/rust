@@ -37,6 +37,19 @@ error[E0207]: the const parameter `host` is not constrained by the impl trait, s
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
+error[E0284]: type annotations needed
+  --> $DIR/derive-const-use.rs:18:35
+   |
+LL | const _: () = assert!(S((), A) == S::default());
+   |                                   ^^^^^^^^^^^^ cannot infer the value of the constant `_`
+   |
+note: required for `S` to implement `Default`
+  --> $DIR/derive-const-use.rs:15:16
+   |
+LL | #[derive_const(Default, PartialEq)]
+   |                ^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0308]: mismatched types
   --> $DIR/derive-const-use.rs:16:14
    |
@@ -49,7 +62,24 @@ LL | pub struct S((), A);
               found constant `true`
    = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 6 previous errors
+error[E0284]: type annotations needed
+  --> $DIR/derive-const-use.rs:16:18
+   |
+LL | #[derive_const(Default, PartialEq)]
+   |                ------- in this derive macro expansion
+LL | pub struct S((), A);
+   |                  ^ cannot infer the value of the constant `_`
+   |
+note: required for `A` to implement `Default`
+  --> $DIR/derive-const-use.rs:7:12
+   |
+LL | impl const Default for A {
+   |      ----- ^^^^^^^     ^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-Some errors have detailed explanations: E0207, E0308, E0635.
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0207, E0284, E0308, E0635.
 For more information about an error, try `rustc --explain E0207`.

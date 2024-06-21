@@ -8,10 +8,7 @@ LL |     S.a();
    |       ^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-help: trait `A` which provides `a` is implemented but not in scope; perhaps you want to import it
-   |
-LL + use method::A;
-   |
+   = help: trait `method::A` which provides `a` is implemented but not reachable
 help: there is a method `b` with a similar name
    |
 LL |     S.b();
@@ -58,15 +55,12 @@ LL |     S::a(&S);
    |        ^ function or associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+   = help: trait `method::A` which provides `a` is implemented but not reachable
 help: there is an associated constant `B` with a similar name
   --> $DIR/item-privacy.rs:29:9
    |
 LL |         const B: u8 = 0;
    |         ^^^^^^^^^^^
-help: trait `A` which provides `a` is implemented but not in scope; perhaps you want to import it
-   |
-LL + use method::A;
-   |
 
 error[E0599]: no function or associated item named `b` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:80:8
@@ -107,10 +101,7 @@ LL |     S::A;
    |        ^ associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-help: trait `A` which provides `A` is implemented but not in scope; perhaps you want to import it
-   |
-LL + use assoc_const::A;
-   |
+   = help: trait `assoc_const::A` which provides `A` is implemented but not reachable
 help: there is an associated constant `B` with a similar name
    |
 LL |     S::B;

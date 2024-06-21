@@ -21,7 +21,7 @@ pub fn roundtrip(x: *const u8) -> *const u8 {
     // CHECK-LABEL: fn roundtrip(
     // CHECK: _4 = _1;
     // CHECK: _3 = move _4 as *mut u8 (PtrToPtr);
-    // CHECK: _2 = move _3 as *const u8 (PointerCoercion(MutToConstPointer));
+    // CHECK: _2 = move _3 as *const u8 (PtrToPtr);
     x as *mut u8 as *const u8
 }
 

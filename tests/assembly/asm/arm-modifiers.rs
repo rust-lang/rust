@@ -1,5 +1,5 @@
 //@ assembly-output: emit-asm
-//@ compile-flags: -O
+//@ compile-flags: -O -C panic=abort
 //@ compile-flags: --target armv7-unknown-linux-gnueabihf
 //@ compile-flags: -C target-feature=+neon
 //@ needs-llvm-components: arm

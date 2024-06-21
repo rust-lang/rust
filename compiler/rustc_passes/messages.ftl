@@ -595,6 +595,15 @@ passes_pass_by_value =
 
 passes_proc_macro_bad_sig = {$kind} has incorrect signature
 
+passes_remove_fields =
+    consider removing { $num ->
+      [one] this
+     *[other] these
+    } { $num ->
+      [one] field
+     *[other] fields
+    }
+
 passes_repr_conflicting =
     conflicting representation hints
 

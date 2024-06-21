@@ -10,7 +10,7 @@ use crate::convert::Infallible;
 use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};
-use crate::iter::UncheckedIterator;
+use crate::iter::{repeat_n, UncheckedIterator};
 use crate::mem::{self, MaybeUninit};
 use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
@@ -26,6 +26,33 @@ pub(crate) use drain::drain_array_with;
 
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;
+
+/// Creates an array of type `[T; N]` by repeatedly cloning a value.
+///
+/// This is the same as `[val; N]`, but it also works for types that do not
+/// implement [`Copy`].
+///
+/// The provided value will be used as an element of the resulting array and
+/// will be cloned N - 1 times to fill up the rest. If N is zero, the value
+/// will be dropped.
+///
+/// # Example
+///
+/// Creating muliple copies of a `String`:
+/// ```rust
+/// #![feature(array_repeat)]
+///
+/// use std::array;
+///
+/// let string = "Hello there!".to_string();
+/// let strings = array::repeat(string);
+/// assert_eq!(strings, ["Hello there!", "Hello there!"]);
+/// ```
+#[inline]
+#[unstable(feature = "array_repeat", issue = "126695")]
+pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
+    from_trusted_iterator(repeat_n(val, N))
+}
 
 /// Creates an array of type [T; N], where each element `T` is the returned value from `cb`
 /// using that element's index.

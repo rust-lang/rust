@@ -257,17 +257,17 @@ impl Span {
             std::mem::swap(&mut lo, &mut hi);
         }
 
-        // Small len may enable one of fully inline formats (or may not).
+        // Small len and ctxt may enable one of fully inline formats (or may not).
         let (len, ctxt32) = (hi.0 - lo.0, ctxt.as_u32());
-        if len <= MAX_LEN {
-            if ctxt32 <= MAX_CTXT && parent.is_none() {
-                return InlineCtxt::span(lo.0, len as u16, ctxt32 as u16);
-            } else if ctxt32 == 0
-                && let Some(parent) = parent
-                && let parent32 = parent.local_def_index.as_u32()
-                && parent32 <= MAX_CTXT
-            {
-                return InlineParent::span(lo.0, len as u16, parent32 as u16);
+        if len <= MAX_LEN && ctxt32 <= MAX_CTXT {
+            match parent {
+                None => return InlineCtxt::span(lo.0, len as u16, ctxt32 as u16),
+                Some(parent) => {
+                    let parent32 = parent.local_def_index.as_u32();
+                    if ctxt32 == 0 && parent32 <= MAX_CTXT {
+                        return InlineParent::span(lo.0, len as u16, parent32 as u16);
+                    }
+                }
             }
         }
 
@@ -322,29 +322,28 @@ impl Span {
         }
     }
 
-    // For optimization we are interested in cases in which the context is inline and the context
-    // update doesn't change format. All non-inline or format changing scenarios require accessing
-    // interner and can fall back to `Span::new`.
     #[inline]
-    pub fn map_ctxt(self, update: impl FnOnce(SyntaxContext) -> SyntaxContext) -> Span {
-        match_span_kind! {
+    pub fn map_ctxt(self, map: impl FnOnce(SyntaxContext) -> SyntaxContext) -> Span {
+        let data = match_span_kind! {
             self,
             InlineCtxt(span) => {
-                let updated_ctxt32 = update(SyntaxContext::from_u16(span.ctxt)).as_u32();
-                // Any small new context including zero will preserve the format.
-                return if updated_ctxt32 <= MAX_CTXT {
-                    InlineCtxt::span(span.lo, span.len, updated_ctxt32 as u16)
+                // This format occurs 1-2 orders of magnitude more often than others (#125017),
+                // so it makes sense to micro-optimize it to avoid `span.data()` and `Span::new()`.
+                let new_ctxt = map(SyntaxContext::from_u16(span.ctxt));
+                let new_ctxt32 = new_ctxt.as_u32();
+                return if new_ctxt32 <= MAX_CTXT {
+                    // Any small new context including zero will preserve the format.
+                    InlineCtxt::span(span.lo, span.len, new_ctxt32 as u16)
                 } else {
-                    span.data().with_ctxt(SyntaxContext::from_u32(updated_ctxt32))
+                    span.data().with_ctxt(new_ctxt)
                 };
             },
-            InlineParent(_span) => {},
-            PartiallyInterned(_span) => {},
-            Interned(_span) => {},
-        }
+            InlineParent(span) => span.data(),
+            PartiallyInterned(span) => span.data(),
+            Interned(span) => span.data(),
+        };
 
-        let data = self.data_untracked();
-        data.with_ctxt(update(data.ctxt))
+        data.with_ctxt(map(data.ctxt))
     }
 
     // Returns either syntactic context, if it can be retrieved without taking the interner lock,
@@ -379,6 +378,49 @@ impl Span {
             (Err(index1), Err(index2)) => with_span_interner(|interner| {
                 interner.spans[index1].ctxt == interner.spans[index2].ctxt
             }),
+        }
+    }
+
+    #[inline]
+    pub fn with_parent(self, parent: Option<LocalDefId>) -> Span {
+        let data = match_span_kind! {
+            self,
+            InlineCtxt(span) => {
+                // This format occurs 1-2 orders of magnitude more often than others (#126544),
+                // so it makes sense to micro-optimize it to avoid `span.data()` and `Span::new()`.
+                // Copypaste from `Span::new`, the small len & ctxt conditions are known to hold.
+                match parent {
+                    None => return self,
+                    Some(parent) => {
+                        let parent32 = parent.local_def_index.as_u32();
+                        if span.ctxt == 0 && parent32 <= MAX_CTXT {
+                            return InlineParent::span(span.lo, span.len, parent32 as u16);
+                        }
+                    }
+                }
+                span.data()
+            },
+            InlineParent(span) => span.data(),
+            PartiallyInterned(span) => span.data(),
+            Interned(span) => span.data(),
+        };
+
+        if let Some(old_parent) = data.parent {
+            (*SPAN_TRACK)(old_parent);
+        }
+        data.with_parent(parent)
+    }
+
+    #[inline]
+    pub fn parent(self) -> Option<LocalDefId> {
+        let interned_parent =
+            |index: u32| with_span_interner(|interner| interner.spans[index as usize].parent);
+        match_span_kind! {
+            self,
+            InlineCtxt(_span) => None,
+            InlineParent(span) => Some(LocalDefId { local_def_index: DefIndex::from_u16(span.parent) }),
+            PartiallyInterned(span) => interned_parent(span.index),
+            Interned(span) => interned_parent(span.index),
         }
     }
 }

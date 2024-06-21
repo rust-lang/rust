@@ -1,4 +1,5 @@
 //! Test the pattern complexity limit.
+
 use common::*;
 use rustc_pattern_analysis::{pat::DeconstructedPat, usefulness::PlaceValidity, MatchArm};
 

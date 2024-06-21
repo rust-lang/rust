@@ -1,3 +1,5 @@
+// FIXME(f16_f128): add tests when math functions are available
+
 #![warn(clippy::unused_rounding)]
 
 fn main() {
