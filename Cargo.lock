@@ -4762,6 +4762,7 @@ dependencies = [
 name = "rustc_span"
 version = "0.0.0"
 dependencies = [
+ "derivative",
  "indexmap",
  "itoa",
  "md-5",
