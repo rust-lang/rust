@@ -1,5 +1,13 @@
 cfg_if::cfg_if! {
-    if #[cfg(target_os = "linux")] {
+    if #[cfg(miri)] {
+        /// Mitigation for <https://github.com/rust-lang/rust/issues/126600>
+        ///
+        /// This mitigation is not necessary when running under Miri, so this function does nothing
+        /// when running under Miri.
+        pub(crate) fn unique_thread_exit() {
+            // Mitigation not required on Miri, where `exit` is thread-safe.
+        }
+    } else if #[cfg(target_os = "linux")] {
         /// Mitigation for <https://github.com/rust-lang/rust/issues/126600>
         ///
         /// On `unix` (where `libc::exit` may not be thread-safe), ensure that only one Rust thread
