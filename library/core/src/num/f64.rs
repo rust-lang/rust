@@ -804,8 +804,9 @@ impl f64 {
     #[unstable(feature = "float_next_up_down", issue = "91399")]
     #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_up(self) -> Self {
-        // We must use strictly integer arithmetic to prevent denormals from
-        // flushing to zero after an arithmetic operation on some platforms.
+        // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
+        // denormals to zero. This is in general unsound and unsupported, but here
+        // we do our best to still produce the correct result on such targets.
         let bits = self.to_bits();
         if self.is_nan() || bits == Self::INFINITY.to_bits() {
             return self;
@@ -851,8 +852,9 @@ impl f64 {
     #[unstable(feature = "float_next_up_down", issue = "91399")]
     #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_down(self) -> Self {
-        // We must use strictly integer arithmetic to prevent denormals from
-        // flushing to zero after an arithmetic operation on some platforms.
+        // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
+        // denormals to zero. This is in general unsound and unsupported, but here
+        // we do our best to still produce the correct result on such targets.
         let bits = self.to_bits();
         if self.is_nan() || bits == Self::NEG_INFINITY.to_bits() {
             return self;
