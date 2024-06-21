@@ -1855,7 +1855,7 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
     let ctx_params = TyLoweringContext::new(db, &resolver, def.into())
         .with_impl_trait_mode(ImplTraitLoweringMode::Variable)
         .with_type_param_mode(ParamLoweringMode::Variable);
-    let params = data.params.iter().map(|tr| ctx_params.lower_ty(tr)).collect::<Vec<_>>();
+    let params = data.params.iter().map(|tr| ctx_params.lower_ty(tr));
     let ctx_ret = TyLoweringContext::new(db, &resolver, def.into())
         .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
         .with_type_param_mode(ParamLoweringMode::Variable);
@@ -1909,7 +1909,7 @@ fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnS
     let resolver = def.resolver(db.upcast());
     let ctx = TyLoweringContext::new(db, &resolver, AdtId::from(def).into())
         .with_type_param_mode(ParamLoweringMode::Variable);
-    let params = fields.iter().map(|(_, field)| ctx.lower_ty(&field.type_ref)).collect::<Vec<_>>();
+    let params = fields.iter().map(|(_, field)| ctx.lower_ty(&field.type_ref));
     let (ret, binders) = type_for_adt(db, def.into()).into_value_and_skipped_binders();
     Binders::new(
         binders,
@@ -1941,7 +1941,7 @@ fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId)
     let resolver = def.resolver(db.upcast());
     let ctx = TyLoweringContext::new(db, &resolver, DefWithBodyId::VariantId(def).into())
         .with_type_param_mode(ParamLoweringMode::Variable);
-    let params = fields.iter().map(|(_, field)| ctx.lower_ty(&field.type_ref)).collect::<Vec<_>>();
+    let params = fields.iter().map(|(_, field)| ctx.lower_ty(&field.type_ref));
     let (ret, binders) =
         type_for_adt(db, def.lookup(db.upcast()).parent.into()).into_value_and_skipped_binders();
     Binders::new(
