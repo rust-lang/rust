@@ -165,7 +165,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ("tm_hour", dt.hour().into()),
                 ("tm_mday", dt.day().into()),
                 ("tm_mon", dt.month0().into()),
-                ("tm_year", dt.year().checked_sub(1900).unwrap().into()),
+                ("tm_year", dt.year().strict_sub(1900).into()),
                 ("tm_wday", dt.weekday().num_days_from_sunday().into()),
                 ("tm_yday", dt.ordinal0().into()),
                 ("tm_isdst", tm_isdst),

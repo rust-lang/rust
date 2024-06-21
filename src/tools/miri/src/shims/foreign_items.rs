@@ -402,7 +402,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 });
                 let (_, addr) = ptr.into_parts(); // we know the offset is absolute
                 // Cannot panic since `align` is a power of 2 and hence non-zero.
-                if addr.bytes().checked_rem(align.bytes()).unwrap() != 0 {
+                if addr.bytes().strict_rem(align.bytes()) != 0 {
                     throw_unsup_format!(
                         "`miri_promise_symbolic_alignment`: pointer is not actually aligned"
                     );
@@ -714,7 +714,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // That is probably overly cautious, but there also is no fundamental
                 // reason to have `strcpy` destroy pointer provenance.
                 // This reads at least 1 byte, so we are already enforcing that this is a valid pointer.
-                let n = this.read_c_str(ptr_src)?.len().checked_add(1).unwrap();
+                let n = this.read_c_str(ptr_src)?.len().strict_add(1);
                 this.mem_copy(ptr_src, ptr_dest, Size::from_bytes(n), true)?;
                 this.write_pointer(ptr_dest, dest)?;
             }

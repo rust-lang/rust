@@ -74,7 +74,7 @@ impl Handle {
     /// None of this layout is guaranteed to applications by Windows or Miri.
     fn to_packed(self) -> u32 {
         let disc_size = Self::packed_disc_size();
-        let data_size = u32::BITS.checked_sub(disc_size).unwrap();
+        let data_size = u32::BITS.strict_sub(disc_size);
 
         let discriminant = self.discriminant();
         let data = self.data();
@@ -103,7 +103,7 @@ impl Handle {
     /// see docs for `to_packed`
     fn from_packed(handle: u32) -> Option<Self> {
         let disc_size = Self::packed_disc_size();
-        let data_size = u32::BITS.checked_sub(disc_size).unwrap();
+        let data_size = u32::BITS.strict_sub(disc_size);
 
         // the lower `data_size` bits of this mask are 1
         #[allow(clippy::arithmetic_side_effects)] // cannot overflow
