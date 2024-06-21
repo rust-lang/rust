@@ -1677,6 +1677,9 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
         for sub_option in option.split(',') {
             match sub_option {
                 "diagnostic-short" => json_rendered = HumanReadableErrorType::Short,
+                "diagnostic-unicode" => {
+                    json_rendered = HumanReadableErrorType::Unicode;
+                }
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
                 "unused-externs" => json_unused_externs = JsonUnusedExterns::Loud,
