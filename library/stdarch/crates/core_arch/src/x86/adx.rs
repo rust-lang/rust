@@ -6,13 +6,13 @@ extern "unadjusted" {
     #[link_name = "llvm.x86.addcarry.32"]
     fn llvm_addcarry_u32(a: u8, b: u32, c: u32) -> (u8, u32);
     #[link_name = "llvm.x86.addcarryx.u32"]
-    fn llvm_addcarryx_u32(a: u8, b: u32, c: u32, d: *mut u8) -> u8;
+    fn llvm_addcarryx_u32(a: u8, b: u32, c: u32, d: *mut u32) -> u8;
     #[link_name = "llvm.x86.subborrow.32"]
     fn llvm_subborrow_u32(a: u8, b: u32, c: u32) -> (u8, u32);
 }
 
 /// Adds unsigned 32-bit integers `a` and `b` with unsigned 8-bit carry-in `c_in`
-/// (carry flag), and store the unsigned 32-bit result in `out`, and the carry-out
+/// (carry or overflow flag), and store the unsigned 32-bit result in `out`, and the carry-out
 /// is returned (carry or overflow flag).
 #[inline]
 #[cfg_attr(test, assert_instr(adc))]
@@ -31,7 +31,7 @@ pub unsafe fn _addcarry_u32(c_in: u8, a: u32, b: u32, out: &mut u32) -> u8 {
 #[cfg_attr(test, assert_instr(adc))]
 #[stable(feature = "simd_x86_adx", since = "1.33.0")]
 pub unsafe fn _addcarryx_u32(c_in: u8, a: u32, b: u32, out: &mut u32) -> u8 {
-    llvm_addcarryx_u32(c_in, a, b, out as *mut _ as *mut u8)
+    llvm_addcarryx_u32(c_in, a, b, out as *mut _)
 }
 
 /// Adds unsigned 32-bit integers `a` and `b` with unsigned 8-bit carry-in `c_in`
