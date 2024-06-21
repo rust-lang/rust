@@ -3184,38 +3184,6 @@ pub struct StaticItem {
     pub expr: Option<P<Expr>>,
 }
 
-/// A static item in `extern` block.
-// This struct is identical to StaticItem for now but it's going to have a safety attribute.
-#[derive(Clone, Encodable, Decodable, Debug)]
-pub struct StaticForeignItem {
-    pub ty: P<Ty>,
-    pub safety: Safety,
-    pub mutability: Mutability,
-    pub expr: Option<P<Expr>>,
-}
-
-impl From<StaticItem> for StaticForeignItem {
-    fn from(static_item: StaticItem) -> StaticForeignItem {
-        StaticForeignItem {
-            ty: static_item.ty,
-            safety: static_item.safety,
-            mutability: static_item.mutability,
-            expr: static_item.expr,
-        }
-    }
-}
-
-impl From<StaticForeignItem> for StaticItem {
-    fn from(static_item: StaticForeignItem) -> StaticItem {
-        StaticItem {
-            ty: static_item.ty,
-            safety: static_item.safety,
-            mutability: static_item.mutability,
-            expr: static_item.expr,
-        }
-    }
-}
-
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct ConstItem {
     pub defaultness: Defaultness,
@@ -3430,7 +3398,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ForeignItemKind {
     /// A foreign static item (`static FOO: u8`).
-    Static(Box<StaticForeignItem>),
+    Static(Box<StaticItem>),
     /// An foreign function.
     Fn(Box<Fn>),
     /// An foreign type.
