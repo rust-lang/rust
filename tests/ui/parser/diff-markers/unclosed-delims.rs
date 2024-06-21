@@ -2,13 +2,17 @@ mod tests {
     #[test]
 <<<<<<< HEAD
 //~^ ERROR encountered diff marker
-//~| NOTE after this is the code before the merge
+//~| NOTE between this marker and `=======`
+
+//~| NOTE conflict markers indicate that
+//~| HELP if you're having merge conflicts
 //~| NOTE for an explanation on these markers
+
     fn test1() {
 =======
-//~^ NOTE
+//~^ NOTE between this marker and `>>>>>>>`
     fn test2() {
 >>>>>>> 7a4f13c blah blah blah
-//~^ NOTE above this are the incoming code changes
+//~^ NOTE this marker concludes the conflict region
     }
 }
