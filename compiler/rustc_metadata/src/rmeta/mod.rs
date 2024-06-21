@@ -290,6 +290,8 @@ pub(crate) struct CrateRoot {
     panic_runtime: bool,
     profiler_runtime: bool,
     symbol_mangling_version: SymbolManglingVersion,
+
+    specialization_enabled_in: bool,
 }
 
 /// On-disk representation of `DefId`.

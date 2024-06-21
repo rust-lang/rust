@@ -898,7 +898,7 @@ fn create_and_seed_worklist(
                     match tcx.def_kind(id) {
                         DefKind::Impl { .. } => false,
                         DefKind::AssocConst | DefKind::AssocFn => !matches!(tcx.associated_item(id).container, AssocItemContainer::ImplContainer),
-                        DefKind::Struct => struct_all_fields_are_public(tcx, id.to_def_id()),
+                        DefKind::Struct => struct_all_fields_are_public(tcx, id.to_def_id()) || has_allow_dead_code_or_lang_attr(tcx, id).is_some(),
                         _ => true
                     })
                 .map(|id| (id, ComesFromAllowExpect::No))
