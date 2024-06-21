@@ -110,7 +110,6 @@ run-make/manual-link/Makefile
 run-make/many-crates-but-no-match/Makefile
 run-make/metadata-dep-info/Makefile
 run-make/min-global-align/Makefile
-run-make/mingw-export-call-convention/Makefile
 run-make/missing-crate-dependency/Makefile
 run-make/mixing-libs/Makefile
 run-make/msvc-opt-minsize/Makefile

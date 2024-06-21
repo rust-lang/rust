@@ -5,7 +5,9 @@
 // checks that no full file paths are exposed and that the override flag is respected.
 // See https://github.com/rust-lang/rust/pull/121297
 
-//@ only-windows
+//@ only-x86_64-pc-windows-msvc
+
+use run_make_support::{bin_name, invalid_utf8_contains, invalid_utf8_not_contains, run, rustc};
 
 fn main() {
     // Test that we don't have the full path to the PDB file in the binary
@@ -16,11 +18,11 @@ fn main() {
         .crate_type("bin")
         .arg("-Cforce-frame-pointers")
         .run();
-    invalid_utf8_contains(bin_name("my_crate_name"), "my_crate_name.pdb");
-    invalid_utf8_not_contains(bin_name("my_crate_name"), r#"\my_crate_name.pdb"#);
+    invalid_utf8_contains(&bin_name("my_crate_name"), "my_crate_name.pdb");
+    invalid_utf8_not_contains(&bin_name("my_crate_name"), r#"\my_crate_name.pdb"#);
     // Test that backtraces still can find debuginfo by checking that they contain symbol names and
     // source locations.
-    let out = run(bin_name(my_crate_name));
+    let out = run(&bin_name("my_crate_name"));
     out.assert_stdout_contains("my_crate_name::fn_in_backtrace");
     out.assert_stdout_contains("main.rs:15");
     // Test that explicitly passed `-Clink-arg=/PDBALTPATH:...` is respected
@@ -32,6 +34,6 @@ fn main() {
         .link_arg("/PDBALTPATH:abcdefg.pdb")
         .arg("-Cforce-frame-pointers")
         .run();
-    invalid_utf8_contains(bin_name("my_crate_name"), "abcdefg.pdb");
-    invalid_utf8_not_contains(bin_name("my_crate_name"), "my_crate_name.pdb");
+    invalid_utf8_contains(&bin_name("my_crate_name"), "abcdefg.pdb");
+    invalid_utf8_not_contains(&bin_name("my_crate_name"), "my_crate_name.pdb");
 }
