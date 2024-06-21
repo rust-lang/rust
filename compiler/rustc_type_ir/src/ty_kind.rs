@@ -1005,7 +1005,7 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
     #[inline]
     #[track_caller]
     pub fn input(self, index: usize) -> ty::Binder<I, I::Ty> {
-        self.map_bound(|fn_sig| fn_sig.inputs()[index])
+        self.map_bound(|fn_sig| fn_sig.inputs().get(index).unwrap())
     }
 
     pub fn inputs_and_output(self) -> ty::Binder<I, I::Tys> {

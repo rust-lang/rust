@@ -309,7 +309,7 @@ impl<I: Interner> CoroutineClosureArgs<I> {
         let interior = self.coroutine_witness_ty();
         let ty::FnPtr(sig) = self.signature_parts_ty().kind() else { panic!() };
         sig.map_bound(|sig| {
-            let [resume_ty, tupled_inputs_ty] = *sig.inputs() else {
+            let [resume_ty, tupled_inputs_ty] = *sig.inputs().as_slice() else {
                 panic!();
             };
             let [yield_ty, return_ty] = *sig.output().tuple_fields().as_slice() else { panic!() };

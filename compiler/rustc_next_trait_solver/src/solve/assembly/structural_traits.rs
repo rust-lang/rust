@@ -258,7 +258,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
             if sig.skip_binder().is_fn_trait_compatible() && !tcx.has_target_features(def_id) {
                 Ok(Some(
                     sig.instantiate(tcx, args)
-                        .map_bound(|sig| (Ty::new_tup(tcx, &sig.inputs()), sig.output())),
+                        .map_bound(|sig| (Ty::new_tup(tcx, sig.inputs().as_slice()), sig.output())),
                 ))
             } else {
                 Err(NoSolution)
@@ -267,7 +267,9 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
         ty::FnPtr(sig) => {
             if sig.is_fn_trait_compatible() {
-                Ok(Some(sig.map_bound(|sig| (Ty::new_tup(tcx, &sig.inputs()), sig.output()))))
+                Ok(Some(
+                    sig.map_bound(|sig| (Ty::new_tup(tcx, sig.inputs().as_slice()), sig.output())),
+                ))
             } else {
                 Err(NoSolution)
             }
@@ -290,7 +292,9 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
                     }
                 }
             }
-            Ok(Some(closure_args.sig().map_bound(|sig| (sig.inputs()[0], sig.output()))))
+            Ok(Some(
+                closure_args.sig().map_bound(|sig| (sig.inputs().get(0).unwrap(), sig.output())),
+            ))
         }
 
         // Coroutine-closures don't implement `Fn` traits the normal way.
@@ -468,7 +472,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
             let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {
-                    tupled_inputs_ty: Ty::new_tup(tcx, &sig.inputs()),
+                    tupled_inputs_ty: Ty::new_tup(tcx, sig.inputs().as_slice()),
                     output_coroutine_ty: sig.output(),
                     coroutine_return_ty: future_output_ty,
                 }),
@@ -519,7 +523,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
             let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {
-                    tupled_inputs_ty: sig.inputs()[0],
+                    tupled_inputs_ty: sig.inputs().get(0).unwrap(),
                     output_coroutine_ty: sig.output(),
                     coroutine_return_ty: future_output_ty,
                 }),
