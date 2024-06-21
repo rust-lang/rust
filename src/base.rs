@@ -186,6 +186,7 @@ pub fn compile_codegen_unit(
             // context.
             let f16_type_supported = target_info.supports_target_dependent_type(CType::Float16);
             let f32_type_supported = target_info.supports_target_dependent_type(CType::Float32);
+            let f64_type_supported = target_info.supports_target_dependent_type(CType::Float64);
             let f128_type_supported = target_info.supports_target_dependent_type(CType::Float128);
             // TODO: improve this to avoid passing that many arguments.
             let cx = CodegenCx::new(
@@ -195,6 +196,7 @@ pub fn compile_codegen_unit(
                 target_info.supports_128bit_int(),
                 f16_type_supported,
                 f32_type_supported,
+                f64_type_supported,
                 f128_type_supported,
             );
 

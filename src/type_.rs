@@ -142,6 +142,10 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn type_f64(&self) -> Type<'gcc> {
+        #[cfg(feature = "master")]
+        if self.supports_f64_type {
+            return self.context.new_c_type(CType::Float64);
+        }
         self.double_type
     }
 

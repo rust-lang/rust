@@ -70,6 +70,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub supports_128bit_integers: bool,
     pub supports_f16_type: bool,
     pub supports_f32_type: bool,
+    pub supports_f64_type: bool,
     pub supports_f128_type: bool,
 
     pub float_type: Type<'gcc>,
@@ -135,6 +136,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         supports_128bit_integers: bool,
         supports_f16_type: bool,
         supports_f32_type: bool,
+        supports_f64_type: bool,
         supports_f128_type: bool,
     ) -> Self {
         let check_overflow = tcx.sess.overflow_checks();
@@ -313,6 +315,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             supports_128bit_integers,
             supports_f16_type,
             supports_f32_type,
+            supports_f64_type,
             supports_f128_type,
 
             float_type,
