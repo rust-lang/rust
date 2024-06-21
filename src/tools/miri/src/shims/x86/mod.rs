@@ -1074,7 +1074,7 @@ fn mpsadbw<'tcx>(
     let (_, _, right) = split_simd_to_128bit_chunks(this, right)?;
     let (_, dest_items_per_chunk, dest) = split_simd_to_128bit_chunks(this, dest)?;
 
-    assert_eq!(op_items_per_chunk, dest_items_per_chunk.checked_mul(2).unwrap());
+    assert_eq!(op_items_per_chunk, dest_items_per_chunk.strict_mul(2));
 
     let imm = this.read_scalar(imm)?.to_uint(imm.layout.size)?;
     // Bit 2 of `imm` specifies the offset for indices of `left`.
@@ -1229,7 +1229,7 @@ fn pack_generic<'tcx>(
     let (_, _, right) = split_simd_to_128bit_chunks(this, right)?;
     let (_, dest_items_per_chunk, dest) = split_simd_to_128bit_chunks(this, dest)?;
 
-    assert_eq!(dest_items_per_chunk, op_items_per_chunk.checked_mul(2).unwrap());
+    assert_eq!(dest_items_per_chunk, op_items_per_chunk.strict_mul(2));
 
     for i in 0..num_chunks {
         let left = this.project_index(&left, i)?;

@@ -89,7 +89,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
                 assert_eq!(left_len, right_len);
-                assert_eq!(dest_len.checked_mul(2).unwrap(), left_len);
+                assert_eq!(dest_len.strict_mul(2), left_len);
 
                 for i in 0..dest_len {
                     let j1 = i.strict_mul(2);
