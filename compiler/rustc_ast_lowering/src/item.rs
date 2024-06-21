@@ -664,12 +664,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     hir::ForeignItemKind::Fn(fn_dec, fn_args, generics, safety)
                 }
-                ForeignItemKind::Static(box StaticForeignItem {
-                    ty,
-                    mutability,
-                    expr: _,
-                    safety,
-                }) => {
+                ForeignItemKind::Static(box StaticItem { ty, mutability, expr: _, safety }) => {
                     let ty = self
                         .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
                     let safety = self.lower_safety(*safety, hir::Safety::Unsafe);

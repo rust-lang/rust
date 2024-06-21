@@ -449,13 +449,13 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
     use ForeignItemKind::*;
     match (l, r) {
         (
-            Static(box StaticForeignItem {
+            Static(box StaticItem {
                 ty: lt,
                 mutability: lm,
                 expr: le,
                 safety: ls,
             }),
-            Static(box StaticForeignItem {
+            Static(box StaticItem {
                 ty: rt,
                 mutability: rm,
                 expr: re,

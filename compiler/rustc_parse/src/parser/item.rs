@@ -1228,7 +1228,7 @@ impl<'a> Parser<'a> {
                                 ident_span: ident.span,
                                 const_span,
                             });
-                            ForeignItemKind::Static(Box::new(StaticForeignItem {
+                            ForeignItemKind::Static(Box::new(StaticItem {
                                 ty,
                                 mutability: Mutability::Not,
                                 expr,
