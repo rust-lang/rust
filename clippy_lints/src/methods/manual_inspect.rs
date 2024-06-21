@@ -1,6 +1,6 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{get_source_text, with_leading_whitespace, SpanRange};
+use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use clippy_utils::ty::get_field_by_name;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures};
 use clippy_utils::{expr_use_ctxt, is_diag_item_method, is_diag_trait_item, path_to_local_id, ExprUseNode};
@@ -9,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, BorrowKind, ByRef, ClosureKind, Expr, ExprKind, Mutability, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_span::{sym, BytePos, Span, Symbol, DUMMY_SP};
+use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 
 use super::MANUAL_INSPECT;
 
@@ -98,17 +98,19 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
         let mut addr_of_edits = Vec::with_capacity(delayed.len());
         for x in delayed {
             match x {
-                UseKind::Return(s) => edits.push((with_leading_whitespace(cx, s).set_span_pos(s), String::new())),
+                UseKind::Return(s) => edits.push((s.with_leading_whitespace(cx).with_ctxt(s.ctxt()), String::new())),
                 UseKind::Borrowed(s) => {
-                    if let Some(src) = get_source_text(cx, s)
-                        && let Some(src) = src.as_str()
-                        && let trim_src = src.trim_start_matches([' ', '\t', '\n', '\r', '('])
-                        && trim_src.starts_with('&')
-                    {
-                        let range = s.into_range();
-                        #[expect(clippy::cast_possible_truncation)]
-                        let start = BytePos(range.start.0 + (src.len() - trim_src.len()) as u32);
-                        addr_of_edits.push(((start..BytePos(start.0 + 1)).set_span_pos(s), String::new()));
+                    #[expect(clippy::range_plus_one)]
+                    let range = s.map_range(cx, |src, range| {
+                        let src = src.get(range.clone())?;
+                        let trimmed = src.trim_start_matches([' ', '\t', '\n', '\r', '(']);
+                        trimmed.starts_with('&').then(|| {
+                            let pos = range.start + src.len() - trimmed.len();
+                            pos..pos + 1
+                        })
+                    });
+                    if let Some(range) = range {
+                        addr_of_edits.push((range.with_ctxt(s.ctxt()), String::new()));
                     } else {
                         requires_copy = true;
                         requires_deref = true;
@@ -174,7 +176,10 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
                 }),
             ));
             edits.push((
-                with_leading_whitespace(cx, final_expr.span).set_span_pos(final_expr.span),
+                final_expr
+                    .span
+                    .with_leading_whitespace(cx)
+                    .with_ctxt(final_expr.span.ctxt()),
                 String::new(),
             ));
             let app = if edits.iter().any(|(s, _)| s.from_expansion()) {

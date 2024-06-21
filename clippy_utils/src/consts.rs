@@ -1,7 +1,7 @@
 #![allow(clippy::float_cmp)]
 
 use crate::macros::HirNode;
-use crate::source::{get_source_text, walk_span_to_context};
+use crate::source::{walk_span_to_context, SpanRangeExt};
 use crate::{clip, is_direct_expn_of, sext, unsext};
 
 use rustc_ast::ast::{self, LitFloatType, LitKind};
@@ -15,8 +15,8 @@ use rustc_middle::mir::ConstValue;
 use rustc_middle::ty::{self, EarlyBinder, FloatTy, GenericArgsRef, IntTy, List, ScalarInt, Ty, TyCtxt, UintTy};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::def_id::DefId;
+use rustc_span::sym;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{sym, SyntaxContext};
 use rustc_target::abi::Size;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
@@ -664,11 +664,11 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         {
             // Try to detect any `cfg`ed statements or empty macro expansions.
             let span = block.span.data();
-            if span.ctxt == SyntaxContext::root() {
+            if span.ctxt.is_root() {
                 if let Some(expr_span) = walk_span_to_context(expr.span, span.ctxt)
                     && let expr_lo = expr_span.lo()
                     && expr_lo >= span.lo
-                    && let Some(src) = get_source_text(self.lcx, span.lo..expr_lo)
+                    && let Some(src) = (span.lo..expr_lo).get_source_text(self.lcx)
                     && let Some(src) = src.as_str()
                 {
                     use rustc_lexer::TokenKind::{BlockComment, LineComment, OpenBrace, Semi, Whitespace};
