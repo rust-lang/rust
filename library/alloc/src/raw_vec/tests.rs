@@ -43,9 +43,9 @@ fn allocator_param() {
 
     let a = BoundedAlloc { fuel: Cell::new(500) };
     let mut v: RawVec<u8, _> = RawVec::with_capacity_in(50, a);
-    assert_eq!(v.alloc.fuel.get(), 450);
+    assert_eq!(v.inner.alloc.fuel.get(), 450);
     v.reserve(50, 150); // (causes a realloc, thus using 50 + 150 = 200 units of fuel)
-    assert_eq!(v.alloc.fuel.get(), 250);
+    assert_eq!(v.inner.alloc.fuel.get(), 250);
 }
 
 #[test]
@@ -86,7 +86,7 @@ struct ZST;
 fn zst_sanity<T>(v: &RawVec<T>) {
     assert_eq!(v.capacity(), usize::MAX);
     assert_eq!(v.ptr(), core::ptr::Unique::<T>::dangling().as_ptr());
-    assert_eq!(v.current_memory(), None);
+    assert_eq!(v.inner.current_memory(T::LAYOUT), None);
 }
 
 #[test]
@@ -106,21 +106,10 @@ fn zst() {
     let v: RawVec<ZST> = RawVec::with_capacity_in(100, Global);
     zst_sanity(&v);
 
-    let v: RawVec<ZST> = RawVec::try_allocate_in(0, AllocInit::Uninitialized, Global).unwrap();
-    zst_sanity(&v);
-
-    let v: RawVec<ZST> = RawVec::try_allocate_in(100, AllocInit::Uninitialized, Global).unwrap();
-    zst_sanity(&v);
-
-    let mut v: RawVec<ZST> =
-        RawVec::try_allocate_in(usize::MAX, AllocInit::Uninitialized, Global).unwrap();
+    let mut v: RawVec<ZST> = RawVec::with_capacity_in(usize::MAX, Global);
     zst_sanity(&v);
 
     // Check all these operations work as expected with zero-sized elements.
-
-    assert!(!v.needs_to_grow(100, usize::MAX - 100));
-    assert!(v.needs_to_grow(101, usize::MAX - 100));
-    zst_sanity(&v);
 
     v.reserve(100, usize::MAX - 100);
     //v.reserve(101, usize::MAX - 100); // panics, in `zst_reserve_panic` below
@@ -138,12 +127,12 @@ fn zst() {
     assert_eq!(v.try_reserve_exact(101, usize::MAX - 100), cap_err);
     zst_sanity(&v);
 
-    assert_eq!(v.grow_amortized(100, usize::MAX - 100), cap_err);
-    assert_eq!(v.grow_amortized(101, usize::MAX - 100), cap_err);
+    assert_eq!(v.inner.grow_amortized(100, usize::MAX - 100, ZST::LAYOUT), cap_err);
+    assert_eq!(v.inner.grow_amortized(101, usize::MAX - 100, ZST::LAYOUT), cap_err);
     zst_sanity(&v);
 
-    assert_eq!(v.grow_exact(100, usize::MAX - 100), cap_err);
-    assert_eq!(v.grow_exact(101, usize::MAX - 100), cap_err);
+    assert_eq!(v.inner.grow_exact(100, usize::MAX - 100, ZST::LAYOUT), cap_err);
+    assert_eq!(v.inner.grow_exact(101, usize::MAX - 100, ZST::LAYOUT), cap_err);
     zst_sanity(&v);
 }
 

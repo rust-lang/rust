@@ -5,6 +5,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::alloc::Layout;
 use crate::marker::DiscriminantKind;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
 
@@ -1238,6 +1239,10 @@ pub trait SizedTypeProperties: Sized {
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
     const IS_ZST: bool = size_of::<Self>() == 0;
+
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    const LAYOUT: Layout = Layout::new::<Self>();
 }
 #[doc(hidden)]
 #[unstable(feature = "sized_type_properties", issue = "none")]
