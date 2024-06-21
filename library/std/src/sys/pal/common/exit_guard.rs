@@ -1,6 +1,6 @@
 cfg_if::cfg_if! {
     if #[cfg(target_os = "linux")] {
-        /// Mitigation for https://github.com/rust-lang/rust/issues/126600
+        /// Mitigation for <https://github.com/rust-lang/rust/issues/126600>
         ///
         /// On `unix` (where `libc::exit` may not be thread-safe), ensure that only one Rust thread
         /// calls `libc::exit` (or returns from `main`) by calling this function before calling
@@ -78,9 +78,10 @@ cfg_if::cfg_if! {
             }
         }
     } else {
-        /// Mitigation for https://github.com/rust-lang/rust/issues/126600
+        /// Mitigation for <https://github.com/rust-lang/rust/issues/126600>
         ///
-        /// Mitigation is ***NOT*** implemented on this platform, either because this platform is not affected, or because mitigation is not yet implemented for this platform.
+        /// Mitigation is ***NOT*** implemented on this platform, either because this platform
+        /// is not affected, or because mitigation is not yet implemented for this platform.
         pub(crate) fn unique_thread_exit() {
             // Mitigation not required on platforms where `exit` is thread-safe.
         }
