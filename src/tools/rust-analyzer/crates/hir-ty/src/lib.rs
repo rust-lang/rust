@@ -330,18 +330,15 @@ pub(crate) fn make_single_type_binders<T: HasInterner<Interner = Interner>>(
     )
 }
 
-pub(crate) fn make_binders_with_count<T: HasInterner<Interner = Interner>>(
+pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
     db: &dyn HirDatabase,
-    count: usize,
     generics: &Generics,
     value: T,
 ) -> Binders<T> {
-    let it = generics.iter_id().take(count);
-
     Binders::new(
         VariableKinds::from_iter(
             Interner,
-            it.map(|x| match x {
+            generics.iter_id().map(|x| match x {
                 hir_def::GenericParamId::ConstParamId(id) => {
                     chalk_ir::VariableKind::Const(db.const_param_ty(id))
                 }
@@ -353,14 +350,6 @@ pub(crate) fn make_binders_with_count<T: HasInterner<Interner = Interner>>(
         ),
         value,
     )
-}
-
-pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
-    db: &dyn HirDatabase,
-    generics: &Generics,
-    value: T,
-) -> Binders<T> {
-    make_binders_with_count(db, usize::MAX, generics, value)
 }
 
 // FIXME: get rid of this, just replace it by FnPointer
@@ -524,14 +513,16 @@ pub type PolyFnSig = Binders<CallableSig>;
 
 impl CallableSig {
     pub fn from_params_and_return(
-        mut params: Vec<Ty>,
+        params: impl ExactSizeIterator<Item = Ty>,
         ret: Ty,
         is_varargs: bool,
         safety: Safety,
         abi: FnAbi,
     ) -> CallableSig {
-        params.push(ret);
-        CallableSig { params_and_return: params.into(), is_varargs, safety, abi }
+        let mut params_and_return = Vec::with_capacity(params.len() + 1);
+        params_and_return.extend(params);
+        params_and_return.push(ret);
+        CallableSig { params_and_return: params_and_return.into(), is_varargs, safety, abi }
     }
 
     pub fn from_def(db: &dyn HirDatabase, def: FnDefId, substs: &Substitution) -> CallableSig {
@@ -946,8 +937,7 @@ pub fn callable_sig_from_fn_trait(
                     .as_tuple()?
                     .iter(Interner)
                     .map(|it| it.assert_ty_ref(Interner))
-                    .cloned()
-                    .collect();
+                    .cloned();
 
                 return Some((
                     fn_x,
