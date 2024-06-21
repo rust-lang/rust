@@ -152,10 +152,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source_info,
                     TerminatorKind::Call {
                         func: exchange_malloc,
-                        args: vec![
+                        args: [
                             Spanned { node: Operand::Move(size), span: DUMMY_SP },
                             Spanned { node: Operand::Move(align), span: DUMMY_SP },
-                        ],
+                        ]
+                        .into(),
                         destination: storage,
                         target: Some(success),
                         unwind: UnwindAction::Continue,

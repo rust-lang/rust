@@ -323,6 +323,12 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Vec<T> {
     }
 }
 
+impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Box<[T]> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Vec::from(self).try_fold_with(folder).map(Vec::into_boxed_slice)
+    }
+}
+
 impl<I: Interner, T: TypeFoldable<I>, Ix: Idx> TypeFoldable<I> for IndexVec<Ix, T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.raw.try_fold_with(folder).map(IndexVec::from_raw)

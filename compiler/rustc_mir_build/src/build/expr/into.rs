@@ -238,7 +238,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Call { ty: _, fun, ref args, from_hir_call, fn_span } => {
                 let fun = unpack!(block = this.as_local_operand(block, fun));
-                let args: Vec<_> = args
+                let args: Box<[_]> = args
                     .into_iter()
                     .copied()
                     .map(|arg| Spanned {
@@ -485,7 +485,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         operands,
                         options,
                         line_spans,
-                        targets,
+                        targets: targets.into_boxed_slice(),
                         unwind: if options.contains(InlineAsmOptions::MAY_UNWIND) {
                             UnwindAction::Continue
                         } else {
