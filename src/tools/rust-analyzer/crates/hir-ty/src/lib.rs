@@ -22,6 +22,7 @@ extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 mod builder;
 mod chalk_db;
 mod chalk_ext;
+mod generics;
 mod infer;
 mod inhabitedness;
 mod interner;
@@ -67,11 +68,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast::{make, ConstArg};
 use traits::FnTrait;
 use triomphe::Arc;
-use utils::Generics;
 
 use crate::{
-    consteval::unknown_const, db::HirDatabase, display::HirDisplay, infer::unify::InferenceTable,
-    utils::generics,
+    consteval::unknown_const, db::HirDatabase, display::HirDisplay, generics::Generics,
+    infer::unify::InferenceTable,
 };
 
 pub use autoderef::autoderef;
@@ -289,7 +289,7 @@ impl Hash for ConstScalar {
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
-    generics(db.upcast(), id.parent).type_or_const_param_idx(id)
+    generics::generics(db.upcast(), id.parent).type_or_const_param_idx(id)
 }
 
 pub(crate) fn wrap_empty_binders<T>(value: T) -> Binders<T>

@@ -58,12 +58,13 @@ use crate::{
         unknown_const_as_generic,
     },
     db::HirDatabase,
-    error_lifetime, make_binders,
+    error_lifetime,
+    generics::{generics, Generics},
+    make_binders,
     mapping::{from_chalk_trait_id, lt_to_placeholder_idx, ToChalk},
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::{
-        self, all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
-        Generics, InTypeConstIdMetadata,
+        all_super_trait_refs, associated_type_by_name_including_super_traits, InTypeConstIdMetadata,
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, Const, ConstScalar, DebruijnIndex, DynTy,
     FnAbi, FnPointer, FnSig, FnSubst, ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime,
@@ -705,7 +706,8 @@ impl<'a> TyLoweringContext<'a> {
                     None,
                 );
 
-                let len_self = utils::generics(self.db.upcast(), associated_ty.into()).len_self();
+                let len_self =
+                    crate::generics::generics(self.db.upcast(), associated_ty.into()).len_self();
 
                 let substs = Substitution::from_iter(
                     Interner,

@@ -56,11 +56,12 @@ use triomphe::Arc;
 use crate::{
     db::HirDatabase,
     error_lifetime, fold_tys,
+    generics::Generics,
     infer::{coerce::CoerceMany, unify::InferenceTable},
     lower::ImplTraitLoweringMode,
     to_assoc_type_id,
     traits::FnTrait,
-    utils::{Generics, InTypeConstIdMetadata, UnevaluatedConstEvaluatorFolder},
+    utils::{InTypeConstIdMetadata, UnevaluatedConstEvaluatorFolder},
     AliasEq, AliasTy, Binders, ClosureId, Const, DomainGoal, GenericArg, Goal, ImplTraitId,
     ImplTraitIdx, InEnvironment, Interner, Lifetime, OpaqueTyId, ProjectionTy, Substitution,
     TraitEnvironment, Ty, TyBuilder, TyExt,
@@ -633,7 +634,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     pub(crate) fn generics(&self) -> Option<Generics> {
-        Some(crate::utils::generics(self.db.upcast(), self.resolver.generic_def()?))
+        Some(crate::generics::generics(self.db.upcast(), self.resolver.generic_def()?))
     }
 
     // FIXME: This function should be private in module. It is currently only used in the consteval, since we need
@@ -1263,7 +1264,7 @@ impl<'a> InferenceContext<'a> {
                 forbid_unresolved_segments((ty, Some(var.into())), unresolved)
             }
             TypeNs::SelfType(impl_id) => {
-                let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
+                let generics = crate::generics::generics(self.db.upcast(), impl_id.into());
                 let substs = generics.placeholder_subst(self.db);
                 let mut ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
 

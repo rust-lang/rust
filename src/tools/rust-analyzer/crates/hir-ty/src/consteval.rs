@@ -15,10 +15,9 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, infer::InferenceContext, lower::ParamLoweringMode,
-    mir::monomorphize_mir_body_bad, to_placeholder_idx, utils::Generics, Const, ConstData,
-    ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution, TraitEnvironment, Ty,
-    TyBuilder,
+    db::HirDatabase, generics::Generics, infer::InferenceContext, lower::ParamLoweringMode,
+    mir::monomorphize_mir_body_bad, to_placeholder_idx, Const, ConstData, ConstScalar, ConstValue,
+    GenericArg, Interner, MemoryMap, Substitution, TraitEnvironment, Ty, TyBuilder,
 };
 
 use super::mir::{interpret_mir, lower_to_mir, pad16, MirEvalError, MirLowerError};
