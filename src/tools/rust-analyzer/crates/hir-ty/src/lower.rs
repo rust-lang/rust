@@ -48,6 +48,7 @@ use intern::Interned;
 use la_arena::{Arena, ArenaMap};
 use once_cell::unsync::OnceCell;
 use rustc_hash::FxHashSet;
+use rustc_pattern_analysis::Captures;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
 use syntax::ast;
@@ -1595,14 +1596,20 @@ pub(crate) fn generic_predicates_for_param_query(
         .collect();
 
     let subst = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-    let explicitly_unsized_tys = ctx.unsized_types.into_inner();
-    if let Some(implicitly_sized_predicates) =
-        implicitly_sized_clauses(db, param_id.parent, &explicitly_unsized_tys, &subst, &resolver)
-    {
-        predicates.extend(
-            implicitly_sized_predicates
-                .map(|p| make_binders(db, &generics, crate::wrap_empty_binders(p))),
-        );
+    if !subst.is_empty(Interner) {
+        let explicitly_unsized_tys = ctx.unsized_types.into_inner();
+        if let Some(implicitly_sized_predicates) = implicitly_sized_clauses(
+            db,
+            param_id.parent,
+            &explicitly_unsized_tys,
+            &subst,
+            &resolver,
+        ) {
+            predicates.extend(
+                implicitly_sized_predicates
+                    .map(|p| make_binders(db, &generics, crate::wrap_empty_binders(p))),
+            );
+        };
     }
     predicates.into()
 }
@@ -1665,14 +1672,17 @@ pub(crate) fn trait_environment_query(
     }
 
     let subst = generics(db.upcast(), def).placeholder_subst(db);
-    let explicitly_unsized_tys = ctx.unsized_types.into_inner();
-    if let Some(implicitly_sized_clauses) =
-        implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver)
-    {
-        clauses.extend(
-            implicitly_sized_clauses
-                .map(|pred| pred.cast::<ProgramClause>(Interner).into_from_env_clause(Interner)),
-        );
+    if !subst.is_empty(Interner) {
+        let explicitly_unsized_tys = ctx.unsized_types.into_inner();
+        if let Some(implicitly_sized_clauses) =
+            implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver)
+        {
+            clauses.extend(
+                implicitly_sized_clauses.map(|pred| {
+                    pred.cast::<ProgramClause>(Interner).into_from_env_clause(Interner)
+                }),
+            );
+        };
     }
 
     let env = chalk_ir::Environment::new(Interner).add_clauses(Interner, clauses);
@@ -1714,27 +1724,29 @@ pub(crate) fn generic_predicates_query(
         .collect::<Vec<_>>();
 
     let subst = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-    let explicitly_unsized_tys = ctx.unsized_types.into_inner();
-    if let Some(implicitly_sized_predicates) =
-        implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver)
-    {
-        predicates.extend(
-            implicitly_sized_predicates
-                .map(|p| make_binders(db, &generics, crate::wrap_empty_binders(p))),
-        );
+    if !subst.is_empty(Interner) {
+        let explicitly_unsized_tys = ctx.unsized_types.into_inner();
+        if let Some(implicitly_sized_predicates) =
+            implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver)
+        {
+            predicates.extend(
+                implicitly_sized_predicates
+                    .map(|p| make_binders(db, &generics, crate::wrap_empty_binders(p))),
+            );
+        };
     }
     GenericPredicates(predicates.is_empty().not().then(|| predicates.into()))
 }
 
 /// Generate implicit `: Sized` predicates for all generics that has no `?Sized` bound.
 /// Exception is Self of a trait def.
-fn implicitly_sized_clauses<'a>(
+fn implicitly_sized_clauses<'a, 'subst: 'a>(
     db: &dyn HirDatabase,
     def: GenericDefId,
     explicitly_unsized_tys: &'a FxHashSet<Ty>,
-    substitution: &'a Substitution,
+    substitution: &'subst Substitution,
     resolver: &Resolver,
-) -> Option<impl Iterator<Item = WhereClause> + 'a> {
+) -> Option<impl Iterator<Item = WhereClause> + Captures<'a> + Captures<'subst>> {
     let is_trait_def = matches!(def, GenericDefId::TraitId(..));
     let generic_args = &substitution.as_slice(Interner)[is_trait_def as usize..];
     let sized_trait = db
@@ -1761,12 +1773,13 @@ pub(crate) fn generic_defaults_query(
     def: GenericDefId,
 ) -> Arc<[Binders<crate::GenericArg>]> {
     let resolver = def.resolver(db.upcast());
-    let ctx = TyLoweringContext::new(db, &resolver, def.into())
-        .with_type_param_mode(ParamLoweringMode::Variable);
     let generic_params = generics(db.upcast(), def);
     let parent_start_idx = generic_params.len_self();
 
-    let defaults = Arc::from_iter(generic_params.iter().enumerate().map(|(idx, (id, p))| {
+    let ctx = TyLoweringContext::new(db, &resolver, def.into())
+        .with_impl_trait_mode(ImplTraitLoweringMode::Disallowed)
+        .with_type_param_mode(ParamLoweringMode::Variable);
+    Arc::from_iter(generic_params.iter().enumerate().map(|(idx, (id, p))| {
         match p {
             GenericParamDataRef::TypeParamData(p) => {
                 let mut ty =
@@ -1797,9 +1810,7 @@ pub(crate) fn generic_defaults_query(
                 make_binders(db, &generic_params, error_lifetime().cast(Interner))
             }
         }
-    }));
-
-    defaults
+    }))
 }
 
 pub(crate) fn generic_defaults_recover(
@@ -1810,16 +1821,14 @@ pub(crate) fn generic_defaults_recover(
     let generic_params = generics(db.upcast(), *def);
     // FIXME: this code is not covered in tests.
     // we still need one default per parameter
-    let defaults = Arc::from_iter(generic_params.iter_id().map(|id| {
+    Arc::from_iter(generic_params.iter_id().map(|id| {
         let val = match id {
             GenericParamId::TypeParamId(_) => TyKind::Error.intern(Interner).cast(Interner),
             GenericParamId::ConstParamId(id) => unknown_const_as_generic(db.const_param_ty(id)),
             GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
         };
         crate::make_binders(db, &generic_params, val)
-    }));
-
-    defaults
+    }))
 }
 
 fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
