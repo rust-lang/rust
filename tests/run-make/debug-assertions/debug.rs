@@ -1,3 +1,4 @@
+#![allow(internal_features)]
 #![feature(rustc_attrs)]
 #![deny(warnings)]
 
