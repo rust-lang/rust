@@ -4,12 +4,12 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/index.html'
+//@ has 'foo/index.html'
 // There should only be one struct displayed.
-// @count - '//*[@id="main-content"]/*[@class="section-header"]' 1
-// @has - '//*[@id="main-content"]/*[@class="section-header"]' 'Structs'
-// @has - '//*[@id="main-content"]//a[@href="struct.Reexport.html"]' 'Reexport'
-// @has - '//*[@id="main-content"]//*[@class="desc docblock-short"]' 'Visible. Original.'
+//@ count - '//*[@id="main-content"]/*[@class="section-header"]' 1
+//@ has - '//*[@id="main-content"]/*[@class="section-header"]' 'Structs'
+//@ has - '//*[@id="main-content"]//a[@href="struct.Reexport.html"]' 'Reexport'
+//@ has - '//*[@id="main-content"]//*[@class="desc docblock-short"]' 'Visible. Original.'
 
 mod private {
     /// Original.

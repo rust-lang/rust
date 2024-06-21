@@ -1,75 +1,75 @@
 #![crate_name = "globuliferous"]
 #![feature(doc_cfg)]
 
-// @has 'globuliferous/index.html'
-// @count   - '//*[@class="stab portability"]' 1
-// @matches - '//*[@class="stab portability"]' '^ratel$'
+//@ has 'globuliferous/index.html'
+//@ count   - '//*[@class="stab portability"]' 1
+//@ matches - '//*[@class="stab portability"]' '^ratel$'
 
-// @has 'globuliferous/ratel/index.html'
-// @count   - '//*[@class="stab portability"]' 8
-// @matches - '//*[@class="stab portability"]' 'crate feature ratel'
-// @matches - '//*[@class="stab portability"]' '^zoonosology$'
-// @matches - '//*[@class="stab portability"]' '^yusho$'
-// @matches - '//*[@class="stab portability"]' '^nunciative$'
-// @matches - '//*[@class="stab portability"]' '^thionic$'
-// @matches - '//*[@class="stab portability"]' '^zincic$'
-// @matches - '//*[@class="stab portability"]' '^cosmotellurian$'
-// @matches - '//*[@class="stab portability"]' '^aposiopesis$'
+//@ has 'globuliferous/ratel/index.html'
+//@ count   - '//*[@class="stab portability"]' 8
+//@ matches - '//*[@class="stab portability"]' 'crate feature ratel'
+//@ matches - '//*[@class="stab portability"]' '^zoonosology$'
+//@ matches - '//*[@class="stab portability"]' '^yusho$'
+//@ matches - '//*[@class="stab portability"]' '^nunciative$'
+//@ matches - '//*[@class="stab portability"]' '^thionic$'
+//@ matches - '//*[@class="stab portability"]' '^zincic$'
+//@ matches - '//*[@class="stab portability"]' '^cosmotellurian$'
+//@ matches - '//*[@class="stab portability"]' '^aposiopesis$'
 #[doc(cfg(feature = "ratel"))]
 pub mod ratel {
-    // @has 'globuliferous/ratel/fn.ovicide.html'
-    // @count   - '//*[@class="stab portability"]' 1
-    // @matches - '//*[@class="stab portability"]' 'crate feature ratel'
+    //@ has 'globuliferous/ratel/fn.ovicide.html'
+    //@ count   - '//*[@class="stab portability"]' 1
+    //@ matches - '//*[@class="stab portability"]' 'crate feature ratel'
     pub fn ovicide() {}
 
-    // @has 'globuliferous/ratel/fn.zoonosology.html'
-    // @count   - '//*[@class="stab portability"]' 1
-    // @matches - '//*[@class="stab portability"]' 'crate features ratel and zoonosology'
+    //@ has 'globuliferous/ratel/fn.zoonosology.html'
+    //@ count   - '//*[@class="stab portability"]' 1
+    //@ matches - '//*[@class="stab portability"]' 'crate features ratel and zoonosology'
     #[doc(cfg(feature = "zoonosology"))]
     pub fn zoonosology() {}
 
-    // @has 'globuliferous/ratel/constant.DIAGRAPHICS.html'
-    // @count   - '//*[@class="stab portability"]' 1
-    // @matches - '//*[@class="stab portability"]' 'crate feature ratel'
+    //@ has 'globuliferous/ratel/constant.DIAGRAPHICS.html'
+    //@ count   - '//*[@class="stab portability"]' 1
+    //@ matches - '//*[@class="stab portability"]' 'crate feature ratel'
     pub const DIAGRAPHICS: () = ();
 
-    // @has 'globuliferous/ratel/constant.YUSHO.html'
-    // @count   - '//*[@class="stab portability"]' 1
-    // @matches - '//*[@class="stab portability"]' 'crate features ratel and yusho'
+    //@ has 'globuliferous/ratel/constant.YUSHO.html'
+    //@ count   - '//*[@class="stab portability"]' 1
+    //@ matches - '//*[@class="stab portability"]' 'crate features ratel and yusho'
     #[doc(cfg(feature = "yusho"))]
     pub const YUSHO: () = ();
 
-    // @has 'globuliferous/ratel/static.KEYBUGLE.html'
-    // @count   - '//*[@class="stab portability"]' 1
-    // @matches - '//*[@class="stab portability"]' 'crate feature ratel'
+    //@ has 'globuliferous/ratel/static.KEYBUGLE.html'
+    //@ count   - '//*[@class="stab portability"]' 1
+    //@ matches - '//*[@class="stab portability"]' 'crate feature ratel'
     pub static KEYBUGLE: () = ();
 
-    // @has 'globuliferous/ratel/static.NUNCIATIVE.html'
-    // @count   - '//*[@class="stab portability"]' 1
-    // @matches - '//*[@class="stab portability"]' 'crate features ratel and nunciative'
+    //@ has 'globuliferous/ratel/static.NUNCIATIVE.html'
+    //@ count   - '//*[@class="stab portability"]' 1
+    //@ matches - '//*[@class="stab portability"]' 'crate features ratel and nunciative'
     #[doc(cfg(feature = "nunciative"))]
     pub static NUNCIATIVE: () = ();
 
-    // @has 'globuliferous/ratel/type.Wrick.html'
-    // @count   - '//*[@class="stab portability"]' 1
-    // @matches - '//*[@class="stab portability"]' 'crate feature ratel'
+    //@ has 'globuliferous/ratel/type.Wrick.html'
+    //@ count   - '//*[@class="stab portability"]' 1
+    //@ matches - '//*[@class="stab portability"]' 'crate feature ratel'
     pub type Wrick = ();
 
-    // @has 'globuliferous/ratel/type.Thionic.html'
-    // @count   - '//*[@class="stab portability"]' 1
-    // @matches - '//*[@class="stab portability"]' 'crate features ratel and thionic'
+    //@ has 'globuliferous/ratel/type.Thionic.html'
+    //@ count   - '//*[@class="stab portability"]' 1
+    //@ matches - '//*[@class="stab portability"]' 'crate features ratel and thionic'
     #[doc(cfg(feature = "thionic"))]
     pub type Thionic = ();
 
-    // @has 'globuliferous/ratel/struct.Eventration.html'
-    // @count   - '//*[@class="stab portability"]' 1
-    // @matches - '//*[@class="stab portability"]' 'crate feature ratel'
+    //@ has 'globuliferous/ratel/struct.Eventration.html'
+    //@ count   - '//*[@class="stab portability"]' 1
+    //@ matches - '//*[@class="stab portability"]' 'crate feature ratel'
     pub struct Eventration;
 
-    // @has 'globuliferous/ratel/struct.Zincic.html'
-    // @count   - '//*[@class="stab portability"]' 2
-    // @matches - '//*[@class="stab portability"]' 'crate features ratel and zincic'
-    // @matches - '//*[@class="stab portability"]' 'crate feature rutherford'
+    //@ has 'globuliferous/ratel/struct.Zincic.html'
+    //@ count   - '//*[@class="stab portability"]' 2
+    //@ matches - '//*[@class="stab portability"]' 'crate features ratel and zincic'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature rutherford'
     #[doc(cfg(feature = "zincic"))]
     pub struct Zincic {
         pub rectigrade: (),
@@ -78,18 +78,18 @@ pub mod ratel {
         pub rutherford: (),
     }
 
-    // @has 'globuliferous/ratel/enum.Cosmotellurian.html'
-    // @count   - '//*[@class="stab portability"]' 10
-    // @matches - '//*[@class="stab portability"]' 'crate features ratel and cosmotellurian'
-    // @matches - '//*[@class="stab portability"]' 'crate feature biotaxy'
-    // @matches - '//*[@class="stab portability"]' 'crate feature xiphopagus'
-    // @matches - '//*[@class="stab portability"]' 'crate feature juxtapositive'
-    // @matches - '//*[@class="stab portability"]' 'crate feature fuero'
-    // @matches - '//*[@class="stab portability"]' 'crate feature palaeophile'
-    // @matches - '//*[@class="stab portability"]' 'crate feature broadcloth'
-    // @matches - '//*[@class="stab portability"]' 'crate features broadcloth and xanthocomic'
-    // @matches - '//*[@class="stab portability"]' 'crate feature broadcloth'
-    // @matches - '//*[@class="stab portability"]' 'crate features broadcloth and whosoever'
+    //@ has 'globuliferous/ratel/enum.Cosmotellurian.html'
+    //@ count   - '//*[@class="stab portability"]' 10
+    //@ matches - '//*[@class="stab portability"]' 'crate features ratel and cosmotellurian'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature biotaxy'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature xiphopagus'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature juxtapositive'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature fuero'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature palaeophile'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature broadcloth'
+    //@ matches - '//*[@class="stab portability"]' 'crate features broadcloth and xanthocomic'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature broadcloth'
+    //@ matches - '//*[@class="stab portability"]' 'crate features broadcloth and whosoever'
     #[doc(cfg(feature = "cosmotellurian"))]
     pub enum Cosmotellurian {
         Groundsel {
@@ -133,12 +133,12 @@ pub mod ratel {
         pub const WHOSOEVER: () = ();
     }
 
-    // @has 'globuliferous/ratel/trait.Gnotobiology.html'
-    // @count   - '//*[@class="stab portability"]' 4
-    // @matches - '//*[@class="stab portability"]' 'crate feature ratel'
-    // @matches - '//*[@class="stab portability"]' 'crate feature unzymotic'
-    // @matches - '//*[@class="stab portability"]' 'crate feature summate'
-    // @matches - '//*[@class="stab portability"]' 'crate feature unctuous'
+    //@ has 'globuliferous/ratel/trait.Gnotobiology.html'
+    //@ count   - '//*[@class="stab portability"]' 4
+    //@ matches - '//*[@class="stab portability"]' 'crate feature ratel'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature unzymotic'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature summate'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature unctuous'
     pub trait Gnotobiology {
         const XYLOTHERAPY: ();
 
@@ -156,12 +156,12 @@ pub mod ratel {
         fn unctuous();
     }
 
-    // @has 'globuliferous/ratel/trait.Aposiopesis.html'
-    // @count   - '//*[@class="stab portability"]' 4
-    // @matches - '//*[@class="stab portability"]' 'crate features ratel and aposiopesis'
-    // @matches - '//*[@class="stab portability"]' 'crate feature umbracious'
-    // @matches - '//*[@class="stab portability"]' 'crate feature uakari'
-    // @matches - '//*[@class="stab portability"]' 'crate feature rotograph'
+    //@ has 'globuliferous/ratel/trait.Aposiopesis.html'
+    //@ count   - '//*[@class="stab portability"]' 4
+    //@ matches - '//*[@class="stab portability"]' 'crate features ratel and aposiopesis'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature umbracious'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature uakari'
+    //@ matches - '//*[@class="stab portability"]' 'crate feature rotograph'
     #[doc(cfg(feature = "aposiopesis"))]
     pub trait Aposiopesis {
         const REDHIBITION: ();

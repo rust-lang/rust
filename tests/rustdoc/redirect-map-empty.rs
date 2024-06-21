@@ -2,5 +2,5 @@
 
 #![crate_name = "foo"]
 
-// @!has foo/redirect-map.json
+//@ !has foo/redirect-map.json
 pub struct Foo;

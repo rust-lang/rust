@@ -6,8 +6,8 @@ pub mod app {
     pub struct S;
 
     impl S {
-        // @has 'foo/app/struct.S.html'
-        // @has - '//a[@href="../enums/enum.Foo.html#method.by_name"]' 'Foo::by_name'
+        //@ has 'foo/app/struct.S.html'
+        //@ has - '//a[@href="../enums/enum.Foo.html#method.by_name"]' 'Foo::by_name'
         /**
         Doc comment hello! [`Foo::by_name`](`crate::enums::Foo::by_name`).
         */

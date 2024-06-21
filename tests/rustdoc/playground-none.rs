@@ -6,4 +6,4 @@
 //! println!("Hello, world!");
 //! ```
 
-// @!has foo/index.html '//a[@class="test-arrow"]' "Run"
+//@ !has foo/index.html '//a[@class="test-arrow"]' "Run"

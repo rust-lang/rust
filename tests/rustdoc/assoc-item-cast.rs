@@ -9,6 +9,6 @@ pub trait AsExpression<T> {
     fn as_expression(self) -> Self::Expression;
 }
 
-// @has foo/type.AsExprOf.html
-// @has - '//pre[@class="rust item-decl"]' 'type AsExprOf<Item, Type> = <Item as AsExpression<Type>>::Expression;'
+//@ has foo/type.AsExprOf.html
+//@ has - '//pre[@class="rust item-decl"]' 'type AsExprOf<Item, Type> = <Item as AsExpression<Type>>::Expression;'
 pub type AsExprOf<Item, Type> = <Item as AsExpression<Type>>::Expression;
