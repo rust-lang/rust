@@ -125,29 +125,19 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.isize_type
     }
 
-    #[cfg(feature = "master")]
     fn type_f16(&self) -> Type<'gcc> {
+        #[cfg(feature = "master")]
         if self.supports_f16_type {
             return self.context.new_c_type(CType::Float16);
         }
-        unimplemented!("f16")
+        bug!("unsupported float width 16")
     }
 
-    #[cfg(not(feature = "master"))]
-    fn type_f16(&self) -> Type<'gcc> {
-        unimplemented!("f16")
-    }
-
-    #[cfg(feature = "master")]
     fn type_f32(&self) -> Type<'gcc> {
+        #[cfg(feature = "master")]
         if self.supports_f32_type {
             return self.context.new_c_type(CType::Float32);
         }
-        self.float_type
-    }
-
-    #[cfg(not(feature = "master"))]
-    fn type_f32(&self) -> Type<'gcc> {
         self.float_type
     }
 
@@ -155,17 +145,12 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.double_type
     }
 
-    #[cfg(feature = "master")]
     fn type_f128(&self) -> Type<'gcc> {
+        #[cfg(feature = "master")]
         if self.supports_f128_type {
             return self.context.new_c_type(CType::Float128);
         }
-        unimplemented!("f128")
-    }
-
-    #[cfg(not(feature = "master"))]
-    fn type_f128(&self) -> Type<'gcc> {
-        unimplemented!("f128")
+        bug!("unsupported float width 128")
     }
 
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {
