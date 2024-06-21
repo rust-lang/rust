@@ -24,7 +24,7 @@ pub mod project_json;
 mod test_runner;
 
 use command::{CommandHandle, ParseFromLine};
-pub use test_runner::{CargoTestHandle, CargoTestMessage, TestState};
+pub use test_runner::{CargoTestHandle, CargoTestMessage, TestState, TestTarget};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum InvocationStrategy {
