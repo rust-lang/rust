@@ -29,7 +29,7 @@ LL |     recursive_tt!();
    |     --------------- in this macro invocation
    |
    = note: expected type `{integer}`
-   |          found enum `Enum<(), ()>`
+              found enum `Enum<(), ()>`
    = note: this error originates in the macro `recursive_tt` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0109]: type arguments are not allowed on this type
@@ -63,7 +63,7 @@ LL |     recursive_ident!();
    |     ------------------ in this macro invocation
    |
    = note: expected type `{integer}`
-   |          found enum `Enum<(), ()>`
+              found enum `Enum<(), ()>`
    = note: this error originates in the macro `recursive_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0109]: type arguments are not allowed on this type
@@ -98,7 +98,7 @@ LL |     nested1_tt!();
    |     ------------- in this macro invocation
    |
    = note: expected type `{integer}`
-   |          found enum `Enum<(), ()>`
+              found enum `Enum<(), ()>`
    = note: this error originates in the macro `nested2_tt` which comes from the expansion of the macro `nested1_tt` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0109]: type arguments are not allowed on this type
@@ -133,7 +133,7 @@ LL |     nested1_ident!();
    |     ---------------- in this macro invocation
    |
    = note: expected type `{integer}`
-   |          found enum `Enum<(), ()>`
+              found enum `Enum<(), ()>`
    = note: this error originates in the macro `nested2_ident` which comes from the expansion of the macro `nested1_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0109]: type arguments are not allowed on this type
@@ -169,7 +169,7 @@ LL |     nested1_tt_args_in_first_macro!();
    |     --------------------------------- in this macro invocation
    |
    = note: expected type `{integer}`
-   |          found enum `Enum<(), ()>`
+              found enum `Enum<(), ()>`
    = note: this error originates in the macro `nested2_tt_args_in_first_macro` which comes from the expansion of the macro `nested1_tt_args_in_first_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0109]: type arguments are not allowed on this type
@@ -204,7 +204,7 @@ LL |     nested1_ident_args_in_first_macro!();
    |     ------------------------------------ in this macro invocation
    |
    = note: expected type `{integer}`
-   |          found enum `Enum<(), ()>`
+              found enum `Enum<(), ()>`
    = note: this error originates in the macro `nested2_ident_args_in_first_macro` which comes from the expansion of the macro `nested1_ident_args_in_first_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0109]: type arguments are not allowed on this type

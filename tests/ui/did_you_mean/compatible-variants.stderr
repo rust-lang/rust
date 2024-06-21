@@ -10,7 +10,7 @@ LL | |     }
    | |_____^ expected `Option<()>`, found `()`
    |
    = note:   expected enum `Option<()>`
-   |       found unit type `()`
+           found unit type `()`
    = note: `while` loops evaluate to unit type `()`
 help: try adding an expression at the end of the block
    |
@@ -49,7 +49,7 @@ LL | |     }
    | |_____^ expected `Option<()>`, found `()`
    |
    = note:   expected enum `Option<()>`
-   |       found unit type `()`
+           found unit type `()`
    = note: `for` loops evaluate to unit type `()`
 help: try adding an expression at the end of the block
    |
@@ -107,7 +107,7 @@ LL |         while false {}
    |         ^^^^^^^^^^^^^^ expected `Option<()>`, found `()`
    |
    = note:   expected enum `Option<()>`
-   |       found unit type `()`
+           found unit type `()`
    = note: `while` loops evaluate to unit type `()`
 help: try adding an expression at the end of the block
    |

@@ -9,7 +9,7 @@ LL |     (a, b)
    |         ^ expected type parameter `A`, found type parameter `B`
    |
    = note: expected type parameter `A`
-   |          found type parameter `B`
+              found type parameter `B`
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 

@@ -8,7 +8,7 @@ LL |     input.into_owned()
    |     ^^^^^^^^^^^^^^^^^^ expected `Matrix<R, C, u32>`, found `Matrix<R, C, ...>`
    |
    = note: expected struct `Matrix<_, _, u32>`
-   |          found struct `Matrix<_, _, <() as Allocator<R, C>>::Buffer>`
+              found struct `Matrix<_, _, <() as Allocator<R, C>>::Buffer>`
    = help: consider constraining the associated type `<() as Allocator<R, C>>::Buffer` to `u32`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 

@@ -32,7 +32,7 @@ LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
    = note: expected struct `Box<dyn Trait>`
-   |          found struct `Struct`
+              found struct `Struct`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |

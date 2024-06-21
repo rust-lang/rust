@@ -19,7 +19,7 @@ LL | |             }
    | |_____________^ expected `!`, found `()`
    |
    = note:   expected type `!`
-   |       found unit type `()`
+           found unit type `()`
    = note: `while` loops evaluate to unit type `()`
 help: consider adding a diverging expression here
    |
@@ -36,7 +36,7 @@ LL | |             }
    | |_____________^ expected `!`, found `()`
    |
    = note:   expected type `!`
-   |       found unit type `()`
+           found unit type `()`
    = note: `while` loops evaluate to unit type `()`
 help: consider adding a diverging expression here
    |

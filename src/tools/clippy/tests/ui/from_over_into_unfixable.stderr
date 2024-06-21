@@ -23,7 +23,7 @@ LL | impl Into<u8> for ContainsVal {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: `impl From<Local> for Foreign` is allowed by the orphan rules, for more information see
-   |       https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
+           https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
    = help: replace the `Into` implementation with `From<ContainsVal>`
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true

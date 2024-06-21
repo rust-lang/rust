@@ -1690,7 +1690,7 @@ error: foo
   |   ^^^^^^^^^^^^^ `a` is a good letter
   |
   = note: foo
-  |       bar
+          bar
   = note: foo
           bar
 

@@ -39,7 +39,7 @@ LL |     const K<T> = ();
    |             expected this type parameter
    |
    = note: expected type parameter `T`
-   |               found unit type `()`
+                   found unit type `()`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 5 previous errors

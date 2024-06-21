@@ -408,7 +408,7 @@ note: type in trait
 LL |     fn in_trait_impl_return() -> Self::Out;
    |                                  ^^^^^^^^^
    = note: expected signature `fn() -> <() as DummyTrait>::Out`
-   |          found signature `fn() -> impl Debug`
+              found signature `fn() -> impl Debug`
    = note: distinct uses of `impl Trait` result in different opaque types
 
 error: unconstrained opaque type

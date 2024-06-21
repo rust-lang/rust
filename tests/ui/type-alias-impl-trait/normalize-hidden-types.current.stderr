@@ -34,7 +34,7 @@ LL |         let _: Opaque = dyn_hoops::<u8>(0);
    |                expected due to this
    |
    = note: expected opaque type `typeck::Opaque`
-   |          found raw pointer `*const (dyn FnOnce(()) + 'static)`
+              found raw pointer `*const (dyn FnOnce(()) + 'static)`
    = help: consider constraining the associated type `<u8 as Trait>::Gat<'_>` to `()` or calling a method that returns `<u8 as Trait>::Gat<'_>`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 

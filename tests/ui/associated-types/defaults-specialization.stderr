@@ -68,7 +68,7 @@ LL |     fn make() -> Self::Ty { 0u8 }
    |                  expected `<A2<T> as Tr>::Ty` because of return type
    |
    = note: expected associated type `<A2<T> as Tr>::Ty`
-   |                     found type `u8`
+                         found type `u8`
    = help: consider constraining the associated type `<A2<T> as Tr>::Ty` to `u8` or calling a method that returns `<A2<T> as Tr>::Ty`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 

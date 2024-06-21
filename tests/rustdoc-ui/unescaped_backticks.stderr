@@ -280,8 +280,8 @@ LL | |     /// level changes.
    | |______________________^
    |
    = help: the opening backtick of a previous inline code may be missing
-   |        change: The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
-   |       to this: The `Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+            change: The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
+           to this: The `Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
    = help: if you meant to use a literal backtick, escape it
             change: `None`. Otherwise, it will return `Some(Dispatch)`.
            to this: `None`. Otherwise, it will return `Some(Dispatch)\`.
@@ -316,8 +316,8 @@ LL | |     /// level changes.
    | |______________________^
    |
    = help: a previous inline code might be longer than expected
-   |        change: Called before the filtered [`Layer]'s [`on_event`], to determine if
-   |       to this: Called before the filtered [`Layer`]'s [`on_event`], to determine if
+            change: Called before the filtered [`Layer]'s [`on_event`], to determine if
+           to this: Called before the filtered [`Layer`]'s [`on_event`], to determine if
    = help: if you meant to use a literal backtick, escape it
             change: `on_event` should be called.
            to this: `on_event\` should be called.
@@ -335,8 +335,8 @@ LL | |     /// level changes.
    | |______________________^
    |
    = help: a previous inline code might be longer than expected
-   |        change: Therefore, if the `Filter will change the value returned by this
-   |       to this: Therefore, if the `Filter` will change the value returned by this
+            change: Therefore, if the `Filter will change the value returned by this
+           to this: Therefore, if the `Filter` will change the value returned by this
    = help: if you meant to use a literal backtick, escape it
             change: [`rebuild_interest_cache`][rebuild] is called after the value of the max
            to this: [`rebuild_interest_cache\`][rebuild] is called after the value of the max
@@ -657,8 +657,8 @@ LL | #[doc = concat!("\\", "`")]
    |         ^^^^^^^^^^^^^^^^^^^^
    |
    = help: the opening backtick of an inline code may be missing
-   |        change: \`
-   |       to this: `\`
+            change: \`
+           to this: `\`
    = help: if you meant to use a literal backtick, escape it
             change: \`
            to this: \\`
@@ -670,8 +670,8 @@ LL | #[doc = "Addition is commutative, which means that add(a, b)` is the same a
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: the opening backtick of a previous inline code may be missing
-   |        change: Addition is commutative, which means that add(a, b)` is the same as `add(b, a)`.
-   |       to this: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
+            change: Addition is commutative, which means that add(a, b)` is the same as `add(b, a)`.
+           to this: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
    = help: if you meant to use a literal backtick, escape it
             change: Addition is commutative, which means that add(a, b)` is the same as `add(b, a)`.
            to this: Addition is commutative, which means that add(a, b)` is the same as `add(b, a)\`.
@@ -683,8 +683,8 @@ LL | #[doc = "Addition is commutative, which means that `add(a, b) is the same a
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: a previous inline code might be longer than expected
-   |        change: Addition is commutative, which means that `add(a, b) is the same as `add(b, a)`.
-   |       to this: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
+            change: Addition is commutative, which means that `add(a, b) is the same as `add(b, a)`.
+           to this: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
    = help: if you meant to use a literal backtick, escape it
             change: Addition is commutative, which means that `add(a, b) is the same as `add(b, a)`.
            to this: Addition is commutative, which means that `add(a, b) is the same as `add(b, a)\`.
@@ -696,8 +696,8 @@ LL | #[doc = "Addition is commutative, which means that `add(a, b)` is the same 
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: the opening backtick of an inline code may be missing
-   |        change: Addition is commutative, which means that `add(a, b)` is the same as add(b, a)`.
-   |       to this: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
+            change: Addition is commutative, which means that `add(a, b)` is the same as add(b, a)`.
+           to this: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
    = help: if you meant to use a literal backtick, escape it
             change: Addition is commutative, which means that `add(a, b)` is the same as add(b, a)`.
            to this: Addition is commutative, which means that `add(a, b)` is the same as add(b, a)\`.
@@ -709,8 +709,8 @@ LL | #[doc = "Addition is commutative, which means that `add(a, b)` is the same 
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: the closing backtick of an inline code may be missing
-   |        change: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a).
-   |       to this: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
+            change: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a).
+           to this: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a)`.
    = help: if you meant to use a literal backtick, escape it
             change: Addition is commutative, which means that `add(a, b)` is the same as `add(b, a).
            to this: Addition is commutative, which means that `add(a, b)` is the same as \`add(b, a).

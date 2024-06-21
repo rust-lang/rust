@@ -58,7 +58,7 @@ LL |     let (Ok(ref a) | Err(ref mut a)): Result<&u8, &mut u8> = Ok(&0);
    |             first introduced with type `&&u8` here
    |
    = note:      expected reference `&&_`
-   |       found mutable reference `&mut &mut _`
+           found mutable reference `&mut &mut _`
    = note: a binding must have the same type in all alternatives
 
 error[E0308]: mismatched types
@@ -71,7 +71,7 @@ LL |     let (Ok((ref a, b)) | Err((ref mut a, ref b))) = Ok((0, &0));
    |              first introduced with type `&{integer}` here
    |
    = note:      expected reference `&{integer}`
-   |       found mutable reference `&mut _`
+           found mutable reference `&mut _`
    = note: a binding must have the same type in all alternatives
 
 error: aborting due to 9 previous errors

@@ -82,8 +82,8 @@ LL | trait NotObjectSafe {
 LL |     fn foo() -> Self;
    |        ^^^ ...because associated function `foo` has no `self` parameter
    = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `NotObjectSafe` for this new enum and using it instead:
-   |         A
-   |         B
+             A
+             B
    = note: required for the cast from `Box<A>` to `Box<(dyn NotObjectSafe + 'static)>`
 help: consider turning `foo` into a method by giving it a `&self` argument
    |
@@ -108,8 +108,8 @@ LL | trait NotObjectSafe {
 LL |     fn foo() -> Self;
    |        ^^^ ...because associated function `foo` has no `self` parameter
    = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `NotObjectSafe` for this new enum and using it instead:
-   |         A
-   |         B
+             A
+             B
    = note: required for the cast from `Box<B>` to `Box<(dyn NotObjectSafe + 'static)>`
 help: consider turning `foo` into a method by giving it a `&self` argument
    |

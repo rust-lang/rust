@@ -75,9 +75,9 @@ LL | #[doc = "Foo\nbar [BarD] bar\nbaz"]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the link appears in this line:
-   |       
-   |       bar [BarD] bar
-   |            ^^^^
+           
+           bar [BarD] bar
+                ^^^^
    = note: no item named `BarD` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
@@ -88,9 +88,9 @@ LL | f!("Foo\nbar [BarF] bar\nbaz");
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the link appears in this line:
-   |       
-   |       bar [BarF] bar
-   |            ^^^^
+           
+           bar [BarF] bar
+                ^^^^
    = note: no item named `BarF` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
    = note: this warning originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -118,9 +118,9 @@ LL | #[doc = "single line [error]"]
    |         ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the link appears in this line:
-   |       
-   |       single line [error]
-   |                    ^^^^^
+           
+           single line [error]
+                        ^^^^^
    = note: no item named `error` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
@@ -131,9 +131,9 @@ LL | #[doc = "single line with \"escaping\" [error]"]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the link appears in this line:
-   |       
-   |       single line with "escaping" [error]
-   |                                    ^^^^^
+           
+           single line with "escaping" [error]
+                                        ^^^^^
    = note: no item named `error` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
@@ -146,9 +146,9 @@ LL | | /// [error]
    | |___________^
    |
    = note: the link appears in this line:
-   |       
-   |       [error]
-   |        ^^^^^
+           
+           [error]
+            ^^^^^
    = note: no item named `error` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 

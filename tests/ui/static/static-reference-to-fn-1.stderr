@@ -5,7 +5,7 @@ LL |         func: &foo,
    |               ^^^^ expected `&fn() -> Option<isize>`, found `&fn() -> Option<isize> {foo}`
    |
    = note: expected reference `&fn() -> Option<_>`
-   |          found reference `&fn() -> Option<_> {foo}`
+              found reference `&fn() -> Option<_> {foo}`
    = note: fn items are distinct from fn pointers
 help: consider casting to a fn pointer
    |

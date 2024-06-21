@@ -7,7 +7,7 @@ LL |     let g = if n % 2 == 0 { &foo } else { &bar };
    |                             expected because of this
    |
    = note: expected reference `&fn(_) -> _ {foo}`
-   |          found reference `&fn(_) -> _ {bar}`
+              found reference `&fn(_) -> _ {bar}`
    = note: different fn items have unique types, even if their signatures are the same
    = help: consider casting both fn items to fn pointers using `as fn(u32) -> u32`
 
@@ -20,7 +20,7 @@ LL |     a = bar;
    |         ^^^ expected fn item, found a different fn item
    |
    = note: expected fn item `fn(_) -> _ {foo}`
-   |          found fn item `fn(_) -> _ {bar}`
+              found fn item `fn(_) -> _ {bar}`
    = note: different fn items have unique types, even if their signatures are the same
    = help: consider casting both fn items to fn pointers using `as fn(u32) -> u32`
 
@@ -33,7 +33,7 @@ LL |     b = Box::new(bar);
    |         arguments to this function are incorrect
    |
    = note: expected fn item `fn(_) -> _ {foo}`
-   |          found fn item `fn(_) -> _ {bar}`
+              found fn item `fn(_) -> _ {bar}`
    = note: different fn items have unique types, even if their signatures are the same
 note: associated function defined here
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
@@ -78,7 +78,7 @@ LL |     let e: &fn(u32) -> u32 = &foo;
    |            expected due to this
    |
    = note: expected reference `&fn(_) -> _`
-   |          found reference `&fn(_) -> _ {foo}`
+              found reference `&fn(_) -> _ {foo}`
    = note: fn items are distinct from fn pointers
 help: consider casting to a fn pointer
    |

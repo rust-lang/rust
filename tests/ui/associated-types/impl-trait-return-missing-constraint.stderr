@@ -11,7 +11,7 @@ LL |     bar()
    |     ----- return type was inferred to be `impl Bar` here
    |
    = note: expected associated type `<impl Bar as Foo>::Item`
-   |                     found type `i32`
+                         found type `i32`
    = help: consider constraining the associated type `<impl Bar as Foo>::Item` to `i32` or calling a method that returns `<impl Bar as Foo>::Item`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 help: consider constraining the associated type `<impl Bar as Foo>::Item` to `i32`

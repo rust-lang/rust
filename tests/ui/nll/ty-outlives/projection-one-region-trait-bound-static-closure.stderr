@@ -5,10 +5,10 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
    = note: defining type: no_relationships_late::<'?1, T>::{closure#0} with closure args [
-   |           i32,
-   |           extern "rust-call" fn((std::cell::Cell<&'?2 ()>, T)),
-   |           (),
-   |       ]
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'?2 ()>, T)),
+               (),
+           ]
    = note: late-bound region is '?3
 
 note: no external requirements

@@ -23,9 +23,9 @@ LL |         if String::from("a") == "a".try_into().unwrap() {}
    |                                     ^^^^^^^^
    |
    = note: multiple `impl`s satisfying `_: TryFrom<&str>` found in the following crates: `core`, `std`:
-   |       - impl TryFrom<&str> for std::sys_common::net::LookupHost;
-   |       - impl<T, U> TryFrom<U> for T
-   |         where U: Into<T>;
+           - impl TryFrom<&str> for std::sys_common::net::LookupHost;
+           - impl<T, U> TryFrom<U> for T
+             where U: Into<T>;
    = note: required for `&str` to implement `TryInto<_>`
 help: try using a fully qualified path to specify the expected types
    |

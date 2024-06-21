@@ -5,10 +5,10 @@ LL |             let mut closure1 = || p = &y;
    |                                ^^
    |
    = note: defining type: test::{closure#0}::{closure#0} with closure args [
-   |           i16,
-   |           extern "rust-call" fn(()),
-   |           (&'?1 mut &'?2 i32, &'?3 i32),
-   |       ]
+               i16,
+               extern "rust-call" fn(()),
+               (&'?1 mut &'?2 i32, &'?3 i32),
+           ]
    = note: number of external vids: 4
    = note: where '?3: '?2
 
@@ -19,10 +19,10 @@ LL |         let mut closure = || {
    |                           ^^
    |
    = note: defining type: test::{closure#0} with closure args [
-   |           i16,
-   |           extern "rust-call" fn(()),
-   |           (&'?1 mut &'?2 i32, &'?3 i32),
-   |       ]
+               i16,
+               extern "rust-call" fn(()),
+               (&'?1 mut &'?2 i32, &'?3 i32),
+           ]
    = note: number of external vids: 4
    = note: where '?3: '?2
 

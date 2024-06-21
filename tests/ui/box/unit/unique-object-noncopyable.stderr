@@ -8,10 +8,10 @@ LL |     let _z = y.clone();
    |                ^^^^^ method cannot be called on `Box<dyn Foo>` due to unsatisfied trait bounds
    |
    = note: the following trait bounds were not satisfied:
-   |       `dyn Foo: Sized`
-   |       which is required by `Box<dyn Foo>: Clone`
-   |       `dyn Foo: Clone`
-   |       which is required by `Box<dyn Foo>: Clone`
+           `dyn Foo: Sized`
+           which is required by `Box<dyn Foo>: Clone`
+           `dyn Foo: Clone`
+           which is required by `Box<dyn Foo>: Clone`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `Clone`

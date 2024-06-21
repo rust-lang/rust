@@ -1411,7 +1411,7 @@ impl HumanEmitter {
             }
             let printed_lines =
                 self.msgs_to_buffer(&mut buffer, msgs, args, max_line_num_len, "note", None);
-            if is_cont {
+            if is_cont && matches!(self.theme, OutputTheme::Unicode) {
                 // There's another note after this one, associated to the subwindow above.
                 // We write additional vertical lines to join them:
                 //   ╭▸ test.rs:3:3

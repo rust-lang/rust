@@ -5,7 +5,7 @@ LL |      Err(format!("error: {x}"))
    |          ^^^^^^^^^^^^^^^^^^^^^ expected `Box<dyn Error>`, found `String`
    |
    = note: expected struct `Box<dyn std::error::Error>`
-   |          found struct `String`
+              found struct `String`
    = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: call `Into::into` on this expression to convert `String` into `Box<dyn std::error::Error>`
    |
@@ -19,7 +19,7 @@ LL |      Err(outer!(x))
    |          ^^^^^^^^^ expected `Box<dyn Error>`, found `String`
    |
    = note: expected struct `Box<dyn std::error::Error>`
-   |          found struct `String`
+              found struct `String`
    = note: this error originates in the macro `format` which comes from the expansion of the macro `outer` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: call `Into::into` on this expression to convert `String` into `Box<dyn std::error::Error>`
    |
@@ -33,7 +33,7 @@ LL |  entire_fn_outer!();
    |  ^^^^^^^^^^^^^^^^^^ expected `Box<dyn Error>`, found `String`
    |
    = note: expected struct `Box<dyn std::error::Error>`
-   |          found struct `String`
+              found struct `String`
    = note: this error originates in the macro `format` which comes from the expansion of the macro `entire_fn_outer` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: call `Into::into` on this expression to convert `String` into `Box<dyn std::error::Error>`
    |
@@ -47,7 +47,7 @@ LL |     nontrivial!(x)
    |     ^^^^^^^^^^^^^^ expected `Box<dyn Error>`, found `String`
    |
    = note: expected struct `Box<dyn std::error::Error>`
-   |          found struct `String`
+              found struct `String`
    = note: this error originates in the macro `format` which comes from the expansion of the macro `nontrivial` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: call `Into::into` on this expression to convert `String` into `Box<dyn std::error::Error>`
    |
