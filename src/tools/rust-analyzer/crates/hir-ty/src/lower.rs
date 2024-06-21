@@ -8,6 +8,7 @@
 use std::{
     cell::{Cell, RefCell, RefMut},
     iter,
+    ops::Not as _,
 };
 
 use base_db::{
@@ -1679,20 +1680,30 @@ pub(crate) fn trait_environment_query(
     TraitEnvironment::new(resolver.krate(), None, traits_in_scope.into_boxed_slice(), env)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GenericPredicates(Option<Arc<[Binders<QuantifiedWhereClause>]>>);
+
+impl GenericPredicates {
+    pub fn iter(&self) -> impl Iterator<Item = &Binders<QuantifiedWhereClause>> + '_ + Clone {
+        self.0.as_ref().into_iter().flat_map(Arc::as_ref)
+    }
+}
+
 /// Resolve the where clause(s) of an item with generics.
 pub(crate) fn generic_predicates_query(
     db: &dyn HirDatabase,
     def: GenericDefId,
-) -> Arc<[Binders<QuantifiedWhereClause>]> {
+) -> GenericPredicates {
     let resolver = def.resolver(db.upcast());
-    let ctx = if let GenericDefId::FunctionId(_) = def {
-        TyLoweringContext::new(db, &resolver, def.into())
-            .with_impl_trait_mode(ImplTraitLoweringMode::Variable)
-            .with_type_param_mode(ParamLoweringMode::Variable)
-    } else {
-        TyLoweringContext::new(db, &resolver, def.into())
-            .with_type_param_mode(ParamLoweringMode::Variable)
+    let (impl_trait_lowering, param_lowering) = match def {
+        GenericDefId::FunctionId(_) => {
+            (ImplTraitLoweringMode::Variable, ParamLoweringMode::Variable)
+        }
+        _ => (ImplTraitLoweringMode::Disallowed, ParamLoweringMode::Variable),
     };
+    let ctx = TyLoweringContext::new(db, &resolver, def.into())
+        .with_impl_trait_mode(impl_trait_lowering)
+        .with_type_param_mode(param_lowering);
     let generics = generics(db.upcast(), def);
 
     let mut predicates = resolver
@@ -1712,7 +1723,7 @@ pub(crate) fn generic_predicates_query(
                 .map(|p| make_binders(db, &generics, crate::wrap_empty_binders(p))),
         );
     }
-    predicates.into()
+    GenericPredicates(predicates.is_empty().not().then(|| predicates.into()))
 }
 
 /// Generate implicit `: Sized` predicates for all generics that has no `?Sized` bound.

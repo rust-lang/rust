@@ -21,6 +21,7 @@ use crate::{
     chalk_db,
     consteval::ConstEvalError,
     layout::{Layout, LayoutError},
+    lower::GenericPredicates,
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     mir::{BorrowckResult, MirBody, MirLowerError},
     Binders, CallableDefId, ClosureId, Const, FnDefId, GenericArg, ImplTraitId, ImplTraits,
@@ -147,7 +148,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     ) -> Arc<[Binders<QuantifiedWhereClause>]>;
 
     #[salsa::invoke(crate::lower::generic_predicates_query)]
-    fn generic_predicates(&self, def: GenericDefId) -> Arc<[Binders<QuantifiedWhereClause>]>;
+    fn generic_predicates(&self, def: GenericDefId) -> GenericPredicates;
 
     #[salsa::invoke(crate::lower::trait_environment_for_body_query)]
     #[salsa::transparent]

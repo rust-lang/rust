@@ -64,8 +64,8 @@ use crate::{
     traits::FnTrait,
     utils::{InTypeConstIdMetadata, UnevaluatedConstEvaluatorFolder},
     AliasEq, AliasTy, Binders, ClosureId, Const, DomainGoal, GenericArg, Goal, ImplTraitId,
-    ImplTraitIdx, InEnvironment, Interner, Lifetime, OpaqueTyId, ProjectionTy, Substitution,
-    TraitEnvironment, Ty, TyBuilder, TyExt,
+    ImplTraitIdx, InEnvironment, Interner, Lifetime, OpaqueTyId, ParamLoweringMode, ProjectionTy,
+    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -791,7 +791,8 @@ impl<'a> InferenceContext<'a> {
 
     fn collect_fn(&mut self, func: FunctionId) {
         let data = self.db.function_data(func);
-        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, func.into())
+        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into())
+            .with_type_param_mode(ParamLoweringMode::Placeholder)
             .with_impl_trait_mode(ImplTraitLoweringMode::Param);
         let mut param_tys =
             data.params.iter().map(|type_ref| ctx.lower_ty(type_ref)).collect::<Vec<_>>();
@@ -826,6 +827,7 @@ impl<'a> InferenceContext<'a> {
         let return_ty = &*data.ret_type;
 
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into())
+            .with_type_param_mode(ParamLoweringMode::Placeholder)
             .with_impl_trait_mode(ImplTraitLoweringMode::Opaque);
         let return_ty = ctx.lower_ty(return_ty);
         let return_ty = self.insert_type_vars(return_ty);
