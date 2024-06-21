@@ -639,7 +639,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         (OperandValue::Immediate(llval), operand.layout)
                     }
                     mir::UnOp::PtrMetadata => {
-                        debug_assert!(operand.layout.ty.is_unsafe_ptr());
+                        debug_assert!(
+                            operand.layout.ty.is_unsafe_ptr() || operand.layout.ty.is_ref(),
+                        );
                         let (_, meta) = operand.val.pointer_parts();
                         assert_eq!(operand.layout.fields.count() > 1, meta.is_some());
                         if let Some(meta) = meta {

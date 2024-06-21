@@ -836,12 +836,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 }
                 Value::BinaryOp(op, lhs, rhs)
             }
-            Rvalue::UnaryOp(op, ref mut arg) => {
-                let arg = self.simplify_operand(arg, location)?;
-                if let Some(value) = self.simplify_unary(op, arg) {
-                    return Some(value);
-                }
-                Value::UnaryOp(op, arg)
+            Rvalue::UnaryOp(op, ref mut arg_op) => {
+                return self.simplify_unary(op, arg_op, location);
             }
             Rvalue::Discriminant(ref mut place) => {
                 let place = self.simplify_place_value(place, location)?;
@@ -949,13 +945,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 was_updated = true;
             }
 
-            if was_updated {
-                if let Some(const_) = self.try_as_constant(fields[0]) {
-                    field_ops[FieldIdx::ZERO] = Operand::Constant(Box::new(const_));
-                } else if let Some(local) = self.try_as_local(fields[0], location) {
-                    field_ops[FieldIdx::ZERO] = Operand::Copy(Place::from(local));
-                    self.reused_locals.insert(local);
-                }
+            if was_updated && let Some(op) = self.try_as_operand(fields[0], location) {
+                field_ops[FieldIdx::ZERO] = op;
             }
         }
 
@@ -965,11 +956,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             let first = fields[0];
             if fields.iter().all(|&v| v == first) {
                 let len = ty::Const::from_target_usize(self.tcx, fields.len().try_into().unwrap());
-                if let Some(const_) = self.try_as_constant(first) {
-                    *rvalue = Rvalue::Repeat(Operand::Constant(Box::new(const_)), len);
-                } else if let Some(local) = self.try_as_local(first, location) {
-                    *rvalue = Rvalue::Repeat(Operand::Copy(local.into()), len);
-                    self.reused_locals.insert(local);
+                if let Some(op) = self.try_as_operand(first, location) {
+                    *rvalue = Rvalue::Repeat(op, len);
                 }
                 return Some(self.insert(Value::Repeat(first, len)));
             }
@@ -979,8 +967,71 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self), ret)]
-    fn simplify_unary(&mut self, op: UnOp, value: VnIndex) -> Option<VnIndex> {
-        let value = match (op, self.get(value)) {
+    fn simplify_unary(
+        &mut self,
+        op: UnOp,
+        arg_op: &mut Operand<'tcx>,
+        location: Location,
+    ) -> Option<VnIndex> {
+        let mut arg_index = self.simplify_operand(arg_op, location)?;
+
+        // PtrMetadata doesn't care about *const vs *mut vs & vs &mut,
+        // so start by removing those distinctions so we can update the `Operand`
+        if op == UnOp::PtrMetadata {
+            let mut was_updated = false;
+            loop {
+                match self.get(arg_index) {
+                    // Pointer casts that preserve metadata, such as
+                    // `*const [i32]` <-> `*mut [i32]` <-> `*mut [f32]`.
+                    // It's critical that this not eliminate cases like
+                    // `*const [T]` -> `*const T` which remove metadata.
+                    // We run on potentially-generic MIR, though, so unlike codegen
+                    // we can't always know exactly what the metadata are.
+                    // Thankfully, equality on `ptr_metadata_ty_or_tail` gives us
+                    // what we need: `Ok(meta_ty)` if the metadata is known, or
+                    // `Err(tail_ty)` if not. Matching metadata is ok, but if
+                    // that's not known, then matching tail types is also ok,
+                    // allowing things like `*mut (?A, ?T)` <-> `*mut (?B, ?T)`.
+                    // FIXME: Would it be worth trying to normalize, rather than
+                    // passing the identity closure?  Or are the types in the
+                    // Cast realistically about as normalized as we can get anyway?
+                    Value::Cast { kind: CastKind::PtrToPtr, value: inner, from, to }
+                        if from
+                            .builtin_deref(true)
+                            .unwrap()
+                            .ptr_metadata_ty_or_tail(self.tcx, |t| t)
+                            == to
+                                .builtin_deref(true)
+                                .unwrap()
+                                .ptr_metadata_ty_or_tail(self.tcx, |t| t) =>
+                    {
+                        arg_index = *inner;
+                        was_updated = true;
+                        continue;
+                    }
+
+                    // `&mut *p`, `&raw *p`, etc don't change metadata.
+                    Value::Address { place, kind: _, provenance: _ }
+                        if let PlaceRef { local, projection: [PlaceElem::Deref] } =
+                            place.as_ref()
+                            && let Some(local_index) = self.locals[local] =>
+                    {
+                        arg_index = local_index;
+                        was_updated = true;
+                        continue;
+                    }
+
+                    _ => {
+                        if was_updated && let Some(op) = self.try_as_operand(arg_index, location) {
+                            *arg_op = op;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        let value = match (op, self.get(arg_index)) {
             (UnOp::Not, Value::UnaryOp(UnOp::Not, inner)) => return Some(*inner),
             (UnOp::Neg, Value::UnaryOp(UnOp::Neg, inner)) => return Some(*inner),
             (UnOp::Not, Value::BinaryOp(BinOp::Eq, lhs, rhs)) => {
@@ -992,9 +1043,26 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             (UnOp::PtrMetadata, Value::Aggregate(AggregateTy::RawPtr { .. }, _, fields)) => {
                 return Some(fields[1]);
             }
-            _ => return None,
+            // We have an unsizing cast, which assigns the length to fat pointer metadata.
+            (
+                UnOp::PtrMetadata,
+                Value::Cast {
+                    kind: CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize),
+                    from,
+                    to,
+                    ..
+                },
+            ) if let ty::Slice(..) = to.builtin_deref(true).unwrap().kind()
+                && let ty::Array(_, len) = from.builtin_deref(true).unwrap().kind() =>
+            {
+                return self.insert_constant(Const::from_ty_const(
+                    *len,
+                    self.tcx.types.usize,
+                    self.tcx,
+                ));
+            }
+            _ => Value::UnaryOp(op, arg_index),
         };
-
         Some(self.insert(value))
     }
 
@@ -1174,13 +1242,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
-        if was_updated {
-            if let Some(const_) = self.try_as_constant(value) {
-                *operand = Operand::Constant(Box::new(const_));
-            } else if let Some(local) = self.try_as_local(value, location) {
-                *operand = Operand::Copy(local.into());
-                self.reused_locals.insert(local);
-            }
+        if was_updated && let Some(op) = self.try_as_operand(value, location) {
+            *operand = op;
         }
 
         Some(self.insert(Value::Cast { kind: *kind, value, from, to }))
@@ -1296,6 +1359,19 @@ fn op_to_prop_const<'tcx>(
 }
 
 impl<'tcx> VnState<'_, 'tcx> {
+    /// If either [`Self::try_as_constant`] as [`Self::try_as_local`] succeeds,
+    /// returns that result as an [`Operand`].
+    fn try_as_operand(&mut self, index: VnIndex, location: Location) -> Option<Operand<'tcx>> {
+        if let Some(const_) = self.try_as_constant(index) {
+            Some(Operand::Constant(Box::new(const_)))
+        } else if let Some(local) = self.try_as_local(index, location) {
+            self.reused_locals.insert(local);
+            Some(Operand::Copy(local.into()))
+        } else {
+            None
+        }
+    }
+
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
         // This was already constant in MIR, do not change it.
