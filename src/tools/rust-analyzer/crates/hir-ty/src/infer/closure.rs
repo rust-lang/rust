@@ -339,7 +339,7 @@ impl CapturedItemWithoutTy {
         fn replace_placeholder_with_binder(ctx: &mut InferenceContext<'_>, ty: Ty) -> Binders<Ty> {
             struct Filler<'a> {
                 db: &'a dyn HirDatabase,
-                generics: Generics,
+                generics: &'a Generics,
             }
             impl FallibleTypeFolder<Interner> for Filler<'_> {
                 type Error = ();
@@ -382,7 +382,7 @@ impl CapturedItemWithoutTy {
             };
             let filler = &mut Filler { db: ctx.db, generics };
             let result = ty.clone().try_fold_with(filler, DebruijnIndex::INNERMOST).unwrap_or(ty);
-            make_binders(ctx.db, &filler.generics, result)
+            make_binders(ctx.db, filler.generics, result)
         }
     }
 }

@@ -45,6 +45,7 @@ use hir_def::{
 use hir_expand::{name::Name, ExpandResult};
 use intern::Interned;
 use la_arena::{Arena, ArenaMap};
+use once_cell::unsync::OnceCell;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
@@ -122,6 +123,7 @@ impl ImplTraitLoweringState {
 pub struct TyLoweringContext<'a> {
     pub db: &'a dyn HirDatabase,
     resolver: &'a Resolver,
+    generics: OnceCell<Option<Generics>>,
     in_binders: DebruijnIndex,
     // FIXME: Should not be an `Option` but `Resolver` currently does not return owners in all cases
     // where expected
@@ -153,6 +155,7 @@ impl<'a> TyLoweringContext<'a> {
         Self {
             db,
             resolver,
+            generics: OnceCell::new(),
             owner,
             in_binders,
             impl_trait_mode,
@@ -175,6 +178,7 @@ impl<'a> TyLoweringContext<'a> {
             impl_trait_mode,
             expander: RefCell::new(expander),
             unsized_types: RefCell::new(unsized_types),
+            generics: self.generics.clone(),
             ..*self
         };
         let result = f(&new_ctx);
@@ -246,8 +250,10 @@ impl<'a> TyLoweringContext<'a> {
         )
     }
 
-    fn generics(&self) -> Option<Generics> {
-        Some(generics(self.db.upcast(), self.resolver.generic_def()?))
+    fn generics(&self) -> Option<&Generics> {
+        self.generics
+            .get_or_init(|| self.resolver.generic_def().map(|def| generics(self.db.upcast(), def)))
+            .as_ref()
     }
 
     pub fn lower_ty_ext(&self, type_ref: &TypeRef) -> (Ty, Option<TypeNs>) {
@@ -2207,14 +2213,14 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
     }
 }
 
-pub(crate) fn const_or_path_to_chalk(
+pub(crate) fn const_or_path_to_chalk<'g>(
     db: &dyn HirDatabase,
     resolver: &Resolver,
     owner: TypeOwnerId,
     expected_ty: Ty,
     value: &ConstRef,
     mode: ParamLoweringMode,
-    args: impl FnOnce() -> Option<Generics>,
+    args: impl FnOnce() -> Option<&'g Generics>,
     debruijn: DebruijnIndex,
 ) -> Const {
     match value {

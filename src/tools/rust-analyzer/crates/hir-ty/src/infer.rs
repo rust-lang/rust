@@ -49,6 +49,7 @@ use hir_def::{
 use hir_expand::name::{name, Name};
 use indexmap::IndexSet;
 use la_arena::{ArenaMap, Entry};
+use once_cell::unsync::OnceCell;
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{always, never};
 use triomphe::Arc;
@@ -527,6 +528,7 @@ pub(crate) struct InferenceContext<'a> {
     pub(crate) owner: DefWithBodyId,
     pub(crate) body: &'a Body,
     pub(crate) resolver: Resolver,
+    generics: OnceCell<Option<Generics>>,
     table: unify::InferenceTable<'a>,
     /// The traits in scope, disregarding block modules. This is used for caching purposes.
     traits_in_scope: FxHashSet<TraitId>,
@@ -612,6 +614,7 @@ impl<'a> InferenceContext<'a> {
     ) -> Self {
         let trait_env = db.trait_environment_for_body(owner);
         InferenceContext {
+            generics: OnceCell::new(),
             result: InferenceResult::default(),
             table: unify::InferenceTable::new(db, trait_env),
             tuple_field_accesses_rev: Default::default(),
@@ -633,8 +636,14 @@ impl<'a> InferenceContext<'a> {
         }
     }
 
-    pub(crate) fn generics(&self) -> Option<Generics> {
-        Some(crate::generics::generics(self.db.upcast(), self.resolver.generic_def()?))
+    pub(crate) fn generics(&self) -> Option<&Generics> {
+        self.generics
+            .get_or_init(|| {
+                self.resolver
+                    .generic_def()
+                    .map(|def| crate::generics::generics(self.db.upcast(), def))
+            })
+            .as_ref()
     }
 
     // FIXME: This function should be private in module. It is currently only used in the consteval, since we need
