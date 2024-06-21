@@ -1,7 +1,7 @@
 #![feature(const_mut_refs)]
 
-//@ normalize-stderr-test "\(size: ., align: .\)" -> ""
-//@ normalize-stderr-test " +│ ╾─+╼" -> ""
+//@ normalize-stderr-test: "\(size: ., align: .\)" -> ""
+//@ normalize-stderr-test: " +│ ╾─+╼" -> ""
 
 static X: i32 = 1;
 const C: i32 = 2;
