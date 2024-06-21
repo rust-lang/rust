@@ -3803,10 +3803,6 @@ extern "C" {
         mask: __m128,
         scale: i8,
     ) -> __m128;
-    #[link_name = "llvm.x86.avx2.psll.dq"]
-    fn vpslldq(a: i64x4, b: i32) -> i64x4;
-    #[link_name = "llvm.x86.avx2.psrl.dq"]
-    fn vpsrldq(a: i64x4, b: i32) -> i64x4;
 }
 
 #[cfg(test)]
