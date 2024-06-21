@@ -10,7 +10,7 @@ error: at least one trait must be specified
 LL | fn foo(_: Bar, ...) -> impl {}
    |                        ^^^^
 
-error[E0412]: cannot find type `Bar` in this scope
+error[E0412]: cannot find type `Bar`
   --> $DIR/issue-83499-input-output-iteration-ice.rs:7:11
    |
 LL | fn foo(_: Bar, ...) -> impl {}

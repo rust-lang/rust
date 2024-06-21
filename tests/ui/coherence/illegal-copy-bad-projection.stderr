@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `void` in this scope
+error[E0412]: cannot find type `void`
   --> $DIR/illegal-copy-bad-projection.rs:6:23
    |
 LL |     type Ptr = *const void;

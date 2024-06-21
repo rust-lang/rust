@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `g` in this scope
+error[E0425]: cannot find function `g`
   --> $DIR/issue-31845.rs:7:12
    |
 LL |            g();

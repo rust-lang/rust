@@ -4,9 +4,9 @@ impl<'tcx, F, I> Iterator for NeedsDropTypes<'tcx, F>
 //~^ ERROR not all trait items implemented
 where
     F: Fn(&Missing) -> Result<I, ()>,
-    //~^ ERROR cannot find type `Missing` in this scope
+    //~^ ERROR cannot find type `Missing`
     I: Iterator<Item = Missing>,
-    //~^ ERROR cannot find type `Missing` in this scope
+    //~^ ERROR cannot find type `Missing`
 {}
 
 fn main() {}

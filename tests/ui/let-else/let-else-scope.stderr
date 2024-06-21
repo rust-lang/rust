@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `x` in this scope
+error[E0425]: cannot find value `x`
   --> $DIR/let-else-scope.rs:3:22
    |
 LL |         panic!("{}", x);

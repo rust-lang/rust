@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `ExistingPrivate` in this scope
+error[E0425]: cannot find value `ExistingPrivate`
   --> $DIR/cfg_accessible.rs:52:5
    |
 LL |     ExistingPrivate;
@@ -10,13 +10,13 @@ note: unit struct `m::ExistingPrivate` exists but is inaccessible
 LL |     struct ExistingPrivate;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
 
-error[E0425]: cannot find value `NonExistingPrivate` in this scope
+error[E0425]: cannot find value `NonExistingPrivate`
   --> $DIR/cfg_accessible.rs:53:5
    |
 LL |     NonExistingPrivate;
    |     ^^^^^^^^^^^^^^^^^^ not found in this scope
 
-error[E0425]: cannot find value `NonExistingTraitAlias` in this scope
+error[E0425]: cannot find value `NonExistingTraitAlias`
   --> $DIR/cfg_accessible.rs:54:5
    |
 LL |     NonExistingTraitAlias;

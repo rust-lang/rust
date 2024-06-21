@@ -1,4 +1,4 @@
-error[E0531]: cannot find tuple struct or tuple variant `Cons` in this scope
+error[E0531]: cannot find tuple struct or tuple variant `Cons`
   --> $DIR/issue-90113.rs:17:9
    |
 LL |         Cons(..) => {}

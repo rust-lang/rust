@@ -1,19 +1,19 @@
-#![doc = in_root!()] //~ WARN cannot find macro `in_root` in this scope
+#![doc = in_root!()] //~ WARN cannot find macro `in_root`
                      //~| WARN this was previously accepted by the compiler
-#![doc = in_mod!()] //~ ERROR cannot find macro `in_mod` in this scope
-#![doc = in_mod_escape!()] //~ WARN cannot find macro `in_mod_escape` in this scope
+#![doc = in_mod!()] //~ ERROR cannot find macro `in_mod`
+#![doc = in_mod_escape!()] //~ WARN cannot find macro `in_mod_escape`
                            //~| WARN this was previously accepted by the compiler
-#![doc = in_block!()] //~ ERROR cannot find macro `in_block` in this scope
+#![doc = in_block!()] //~ ERROR cannot find macro `in_block`
 
-#[doc = in_root!()] //~ ERROR cannot find macro `in_root` in this scope
-#[doc = in_mod!()] //~ ERROR cannot find macro `in_mod` in this scope
-#[doc = in_mod_escape!()] //~ ERROR cannot find macro `in_mod_escape` in this scope
-#[doc = in_block!()] //~ ERROR cannot find macro `in_block` in this scope
+#[doc = in_root!()] //~ ERROR cannot find macro `in_root`
+#[doc = in_mod!()] //~ ERROR cannot find macro `in_mod`
+#[doc = in_mod_escape!()] //~ ERROR cannot find macro `in_mod_escape`
+#[doc = in_block!()] //~ ERROR cannot find macro `in_block`
 fn before() {
-    #![doc = in_root!()] //~ ERROR cannot find macro `in_root` in this scope
-    #![doc = in_mod!()] //~ ERROR cannot find macro `in_mod` in this scope
-    #![doc = in_mod_escape!()] //~ ERROR cannot find macro `in_mod_escape` in this scope
-    #![doc = in_block!()] //~ ERROR cannot find macro `in_block` in this scope
+    #![doc = in_root!()] //~ ERROR cannot find macro `in_root`
+    #![doc = in_mod!()] //~ ERROR cannot find macro `in_mod`
+    #![doc = in_mod_escape!()] //~ ERROR cannot find macro `in_mod_escape`
+    #![doc = in_block!()] //~ ERROR cannot find macro `in_block`
 }
 
 macro_rules! in_root { () => { "" } }
@@ -49,7 +49,7 @@ mod macros_escape {
 
 #[doc = in_block!()] //~ ERROR cannot find macro `in_block` in this scope
 fn block() {
-    #![doc = in_block!()] //~ ERROR cannot find macro `in_block` in this scope
+    #![doc = in_block!()] //~ ERROR cannot find macro `in_block`
 
     macro_rules! in_block { () => { "" } }
 
@@ -60,14 +60,14 @@ fn block() {
 }
 
 #[doc = in_root!()] // OK
-#[doc = in_mod!()] //~ ERROR cannot find macro `in_mod` in this scope
+#[doc = in_mod!()] //~ ERROR cannot find macro `in_mod`
 #[doc = in_mod_escape!()] // OK
-#[doc = in_block!()] //~ ERROR cannot find macro `in_block` in this scope
+#[doc = in_block!()] //~ ERROR cannot find macro `in_block`
 fn after() {
     #![doc = in_root!()] // OK
-    #![doc = in_mod!()] //~ ERROR cannot find macro `in_mod` in this scope
+    #![doc = in_mod!()] //~ ERROR cannot find macro `in_mod`
     #![doc = in_mod_escape!()] // OK
-    #![doc = in_block!()] //~ ERROR cannot find macro `in_block` in this scope
+    #![doc = in_block!()] //~ ERROR cannot find macro `in_block`
 }
 
 fn main() {}

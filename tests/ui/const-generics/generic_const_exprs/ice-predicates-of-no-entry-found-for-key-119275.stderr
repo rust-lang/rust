@@ -6,7 +6,7 @@ LL | fn bug<const N: Nat>(&self)
    |
    = note: associated functions are those in `impl` or `trait` definitions
 
-error[E0412]: cannot find type `Nat` in this scope
+error[E0412]: cannot find type `Nat`
   --> $DIR/ice-predicates-of-no-entry-found-for-key-119275.rs:6:17
    |
 LL | fn bug<const N: Nat>(&self)

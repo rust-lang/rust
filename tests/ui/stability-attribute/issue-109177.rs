@@ -5,7 +5,7 @@ extern crate similar_unstable_method;
 fn main() {
     // FIXME: this function should not suggest the `foo` function.
     similar_unstable_method::foo1();
-    //~^ ERROR cannot find function `foo1` in crate `similar_unstable_method` [E0425]
+    //~^ ERROR cannot find function `foo1` [E0425]
 
     let foo = similar_unstable_method::Foo;
     foo.foo1();

@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `MissingType` in this scope
+error[E0412]: cannot find type `MissingType`
   --> $DIR/issue-68830-spurious-diagnostics.rs:8:10
    |
 LL |     err: MissingType

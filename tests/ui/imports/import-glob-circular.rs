@@ -13,7 +13,7 @@ mod circ2 {
 mod test {
     use circ1::*;
 
-    fn test() { f1066(); } //~ ERROR cannot find function `f1066` in this scope
+    fn test() { f1066(); } //~ ERROR cannot find function `f1066`
 }
 
 fn main() {}

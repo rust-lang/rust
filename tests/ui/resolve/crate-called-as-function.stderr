@@ -1,4 +1,4 @@
-error[E0425]: cannot find external crate `foo` in the crate root
+error[E0425]: cannot find external crate `foo`
   --> $DIR/crate-called-as-function.rs:2:7
    |
 LL |     ::foo()

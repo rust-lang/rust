@@ -25,17 +25,17 @@ fn check_bang1() {
     my_macro!(); //~ ERROR can't use a procedural macro from the same crate that defines it
 }
 fn check_bang2() {
-    my_macro_attr!(); //~ ERROR cannot find macro `my_macro_attr` in this scope
+    my_macro_attr!(); //~ ERROR cannot find macro `my_macro_attr`
     crate::my_macro_attr!(); //~ ERROR can't use a procedural macro from the same crate that defines
                              //~| ERROR expected macro, found attribute macro `crate::my_macro_attr`
 }
 fn check_bang3() {
-    MyTrait!(); //~ ERROR cannot find macro `MyTrait` in this scope
+    MyTrait!(); //~ ERROR cannot find macro `MyTrait`
     crate::MyTrait!(); //~ ERROR can't use a procedural macro from the same crate that defines it
                        //~| ERROR expected macro, found derive macro `crate::MyTrait`
 }
 
-#[my_macro] //~ ERROR cannot find attribute `my_macro` in this scope
+#[my_macro] //~ ERROR cannot find attribute `my_macro`
 #[crate::my_macro] //~ ERROR can't use a procedural macro from the same crate that defines it
                    //~| ERROR expected attribute, found macro `crate::my_macro`
 fn check_attr1() {}
@@ -45,8 +45,8 @@ fn check_attr2() {}
            //~| ERROR expected attribute, found derive macro `MyTrait`
 fn check_attr3() {}
 
-#[derive(my_macro)] //~ ERROR cannot find derive macro `my_macro` in this scope
-                    //~| ERROR cannot find derive macro `my_macro` in this scope
+#[derive(my_macro)] //~ ERROR cannot find derive macro `my_macro`
+                    //~| ERROR cannot find derive macro `my_macro`
 #[derive(crate::my_macro)] //~ ERROR can't use a procedural macro from the same crate that defines
                            //~| ERROR expected derive macro, found macro `crate::my_macro`
 struct CheckDerive1;

@@ -11,5 +11,5 @@ mod y {
 
 fn main() {
     z();
-    //~^ ERROR cannot find function `z` in this scope
+    //~^ ERROR cannot find function `z`
 }

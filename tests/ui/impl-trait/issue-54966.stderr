@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Oper` in this scope
+error[E0412]: cannot find type `Oper`
   --> $DIR/issue-54966.rs:3:27
    |
 LL | fn generate_duration() -> Oper<impl FnMut()> {}

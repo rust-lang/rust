@@ -313,7 +313,7 @@ LL |     unknown_metavar!(a);
    |
    = note: this error originates in the macro `unknown_metavar` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find value `i` in this scope
+error[E0425]: cannot find value `i`
   --> $DIR/syntax-errors.rs:23:36
    |
 LL |     ( $( $i:ident ),* ) => { count(i) };
@@ -324,7 +324,7 @@ LL |     no_curly__no_rhs_dollar__round!(a, b, c);
    |
    = note: this error originates in the macro `no_curly__no_rhs_dollar__round` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find value `i` in this scope
+error[E0425]: cannot find value `i`
   --> $DIR/syntax-errors.rs:30:29
    |
 LL |     ( $i:ident ) => { count(i) };
@@ -335,13 +335,13 @@ LL |     no_curly__no_rhs_dollar__no_round!(a);
    |
    = note: this error originates in the macro `no_curly__no_rhs_dollar__no_round` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find value `a` in this scope
+error[E0425]: cannot find value `a`
   --> $DIR/syntax-errors.rs:152:37
    |
 LL |     no_curly__rhs_dollar__no_round!(a);
    |                                     ^ not found in this scope
 
-error[E0425]: cannot find function `count` in this scope
+error[E0425]: cannot find function `count`
   --> $DIR/syntax-errors.rs:23:30
    |
 LL |     ( $( $i:ident ),* ) => { count(i) };
@@ -352,7 +352,7 @@ LL |     no_curly__no_rhs_dollar__round!(a, b, c);
    |
    = note: this error originates in the macro `no_curly__no_rhs_dollar__round` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find function `count` in this scope
+error[E0425]: cannot find function `count`
   --> $DIR/syntax-errors.rs:30:23
    |
 LL |     ( $i:ident ) => { count(i) };
@@ -363,7 +363,7 @@ LL |     no_curly__no_rhs_dollar__no_round!(a);
    |
    = note: this error originates in the macro `no_curly__no_rhs_dollar__no_round` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find function `count` in this scope
+error[E0425]: cannot find function `count`
   --> $DIR/syntax-errors.rs:43:23
    |
 LL |     ( $i:ident ) => { count($i) };

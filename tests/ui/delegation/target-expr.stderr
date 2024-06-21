@@ -26,7 +26,7 @@ LL | fn main() {
 LL |     self.0;
    |     ^^^^ `self` value is a keyword only available in methods with a `self` parameter
 
-error[E0425]: cannot find value `x` in this scope
+error[E0425]: cannot find value `x`
   --> $DIR/target-expr.rs:38:13
    |
 LL |     let z = x;

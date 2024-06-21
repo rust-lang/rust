@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `x` in this scope
+error[E0425]: cannot find value `x`
   --> $DIR/ruby_style_closure.rs:12:14
    |
 LL |         Some(x * 2)

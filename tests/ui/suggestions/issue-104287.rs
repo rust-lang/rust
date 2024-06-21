@@ -9,5 +9,5 @@ fn main() {
     let x = S;
     foo::<()>(x);
     //~^ ERROR method takes 0 generic arguments but 1 generic argument was supplied
-    //~| ERROR cannot find function `foo` in this scope
+    //~| ERROR cannot find function `foo`
 }

@@ -6,6 +6,6 @@ fn my_panic() -> ! { panic!(); }
 fn main() {
     match true { false => { my_panic(); } true => { } }
 
-    println!("{}", x); //~ ERROR cannot find value `x` in this scope
+    println!("{}", x); //~ ERROR cannot find value `x`
     let x: isize;
 }

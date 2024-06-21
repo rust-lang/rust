@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Src` in this scope
+error[E0412]: cannot find type `Src`
   --> $DIR/unknown_src.rs:18:31
    |
 LL |     assert::is_transmutable::<Src, Dst>();

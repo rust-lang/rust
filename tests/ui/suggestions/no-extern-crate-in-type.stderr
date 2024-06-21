@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Foo` in this scope
+error[E0412]: cannot find type `Foo`
   --> $DIR/no-extern-crate-in-type.rs:5:22
    |
 LL | type Output = Option<Foo>;

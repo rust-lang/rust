@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `X` in this scope
+error[E0412]: cannot find type `X`
   --> $DIR/type_not_in_scope.rs:1:6
    |
 LL | impl X {

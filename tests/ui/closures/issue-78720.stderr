@@ -4,7 +4,7 @@ error: at least one trait must be specified
 LL | fn server() -> impl {
    |                ^^^^
 
-error[E0412]: cannot find type `F` in this scope
+error[E0412]: cannot find type `F`
   --> $DIR/issue-78720.rs:13:12
    |
 LL |     _func: F,

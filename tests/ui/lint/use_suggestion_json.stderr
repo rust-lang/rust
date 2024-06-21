@@ -1,6 +1,6 @@
 {
   "$message_type": "diagnostic",
-  "message": "cannot find type `Iter` in this scope",
+  "message": "cannot find type `Iter`",
   "code": {
     "code": "E0412",
     "explanation": "A used type name is not in scope.
@@ -380,7 +380,7 @@ mod foo {
       "rendered": null
     }
   ],
-  "rendered": "\u001b[0m\u001b[1m\u001b[38;5;9merror[E0412]\u001b[0m\u001b[0m\u001b[1m: cannot find type `Iter` in this scope\u001b[0m
+  "rendered": "\u001b[0m\u001b[1m\u001b[38;5;9merror[E0412]\u001b[0m\u001b[0m\u001b[1m: cannot find type `Iter`\u001b[0m
 \u001b[0m  \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m--> \u001b[0m\u001b[0m$DIR/use_suggestion_json.rs:12:12\u001b[0m
 \u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
 \u001b[0m\u001b[1m\u001b[38;5;12mLL\u001b[0m\u001b[0m \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m\u001b[0m \u001b[0m\u001b[0m    let x: Iter;\u001b[0m

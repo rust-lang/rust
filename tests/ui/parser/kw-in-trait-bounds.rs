@@ -17,9 +17,9 @@ fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
 //~^ ERROR expected identifier, found keyword `struct`
 //~| ERROR expected identifier, found keyword `struct`
 //~| ERROR expected identifier, found keyword `struct`
-//~| ERROR cannot find trait `r#struct` in this scope
-//~| ERROR cannot find trait `r#struct` in this scope
-//~| ERROR cannot find trait `r#struct` in this scope
+//~| ERROR cannot find trait `r#struct`
+//~| ERROR cannot find trait `r#struct`
+//~| ERROR cannot find trait `r#struct`
 //~| HELP  a trait with a similar name exists
 //~| HELP  a trait with a similar name exists
 //~| HELP  a trait with a similar name exists
@@ -29,7 +29,7 @@ fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
 where
     B: struct,
     //~^ ERROR expected identifier, found keyword `struct`
-    //~| ERROR cannot find trait `r#struct` in this scope
+    //~| ERROR cannot find trait `r#struct`
     //~| HELP  a trait with a similar name exists
     //~| HELP  escape `struct` to use it as an identifier
 {}

@@ -2,6 +2,6 @@
 
 trait Trait {}
 impl Trait for NonExistent {}
-//~^ ERROR cannot find type `NonExistent` in this scope
+//~^ ERROR cannot find type `NonExistent`
 
 fn main() {}

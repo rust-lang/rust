@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `B` in this scope
+error[E0412]: cannot find type `B`
   --> $DIR/mir-build-2021-closure-capture-ice-110453-1.rs:12:18
    |
 LL |     pub struct C(B);

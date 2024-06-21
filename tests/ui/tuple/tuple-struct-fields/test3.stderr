@@ -11,13 +11,13 @@ LL |     define_struct! { foo }
    |
    = note: this error originates in the macro `define_struct` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0412]: cannot find type `foo` in this scope
+error[E0412]: cannot find type `foo`
   --> $DIR/test3.rs:11:22
    |
 LL |     define_struct! { foo }
    |                      ^^^ not found in this scope
 
-error[E0412]: cannot find type `foo` in this scope
+error[E0412]: cannot find type `foo`
   --> $DIR/test3.rs:11:22
    |
 LL |     define_struct! { foo }

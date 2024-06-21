@@ -266,31 +266,31 @@ LL |     println!("{:.0$}");
    = note: positional arguments are zero-based
    = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
 
-error[E0425]: cannot find value `foo` in this scope
+error[E0425]: cannot find value `foo`
   --> $DIR/ifmt-bad-arg.rs:27:18
    |
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
    |                  ^^^ not found in this scope
 
-error[E0425]: cannot find value `bar` in this scope
+error[E0425]: cannot find value `bar`
   --> $DIR/ifmt-bad-arg.rs:27:27
    |
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
    |                           ^^^ not found in this scope
 
-error[E0425]: cannot find value `foo` in this scope
+error[E0425]: cannot find value `foo`
   --> $DIR/ifmt-bad-arg.rs:31:15
    |
 LL |     format!("{foo}");
    |               ^^^ not found in this scope
 
-error[E0425]: cannot find value `valueb` in this scope
+error[E0425]: cannot find value `valueb`
   --> $DIR/ifmt-bad-arg.rs:45:24
    |
 LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
    |                        ^^^^^^ not found in this scope
 
-error[E0425]: cannot find value `foo` in this scope
+error[E0425]: cannot find value `foo`
   --> $DIR/ifmt-bad-arg.rs:60:10
    |
 LL |         {foo}

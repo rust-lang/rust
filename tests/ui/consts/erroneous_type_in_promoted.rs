@@ -4,7 +4,7 @@
 enum Eek {
     TheConst,
     UnusedByTheConst(Sum),
-    //~^ ERROR cannot find type `Sum` in this scope
+    //~^ ERROR cannot find type `Sum`
 }
 
 const fn foo() {

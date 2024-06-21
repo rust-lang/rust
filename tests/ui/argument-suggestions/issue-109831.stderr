@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `C` in this scope
+error[E0412]: cannot find type `C`
   --> $DIR/issue-109831.rs:4:24
    |
 LL | struct A;
@@ -16,7 +16,7 @@ help: you might be missing a type parameter
 LL | fn f<C>(b1: B, b2: B, a2: C) {}
    |     +++
 
-error[E0425]: cannot find value `C` in this scope
+error[E0425]: cannot find value `C`
   --> $DIR/issue-109831.rs:7:16
    |
 LL | struct A;

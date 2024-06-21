@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `FromOutside` in this scope
+error[E0412]: cannot find type `FromOutside`
   --> $DIR/generate-mod.rs:9:1
    |
 LL | generate_mod::check!();
@@ -8,7 +8,7 @@ LL | generate_mod::check!();
            FromOutside
    = note: this error originates in the macro `generate_mod::check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0412]: cannot find type `Outer` in this scope
+error[E0412]: cannot find type `Outer`
   --> $DIR/generate-mod.rs:9:1
    |
 LL | generate_mod::check!();
@@ -18,7 +18,7 @@ LL | generate_mod::check!();
            Outer
    = note: this error originates in the macro `generate_mod::check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0412]: cannot find type `FromOutside` in this scope
+error[E0412]: cannot find type `FromOutside`
   --> $DIR/generate-mod.rs:12:1
    |
 LL | #[generate_mod::check_attr]
@@ -28,7 +28,7 @@ LL | #[generate_mod::check_attr]
            FromOutside
    = note: this error originates in the attribute macro `generate_mod::check_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0412]: cannot find type `OuterAttr` in this scope
+error[E0412]: cannot find type `OuterAttr`
   --> $DIR/generate-mod.rs:12:1
    |
 LL | #[generate_mod::check_attr]

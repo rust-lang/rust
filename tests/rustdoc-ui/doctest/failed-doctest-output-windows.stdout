@@ -6,7 +6,7 @@ test $DIR/failed-doctest-output-windows.rs - SomeStruct (line 15) ... FAILED
 failures:
 
 ---- $DIR/failed-doctest-output-windows.rs - OtherStruct (line 25) stdout ----
-error[E0425]: cannot find value `no` in this scope
+error[E0425]: cannot find value `no`
   --> $DIR/failed-doctest-output-windows.rs:26:1
    |
 LL | no

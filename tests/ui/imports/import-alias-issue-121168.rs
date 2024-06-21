@@ -8,7 +8,7 @@
 extern crate import_alias_issue_121168_extern as nice_crate_name;
 
 fn use_foo_from_another_crate_without_importing_it_first() {
-    let _: Foo<i32> = todo!(); //~ ERROR cannot find type `Foo` in this scope
+    let _: Foo<i32> = todo!(); //~ ERROR cannot find type `Foo`
 }
 
 fn main() {}

@@ -16,5 +16,5 @@ fn bench(b: &mut test::Bencher) {}
 fn not_main() {
     Test;
     Bench;
-    NonExistent; //~ ERROR cannot find value `NonExistent` in this scope
+    NonExistent; //~ ERROR cannot find value `NonExistent`
 }

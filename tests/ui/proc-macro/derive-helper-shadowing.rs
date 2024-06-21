@@ -11,7 +11,7 @@ use test_macros::empty_attr as empty_helper;
 
 macro_rules! gen_helper_use {
     () => {
-        #[empty_helper] //~ ERROR cannot find attribute `empty_helper` in this scope
+        #[empty_helper] //~ ERROR cannot find attribute `empty_helper`
         struct W;
     }
 }
@@ -35,7 +35,7 @@ struct S {
 
             gen_helper_use!();
 
-            #[derive(GenHelperUse)] //~ ERROR cannot find attribute `empty_helper` in this scope
+            #[derive(GenHelperUse)] //~ ERROR cannot find attribute `empty_helper`
             struct Owo;
 
             use empty_helper as renamed;

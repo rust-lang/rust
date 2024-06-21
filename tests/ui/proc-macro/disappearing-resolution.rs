@@ -15,7 +15,7 @@ use m::Empty; //~ ERROR derive macro import `Empty` is private
 // successfully resolve `Empty` from there, and then resolve `empty_helper` as its helper.
 // During validation `use m::Empty` introduces a `Res::Err` stub, so `Empty` resolves to it,
 // and `empty_helper` can no longer be resolved.
-#[empty_helper] //~ ERROR cannot find attribute `empty_helper` in this scope
+#[empty_helper] //~ ERROR cannot find attribute `empty_helper`
 #[derive(Empty)]
 struct S;
 

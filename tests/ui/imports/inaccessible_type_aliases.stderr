@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Foo` in this scope
+error[E0412]: cannot find type `Foo`
   --> $DIR/inaccessible_type_aliases.rs:11:12
    |
 LL |     let x: Foo = 100;
@@ -13,7 +13,7 @@ LL |     type Foo = u64;
 LL |     type Foo = u64;
    |     ^^^^^^^^^^^^^^^ `b::Foo`: not accessible
 
-error[E0412]: cannot find type `Bar` in this scope
+error[E0412]: cannot find type `Bar`
   --> $DIR/inaccessible_type_aliases.rs:12:12
    |
 LL |     let y: Bar = 100;

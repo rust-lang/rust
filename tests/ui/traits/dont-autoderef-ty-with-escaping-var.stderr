@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `unknown` in this scope
+error[E0425]: cannot find value `unknown`
   --> $DIR/dont-autoderef-ty-with-escaping-var.rs:17:35
    |
 LL |     <i32 as RefFoo<i32>>::ref_foo(unknown);

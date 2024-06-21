@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `True` in this scope
+error[E0425]: cannot find value `True`
   --> $DIR/bool_typo_err_suggest.rs:5:13
    |
 LL |     let x = True;
@@ -9,7 +9,7 @@ help: you may want to use a bool value instead
 LL |     let x = true;
    |             ~~~~
 
-error[E0425]: cannot find value `False` in this scope
+error[E0425]: cannot find value `False`
   --> $DIR/bool_typo_err_suggest.rs:9:13
    |
 LL |     let y = False;

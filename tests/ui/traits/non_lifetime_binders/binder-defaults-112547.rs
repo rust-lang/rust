@@ -7,7 +7,7 @@ where
     (||1usize)()
 }> V: IntoIterator
 //~^^^ ERROR defaults for generic parameters are not allowed in `for<...>` binders
-//~^^ ERROR cannot find type `V` in this scope
+//~^^ ERROR cannot find type `V`
 {
 }
 

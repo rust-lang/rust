@@ -66,7 +66,7 @@ struct D {
 #[derive(Subdiagnostic)]
 #[foo]
 //~^ ERROR `#[foo]` is not a valid attribute
-//~^^ ERROR cannot find attribute `foo` in this scope
+//~^^ ERROR cannot find attribute `foo`
 struct E {
     #[primary_span]
     span: Span,
@@ -124,8 +124,8 @@ struct K {
 
 #[derive(Subdiagnostic)]
 #[label(slug)]
-//~^ ERROR cannot find value `slug` in module `crate::fluent_generated`
-//~^^ NOTE not found in `crate::fluent_generated`
+//~^ ERROR cannot find value `slug`
+//~^^ NOTE not found in module `crate::fluent_generated`
 struct L {
     #[primary_span]
     span: Span,
@@ -712,7 +712,7 @@ struct BP {
 }
 
 #[derive(Subdiagnostic)]
-//~^ ERROR cannot find value `__code_29` in this scope
+//~^ ERROR cannot find value `__code_29`
 //~| NOTE in this expansion
 //~| NOTE not found in this scope
 #[multipart_suggestion(no_crate_example)]

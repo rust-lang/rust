@@ -1,4 +1,4 @@
-error[E0425]: cannot find function, tuple struct or tuple variant `B` in this scope
+error[E0425]: cannot find function, tuple struct or tuple variant `B`
   --> $DIR/issue-26545.rs:7:9
    |
 LL |         B(());

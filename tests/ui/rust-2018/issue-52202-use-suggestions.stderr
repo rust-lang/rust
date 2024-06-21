@@ -1,4 +1,4 @@
-error[E0422]: cannot find struct, variant or union type `Drain` in this scope
+error[E0422]: cannot find struct, variant or union type `Drain`
   --> $DIR/issue-52202-use-suggestions.rs:11:14
    |
 LL |     let _d = Drain {};

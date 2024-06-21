@@ -1,4 +1,4 @@
-error[E0405]: cannot find trait `Add` in this scope
+error[E0405]: cannot find trait `Add`
   --> $DIR/no-implicit-prelude-nested.rs:11:14
    |
 LL |         impl Add for Test {}
@@ -20,7 +20,7 @@ help: consider importing this trait instead
 LL +         use std::clone::Clone;
    |
 
-error[E0405]: cannot find trait `Iterator` in this scope
+error[E0405]: cannot find trait `Iterator`
   --> $DIR/no-implicit-prelude-nested.rs:13:14
    |
 LL |         impl Iterator for Test {}
@@ -31,7 +31,7 @@ help: consider importing this trait
 LL +         use std::iter::Iterator;
    |
 
-error[E0405]: cannot find trait `ToString` in this scope
+error[E0405]: cannot find trait `ToString`
   --> $DIR/no-implicit-prelude-nested.rs:14:14
    |
 LL |         impl ToString for Test {}
@@ -42,13 +42,13 @@ help: consider importing this trait
 LL +         use std::string::ToString;
    |
 
-error[E0405]: cannot find trait `Writer` in this scope
+error[E0405]: cannot find trait `Writer`
   --> $DIR/no-implicit-prelude-nested.rs:15:14
    |
 LL |         impl Writer for Test {}
    |              ^^^^^^ not found in this scope
 
-error[E0425]: cannot find function `drop` in this scope
+error[E0425]: cannot find function `drop`
   --> $DIR/no-implicit-prelude-nested.rs:18:13
    |
 LL |             drop(2)
@@ -59,7 +59,7 @@ help: consider importing this function
 LL +         use std::mem::drop;
    |
 
-error[E0405]: cannot find trait `Add` in this scope
+error[E0405]: cannot find trait `Add`
   --> $DIR/no-implicit-prelude-nested.rs:23:10
    |
 LL |     impl Add for Test {}
@@ -81,7 +81,7 @@ help: consider importing this trait instead
 LL +     use std::clone::Clone;
    |
 
-error[E0405]: cannot find trait `Iterator` in this scope
+error[E0405]: cannot find trait `Iterator`
   --> $DIR/no-implicit-prelude-nested.rs:25:10
    |
 LL |     impl Iterator for Test {}
@@ -92,7 +92,7 @@ help: consider importing this trait
 LL +     use std::iter::Iterator;
    |
 
-error[E0405]: cannot find trait `ToString` in this scope
+error[E0405]: cannot find trait `ToString`
   --> $DIR/no-implicit-prelude-nested.rs:26:10
    |
 LL |     impl ToString for Test {}
@@ -103,13 +103,13 @@ help: consider importing this trait
 LL +     use std::string::ToString;
    |
 
-error[E0405]: cannot find trait `Writer` in this scope
+error[E0405]: cannot find trait `Writer`
   --> $DIR/no-implicit-prelude-nested.rs:27:10
    |
 LL |     impl Writer for Test {}
    |          ^^^^^^ not found in this scope
 
-error[E0425]: cannot find function `drop` in this scope
+error[E0425]: cannot find function `drop`
   --> $DIR/no-implicit-prelude-nested.rs:30:9
    |
 LL |         drop(2)
@@ -120,7 +120,7 @@ help: consider importing this function
 LL +     use std::mem::drop;
    |
 
-error[E0405]: cannot find trait `Add` in this scope
+error[E0405]: cannot find trait `Add`
   --> $DIR/no-implicit-prelude-nested.rs:38:14
    |
 LL |         impl Add for Test {}
@@ -142,7 +142,7 @@ help: consider importing this trait instead
 LL +         use std::clone::Clone;
    |
 
-error[E0405]: cannot find trait `Iterator` in this scope
+error[E0405]: cannot find trait `Iterator`
   --> $DIR/no-implicit-prelude-nested.rs:40:14
    |
 LL |         impl Iterator for Test {}
@@ -153,7 +153,7 @@ help: consider importing this trait
 LL +         use std::iter::Iterator;
    |
 
-error[E0405]: cannot find trait `ToString` in this scope
+error[E0405]: cannot find trait `ToString`
   --> $DIR/no-implicit-prelude-nested.rs:41:14
    |
 LL |         impl ToString for Test {}
@@ -164,13 +164,13 @@ help: consider importing this trait
 LL +         use std::string::ToString;
    |
 
-error[E0405]: cannot find trait `Writer` in this scope
+error[E0405]: cannot find trait `Writer`
   --> $DIR/no-implicit-prelude-nested.rs:42:14
    |
 LL |         impl Writer for Test {}
    |              ^^^^^^ not found in this scope
 
-error[E0425]: cannot find function `drop` in this scope
+error[E0425]: cannot find function `drop`
   --> $DIR/no-implicit-prelude-nested.rs:45:13
    |
 LL |             drop(2)

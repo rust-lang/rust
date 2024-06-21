@@ -1,4 +1,4 @@
-error[E0422]: cannot find struct, variant or union type `MyStruct` in this scope
+error[E0422]: cannot find struct, variant or union type `MyStruct`
   --> $DIR/cross-crate-name-hiding.rs:11:13
    |
 LL |     let x = MyStruct {};

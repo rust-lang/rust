@@ -42,7 +42,7 @@ LL |     m!();
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0412]: cannot find type `i` in this scope
+error[E0412]: cannot find type `i`
   --> $DIR/macro-context.rs:3:13
    |
 LL |     () => ( i ; typeof );
@@ -53,7 +53,7 @@ LL |     let a: m!();
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find value `i` in this scope
+error[E0425]: cannot find value `i`
   --> $DIR/macro-context.rs:3:13
    |
 LL |     () => ( i ; typeof );

@@ -12,7 +12,7 @@ trait Trait {
 
 impl Trait for () {
     type Assoc = DoesNotExist;
-    //~^ ERROR cannot find type `DoesNotExist` in this scope
+    //~^ ERROR cannot find type `DoesNotExist`
 
     fn tokenize(&self) -> <Self::Assoc as Identity>::Identity {
         unimplemented!()

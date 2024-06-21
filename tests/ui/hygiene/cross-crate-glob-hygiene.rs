@@ -19,5 +19,5 @@ use m::*;
 
 fn main() {
     let x = my_struct!(create);
-    //~^ ERROR cannot find struct, variant or union type `MyStruct` in this scope
+    //~^ ERROR cannot find struct, variant or union type `MyStruct`
 }

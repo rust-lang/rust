@@ -1,4 +1,4 @@
-error[E0405]: cannot find trait `Add` in this scope
+error[E0405]: cannot find trait `Add`
   --> $DIR/no-implicit-prelude.rs:10:6
    |
 LL | impl Add for Test {}
@@ -20,7 +20,7 @@ help: consider importing this trait instead
 LL + use std::clone::Clone;
    |
 
-error[E0405]: cannot find trait `Iterator` in this scope
+error[E0405]: cannot find trait `Iterator`
   --> $DIR/no-implicit-prelude.rs:12:6
    |
 LL | impl Iterator for Test {}
@@ -31,7 +31,7 @@ help: consider importing this trait
 LL + use std::iter::Iterator;
    |
 
-error[E0405]: cannot find trait `ToString` in this scope
+error[E0405]: cannot find trait `ToString`
   --> $DIR/no-implicit-prelude.rs:13:6
    |
 LL | impl ToString for Test {}
@@ -42,13 +42,13 @@ help: consider importing this trait
 LL + use std::string::ToString;
    |
 
-error[E0405]: cannot find trait `Writer` in this scope
+error[E0405]: cannot find trait `Writer`
   --> $DIR/no-implicit-prelude.rs:14:6
    |
 LL | impl Writer for Test {}
    |      ^^^^^^ not found in this scope
 
-error[E0425]: cannot find function `drop` in this scope
+error[E0425]: cannot find function `drop`
   --> $DIR/no-implicit-prelude.rs:17:5
    |
 LL |     drop(2)

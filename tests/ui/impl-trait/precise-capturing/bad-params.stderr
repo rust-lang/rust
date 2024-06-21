@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `T` in this scope
+error[E0412]: cannot find type `T`
   --> $DIR/bad-params.rs:3:34
    |
 LL | fn missing() -> impl Sized + use<T> {}
@@ -9,7 +9,7 @@ help: you might be missing a type parameter
 LL | fn missing<T>() -> impl Sized + use<T> {}
    |           +++
 
-error[E0411]: cannot find type `Self` in this scope
+error[E0411]: cannot find type `Self`
   --> $DIR/bad-params.rs:6:39
    |
 LL | fn missing_self() -> impl Sized + use<Self> {}

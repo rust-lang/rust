@@ -3,7 +3,7 @@
 // shortcutting and returning success, because we need the adjustments for building the MIR.
 
 pub fn has_error() -> TypeError {}
-//~^ ERROR cannot find type `TypeError` in this scope
+//~^ ERROR cannot find type `TypeError`
 
 // https://github.com/rust-lang/rust/issues/120884
 // Casting a function item to a data pointer in valid in HIR, but invalid in MIR.
@@ -16,11 +16,11 @@ pub fn cast() -> *const u8 {
 // https://github.com/rust-lang/rust/issues/120945
 // This one ICEd, because we skipped the builtin deref from `&TypeError` to `TypeError`.
 pub fn autoderef_source(e: &TypeError) {
-    //~^ ERROR cannot find type `TypeError` in this scope
+    //~^ ERROR cannot find type `TypeError`
     autoderef_target(e)
 }
 
 pub fn autoderef_target(_: &TypeError) {}
-//~^ ERROR cannot find type `TypeError` in this scope
+//~^ ERROR cannot find type `TypeError`
 
 fn main() {}

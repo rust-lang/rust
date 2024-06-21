@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `_y` in this scope
+error[E0425]: cannot find value `_y`
   --> $DIR/issue-105946.rs:6:10
    |
 LL |     let [_y..] = [Box::new(1), Box::new(2)];

@@ -1,6 +1,6 @@
 fn main() {
     unknown(1, |glyf| {
-        //~^ ERROR: cannot find function `unknown` in this scope
+        //~^ ERROR: cannot find function `unknown`
         let actual = glyf;
     });
 }

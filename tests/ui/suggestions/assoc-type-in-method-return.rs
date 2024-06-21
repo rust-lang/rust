@@ -1,7 +1,7 @@
 trait A {
     type Bla;
     fn to_bla(&self) -> Bla;
-    //~^ ERROR cannot find type `Bla` in this scope
+    //~^ ERROR cannot find type `Bla`
 }
 
 fn main() {}

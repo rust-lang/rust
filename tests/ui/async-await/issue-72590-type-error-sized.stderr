@@ -1,10 +1,10 @@
-error[E0412]: cannot find type `Nonexistent` in this scope
+error[E0412]: cannot find type `Nonexistent`
   --> $DIR/issue-72590-type-error-sized.rs:6:10
    |
 LL |     foo: Nonexistent,
    |          ^^^^^^^^^^^ not found in this scope
 
-error[E0412]: cannot find type `Missing` in this scope
+error[E0412]: cannot find type `Missing`
   --> $DIR/issue-72590-type-error-sized.rs:11:11
    |
 LL |     test: Missing

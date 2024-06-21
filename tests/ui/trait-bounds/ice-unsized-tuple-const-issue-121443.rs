@@ -6,7 +6,7 @@
 type Fn = dyn FnOnce() -> u8;
 
 const TEST: Fn = some_fn;
-//~^ ERROR cannot find value `some_fn` in this scope
+//~^ ERROR cannot find value `some_fn`
 //~| ERROR the size for values of type `(dyn FnOnce() -> u8 + 'static)` cannot be known at compilation time
 //~| ERROR the size for values of type `(dyn FnOnce() -> u8 + 'static)` cannot be known at compilation time
 const TEST2: (Fn, u8) = (TEST, 0);

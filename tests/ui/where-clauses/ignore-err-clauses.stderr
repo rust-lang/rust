@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `UUU` in this scope
+error[E0412]: cannot find type `UUU`
   --> $DIR/ignore-err-clauses.rs:6:5
    |
 LL |     UUU: Copy,

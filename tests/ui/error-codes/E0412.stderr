@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Something` in this scope
+error[E0412]: cannot find type `Something`
   --> $DIR/E0412.rs:1:6
    |
 LL | impl Something {}

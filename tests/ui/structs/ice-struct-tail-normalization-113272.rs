@@ -3,7 +3,7 @@ trait Trait {
 }
 
 impl Trait for () where Missing: Trait {}
-//~^ ERROR cannot find type `Missing` in this scope
+//~^ ERROR cannot find type `Missing`
 //~| ERROR not all trait items implemented, missing: `RefTarget`
 
 struct Other {

@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `foo1` in crate `similar_unstable_method`
+error[E0425]: cannot find function `foo1`
   --> $DIR/issue-109177.rs:7:30
    |
 LL |     similar_unstable_method::foo1();

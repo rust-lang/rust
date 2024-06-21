@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `x` in this scope
+error[E0425]: cannot find value `x`
   --> $DIR/while-let-typo.rs:4:16
    |
 LL |     while Some(x) = foo {}
@@ -9,7 +9,7 @@ help: you might have meant to use pattern matching
 LL |     while let Some(x) = foo {}
    |           +++
 
-error[E0425]: cannot find value `x` in this scope
+error[E0425]: cannot find value `x`
   --> $DIR/while-let-typo.rs:8:11
    |
 LL |     while x = 5 {}

@@ -1,16 +1,16 @@
-error[E0425]: cannot find value `e` in this scope
+error[E0425]: cannot find value `e`
   --> $DIR/issue-114423-ice-regression-in-suggestion.rs:7:51
    |
 LL |     let (r, alone_in_path, b): (f32, f32, f32) = (e.clone(), e.clone());
    |                                                   ^ not found in this scope
 
-error[E0425]: cannot find value `e` in this scope
+error[E0425]: cannot find value `e`
   --> $DIR/issue-114423-ice-regression-in-suggestion.rs:7:62
    |
 LL |     let (r, alone_in_path, b): (f32, f32, f32) = (e.clone(), e.clone());
    |                                                              ^ not found in this scope
 
-error[E0425]: cannot find value `g` in this scope
+error[E0425]: cannot find value `g`
   --> $DIR/issue-114423-ice-regression-in-suggestion.rs:11:22
    |
 LL |     let _ = RGB { r, g, b };

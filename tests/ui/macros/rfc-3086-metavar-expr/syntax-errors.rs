@@ -21,15 +21,15 @@ macro_rules! curly__rhs_dollar__no_round {
 #[rustfmt::skip] // autoformatters can break a few of the error traces
 macro_rules! no_curly__no_rhs_dollar__round {
     ( $( $i:ident ),* ) => { count(i) };
-    //~^ ERROR cannot find function `count` in this scope
-    //~| ERROR cannot find value `i` in this scope
+    //~^ ERROR cannot find function `count`
+    //~| ERROR cannot find value `i`
 }
 
 #[rustfmt::skip] // autoformatters can break a few of the error traces
 macro_rules! no_curly__no_rhs_dollar__no_round {
     ( $i:ident ) => { count(i) };
-    //~^ ERROR cannot find function `count` in this scope
-    //~| ERROR cannot find value `i` in this scope
+    //~^ ERROR cannot find function `count`
+    //~| ERROR cannot find value `i`
 }
 
 #[rustfmt::skip] // autoformatters can break a few of the error traces
@@ -41,7 +41,7 @@ macro_rules! no_curly__rhs_dollar__round {
 #[rustfmt::skip] // autoformatters can break a few of the error traces
 macro_rules! no_curly__rhs_dollar__no_round {
     ( $i:ident ) => { count($i) };
-    //~^ ERROR cannot find function `count` in this scope
+    //~^ ERROR cannot find function `count`
 }
 
 // Other scenarios
@@ -150,7 +150,7 @@ fn main() {
     no_curly__no_rhs_dollar__no_round!(a);
     no_curly__rhs_dollar__round!(a, b, c);
     no_curly__rhs_dollar__no_round!(a);
-    //~^ ERROR cannot find value `a` in this scope
+    //~^ ERROR cannot find value `a`
 
     extra_garbage_after_metavar!(a);
     metavar_depth_is_not_literal!(a);

@@ -1,6 +1,6 @@
 extern "Rust" {
     fn dstfn(src: i32, dst: err);
-    //~^ ERROR cannot find type `err` in this scope
+    //~^ ERROR cannot find type `err`
 }
 
 fn main() {

@@ -88,13 +88,13 @@ error: expected identifier, found `>`
 LL |     type QuiteBroken = fn<const>();
    |                                ^ expected identifier
 
-error[E0412]: cannot find type `T` in this scope
+error[E0412]: cannot find type `T`
   --> $DIR/recover-fn-ptr-with-generics.rs:5:27
    |
 LL |     type Identity = fn<T>(T) -> T;
    |                           ^ not found in this scope
 
-error[E0412]: cannot find type `T` in this scope
+error[E0412]: cannot find type `T`
   --> $DIR/recover-fn-ptr-with-generics.rs:5:33
    |
 LL |     type Identity = fn<T>(T) -> T;

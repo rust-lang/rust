@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Missing` in this scope
+error[E0412]: cannot find type `Missing`
   --> $DIR/unknown_src_field.rs:18:27
    |
 LL |     #[repr(C)] struct Dst(Missing);

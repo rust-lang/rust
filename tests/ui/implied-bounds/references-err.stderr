@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `DoesNotExist` in this scope
+error[E0412]: cannot find type `DoesNotExist`
   --> $DIR/references-err.rs:14:18
    |
 LL |     type Assoc = DoesNotExist;

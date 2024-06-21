@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `MissingType` in this scope
+error[E0412]: cannot find type `MissingType`
   --> $DIR/nonexistent-field-not-ambiguous.rs:2:10
    |
 LL |     val: MissingType,

@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Bla` in this scope
+error[E0412]: cannot find type `Bla`
   --> $DIR/assoc-type-in-method-return.rs:3:25
    |
 LL |     fn to_bla(&self) -> Bla;

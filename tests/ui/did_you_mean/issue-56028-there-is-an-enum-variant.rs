@@ -7,8 +7,8 @@ enum Solidify { Set }
 enum UnorderedCollection { Set }
 
 fn setup() -> Set { Set }
-//~^ ERROR cannot find type `Set` in this scope
-//~| ERROR cannot find value `Set` in this scope
+//~^ ERROR cannot find type `Set`
+//~| ERROR cannot find value `Set`
 
 fn main() {
     setup();

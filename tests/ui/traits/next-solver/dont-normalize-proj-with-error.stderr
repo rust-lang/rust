@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `TypeError` in this scope
+error[E0412]: cannot find type `TypeError`
   --> $DIR/dont-normalize-proj-with-error.rs:17:20
    |
 LL | fn type_error() -> TypeError { todo!() }

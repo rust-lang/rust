@@ -14,7 +14,7 @@ use derive as my_derive;
 struct S1;
 
 // Legacy helper detection doesn't see through `derive` renaming.
-#[empty_helper] //~ ERROR cannot find attribute `empty_helper` in this scope
+#[empty_helper] //~ ERROR cannot find attribute `empty_helper`
 #[my_derive(Empty)]
 struct S2;
 

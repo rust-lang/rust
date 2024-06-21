@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `missing` in this scope
+error[E0425]: cannot find function `missing`
   --> $DIR/error-body.rs:5:5
    |
 LL |     missing();

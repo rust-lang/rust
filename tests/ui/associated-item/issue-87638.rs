@@ -14,9 +14,9 @@ impl Trait for S {
 }
 
 fn main() {
-    let _: <S as Trait>::Output; //~ ERROR cannot find associated type `Output` in trait `Trait`
+    let _: <S as Trait>::Output; //~ ERROR cannot find associated type `Output`
                                  //~^ HELP maybe you meant this associated type
 
-    let _ = <S as Trait>::BAR; //~ ERROR cannot find method or associated constant `BAR` in trait `Trait`
+    let _ = <S as Trait>::BAR; //~ ERROR cannot find method or associated constant `BAR`
                                //~^ HELP maybe you meant this associated constant
 }

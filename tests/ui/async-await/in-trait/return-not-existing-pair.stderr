@@ -9,7 +9,7 @@ help: indicate the anonymous lifetimes
 LL | impl<'a, 'b, T, U> MyTrait<'_, '_, T> for U {
    |                            +++++++
 
-error[E0412]: cannot find type `ConnImpl` in this scope
+error[E0412]: cannot find type `ConnImpl`
   --> $DIR/return-not-existing-pair.rs:5:48
    |
 LL |     async fn foo(&'a self, key: &'b T) -> (&'a ConnImpl, &'b T);

@@ -5,13 +5,13 @@ struct A {
 impl A {
     fn new(peach: u8) -> A {
         A {
-            banana: banana //~ ERROR cannot find value `banana` in this scope
+            banana: banana //~ ERROR cannot find value `banana`
         }
     }
 
     fn foo(&self, peach: u8) -> A {
         A {
-            banana: banana //~ ERROR cannot find value `banana` in this scope
+            banana: banana //~ ERROR cannot find value `banana`
         }
     }
 }

@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Stuct` in this scope
+error[E0412]: cannot find type `Stuct`
   --> $DIR/issue-88844.rs:6:6
    |
 LL | struct Struct { value: i32 }

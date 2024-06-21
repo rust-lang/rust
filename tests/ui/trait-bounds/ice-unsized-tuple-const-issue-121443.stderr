@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `some_fn` in this scope
+error[E0425]: cannot find value `some_fn`
   --> $DIR/ice-unsized-tuple-const-issue-121443.rs:8:18
    |
 LL | const TEST: Fn = some_fn;

@@ -1,2 +1,2 @@
-#[main]  //~ ERROR cannot find attribute `main` in this scope
+#[main]  //~ ERROR cannot find attribute `main`
 fn main() {}

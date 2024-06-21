@@ -36,5 +36,5 @@ mod b {
 fn main() {
     // There is no uwu at this path - no diagnostic.
     inner::uwu(); //~ ERROR cannot find function
-    //~^ NOTE not found in `inner`
+    //~^ NOTE not found in module `inner`
 }

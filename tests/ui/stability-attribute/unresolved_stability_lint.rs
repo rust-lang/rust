@@ -3,6 +3,6 @@
 
 #[unstable(feature = "foo", issue = "none")]
 impl Foo for () {}
-//~^ ERROR cannot find trait `Foo` in this scope
+//~^ ERROR cannot find trait `Foo`
 
 fn main() {}

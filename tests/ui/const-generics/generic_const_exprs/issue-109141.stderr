@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `HashesEntryLEN` in this scope
+error[E0425]: cannot find value `HashesEntryLEN`
   --> $DIR/issue-109141.rs:11:32
    |
 LL | struct EntriesBuffer(Box<[[u8; HashesEntryLEN]; 5]>);

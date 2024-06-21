@@ -52,7 +52,7 @@ error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` function
 LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {
    |            ^^^                     ^^^
 
-error[E0412]: cannot find type `F` in this scope
+error[E0412]: cannot find type `F`
   --> $DIR/issue-86053-1.rs:11:48
    |
 LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {
