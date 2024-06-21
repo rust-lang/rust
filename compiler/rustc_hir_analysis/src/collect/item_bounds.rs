@@ -59,7 +59,7 @@ fn associated_type_bounds<'tcx>(
 /// impl trait it isn't possible to write a suitable predicate on the
 /// containing function and for type-alias impl trait we don't have a backwards
 /// compatibility issue.
-#[instrument(level = "trace", skip(tcx), ret)]
+#[instrument(level = "trace", skip(tcx, item_ty))]
 fn opaque_type_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     opaque_def_id: LocalDefId,

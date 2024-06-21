@@ -14,11 +14,11 @@ LL | impl<const C: usize> Wrapper<C> {}
    |
    = help: consider constraining the associated type `<i32 as Trait>::Type` to `usize`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
-note: required by a bound in `Wrapper`
+note: required by a const generic parameter in `Wrapper`
   --> $DIR/default-proj-ty-as-type-of-const-issue-125757.rs:12:16
    |
 LL | struct Wrapper<const C: <i32 as Trait>::Type> {}
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Wrapper`
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this const generic parameter in `Wrapper`
 
 error[E0308]: mismatched types
   --> $DIR/default-proj-ty-as-type-of-const-issue-125757.rs:15:30

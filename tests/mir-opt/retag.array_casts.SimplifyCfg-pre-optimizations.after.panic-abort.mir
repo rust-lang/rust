@@ -64,7 +64,7 @@ fn array_casts() -> () {
         StorageLive(_4);
         _4 = &mut _1;
         _3 = &raw mut (*_4);
-        _2 = move _3 as *mut usize (PointerCoercion(ArrayToPointer));
+        _2 = move _3 as *mut usize (PtrToPtr);
         StorageDead(_3);
         StorageDead(_4);
         StorageLive(_5);
@@ -87,7 +87,7 @@ fn array_casts() -> () {
         StorageLive(_11);
         _11 = &_8;
         _10 = &raw const (*_11);
-        _9 = move _10 as *const usize (PointerCoercion(ArrayToPointer));
+        _9 = move _10 as *const usize (PtrToPtr);
         StorageDead(_10);
         StorageDead(_11);
         StorageLive(_12);

@@ -707,15 +707,25 @@ impl<'a> Parser<'a> {
         };
 
         let (ident, item_kind) = if self.eat(&token::PathSep) {
-            let (suffixes, _) = self.parse_delim_comma_seq(Delimiter::Brace, |p| {
-                Ok((p.parse_path_segment_ident()?, rename(p)?))
-            })?;
+            let suffixes = if self.eat(&token::BinOp(token::Star)) {
+                None
+            } else {
+                let parse_suffix = |p: &mut Self| Ok((p.parse_path_segment_ident()?, rename(p)?));
+                Some(self.parse_delim_comma_seq(Delimiter::Brace, parse_suffix)?.0)
+            };
             let deleg = DelegationMac { qself, prefix: path, suffixes, body: body(self)? };
             (Ident::empty(), ItemKind::DelegationMac(Box::new(deleg)))
         } else {
             let rename = rename(self)?;
             let ident = rename.unwrap_or_else(|| path.segments.last().unwrap().ident);
-            let deleg = Delegation { id: DUMMY_NODE_ID, qself, path, rename, body: body(self)? };
+            let deleg = Delegation {
+                id: DUMMY_NODE_ID,
+                qself,
+                path,
+                rename,
+                body: body(self)?,
+                from_glob: false,
+            };
             (ident, ItemKind::Delegation(Box::new(deleg)))
         };
 
@@ -1218,7 +1228,7 @@ impl<'a> Parser<'a> {
                                 ident_span: ident.span,
                                 const_span,
                             });
-                            ForeignItemKind::Static(Box::new(StaticForeignItem {
+                            ForeignItemKind::Static(Box::new(StaticItem {
                                 ty,
                                 mutability: Mutability::Not,
                                 expr,
@@ -1237,7 +1247,11 @@ impl<'a> Parser<'a> {
         // FIXME(#100717): needs variant for each `ItemKind` (instead of using `ItemKind::descr()`)
         let span = self.psess.source_map().guess_head_span(span);
         let descr = kind.descr();
-        self.dcx().emit_err(errors::BadItemKind { span, descr, ctx });
+        let help = match kind {
+            ItemKind::DelegationMac(deleg) if deleg.suffixes.is_none() => None,
+            _ => Some(()),
+        };
+        self.dcx().emit_err(errors::BadItemKind { span, descr, ctx, help });
         None
     }
 
@@ -1245,7 +1259,7 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Unsafe)
             && self.is_keyword_ahead(1, &[kw::Extern])
             && self.look_ahead(
-                2 + self.look_ahead(2, |t| t.can_begin_literal_maybe_minus() as usize),
+                2 + self.look_ahead(2, |t| t.can_begin_string_literal() as usize),
                 |t| t.kind == token::OpenDelim(Delimiter::Brace),
             )
     }
@@ -2434,7 +2448,7 @@ impl<'a> Parser<'a> {
                 })
             // `extern ABI fn`
             || self.check_keyword_case(kw::Extern, case)
-                && self.look_ahead(1, |t| t.can_begin_literal_maybe_minus())
+                && self.look_ahead(1, |t| t.can_begin_string_literal())
                 && (self.look_ahead(2, |t| t.is_keyword_case(kw::Fn, case)) ||
                     // this branch is only for better diagnostic in later, `pub` is not allowed here
                     (self.may_recover()

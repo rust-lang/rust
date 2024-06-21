@@ -1182,37 +1182,6 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) ->
     // ABIs have such an option. Otherwise the only other thing here is Rust
     // itself, and those ABIs are determined by the panic strategy configured
     // for this compilation.
-    //
-    // Unfortunately at this time there's also another caveat. Rust [RFC
-    // 2945][rfc] has been accepted and is in the process of being implemented
-    // and stabilized. In this interim state we need to deal with historical
-    // rustc behavior as well as plan for future rustc behavior.
-    //
-    // Historically functions declared with `extern "C"` were marked at the
-    // codegen layer as `nounwind`. This happened regardless of `panic=unwind`
-    // or not. This is UB for functions in `panic=unwind` mode that then
-    // actually panic and unwind. Note that this behavior is true for both
-    // externally declared functions as well as Rust-defined function.
-    //
-    // To fix this UB rustc would like to change in the future to catch unwinds
-    // from function calls that may unwind within a Rust-defined `extern "C"`
-    // function and forcibly abort the process, thereby respecting the
-    // `nounwind` attribute emitted for `extern "C"`. This behavior change isn't
-    // ready to roll out, so determining whether or not the `C` family of ABIs
-    // unwinds is conditional not only on their definition but also whether the
-    // `#![feature(c_unwind)]` feature gate is active.
-    //
-    // Note that this means that unlike historical compilers rustc now, by
-    // default, unconditionally thinks that the `C` ABI may unwind. This will
-    // prevent some optimization opportunities, however, so we try to scope this
-    // change and only assume that `C` unwinds with `panic=unwind` (as opposed
-    // to `panic=abort`).
-    //
-    // Eventually the check against `c_unwind` here will ideally get removed and
-    // this'll be a little cleaner as it'll be a straightforward check of the
-    // ABI.
-    //
-    // [rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2945-c-unwind-abi.md
     use SpecAbi::*;
     match abi {
         C { unwind }
@@ -1224,10 +1193,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) ->
         | Thiscall { unwind }
         | Aapcs { unwind }
         | Win64 { unwind }
-        | SysV64 { unwind } => {
-            unwind
-                || (!tcx.features().c_unwind && tcx.sess.panic_strategy() == PanicStrategy::Unwind)
-        }
+        | SysV64 { unwind } => unwind,
         PtxKernel
         | Msp430Interrupt
         | X86Interrupt

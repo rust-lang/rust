@@ -1358,6 +1358,7 @@ pub enum NonLocalDefinitionsDiag {
         cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
         const_anon: Option<Option<Span>>,
         move_to: Option<(Span, Vec<Span>)>,
+        doctest: bool,
         may_remove: Option<(Span, String)>,
         has_trait: bool,
         self_ty_str: String,
@@ -1368,8 +1369,7 @@ pub enum NonLocalDefinitionsDiag {
         depth: u32,
         body_kind_descr: &'static str,
         body_name: String,
-        help: Option<()>,
-        doctest_help: Option<()>,
+        doctest: bool,
         cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
     },
 }
@@ -1384,6 +1384,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 cargo_update,
                 const_anon,
                 move_to,
+                doctest,
                 may_remove,
                 has_trait,
                 self_ty_str,
@@ -1422,6 +1423,9 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                     }
                     diag.span_help(ms, fluent::lint_non_local_definitions_impl_move_help);
                 }
+                if doctest {
+                    diag.help(fluent::lint_doctest);
+                }
 
                 if let Some((span, part)) = may_remove {
                     diag.arg("may_remove_part", part);
@@ -1451,8 +1455,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 depth,
                 body_kind_descr,
                 body_name,
-                help,
-                doctest_help,
+                doctest,
                 cargo_update,
             } => {
                 diag.primary_message(fluent::lint_non_local_definitions_macro_rules);
@@ -1460,11 +1463,10 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 diag.arg("body_kind_descr", body_kind_descr);
                 diag.arg("body_name", body_name);
 
-                if let Some(()) = help {
-                    diag.help(fluent::lint_help);
-                }
-                if let Some(()) = doctest_help {
+                if doctest {
                     diag.help(fluent::lint_help_doctest);
+                } else {
+                    diag.help(fluent::lint_help);
                 }
 
                 diag.note(fluent::lint_non_local);

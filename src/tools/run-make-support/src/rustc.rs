@@ -73,6 +73,12 @@ impl Rustc {
         self
     }
 
+    /// Incorporate a hashed string to mangled symbols.
+    pub fn metadata(&mut self, meta: &str) -> &mut Self {
+        self.cmd.arg(format!("-Cmetadata={meta}"));
+        self
+    }
+
     /// Add a suffix in each output filename.
     pub fn extra_filename(&mut self, suffix: &str) -> &mut Self {
         self.cmd.arg(format!("-Cextra-filename={suffix}"));
@@ -230,6 +236,12 @@ impl Rustc {
         self
     }
 
+    /// Add multiple extra arguments to the linker invocation, via `-Clink-args`.
+    pub fn link_args(&mut self, link_args: &str) -> &mut Self {
+        self.cmd.arg(format!("-Clink-args={link_args}"));
+        self
+    }
+
     /// Specify a stdin input
     pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
         self.cmd.set_stdin(input.as_ref().to_vec().into_boxed_slice());
@@ -246,6 +258,12 @@ impl Rustc {
     /// Specify the linker
     pub fn linker(&mut self, linker: &str) -> &mut Self {
         self.cmd.arg(format!("-Clinker={linker}"));
+        self
+    }
+
+    /// Specify the linker flavor
+    pub fn linker_flavor(&mut self, linker_flavor: &str) -> &mut Self {
+        self.cmd.arg(format!("-Clinker-flavor={linker_flavor}"));
         self
     }
 }

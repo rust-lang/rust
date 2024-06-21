@@ -1,0 +1,26 @@
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/subword.rs:7:1
+   |
+LL | #[coverage(yes(milord))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/subword.rs:10:1
+   |
+LL | #[coverage(no(milord))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/subword.rs:13:1
+   |
+LL | #[coverage(yes = "milord")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/subword.rs:16:1
+   |
+LL | #[coverage(no = "milord")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

@@ -1,8 +1,8 @@
 use crate::base::*;
 use crate::config::StripUnconfigured;
 use crate::errors::{
-    EmptyDelegationList, IncompleteParse, RecursionLimitReached, RemoveExprNotSupported,
-    RemoveNodeNotSupported, UnsupportedKeyValue, WrongFragmentKind,
+    EmptyDelegationMac, GlobDelegationOutsideImpls, IncompleteParse, RecursionLimitReached,
+    RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue, WrongFragmentKind,
 };
 use crate::mbe::diagnostics::annotate_err_with_kind;
 use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
@@ -343,6 +343,9 @@ pub enum InvocationKind {
         is_const: bool,
         item: Annotatable,
     },
+    GlobDelegation {
+        item: P<ast::AssocItem>,
+    },
 }
 
 impl InvocationKind {
@@ -370,6 +373,7 @@ impl Invocation {
             InvocationKind::Bang { span, .. } => *span,
             InvocationKind::Attr { attr, .. } => attr.span,
             InvocationKind::Derive { path, .. } => path.span,
+            InvocationKind::GlobDelegation { item } => item.span,
         }
     }
 
@@ -378,6 +382,7 @@ impl Invocation {
             InvocationKind::Bang { span, .. } => span,
             InvocationKind::Attr { attr, .. } => &mut attr.span,
             InvocationKind::Derive { path, .. } => &mut path.span,
+            InvocationKind::GlobDelegation { item } => &mut item.span,
         }
     }
 }
@@ -800,6 +805,36 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
+            InvocationKind::GlobDelegation { item } => {
+                let AssocItemKind::DelegationMac(deleg) = &item.kind else { unreachable!() };
+                let suffixes = match ext {
+                    SyntaxExtensionKind::GlobDelegation(expander) => match expander.expand(self.cx)
+                    {
+                        ExpandResult::Ready(suffixes) => suffixes,
+                        ExpandResult::Retry(()) => {
+                            // Reassemble the original invocation for retrying.
+                            return ExpandResult::Retry(Invocation {
+                                kind: InvocationKind::GlobDelegation { item },
+                                ..invoc
+                            });
+                        }
+                    },
+                    SyntaxExtensionKind::LegacyBang(..) => {
+                        let msg = "expanded a dummy glob delegation";
+                        let guar = self.cx.dcx().span_delayed_bug(span, msg);
+                        return ExpandResult::Ready(fragment_kind.dummy(span, guar));
+                    }
+                    _ => unreachable!(),
+                };
+
+                type Node = AstNodeWrapper<P<ast::AssocItem>, ImplItemTag>;
+                let single_delegations = build_single_delegations::<Node>(
+                    self.cx, deleg, &item, &suffixes, item.span, true,
+                );
+                fragment_kind.expect_from_annotatables(
+                    single_delegations.map(|item| Annotatable::ImplItem(P(item))),
+                )
+            }
         })
     }
 
@@ -1067,7 +1102,7 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
         unreachable!()
     }
-    fn delegation_list(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
+    fn delegation(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
         None
     }
     fn delegation_item_kind(_deleg: Box<ast::Delegation>) -> Self::ItemKind {
@@ -1126,7 +1161,7 @@ impl InvocationCollectorNode for P<ast::Item> {
             _ => unreachable!(),
         }
     }
-    fn delegation_list(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
+    fn delegation(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
         match &self.kind {
             ItemKind::DelegationMac(deleg) => Some((deleg, self)),
             _ => None,
@@ -1270,7 +1305,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitItemTag>
             _ => unreachable!(),
         }
     }
-    fn delegation_list(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
+    fn delegation(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
         match &self.wrapped.kind {
             AssocItemKind::DelegationMac(deleg) => Some((deleg, &self.wrapped)),
             _ => None,
@@ -1311,7 +1346,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, ImplItemTag> 
             _ => unreachable!(),
         }
     }
-    fn delegation_list(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
+    fn delegation(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
         match &self.wrapped.kind {
             AssocItemKind::DelegationMac(deleg) => Some((deleg, &self.wrapped)),
             _ => None,
@@ -1487,7 +1522,7 @@ impl InvocationCollectorNode for ast::Stmt {
         };
         (mac, attrs, if add_semicolon { AddSemicolon::Yes } else { AddSemicolon::No })
     }
-    fn delegation_list(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
+    fn delegation(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
         match &self.kind {
             StmtKind::Item(item) => match &item.kind {
                 ItemKind::DelegationMac(deleg) => Some((deleg, item)),
@@ -1684,6 +1719,44 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag>
     }
 }
 
+fn build_single_delegations<'a, Node: InvocationCollectorNode>(
+    ecx: &ExtCtxt<'_>,
+    deleg: &'a ast::DelegationMac,
+    item: &'a ast::Item<Node::ItemKind>,
+    suffixes: &'a [(Ident, Option<Ident>)],
+    item_span: Span,
+    from_glob: bool,
+) -> impl Iterator<Item = ast::Item<Node::ItemKind>> + 'a {
+    if suffixes.is_empty() {
+        // Report an error for now, to avoid keeping stem for resolution and
+        // stability checks.
+        let kind = String::from(if from_glob { "glob" } else { "list" });
+        ecx.dcx().emit_err(EmptyDelegationMac { span: item.span, kind });
+    }
+
+    suffixes.iter().map(move |&(ident, rename)| {
+        let mut path = deleg.prefix.clone();
+        path.segments.push(ast::PathSegment { ident, id: ast::DUMMY_NODE_ID, args: None });
+
+        ast::Item {
+            attrs: item.attrs.clone(),
+            id: ast::DUMMY_NODE_ID,
+            span: if from_glob { item_span } else { ident.span },
+            vis: item.vis.clone(),
+            ident: rename.unwrap_or(ident),
+            kind: Node::delegation_item_kind(Box::new(ast::Delegation {
+                id: ast::DUMMY_NODE_ID,
+                qself: deleg.qself.clone(),
+                path,
+                rename,
+                body: deleg.body.clone(),
+                from_glob,
+            })),
+            tokens: None,
+        }
+    })
+}
+
 struct InvocationCollector<'a, 'b> {
     cx: &'a mut ExtCtxt<'b>,
     invocations: Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>,
@@ -1702,6 +1775,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn collect(&mut self, fragment_kind: AstFragmentKind, kind: InvocationKind) -> AstFragment {
         let expn_id = LocalExpnId::fresh_empty();
+        if matches!(kind, InvocationKind::GlobDelegation { .. }) {
+            // In resolver we need to know which invocation ids are delegations early,
+            // before their `ExpnData` is filled.
+            self.cx.resolver.register_glob_delegation(expn_id);
+        }
         let vis = kind.placeholder_visibility();
         self.invocations.push((
             Invocation {
@@ -1732,6 +1810,14 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         kind: AstFragmentKind,
     ) -> AstFragment {
         self.collect(kind, InvocationKind::Attr { attr, pos, item, derives })
+    }
+
+    fn collect_glob_delegation(
+        &mut self,
+        item: P<ast::AssocItem>,
+        kind: AstFragmentKind,
+    ) -> AstFragment {
+        self.collect(kind, InvocationKind::GlobDelegation { item })
     }
 
     /// If `item` is an attribute invocation, remove the attribute and return it together with
@@ -1901,37 +1987,27 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     Node::post_flat_map_node_collect_bang(&mut res, add_semicolon);
                     res
                 }
-                None if let Some((deleg, item)) = node.delegation_list() => {
-                    if deleg.suffixes.is_empty() {
-                        // Report an error for now, to avoid keeping stem for resolution and
-                        // stability checks.
-                        self.cx.dcx().emit_err(EmptyDelegationList { span: item.span });
-                    }
+                None if let Some((deleg, item)) = node.delegation() => {
+                    let Some(suffixes) = &deleg.suffixes else {
+                        let item = match node.to_annotatable() {
+                            Annotatable::ImplItem(item) => item,
+                            ann @ (Annotatable::Item(_)
+                            | Annotatable::TraitItem(_)
+                            | Annotatable::Stmt(_)) => {
+                                let span = ann.span();
+                                self.cx.dcx().emit_err(GlobDelegationOutsideImpls { span });
+                                return Default::default();
+                            }
+                            _ => unreachable!(),
+                        };
+                        return self.collect_glob_delegation(item, Node::KIND).make_ast::<Node>();
+                    };
 
-                    Node::flatten_outputs(deleg.suffixes.iter().map(|&(ident, rename)| {
-                        let mut path = deleg.prefix.clone();
-                        path.segments.push(ast::PathSegment {
-                            ident,
-                            id: ast::DUMMY_NODE_ID,
-                            args: None,
-                        });
-
-                        let mut item = Node::from_item(ast::Item {
-                            attrs: item.attrs.clone(),
-                            id: ast::DUMMY_NODE_ID,
-                            span: ident.span,
-                            vis: item.vis.clone(),
-                            ident: rename.unwrap_or(ident),
-                            kind: Node::delegation_item_kind(Box::new(ast::Delegation {
-                                id: ast::DUMMY_NODE_ID,
-                                qself: deleg.qself.clone(),
-                                path,
-                                rename,
-                                body: deleg.body.clone(),
-                            })),
-                            tokens: None,
-                        });
-
+                    let single_delegations = build_single_delegations::<Node>(
+                        self.cx, deleg, item, suffixes, item.span, false,
+                    );
+                    Node::flatten_outputs(single_delegations.map(|item| {
+                        let mut item = Node::from_item(item);
                         assign_id!(self, item.node_id_mut(), || item.noop_flat_map(self))
                     }))
                 }
@@ -1983,7 +2059,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         self.collect_bang(mac, Node::KIND).make_ast::<Node>()
                     })
                 }
-                None if node.delegation_list().is_some() => unreachable!(),
+                None if node.delegation().is_some() => unreachable!(),
                 None => {
                     assign_id!(self, node.node_id_mut(), || node.noop_visit(self))
                 }

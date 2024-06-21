@@ -18,7 +18,8 @@
 
 use crate::MirPass;
 use rustc_middle::mir::coverage::CoverageKind;
-use rustc_middle::mir::{Body, BorrowKind, Rvalue, StatementKind, TerminatorKind};
+use rustc_middle::mir::{Body, BorrowKind, CastKind, Rvalue, StatementKind, TerminatorKind};
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::TyCtxt;
 
 pub struct CleanupPostBorrowck;
@@ -36,6 +37,22 @@ impl<'tcx> MirPass<'tcx> for CleanupPostBorrowck {
                         CoverageKind::BlockMarker { .. } | CoverageKind::SpanMarker { .. },
                     )
                     | StatementKind::FakeRead(..) => statement.make_nop(),
+                    StatementKind::Assign(box (
+                        _,
+                        Rvalue::Cast(
+                            ref mut cast_kind @ CastKind::PointerCoercion(
+                                PointerCoercion::ArrayToPointer
+                                | PointerCoercion::MutToConstPointer,
+                            ),
+                            ..,
+                        ),
+                    )) => {
+                        // BorrowCk needed to track whether these cases were coercions or casts,
+                        // to know whether to check lifetimes in their pointees,
+                        // but from now on that distinction doesn't matter,
+                        // so just make them ordinary pointer casts instead.
+                        *cast_kind = CastKind::PtrToPtr;
+                    }
                     _ => (),
                 }
             }

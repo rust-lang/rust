@@ -17,6 +17,7 @@
 //! Note: Because the term "leading byte" can sometimes be ambiguous (for
 //! example, it could also refer to the first byte of a slice), we'll often use
 //! the term "non-continuation byte" to refer to these bytes in the code.
+
 use core::intrinsics::unlikely;
 
 const USIZE_SIZE: usize = core::mem::size_of::<usize>();

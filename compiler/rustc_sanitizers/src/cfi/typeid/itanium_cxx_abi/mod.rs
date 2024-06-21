@@ -3,6 +3,7 @@
 //!
 //! For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 //! see design document in the tracking issue #89653.
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};

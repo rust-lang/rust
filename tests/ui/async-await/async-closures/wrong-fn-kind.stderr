@@ -20,15 +20,16 @@ LL | fn needs_async_fn(_: impl async Fn()) {}
    |                           ^^^^^^^^^^ required by this bound in `needs_async_fn`
 
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
-  --> $DIR/wrong-fn-kind.rs:9:29
+  --> $DIR/wrong-fn-kind.rs:9:20
    |
 LL |   fn needs_async_fn(_: impl async Fn()) {}
    |                        --------------- change this to accept `FnMut` instead of `Fn`
 ...
 LL |       needs_async_fn(async || {
-   |  _____--------------_--------_^
-   | |     |              |
-   | |     |              in this closure
+   |       -------------- ^-------
+   |       |              |
+   |  _____|______________in this closure
+   | |     |
    | |     expects `Fn` instead of `FnMut`
 LL | |
 LL | |         x += 1;

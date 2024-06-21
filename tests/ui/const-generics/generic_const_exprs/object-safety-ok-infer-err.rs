@@ -18,4 +18,5 @@ fn use_dyn<const N: usize>(v: &dyn Foo<N>) where [u8; N + 1]: Sized {
 fn main() {
     use_dyn(&());
     //~^ ERROR type annotations needed
+    //~| ERROR type annotations needed
 }

@@ -445,6 +445,13 @@ define!(
     fn CastTransmute<T, U>(operand: T) -> U
 );
 define!(
+    "mir_cast_ptr_to_ptr",
+    /// Emits a `CastKind::PtrToPtr` cast.
+    ///
+    /// This allows bypassing normal validation to generate strange casts.
+    fn CastPtrToPtr<T, U>(operand: T) -> U
+);
+define!(
     "mir_make_place",
     #[doc(hidden)]
     fn __internal_make_place<T>(place: T) -> *mut T

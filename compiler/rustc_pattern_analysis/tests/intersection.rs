@@ -1,4 +1,5 @@
 //! Test the computation of arm intersections.
+
 use common::*;
 use rustc_pattern_analysis::{pat::DeconstructedPat, usefulness::PlaceValidity, MatchArm};
 

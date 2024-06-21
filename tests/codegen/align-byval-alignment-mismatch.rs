@@ -1,9 +1,9 @@
 // ignore-tidy-linelength
 //@ revisions:i686-linux x86_64-linux
 
-//@[i686-linux] compile-flags: --target i686-unknown-linux-gnu
+//@[i686-linux] compile-flags: --target i686-unknown-linux-gnu -C panic=abort
 //@[i686-linux] needs-llvm-components: x86
-//@[x86_64-linux] compile-flags: --target x86_64-unknown-linux-gnu
+//@[x86_64-linux] compile-flags: --target x86_64-unknown-linux-gnu -C panic=abort
 //@[x86_64-linux] needs-llvm-components: x86
 
 // Tests that we correctly copy arguments into allocas when the alignment of the byval argument

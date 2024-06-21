@@ -3,8 +3,12 @@
 
 // CHECK-LABEL: @write_u8_variant_a
 // CHECK-NEXT: {{.*}}:
-// CHECK-NEXT: getelementptr
 // CHECK-NEXT: icmp ugt
+// CHECK-NEXT: getelementptr
+// CHECK-NEXT: select i1 {{.+}} null
+// CHECK-NEXT: insertvalue
+// CHECK-NEXT: insertvalue
+// CHECK-NEXT: ret
 #[no_mangle]
 pub fn write_u8_variant_a(bytes: &mut [u8], buf: u8, offset: usize) -> Option<&mut [u8]> {
     let buf = buf.to_le_bytes();

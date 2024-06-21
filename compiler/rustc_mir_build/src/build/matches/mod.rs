@@ -1074,11 +1074,8 @@ struct Candidate<'pat, 'tcx> {
     // because that would break binding consistency.
     subcandidates: Vec<Candidate<'pat, 'tcx>>,
 
-    /// ...and the guard must be evaluated if there is one.
+    /// ...and if there is a guard it must be evaluated; if it's `false` then branch to `otherwise_block`.
     has_guard: bool,
-
-    /// If the guard is `false` then branch to `otherwise_block`.
-    otherwise_block: Option<BasicBlock>,
 
     /// If the candidate matches, bindings and ascriptions must be established.
     extra_data: PatternExtraData<'tcx>,
@@ -1089,6 +1086,9 @@ struct Candidate<'pat, 'tcx> {
 
     /// The block before the `bindings` have been established.
     pre_binding_block: Option<BasicBlock>,
+
+    /// The block to branch to if the guard or a nested candidate fails to match.
+    otherwise_block: Option<BasicBlock>,
 
     /// The earliest block that has only candidates >= this one as descendents. Used for false
     /// edges, see the doc for [`Builder::match_expr`].
@@ -1364,56 +1364,105 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         otherwise_block: BasicBlock,
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
     ) {
-        let mut split_or_candidate = false;
-        for candidate in &mut *candidates {
-            if let [MatchPair { test_case: TestCase::Or { .. }, .. }] = &*candidate.match_pairs {
-                // Split a candidate in which the only match-pair is an or-pattern into multiple
-                // candidates. This is so that
-                //
-                // match x {
-                //     0 | 1 => { ... },
-                //     2 | 3 => { ... },
-                // }
-                //
-                // only generates a single switch.
-                let match_pair = candidate.match_pairs.pop().unwrap();
-                self.create_or_subcandidates(candidate, match_pair);
-                split_or_candidate = true;
+        // We process or-patterns here. If any candidate starts with an or-pattern, we have to
+        // expand the or-pattern before we can proceed further.
+        //
+        // We can't expand them freely however. The rule is: if the candidate has an or-pattern as
+        // its only remaining match pair, we can expand it freely. If it has other match pairs, we
+        // can expand it but we can't process more candidates after it.
+        //
+        // If we didn't stop, the `otherwise` cases could get mixed up. E.g. in the following,
+        // or-pattern simplification (in `merge_trivial_subcandidates`) makes it so the `1` and `2`
+        // cases branch to a same block (which then tests `false`). If we took `(2, _)` in the same
+        // set of candidates, when we reach the block that tests `false` we don't know whether we
+        // came from `1` or `2`, hence we can't know where to branch on failure.
+        // ```ignore(illustrative)
+        // match (1, true) {
+        //     (1 | 2, false) => {},
+        //     (2, _) => {},
+        //     _ => {}
+        // }
+        // ```
+        //
+        // We therefore split the `candidates` slice in two, expand or-patterns in the first half,
+        // and process both halves separately.
+        let mut expand_until = 0;
+        for (i, candidate) in candidates.iter().enumerate() {
+            if matches!(
+                &*candidate.match_pairs,
+                [MatchPair { test_case: TestCase::Or { .. }, .. }, ..]
+            ) {
+                expand_until = i + 1;
+                if candidate.match_pairs.len() > 1 {
+                    break;
+                }
             }
         }
+        let (candidates_to_expand, remaining_candidates) = candidates.split_at_mut(expand_until);
 
         ensure_sufficient_stack(|| {
-            if split_or_candidate {
-                // At least one of the candidates has been split into subcandidates.
-                // We need to change the candidate list to include those.
-                let mut new_candidates = Vec::new();
-                for candidate in candidates.iter_mut() {
-                    candidate.visit_leaves(|leaf_candidate| new_candidates.push(leaf_candidate));
+            if candidates_to_expand.is_empty() {
+                // No candidates start with an or-pattern, we can continue.
+                self.match_expanded_candidates(
+                    span,
+                    scrutinee_span,
+                    start_block,
+                    otherwise_block,
+                    remaining_candidates,
+                );
+            } else {
+                // Expand one level of or-patterns for each candidate in `candidates_to_expand`.
+                let mut expanded_candidates = Vec::new();
+                for candidate in candidates_to_expand.iter_mut() {
+                    if let [MatchPair { test_case: TestCase::Or { .. }, .. }, ..] =
+                        &*candidate.match_pairs
+                    {
+                        let or_match_pair = candidate.match_pairs.remove(0);
+                        // Expand the or-pattern into subcandidates.
+                        self.create_or_subcandidates(candidate, or_match_pair);
+                        // Collect the newly created subcandidates.
+                        for subcandidate in candidate.subcandidates.iter_mut() {
+                            expanded_candidates.push(subcandidate);
+                        }
+                    } else {
+                        expanded_candidates.push(candidate);
+                    }
                 }
+
+                // Process the expanded candidates.
+                let remainder_start = self.cfg.start_new_block();
+                // There might be new or-patterns obtained from expanding the old ones, so we call
+                // `match_candidates` again.
                 self.match_candidates(
                     span,
                     scrutinee_span,
                     start_block,
-                    otherwise_block,
-                    &mut *new_candidates,
+                    remainder_start,
+                    expanded_candidates.as_mut_slice(),
                 );
 
-                for candidate in candidates {
-                    self.merge_trivial_subcandidates(candidate);
+                // Simplify subcandidates and process any leftover match pairs.
+                for candidate in candidates_to_expand {
+                    if !candidate.subcandidates.is_empty() {
+                        self.finalize_or_candidate(span, scrutinee_span, candidate);
+                    }
                 }
-            } else {
-                self.match_simplified_candidates(
+
+                // Process the remaining candidates.
+                self.match_candidates(
                     span,
                     scrutinee_span,
-                    start_block,
+                    remainder_start,
                     otherwise_block,
-                    candidates,
+                    remaining_candidates,
                 );
             }
         });
     }
 
-    fn match_simplified_candidates(
+    /// Construct the decision tree for `candidates`. Caller must ensure that no candidate in
+    /// `candidates` starts with an or-pattern.
+    fn match_expanded_candidates(
         &mut self,
         span: Span,
         scrutinee_span: Span,
@@ -1438,7 +1487,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // The first candidate has satisfied all its match pairs; we link it up and continue
                 // with the remaining candidates.
                 start_block = self.select_matched_candidate(first, start_block);
-                self.match_simplified_candidates(
+                self.match_expanded_candidates(
                     span,
                     scrutinee_span,
                     start_block,
@@ -1448,7 +1497,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             candidates => {
                 // The first candidate has some unsatisfied match pairs; we proceed to do more tests.
-                self.test_candidates_with_or(
+                self.test_candidates(
                     span,
                     scrutinee_span,
                     candidates,
@@ -1495,16 +1544,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         candidate.pre_binding_block = Some(start_block);
         let otherwise_block = self.cfg.start_new_block();
-        if candidate.has_guard {
-            // Create the otherwise block for this candidate, which is the
-            // pre-binding block for the next candidate.
-            candidate.otherwise_block = Some(otherwise_block);
-        }
+        // Create the otherwise block for this candidate, which is the
+        // pre-binding block for the next candidate.
+        candidate.otherwise_block = Some(otherwise_block);
         otherwise_block
     }
 
-    /// Tests a candidate where there are only or-patterns left to test, or
-    /// forwards to [Builder::test_candidates].
+    /// Simplify subcandidates and process any leftover match pairs. The candidate should have been
+    /// expanded with `create_or_subcandidates`.
     ///
     /// Given a pattern `(P | Q, R | S)` we (in principle) generate a CFG like
     /// so:
@@ -1556,84 +1603,56 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///      |
     ///     ...
     /// ```
-    fn test_candidates_with_or(
+    fn finalize_or_candidate(
         &mut self,
         span: Span,
         scrutinee_span: Span,
-        candidates: &mut [&mut Candidate<'_, 'tcx>],
-        start_block: BasicBlock,
-        otherwise_block: BasicBlock,
+        candidate: &mut Candidate<'_, 'tcx>,
     ) {
-        let (first_candidate, remaining_candidates) = candidates.split_first_mut().unwrap();
-        assert!(first_candidate.subcandidates.is_empty());
-        if !matches!(first_candidate.match_pairs[0].test_case, TestCase::Or { .. }) {
-            self.test_candidates(span, scrutinee_span, candidates, start_block, otherwise_block);
+        if candidate.subcandidates.is_empty() {
             return;
         }
 
-        let first_match_pair = first_candidate.match_pairs.remove(0);
-        let remaining_match_pairs = mem::take(&mut first_candidate.match_pairs);
-        let remainder_start = self.cfg.start_new_block();
-        // Test the alternatives of this or-pattern.
-        self.test_or_pattern(first_candidate, start_block, remainder_start, first_match_pair);
+        self.merge_trivial_subcandidates(candidate);
 
-        if !remaining_match_pairs.is_empty() {
+        if !candidate.match_pairs.is_empty() {
             // If more match pairs remain, test them after each subcandidate.
             // We could add them to the or-candidates before the call to `test_or_pattern` but this
             // would make it impossible to detect simplifiable or-patterns. That would guarantee
             // exponentially large CFGs for cases like `(1 | 2, 3 | 4, ...)`.
-            first_candidate.visit_leaves(|leaf_candidate| {
+            let mut last_otherwise = None;
+            candidate.visit_leaves(|leaf_candidate| {
+                last_otherwise = leaf_candidate.otherwise_block;
+            });
+            let remaining_match_pairs = mem::take(&mut candidate.match_pairs);
+            candidate.visit_leaves(|leaf_candidate| {
                 assert!(leaf_candidate.match_pairs.is_empty());
                 leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
                 let or_start = leaf_candidate.pre_binding_block.unwrap();
-                // In a case like `(a | b, c | d)`, if `a` succeeds and `c | d` fails, we know `(b,
-                // c | d)` will fail too. If there is no guard, we skip testing of `b` by branching
-                // directly to `remainder_start`. If there is a guard, we have to try `(b, c | d)`.
-                let or_otherwise = leaf_candidate.otherwise_block.unwrap_or(remainder_start);
-                self.test_candidates_with_or(
+                // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q,
+                // R | S)` will fail too. If there is no guard, we skip testing of `Q` by branching
+                // directly to `last_otherwise`. If there is a guard,
+                // `leaf_candidate.otherwise_block` can be reached by guard failure as well, so we
+                // can't skip `Q`.
+                let or_otherwise = if leaf_candidate.has_guard {
+                    leaf_candidate.otherwise_block.unwrap()
+                } else {
+                    last_otherwise.unwrap()
+                };
+                self.match_candidates(
                     span,
                     scrutinee_span,
-                    &mut [leaf_candidate],
                     or_start,
                     or_otherwise,
+                    &mut [leaf_candidate],
                 );
             });
         }
-
-        // Test the remaining candidates.
-        self.match_candidates(
-            span,
-            scrutinee_span,
-            remainder_start,
-            otherwise_block,
-            remaining_candidates,
-        );
-    }
-
-    #[instrument(skip(self, start_block, otherwise_block, candidate, match_pair), level = "debug")]
-    fn test_or_pattern<'pat>(
-        &mut self,
-        candidate: &mut Candidate<'pat, 'tcx>,
-        start_block: BasicBlock,
-        otherwise_block: BasicBlock,
-        match_pair: MatchPair<'pat, 'tcx>,
-    ) {
-        let or_span = match_pair.pattern.span;
-        self.create_or_subcandidates(candidate, match_pair);
-        let mut or_candidate_refs: Vec<_> = candidate.subcandidates.iter_mut().collect();
-        self.match_candidates(
-            or_span,
-            or_span,
-            start_block,
-            otherwise_block,
-            &mut or_candidate_refs,
-        );
-        self.merge_trivial_subcandidates(candidate);
     }
 
     /// Given a match-pair that corresponds to an or-pattern, expand each subpattern into a new
     /// subcandidate. Any candidate that has been expanded that way should be passed to
-    /// `merge_trivial_subcandidates` after its subcandidates have been processed.
+    /// `finalize_or_candidate` after its subcandidates have been processed.
     fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
@@ -1651,8 +1670,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Try to merge all of the subcandidates of the given candidate into one. This avoids
-    /// exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`. The or-pattern should have
-    /// been expanded with `create_or_subcandidates`.
+    /// exponentially large CFGs in cases like `(1 | 2, 3 | 4, ...)`. The candidate should have been
+    /// expanded with `create_or_subcandidates`.
     fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
         if candidate.subcandidates.is_empty() || candidate.has_guard {
             // FIXME(or_patterns; matthewjasper) Don't give up if we have a guard.
@@ -1664,6 +1683,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             subcandidate.subcandidates.is_empty() && subcandidate.extra_data.is_empty()
         });
         if can_merge {
+            let mut last_otherwise = None;
             let any_matches = self.cfg.start_new_block();
             let or_span = candidate.or_span.take().unwrap();
             let source_info = self.source_info(or_span);
@@ -1674,8 +1694,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for subcandidate in mem::take(&mut candidate.subcandidates) {
                 let or_block = subcandidate.pre_binding_block.unwrap();
                 self.cfg.goto(or_block, source_info, any_matches);
+                last_otherwise = subcandidate.otherwise_block;
             }
             candidate.pre_binding_block = Some(any_matches);
+            assert!(last_otherwise.is_some());
+            candidate.otherwise_block = last_otherwise;
         } else {
             // Never subcandidates may have a set of bindings inconsistent with their siblings,
             // which would break later code. So we filter them out. Note that we can't filter out

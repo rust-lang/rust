@@ -9,6 +9,8 @@ clippy_config = { path = "../clippy_config" }
 arrayvec = { version = "0.7", default-features = false }
 itertools = "0.12"
 rustc-semver = "1.1"
+# FIXME(f16_f128): remove when no longer needed for parsing
+rustc_apfloat = "0.2.0"
 
 [features]
 deny-warnings = ["clippy_config/deny-warnings"]

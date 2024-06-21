@@ -17,6 +17,8 @@
     clippy::identity_op
 )]
 
+// FIXME(f16_f128): add tests once const casting is available for these types
+
 fn main() {
     // Test clippy::cast_precision_loss
     let x0 = 1i32;

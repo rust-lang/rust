@@ -119,17 +119,17 @@ LL | #[cfg(FALSE)] fn e() { let _ = move || #![attr] {foo}; }
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
    = note: outer attributes, like `#[test]`, annotate the item following them
 
-error: expected expression, found `..`
+error: attributes are not allowed on range expressions starting with `..`
   --> $DIR/attr-stmt-expr-attr-bad.rs:30:40
    |
 LL | #[cfg(FALSE)] fn e() { let _ = #[attr] ..#[attr] 0; }
-   |                                        ^^ expected expression
+   |                                        ^^
 
-error: expected expression, found `..`
+error: attributes are not allowed on range expressions starting with `..`
   --> $DIR/attr-stmt-expr-attr-bad.rs:32:40
    |
 LL | #[cfg(FALSE)] fn e() { let _ = #[attr] ..; }
-   |                                        ^^ expected expression
+   |                                        ^^
 
 error: an inner attribute is not permitted in this context
   --> $DIR/attr-stmt-expr-attr-bad.rs:34:41

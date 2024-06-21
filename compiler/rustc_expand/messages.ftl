@@ -35,8 +35,8 @@ expand_duplicate_matcher_binding = duplicate matcher binding
     .label = duplicate binding
     .label2 = previous binding
 
-expand_empty_delegation_list =
-    empty list delegation is not supported
+expand_empty_delegation_mac =
+    empty {$kind} delegation is not supported
 
 expand_expected_paren_or_brace =
     expected `(` or `{"{"}`, found `{$token}`
@@ -57,6 +57,9 @@ expand_feature_removed =
     feature has been removed
     .label = feature has been removed
     .reason = {$reason}
+
+expand_glob_delegation_outside_impls =
+    glob delegation is only supported in impls
 
 expand_helper_attribute_name_invalid =
     `{$name}` cannot be a name of derive helper attribute

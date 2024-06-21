@@ -199,17 +199,16 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(c_unwind))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(asm_const)]
 #![feature(auto_traits)]
-#![feature(c_unwind)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
-#![feature(const_closures)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_for)]
 #![feature(const_mut_refs)]

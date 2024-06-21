@@ -14,7 +14,7 @@
           StorageLive(_4);
           _4 = _1;
           _3 = move _4 as *mut u8 (PtrToPtr);
-          _2 = move _3 as *const u8 (PointerCoercion(MutToConstPointer));
+          _2 = move _3 as *const u8 (PtrToPtr);
           StorageDead(_4);
           StorageDead(_3);
 -         _0 = move _2 as *const u8 (PtrToPtr);

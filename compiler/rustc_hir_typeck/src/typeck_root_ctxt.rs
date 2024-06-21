@@ -22,7 +22,7 @@ use std::ops::Deref;
 /// e.g. closures defined within the function. For example:
 /// ```ignore (illustrative)
 /// fn foo() {
-///     bar(move|| { ... })
+///     bar(move || { ... })
 /// }
 /// ```
 /// Here, the function `foo()` and the closure passed to

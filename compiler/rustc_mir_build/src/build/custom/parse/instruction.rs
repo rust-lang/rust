@@ -193,6 +193,10 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 let source = self.parse_operand(args[0])?;
                 Ok(Rvalue::Cast(CastKind::Transmute, source, expr.ty))
             },
+            @call(mir_cast_ptr_to_ptr, args) => {
+                let source = self.parse_operand(args[0])?;
+                Ok(Rvalue::Cast(CastKind::PtrToPtr, source, expr.ty))
+            },
             @call(mir_checked, args) => {
                 parse_by_kind!(self, args[0], _, "binary op",
                     ExprKind::Binary { op, lhs, rhs } => {

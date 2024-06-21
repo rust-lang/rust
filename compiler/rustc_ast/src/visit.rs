@@ -408,7 +408,14 @@ impl WalkItemKind for ItemKind {
             }
             ItemKind::MacCall(mac) => try_visit!(visitor.visit_mac_call(mac)),
             ItemKind::MacroDef(ts) => try_visit!(visitor.visit_mac_def(ts, item.id)),
-            ItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
+            ItemKind::Delegation(box Delegation {
+                id,
+                qself,
+                path,
+                rename,
+                body,
+                from_glob: _,
+            }) => {
                 if let Some(qself) = qself {
                     try_visit!(visitor.visit_ty(&qself.ty));
                 }
@@ -421,10 +428,12 @@ impl WalkItemKind for ItemKind {
                     try_visit!(visitor.visit_ty(&qself.ty));
                 }
                 try_visit!(visitor.visit_path(prefix, item.id));
-                for (ident, rename) in suffixes {
-                    visitor.visit_ident(*ident);
-                    if let Some(rename) = rename {
-                        visitor.visit_ident(*rename);
+                if let Some(suffixes) = suffixes {
+                    for (ident, rename) in suffixes {
+                        visitor.visit_ident(*ident);
+                        if let Some(rename) = rename {
+                            visitor.visit_ident(*rename);
+                        }
                     }
                 }
                 visit_opt!(visitor, visit_block, body);
@@ -663,12 +672,7 @@ impl WalkItemKind for ForeignItemKind {
     ) -> V::Result {
         let &Item { id, span, ident, ref vis, .. } = item;
         match self {
-            ForeignItemKind::Static(box StaticForeignItem {
-                ty,
-                mutability: _,
-                expr,
-                safety: _,
-            }) => {
+            ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
                 try_visit!(visitor.visit_ty(ty));
                 visit_opt!(visitor, visit_expr, expr);
             }
@@ -837,7 +841,14 @@ impl WalkItemKind for AssocItemKind {
             AssocItemKind::MacCall(mac) => {
                 try_visit!(visitor.visit_mac_call(mac));
             }
-            AssocItemKind::Delegation(box Delegation { id, qself, path, rename, body }) => {
+            AssocItemKind::Delegation(box Delegation {
+                id,
+                qself,
+                path,
+                rename,
+                body,
+                from_glob: _,
+            }) => {
                 if let Some(qself) = qself {
                     try_visit!(visitor.visit_ty(&qself.ty));
                 }
@@ -850,10 +861,12 @@ impl WalkItemKind for AssocItemKind {
                     try_visit!(visitor.visit_ty(&qself.ty));
                 }
                 try_visit!(visitor.visit_path(prefix, item.id));
-                for (ident, rename) in suffixes {
-                    visitor.visit_ident(*ident);
-                    if let Some(rename) = rename {
-                        visitor.visit_ident(*rename);
+                if let Some(suffixes) = suffixes {
+                    for (ident, rename) in suffixes {
+                        visitor.visit_ident(*ident);
+                        if let Some(rename) = rename {
+                            visitor.visit_ident(*rename);
+                        }
                     }
                 }
                 visit_opt!(visitor, visit_block, body);

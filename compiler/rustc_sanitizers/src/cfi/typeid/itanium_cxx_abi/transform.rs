@@ -3,6 +3,7 @@
 //!
 //! For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 //! see design document in the tracking issue #89653.
+
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_middle::bug;
@@ -288,6 +289,7 @@ pub fn transform_instance<'tcx>(
     mut instance: Instance<'tcx>,
     options: TransformTyOptions,
 ) -> Instance<'tcx> {
+    // FIXME: account for async-drop-glue
     if (matches!(instance.def, ty::InstanceKind::Virtual(..))
         && tcx.is_lang_item(instance.def_id(), LangItem::DropInPlace))
         || matches!(instance.def, ty::InstanceKind::DropGlue(..))

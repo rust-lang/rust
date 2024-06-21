@@ -321,8 +321,7 @@
 #
 # If `extended = false`, the only one of these built by default is rustdoc.
 #
-# If `extended = true`, they're all included, with the exception of
-# rust-demangler which additionally requires `profiler = true` to be set.
+# If `extended = true`, they are all included.
 #
 # If any enabled tool fails to build, the installation fails.
 #tools = [
@@ -334,7 +333,6 @@
 #    "rust-analyzer-proc-macro-srv",
 #    "analysis",
 #    "src",
-#    "rust-demangler",  # if profiler = true
 #]
 
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose, 3 == print environment variables on each rustc invocation

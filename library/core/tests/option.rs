@@ -574,4 +574,13 @@ fn as_slice() {
     assert_eq!(Some(43).as_mut_slice(), &[43]);
     assert_eq!(None::<i32>.as_slice(), &[]);
     assert_eq!(None::<i32>.as_mut_slice(), &[]);
+
+    const A: &[u32] = Some(44).as_slice();
+    const B: &[u32] = None.as_slice();
+    const _: () = {
+        let [45] = Some(45).as_mut_slice() else { panic!() };
+        let []: &[u32] = None.as_mut_slice() else { panic!() };
+    };
+    assert_eq!(A, &[44]);
+    assert_eq!(B, &[]);
 }

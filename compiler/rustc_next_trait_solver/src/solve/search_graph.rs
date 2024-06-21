@@ -1,7 +1,7 @@
 use std::mem;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::{Idx, IndexVec};
+use rustc_type_ir::data_structures::{HashMap, HashSet};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::Interner;
 use tracing::debug;
@@ -17,6 +17,7 @@ pub struct SolverLimit(usize);
 
 rustc_index::newtype_index! {
     #[orderable]
+    #[gate_rustc_only]
     pub struct StackDepth {}
 }
 
@@ -70,7 +71,7 @@ struct StackEntry<I: Interner> {
     /// C :- D
     /// D :- C
     /// ```
-    cycle_participants: FxHashSet<CanonicalInput<I>>,
+    cycle_participants: HashSet<CanonicalInput<I>>,
     /// Starts out as `None` and gets set when rerunning this
     /// goal in case we encounter a cycle.
     provisional_result: Option<QueryResult<I>>,
@@ -126,7 +127,7 @@ pub(super) struct SearchGraph<I: Interner> {
     ///
     /// An element is *deeper* in the stack if its index is *lower*.
     stack: IndexVec<StackDepth, StackEntry<I>>,
-    provisional_cache: FxHashMap<CanonicalInput<I>, ProvisionalCacheEntry<I>>,
+    provisional_cache: HashMap<CanonicalInput<I>, ProvisionalCacheEntry<I>>,
 }
 
 impl<I: Interner> SearchGraph<I> {
@@ -227,13 +228,17 @@ impl<I: Interner> SearchGraph<I> {
     }
 
     fn clear_dependent_provisional_results(
-        provisional_cache: &mut FxHashMap<CanonicalInput<I>, ProvisionalCacheEntry<I>>,
+        provisional_cache: &mut HashMap<CanonicalInput<I>, ProvisionalCacheEntry<I>>,
         head: StackDepth,
     ) {
         #[allow(rustc::potential_query_instability)]
         provisional_cache.retain(|_, entry| {
-            entry.with_coinductive_stack.take_if(|p| p.head == head);
-            entry.with_inductive_stack.take_if(|p| p.head == head);
+            if entry.with_coinductive_stack.as_ref().is_some_and(|p| p.head == head) {
+                entry.with_coinductive_stack.take();
+            }
+            if entry.with_inductive_stack.as_ref().is_some_and(|p| p.head == head) {
+                entry.with_inductive_stack.take();
+            }
             !entry.is_empty()
         });
     }

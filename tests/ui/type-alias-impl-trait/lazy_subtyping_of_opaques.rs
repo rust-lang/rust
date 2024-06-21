@@ -7,9 +7,10 @@
 type Tait = impl FnOnce() -> ();
 
 fn reify_as_tait() -> Thunk<Tait> {
+    //~^ ERROR: expected a `FnOnce()` closure, found `()`
     Thunk::new(|cont| cont)
     //~^ ERROR: mismatched types
-    //~| ERROR: mismatched types
+    //~| ERROR: expected a `FnOnce()` closure, found `()`
 }
 
 struct Thunk<F>(F);

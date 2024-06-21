@@ -1,0 +1,57 @@
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/word-only.rs:23:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+LL | struct MyStruct;
+   | ---------------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/word-only.rs:36:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+LL |     const X: u32;
+   |     ------------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/word-only.rs:39:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+LL |     type T;
+   |     ------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/word-only.rs:29:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+LL |     const X: u32 = 7;
+   |     ----------------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/word-only.rs:46:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+LL |     const X: u32 = 8;
+   |     ----------------- not coverable code
+
+error[E0788]: `#[coverage]` must be applied to coverable code
+  --> $DIR/word-only.rs:49:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+LL |     type T = ();
+   |     ------------ not coverable code
+
+error: expected `coverage(off)` or `coverage(on)`
+  --> $DIR/word-only.rs:53:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0788`.

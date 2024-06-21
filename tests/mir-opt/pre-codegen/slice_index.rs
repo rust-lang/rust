@@ -19,7 +19,7 @@ pub fn slice_index_usize(slice: &[u32], index: usize) -> u32 {
 // EMIT_MIR slice_index.slice_get_mut_usize.PreCodegen.after.mir
 pub fn slice_get_mut_usize(slice: &mut [u32], index: usize) -> Option<&mut u32> {
     // CHECK-LABEL: slice_get_mut_usize
-    // CHECK: [[LEN:_[0-9]+]] = Len((*_1))
+    // CHECK: [[LEN:_[0-9]+]] = PtrMetadata(_1)
     // CHECK: Lt(_2, move [[LEN]])
     // CHECK-NOT: precondition_check
     slice.get_mut(index)

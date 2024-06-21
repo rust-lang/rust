@@ -8,8 +8,8 @@ use std::hash::Hash;
 use std::ops::Deref;
 
 use rustc_ast_ir::Mutability;
-use rustc_data_structures::fx::FxHashSet;
 
+use crate::data_structures::HashSet;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
 use crate::solve::{CacheData, CanonicalInput, QueryResult, Reveal};
@@ -530,7 +530,7 @@ pub trait EvaluationCache<I: Interner> {
         proof_tree: Option<I::CanonicalGoalEvaluationStepRef>,
         additional_depth: usize,
         encountered_overflow: bool,
-        cycle_participants: FxHashSet<CanonicalInput<I>>,
+        cycle_participants: HashSet<CanonicalInput<I>>,
         dep_node: I::DepNodeIndex,
         result: QueryResult<I>,
     );

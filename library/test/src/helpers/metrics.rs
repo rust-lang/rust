@@ -1,4 +1,5 @@
 //! Benchmark metrics.
+
 use std::collections::BTreeMap;
 
 #[derive(Clone, PartialEq, Debug, Copy)]

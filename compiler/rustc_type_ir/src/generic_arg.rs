@@ -1,3 +1,4 @@
+#[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 
 use crate::Interner;

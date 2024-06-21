@@ -371,7 +371,7 @@ fn exported_symbols_provider_local(
                 }) => {
                     // A little sanity-check
                     debug_assert_eq!(
-                        args.non_erasable_generics(tcx, def_id).skip(1).next(),
+                        args.non_erasable_generics(tcx, def_id).next(),
                         Some(GenericArgKind::Type(ty))
                     );
                     symbols.push((
@@ -422,10 +422,7 @@ fn upstream_monomorphizations_provider(
                 }
                 ExportedSymbol::AsyncDropGlueCtorShim(ty) => {
                     if let Some(async_drop_in_place_fn_def_id) = async_drop_in_place_fn_def_id {
-                        (
-                            async_drop_in_place_fn_def_id,
-                            tcx.mk_args(&[tcx.lifetimes.re_erased.into(), ty.into()]),
-                        )
+                        (async_drop_in_place_fn_def_id, tcx.mk_args(&[ty.into()]))
                     } else {
                         // `drop_in_place` in place does not exist, don't try
                         // to use it.
@@ -473,11 +470,16 @@ fn upstream_drop_glue_for_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     args: GenericArgsRef<'tcx>,
 ) -> Option<CrateNum> {
-    if let Some(def_id) = tcx.lang_items().drop_in_place_fn() {
-        tcx.upstream_monomorphizations_for(def_id).and_then(|monos| monos.get(&args).cloned())
-    } else {
-        None
-    }
+    let def_id = tcx.lang_items().drop_in_place_fn()?;
+    tcx.upstream_monomorphizations_for(def_id)?.get(&args).cloned()
+}
+
+fn upstream_async_drop_glue_for_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    args: GenericArgsRef<'tcx>,
+) -> Option<CrateNum> {
+    let def_id = tcx.lang_items().async_drop_in_place_fn()?;
+    tcx.upstream_monomorphizations_for(def_id)?.get(&args).cloned()
 }
 
 fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
@@ -491,6 +493,7 @@ pub fn provide(providers: &mut Providers) {
     providers.upstream_monomorphizations = upstream_monomorphizations_provider;
     providers.is_unreachable_local_definition = is_unreachable_local_definition_provider;
     providers.upstream_drop_glue_for = upstream_drop_glue_for_provider;
+    providers.upstream_async_drop_glue_for = upstream_async_drop_glue_for_provider;
     providers.wasm_import_module_map = wasm_import_module_map;
     providers.extern_queries.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
     providers.extern_queries.upstream_monomorphizations_for =

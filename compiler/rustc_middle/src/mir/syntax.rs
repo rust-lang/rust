@@ -127,6 +127,9 @@ pub enum AnalysisPhase {
     /// * [`StatementKind::AscribeUserType`]
     /// * [`StatementKind::Coverage`] with [`CoverageKind::BlockMarker`] or [`CoverageKind::SpanMarker`]
     /// * [`Rvalue::Ref`] with `BorrowKind::Fake`
+    /// * [`CastKind::PointerCoercion`] with any of the following:
+    ///   * [`PointerCoercion::ArrayToPointer`]
+    ///   * [`PointerCoercion::MutToConstPointer`]
     ///
     /// Furthermore, `Deref` projections must be the first projection within any place (if they
     /// appear at all)
@@ -361,16 +364,19 @@ pub enum StatementKind<'tcx> {
     /// At any point during the execution of a function, each local is either allocated or
     /// unallocated. Except as noted below, all locals except function parameters are initially
     /// unallocated. `StorageLive` statements cause memory to be allocated for the local while
-    /// `StorageDead` statements cause the memory to be freed. Using a local in any way (not only
-    /// reading/writing from it) while it is unallocated is UB.
+    /// `StorageDead` statements cause the memory to be freed. In other words,
+    /// `StorageLive`/`StorageDead` act like the heap operations `allocate`/`deallocate`, but for
+    /// stack-allocated local variables. Using a local in any way (not only reading/writing from it)
+    /// while it is unallocated is UB.
     ///
     /// Some locals have no `StorageLive` or `StorageDead` statements within the entire MIR body.
     /// These locals are implicitly allocated for the full duration of the function. There is a
     /// convenience method at `rustc_mir_dataflow::storage::always_storage_live_locals` for
     /// computing these locals.
     ///
-    /// If the local is already allocated, calling `StorageLive` again is UB. However, for an
-    /// unallocated local an additional `StorageDead` all is simply a nop.
+    /// If the local is already allocated, calling `StorageLive` again will implicitly free the
+    /// local and then allocate fresh uninitilized memory. If a local is already deallocated,
+    /// calling `StorageDead` again is a NOP.
     StorageLive(Local),
 
     /// See `StorageLive` above.
@@ -1281,8 +1287,7 @@ pub enum Rvalue<'tcx> {
     ///
     /// This allows for casts from/to a variety of types.
     ///
-    /// **FIXME**: Document exactly which `CastKind`s allow which types of casts. Figure out why
-    /// `ArrayToPointer` and `MutToConstPointer` are special.
+    /// **FIXME**: Document exactly which `CastKind`s allow which types of casts.
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
     /// * `Offset` has the same semantics as [`offset`](pointer::offset), except that the second
@@ -1362,6 +1367,13 @@ pub enum CastKind {
     PointerWithExposedProvenance,
     /// Pointer related casts that are done by coercions. Note that reference-to-raw-ptr casts are
     /// translated into `&raw mut/const *r`, i.e., they are not actually casts.
+    ///
+    /// The following are allowed in [`AnalysisPhase::Initial`] as they're needed for borrowck,
+    /// but after that are forbidden (including in all phases of runtime MIR):
+    /// * [`PointerCoercion::ArrayToPointer`]
+    /// * [`PointerCoercion::MutToConstPointer`]
+    ///
+    /// Both are runtime nops, so should be [`CastKind::PtrToPtr`] instead in runtime MIR.
     PointerCoercion(PointerCoercion),
     /// Cast into a dyn* object.
     DynStar,
@@ -1434,10 +1446,12 @@ pub enum UnOp {
     Not,
     /// The `-` operator for negation
     Neg,
-    /// Get the metadata `M` from a `*const/mut impl Pointee<Metadata = M>`.
+    /// Gets the metadata `M` from a `*const`/`*mut`/`&`/`&mut` to
+    /// `impl Pointee<Metadata = M>`.
     ///
     /// For example, this will give a `()` from `*const i32`, a `usize` from
-    /// `*mut [u8]`, or a pointer to a vtable from a `*const dyn Foo`.
+    /// `&mut [u8]`, or a `ptr::DynMetadata<dyn Foo>` (internally a pointer)
+    /// from a `*mut dyn Foo`.
     ///
     /// Allowed only in [`MirPhase::Runtime`]; earlier it's an intrinsic.
     PtrMetadata,
