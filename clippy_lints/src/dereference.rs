@@ -175,6 +175,7 @@ struct StateData<'tcx> {
     adjusted_ty: Ty<'tcx>,
 }
 
+#[derive(Debug)]
 struct DerefedBorrow {
     count: usize,
     msg: &'static str,
@@ -182,6 +183,7 @@ struct DerefedBorrow {
     for_field_access: Option<Symbol>,
 }
 
+#[derive(Debug)]
 enum State {
     // Any number of deref method calls.
     DerefMethod {
@@ -744,7 +746,7 @@ fn in_postfix_position<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> boo
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum TyCoercionStability {
     Deref,
     Reborrow,
