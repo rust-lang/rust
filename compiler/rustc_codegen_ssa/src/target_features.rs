@@ -80,6 +80,7 @@ pub fn from_target_feature(
                 Some(sym::loongarch_target_feature) => rust_features.loongarch_target_feature,
                 Some(sym::lahfsahf_target_feature) => rust_features.lahfsahf_target_feature,
                 Some(sym::prfchw_target_feature) => rust_features.prfchw_target_feature,
+                Some(sym::sha512_sm_x86) => rust_features.sha512_sm_x86,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };

@@ -1674,6 +1674,7 @@ symbols! {
         self_in_typedefs,
         self_struct_ctor,
         semitransparent,
+        sha512_sm_x86,
         shadow_call_stack,
         shl,
         shl_assign,
