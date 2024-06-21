@@ -144,7 +144,7 @@ fn f() { let a = A { x: 1, y: true }; let b: i32 = a.x; }"#,
             term_search,
             r#"//- minicore: todo, unimplemented, option
 fn f() { let a: i32 = 1; let b: Option<i32> = todo$0!(); }"#,
-            r#"fn f() { let a: i32 = 1; let b: Option<i32> = None; }"#,
+            r#"fn f() { let a: i32 = 1; let b: Option<i32> = Some(a); }"#,
         )
     }
 
