@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::visit::TypeVisitableExt;
@@ -43,6 +44,8 @@ pub struct Canonicalizer<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> {
     canonicalize_mode: CanonicalizeMode,
 
     variables: &'a mut Vec<I::GenericArg>,
+    variable_lookup_table: FxHashMap<I::GenericArg, usize>,
+
     primitive_var_infos: Vec<CanonicalVarInfo<I>>,
     binder_index: ty::DebruijnIndex,
 }
@@ -59,6 +62,7 @@ impl<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, Inf
             canonicalize_mode,
 
             variables,
+            variable_lookup_table: Default::default(),
             primitive_var_infos: Vec::new(),
             binder_index: ty::INNERMOST,
         };
@@ -72,6 +76,37 @@ impl<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, Inf
 
         let defining_opaque_types = infcx.defining_opaque_types();
         Canonical { defining_opaque_types, max_universe, variables, value }
+    }
+
+    fn get_or_insert_bound_var(
+        &mut self,
+        arg: impl Into<I::GenericArg>,
+        canonical_var_info: CanonicalVarInfo<I>,
+    ) -> ty::BoundVar {
+        // FIXME: 16 is made up and arbitrary. We should look at some
+        // perf data here.
+        let arg = arg.into();
+        let idx = if self.variables.len() > 16 {
+            if self.variable_lookup_table.is_empty() {
+                self.variable_lookup_table.extend(self.variables.iter().copied().zip(0..));
+            }
+
+            *self.variable_lookup_table.entry(arg).or_insert_with(|| {
+                let var = self.variables.len();
+                self.variables.push(arg);
+                self.primitive_var_infos.push(canonical_var_info);
+                var
+            })
+        } else {
+            self.variables.iter().position(|&v| v == arg).unwrap_or_else(|| {
+                let var = self.variables.len();
+                self.variables.push(arg);
+                self.primitive_var_infos.push(canonical_var_info);
+                var
+            })
+        };
+
+        ty::BoundVar::from(idx)
     }
 
     fn finalize(self) -> (ty::UniverseIndex, I::CanonicalVars) {
@@ -123,8 +158,8 @@ impl<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, Inf
         // - var_infos: [E0, U1, E2, U1, E1, E6, U6], curr_compressed_uv: 2, next_orig_uv: 6
         // - var_infos: [E0, U1, E1, U1, E1, E3, U3], curr_compressed_uv: 2, next_orig_uv: -
         //
-        // This algorithm runs in `O(n²)` where `n` is the number of different universe
-        // indices in the input. This should be fine as `n` is expected to be small.
+        // This algorithm runs in `O(mn)` where `n` is the number of different universes and
+        // `m` the number of variables. This should be fine as both are expected to be small.
         let mut curr_compressed_uv = ty::UniverseIndex::ROOT;
         let mut existential_in_new_uv = None;
         let mut next_orig_uv = Some(ty::UniverseIndex::ROOT);
@@ -280,19 +315,19 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
             }
         };
 
-        let existing_bound_var = match self.canonicalize_mode {
-            CanonicalizeMode::Input => None,
+        let var = match self.canonicalize_mode {
+            CanonicalizeMode::Input => {
+                // It's fine to not add `r` to the lookup table, as we will
+                // never lookup regions when canonicalizing inputs.
+                let var = ty::BoundVar::from(self.variables.len());
+                self.variables.push(r.into());
+                self.primitive_var_infos.push(CanonicalVarInfo { kind });
+                var
+            }
             CanonicalizeMode::Response { .. } => {
-                self.variables.iter().position(|&v| v == r.into()).map(ty::BoundVar::from)
+                self.get_or_insert_bound_var(r, CanonicalVarInfo { kind })
             }
         };
-
-        let var = existing_bound_var.unwrap_or_else(|| {
-            let var = ty::BoundVar::from(self.variables.len());
-            self.variables.push(r.into());
-            self.primitive_var_infos.push(CanonicalVarInfo { kind });
-            var
-        });
 
         Region::new_anon_bound(self.interner(), self.binder_index, var)
     }
@@ -374,14 +409,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
             | ty::Error(_) => return t.super_fold_with(self),
         };
 
-        let var = ty::BoundVar::from(
-            self.variables.iter().position(|&v| v == t.into()).unwrap_or_else(|| {
-                let var = self.variables.len();
-                self.variables.push(t.into());
-                self.primitive_var_infos.push(CanonicalVarInfo { kind });
-                var
-            }),
-        );
+        let var = self.get_or_insert_bound_var(t, CanonicalVarInfo { kind });
 
         Ty::new_anon_bound(self.interner(), self.binder_index, var)
     }
@@ -422,14 +450,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I>
             | ty::ConstKind::Expr(_) => return c.super_fold_with(self),
         };
 
-        let var = ty::BoundVar::from(
-            self.variables.iter().position(|&v| v == c.into()).unwrap_or_else(|| {
-                let var = self.variables.len();
-                self.variables.push(c.into());
-                self.primitive_var_infos.push(CanonicalVarInfo { kind });
-                var
-            }),
-        );
+        let var = self.get_or_insert_bound_var(c, CanonicalVarInfo { kind });
 
         Const::new_anon_bound(self.interner(), self.binder_index, var)
     }
