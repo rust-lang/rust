@@ -273,6 +273,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Helper function to get a `libc` constant as a `Scalar`.
     fn eval_libc(&self, name: &str) -> Scalar {
+        if self.eval_context_ref().tcx.sess.target.os == "windows" {
+            panic!(
+                "`libc` crate is not reliably available on Windows targets; Miri should not use it there"
+            );
+        }
         self.eval_path_scalar(&["libc", name])
     }
 
@@ -316,6 +321,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Helper function to get the `TyAndLayout` of a `libc` type
     fn libc_ty_layout(&self, name: &str) -> TyAndLayout<'tcx> {
         let this = self.eval_context_ref();
+        if this.tcx.sess.target.os == "windows" {
+            panic!(
+                "`libc` crate is not reliably available on Windows targets; Miri should not use it there"
+            );
+        }
         let ty = this
             .resolve_path(&["libc", name], Namespace::TypeNS)
             .ty(*this.tcx, ty::ParamEnv::reveal_all());
@@ -1048,7 +1058,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Always returns a `Vec<u32>` no matter the size of `wchar_t`.
     fn read_wchar_t_str(&self, ptr: Pointer) -> InterpResult<'tcx, Vec<u32>> {
         let this = self.eval_context_ref();
-        let wchar_t = this.libc_ty_layout("wchar_t");
+        let wchar_t = if this.tcx.sess.target.os == "windows" {
+            // We don't have libc on Windows so we have to hard-code the type ourselves.
+            this.machine.layouts.u16
+        } else {
+            this.libc_ty_layout("wchar_t")
+        };
         self.read_c_str_with_char_size(ptr, wchar_t.size, wchar_t.align.abi)
     }
 
