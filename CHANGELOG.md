@@ -58,6 +58,16 @@
       }
   }
   ```
+- rustfmt no longer removes `safe` and `unsafe` keywords from static items in extern blocks.
+  This helps support [`#![feature(unsafe_extern_blocks)]`](https://github.com/rust-lang/rust/issues/123743) [#6204](https://github.com/rust-lang/rustfmt/pull/6204)
+  ```rust
+  #![feature(unsafe_extern_blocks)]
+
+  unsafe extern "C" {
+      safe static TEST1: i32;
+      unsafe static TEST2: i32;
+  }
+  ```
 
 
 ### Changed
