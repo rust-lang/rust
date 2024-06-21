@@ -5,7 +5,7 @@
 // checks that no full file paths are exposed and that the override flag is respected.
 // See https://github.com/rust-lang/rust/pull/121297
 
-//@ only-windows-msvc
+//@ only-windows
 
 fn main() {
     // Test that we don't have the full path to the PDB file in the binary
