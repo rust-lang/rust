@@ -409,7 +409,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 debug!(?alias_args);
 
-                ty::AliasTerm::new(tcx, assoc_item.def_id, alias_args)
+                ty::AliasTerm::new_from_args(tcx, assoc_item.def_id, alias_args)
             });
 
             // Provide the resolved type of the associated constant to `type_of(AnonConst)`.

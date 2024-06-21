@@ -787,7 +787,7 @@ where
             // Alternatively we could modify `Equate` for this case by adding another
             // variant to `StructurallyRelateAliases`.
             let identity_args = self.fresh_args_for_item(alias.def_id);
-            let rigid_ctor = ty::AliasTerm::new(tcx, alias.def_id, identity_args);
+            let rigid_ctor = ty::AliasTerm::new_from_args(tcx, alias.def_id, identity_args);
             let ctor_term = rigid_ctor.to_term(tcx);
             let obligations =
                 self.delegate.eq_structurally_relating_aliases(param_env, term, ctor_term)?;

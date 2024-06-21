@@ -240,7 +240,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         assert_matches!(self.def_kind(trait_def_id), DefKind::Trait);
         let trait_generics = self.generics_of(trait_def_id);
         (
-            ty::TraitRef::new(self, trait_def_id, args.truncate_to(self, trait_generics)),
+            ty::TraitRef::new_from_args(self, trait_def_id, args.truncate_to(self, trait_generics)),
             &args[trait_generics.count()..],
         )
     }
@@ -261,12 +261,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.check_args_compatible(def_id, args)
     }
 
-    fn check_and_mk_args(
-        self,
-        def_id: DefId,
-        args: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
-    ) -> ty::GenericArgsRef<'tcx> {
-        self.check_and_mk_args(def_id, args)
+    fn debug_assert_args_compatible(self, def_id: DefId, args: ty::GenericArgsRef<'tcx>) {
+        self.debug_assert_args_compatible(def_id, args);
     }
 
     fn intern_canonical_goal_evaluation_step(

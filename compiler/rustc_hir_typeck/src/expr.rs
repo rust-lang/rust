@@ -3108,7 +3108,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let element_ty = ocx.normalize(
                 &cause,
                 self.param_env,
-                Ty::new_projection(self.tcx, index_trait_output_def_id, impl_trait_ref.args),
+                Ty::new_projection_from_args(
+                    self.tcx,
+                    index_trait_output_def_id,
+                    impl_trait_ref.args,
+                ),
             );
 
             let true_errors = ocx.select_where_possible();

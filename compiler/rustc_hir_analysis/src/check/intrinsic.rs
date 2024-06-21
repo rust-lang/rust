@@ -504,7 +504,11 @@ pub fn check_intrinsic_type(
                         ty::Region::new_bound(tcx, ty::INNERMOST, br),
                         param(0),
                     )],
-                    Ty::new_projection(tcx, discriminant_def_id, tcx.mk_args(&[param(0).into()])),
+                    Ty::new_projection_from_args(
+                        tcx,
+                        discriminant_def_id,
+                        tcx.mk_args(&[param(0).into()]),
+                    ),
                 )
             }
 

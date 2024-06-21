@@ -2032,7 +2032,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // to its definition type. This should be the param-env we use to *prove* the
     // predicate too, but we don't do that because of performance issues.
     // See <https://github.com/rust-lang/rust/pull/117542#issue-1976337685>.
-    let trait_projection_ty = Ty::new_projection(tcx, trait_ty.def_id, rebased_args);
+    let trait_projection_ty = Ty::new_projection_from_args(tcx, trait_ty.def_id, rebased_args);
     let impl_identity_ty = tcx.type_of(impl_ty.def_id).instantiate_identity();
     let normalize_param_env = param_env_with_gat_bounds(tcx, impl_ty, impl_trait_ref);
     for mut obligation in util::elaborate(tcx, obligations) {
@@ -2230,7 +2230,11 @@ fn param_env_with_gat_bounds<'tcx>(
             _ => predicates.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
-                        projection_term: ty::AliasTerm::new(tcx, trait_ty.def_id, rebased_args),
+                        projection_term: ty::AliasTerm::new_from_args(
+                            tcx,
+                            trait_ty.def_id,
+                            rebased_args,
+                        ),
                         term: normalize_impl_ty.into(),
                     },
                     bound_vars,

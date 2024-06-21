@@ -258,7 +258,7 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
             };
-            Ok(ty::AliasTy::new(relation.tcx(), a.def_id, args))
+            Ok(ty::AliasTy::new_from_args(relation.tcx(), a.def_id, args))
         }
     }
 }
@@ -293,7 +293,7 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
             };
-            Ok(ty::AliasTerm::new(relation.tcx(), a.def_id, args))
+            Ok(ty::AliasTerm::new_from_args(relation.tcx(), a.def_id, args))
         }
     }
 }
@@ -343,7 +343,7 @@ impl<I: Interner> Relate<I> for ty::TraitRef<I> {
             }))
         } else {
             let args = relate_args_invariantly(relation, a.args, b.args)?;
-            Ok(ty::TraitRef::new(relation.tcx(), a.def_id, args))
+            Ok(ty::TraitRef::new_from_args(relation.tcx(), a.def_id, args))
         }
     }
 }

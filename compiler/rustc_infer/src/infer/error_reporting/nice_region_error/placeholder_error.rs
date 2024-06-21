@@ -256,12 +256,12 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 (false, None, None, Some(span), String::new())
             };
 
-        let expected_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new(
+        let expected_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new_from_args(
             self.cx.tcx,
             trait_def_id,
             expected_args,
         ));
-        let actual_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new(
+        let actual_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new_from_args(
             self.cx.tcx,
             trait_def_id,
             actual_args,

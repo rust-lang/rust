@@ -408,7 +408,7 @@ impl RustcInternal for TraitRef {
     type T<'tcx> = rustc_ty::TraitRef<'tcx>;
 
     fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
-        rustc_ty::TraitRef::new(
+        rustc_ty::TraitRef::new_from_args(
             tcx,
             self.def_id.0.internal(tables, tcx),
             self.args().internal(tables, tcx),

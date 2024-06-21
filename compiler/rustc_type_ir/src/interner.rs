@@ -169,11 +169,7 @@ pub trait Interner:
 
     fn check_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs) -> bool;
 
-    fn check_and_mk_args(
-        self,
-        def_id: Self::DefId,
-        args: impl IntoIterator<Item: Into<Self::GenericArg>>,
-    ) -> Self::GenericArgs;
+    fn debug_assert_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
 
     fn intern_canonical_goal_evaluation_step(
         self,

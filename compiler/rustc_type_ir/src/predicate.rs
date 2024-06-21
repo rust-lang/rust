@@ -64,18 +64,23 @@ pub struct TraitRef<I: Interner> {
     pub def_id: I::DefId,
     pub args: I::GenericArgs,
     /// This field exists to prevent the creation of `TraitRef` without
-    /// calling [`TraitRef::new`].
+    /// calling [`TraitRef::new_from_args`].
     _use_trait_ref_new_instead: (),
 }
 
 impl<I: Interner> TraitRef<I> {
+    pub fn new_from_args(interner: I, trait_def_id: I::DefId, args: I::GenericArgs) -> Self {
+        interner.debug_assert_args_compatible(trait_def_id, args);
+        Self { def_id: trait_def_id, args, _use_trait_ref_new_instead: () }
+    }
+
     pub fn new(
         interner: I,
         trait_def_id: I::DefId,
         args: impl IntoIterator<Item: Into<I::GenericArg>>,
     ) -> Self {
-        let args = interner.check_and_mk_args(trait_def_id, args);
-        Self { def_id: trait_def_id, args, _use_trait_ref_new_instead: () }
+        let args = interner.mk_args_from_iter(args.into_iter().map(Into::into));
+        Self::new_from_args(interner, trait_def_id, args)
     }
 
     pub fn from_method(interner: I, trait_id: I::DefId, args: I::GenericArgs) -> TraitRef<I> {
@@ -86,7 +91,11 @@ impl<I: Interner> TraitRef<I> {
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
     /// are the parameters defined on trait.
     pub fn identity(interner: I, def_id: I::DefId) -> TraitRef<I> {
-        TraitRef::new(interner, def_id, I::GenericArgs::identity_for_item(interner, def_id))
+        TraitRef::new_from_args(
+            interner,
+            def_id,
+            I::GenericArgs::identity_for_item(interner, def_id),
+        )
     }
 
     pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
@@ -274,7 +283,7 @@ impl<I: Interner> ty::Binder<I, ExistentialPredicate<I>> {
                     // If this is an ill-formed auto trait, then synthesize
                     // new error args for the missing generics.
                     let err_args = GenericArgs::extend_with_error(tcx, did, &[self_ty.into()]);
-                    ty::TraitRef::new(tcx, did, err_args)
+                    ty::TraitRef::new_from_args(tcx, did, err_args)
                 };
                 self.rebind(trait_ref).upcast(tcx)
             }
@@ -485,19 +494,24 @@ pub struct AliasTerm<I: Interner> {
     /// aka. `interner.parent(def_id)`.
     pub def_id: I::DefId,
 
-    /// This field exists to prevent the creation of `AliasTerm` without using [`AliasTerm::new`].
+    /// This field exists to prevent the creation of `AliasTerm` without using [`AliasTerm::new_from_args`].
     #[derivative(Debug = "ignore")]
     _use_alias_term_new_instead: (),
 }
 
 impl<I: Interner> AliasTerm<I> {
+    pub fn new_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> AliasTerm<I> {
+        interner.debug_assert_args_compatible(def_id, args);
+        AliasTerm { def_id, args, _use_alias_term_new_instead: () }
+    }
+
     pub fn new(
         interner: I,
         def_id: I::DefId,
         args: impl IntoIterator<Item: Into<I::GenericArg>>,
     ) -> AliasTerm<I> {
-        let args = interner.check_and_mk_args(def_id, args);
-        AliasTerm { def_id, args, _use_alias_term_new_instead: () }
+        let args = interner.mk_args_from_iter(args.into_iter().map(Into::into));
+        Self::new_from_args(interner, def_id, args)
     }
 
     pub fn expect_ty(self, interner: I) -> ty::AliasTy<I> {
