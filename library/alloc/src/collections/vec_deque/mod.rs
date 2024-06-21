@@ -11,6 +11,7 @@ use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{repeat_n, repeat_with, ByRefSized};
+use core::marker::PhantomData;
 use core::mem::{ManuallyDrop, SizedTypeProperties};
 use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::ptr;
@@ -102,7 +103,8 @@ pub struct VecDeque<
     // if `len == 0`, the exact value of `head` is unimportant.
     // if `T` is zero-Sized, then `self.len <= usize::MAX`, otherwise `self.len <= isize::MAX as usize`.
     len: usize,
-    buf: RawVec<T, A>,
+    buf: RawVec<A>,
+    _marker: PhantomData<T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -126,11 +128,24 @@ impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
     fn drop(&mut self) {
+        use core::alloc::Layout;
+
+        struct Guard<'a, A: Allocator> {
+            buf: &'a mut RawVec<A>,
+            layout: Layout,
+        }
+
+        impl<A: Allocator> Drop for Guard<'_, A> {
+            fn drop(&mut self) {
+                self.buf.drop(self.layout);
+            }
+        }
+
         /// Runs the destructor for all items in the slice when it gets dropped (normally or
         /// during unwinding).
-        struct Dropper<'a, T>(&'a mut [T]);
+        struct Dropper<T>(*mut [T]);
 
-        impl<'a, T> Drop for Dropper<'a, T> {
+        impl<T> Drop for Dropper<T> {
             fn drop(&mut self) {
                 unsafe {
                     ptr::drop_in_place(self.0);
@@ -139,12 +154,16 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
         }
 
         let (front, back) = self.as_mut_slices();
+        let front = front as *mut [T];
+        let back = back as *mut [T];
+
+        let _guard = Guard { buf: &mut self.buf, layout: T::LAYOUT };
+
         unsafe {
             let _back_dropper = Dropper(back);
             // use drop for [T]
             ptr::drop_in_place(front);
         }
-        // RawVec handles deallocation
     }
 }
 
@@ -545,7 +564,7 @@ impl<T> VecDeque<T> {
     #[must_use]
     pub const fn new() -> VecDeque<T> {
         // FIXME: This should just be `VecDeque::new_in(Global)` once that hits stable.
-        VecDeque { head: 0, len: 0, buf: RawVec::NEW }
+        VecDeque { head: 0, len: 0, buf: RawVec::new::<T>(), _marker: PhantomData }
     }
 
     /// Creates an empty deque with space for at least `capacity` elements.
@@ -585,7 +604,12 @@ impl<T> VecDeque<T> {
     #[inline]
     #[unstable(feature = "try_with_capacity", issue = "91913")]
     pub fn try_with_capacity(capacity: usize) -> Result<VecDeque<T>, TryReserveError> {
-        Ok(VecDeque { head: 0, len: 0, buf: RawVec::try_with_capacity_in(capacity, Global)? })
+        Ok(VecDeque {
+            head: 0,
+            len: 0,
+            buf: RawVec::try_with_capacity_in(capacity, Global, T::LAYOUT)?,
+            _marker: PhantomData,
+        })
     }
 }
 
@@ -602,7 +626,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub const fn new_in(alloc: A) -> VecDeque<T, A> {
-        VecDeque { head: 0, len: 0, buf: RawVec::new_in(alloc) }
+        VecDeque {
+            head: 0,
+            len: 0,
+            buf: RawVec::new_in(alloc, core::mem::align_of::<T>()),
+            _marker: PhantomData,
+        }
     }
 
     /// Creates an empty deque with space for at least `capacity` elements.
@@ -616,7 +645,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
-        VecDeque { head: 0, len: 0, buf: RawVec::with_capacity_in(capacity, alloc) }
+        VecDeque {
+            head: 0,
+            len: 0,
+            buf: RawVec::with_capacity_in(capacity, alloc, T::LAYOUT),
+            _marker: PhantomData,
+        }
     }
 
     /// Creates a `VecDeque` from a raw allocation, when the initialized
@@ -647,6 +681,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 head: initialized.start,
                 len: initialized.end.unchecked_sub(initialized.start),
                 buf: RawVec::from_raw_parts_in(ptr, capacity, alloc),
+                _marker: PhantomData,
             }
         }
     }
@@ -753,7 +788,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize {
-        if T::IS_ZST { usize::MAX } else { self.buf.capacity() }
+        self.buf.capacity(core::mem::size_of::<T>())
     }
 
     /// Reserves the minimum capacity for at least `additional` more elements to be inserted in the
@@ -784,7 +819,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let old_cap = self.capacity();
 
         if new_cap > old_cap {
-            self.buf.reserve_exact(self.len, additional);
+            self.buf.reserve_exact(self.len, additional, T::LAYOUT);
             unsafe {
                 self.handle_capacity_increase(old_cap);
             }
@@ -815,7 +850,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         if new_cap > old_cap {
             // we don't need to reserve_exact(), as the size doesn't have
             // to be a power of 2.
-            self.buf.reserve(self.len, additional);
+            self.buf.reserve(self.len, additional, T::LAYOUT);
             unsafe {
                 self.handle_capacity_increase(old_cap);
             }
@@ -866,7 +901,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let old_cap = self.capacity();
 
         if new_cap > old_cap {
-            self.buf.try_reserve_exact(self.len, additional)?;
+            self.buf.try_reserve_exact(self.len, additional, T::LAYOUT)?;
             unsafe {
                 self.handle_capacity_increase(old_cap);
             }
@@ -914,7 +949,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let old_cap = self.capacity();
 
         if new_cap > old_cap {
-            self.buf.try_reserve(self.len, additional)?;
+            self.buf.try_reserve(self.len, additional, T::LAYOUT)?;
             unsafe {
                 self.handle_capacity_increase(old_cap);
             }
@@ -1056,7 +1091,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
         let guard = Guard { deque: self, old_head, target_cap };
 
-        guard.deque.buf.shrink_to_fit(target_cap);
+        guard.deque.buf.shrink_to_fit(target_cap, T::LAYOUT);
 
         // Don't drop the guard if we didn't unwind.
         mem::forget(guard);
@@ -2161,7 +2196,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // buffer without it being full emerge
         debug_assert!(self.is_full());
         let old_cap = self.capacity();
-        self.buf.grow_one();
+        self.buf.grow_one(T::LAYOUT);
         unsafe {
             self.handle_capacity_increase(old_cap);
         }
@@ -2950,7 +2985,12 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
     #[inline]
     fn from(other: Vec<T, A>) -> Self {
         let (ptr, len, cap, alloc) = other.into_raw_parts_with_alloc();
-        Self { head: 0, len, buf: unsafe { RawVec::from_raw_parts_in(ptr, cap, alloc) } }
+        Self {
+            head: 0,
+            len,
+            buf: unsafe { RawVec::from_raw_parts_in(ptr, cap, alloc) },
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -2990,7 +3030,7 @@ impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
 
         unsafe {
             let other = ManuallyDrop::new(other);
-            let buf = other.buf.ptr();
+            let buf: *mut T = other.buf.ptr();
             let len = other.len();
             let cap = other.capacity();
             let alloc = ptr::read(other.allocator());

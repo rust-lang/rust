@@ -675,7 +675,7 @@ impl<T> Box<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        unsafe { RawVec::with_capacity(len).into_box(len) }
+        unsafe { RawVec::with_capacity(len, T::LAYOUT).into_box(len) }
     }
 
     /// Constructs a new boxed slice with uninitialized contents, with the memory
@@ -700,7 +700,7 @@ impl<T> Box<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
+        unsafe { RawVec::with_capacity_zeroed(len, T::LAYOUT).into_box(len) }
     }
 
     /// Constructs a new boxed slice with uninitialized contents. Returns an error if
@@ -727,7 +727,7 @@ impl<T> Box<[T]> {
     #[inline]
     pub fn try_new_uninit_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {
         let ptr = if T::IS_ZST || len == 0 {
-            NonNull::dangling()
+            NonNull::<T>::dangling()
         } else {
             let layout = match Layout::array::<mem::MaybeUninit<T>>(len) {
                 Ok(l) => l,
@@ -761,7 +761,7 @@ impl<T> Box<[T]> {
     #[inline]
     pub fn try_new_zeroed_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {
         let ptr = if T::IS_ZST || len == 0 {
-            NonNull::dangling()
+            NonNull::<T>::dangling()
         } else {
             let layout = match Layout::array::<mem::MaybeUninit<T>>(len) {
                 Ok(l) => l,
@@ -801,7 +801,7 @@ impl<T, A: Allocator> Box<[T], A> {
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        unsafe { RawVec::with_capacity_in(len, alloc).into_box(len) }
+        unsafe { RawVec::with_capacity_in(len, alloc, T::LAYOUT).into_box(len) }
     }
 
     /// Constructs a new boxed slice with uninitialized contents in the provided allocator,
@@ -829,7 +829,7 @@ impl<T, A: Allocator> Box<[T], A> {
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        unsafe { RawVec::with_capacity_zeroed_in(len, alloc).into_box(len) }
+        unsafe { RawVec::with_capacity_zeroed_in(len, alloc, T::LAYOUT).into_box(len) }
     }
 }
 
@@ -1550,7 +1550,7 @@ impl<T: Copy> BoxFromSlice<T> for Box<[T]> {
     #[inline]
     fn from_slice(slice: &[T]) -> Self {
         let len = slice.len();
-        let buf = RawVec::with_capacity(len);
+        let buf = RawVec::with_capacity(len, T::LAYOUT);
         unsafe {
             ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
             buf.into_box(slice.len()).assume_init()

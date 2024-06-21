@@ -396,8 +396,9 @@ mod spec_extend;
 #[cfg_attr(not(test), rustc_diagnostic_item = "Vec")]
 #[rustc_insignificant_dtor]
 pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
-    buf: RawVec<T, A>,
+    buf: RawVec<A>,
     len: usize,
+    _marker: PhantomData<T>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,7 +421,7 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> Self {
-        Vec { buf: RawVec::NEW, len: 0 }
+        Vec { buf: RawVec::new::<T>(), len: 0, _marker: PhantomData }
     }
 
     /// Constructs a new, empty `Vec<T>` with at least the specified capacity.
@@ -634,7 +635,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub const fn new_in(alloc: A) -> Self {
-        Vec { buf: RawVec::new_in(alloc), len: 0 }
+        Vec { buf: RawVec::new_in(alloc, core::mem::align_of::<T>()), len: 0, _marker: PhantomData }
     }
 
     /// Constructs a new, empty `Vec<T, A>` with at least the specified capacity
@@ -696,7 +697,11 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
-        Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
+        Vec {
+            buf: RawVec::with_capacity_in(capacity, alloc, T::LAYOUT),
+            len: 0,
+            _marker: PhantomData,
+        }
     }
 
     /// Constructs a new, empty `Vec<T, A>` with at least the specified capacity
@@ -714,7 +719,11 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "try_with_capacity", issue = "91913")]
     pub fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
-        Ok(Vec { buf: RawVec::try_with_capacity_in(capacity, alloc)?, len: 0 })
+        Ok(Vec {
+            buf: RawVec::try_with_capacity_in(capacity, alloc, T::LAYOUT)?,
+            len: 0,
+            _marker: PhantomData,
+        })
     }
 
     /// Creates a `Vec<T, A>` directly from a pointer, a length, a capacity,
@@ -828,7 +837,13 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
-        unsafe { Vec { buf: RawVec::from_raw_parts_in(ptr, capacity, alloc), len: length } }
+        unsafe {
+            Vec {
+                buf: RawVec::from_raw_parts_in(ptr, capacity, alloc),
+                len: length,
+                _marker: PhantomData,
+            }
+        }
     }
 
     /// A convenience method for hoisting the non-null precondition out of [`Vec::from_raw_parts_in`].
@@ -844,7 +859,13 @@ impl<T, A: Allocator> Vec<T, A> {
         capacity: usize,
         alloc: A,
     ) -> Self {
-        unsafe { Vec { buf: RawVec::from_nonnull_in(ptr, capacity, alloc), len: length } }
+        unsafe {
+            Vec {
+                buf: RawVec::from_nonnull_in(ptr, capacity, alloc),
+                len: length,
+                _marker: PhantomData,
+            }
+        }
     }
 
     /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity)`.
@@ -946,7 +967,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize {
-        self.buf.capacity()
+        self.buf.capacity(core::mem::size_of::<T>())
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted
@@ -969,7 +990,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
-        self.buf.reserve(self.len, additional);
+        self.buf.reserve(self.len, additional, T::LAYOUT);
     }
 
     /// Reserves the minimum capacity for at least `additional` more elements to
@@ -999,7 +1020,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
-        self.buf.reserve_exact(self.len, additional);
+        self.buf.reserve_exact(self.len, additional, T::LAYOUT);
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
@@ -1036,7 +1057,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.buf.try_reserve(self.len, additional)
+        self.buf.try_reserve(self.len, additional, T::LAYOUT)
     }
 
     /// Tries to reserve the minimum capacity for at least `additional`
@@ -1079,7 +1100,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.buf.try_reserve_exact(self.len, additional)
+        self.buf.try_reserve_exact(self.len, additional, T::LAYOUT)
     }
 
     /// Shrinks the capacity of the vector as much as possible.
@@ -1107,7 +1128,7 @@ impl<T, A: Allocator> Vec<T, A> {
         // they are equal, so we can avoid the panic case in `RawVec::shrink_to_fit`
         // by only calling it with a greater capacity.
         if self.capacity() > self.len {
-            self.buf.shrink_to_fit(self.len);
+            self.buf.shrink_to_fit(self.len, T::LAYOUT);
         }
     }
 
@@ -1133,7 +1154,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "shrink_to", since = "1.56.0")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         if self.capacity() > min_capacity {
-            self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));
+            self.buf.shrink_to_fit(cmp::max(self.len, min_capacity), T::LAYOUT);
         }
     }
 
@@ -1574,8 +1595,8 @@ impl<T, A: Allocator> Vec<T, A> {
         }
 
         // space for the new element
-        if len == self.buf.capacity() {
-            self.buf.grow_one();
+        if len == self.capacity() {
+            self.buf.grow_one(T::LAYOUT);
         }
 
         unsafe {
@@ -1996,8 +2017,8 @@ impl<T, A: Allocator> Vec<T, A> {
         let len = self.len;
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if len == self.buf.capacity() {
-            self.buf.grow_one();
+        if len == self.capacity() {
+            self.buf.grow_one(T::LAYOUT);
         }
         unsafe {
             let end = self.as_mut_ptr().add(len);
@@ -2044,7 +2065,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "vec_push_within_capacity", issue = "100486")]
     pub fn push_within_capacity(&mut self, value: T) -> Result<(), T> {
-        if self.len == self.buf.capacity() {
+        if self.len == self.capacity() {
             return Err(value);
         }
         unsafe {
@@ -2439,7 +2460,7 @@ impl<T, A: Allocator> Vec<T, A> {
         unsafe {
             slice::from_raw_parts_mut(
                 self.as_mut_ptr().add(self.len) as *mut MaybeUninit<T>,
-                self.buf.capacity() - self.len,
+                self.capacity() - self.len,
             )
         }
     }
@@ -2513,11 +2534,11 @@ impl<T, A: Allocator> Vec<T, A> {
         let ptr = self.as_mut_ptr();
         // SAFETY:
         // - `ptr` is guaranteed to be valid for `self.len` elements
-        // - but the allocation extends out to `self.buf.capacity()` elements, possibly
+        // - but the allocation extends out to `self.capacity()` elements, possibly
         // uninitialized
         let spare_ptr = unsafe { ptr.add(self.len) };
         let spare_ptr = spare_ptr.cast::<MaybeUninit<T>>();
-        let spare_len = self.buf.capacity() - self.len;
+        let spare_len = self.capacity() - self.len;
 
         // SAFETY:
         // - `ptr` is guaranteed to be valid for `self.len` elements
@@ -2999,13 +3020,13 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
             let me = ManuallyDrop::new(self);
             let alloc = ManuallyDrop::new(ptr::read(me.allocator()));
             let buf = me.buf.non_null();
-            let begin = buf.as_ptr();
+            let begin: *mut T = buf.as_ptr();
             let end = if T::IS_ZST {
                 begin.wrapping_byte_add(me.len())
             } else {
                 begin.add(me.len()) as *const T
             };
-            let cap = me.buf.capacity();
+            let cap = me.capacity();
             IntoIter { buf, phantom: PhantomData, cap, alloc, ptr: buf, end }
         }
     }
@@ -3281,7 +3302,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
             // could avoid questions of validity in certain cases
             ptr::drop_in_place(ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len))
         }
-        // RawVec handles deallocation
+        self.buf.drop(T::LAYOUT);
     }
 }
 

@@ -96,6 +96,7 @@ class StdStrProvider(printer_base):
     def display_hint():
         return "string"
 
+
 def _enumerate_array_elements(element_ptrs):
     for (i, element_ptr) in enumerate(element_ptrs):
         key = "[{}]".format(i)
@@ -111,6 +112,7 @@ def _enumerate_array_elements(element_ptrs):
             break
 
         yield key, element
+
 
 class StdSliceProvider(printer_base):
     def __init__(self, valobj):
@@ -130,11 +132,14 @@ class StdSliceProvider(printer_base):
     def display_hint():
         return "array"
 
+
 class StdVecProvider(printer_base):
     def __init__(self, valobj):
         self._valobj = valobj
         self._length = int(valobj["len"])
         self._data_ptr = unwrap_unique_or_non_null(valobj["buf"]["ptr"])
+        ptr_ty = gdb.Type.pointer(valobj.type.template_argument(0))
+        self._data_ptr = self._data_ptr.reinterpret_cast(ptr_ty)
 
     def to_string(self):
         return "Vec(size={})".format(self._length)
@@ -160,6 +165,8 @@ class StdVecDequeProvider(printer_base):
             cap = cap[ZERO_FIELD]
         self._cap = int(cap)
         self._data_ptr = unwrap_unique_or_non_null(valobj["buf"]["ptr"])
+        ptr_ty = gdb.Type.pointer(valobj.type.template_argument(0))
+        self._data_ptr = self._data_ptr.reinterpret_cast(ptr_ty)
 
     def to_string(self):
         return "VecDeque(size={})".format(self._size)
