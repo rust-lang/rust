@@ -1259,6 +1259,7 @@ impl Config {
         cmd.arg("rev-parse").arg("--show-cdup");
         // Discard stderr because we expect this to fail when building from a tarball.
         let output = cmd
+            .command
             .stderr(std::process::Stdio::null())
             .output()
             .ok()
@@ -2141,7 +2142,7 @@ impl Config {
 
         let mut git = helpers::git(Some(&self.src));
         git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
-        output(&mut git)
+        output(&mut git.command)
     }
 
     /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
@@ -2445,8 +2446,9 @@ impl Config {
         };
 
         // Handle running from a directory other than the top level
-        let top_level =
-            output(helpers::git(Some(&self.src)).args(["rev-parse", "--show-toplevel"]));
+        let top_level = output(
+            &mut helpers::git(Some(&self.src)).args(["rev-parse", "--show-toplevel"]).command,
+        );
         let top_level = top_level.trim_end();
         let compiler = format!("{top_level}/compiler/");
         let library = format!("{top_level}/library/");
@@ -2454,10 +2456,11 @@ impl Config {
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let merge_base = output(
-            helpers::git(Some(&self.src))
+            &mut helpers::git(Some(&self.src))
                 .arg("rev-list")
                 .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
-                .args(["-n1", "--first-parent", "HEAD"]),
+                .args(["-n1", "--first-parent", "HEAD"])
+                .command,
         );
         let commit = merge_base.trim_end();
         if commit.is_empty() {
@@ -2471,6 +2474,7 @@ impl Config {
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let has_changes = !t!(helpers::git(Some(&self.src))
             .args(["diff-index", "--quiet", commit, "--", &compiler, &library])
+            .command
             .status())
         .success();
         if has_changes {
@@ -2542,17 +2546,19 @@ impl Config {
         if_unchanged: bool,
     ) -> Option<String> {
         // Handle running from a directory other than the top level
-        let top_level =
-            output(helpers::git(Some(&self.src)).args(["rev-parse", "--show-toplevel"]));
+        let top_level = output(
+            &mut helpers::git(Some(&self.src)).args(["rev-parse", "--show-toplevel"]).command,
+        );
         let top_level = top_level.trim_end();
 
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let merge_base = output(
-            helpers::git(Some(&self.src))
+            &mut helpers::git(Some(&self.src))
                 .arg("rev-list")
                 .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
-                .args(["-n1", "--first-parent", "HEAD"]),
+                .args(["-n1", "--first-parent", "HEAD"])
+                .command,
         );
         let commit = merge_base.trim_end();
         if commit.is_empty() {
@@ -2571,7 +2577,7 @@ impl Config {
             git.arg(format!("{top_level}/{path}"));
         }
 
-        let has_changes = !t!(git.status()).success();
+        let has_changes = !t!(git.command.status()).success();
         if has_changes {
             if if_unchanged {
                 if self.verbose > 0 {

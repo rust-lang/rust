@@ -7,7 +7,7 @@ use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::sync::mpsc::SyncSender;
 use std::sync::Mutex;
 
@@ -160,35 +160,29 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
             override_builder.add(&format!("!{ignore}")).expect(&ignore);
         }
     }
-    let git_available = match helpers::git(None)
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-    {
-        Ok(status) => status.success(),
-        Err(_) => false,
-    };
+    let git_available = build
+        .run(helpers::git(None).print_on_failure().allow_failure().arg("--version"))
+        .is_success();
 
     let mut adjective = None;
     if git_available {
-        let in_working_tree = match helpers::git(Some(&build.src))
-            .arg("rev-parse")
-            .arg("--is-inside-work-tree")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-        {
-            Ok(status) => status.success(),
-            Err(_) => false,
-        };
+        let in_working_tree = build
+            .run(
+                helpers::git(Some(&build.src))
+                    .print_on_failure()
+                    .allow_failure()
+                    .arg("rev-parse")
+                    .arg("--is-inside-work-tree"),
+            )
+            .is_success();
         if in_working_tree {
             let untracked_paths_output = output(
-                helpers::git(Some(&build.src))
+                &mut helpers::git(Some(&build.src))
                     .arg("status")
                     .arg("--porcelain")
                     .arg("-z")
-                    .arg("--untracked-files=normal"),
+                    .arg("--untracked-files=normal")
+                    .command,
             );
             let untracked_paths: Vec<_> = untracked_paths_output
                 .split_terminator('\0')
