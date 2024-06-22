@@ -4,10 +4,6 @@ error[E0282]: type annotations needed
 LL |     Combination::<0>.and::<_>().and::<_>();
    |                      ^^^ cannot infer type of the type parameter `M` declared on the method `and`
    |
-help: consider specifying the generic argument
-   |
-LL |     Combination::<0>.and::<_>().and::<_>();
-   |                         ~~~~~
 
 error: aborting due to 1 previous error
 
