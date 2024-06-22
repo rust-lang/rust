@@ -118,8 +118,8 @@ LL | | }
    |
 help: remove the return type...
    |
-LL | fn issue_6640_1(a: bool, b: bool) -> Option<()> {
-   |                                      ~~~~~~~~~~
+LL | fn issue_6640_1(a: bool, b: bool) -> () {
+   |                                      ~~
 help: ...and then remove returned values
    |
 LL ~         return ;
@@ -145,8 +145,8 @@ LL | | }
    |
 help: remove the return type...
    |
-LL | fn issue_6640_2(a: bool, b: bool) -> Result<(), i32> {
-   |                                      ~~~~~~~~~~~~~~~
+LL | fn issue_6640_2(a: bool, b: bool) -> () {
+   |                                      ~~
 help: ...and then remove returned values
    |
 LL ~         return ;
