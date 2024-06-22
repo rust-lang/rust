@@ -194,7 +194,7 @@ hir_analysis_inherent_ty_outside = cannot define inherent `impl` for a type outs
     .span_help = alternatively add `#[rustc_has_incoherent_inherent_impls]` to the type and `#[rustc_allow_incoherent_impl]` to the relevant impl items
 
 hir_analysis_inherent_ty_outside_new = cannot define inherent `impl` for a type outside of the crate where the type is defined
-    .label = impl for type defined outside of crate.
+    .label = impl for type defined outside of crate
     .note = define and implement a trait or new type instead
 
 hir_analysis_inherent_ty_outside_primitive = cannot define inherent `impl` for primitive types outside of `core`
