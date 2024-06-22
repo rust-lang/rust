@@ -17,8 +17,8 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 
 use crate::{
-    Adt, AssocItem, GenericDef, GenericParam, HasVisibility, Impl, ModuleDef, ScopeDef, Type,
-    TypeParam,
+    Adt, AssocItem, GenericDef, GenericParam, HasAttrs, HasVisibility, Impl, ModuleDef, ScopeDef,
+    Type, TypeParam,
 };
 
 use crate::term_search::Expr;
@@ -122,6 +122,10 @@ pub(super) fn assoc_const<'a, DB: HirDatabase>(
         .filter(move |it| it.is_visible_from(db, module))
         .filter_map(AssocItem::as_const)
         .filter_map(|it| {
+            if it.attrs(db).is_unstable() {
+                return None;
+            }
+
             let expr = Expr::Const(it);
             let ty = it.ty(db);
 
@@ -472,7 +476,7 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
 
             // Ignore functions with generics for now as they kill the performance
             // Also checking bounds for generics is problematic
-            if fn_generics.type_or_const_params(db).len() > 0 {
+            if !fn_generics.type_or_const_params(db).is_empty() {
                 return None;
             }
 
@@ -661,7 +665,7 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
 
             // Ignore functions with generics for now as they kill the performance
             // Also checking bounds for generics is problematic
-            if fn_generics.type_or_const_params(db).len() > 0 {
+            if !fn_generics.type_or_const_params(db).is_empty() {
                 return None;
             }
 
