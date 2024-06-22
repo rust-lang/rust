@@ -5,8 +5,29 @@ use crate::core::build_steps::tool::RustcPerf;
 use crate::core::builder::Builder;
 use crate::core::config::DebuginfoLevel;
 
+/// Performs profiling or benchmarking with [`rustc-perf`](https://github.com/rust-lang/rustc-perf)
+/// using a locally built compiler.
+#[derive(Debug, Clone, clap::Parser)]
+pub struct PerfArgs {
+    #[clap(subcommand)]
+    cmd: PerfCommand,
+}
+
+#[derive(Debug, Clone, clap::Parser)]
+enum PerfCommand {
+    /// Run `profile_local eprintln`.
+    /// This executes the compiler on the given benchmarks and stores its stderr output.
+    Eprintln,
+}
+
+impl Default for PerfArgs {
+    fn default() -> Self {
+        Self { cmd: PerfCommand::Eprintln }
+    }
+}
+
 /// Performs profiling using `rustc-perf` on a built version of the compiler.
-pub fn perf(builder: &Builder<'_>) {
+pub fn perf(builder: &Builder<'_>, args: &PerfArgs) {
     let collector = builder.ensure(RustcPerf {
         compiler: builder.compiler(0, builder.config.build),
         target: builder.config.build,
@@ -25,21 +46,19 @@ Consider setting `rust.debuginfo-level = 1` in `config.toml`."#);
     let results_dir = builder.build.tempdir().join("rustc-perf");
 
     let mut cmd = Command::new(collector);
-    let cmd = cmd
-        .arg("profile_local")
-        .arg("eprintln")
-        .arg("--out-dir")
-        .arg(&results_dir)
-        .arg("--include")
-        .arg("helloworld")
-        .arg(&rustc);
+    match args.cmd {
+        PerfCommand::Eprintln => {
+            cmd.arg("profile_local").arg("eprintln");
+        }
+    }
+    cmd.arg("--out-dir").arg(&results_dir).arg("--include").arg("helloworld").arg(&rustc);
 
     builder.info(&format!("Running `rustc-perf` using `{}`", rustc.display()));
 
     // We need to set the working directory to `src/tools/perf`, so that it can find the directory
     // with compile-time benchmarks.
     let cmd = cmd.current_dir(builder.src.join("src/tools/rustc-perf"));
-    builder.build.run(cmd);
+    builder.run(cmd);
 
     builder.info(&format!("You can find the results at `{}`", results_dir.display()));
 }

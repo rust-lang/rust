@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use clap::{CommandFactory, Parser, ValueEnum};
 
+use crate::core::build_steps::perf::PerfArgs;
 use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::{target_selection_list, Config, TargetSelectionList};
@@ -471,7 +472,7 @@ Arguments:
     },
     /// Perform profiling and benchmarking of the compiler using the
     /// `rustc-perf` benchmark suite.
-    Perf {},
+    Perf(PerfArgs),
 }
 
 impl Subcommand {
