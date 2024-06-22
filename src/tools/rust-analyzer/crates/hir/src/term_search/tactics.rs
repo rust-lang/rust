@@ -74,8 +74,6 @@ pub(super) fn trivial<'a, DB: HirDatabase>(
             _ => None,
         }?;
 
-        lookup.mark_exhausted(*def);
-
         let ty = expr.ty(db);
         lookup.insert(ty.clone(), std::iter::once(expr.clone()));
 
@@ -401,7 +399,6 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
                                 .collect()
                         };
 
-                        lookup.mark_fulfilled(ScopeDef::ModuleDef(ModuleDef::Function(*it)));
                         lookup.insert(ret_ty.clone(), fn_exprs.iter().cloned());
                         Some((ret_ty, fn_exprs))
                     })

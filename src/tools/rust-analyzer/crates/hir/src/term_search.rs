@@ -93,12 +93,6 @@ struct LookupTable {
     data: FxHashMap<Type, AlternativeExprs>,
     /// New types reached since last query by the `NewTypesKey`
     new_types: FxHashMap<NewTypesKey, Vec<Type>>,
-    /// ScopeDefs that are not interesting any more
-    exhausted_scopedefs: FxHashSet<ScopeDef>,
-    /// ScopeDefs that were used in current round
-    round_scopedef_hits: FxHashSet<ScopeDef>,
-    /// Amount of rounds since scopedef was first used.
-    rounds_since_sopedef_hit: FxHashMap<ScopeDef, u32>,
     /// Types queried but not present
     types_wishlist: FxHashSet<Type>,
     /// Threshold to squash trees to `Many`
@@ -212,37 +206,6 @@ impl LookupTable {
         }
     }
 
-    /// Mark `ScopeDef` as exhausted meaning it is not interesting for us any more
-    fn mark_exhausted(&mut self, def: ScopeDef) {
-        self.exhausted_scopedefs.insert(def);
-    }
-
-    /// Mark `ScopeDef` as used meaning we managed to produce something useful from it
-    fn mark_fulfilled(&mut self, def: ScopeDef) {
-        self.round_scopedef_hits.insert(def);
-    }
-
-    /// Start new round (meant to be called at the beginning of iteration in `term_search`)
-    ///
-    /// This functions marks some `ScopeDef`s as exhausted if there have been
-    /// `MAX_ROUNDS_AFTER_HIT` rounds after first using a `ScopeDef`.
-    fn new_round(&mut self) {
-        for def in &self.round_scopedef_hits {
-            let hits =
-                self.rounds_since_sopedef_hit.entry(*def).and_modify(|n| *n += 1).or_insert(0);
-            const MAX_ROUNDS_AFTER_HIT: u32 = 2;
-            if *hits > MAX_ROUNDS_AFTER_HIT {
-                self.exhausted_scopedefs.insert(*def);
-            }
-        }
-        self.round_scopedef_hits.clear();
-    }
-
-    /// Get exhausted `ScopeDef`s
-    fn exhausted_scopedefs(&self) -> &FxHashSet<ScopeDef> {
-        &self.exhausted_scopedefs
-    }
-
     /// Types queried but not found
     fn types_wishlist(&mut self) -> &FxHashSet<Type> {
         &self.types_wishlist
@@ -328,19 +291,12 @@ pub fn term_search<DB: HirDatabase>(ctx: &TermSearchCtx<'_, DB>) -> Vec<Expr> {
     solutions.extend(tactics::assoc_const(ctx, &defs, &mut lookup));
 
     while should_continue() {
-        lookup.new_round();
-
         solutions.extend(tactics::data_constructor(ctx, &defs, &mut lookup, should_continue));
         solutions.extend(tactics::free_function(ctx, &defs, &mut lookup, should_continue));
         solutions.extend(tactics::impl_method(ctx, &defs, &mut lookup, should_continue));
         solutions.extend(tactics::struct_projection(ctx, &defs, &mut lookup, should_continue));
         solutions.extend(tactics::impl_static_method(ctx, &defs, &mut lookup, should_continue));
         solutions.extend(tactics::make_tuple(ctx, &defs, &mut lookup, should_continue));
-
-        // Discard not interesting `ScopeDef`s for speedup
-        for def in lookup.exhausted_scopedefs() {
-            defs.remove(def);
-        }
     }
 
     solutions.into_iter().filter(|it| !it.is_many()).unique().collect()
