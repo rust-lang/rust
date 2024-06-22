@@ -1146,7 +1146,10 @@ fn check_matcher_core<'tt>(
                     // whereas macros from an external crate have a dummy id.
                     if def.id != DUMMY_NODE_ID
                         && matches!(kind, NonterminalKind::PatParam { inferred: true })
-                        && matches!(next_token, TokenTree::Token(token) if token.kind == BinOp(token::BinOpToken::Or))
+                        && matches!(
+                            next_token,
+                            TokenTree::Token(token) if token.kind == BinOp(token::BinOpToken::Or)
+                        )
                     {
                         // It is suggestion to use pat_param, for example: $x:pat -> $x:pat_param.
                         let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
