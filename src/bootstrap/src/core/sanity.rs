@@ -24,6 +24,7 @@ use std::collections::HashSet;
 
 use crate::builder::Kind;
 use crate::core::config::Target;
+use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::output;
 use crate::Build;
 
@@ -352,7 +353,8 @@ than building it.
             // There are three builds of cmake on windows: MSVC, MinGW, and
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
-            let out = output(Command::new("cmake").arg("--help"));
+            let out =
+                build.run(BootstrapCommand::new("cmake").capture_stdout().arg("--help")).stdout();
             if !out.contains("Visual Studio") {
                 panic!(
                     "

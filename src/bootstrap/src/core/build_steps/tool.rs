@@ -1,7 +1,6 @@
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use crate::core::build_steps::compile;
 use crate::core::build_steps::toolstate::ToolState;
@@ -10,7 +9,6 @@ use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun,
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::BootstrapCommand;
-use crate::utils::helpers::output;
 use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::Compiler;
 use crate::Mode;
@@ -926,7 +924,8 @@ impl Step for LibcxxVersionTool {
             }
         }
 
-        let version_output = output(&mut Command::new(executable));
+        let version_output =
+            builder.run(BootstrapCommand::new(executable).capture_stdout()).stdout();
 
         let version_str = version_output.split_once("version:").unwrap().1;
         let version = version_str.trim().parse::<usize>().unwrap();

@@ -13,24 +13,15 @@ use crate::core::builder::Builder;
 pub fn suggest(builder: &Builder<'_>, run: bool) {
     let git_config = builder.config.git_config();
     let suggestions = builder
-        .tool_cmd(Tool::SuggestTests)
-        .env("SUGGEST_TESTS_GIT_REPOSITORY", git_config.git_repository)
-        .env("SUGGEST_TESTS_NIGHTLY_BRANCH", git_config.nightly_branch)
-        .command
-        .output()
-        .expect("failed to run `suggest-tests` tool");
+        .run(
+            builder
+                .tool_cmd(Tool::SuggestTests)
+                .capture_stdout()
+                .env("SUGGEST_TESTS_GIT_REPOSITORY", git_config.git_repository)
+                .env("SUGGEST_TESTS_NIGHTLY_BRANCH", git_config.nightly_branch),
+        )
+        .stdout();
 
-    if !suggestions.status.success() {
-        println!("failed to run `suggest-tests` tool ({})", suggestions.status);
-        println!(
-            "`suggest_tests` stdout:\n{}`suggest_tests` stderr:\n{}",
-            String::from_utf8(suggestions.stdout).unwrap(),
-            String::from_utf8(suggestions.stderr).unwrap()
-        );
-        panic!("failed to run `suggest-tests`");
-    }
-
-    let suggestions = String::from_utf8(suggestions.stdout).unwrap();
     let suggestions = suggestions
         .lines()
         .map(|line| {
