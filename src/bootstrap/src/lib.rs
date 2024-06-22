@@ -575,7 +575,7 @@ impl Build {
         };
         // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
         if !update(true).status().map_or(false, |status| status.success()) {
-            self.run(&mut update(false));
+            self.run(update(false));
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).

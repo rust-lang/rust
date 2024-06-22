@@ -1705,7 +1705,7 @@ impl Step for Extended {
 
             let heat_flags = ["-nologo", "-gg", "-sfrag", "-srd", "-sreg"];
             builder.run(
-                Command::new(&heat)
+                BootstrapCommand::new(&heat)
                     .current_dir(&exe)
                     .arg("dir")
                     .arg("rustc")
@@ -1721,7 +1721,7 @@ impl Step for Extended {
             );
             if built_tools.contains("rust-docs") {
                 builder.run(
-                    Command::new(&heat)
+                    BootstrapCommand::new(&heat)
                         .current_dir(&exe)
                         .arg("dir")
                         .arg("rust-docs")
@@ -1739,7 +1739,7 @@ impl Step for Extended {
                 );
             }
             builder.run(
-                Command::new(&heat)
+                BootstrapCommand::new(&heat)
                     .current_dir(&exe)
                     .arg("dir")
                     .arg("cargo")
@@ -1756,7 +1756,7 @@ impl Step for Extended {
                     .arg(etc.join("msi/remove-duplicates.xsl")),
             );
             builder.run(
-                Command::new(&heat)
+                BootstrapCommand::new(&heat)
                     .current_dir(&exe)
                     .arg("dir")
                     .arg("rust-std")
@@ -1772,7 +1772,7 @@ impl Step for Extended {
             );
             if built_tools.contains("rust-analyzer") {
                 builder.run(
-                    Command::new(&heat)
+                    BootstrapCommand::new(&heat)
                         .current_dir(&exe)
                         .arg("dir")
                         .arg("rust-analyzer")
@@ -1791,7 +1791,7 @@ impl Step for Extended {
             }
             if built_tools.contains("clippy") {
                 builder.run(
-                    Command::new(&heat)
+                    BootstrapCommand::new(&heat)
                         .current_dir(&exe)
                         .arg("dir")
                         .arg("clippy")
@@ -1810,7 +1810,7 @@ impl Step for Extended {
             }
             if built_tools.contains("miri") {
                 builder.run(
-                    Command::new(&heat)
+                    BootstrapCommand::new(&heat)
                         .current_dir(&exe)
                         .arg("dir")
                         .arg("miri")
@@ -1828,7 +1828,7 @@ impl Step for Extended {
                 );
             }
             builder.run(
-                Command::new(&heat)
+                BootstrapCommand::new(&heat)
                     .current_dir(&exe)
                     .arg("dir")
                     .arg("rust-analysis")
@@ -1846,7 +1846,7 @@ impl Step for Extended {
             );
             if target.ends_with("windows-gnu") {
                 builder.run(
-                    Command::new(&heat)
+                    BootstrapCommand::new(&heat)
                         .current_dir(&exe)
                         .arg("dir")
                         .arg("rust-mingw")

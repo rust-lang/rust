@@ -912,13 +912,13 @@ impl Step for LibcxxVersionTool {
             }
 
             let compiler = builder.cxx(self.target).unwrap();
-            let mut cmd = Command::new(compiler);
+            let mut cmd = BootstrapCommand::new(compiler);
 
             cmd.arg("-o")
                 .arg(&executable)
                 .arg(builder.src.join("src/tools/libcxx-version/main.cpp"));
 
-            builder.run(BootstrapCommand::from(&mut cmd));
+            builder.run(cmd);
 
             if !executable.exists() {
                 panic!("Something went wrong. {} is not present", executable.display());

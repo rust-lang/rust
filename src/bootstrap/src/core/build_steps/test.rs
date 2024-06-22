@@ -3142,8 +3142,7 @@ impl Step for RustInstaller {
             return;
         }
 
-        let mut cmd =
-            std::process::Command::new(builder.src.join("src/tools/rust-installer/test.sh"));
+        let mut cmd = BootstrapCommand::new(builder.src.join("src/tools/rust-installer/test.sh"));
         let tmpdir = testdir(builder, compiler.host).join("rust-installer");
         let _ = std::fs::remove_dir_all(&tmpdir);
         let _ = std::fs::create_dir_all(&tmpdir);
@@ -3152,7 +3151,7 @@ impl Step for RustInstaller {
         cmd.env("CARGO", &builder.initial_cargo);
         cmd.env("RUSTC", &builder.initial_rustc);
         cmd.env("TMP_DIR", &tmpdir);
-        builder.run(BootstrapCommand::from(&mut cmd).delay_failure());
+        builder.run(cmd.delay_failure());
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -3346,8 +3345,7 @@ impl Step for CodegenCranelift {
             .arg("testsuite.extended_sysroot");
         cargo.args(builder.config.test_args());
 
-        let mut cmd: Command = cargo.into();
-        builder.run(BootstrapCommand::from(&mut cmd));
+        builder.run(cargo);
     }
 }
 
@@ -3472,7 +3470,6 @@ impl Step for CodegenGCC {
             .arg("--std-tests");
         cargo.args(builder.config.test_args());
 
-        let mut cmd: Command = cargo.into();
-        builder.run(BootstrapCommand::from(&mut cmd));
+        builder.run(cargo);
     }
 }

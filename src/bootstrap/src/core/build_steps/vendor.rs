@@ -1,6 +1,6 @@
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
-use std::path::{Path, PathBuf};
 use crate::utils::exec::BootstrapCommand;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct Vendor {
