@@ -151,10 +151,6 @@ pub fn provide(providers: &mut Providers) {
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
-    if tcx.features().rustc_attrs {
-        let _ = tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
-    }
-
     tcx.sess.time("coherence_checking", || {
         tcx.hir().par_for_each_module(|module| {
             let _ = tcx.ensure().check_mod_type_wf(module);
@@ -169,11 +165,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     });
 
     if tcx.features().rustc_attrs {
-        let _ = tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
-    }
-
-    if tcx.features().rustc_attrs {
-        let _ = collect::test_opaque_hidden_types(tcx);
+        tcx.sess.time("outlives_dumping", || outlives::dump::inferred_outlives(tcx));
+        tcx.sess.time("variance_dumping", || variance::dump::variances(tcx));
+        collect::dump::opaque_hidden_types(tcx);
+        collect::dump::predicates_and_item_bounds(tcx);
     }
 
     // Make sure we evaluate all static and (non-associated) const items, even if unused.
