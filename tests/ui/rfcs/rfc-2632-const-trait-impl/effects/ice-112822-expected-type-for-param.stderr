@@ -1,5 +1,5 @@
 error[E0658]: const closures are experimental
-  --> $DIR/ice-112822-expected-type-for-param.rs:7:5
+  --> $DIR/ice-112822-expected-type-for-param.rs:6:5
    |
 LL |     const move || {
    |     ^^^^^
@@ -23,7 +23,7 @@ LL | const fn test() -> impl ~const Fn() {
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: can't compare `&u8` with `&u8`
-  --> $DIR/ice-112822-expected-type-for-param.rs:12:17
+  --> $DIR/ice-112822-expected-type-for-param.rs:11:17
    |
 LL |                 assert_eq!(first, &b'f');
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `&u8 == &u8`
@@ -31,38 +31,7 @@ LL |                 assert_eq!(first, &b'f');
    = help: the trait `~const PartialEq<&u8>` is not implemented for `&u8`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0391]: cycle detected when computing type of opaque `test::{opaque#0}`
-  --> $DIR/ice-112822-expected-type-for-param.rs:3:20
-   |
-LL | const fn test() -> impl ~const Fn() {
-   |                    ^^^^^^^^^^^^^^^^
-   |
-note: ...which requires borrow-checking `test`...
-  --> $DIR/ice-112822-expected-type-for-param.rs:3:1
-   |
-LL | const fn test() -> impl ~const Fn() {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires promoting constants in MIR for `test`...
-  --> $DIR/ice-112822-expected-type-for-param.rs:3:1
-   |
-LL | const fn test() -> impl ~const Fn() {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires const checking `test`...
-  --> $DIR/ice-112822-expected-type-for-param.rs:3:1
-   |
-LL | const fn test() -> impl ~const Fn() {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which requires computing whether `test::{opaque#0}` is freeze...
-   = note: ...which requires evaluating trait selection obligation `test::{opaque#0}: core::marker::Freeze`...
-   = note: ...which again requires computing type of opaque `test::{opaque#0}`, completing the cycle
-note: cycle used when computing type of `test::{opaque#0}`
-  --> $DIR/ice-112822-expected-type-for-param.rs:3:20
-   |
-LL | const fn test() -> impl ~const Fn() {
-   |                    ^^^^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+error: aborting due to 4 previous errors
 
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0277, E0391, E0658.
+Some errors have detailed explanations: E0277, E0658.
 For more information about an error, try `rustc --explain E0277`.

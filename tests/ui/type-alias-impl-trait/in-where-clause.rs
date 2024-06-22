@@ -4,11 +4,11 @@
 #![feature(type_alias_impl_trait)]
 type Bar = impl Sized;
 //~^ ERROR: cycle
-//~| ERROR: cycle
 
 fn foo() -> Bar
 where
     Bar: Send,
+    //~^ ERROR: type annotations needed
 {
     [0; 1 + 2]
 }
