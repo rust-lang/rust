@@ -28,6 +28,21 @@ enum PerfCommand {
     /// Run `profile_local eprintln`.
     /// This executes the compiler on the given benchmarks and stores its stderr output.
     Eprintln,
+    /// Run `profile_local samply`
+    /// This executes the compiler on the given benchmarks and profiles it with `samply`.
+    /// You need to install `samply`, e.g. using `cargo install samply`.
+    Samply,
+    /// Run `profile_local cachegrind`.
+    /// This executes the compiler on the given benchmarks under `Cachegrind`.
+    Cachegrind,
+}
+
+impl PerfCommand {
+    fn is_profiling(&self) -> bool {
+        match self {
+            PerfCommand::Eprintln | PerfCommand::Samply | PerfCommand::Cachegrind => true,
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, clap::Parser)]
@@ -111,13 +126,22 @@ Consider setting `rust.debuginfo-level = 1` in `config.toml`."#);
     let rustc = sysroot.join("bin/rustc");
 
     let rustc_perf_dir = builder.build.tempdir().join("rustc-perf");
+    let profile_results_dir = rustc_perf_dir.join("results");
 
     let mut cmd = Command::new(collector);
-    match args.cmd {
+    match &args.cmd {
         PerfCommand::Eprintln => {
             cmd.arg("profile_local").arg("eprintln");
-            cmd.arg("--out-dir").arg(rustc_perf_dir.join("results"));
         }
+        PerfCommand::Samply => {
+            cmd.arg("profile_local").arg("samply");
+        }
+        PerfCommand::Cachegrind => {
+            cmd.arg("profile_local").arg("cachegrind");
+        }
+    }
+    if args.cmd.is_profiling() {
+        cmd.arg("--out-dir").arg(&profile_results_dir);
     }
 
     if !args.opts.include.is_empty() {
@@ -140,5 +164,7 @@ Consider setting `rust.debuginfo-level = 1` in `config.toml`."#);
     let cmd = cmd.current_dir(builder.src.join("src/tools/rustc-perf"));
     builder.run(cmd);
 
-    builder.info(&format!("You can find the results at `{}`", rustc_perf_dir.display()));
+    if args.cmd.is_profiling() {
+        builder.info(&format!("You can find the results at `{}`", profile_results_dir.display()));
+    }
 }
