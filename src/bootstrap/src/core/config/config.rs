@@ -2043,6 +2043,7 @@ impl Config {
             Subcommand::Bench { .. } => flags.stage.or(bench_stage).unwrap_or(2),
             Subcommand::Dist { .. } => flags.stage.or(dist_stage).unwrap_or(2),
             Subcommand::Install { .. } => flags.stage.or(install_stage).unwrap_or(2),
+            Subcommand::Perf { .. } => flags.stage.unwrap_or(1),
             // These are all bootstrap tools, which don't depend on the compiler.
             // The stage we pass shouldn't matter, but use 0 just in case.
             Subcommand::Clean { .. }
@@ -2080,7 +2081,8 @@ impl Config {
                 | Subcommand::Setup { .. }
                 | Subcommand::Format { .. }
                 | Subcommand::Suggest { .. }
-                | Subcommand::Vendor { .. } => {}
+                | Subcommand::Vendor { .. }
+                | Subcommand::Perf { .. } => {}
             }
         }
 

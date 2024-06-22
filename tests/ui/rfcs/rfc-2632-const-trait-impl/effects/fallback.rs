@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(effects)]
+#![feature(effects)] //~ WARN the feature `effects` is incomplete
 
 pub const fn owo() {}
 

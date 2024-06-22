@@ -944,7 +944,6 @@ marker_impls! {
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
 #[rustc_deny_explicit_impl(implement_via_object = false)]
-#[const_trait]
 pub trait Destruct {}
 
 /// A marker for tuple types.

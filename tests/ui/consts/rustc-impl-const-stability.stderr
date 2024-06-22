@@ -1,3 +1,12 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/rustc-impl-const-stability.rs:5:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error: const `impl` for trait `Default` which is not marked with `#[const_trait]`
   --> $DIR/rustc-impl-const-stability.rs:15:12
    |
@@ -16,6 +25,6 @@ LL | impl const Default for Data {
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0207`.

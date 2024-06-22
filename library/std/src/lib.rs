@@ -284,7 +284,6 @@
 #![feature(cfi_encoding)]
 #![feature(concat_idents)]
 #![feature(const_mut_refs)]
-#![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]

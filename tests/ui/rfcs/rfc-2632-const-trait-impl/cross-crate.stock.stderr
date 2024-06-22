@@ -1,5 +1,5 @@
 error[E0015]: cannot call non-const fn `<cross_crate::Const as cross_crate::MyTrait>::func` in constant functions
-  --> $DIR/cross-crate.rs:20:11
+  --> $DIR/cross-crate.rs:21:11
    |
 LL |     Const.func();
    |           ^^^^^^

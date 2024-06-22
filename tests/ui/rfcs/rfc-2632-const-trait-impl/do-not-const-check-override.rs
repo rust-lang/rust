@@ -1,5 +1,5 @@
 //@ check-pass
-#![feature(const_trait_impl, rustc_attrs, effects)]
+#![feature(const_trait_impl, rustc_attrs, effects)] //~ WARN the feature `effects` is incomplete
 
 #[const_trait]
 trait Foo {

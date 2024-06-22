@@ -3,7 +3,7 @@
 //@[unqualified] check-pass
 //@[qualified] known-bug: unknown
 
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl, effects)] //[unqualified]~ WARN the feature `effects` is incomplete
 
 #[const_trait]
 trait Trait {

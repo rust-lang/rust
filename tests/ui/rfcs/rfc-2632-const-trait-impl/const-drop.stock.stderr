@@ -1,3 +1,9 @@
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-drop.rs:19:22
+   |
+LL | const fn a<T: ~const Destruct>(_: T) {}
+   |                      ^^^^^^^^
+
 error[E0493]: destructor of `S<'_>` cannot be evaluated at compile-time
   --> $DIR/const-drop.rs:24:13
    |
@@ -14,6 +20,6 @@ LL | const fn a<T: ~const Destruct>(_: T) {}
    |                                |
    |                                the destructor for this type cannot be evaluated in constant functions
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0493`.

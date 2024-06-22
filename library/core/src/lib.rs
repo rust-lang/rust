@@ -200,6 +200,7 @@
 // Language features:
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(c_unwind))]
+#![cfg_attr(bootstrap, feature(effects))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -214,13 +215,11 @@
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_refs_to_cell)]
-#![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
 #![feature(doc_cfg_hide)]
 #![feature(doc_notable_trait)]
-#![feature(effects)]
 #![feature(extern_types)]
 #![feature(f128)]
 #![feature(f16)]

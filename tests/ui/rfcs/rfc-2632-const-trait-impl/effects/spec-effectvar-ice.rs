@@ -1,7 +1,7 @@
 //@ check-fail
 // Fixes #119830
 
-#![feature(effects)]
+#![feature(effects)] //~ WARN the feature `effects` is incomplete
 #![feature(min_specialization)]
 #![feature(const_trait_impl)]
 

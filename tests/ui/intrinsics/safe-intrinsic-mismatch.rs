@@ -1,6 +1,6 @@
 #![feature(intrinsics)]
 #![feature(rustc_attrs)]
-#![feature(effects)]
+// FIXME(effects) do this with revisions #![feature(effects)]
 
 extern "rust-intrinsic" {
     fn size_of<T>() -> usize; //~ ERROR intrinsic safety mismatch
@@ -19,7 +19,7 @@ const fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
 mod foo {
     #[rustc_intrinsic]
     unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
-    //~^ ERROR wrong number of const parameters
+    // FIXME(effects) ~^ ERROR wrong number of const parameters
 }
 
 fn main() {}
