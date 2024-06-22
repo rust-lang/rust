@@ -1037,6 +1037,19 @@ fn llvm_fixup_input<'ll, 'tcx>(
                 value
             }
         }
+        (
+            InlineAsmRegClass::Arm(
+                ArmInlineAsmRegClass::dreg
+                | ArmInlineAsmRegClass::dreg_low8
+                | ArmInlineAsmRegClass::dreg_low16
+                | ArmInlineAsmRegClass::qreg
+                | ArmInlineAsmRegClass::qreg_low4
+                | ArmInlineAsmRegClass::qreg_low8,
+            ),
+            Abi::Vector { element, count: count @ (4 | 8) },
+        ) if element.primitive() == Primitive::Float(Float::F16) => {
+            bx.bitcast(value, bx.type_vector(bx.type_i16(), count))
+        }
         (InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg), Abi::Scalar(s)) => {
             match s.primitive() {
                 // MIPS only supports register-length arithmetics.
@@ -1158,6 +1171,19 @@ fn llvm_fixup_output<'ll, 'tcx>(
                 value
             }
         }
+        (
+            InlineAsmRegClass::Arm(
+                ArmInlineAsmRegClass::dreg
+                | ArmInlineAsmRegClass::dreg_low8
+                | ArmInlineAsmRegClass::dreg_low16
+                | ArmInlineAsmRegClass::qreg
+                | ArmInlineAsmRegClass::qreg_low4
+                | ArmInlineAsmRegClass::qreg_low8,
+            ),
+            Abi::Vector { element, count: count @ (4 | 8) },
+        ) if element.primitive() == Primitive::Float(Float::F16) => {
+            bx.bitcast(value, bx.type_vector(bx.type_f16(), count))
+        }
         (InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg), Abi::Scalar(s)) => {
             match s.primitive() {
                 // MIPS only supports register-length arithmetics.
@@ -1269,6 +1295,19 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
             } else {
                 layout.llvm_type(cx)
             }
+        }
+        (
+            InlineAsmRegClass::Arm(
+                ArmInlineAsmRegClass::dreg
+                | ArmInlineAsmRegClass::dreg_low8
+                | ArmInlineAsmRegClass::dreg_low16
+                | ArmInlineAsmRegClass::qreg
+                | ArmInlineAsmRegClass::qreg_low4
+                | ArmInlineAsmRegClass::qreg_low8,
+            ),
+            Abi::Vector { element, count: count @ (4 | 8) },
+        ) if element.primitive() == Primitive::Float(Float::F16) => {
+            cx.type_vector(cx.type_i16(), count)
         }
         (InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg), Abi::Scalar(s)) => {
             match s.primitive() {

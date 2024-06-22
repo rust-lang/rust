@@ -12,7 +12,7 @@ help: consider adding return type
    |
 LL ~ fn main() -> Result<(), Box<dyn std::error::Error>> {
 LL |     // error for a `Try` type on a non-`Try` fn
- ...
+...
 LL |     try_trait_generic::<()>();
 LL + 
 LL +     Ok(())

@@ -510,7 +510,7 @@ hir_analysis_ty_param_some = type parameter `{$param}` must be used as the type 
     .note = implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
     .only_note = only traits defined in the current crate can be implemented for a type parameter
 
-hir_analysis_type_of = {$type_of}
+hir_analysis_type_of = {$ty}
 
 hir_analysis_typeof_reserved_keyword_used =
     `typeof` is a reserved keyword but unimplemented
@@ -566,7 +566,7 @@ hir_analysis_value_of_associated_struct_already_specified =
 hir_analysis_variadic_function_compatible_convention = C-variadic function must have a compatible calling convention, like {$conventions}
     .label = C-variadic function must have a compatible calling convention
 
-hir_analysis_variances_of = {$variances_of}
+hir_analysis_variances_of = {$variances}
 
 hir_analysis_where_clause_on_main = `main` function is not allowed to have a `where` clause
     .label = `main` cannot have a `where` clause
