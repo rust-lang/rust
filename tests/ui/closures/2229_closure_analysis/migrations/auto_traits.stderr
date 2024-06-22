@@ -17,7 +17,7 @@ help: add a dummy let to cause `fptr` to be fully captured
    |
 LL ~     thread::spawn(move || { let _ = &fptr; unsafe {
 LL |
- ...
+...
 LL |
 LL ~     } }).join().unwrap();
    |
@@ -39,7 +39,7 @@ help: add a dummy let to cause `fptr` to be fully captured
    |
 LL ~     thread::spawn(move || { let _ = &fptr; unsafe {
 LL |
- ...
+...
 LL |
 LL ~     } }).join().unwrap();
    |

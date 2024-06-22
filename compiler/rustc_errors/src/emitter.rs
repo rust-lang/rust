@@ -1905,7 +1905,7 @@ impl HumanEmitter {
                     //
                     // LL | this line was highlighted
                     // LL | this line is just for context
-                    //   ...
+                    // ...
                     // LL | this line is just for context
                     // LL | this line was highlighted
                     _ => {
@@ -1926,7 +1926,7 @@ impl HumanEmitter {
                             )
                         }
 
-                        buffer.puts(row_num, max_line_num_len - 1, "...", Style::LineNumber);
+                        buffer.puts(row_num, 0, "...", Style::LineNumber);
                         row_num += 1;
 
                         if let Some((p, l)) = last_line {
