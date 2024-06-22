@@ -412,7 +412,7 @@ mod desc {
     pub const parse_merge_functions: &str = "one of: `disabled`, `trampolines`, or `aliases`";
     pub const parse_symbol_mangling_version: &str =
         "one of: `legacy`, `v0` (RFC 2603), or `hashed`";
-    pub const parse_src_file_hash: &str = "either `md5` or `sha1`";
+    pub const parse_src_file_hash: &str = "either `md5`, `sha1`, or `sha256`";
     pub const parse_relocation_model: &str =
         "one of supported relocation models (`rustc --print relocation-models`)";
     pub const parse_code_model: &str = "one of supported code models (`rustc --print code-models`)";
@@ -1609,6 +1609,8 @@ options! {
         "instrument control-flow architecture protection"),
     check_cfg_all_expected: bool = (false, parse_bool, [UNTRACKED],
         "show all expected values in check-cfg diagnostics (default: no)"),
+    checksum_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_src_file_hash, [TRACKED],
+        "hash algorithm of source files used to check freshness in cargo (`md5`, `sha1`, or `sha256`)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
