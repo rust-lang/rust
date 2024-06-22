@@ -478,7 +478,7 @@ mod cgroups {
 
     use crate::borrow::Cow;
     use crate::ffi::OsString;
-    use crate::fs::{try_exists, File};
+    use crate::fs::{exists, File};
     use crate::io::Read;
     use crate::io::{BufRead, BufReader};
     use crate::os::unix::ffi::OsStringExt;
@@ -556,7 +556,7 @@ mod cgroups {
         path.push("cgroup.controllers");
 
         // skip if we're not looking at cgroup2
-        if matches!(try_exists(&path), Err(_) | Ok(false)) {
+        if matches!(exists(&path), Err(_) | Ok(false)) {
             return usize::MAX;
         };
 
@@ -613,7 +613,7 @@ mod cgroups {
             path.push(&group_path);
 
             // skip if we guessed the mount incorrectly
-            if matches!(try_exists(&path), Err(_) | Ok(false)) {
+            if matches!(exists(&path), Err(_) | Ok(false)) {
                 continue;
             }
 
