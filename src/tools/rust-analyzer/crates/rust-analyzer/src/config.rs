@@ -341,8 +341,8 @@ config_data! {
         assist_emitMustUse: bool               = false,
         /// Placeholder expression to use for missing expressions in assists.
         assist_expressionFillDefault: ExprFillDefaultDef              = ExprFillDefaultDef::Todo,
-        /// Term search fuel in "units of work" for assists (Defaults to 400).
-        assist_termSearch_fuel: usize = 400,
+        /// Term search fuel in "units of work" for assists (Defaults to 1800).
+        assist_termSearch_fuel: usize = 1800,
 
         /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
         imports_granularity_enforce: bool              = false,
@@ -426,8 +426,8 @@ config_data! {
         }"#).unwrap(),
         /// Whether to enable term search based snippets like `Some(foo.bar().baz())`.
         completion_termSearch_enable: bool = false,
-        /// Term search fuel in "units of work" for autocompletion (Defaults to 200).
-        completion_termSearch_fuel: usize = 200,
+        /// Term search fuel in "units of work" for autocompletion (Defaults to 1000).
+        completion_termSearch_fuel: usize = 1000,
 
         /// Controls file watching implementation.
         files_watcher: FilesWatcherDef = FilesWatcherDef::Client,

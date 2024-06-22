@@ -448,6 +448,7 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
             AssocItem::Function(f) => Some((imp, ty, f)),
             _ => None,
         })
+        .filter(|_| should_continue())
         .filter_map(move |(imp, ty, it)| {
             let fn_generics = GenericDef::from(it);
             let imp_generics = GenericDef::from(imp);
@@ -636,6 +637,7 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
             AssocItem::Function(f) => Some((imp, ty, f)),
             _ => None,
         })
+        .filter(|_| should_continue())
         .filter_map(move |(imp, ty, it)| {
             let fn_generics = GenericDef::from(it);
             let imp_generics = GenericDef::from(imp);

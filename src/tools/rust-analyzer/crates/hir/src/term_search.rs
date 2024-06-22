@@ -238,7 +238,7 @@ pub struct TermSearchConfig {
 
 impl Default for TermSearchConfig {
     fn default() -> Self {
-        Self { enable_borrowcheck: true, many_alternatives_threshold: 1, fuel: 400 }
+        Self { enable_borrowcheck: true, many_alternatives_threshold: 1, fuel: 1200 }
     }
 }
 
