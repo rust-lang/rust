@@ -15,7 +15,6 @@ use crate::errors::TypeofReservedKeywordUsed;
 
 use super::bad_placeholder;
 use super::ItemCtxt;
-pub use opaque::test_opaque_hidden_types;
 
 mod opaque;
 
