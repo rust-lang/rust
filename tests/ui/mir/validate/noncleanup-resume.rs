@@ -2,7 +2,7 @@
 //
 //@ failure-status: 101
 //@ dont-check-compiler-stderr
-//@ error-pattern: resume on non-cleanup block
+//@ error-pattern: Cannot `UnwindResume` from non-cleanup basic block
 #![feature(custom_mir, core_intrinsics)]
 extern crate core;
 use core::intrinsics::mir::*;

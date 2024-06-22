@@ -1,7 +1,6 @@
-//~ ERROR
-
 //@ build-fail
 //@ ignore-32bit
+//@ error-pattern: evaluation of `<S<u8> as std::mem::SizedTypeProperties>::SIZE_IN_BYTES` failed
 
 struct S<T> {
     x: [T; !0],

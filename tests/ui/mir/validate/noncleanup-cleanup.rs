@@ -2,7 +2,8 @@
 //
 //@ failure-status: 101
 //@ dont-check-compiler-stderr
-//@ error-pattern: cleanuppad mismatch
+//@ error-pattern: Unwind edge to
+//@ error-pattern: violates unwind invariants (cleanup false -> false)
 #![feature(custom_mir, core_intrinsics)]
 extern crate core;
 use core::intrinsics::mir::*;

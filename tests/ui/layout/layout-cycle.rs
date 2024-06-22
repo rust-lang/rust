@@ -1,6 +1,6 @@
 //@ build-fail
-//~^ ERROR: a cycle occurred during layout computation
-//~| ERROR: cycle detected when computing layout of
+//~^ ERROR: cycle detected when computing layout of `S<S<()>>`
+//@ error-pattern: evaluation of `<S<S<()>> as std::mem::SizedTypeProperties>::SIZE_IN_BYTES` failed
 
 // Issue #111176 -- ensure that we do not emit ICE on layout cycles
 

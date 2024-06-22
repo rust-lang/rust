@@ -1,4 +1,22 @@
-error: values of the type `[u8; usize::MAX]` are too big for the current architecture
+error[E0080]: evaluation of `<Foo<u8> as std::mem::SizedTypeProperties>::SIZE_IN_BYTES` failed
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+   = note: values of the type `[u8; usize::MAX]` are too big for the current architecture
+
+note: erroneous constant encountered
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+
+note: erroneous constant encountered
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: the above error was encountered while instantiating `fn std::mem::size_of::<Foo<u8>>`
+  --> $DIR/debuginfo-type-name-layout-ice-94961-2.rs:19:5
+   |
+LL |     std::mem::size_of::<Foo<u8>>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0080`.

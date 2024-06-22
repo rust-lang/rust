@@ -310,7 +310,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 #[rustc_const_stable(feature = "const_mem_size_of", since = "1.24.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of")]
 pub const fn size_of<T>() -> usize {
-    intrinsics::size_of::<T>()
+    T::SIZE_IN_BYTES
 }
 
 /// Returns the size of the pointed-to value in bytes.
@@ -415,7 +415,7 @@ pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(note = "use `align_of` instead", since = "1.2.0", suggestion = "align_of")]
 pub fn min_align_of<T>() -> usize {
-    intrinsics::min_align_of::<T>()
+    T::ALIGN_IN_BYTES
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
@@ -463,7 +463,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_align_of", since = "1.24.0")]
 pub const fn align_of<T>() -> usize {
-    intrinsics::min_align_of::<T>()
+    T::ALIGN_IN_BYTES
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
@@ -1235,6 +1235,14 @@ pub trait SizedTypeProperties: Sized {
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
     const IS_ZST: bool = size_of::<Self>() == 0;
+
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    const SIZE_IN_BYTES: usize = intrinsics::size_of::<Self>();
+
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    const ALIGN_IN_BYTES: usize = intrinsics::min_align_of::<Self>();
 }
 #[doc(hidden)]
 #[unstable(feature = "sized_type_properties", issue = "none")]

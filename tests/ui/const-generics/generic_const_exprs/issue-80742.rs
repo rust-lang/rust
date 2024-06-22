@@ -1,10 +1,4 @@
 //@ check-fail
-//@ known-bug: #97477
-//@ failure-status: 101
-//@ normalize-stderr-test "note: .*\n\n" -> ""
-//@ normalize-stderr-test "thread 'rustc' panicked.*\n" -> ""
-//@ normalize-stderr-test "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "
-//@ rustc-env:RUST_BACKTRACE=0
 
 // This test used to cause an ICE in rustc_mir::interpret::step::eval_rvalue_into_place
 
@@ -34,4 +28,6 @@ where
 
 fn main() {
     let dst = Inline::<dyn Debug>::new(0);
+    //~^ ERROR `new` exists for struct `Inline<dyn Debug>`, but
+    //~| ERROR the size for values of type `dyn Debug` cannot be known at compilation time
 }

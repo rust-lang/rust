@@ -1,9 +1,14 @@
 error[E0720]: cannot resolve opaque type
-  --> $DIR/infinite-cycle-involving-weak.rs:3:10
+  --> $DIR/infinite-cycle-involving-weak.rs:4:10
    |
 LL | type T = impl Copy;
    |          ^^^^^^^^^ cannot resolve opaque type
 
-error: aborting due to 1 previous error
+error[E0275]: overflow normalizing the opaque type `T::{opaque#0}`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`infinite_cycle_involving_weak`)
 
-For more information about this error, try `rustc --explain E0720`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0275, E0720.
+For more information about an error, try `rustc --explain E0275`.
