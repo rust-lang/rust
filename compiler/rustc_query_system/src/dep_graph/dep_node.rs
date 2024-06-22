@@ -304,6 +304,9 @@ impl<HCX> ToStableHashKey<HCX> for WorkProductId {
 impl StableOrd for WorkProductId {
     // Fingerprint can use unstable (just a tuple of `u64`s), so WorkProductId can as well
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // `WorkProductId` sort order is not affected by (de)serialization.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.

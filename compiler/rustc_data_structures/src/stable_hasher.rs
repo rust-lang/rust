@@ -238,15 +238,21 @@ pub trait ToStableHashKey<HCX> {
 /// The associated constant `CAN_USE_UNSTABLE_SORT` denotes whether
 /// unstable sorting can be used for this type. Set to true if and
 /// only if `a == b` implies `a` and `b` are fully indistinguishable.
-///
-/// **Be careful when implementing this trait, as an incorrect
-/// implementation can cause miscompilation!**
 pub trait StableOrd: Ord {
     const CAN_USE_UNSTABLE_SORT: bool;
+
+    /// Marker to ensure that implementors have carefully considered
+    /// whether their `Ord` implementation obeys this trait's contract.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: ();
 }
 
 impl<T: StableOrd> StableOrd for &T {
     const CAN_USE_UNSTABLE_SORT: bool = T::CAN_USE_UNSTABLE_SORT;
+
+    // Ordering of a reference is exactly that of the referent, and since
+    // the ordering of the referet is stable so must be the ordering of the
+    // reference.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 /// This is a companion trait to `StableOrd`. Some types like `Symbol` can be
@@ -295,6 +301,10 @@ macro_rules! impl_stable_traits_for_trivial_type {
 
         impl $crate::stable_hasher::StableOrd for $t {
             const CAN_USE_UNSTABLE_SORT: bool = true;
+
+            // Encoding and decoding doesn't change the bytes of trivial types
+            // and `Ord::cmp` depends only on those bytes.
+            const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
         }
     };
 }
@@ -332,6 +342,10 @@ impl<CTX> HashStable<CTX> for Hash128 {
 
 impl StableOrd for Hash128 {
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // Encoding and decoding doesn't change the bytes of `Hash128`
+    // and `Ord::cmp` depends only on those bytes.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<CTX> HashStable<CTX> for ! {
@@ -397,6 +411,10 @@ impl<T1: HashStable<CTX>, T2: HashStable<CTX>, CTX> HashStable<CTX> for (T1, T2)
 
 impl<T1: StableOrd, T2: StableOrd> StableOrd for (T1, T2) {
     const CAN_USE_UNSTABLE_SORT: bool = T1::CAN_USE_UNSTABLE_SORT && T2::CAN_USE_UNSTABLE_SORT;
+
+    // Ordering of tuples is a pure function of their elements' ordering, and since
+    // the ordering of each element is stable so must be the ordering of the tuple.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<T1, T2, T3, CTX> HashStable<CTX> for (T1, T2, T3)
@@ -416,6 +434,10 @@ where
 impl<T1: StableOrd, T2: StableOrd, T3: StableOrd> StableOrd for (T1, T2, T3) {
     const CAN_USE_UNSTABLE_SORT: bool =
         T1::CAN_USE_UNSTABLE_SORT && T2::CAN_USE_UNSTABLE_SORT && T3::CAN_USE_UNSTABLE_SORT;
+
+    // Ordering of tuples is a pure function of their elements' ordering, and since
+    // the ordering of each element is stable so must be the ordering of the tuple.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<T1, T2, T3, T4, CTX> HashStable<CTX> for (T1, T2, T3, T4)
@@ -439,6 +461,10 @@ impl<T1: StableOrd, T2: StableOrd, T3: StableOrd, T4: StableOrd> StableOrd for (
         && T2::CAN_USE_UNSTABLE_SORT
         && T3::CAN_USE_UNSTABLE_SORT
         && T4::CAN_USE_UNSTABLE_SORT;
+
+    // Ordering of tuples is a pure function of their elements' ordering, and since
+    // the ordering of each element is stable so must be the ordering of the tuple.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<T: HashStable<CTX>, CTX> HashStable<CTX> for [T] {
@@ -533,6 +559,10 @@ impl<CTX> HashStable<CTX> for str {
 
 impl StableOrd for &str {
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // Encoding and decoding doesn't change the bytes of string slices
+    // and `Ord::cmp` depends only on those bytes.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<CTX> HashStable<CTX> for String {
@@ -542,10 +572,12 @@ impl<CTX> HashStable<CTX> for String {
     }
 }
 
-// String comparison only depends on their contents and the
-// contents are not changed by (de-)serialization.
 impl StableOrd for String {
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // String comparison only depends on their contents and the
+    // contents are not changed by (de-)serialization.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<HCX> ToStableHashKey<HCX> for String {
@@ -571,9 +603,11 @@ impl<CTX> HashStable<CTX> for bool {
     }
 }
 
-// sort order of bools is not changed by (de-)serialization.
 impl StableOrd for bool {
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // sort order of bools is not changed by (de-)serialization.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<T, CTX> HashStable<CTX> for Option<T>
@@ -591,9 +625,11 @@ where
     }
 }
 
-// the Option wrapper does not add instability to comparison.
 impl<T: StableOrd> StableOrd for Option<T> {
     const CAN_USE_UNSTABLE_SORT: bool = T::CAN_USE_UNSTABLE_SORT;
+
+    // the Option wrapper does not add instability to comparison.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<T1, T2, CTX> HashStable<CTX> for Result<T1, T2>
