@@ -38,12 +38,9 @@ fn main() {
     }
 
     if target.starts_with("i586") || target.starts_with("i686") {
-        // 32-bit x86 seems to not have `__fixunstfti`, but does have everything else
+        // 32-bit x86 does not have `__fixunstfti`/`__fixtfti` but does have everything else
         features.insert(Feature::NoSysF128IntConvert);
-    }
-
-    if target.contains("-unknown-linux-") {
-        // No `__extendhftf2` on x86, no `__trunctfhf2` on aarch64
+        // FIXME: 32-bit x86 has a bug in `f128 -> f16` system libraries
         features.insert(Feature::NoSysF16F128Convert);
     }
 
