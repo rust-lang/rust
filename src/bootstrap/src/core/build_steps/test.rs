@@ -2349,7 +2349,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
 
     cmd = cmd.delay_failure();
     if !builder.config.verbose_tests {
-        cmd = cmd.quiet();
+        cmd = cmd.print_on_failure();
     }
     builder.run(cmd).is_success()
 }

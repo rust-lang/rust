@@ -522,11 +522,12 @@ impl Build {
         let submodule_git = || helpers::git(Some(&absolute_path));
 
         // Determine commit checked out in submodule.
-        let checked_out_hash = output(submodule_git().args(["rev-parse", "HEAD"]));
+        let checked_out_hash = output(&mut submodule_git().args(["rev-parse", "HEAD"]).command);
         let checked_out_hash = checked_out_hash.trim_end();
         // Determine commit that the submodule *should* have.
-        let recorded =
-            output(helpers::git(Some(&self.src)).args(["ls-tree", "HEAD"]).arg(relative_path));
+        let recorded = output(
+            &mut helpers::git(Some(&self.src)).args(["ls-tree", "HEAD"]).arg(relative_path).command,
+        );
         let actual_hash = recorded
             .split_whitespace()
             .nth(2)
@@ -549,6 +550,7 @@ impl Build {
             let current_branch = {
                 let output = helpers::git(Some(&self.src))
                     .args(["symbolic-ref", "--short", "HEAD"])
+                    .command
                     .stderr(Stdio::inherit())
                     .output();
                 let output = t!(output);
@@ -574,7 +576,7 @@ impl Build {
             git
         };
         // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
-        if !update(true).status().map_or(false, |status| status.success()) {
+        if !update(true).command.status().map_or(false, |status| status.success()) {
             self.run(update(false));
         }
 
@@ -605,12 +607,15 @@ impl Build {
         if !self.config.submodules(self.rust_info()) {
             return;
         }
-        let output = output(
-            helpers::git(Some(&self.src))
-                .args(["config", "--file"])
-                .arg(self.config.src.join(".gitmodules"))
-                .args(["--get-regexp", "path"]),
-        );
+        let output = self
+            .run(
+                helpers::git(Some(&self.src))
+                    .quiet()
+                    .args(["config", "--file"])
+                    .arg(self.config.src.join(".gitmodules"))
+                    .args(["--get-regexp", "path"]),
+            )
+            .stdout();
         for line in output.lines() {
             // Look for `submodule.$name.path = $path`
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
@@ -978,7 +983,10 @@ impl Build {
                 command.command.status().map(|status| status.into()),
                 matches!(mode, OutputMode::All),
             ),
-            OutputMode::OnlyOnFailure => (command.command.output().map(|o| o.into()), true),
+            mode @ (OutputMode::OnlyOnFailure | OutputMode::Quiet) => (
+                command.command.output().map(|o| o.into()),
+                matches!(mode, OutputMode::OnlyOnFailure),
+            ),
         };
 
         let output = match output {
@@ -1508,14 +1516,18 @@ impl Build {
             // Figure out how many merge commits happened since we branched off master.
             // That's our beta number!
             // (Note that we use a `..` range, not the `...` symmetric difference.)
-            output(
-                helpers::git(Some(&self.src)).arg("rev-list").arg("--count").arg("--merges").arg(
-                    format!(
+            self.run(
+                helpers::git(Some(&self.src))
+                    .quiet()
+                    .arg("rev-list")
+                    .arg("--count")
+                    .arg("--merges")
+                    .arg(format!(
                         "refs/remotes/origin/{}..HEAD",
                         self.config.stage0_metadata.config.nightly_branch
-                    ),
-                ),
+                    )),
             )
+            .stdout()
         });
         let n = count.trim().parse().unwrap();
         self.prerelease_version.set(Some(n));
@@ -1935,6 +1947,7 @@ fn envify(s: &str) -> String {
 pub fn generate_smart_stamp_hash(dir: &Path, additional_input: &str) -> String {
     let diff = helpers::git(Some(dir))
         .arg("diff")
+        .command
         .output()
         .map(|o| String::from_utf8(o.stdout).unwrap_or_default())
         .unwrap_or_default();
@@ -1944,6 +1957,7 @@ pub fn generate_smart_stamp_hash(dir: &Path, additional_input: &str) -> String {
         .arg("--porcelain")
         .arg("-z")
         .arg("--untracked-files=normal")
+        .command
         .output()
         .map(|o| String::from_utf8(o.stdout).unwrap_or_default())
         .unwrap_or_default();

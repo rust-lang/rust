@@ -23,6 +23,8 @@ pub enum OutputMode {
     OnlyOutput,
     /// Suppress the output if the command succeeds, otherwise print the output.
     OnlyOnFailure,
+    /// Suppress the output of the command.
+    Quiet,
 }
 
 /// Wrapper around `std::process::Command`.
@@ -105,8 +107,13 @@ impl BootstrapCommand {
     }
 
     /// Do not print the output of the command, unless it fails.
-    pub fn quiet(self) -> Self {
+    pub fn print_on_failure(self) -> Self {
         self.output_mode(OutputMode::OnlyOnFailure)
+    }
+
+    /// Do not print the output of the command.
+    pub fn quiet(self) -> Self {
+        self.output_mode(OutputMode::Quiet)
     }
 
     pub fn output_mode(self, output_mode: OutputMode) -> Self {
@@ -116,15 +123,15 @@ impl BootstrapCommand {
 
 /// FIXME: This implementation is temporary, until all `Command` invocations are migrated to
 /// `BootstrapCommand`.
-impl<'a> From<&'a mut Command> for BootstrapCommand {
-    fn from(command: &'a mut Command) -> Self {
+impl<'a> From<&'a mut BootstrapCommand> for BootstrapCommand {
+    fn from(command: &'a mut BootstrapCommand) -> Self {
         // This is essentially a manual `Command::clone`
-        let mut cmd = Command::new(command.get_program());
-        if let Some(dir) = command.get_current_dir() {
+        let mut cmd = Command::new(command.command.get_program());
+        if let Some(dir) = command.command.get_current_dir() {
             cmd.current_dir(dir);
         }
-        cmd.args(command.get_args());
-        for (key, value) in command.get_envs() {
+        cmd.args(command.command.get_args());
+        for (key, value) in command.command.get_envs() {
             match value {
                 Some(value) => {
                     cmd.env(key, value);
@@ -134,16 +141,11 @@ impl<'a> From<&'a mut Command> for BootstrapCommand {
                 }
             }
         }
-
-        cmd.into()
-    }
-}
-
-/// FIXME: This implementation is temporary, until all `Command` invocations are migrated to
-/// `BootstrapCommand`.
-impl<'a> From<&'a mut BootstrapCommand> for BootstrapCommand {
-    fn from(command: &'a mut BootstrapCommand) -> Self {
-        BootstrapCommand::from(&mut command.command)
+        Self {
+            command: cmd,
+            output_mode: command.output_mode,
+            failure_behavior: command.failure_behavior,
+        }
     }
 }
 

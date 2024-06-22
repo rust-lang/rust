@@ -172,7 +172,7 @@ pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
             // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
             config.src.join("src/version"),
         ]);
-        output(&mut rev_list).trim().to_owned()
+        output(&mut rev_list.command).trim().to_owned()
     } else if let Some(info) = channel::read_commit_info_file(&config.src) {
         info.sha.trim().to_owned()
     } else {
@@ -253,7 +253,8 @@ pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
         // We assume we have access to git, so it's okay to unconditionally pass
         // `true` here.
         let llvm_sha = detect_llvm_sha(config, true);
-        let head_sha = output(helpers::git(Some(&config.src)).arg("rev-parse").arg("HEAD"));
+        let head_sha =
+            output(&mut helpers::git(Some(&config.src)).arg("rev-parse").arg("HEAD").command);
         let head_sha = head_sha.trim();
         llvm_sha == head_sha
     }
