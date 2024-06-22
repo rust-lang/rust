@@ -581,7 +581,7 @@ impl Build {
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
         let has_local_modifications = self
-            .run_tracked(
+            .run(
                 BootstrapCommand::from(submodule_git().args(["diff-index", "--quiet", "HEAD"]))
                     .allow_failure(),
             )
@@ -959,10 +959,13 @@ impl Build {
     }
 
     /// Execute a command and return its output.
-    fn run_tracked(&self, command: BootstrapCommand<'_>) -> CommandOutput {
+    /// This method should be used for all command executions in bootstrap.
+    fn run<'a, C: Into<BootstrapCommand<'a>>>(&self, command: C) -> CommandOutput {
         if self.config.dry_run() {
             return CommandOutput::default();
         }
+
+        let command = command.into();
 
         self.verbose(|| println!("running: {command:?}"));
 
@@ -1020,11 +1023,6 @@ impl Build {
             }
         }
         output
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
-    fn run(&self, cmd: &mut Command) {
-        self.run_tracked(BootstrapCommand::from(cmd));
     }
 
     /// Check if verbosity is greater than the `level`

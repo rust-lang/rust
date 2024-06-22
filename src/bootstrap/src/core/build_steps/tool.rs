@@ -918,7 +918,7 @@ impl Step for LibcxxVersionTool {
                 .arg(&executable)
                 .arg(builder.src.join("src/tools/libcxx-version/main.cpp"));
 
-            builder.run_tracked(BootstrapCommand::from(&mut cmd));
+            builder.run(BootstrapCommand::from(&mut cmd));
 
             if !executable.exists() {
                 panic!("Something went wrong. {} is not present", executable.display());

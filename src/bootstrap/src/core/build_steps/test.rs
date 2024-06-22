@@ -156,7 +156,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         let _guard =
             builder.msg(Kind::Test, compiler.stage, "Linkcheck", bootstrap_host, bootstrap_host);
         let _time = helpers::timeit(builder);
-        builder.run_tracked(
+        builder.run(
             BootstrapCommand::from(linkchecker.arg(builder.out.join(host.triple).join("doc")))
                 .delay_failure(),
         );
@@ -216,7 +216,7 @@ impl Step for HtmlCheck {
             builder,
         ));
 
-        builder.run_tracked(
+        builder.run(
             BootstrapCommand::from(
                 builder.tool_cmd(Tool::HtmlChecker).arg(builder.doc_out(self.target)),
             )
@@ -267,7 +267,7 @@ impl Step for Cargotest {
             .env("RUSTC", builder.rustc(compiler))
             .env("RUSTDOC", builder.rustdoc(compiler));
         add_rustdoc_cargo_linker_args(cmd, builder, compiler.host, LldThreads::No);
-        builder.run_tracked(BootstrapCommand::from(cmd).delay_failure());
+        builder.run(BootstrapCommand::from(cmd).delay_failure());
     }
 }
 
@@ -766,7 +766,7 @@ impl Step for Clippy {
         let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
 
         // Clippy reports errors if it blessed the outputs
-        if builder.run_tracked(BootstrapCommand::from(&mut cargo).allow_failure()).is_success() {
+        if builder.run(BootstrapCommand::from(&mut cargo).allow_failure()).is_success() {
             // The tests succeeded; nothing to do.
             return;
         }
@@ -819,7 +819,7 @@ impl Step for RustdocTheme {
             .env("RUSTC_BOOTSTRAP", "1");
         cmd.args(linker_args(builder, self.compiler.host, LldThreads::No));
 
-        builder.run_tracked(BootstrapCommand::from(&mut cmd).delay_failure());
+        builder.run(BootstrapCommand::from(&mut cmd).delay_failure());
     }
 }
 
@@ -1097,7 +1097,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         }
 
         builder.info("tidy check");
-        builder.run_tracked(BootstrapCommand::from(&mut cmd).delay_failure());
+        builder.run(BootstrapCommand::from(&mut cmd).delay_failure());
 
         builder.info("x.py completions check");
         let [bash, zsh, fish, powershell] = ["x.py.sh", "x.py.zsh", "x.py.fish", "x.py.ps1"]
@@ -2184,11 +2184,8 @@ impl BookTest {
         );
         let _time = helpers::timeit(builder);
         let cmd = BootstrapCommand::from(&mut rustbook_cmd).delay_failure();
-        let toolstate = if builder.run_tracked(cmd).is_success() {
-            ToolState::TestPass
-        } else {
-            ToolState::TestFail
-        };
+        let toolstate =
+            if builder.run(cmd).is_success() { ToolState::TestPass } else { ToolState::TestFail };
         builder.save_toolstate(self.name, toolstate);
     }
 
@@ -2317,8 +2314,7 @@ impl Step for ErrorIndex {
         let guard =
             builder.msg(Kind::Test, compiler.stage, "error-index", compiler.host, compiler.host);
         let _time = helpers::timeit(builder);
-        builder
-            .run_tracked(BootstrapCommand::from(&mut tool).output_mode(OutputMode::OnlyOnFailure));
+        builder.run(BootstrapCommand::from(&mut tool).output_mode(OutputMode::OnlyOnFailure));
         drop(guard);
         // The tests themselves need to link to std, so make sure it is
         // available.
@@ -2351,7 +2347,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
     if !builder.config.verbose_tests {
         cmd = cmd.quiet();
     }
-    builder.run_tracked(cmd).is_success()
+    builder.run(cmd).is_success()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2377,11 +2373,8 @@ impl Step for RustcGuide {
         let src = builder.src.join(relative_path);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
         let cmd = BootstrapCommand::from(rustbook_cmd.arg("linkcheck").arg(&src)).delay_failure();
-        let toolstate = if builder.run_tracked(cmd).is_success() {
-            ToolState::TestPass
-        } else {
-            ToolState::TestFail
-        };
+        let toolstate =
+            if builder.run(cmd).is_success() { ToolState::TestPass } else { ToolState::TestFail };
         builder.save_toolstate("rustc-dev-guide", toolstate);
     }
 }
@@ -2994,7 +2987,7 @@ impl Step for Bootstrap {
             .current_dir(builder.src.join("src/bootstrap/"));
         // NOTE: we intentionally don't pass test_args here because the args for unittest and cargo test are mutually incompatible.
         // Use `python -m unittest` manually if you want to pass arguments.
-        builder.run_tracked(BootstrapCommand::from(&mut check_bootstrap).delay_failure());
+        builder.run(BootstrapCommand::from(&mut check_bootstrap).delay_failure());
 
         let mut cmd = Command::new(&builder.initial_cargo);
         cmd.arg("test")
@@ -3071,7 +3064,7 @@ impl Step for TierCheck {
             self.compiler.host,
             self.compiler.host,
         );
-        builder.run_tracked(BootstrapCommand::from(&mut cargo.into()).delay_failure());
+        builder.run(BootstrapCommand::from(&mut cargo.into()).delay_failure());
     }
 }
 
@@ -3157,7 +3150,7 @@ impl Step for RustInstaller {
         cmd.env("CARGO", &builder.initial_cargo);
         cmd.env("RUSTC", &builder.initial_rustc);
         cmd.env("TMP_DIR", &tmpdir);
-        builder.run_tracked(BootstrapCommand::from(&mut cmd).delay_failure());
+        builder.run(BootstrapCommand::from(&mut cmd).delay_failure());
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -3352,7 +3345,7 @@ impl Step for CodegenCranelift {
         cargo.args(builder.config.test_args());
 
         let mut cmd: Command = cargo.into();
-        builder.run_tracked(BootstrapCommand::from(&mut cmd));
+        builder.run(BootstrapCommand::from(&mut cmd));
     }
 }
 
@@ -3478,6 +3471,6 @@ impl Step for CodegenGCC {
         cargo.args(builder.config.test_args());
 
         let mut cmd: Command = cargo.into();
-        builder.run_tracked(BootstrapCommand::from(&mut cmd));
+        builder.run(BootstrapCommand::from(&mut cmd));
     }
 }
