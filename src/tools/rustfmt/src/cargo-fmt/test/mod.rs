@@ -20,7 +20,7 @@ fn default_options() {
 
 #[test]
 fn good_options() {
-    let o = Opts::parse_from(&[
+    let o = Opts::parse_from([
         "test",
         "-q",
         "-p",
@@ -48,7 +48,7 @@ fn good_options() {
 fn unexpected_option() {
     assert!(
         Opts::command()
-            .try_get_matches_from(&["test", "unexpected"])
+            .try_get_matches_from(["test", "unexpected"])
             .is_err()
     );
 }
@@ -57,7 +57,7 @@ fn unexpected_option() {
 fn unexpected_flag() {
     assert!(
         Opts::command()
-            .try_get_matches_from(&["test", "--flag"])
+            .try_get_matches_from(["test", "--flag"])
             .is_err()
     );
 }
@@ -66,19 +66,19 @@ fn unexpected_flag() {
 fn mandatory_separator() {
     assert!(
         Opts::command()
-            .try_get_matches_from(&["test", "--emit"])
+            .try_get_matches_from(["test", "--emit"])
             .is_err()
     );
     assert!(
         Opts::command()
-            .try_get_matches_from(&["test", "--", "--emit"])
+            .try_get_matches_from(["test", "--", "--emit"])
             .is_ok()
     );
 }
 
 #[test]
 fn multiple_packages_one_by_one() {
-    let o = Opts::parse_from(&[
+    let o = Opts::parse_from([
         "test",
         "-p",
         "package1",
@@ -92,7 +92,7 @@ fn multiple_packages_one_by_one() {
 
 #[test]
 fn multiple_packages_grouped() {
-    let o = Opts::parse_from(&[
+    let o = Opts::parse_from([
         "test",
         "--package",
         "package1",
@@ -108,7 +108,7 @@ fn multiple_packages_grouped() {
 fn empty_packages_1() {
     assert!(
         Opts::command()
-            .try_get_matches_from(&["test", "-p"])
+            .try_get_matches_from(["test", "-p"])
             .is_err()
     );
 }
@@ -117,7 +117,7 @@ fn empty_packages_1() {
 fn empty_packages_2() {
     assert!(
         Opts::command()
-            .try_get_matches_from(&["test", "-p", "--", "--check"])
+            .try_get_matches_from(["test", "-p", "--", "--check"])
             .is_err()
     );
 }
@@ -126,7 +126,7 @@ fn empty_packages_2() {
 fn empty_packages_3() {
     assert!(
         Opts::command()
-            .try_get_matches_from(&["test", "-p", "--verbose"])
+            .try_get_matches_from(["test", "-p", "--verbose"])
             .is_err()
     );
 }
@@ -135,7 +135,7 @@ fn empty_packages_3() {
 fn empty_packages_4() {
     assert!(
         Opts::command()
-            .try_get_matches_from(&["test", "-p", "--check"])
+            .try_get_matches_from(["test", "-p", "--check"])
             .is_err()
     );
 }
