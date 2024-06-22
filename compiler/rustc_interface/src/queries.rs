@@ -117,13 +117,6 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn write_dep_info(&'tcx self) -> Result<()> {
-        self.global_ctxt()?.enter(|tcx| {
-            passes::write_dep_info(tcx);
-        });
-        Ok(())
-    }
-
     pub fn codegen_and_build_linker(&'tcx self) -> Result<Linker> {
         self.global_ctxt()?.enter(|tcx| {
             let ongoing_codegen = passes::start_codegen(&*self.compiler.codegen_backend, tcx)?;

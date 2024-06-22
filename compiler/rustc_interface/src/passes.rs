@@ -562,7 +562,7 @@ fn resolver_for_lowering_raw<'tcx>(
     (tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate)))), resolutions)
 }
 
-pub(crate) fn write_dep_info(tcx: TyCtxt<'_>) {
+pub fn write_dep_info(tcx: TyCtxt<'_>) {
     // Make sure name resolution and macro expansion is run for
     // the side-effect of providing a complete set of all
     // accessed files and env vars.

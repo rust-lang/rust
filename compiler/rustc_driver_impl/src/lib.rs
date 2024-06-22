@@ -30,7 +30,7 @@ use rustc_errors::{
 };
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, get_codegen_backend};
-use rustc_interface::{interface, Queries};
+use rustc_interface::{interface, passes, Queries};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
@@ -399,7 +399,9 @@ fn run_compiler(
                         Ok(())
                     })?;
 
-                    queries.write_dep_info()?;
+                    queries.global_ctxt()?.enter(|tcx| {
+                        passes::write_dep_info(tcx);
+                    });
                 } else {
                     let krate = queries.parse()?;
                     pretty::print(
@@ -427,7 +429,9 @@ fn run_compiler(
                 return early_exit();
             }
 
-            queries.write_dep_info()?;
+            queries.global_ctxt()?.enter(|tcx| {
+                passes::write_dep_info(tcx);
+            });
 
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
