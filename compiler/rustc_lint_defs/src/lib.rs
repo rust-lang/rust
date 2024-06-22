@@ -754,7 +754,7 @@ pub enum BuiltinLintDiag {
 #[derive(Debug)]
 pub struct BufferedEarlyLint {
     /// The span of code that we are linting on.
-    pub span: MultiSpan,
+    pub span: Option<MultiSpan>,
 
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
@@ -792,7 +792,7 @@ impl LintBuffer {
         self.add_early_lint(BufferedEarlyLint {
             lint_id: LintId::of(lint),
             node_id,
-            span: span.into(),
+            span: Some(span.into()),
             diagnostic,
         });
     }
