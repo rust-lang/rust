@@ -5700,6 +5700,7 @@ name = "tidy"
 version = "0.1.0"
 dependencies = [
  "cargo_metadata 0.15.4",
+ "fluent-syntax",
  "ignore",
  "miropt-test-tools",
  "regex",

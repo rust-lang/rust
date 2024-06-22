@@ -341,8 +341,7 @@ const_eval_unallowed_fn_pointer_call = function pointer calls are not allowed in
 const_eval_unallowed_heap_allocations =
     allocations are not allowed in {const_eval_const_context}s
     .label = allocation not allowed in {const_eval_const_context}s
-    .teach_note =
-        The value of statics and constants must be known at compile time, and they live for the entire lifetime of a program. Creating a boxed value allocates memory on the heap at runtime, and therefore cannot be done at compile time.
+    .teach_note = The value of statics and constants must be known at compile time, and they live for the entire lifetime of a program. Creating a boxed value allocates memory on the heap at runtime, and therefore cannot be done at compile time.
 
 const_eval_unallowed_inline_asm =
     inline assembly is not allowed in {const_eval_const_context}s
