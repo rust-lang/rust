@@ -89,6 +89,8 @@ const_eval_exact_div_has_remainder =
 
 const_eval_extern_static =
     cannot access extern static ({$did})
+const_eval_extern_type_field = `extern type` field does not have a known offset
+
 const_eval_fn_ptr_call =
     function pointers need an RFC before allowed to be called in {const_eval_const_context}s
 const_eval_for_loop_into_iter_non_const =
