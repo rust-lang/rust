@@ -130,6 +130,7 @@ pub enum NonHaltingDiagnostic {
     WeakMemoryOutdatedLoad {
         ptr: Pointer,
     },
+    ExternTypeReborrow,
 }
 
 /// Level of Miri specific diagnostics
@@ -593,6 +594,8 @@ impl<'tcx> MiriMachine<'tcx> {
             RejectedIsolatedOp(_) =>
                 ("operation rejected by isolation".to_string(), DiagLevel::Warning),
             Int2Ptr { .. } => ("integer-to-pointer cast".to_string(), DiagLevel::Warning),
+            ExternTypeReborrow =>
+                ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
             | CreatedCallId(..)
@@ -630,6 +633,8 @@ impl<'tcx> MiriMachine<'tcx> {
             Int2Ptr { .. } => format!("integer-to-pointer cast"),
             WeakMemoryOutdatedLoad { ptr } =>
                 format!("weak memory emulation: outdated value returned from load at {ptr}"),
+            ExternTypeReborrow =>
+                format!("reborrow of a reference to `extern type` is not properly supported"),
         };
 
         let notes = match &e {
@@ -647,34 +652,50 @@ impl<'tcx> MiriMachine<'tcx> {
                     (
                         None,
                         format!(
-                            "This program is using integer-to-pointer casts or (equivalently) `ptr::with_exposed_provenance`, which means that Miri might miss pointer bugs in this program."
+                            "this program is using integer-to-pointer casts or (equivalently) `ptr::with_exposed_provenance`, which means that Miri might miss pointer bugs in this program"
                         ),
                     ),
                     (
                         None,
                         format!(
-                            "See https://doc.rust-lang.org/nightly/std/ptr/fn.with_exposed_provenance.html for more details on that operation."
+                            "see https://doc.rust-lang.org/nightly/std/ptr/fn.with_exposed_provenance.html for more details on that operation"
                         ),
                     ),
                     (
                         None,
                         format!(
-                            "To ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead."
+                            "to ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead"
                         ),
                     ),
                     (
                         None,
                         format!(
-                            "You can then set `MIRIFLAGS=-Zmiri-strict-provenance` to ensure you are not relying on `with_exposed_provenance` semantics."
+                            "you can then set `MIRIFLAGS=-Zmiri-strict-provenance` to ensure you are not relying on `with_exposed_provenance` semantics"
                         ),
                     ),
                     (
                         None,
                         format!(
-                            "Alternatively, `MIRIFLAGS=-Zmiri-permissive-provenance` disables this warning."
+                            "alternatively, `MIRIFLAGS=-Zmiri-permissive-provenance` disables this warning"
                         ),
                     ),
                 ],
+            ExternTypeReborrow => {
+                vec![
+                    (
+                        None,
+                        format!(
+                            "`extern type` are not compatible with the Stacked Borrows aliasing model implemented by Miri; Miri may miss bugs in this code"
+                        ),
+                    ),
+                    (
+                        None,
+                        format!(
+                            "try running with `MIRIFLAGS=-Zmiri-tree-borrows` to use the more permissive but also even more experimental Tree Borrows aliasing checks instead"
+                        ),
+                    ),
+                ]
+            }
             _ => vec![],
         };
 
