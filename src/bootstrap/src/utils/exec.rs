@@ -62,16 +62,11 @@ impl<'a> From<&'a mut Command> for BootstrapCommand<'a> {
 
 /// Represents the output of an executed process.
 #[allow(unused)]
-#[derive(Default)]
-pub struct CommandOutput {
-    status: ExitStatus,
-    stdout: Vec<u8>,
-    stderr: Vec<u8>,
-}
+pub struct CommandOutput(Output);
 
 impl CommandOutput {
     pub fn is_success(&self) -> bool {
-        self.status.success()
+        self.0.status.success()
     }
 
     pub fn is_failure(&self) -> bool {
@@ -79,26 +74,32 @@ impl CommandOutput {
     }
 
     pub fn status(&self) -> ExitStatus {
-        self.status
+        self.0.status
     }
 
     pub fn stdout(&self) -> String {
-        String::from_utf8(self.stdout.clone()).expect("Cannot parse process stdout as UTF-8")
+        String::from_utf8(self.0.stdout.clone()).expect("Cannot parse process stdout as UTF-8")
     }
 
     pub fn stderr(&self) -> String {
-        String::from_utf8(self.stderr.clone()).expect("Cannot parse process stderr as UTF-8")
+        String::from_utf8(self.0.stderr.clone()).expect("Cannot parse process stderr as UTF-8")
+    }
+}
+
+impl Default for CommandOutput {
+    fn default() -> Self {
+        Self(Output { status: Default::default(), stdout: vec![], stderr: vec![] })
     }
 }
 
 impl From<Output> for CommandOutput {
     fn from(output: Output) -> Self {
-        Self { status: output.status, stdout: output.stdout, stderr: output.stderr }
+        Self(output)
     }
 }
 
 impl From<ExitStatus> for CommandOutput {
     fn from(status: ExitStatus) -> Self {
-        Self { status, stdout: Default::default(), stderr: Default::default() }
+        Self(Output { status, stdout: vec![], stderr: vec![] })
     }
 }
