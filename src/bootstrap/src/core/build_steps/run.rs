@@ -158,8 +158,7 @@ impl Step for Miri {
         // after another --, so this must be at the end.
         miri.args(builder.config.args());
 
-        let mut miri = Command::from(miri);
-        builder.run(&mut miri);
+        builder.run(miri);
     }
 }
 
