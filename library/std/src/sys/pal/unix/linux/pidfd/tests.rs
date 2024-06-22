@@ -1,7 +1,7 @@
 use crate::assert_matches::assert_matches;
 use crate::os::fd::{AsRawFd, RawFd};
-use crate::os::linux::process::{ChildExt, CommandExt};
-use crate::os::unix::process::ExitStatusExt;
+use crate::os::linux::process::{ChildExt, CommandExt as _};
+use crate::os::unix::process::{CommandExt as _, ExitStatusExt};
 use crate::process::Command;
 
 #[test]
@@ -42,6 +42,15 @@ fn test_command_pidfd() {
         .unwrap()
         .pidfd()
         .expect_err("pidfd should not have been created");
+
+    // exercise the fork/exec path since the earlier attempts may have used pidfd_spawnp()
+    let mut child =
+        unsafe { Command::new("false").pre_exec(|| Ok(())) }.create_pidfd(true).spawn().unwrap();
+
+    if pidfd_open_available {
+        assert!(child.pidfd().is_ok())
+    }
+    child.wait().expect("error waiting on child");
 }
 
 #[test]
