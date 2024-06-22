@@ -24,6 +24,18 @@ pub enum OutputMode {
 }
 
 /// Wrapper around `std::process::Command`.
+///
+/// By default, the command will exit bootstrap if it fails.
+/// If you want to allow failures, use [allow_failure].
+/// If you want to delay failures until the end of bootstrap, use [delay_failure].
+///
+/// By default, the command will print its stdout/stderr to stdout/stderr of bootstrap
+/// ([OutputMode::OnlyOutput]). If bootstrap uses verbose mode, then it will also print the
+/// command itself in case of failure ([OutputMode::All]).
+/// If you want to handle the output programmatically, use `output_mode(OutputMode::OnlyOnFailure)`.
+///
+/// [allow_failure]: BootstrapCommand::allow_failure
+/// [delay_failure]: BootstrapCommand::delay_failure
 #[derive(Debug)]
 pub struct BootstrapCommand<'a> {
     pub command: &'a mut Command,
