@@ -47,6 +47,7 @@ macro_rules! t {
         }
     };
 }
+use crate::utils::exec::BootstrapCommand;
 pub use t;
 
 pub fn exe(name: &str, target: TargetSelection) -> String {
@@ -72,7 +73,7 @@ pub fn libdir(target: TargetSelection) -> &'static str {
 
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.
 /// If the dylib_path_var is already set for this cmd, the old value will be overwritten!
-pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut Command) {
+pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
     let mut list = dylib_path();
     for path in path {
         list.insert(0, path);

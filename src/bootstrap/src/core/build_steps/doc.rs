@@ -1116,7 +1116,7 @@ impl Step for UnstableBookGen {
         cmd.arg(builder.src.join("src"));
         cmd.arg(out);
 
-        builder.run(&mut cmd);
+        builder.run(cmd);
     }
 }
 
@@ -1211,7 +1211,7 @@ impl Step for RustcBook {
             self.compiler.host,
             self.target,
         );
-        builder.run(&mut cmd);
+        builder.run(cmd);
         drop(doc_generator_guard);
 
         // Run rustbook/mdbook to generate the HTML pages.

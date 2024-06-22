@@ -353,7 +353,7 @@ impl<'a> Tarball<'a> {
         };
 
         cmd.args(["--compression-profile", compression_profile]);
-        self.builder.run(&mut cmd);
+        self.builder.run(cmd);
 
         // Ensure there are no symbolic links in the tarball. In particular,
         // rustup-toolchain-install-master and most versions of Windows can't handle symbolic links.

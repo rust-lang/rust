@@ -433,12 +433,12 @@ pub struct ErrorIndex {
 }
 
 impl ErrorIndex {
-    pub fn command(builder: &Builder<'_>) -> Command {
+    pub fn command(builder: &Builder<'_>) -> BootstrapCommand {
         // Error-index-generator links with the rustdoc library, so we need to add `rustc_lib_paths`
         // for rustc_private and libLLVM.so, and `sysroot_lib` for libstd, etc.
         let host = builder.config.build;
         let compiler = builder.compiler_for(builder.top_stage, host, host);
-        let mut cmd = Command::new(builder.ensure(ErrorIndex { compiler }));
+        let mut cmd = BootstrapCommand::new(builder.ensure(ErrorIndex { compiler }));
         let mut dylib_paths = builder.rustc_lib_paths(compiler);
         dylib_paths.push(PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host)));
         add_dylib_path(dylib_paths, &mut cmd);
@@ -1046,10 +1046,10 @@ tool_extended!((self, builder),
 );
 
 impl<'a> Builder<'a> {
-    /// Gets a `Command` which is ready to run `tool` in `stage` built for
+    /// Gets a `BootstrapCommand` which is ready to run `tool` in `stage` built for
     /// `host`.
-    pub fn tool_cmd(&self, tool: Tool) -> Command {
-        let mut cmd = Command::new(self.tool_exe(tool));
+    pub fn tool_cmd(&self, tool: Tool) -> BootstrapCommand {
+        let mut cmd = BootstrapCommand::new(self.tool_exe(tool));
         let compiler = self.compiler(0, self.config.build);
         let host = &compiler.host;
         // Prepares the `cmd` provided to be able to run the `compiler` provided.

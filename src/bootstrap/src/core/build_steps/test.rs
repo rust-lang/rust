@@ -2874,19 +2874,19 @@ impl Step for RemoteCopyLibs {
 
         // Spawn the emulator and wait for it to come online
         let tool = builder.tool_exe(Tool::RemoteTestClient);
-        let mut cmd = Command::new(&tool);
+        let mut cmd = BootstrapCommand::new(&tool);
         cmd.arg("spawn-emulator").arg(target.triple).arg(&server).arg(builder.tempdir());
         if let Some(rootfs) = builder.qemu_rootfs(target) {
             cmd.arg(rootfs);
         }
-        builder.run(&mut cmd);
+        builder.run(cmd);
 
         // Push all our dylibs to the emulator
         for f in t!(builder.sysroot_libdir(compiler, target).read_dir()) {
             let f = t!(f);
             let name = f.file_name().into_string().unwrap();
             if helpers::is_dylib(&name) {
-                builder.run(Command::new(&tool).arg("push").arg(f.path()));
+                builder.run(BootstrapCommand::new(&tool).arg("push").arg(f.path()));
             }
         }
     }
@@ -2917,20 +2917,20 @@ impl Step for Distcheck {
         builder.ensure(dist::PlainSourceTarball);
         builder.ensure(dist::Src);
 
-        let mut cmd = Command::new("tar");
+        let mut cmd = BootstrapCommand::new("tar");
         cmd.arg("-xf")
             .arg(builder.ensure(dist::PlainSourceTarball).tarball())
             .arg("--strip-components=1")
             .current_dir(&dir);
-        builder.run(&mut cmd);
+        builder.run(cmd);
         builder.run(
-            Command::new("./configure")
+            BootstrapCommand::new("./configure")
                 .args(&builder.config.configure_args)
                 .arg("--enable-vendor")
                 .current_dir(&dir),
         );
         builder.run(
-            Command::new(helpers::make(&builder.config.build.triple))
+            BootstrapCommand::new(helpers::make(&builder.config.build.triple))
                 .arg("check")
                 .current_dir(&dir),
         );
@@ -2950,7 +2950,7 @@ impl Step for Distcheck {
 
         let toml = dir.join("rust-src/lib/rustlib/src/rust/library/std/Cargo.toml");
         builder.run(
-            Command::new(&builder.initial_cargo)
+            BootstrapCommand::new(&builder.initial_cargo)
                 // Will read the libstd Cargo.toml
                 // which uses the unstable `public-dependency` feature.
                 .env("RUSTC_BOOTSTRAP", "1")
