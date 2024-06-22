@@ -82,7 +82,7 @@ pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
 }
 
 /// Adds a list of lookup paths to `cmd`'s link library lookup path.
-pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut Command) {
+pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
     let mut list = link_lib_path();
     for path in path {
         list.insert(0, path);
@@ -439,7 +439,7 @@ pub fn linker_flags(
 }
 
 pub fn add_rustdoc_cargo_linker_args(
-    cmd: &mut Command,
+    cmd: &mut BootstrapCommand,
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,

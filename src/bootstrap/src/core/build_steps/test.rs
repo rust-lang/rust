@@ -482,8 +482,10 @@ impl Miri {
             String::new()
         } else {
             builder.verbose(|| println!("running: {cargo:?}"));
-            let out =
-                cargo.output().expect("We already ran `cargo miri setup` before and that worked");
+            let out = cargo
+                .command
+                .output()
+                .expect("We already ran `cargo miri setup` before and that worked");
             assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
             // Output is "<sysroot>\n".
             let stdout = String::from_utf8(out.stdout)
@@ -2065,7 +2067,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--git-repository").arg(git_config.git_repository);
         cmd.arg("--nightly-branch").arg(git_config.nightly_branch);
 
-        builder.ci_env.force_coloring_in_ci(&mut cmd);
+        // FIXME: Move CiEnv back to bootstrap, it is only used here anyway
+        builder.ci_env.force_coloring_in_ci(&mut cmd.command);
 
         #[cfg(feature = "build-metrics")]
         builder.metrics.begin_test_suite(
@@ -2424,7 +2427,7 @@ impl Step for CrateLibrustc {
 /// Returns whether the test succeeded.
 #[allow(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
 fn run_cargo_test<'a>(
-    cargo: impl Into<Command>,
+    cargo: impl Into<BootstrapCommand>,
     libtest_args: &[&str],
     crates: &[String],
     primary_crate: &str,
@@ -2455,14 +2458,14 @@ fn run_cargo_test<'a>(
 
 /// Given a `cargo test` subcommand, pass it the appropriate test flags given a `builder`.
 fn prepare_cargo_test(
-    cargo: impl Into<Command>,
+    cargo: impl Into<BootstrapCommand>,
     libtest_args: &[&str],
     crates: &[String],
     primary_crate: &str,
     compiler: Compiler,
     target: TargetSelection,
     builder: &Builder<'_>,
-) -> Command {
+) -> BootstrapCommand {
     let mut cargo = cargo.into();
 
     // Propegate `--bless` if it has not already been set/unset
@@ -2978,7 +2981,7 @@ impl Step for Bootstrap {
         // Some tests require cargo submodule to be present.
         builder.build.update_submodule(Path::new("src/tools/cargo"));
 
-        let mut check_bootstrap = Command::new(builder.python());
+        let mut check_bootstrap = BootstrapCommand::new(builder.python());
         check_bootstrap
             .args(["-m", "unittest", "bootstrap_test.py"])
             .env("BUILD_DIR", &builder.out)
@@ -2986,9 +2989,9 @@ impl Step for Bootstrap {
             .current_dir(builder.src.join("src/bootstrap/"));
         // NOTE: we intentionally don't pass test_args here because the args for unittest and cargo test are mutually incompatible.
         // Use `python -m unittest` manually if you want to pass arguments.
-        builder.run(BootstrapCommand::from(&mut check_bootstrap).delay_failure());
+        builder.run(check_bootstrap.delay_failure());
 
-        let mut cmd = Command::new(&builder.initial_cargo);
+        let mut cmd = BootstrapCommand::new(&builder.initial_cargo);
         cmd.arg("test")
             .args(["--features", "bootstrap-self-test"])
             .current_dir(builder.src.join("src/bootstrap"))

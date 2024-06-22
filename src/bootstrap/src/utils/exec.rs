@@ -1,7 +1,6 @@
 use std::ffi::OsStr;
-use std::ops::{Deref, DerefMut};
 use std::path::Path;
-use std::process::{Command, ExitStatus, Output};
+use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output};
 
 /// What should be done when the command fails.
 #[derive(Debug, Copy, Clone)]
@@ -74,6 +73,19 @@ impl BootstrapCommand {
         self
     }
 
+    pub fn get_envs(&self) -> CommandEnvs<'_> {
+        self.command.get_envs()
+    }
+
+    pub fn get_args(&self) -> CommandArgs<'_> {
+        self.command.get_args()
+    }
+
+    pub fn env_remove<K: AsRef<OsStr>>(&mut self, key: K) -> &mut Self {
+        self.command.env_remove(key);
+        self
+    }
+
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
         self.command.current_dir(dir);
         self
@@ -131,24 +143,6 @@ impl<'a> From<&'a mut Command> for BootstrapCommand {
 impl<'a> From<&'a mut BootstrapCommand> for BootstrapCommand {
     fn from(command: &'a mut BootstrapCommand) -> Self {
         BootstrapCommand::from(&mut command.command)
-    }
-}
-
-/// This implementation is temporary, until all `Command` invocations are migrated to
-/// `BootstrapCommand`.
-impl Deref for BootstrapCommand {
-    type Target = Command;
-
-    fn deref(&self) -> &Self::Target {
-        &self.command
-    }
-}
-
-/// This implementation is temporary, until all `Command` invocations are migrated to
-/// `BootstrapCommand`.
-impl DerefMut for BootstrapCommand {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.command
     }
 }
 
