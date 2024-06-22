@@ -13,18 +13,19 @@ pub enum BehaviorOnFailure {
     Ignore,
 }
 
-/// How should the output of the command be handled.
+/// How should the output of the command be handled (whether it should be captured or printed).
 #[derive(Debug, Copy, Clone)]
 pub enum OutputMode {
-    /// Print both the output (by inheriting stdout/stderr) and also the command itself, if it
-    /// fails.
-    All,
-    /// Print the output (by inheriting stdout/stderr).
-    OnlyOutput,
-    /// Suppress the output if the command succeeds, otherwise print the output.
-    OnlyOnFailure,
-    /// Suppress the output of the command.
-    Quiet,
+    /// Prints the stdout/stderr of the command to stdout/stderr of bootstrap (by inheriting these
+    /// streams).
+    /// Corresponds to calling `cmd.status()`.
+    Print,
+    /// Captures the stdout and stderr of the command into memory.
+    /// Corresponds to calling `cmd.output()`.
+    CaptureAll,
+    /// Captures the stdout of the command into memory, inherits stderr.
+    /// Corresponds to calling `cmd.output()`.
+    CaptureStdout,
 }
 
 /// Wrapper around `std::process::Command`.
@@ -34,10 +35,10 @@ pub enum OutputMode {
 /// If you want to delay failures until the end of bootstrap, use [delay_failure].
 ///
 /// By default, the command will print its stdout/stderr to stdout/stderr of bootstrap
-/// ([OutputMode::OnlyOutput]). If bootstrap uses verbose mode, then it will also print the
-/// command itself in case of failure ([OutputMode::All]).
-/// If you want to handle the output programmatically, use `output_mode(OutputMode::OnlyOnFailure)`,
-/// which will print the output only if the command fails.
+/// ([OutputMode::Print]).
+/// If you want to handle the output programmatically, use [BootstrapCommand::capture].
+///
+/// Bootstrap will print a debug log to stdout if the command fails and failure is not allowed.
 ///
 /// [allow_failure]: BootstrapCommand::allow_failure
 /// [delay_failure]: BootstrapCommand::delay_failure
@@ -45,12 +46,16 @@ pub enum OutputMode {
 pub struct BootstrapCommand {
     pub command: Command,
     pub failure_behavior: BehaviorOnFailure,
-    pub output_mode: Option<OutputMode>,
+    pub output_mode: OutputMode,
 }
 
 impl BootstrapCommand {
     pub fn new<S: AsRef<OsStr>>(program: S) -> Self {
-        Command::new(program).into()
+        Self {
+            command: Command::new(program),
+            failure_behavior: BehaviorOnFailure::Exit,
+            output_mode: OutputMode::Print,
+        }
     }
 
     pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
@@ -106,52 +111,22 @@ impl BootstrapCommand {
         Self { failure_behavior: BehaviorOnFailure::Ignore, ..self }
     }
 
-    /// Do not print the output of the command, unless it fails.
-    pub fn print_on_failure(self) -> Self {
-        self.output_mode(OutputMode::OnlyOnFailure)
+    /// Capture the output of the command, do not print it.
+    pub fn capture(self) -> Self {
+        Self { output_mode: OutputMode::CaptureAll, ..self }
     }
 
-    /// Do not print the output of the command.
-    pub fn quiet(self) -> Self {
-        self.output_mode(OutputMode::Quiet)
-    }
-
-    pub fn output_mode(self, output_mode: OutputMode) -> Self {
-        Self { output_mode: Some(output_mode), ..self }
+    /// Capture stdout of the command, do not print it.
+    pub fn capture_stdout(self) -> Self {
+        Self { output_mode: OutputMode::CaptureStdout, ..self }
     }
 }
 
-/// FIXME: This implementation is temporary, until all `Command` invocations are migrated to
-/// `BootstrapCommand`.
-impl<'a> From<&'a mut BootstrapCommand> for BootstrapCommand {
-    fn from(command: &'a mut BootstrapCommand) -> Self {
-        // This is essentially a manual `Command::clone`
-        let mut cmd = Command::new(command.command.get_program());
-        if let Some(dir) = command.command.get_current_dir() {
-            cmd.current_dir(dir);
-        }
-        cmd.args(command.command.get_args());
-        for (key, value) in command.command.get_envs() {
-            match value {
-                Some(value) => {
-                    cmd.env(key, value);
-                }
-                None => {
-                    cmd.env_remove(key);
-                }
-            }
-        }
-        Self {
-            command: cmd,
-            output_mode: command.output_mode,
-            failure_behavior: command.failure_behavior,
-        }
-    }
-}
-
-impl From<Command> for BootstrapCommand {
-    fn from(command: Command) -> Self {
-        Self { command, failure_behavior: BehaviorOnFailure::Exit, output_mode: None }
+/// This implementation exists to make it possible to pass both [BootstrapCommand] and
+/// `&mut BootstrapCommand` to `Build.run()`.
+impl AsMut<BootstrapCommand> for BootstrapCommand {
+    fn as_mut(&mut self) -> &mut BootstrapCommand {
+        self
     }
 }
 
@@ -174,6 +149,10 @@ impl CommandOutput {
 
     pub fn stdout(&self) -> String {
         String::from_utf8(self.0.stdout.clone()).expect("Cannot parse process stdout as UTF-8")
+    }
+
+    pub fn stdout_if_ok(&self) -> Option<String> {
+        if self.is_success() { Some(self.stdout()) } else { None }
     }
 
     pub fn stderr(&self) -> String {

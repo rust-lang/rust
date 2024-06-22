@@ -2080,7 +2080,7 @@ pub fn stream_cargo(
     tail_args: Vec<String>,
     cb: &mut dyn FnMut(CargoMessage<'_>),
 ) -> bool {
-    let mut cargo = BootstrapCommand::from(cargo).command;
+    let mut cargo = cargo.into_cmd().command;
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
     let mut message_format = if builder.config.json_output {

@@ -2398,6 +2398,10 @@ impl Cargo {
         cargo
     }
 
+    pub fn into_cmd(self) -> BootstrapCommand {
+        self.into()
+    }
+
     /// Same as `Cargo::new` except this one doesn't configure the linker with `Cargo::configure_linker`
     pub fn new_for_mir_opt_tests(
         builder: &Builder<'_>,
@@ -2620,11 +2624,5 @@ impl From<Cargo> for BootstrapCommand {
             cargo.command.env("RUSTC_ALLOW_FEATURES", cargo.allow_features);
         }
         cargo.command
-    }
-}
-
-impl From<Cargo> for Command {
-    fn from(cargo: Cargo) -> Command {
-        BootstrapCommand::from(cargo).command
     }
 }

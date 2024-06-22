@@ -158,7 +158,7 @@ impl Step for Miri {
         // after another --, so this must be at the end.
         miri.args(builder.config.args());
 
-        builder.run(miri);
+        builder.run(miri.into_cmd());
     }
 }
 

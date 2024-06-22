@@ -555,10 +555,7 @@ impl Build {
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
         let has_local_modifications = self
-            .run(
-                BootstrapCommand::from(submodule_git().args(["diff-index", "--quiet", "HEAD"]))
-                    .allow_failure(),
-            )
+            .run(submodule_git().allow_failure().args(["diff-index", "--quiet", "HEAD"]))
             .is_failure();
         if has_local_modifications {
             self.run(submodule_git().args(["stash", "push"]));
@@ -582,7 +579,7 @@ impl Build {
         let output = self
             .run(
                 helpers::git(Some(&self.src))
-                    .quiet()
+                    .capture()
                     .args(["config", "--file"])
                     .arg(self.config.src.join(".gitmodules"))
                     .args(["--get-regexp", "path"]),
@@ -937,69 +934,71 @@ impl Build {
 
     /// Execute a command and return its output.
     /// This method should be used for all command executions in bootstrap.
-    fn run<C: Into<BootstrapCommand>>(&self, command: C) -> CommandOutput {
+    fn run<C: AsMut<BootstrapCommand>>(&self, mut command: C) -> CommandOutput {
         if self.config.dry_run() {
             return CommandOutput::default();
         }
 
-        let mut command = command.into();
+        let command = command.as_mut();
 
         self.verbose(|| println!("running: {command:?}"));
 
-        let output_mode = command.output_mode.unwrap_or_else(|| match self.is_verbose() {
-            true => OutputMode::All,
-            false => OutputMode::OnlyOutput,
-        });
-        let (output, print_error): (io::Result<CommandOutput>, bool) = match output_mode {
-            mode @ (OutputMode::All | OutputMode::OnlyOutput) => (
-                command.command.status().map(|status| status.into()),
-                matches!(mode, OutputMode::All),
-            ),
-            mode @ (OutputMode::OnlyOnFailure | OutputMode::Quiet) => (
-                command.command.output().map(|o| o.into()),
-                matches!(mode, OutputMode::OnlyOnFailure),
-            ),
+        let output: io::Result<CommandOutput> = match command.output_mode {
+            OutputMode::Print => command.command.status().map(|status| status.into()),
+            OutputMode::CaptureAll => command.command.output().map(|o| o.into()),
+            OutputMode::CaptureStdout => {
+                command.command.stderr(Stdio::inherit());
+                command.command.output().map(|o| o.into())
+            }
         };
 
         let output = match output {
             Ok(output) => output,
-            Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", command, e)),
+            Err(e) => fail(&format!("failed to execute command: {command:?}\nerror: {e}")),
         };
         if !output.is_success() {
-            if print_error {
-                println!(
-                    "\n\nCommand did not execute successfully.\
-                \nExpected success, got: {}",
-                    output.status(),
-                );
+            use std::fmt::Write;
 
-                if !self.is_verbose() {
-                    println!("Add `-v` to see more details.\n");
+            // Here we build an error message, and below we decide if it should be printed or not.
+            let mut message = String::new();
+            writeln!(
+                message,
+                "\n\nCommand {command:?} did not execute successfully.\
+            \nExpected success, got: {}",
+                output.status(),
+            )
+            .unwrap();
+
+            // If the output mode is OutputMode::Print, the output has already been printed to
+            // stdout/stderr, and we thus don't have anything captured to print anyway.
+            if matches!(command.output_mode, OutputMode::CaptureAll | OutputMode::CaptureStdout) {
+                writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
+
+                // Stderr is added to the message only if it was captured
+                if matches!(command.output_mode, OutputMode::CaptureAll) {
+                    writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
                 }
-
-                self.verbose(|| {
-                    println!(
-                        "\nSTDOUT ----\n{}\n\
-                    STDERR ----\n{}\n",
-                        output.stdout(),
-                        output.stderr(),
-                    )
-                });
             }
 
             match command.failure_behavior {
                 BehaviorOnFailure::DelayFail => {
                     if self.fail_fast {
+                        println!("{message}");
                         exit!(1);
                     }
 
                     let mut failures = self.delayed_failures.borrow_mut();
-                    failures.push(format!("{command:?}"));
+                    failures.push(message);
                 }
                 BehaviorOnFailure::Exit => {
+                    println!("{message}");
                     exit!(1);
                 }
-                BehaviorOnFailure::Ignore => {}
+                BehaviorOnFailure::Ignore => {
+                    // If failures are allowed, either the error has been printed already
+                    // (OutputMode::Print) or the user used a capture output mode and wants to
+                    // handle the error output on their own.
+                }
             }
         }
         output
@@ -1490,7 +1489,7 @@ impl Build {
             // (Note that we use a `..` range, not the `...` symmetric difference.)
             self.run(
                 helpers::git(Some(&self.src))
-                    .quiet()
+                    .capture()
                     .arg("rev-list")
                     .arg("--count")
                     .arg("--merges")
