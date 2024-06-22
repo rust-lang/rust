@@ -2,7 +2,7 @@ use crate::errors;
 use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, Token};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, NtExprKind::*, Token};
 use rustc_ast::{tokenstream, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
@@ -109,7 +109,7 @@ pub(super) fn parse(
                                             });
                                             NonterminalKind::Ident
                                         });
-                                    if kind == (NonterminalKind::Expr2021 { inferred: false })
+                                    if kind == NonterminalKind::Expr(Expr2021 { inferred: false })
                                         && !features.expr_fragment_specifier_2024
                                     {
                                         rustc_session::parse::feature_err(
