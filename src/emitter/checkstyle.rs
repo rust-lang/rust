@@ -89,11 +89,11 @@ mod tests {
     #[test]
     fn emits_single_xml_tree_containing_all_files() {
         let bin_file = "src/bin.rs";
-        let bin_original = vec!["fn main() {", "println!(\"Hello, world!\");", "}"];
-        let bin_formatted = vec!["fn main() {", "    println!(\"Hello, world!\");", "}"];
+        let bin_original = ["fn main() {", "println!(\"Hello, world!\");", "}"];
+        let bin_formatted = ["fn main() {", "    println!(\"Hello, world!\");", "}"];
         let lib_file = "src/lib.rs";
-        let lib_original = vec!["fn greet() {", "println!(\"Greetings!\");", "}"];
-        let lib_formatted = vec!["fn greet() {", "    println!(\"Greetings!\");", "}"];
+        let lib_original = ["fn greet() {", "println!(\"Greetings!\");", "}"];
+        let lib_formatted = ["fn greet() {", "    println!(\"Greetings!\");", "}"];
         let mut writer = Vec::new();
         let mut emitter = CheckstyleEmitter::default();
         let _ = emitter.emit_header(&mut writer);
@@ -118,7 +118,7 @@ mod tests {
             )
             .unwrap();
         let _ = emitter.emit_footer(&mut writer);
-        let exp_bin_xml = vec![
+        let exp_bin_xml = [
             format!(r#"<file name="{}">"#, bin_file),
             format!(
                 r#"<error line="2" severity="warning" message="Should be `{}`" />"#,
@@ -126,7 +126,7 @@ mod tests {
             ),
             String::from("</file>"),
         ];
-        let exp_lib_xml = vec![
+        let exp_lib_xml = [
             format!(r#"<file name="{}">"#, lib_file),
             format!(
                 r#"<error line="2" severity="warning" message="Should be `{}`" />"#,
@@ -136,7 +136,7 @@ mod tests {
         ];
         assert_eq!(
             String::from_utf8(writer).unwrap(),
-            vec![
+            [
                 r#"<?xml version="1.0" encoding="utf-8"?>"#,
                 "\n",
                 r#"<checkstyle version="4.3">"#,
