@@ -17,7 +17,8 @@ fn bar(bar: Bar) -> bool {
     }
 }
 
-fn baz() { // issue #90121
+/// Issue #90121
+fn baz() {
     let foo = vec!["foo".to_string()];
 
     match foo.as_slice() {
@@ -25,6 +26,15 @@ fn baz() { // issue #90121
         //~^ error: expected a pattern, found an expression
         _ => {}
     };
+}
+
+/// Issue #104996
+fn qux() {
+    struct Magic(pub u16);
+    const MAGIC: Magic = Magic(42);
+
+    if let Some(MAGIC.0 as usize) = None::<usize> {}
+    //~^ error: expected a pattern, found an expression
 }
 
 fn main() {
