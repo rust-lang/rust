@@ -254,7 +254,7 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
 
     match &*item.kind {
         clean::ModuleItem(ref m) => item_module(buf, cx, item, &m.items),
-        clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) => {
+        clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f, _) => {
             item_function(buf, cx, item, f)
         }
         clean::TraitItem(ref t) => item_trait(buf, cx, item, t),
@@ -265,7 +265,8 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
         clean::MacroItem(ref m) => item_macro(buf, cx, item, m),
         clean::ProcMacroItem(ref m) => item_proc_macro(buf, cx, item, m),
         clean::PrimitiveItem(_) => item_primitive(buf, cx, item),
-        clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) => item_static(buf, cx, item, i),
+        clean::StaticItem(ref i) => item_static(buf, cx, item, i, None),
+        clean::ForeignStaticItem(ref i, safety) => item_static(buf, cx, item, i, Some(*safety)),
         clean::ConstantItem(generics, ty, c) => item_constant(buf, cx, item, generics, ty, c),
         clean::ForeignTypeItem => item_foreign_type(buf, cx, item),
         clean::KeywordItem => item_keyword(buf, cx, item),
@@ -491,10 +492,13 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 }
 
                 let unsafety_flag = match *myitem.kind {
-                    clean::FunctionItem(_) | clean::ForeignFunctionItem(_)
+                    clean::FunctionItem(_) | clean::ForeignFunctionItem(..)
                         if myitem.fn_header(tcx).unwrap().safety == hir::Safety::Unsafe =>
                     {
                         "<sup title=\"unsafe function\">⚠</sup>"
+                    }
+                    clean::ForeignStaticItem(_, hir::Safety::Unsafe) => {
+                        "<sup title=\"unsafe static\">⚠</sup>"
                     }
                     _ => "",
                 };
@@ -1957,13 +1961,22 @@ fn item_fields(
     }
 }
 
-fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
+fn item_static(
+    w: &mut impl fmt::Write,
+    cx: &mut Context<'_>,
+    it: &clean::Item,
+    s: &clean::Static,
+    safety: Option<hir::Safety>,
+) {
     wrap_item(w, |buffer| {
         render_attributes_in_code(buffer, it, cx);
         write!(
             buffer,
-            "{vis}static {mutability}{name}: {typ}",
+            "{vis}{safe}static {mutability}{name}: {typ}",
             vis = visibility_print_with_space(it, cx),
+            safe = safety
+                .map(|safe| if safe == hir::Safety::Unsafe { "unsafe " } else { "" })
+                .unwrap_or(""),
             mutability = s.mutability.print_with_space(),
             name = it.name.unwrap(),
             typ = s.type_.print(cx)
