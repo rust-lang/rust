@@ -1,3 +1,12 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/const_cmp_type_id.rs:3:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error[E0131]: `main` function is not allowed to have generic parameters
   --> $DIR/const_cmp_type_id.rs:7:14
    |
@@ -10,25 +19,7 @@ error[E0080]: evaluation of constant value failed
 LL |     const _A: bool = TypeId::of::<u8>() < TypeId::of::<u16>();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling non-const function `<TypeId as PartialOrd>::lt`
 
-error[E0308]: mismatched types
-  --> $DIR/const_cmp_type_id.rs:8:13
-   |
-LL |     assert!(TypeId::of::<u8>() == TypeId::of::<u8>());
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `host`, found `true`
-   |
-   = note: expected constant `host`
-              found constant `true`
+error: aborting due to 2 previous errors; 1 warning emitted
 
-error[E0308]: mismatched types
-  --> $DIR/const_cmp_type_id.rs:9:13
-   |
-LL |     assert!(TypeId::of::<()>() != TypeId::of::<u8>());
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `host`, found `true`
-   |
-   = note: expected constant `host`
-              found constant `true`
-
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0080, E0131, E0308.
+Some errors have detailed explanations: E0080, E0131.
 For more information about an error, try `rustc --explain E0080`.

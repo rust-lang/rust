@@ -1,0 +1,28 @@
+error[E0379]: functions in trait impls cannot be declared const
+  --> $DIR/ice-121536-const-method.rs:11:5
+   |
+LL |     const fn add(self) -> Vec3 {
+   |     ^^^^^ functions in trait impls cannot be const
+   |
+help: remove the `const` ...
+   |
+LL -     const fn add(self) -> Vec3 {
+LL +     fn add(self) -> Vec3 {
+   |
+help: ... and declare the impl to be const instead
+   |
+LL | impl const Add for Vec3 {
+   |      +++++
+
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/ice-121536-const-method.rs:1:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0379`.

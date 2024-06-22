@@ -42,13 +42,6 @@ LL | const fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
    = note: expected signature `unsafe fn(_, _, _)`
               found signature `fn(_, _, _)`
 
-error[E0094]: intrinsic has wrong number of const parameters: found 0, expected 1
-  --> $DIR/safe-intrinsic-mismatch.rs:21:31
-   |
-LL |     unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
-   |                               ^ expected 1 const parameter
+error: aborting due to 6 previous errors
 
-error: aborting due to 7 previous errors
-
-Some errors have detailed explanations: E0094, E0308.
-For more information about an error, try `rustc --explain E0094`.
+For more information about this error, try `rustc --explain E0308`.

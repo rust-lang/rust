@@ -1,4 +1,6 @@
-//@ check-pass
+//@ known-bug: #110395
+// FIXME(effects) check-pass
+// FIXME(effects) fix intrinsics const parameter counting
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items, unboxed_closures, auto_traits, intrinsics, rustc_attrs, staged_api)]

@@ -1,3 +1,12 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/trait-default-body-stability.rs:4:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error: const `impl` for trait `Try` which is not marked with `#[const_trait]`
   --> $DIR/trait-default-body-stability.rs:18:12
    |
@@ -121,7 +130,7 @@ LL | impl const Try for T {
    |      unsatisfied trait bound introduced here
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 10 previous errors
+error: aborting due to 10 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0207, E0284.
 For more information about an error, try `rustc --explain E0207`.

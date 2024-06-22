@@ -1,3 +1,12 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/staged-api.rs:4:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error: `<Foo as staged_api::MyTrait>::func` is not yet stable as a const fn
   --> $DIR/staged-api.rs:34:5
    |
@@ -38,5 +47,5 @@ LL |     const_context_not_const_stable()
    |
    = help: const-stable functions can only call other const-stable functions
 
-error: aborting due to 5 previous errors
+error: aborting due to 5 previous errors; 1 warning emitted
 

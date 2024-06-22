@@ -282,7 +282,7 @@ impl<'a> Context<'a> {
     pub const fn ext(&mut self) -> &mut dyn Any {
         // FIXME: this field makes Context extra-weird about unwind safety
         // can we justify AssertUnwindSafe if we stabilize this? do we care?
-        match &mut *self.ext {
+        match &mut self.ext.0 {
             ExtData::Some(data) => *data,
             ExtData::None(unit) => unit,
         }
@@ -356,7 +356,7 @@ impl<'a> ContextBuilder<'a> {
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     #[unstable(feature = "context_ext", issue = "123392")]
     pub const fn from(cx: &'a mut Context<'_>) -> Self {
-        let ext = match &mut *cx.ext {
+        let ext = match &mut cx.ext.0 {
             ExtData::Some(ext) => ExtData::Some(*ext),
             ExtData::None(()) => ExtData::None(()),
         };

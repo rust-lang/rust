@@ -1,3 +1,12 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/spec-effectvar-ice.rs:4:12
+   |
+LL | #![feature(effects)]
+   |            ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error: const `impl` for trait `Foo` which is not marked with `#[const_trait]`
   --> $DIR/spec-effectvar-ice.rs:12:15
    |
@@ -55,7 +64,7 @@ LL | impl<T> const Foo for T where T: const Specialize {}
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
-error: aborting due to 6 previous errors
+error: aborting due to 6 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0119, E0207.
 For more information about an error, try `rustc --explain E0119`.

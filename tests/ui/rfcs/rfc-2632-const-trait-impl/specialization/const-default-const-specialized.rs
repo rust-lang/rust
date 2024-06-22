@@ -3,7 +3,7 @@
 
 //@ run-pass
 
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
 #![feature(min_specialization)]
 
 #[const_trait]
