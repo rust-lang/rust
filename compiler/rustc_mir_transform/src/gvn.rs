@@ -823,18 +823,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 return self.simplify_cast(kind, value, to, location);
             }
             Rvalue::BinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
-                let ty = lhs.ty(self.local_decls, self.tcx);
-                let lhs = self.simplify_operand(lhs, location);
-                let rhs = self.simplify_operand(rhs, location);
-                // Only short-circuit options after we called `simplify_operand`
-                // on both operands for side effect.
-                let lhs = lhs?;
-                let rhs = rhs?;
-
-                if let Some(value) = self.simplify_binary(op, ty, lhs, rhs) {
-                    return Some(value);
-                }
-                Value::BinaryOp(op, lhs, rhs)
+                return self.simplify_binary(op, lhs, rhs, location);
             }
             Rvalue::UnaryOp(op, ref mut arg_op) => {
                 return self.simplify_unary(op, arg_op, location);
@@ -1059,6 +1048,52 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     #[instrument(level = "trace", skip(self), ret)]
     fn simplify_binary(
+        &mut self,
+        op: BinOp,
+        lhs_operand: &mut Operand<'tcx>,
+        rhs_operand: &mut Operand<'tcx>,
+        location: Location,
+    ) -> Option<VnIndex> {
+
+        let lhs = self.simplify_operand(lhs_operand, location);
+        let rhs = self.simplify_operand(rhs_operand, location);
+        // Only short-circuit options after we called `simplify_operand`
+        // on both operands for side effect.
+        let mut lhs = lhs?;
+        let mut rhs = rhs?;
+
+        let lhs_ty = lhs_operand.ty(self.local_decls, self.tcx);
+
+        // If we're comparing pointers, remove `PtrToPtr` casts if the from
+        // types of both casts and the metadata all match.
+        if let BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge = op
+            && lhs_ty.is_any_ptr()
+            && let Value::Cast { kind: CastKind::PtrToPtr, value: lhs_value, from: lhs_from, .. } =
+                self.get(lhs)
+            && let Value::Cast { kind: CastKind::PtrToPtr, value: rhs_value, from: rhs_from, .. } =
+                self.get(rhs)
+            && lhs_from == rhs_from
+            && lhs_from.pointee_metadata_ty_or_projection(self.tcx)
+                == lhs_ty.pointee_metadata_ty_or_projection(self.tcx)
+        {
+            lhs = *lhs_value;
+            rhs = *rhs_value;
+            if let Some(op) = self.try_as_operand(lhs, location) {
+                *lhs_operand = op;
+            }
+            if let Some(op) = self.try_as_operand(rhs, location) {
+                *rhs_operand = op;
+            }
+        }
+
+        if let Some(value) = self.simplify_binary_inner(op, lhs_ty, lhs, rhs) {
+            return Some(value);
+        }
+        let value = Value::BinaryOp(op, lhs, rhs);
+        Some(self.insert(value))
+    }
+
+    fn simplify_binary_inner(
         &mut self,
         op: BinOp,
         lhs_ty: Ty<'tcx>,
