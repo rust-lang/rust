@@ -572,7 +572,8 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Checks for `#[coverage(off)]` or `#[coverage(on)]`.
+    /// Checks for the nearest `#[coverage(off)]` or `#[coverage(on)]` on
+    /// this def and any enclosing defs, up to the crate root.
     ///
     /// Returns `false` if `#[coverage(off)]` was found, or `true` if
     /// either `#[coverage(on)]` or no coverage attribute was found.

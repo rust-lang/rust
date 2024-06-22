@@ -55,6 +55,7 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
 /// Query implementation for `coverage_attr_on`.
 fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    // Check for annotations directly on this def.
     if let Some(attr) = tcx.get_attr(def_id, sym::coverage) {
         match attr.meta_item_list().as_deref() {
             Some([item]) if item.has_name(sym::off) => return false,
@@ -66,9 +67,14 @@ fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         }
     }
 
-    // We didn't see an explicit coverage attribute, so
-    // allow coverage instrumentation by default.
-    true
+    match tcx.opt_local_parent(def_id) {
+        // Check the parent def (and so on recursively) until we find an
+        // enclosing attribute or reach the crate root.
+        Some(parent) => tcx.coverage_attr_on(parent),
+        // We reached the crate root without seeing a coverage attribute, so
+        // allow coverage instrumentation by default.
+        None => true,
+    }
 }
 
 /// Query implementation for `coverage_ids_info`.

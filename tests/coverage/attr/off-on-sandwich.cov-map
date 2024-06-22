@@ -6,14 +6,6 @@ Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 20, 5) to (start + 7, 6)
 
-Function name: off_on_sandwich::sparse_a::sparse_b
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 22, 05, 10, 06]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 34, 5) to (start + 16, 6)
-
 Function name: off_on_sandwich::sparse_a::sparse_b::sparse_c
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 26, 09, 0b, 0a]
 Number of files: 1
