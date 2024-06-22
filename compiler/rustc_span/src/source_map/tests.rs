@@ -229,6 +229,7 @@ fn t10() {
     let SourceFile {
         name,
         src_hash,
+        checksum_hash,
         source_len,
         lines,
         multibyte_chars,
@@ -240,6 +241,7 @@ fn t10() {
     let imported_src_file = sm.new_imported_source_file(
         name,
         src_hash,
+        checksum_hash,
         stable_id,
         source_len.to_u32(),
         CrateNum::ZERO,

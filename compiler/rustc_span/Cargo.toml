@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
+blake3 = "1.5.2"
 derive-where = "1.2.7"
 indexmap = { version = "2.0.0" }
 itoa = "1.0"
