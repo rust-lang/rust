@@ -533,6 +533,13 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         Ok(tables.fn_abi_of_instance(instance, List::empty())?.stable(&mut *tables))
     }
 
+    fn fn_ptr_abi(&self, fn_ptr: PolyFnSig) -> Result<FnAbi, Error> {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let sig = fn_ptr.internal(&mut *tables, tcx);
+        Ok(tables.fn_abi_of_fn_ptr(sig, List::empty())?.stable(&mut *tables))
+    }
+
     fn instance_def_id(&self, def: InstanceDef) -> stable_mir::DefId {
         let mut tables = self.0.borrow_mut();
         let def_id = tables.instances[def].def_id();

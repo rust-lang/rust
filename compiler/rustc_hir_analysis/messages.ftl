@@ -194,7 +194,7 @@ hir_analysis_inherent_ty_outside = cannot define inherent `impl` for a type outs
     .span_help = alternatively add `#[rustc_has_incoherent_inherent_impls]` to the type and `#[rustc_allow_incoherent_impl]` to the relevant impl items
 
 hir_analysis_inherent_ty_outside_new = cannot define inherent `impl` for a type outside of the crate where the type is defined
-    .label = impl for type defined outside of crate.
+    .label = impl for type defined outside of crate
     .note = define and implement a trait or new type instead
 
 hir_analysis_inherent_ty_outside_primitive = cannot define inherent `impl` for primitive types outside of `core`
@@ -544,7 +544,7 @@ hir_analysis_unrecognized_intrinsic_function =
 
 hir_analysis_unused_associated_type_bounds =
     unnecessary associated type bound for not object safe associated type
-    .note = this associated type has a `where Self: Sized` bound. Thus, while the associated type can be specified, it cannot be used in any way, because trait objects are not `Sized`.
+    .note = this associated type has a `where Self: Sized` bound, and while the associated type can be specified, it cannot be used because trait objects are never `Sized`
     .suggestion = remove this bound
 
 hir_analysis_unused_generic_parameter =

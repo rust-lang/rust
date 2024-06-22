@@ -78,7 +78,7 @@ ast_lowering_inline_asm_unsupported_target =
 ast_lowering_invalid_abi =
     invalid ABI: found `{$abi}`
     .label = invalid ABI
-    .note = invoke `{$command}` for a full list of supported calling conventions.
+    .note = invoke `{$command}` for a full list of supported calling conventions
 
 ast_lowering_invalid_abi_clobber_abi =
     invalid ABI for `clobber_abi`
