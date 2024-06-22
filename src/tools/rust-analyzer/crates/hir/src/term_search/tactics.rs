@@ -688,6 +688,7 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
         .clone()
         .into_iter()
         .chain(iter::once(ctx.goal.clone()))
+        .filter(|ty| !ty.type_arguments().any(|it| it.contains_unknown()))
         .filter(|_| should_continue())
         .flat_map(|ty| {
             Impl::all_for_type(db, ty.clone()).into_iter().map(move |imp| (ty.clone(), imp))
@@ -701,20 +702,6 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
         .filter_map(move |(imp, ty, it)| {
             let fn_generics = GenericDef::from(it);
             let imp_generics = GenericDef::from(imp);
-
-            // Ignore const params for now
-            let imp_type_params = imp_generics
-                .type_or_const_params(db)
-                .into_iter()
-                .map(|it| it.as_type_param(db))
-                .collect::<Option<Vec<TypeParam>>>()?;
-
-            // Ignore const params for now
-            let fn_type_params = fn_generics
-                .type_or_const_params(db)
-                .into_iter()
-                .map(|it| it.as_type_param(db))
-                .collect::<Option<Vec<TypeParam>>>()?;
 
             // Ignore all functions that have something to do with lifetimes as we don't check them
             if !fn_generics.lifetime_params(db).is_empty()
@@ -733,104 +720,43 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
                 return None;
             }
 
-            // Only account for stable type parameters for now, unstable params can be default
-            // tho, for example in `Box<T, #[unstable] A: Allocator>`
-            if imp_type_params.iter().any(|it| it.is_unstable(db) && it.default(db).is_none())
-                || fn_type_params.iter().any(|it| it.is_unstable(db) && it.default(db).is_none())
+            // Ignore functions with generics for now as they kill the performance
+            // Also checking bounds for generics is problematic
+            if fn_generics.type_or_const_params(db).len() > 0 {
+                return None;
+            }
+
+            let ret_ty = it.ret_type_with_args(db, ty.type_arguments());
+            // Filter out functions that return references
+            if ctx.config.enable_borrowcheck && ret_ty.contains_reference(db) || ret_ty.is_raw_ptr()
             {
                 return None;
             }
 
-            // Double check that we have fully known type
-            if ty.type_arguments().any(|it| it.contains_unknown()) {
-                return None;
-            }
-
-            let non_default_fn_type_params_len =
-                fn_type_params.iter().filter(|it| it.default(db).is_none()).count();
-
-            // Ignore functions with generics for now as they kill the performance
-            // Also checking bounds for generics is problematic
-            if non_default_fn_type_params_len > 0 {
-                return None;
-            }
-
-            let generic_params = lookup
-                .iter_types()
-                .collect::<Vec<_>>() // Force take ownership
+            // Early exit if some param cannot be filled from lookup
+            let param_exprs: Vec<Vec<Expr>> = it
+                .params_without_self_with_args(db, ty.type_arguments())
                 .into_iter()
-                .permutations(non_default_fn_type_params_len);
+                .map(|field| lookup.find_autoref(db, field.ty()))
+                .collect::<Option<_>>()?;
 
-            let exprs: Vec<_> = generic_params
-                .filter(|_| should_continue())
-                .filter_map(|generics| {
-                    // Insert default type params
-                    let mut g = generics.into_iter();
-                    let generics: Vec<_> = ty
-                        .type_arguments()
-                        .map(Some)
-                        .chain(fn_type_params.iter().map(|it| match it.default(db) {
-                            Some(ty) => Some(ty),
-                            None => {
-                                let generic = g.next().expect("Missing type param");
-                                it.trait_bounds(db)
-                                    .into_iter()
-                                    .all(|bound| generic.impls_trait(db, bound, &[]));
-                                // Filter out generics that do not unify due to trait bounds
-                                it.ty(db).could_unify_with(db, &generic).then_some(generic)
-                            }
-                        }))
-                        .collect::<Option<_>>()?;
+            // Note that we need special case for 0 param constructors because of multi cartesian
+            // product
+            let generics = ty.type_arguments().collect();
+            let fn_exprs: Vec<Expr> = if param_exprs.is_empty() {
+                vec![Expr::Function { func: it, generics, params: Vec::new() }]
+            } else {
+                param_exprs
+                    .into_iter()
+                    .multi_cartesian_product()
+                    .map(|params| Expr::Function { func: it, generics: generics.clone(), params })
+                    .collect()
+            };
 
-                    let ret_ty = it.ret_type_with_args(
-                        db,
-                        ty.type_arguments().chain(generics.iter().cloned()),
-                    );
-                    // Filter out functions that return references
-                    if ctx.config.enable_borrowcheck && ret_ty.contains_reference(db)
-                        || ret_ty.is_raw_ptr()
-                    {
-                        return None;
-                    }
+            lookup.insert(ret_ty.clone(), fn_exprs.iter().cloned());
 
-                    // Ignore functions that do not change the type
-                    // if ty.could_unify_with_deeply(db, &ret_ty) {
-                    //     return None;
-                    // }
-
-                    // Early exit if some param cannot be filled from lookup
-                    let param_exprs: Vec<Vec<Expr>> = it
-                        .params_without_self_with_args(
-                            db,
-                            ty.type_arguments().chain(generics.iter().cloned()),
-                        )
-                        .into_iter()
-                        .map(|field| lookup.find_autoref(db, field.ty()))
-                        .collect::<Option<_>>()?;
-
-                    // Note that we need special case for 0 param constructors because of multi cartesian
-                    // product
-                    let fn_exprs: Vec<Expr> = if param_exprs.is_empty() {
-                        vec![Expr::Function { func: it, generics, params: Vec::new() }]
-                    } else {
-                        param_exprs
-                            .into_iter()
-                            .multi_cartesian_product()
-                            .map(|params| Expr::Function {
-                                func: it,
-                                generics: generics.clone(),
-                                params,
-                            })
-                            .collect()
-                    };
-
-                    lookup.insert(ret_ty.clone(), fn_exprs.iter().cloned());
-                    Some((ret_ty, fn_exprs))
-                })
-                .collect();
-            Some(exprs)
+            Some((ret_ty, fn_exprs))
         })
-        .flatten()
         .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then_some(exprs))
         .flatten()
 }
