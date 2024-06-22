@@ -171,7 +171,7 @@ impl LlvmFilecheck {
 
     /// Pipe a read file into standard input containing patterns that will be matched against the .patterns(path) call.
     pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
-        self.cmd.set_stdin(input.as_ref().to_vec().into_boxed_slice());
+        self.cmd.stdin(input);
         self
     }
 
