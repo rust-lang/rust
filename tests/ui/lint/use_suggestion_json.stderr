@@ -369,6 +369,29 @@ mod foo {
             }
           ],
           "label": null,
+          "suggested_replacement": "use std::sync::mpmc::Iter;
+
+",
+          "suggestion_applicability": "MaybeIncorrect",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/use_suggestion_json.rs",
+          "byte_start": 541,
+          "byte_end": 541,
+          "line_start": 11,
+          "line_end": 11,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
           "suggested_replacement": "use std::sync::mpsc::Iter;
 
 ",
@@ -396,7 +419,7 @@ mod foo {
 \u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
 \u001b[0m\u001b[1m\u001b[38;5;12mLL\u001b[0m\u001b[0m \u001b[0m\u001b[0m\u001b[38;5;10m+ use std::collections::hash_map::Iter;\u001b[0m
 \u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
-\u001b[0m     and 8 other candidates\u001b[0m
+\u001b[0m     and 9 other candidates\u001b[0m
 
 "
 }
