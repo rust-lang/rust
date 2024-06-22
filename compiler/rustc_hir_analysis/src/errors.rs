@@ -682,7 +682,7 @@ pub(crate) enum CannotCaptureLateBound {
 pub(crate) struct VariancesOf {
     #[primary_span]
     pub span: Span,
-    pub variances_of: String,
+    pub variances: String,
 }
 
 #[derive(Diagnostic)]
@@ -690,7 +690,7 @@ pub(crate) struct VariancesOf {
 pub(crate) struct TypeOf<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub type_of: Ty<'tcx>,
+    pub ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]
