@@ -21,12 +21,8 @@ impl Command {
         use crate::sys::cvt_r;
         let envp = self.capture_env();
 
-        if self.saw_nul() {
-            return Err(io::const_io_error!(
-                ErrorKind::InvalidInput,
-                "nul byte found in provided data",
-            ));
-        }
+        self.validate_input()?;
+
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
         let mut p = Process { pid: 0, status: None };
 

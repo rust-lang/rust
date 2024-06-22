@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::io::{self, Error, ErrorKind};
+use crate::io::{self, Error};
 use crate::mem;
 use crate::num::NonZero;
 use crate::sys;
@@ -66,12 +66,7 @@ impl Command {
 
         let envp = self.capture_env();
 
-        if self.saw_nul() {
-            return Err(io::const_io_error!(
-                ErrorKind::InvalidInput,
-                "nul byte found in provided data",
-            ));
-        }
+        self.validate_input()?;
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
 
@@ -182,7 +177,7 @@ impl Command {
     // way to avoid that all-together.
     #[cfg(any(target_os = "tvos", target_os = "watchos"))]
     const ERR_APPLE_TV_WATCH_NO_FORK_EXEC: Error = io::const_io_error!(
-        ErrorKind::Unsupported,
+        io::ErrorKind::Unsupported,
         "`fork`+`exec`-based process spawning is not supported on this target",
     );
 
@@ -223,7 +218,7 @@ impl Command {
                     thread::sleep(delay);
                 } else {
                     return Err(io::const_io_error!(
-                        ErrorKind::WouldBlock,
+                        io::ErrorKind::WouldBlock,
                         "forking returned EBADF too often",
                     ));
                 }
@@ -238,8 +233,8 @@ impl Command {
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         let envp = self.capture_env();
 
-        if self.saw_nul() {
-            return io::const_io_error!(ErrorKind::InvalidInput, "nul byte found in provided data",);
+        if let Err(err) = self.validate_input() {
+            return err;
         }
 
         match self.setup_io(default, true) {
@@ -499,7 +494,7 @@ impl Command {
                             thread::sleep(delay);
                         } else {
                             return Err(io::const_io_error!(
-                                ErrorKind::WouldBlock,
+                                io::ErrorKind::WouldBlock,
                                 "posix_spawnp returned EBADF too often",
                             ));
                         }
@@ -1111,14 +1106,14 @@ impl crate::os::linux::process::ChildExt for crate::process::Child {
         self.handle
             .pidfd
             .as_ref()
-            .ok_or_else(|| Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
+            .ok_or_else(|| Error::new(io::ErrorKind::Uncategorized, "No pidfd was created."))
     }
 
     fn take_pidfd(&mut self) -> io::Result<PidFd> {
         self.handle
             .pidfd
             .take()
-            .ok_or_else(|| Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
+            .ok_or_else(|| Error::new(io::ErrorKind::Uncategorized, "No pidfd was created."))
     }
 }
 
