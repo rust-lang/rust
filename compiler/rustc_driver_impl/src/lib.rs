@@ -367,18 +367,17 @@ fn run_compiler(
             return early_exit();
         }
 
-        let early_dcx = EarlyDiagCtxt::new(sess.opts.error_format);
-
-        if print_crate_info(&early_dcx, codegen_backend, sess, has_input) == Compilation::Stop {
+        if print_crate_info(codegen_backend, sess, has_input) == Compilation::Stop {
             return early_exit();
         }
 
         if !has_input {
-            early_dcx.early_fatal("no input filename given"); // this is fatal
+            #[allow(rustc::diagnostic_outside_of_impl)]
+            sess.dcx().fatal("no input filename given"); // this is fatal
         }
 
         if !sess.opts.unstable_opts.ls.is_empty() {
-            list_metadata(&early_dcx, sess, &*codegen_backend.metadata_loader());
+            list_metadata(sess, &*codegen_backend.metadata_loader());
             return early_exit();
         }
 
@@ -674,7 +673,7 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
     }
 }
 
-fn list_metadata(early_dcx: &EarlyDiagCtxt, sess: &Session, metadata_loader: &dyn MetadataLoader) {
+fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
     match sess.io.input {
         Input::File(ref ifile) => {
             let path = &(*ifile);
@@ -691,13 +690,13 @@ fn list_metadata(early_dcx: &EarlyDiagCtxt, sess: &Session, metadata_loader: &dy
             safe_println!("{}", String::from_utf8(v).unwrap());
         }
         Input::Str { .. } => {
-            early_dcx.early_fatal("cannot list metadata for stdin");
+            #[allow(rustc::diagnostic_outside_of_impl)]
+            sess.dcx().fatal("cannot list metadata for stdin");
         }
     }
 }
 
 fn print_crate_info(
-    early_dcx: &EarlyDiagCtxt,
     codegen_backend: &dyn CodegenBackend,
     sess: &Session,
     parse_attrs: bool,
@@ -881,8 +880,8 @@ fn print_crate_info(
                         .expect("unknown Apple target OS");
                     println_info!("deployment_target={}", format!("{major}.{minor}"))
                 } else {
-                    early_dcx
-                        .early_fatal("only Apple targets currently support deployment version info")
+                    #[allow(rustc::diagnostic_outside_of_impl)]
+                    sess.dcx().fatal("only Apple targets currently support deployment version info")
                 }
             }
         }
