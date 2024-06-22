@@ -212,7 +212,7 @@ help: check if the original Iterator contains an element instead of collecting t
    |
 LL ~             
 LL |
- ...
+...
 LL |                 // Do lint
 LL ~                 vec.iter().map(|k| k * k).any(|x| x == n);
    |
