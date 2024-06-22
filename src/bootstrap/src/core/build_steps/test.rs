@@ -766,7 +766,7 @@ impl Step for Clippy {
         let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
 
         // Clippy reports errors if it blessed the outputs
-        if builder.run_cmd(BootstrapCommand::from(&mut cargo).allow_failure()) {
+        if builder.run_tracked(BootstrapCommand::from(&mut cargo).allow_failure()).is_success() {
             // The tests succeeded; nothing to do.
             return;
         }
@@ -3352,7 +3352,7 @@ impl Step for CodegenCranelift {
         cargo.args(builder.config.test_args());
 
         let mut cmd: Command = cargo.into();
-        builder.run_cmd(BootstrapCommand::from(&mut cmd).fail_fast());
+        builder.run_tracked(BootstrapCommand::from(&mut cmd));
     }
 }
 
@@ -3478,6 +3478,6 @@ impl Step for CodegenGCC {
         cargo.args(builder.config.test_args());
 
         let mut cmd: Command = cargo.into();
-        builder.run_cmd(BootstrapCommand::from(&mut cmd).fail_fast());
+        builder.run_tracked(BootstrapCommand::from(&mut cmd));
     }
 }

@@ -580,14 +580,12 @@ impl Build {
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
-        let has_local_modifications = !self.run_cmd(
-            BootstrapCommand::from(submodule_git().args(["diff-index", "--quiet", "HEAD"]))
-                .allow_failure()
-                .output_mode(match self.is_verbose() {
-                    true => OutputMode::All,
-                    false => OutputMode::OnlyOutput,
-                }),
-        );
+        let has_local_modifications = self
+            .run_tracked(
+                BootstrapCommand::from(submodule_git().args(["diff-index", "--quiet", "HEAD"]))
+                    .allow_failure(),
+            )
+            .is_failure();
         if has_local_modifications {
             self.run(submodule_git().args(["stash", "push"]));
         }
@@ -1026,18 +1024,7 @@ impl Build {
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run(&self, cmd: &mut Command) {
-        self.run_cmd(BootstrapCommand::from(cmd).fail_fast().output_mode(
-            match self.is_verbose() {
-                true => OutputMode::All,
-                false => OutputMode::OnlyOutput,
-            },
-        ));
-    }
-
-    /// A centralized function for running commands that do not return output.
-    pub(crate) fn run_cmd<'a, C: Into<BootstrapCommand<'a>>>(&self, cmd: C) -> bool {
-        let command = cmd.into();
-        self.run_tracked(command).is_success()
+        self.run_tracked(BootstrapCommand::from(cmd));
     }
 
     /// Check if verbosity is greater than the `level`
