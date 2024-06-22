@@ -160,16 +160,15 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
             override_builder.add(&format!("!{ignore}")).expect(&ignore);
         }
     }
-    let git_available = build
-        .run(helpers::git(None).print_on_failure().allow_failure().arg("--version"))
-        .is_success();
+    let git_available =
+        build.run(helpers::git(None).capture().allow_failure().arg("--version")).is_success();
 
     let mut adjective = None;
     if git_available {
         let in_working_tree = build
             .run(
                 helpers::git(Some(&build.src))
-                    .print_on_failure()
+                    .capture()
                     .allow_failure()
                     .arg("rev-parse")
                     .arg("--is-inside-work-tree"),

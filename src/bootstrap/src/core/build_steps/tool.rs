@@ -603,7 +603,7 @@ impl Step for Rustdoc {
             &self.compiler.host,
             &target,
         );
-        builder.run(cargo);
+        builder.run(cargo.into_cmd());
 
         // Cargo adds a number of paths to the dylib search path on windows, which results in
         // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
@@ -858,7 +858,7 @@ impl Step for LlvmBitcodeLinker {
             &self.extra_features,
         );
 
-        builder.run(cargo);
+        builder.run(cargo.into_cmd());
 
         let tool_out = builder
             .cargo_out(self.compiler, Mode::ToolRustc, self.target)

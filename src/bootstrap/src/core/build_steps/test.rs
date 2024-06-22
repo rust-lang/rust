@@ -26,7 +26,7 @@ use crate::core::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::flags::get_completion;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::TargetSelection;
-use crate::utils::exec::{BootstrapCommand, OutputMode};
+use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
     self, add_link_lib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
     linker_args, linker_flags, output, t, target_supports_cranelift_backend, up_to_date,
@@ -150,16 +150,13 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         builder.default_doc(&[]);
 
         // Build the linkchecker before calling `msg`, since GHA doesn't support nested groups.
-        let mut linkchecker = builder.tool_cmd(Tool::Linkchecker);
+        let linkchecker = builder.tool_cmd(Tool::Linkchecker);
 
         // Run the linkchecker.
         let _guard =
             builder.msg(Kind::Test, compiler.stage, "Linkcheck", bootstrap_host, bootstrap_host);
         let _time = helpers::timeit(builder);
-        builder.run(
-            BootstrapCommand::from(linkchecker.arg(builder.out.join(host.triple).join("doc")))
-                .delay_failure(),
-        );
+        builder.run(linkchecker.delay_failure().arg(builder.out.join(host.triple).join("doc")));
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -217,10 +214,7 @@ impl Step for HtmlCheck {
         ));
 
         builder.run(
-            BootstrapCommand::from(
-                builder.tool_cmd(Tool::HtmlChecker).arg(builder.doc_out(self.target)),
-            )
-            .delay_failure(),
+            builder.tool_cmd(Tool::HtmlChecker).delay_failure().arg(builder.doc_out(self.target)),
         );
     }
 }
@@ -260,14 +254,13 @@ impl Step for Cargotest {
 
         let _time = helpers::timeit(builder);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
-        let cmd = cmd
-            .arg(&cargo)
+        cmd.arg(&cargo)
             .arg(&out_dir)
             .args(builder.config.test_args())
             .env("RUSTC", builder.rustc(compiler))
             .env("RUSTDOC", builder.rustdoc(compiler));
-        add_rustdoc_cargo_linker_args(cmd, builder, compiler.host, LldThreads::No);
-        builder.run(BootstrapCommand::from(cmd).delay_failure());
+        add_rustdoc_cargo_linker_args(&mut cmd, builder, compiler.host, LldThreads::No);
+        builder.run(cmd.delay_failure());
     }
 }
 
@@ -763,12 +756,12 @@ impl Step for Clippy {
         cargo.env("HOST_LIBS", host_libs);
 
         cargo.add_rustc_lib_path(builder);
-        let mut cargo = prepare_cargo_test(cargo, &[], &[], "clippy", compiler, host, builder);
+        let cargo = prepare_cargo_test(cargo, &[], &[], "clippy", compiler, host, builder);
 
         let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
 
         // Clippy reports errors if it blessed the outputs
-        if builder.run(BootstrapCommand::from(&mut cargo).allow_failure()).is_success() {
+        if builder.run(cargo.allow_failure()).is_success() {
             // The tests succeeded; nothing to do.
             return;
         }
@@ -821,7 +814,7 @@ impl Step for RustdocTheme {
             .env("RUSTC_BOOTSTRAP", "1");
         cmd.args(linker_args(builder, self.compiler.host, LldThreads::No));
 
-        builder.run(BootstrapCommand::from(&mut cmd).delay_failure());
+        builder.run(cmd.delay_failure());
     }
 }
 
@@ -1099,7 +1092,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         }
 
         builder.info("tidy check");
-        builder.run(BootstrapCommand::from(&mut cmd).delay_failure());
+        builder.run(cmd.delay_failure());
 
         builder.info("x.py completions check");
         let [bash, zsh, fish, powershell] = ["x.py.sh", "x.py.zsh", "x.py.fish", "x.py.ps1"]
@@ -1306,7 +1299,7 @@ impl Step for RunMakeSupport {
             &[],
         );
 
-        builder.run(cargo);
+        builder.run(cargo.into_cmd());
 
         let lib_name = "librun_make_support.rlib";
         let lib = builder.tools_dir(self.compiler).join(lib_name);
@@ -2187,7 +2180,7 @@ impl BookTest {
             compiler.host,
         );
         let _time = helpers::timeit(builder);
-        let cmd = BootstrapCommand::from(&mut rustbook_cmd).delay_failure();
+        let cmd = rustbook_cmd.delay_failure();
         let toolstate =
             if builder.run(cmd).is_success() { ToolState::TestPass } else { ToolState::TestFail };
         builder.save_toolstate(self.name, toolstate);
@@ -2318,7 +2311,7 @@ impl Step for ErrorIndex {
         let guard =
             builder.msg(Kind::Test, compiler.stage, "error-index", compiler.host, compiler.host);
         let _time = helpers::timeit(builder);
-        builder.run(BootstrapCommand::from(&mut tool).output_mode(OutputMode::OnlyOnFailure));
+        builder.run(tool.capture());
         drop(guard);
         // The tests themselves need to link to std, so make sure it is
         // available.
@@ -2349,7 +2342,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
 
     cmd = cmd.delay_failure();
     if !builder.config.verbose_tests {
-        cmd = cmd.print_on_failure();
+        cmd = cmd.capture();
     }
     builder.run(cmd).is_success()
 }
@@ -2375,10 +2368,13 @@ impl Step for RustcGuide {
         builder.update_submodule(&relative_path);
 
         let src = builder.src.join(relative_path);
-        let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-        let cmd = BootstrapCommand::from(rustbook_cmd.arg("linkcheck").arg(&src)).delay_failure();
-        let toolstate =
-            if builder.run(cmd).is_success() { ToolState::TestPass } else { ToolState::TestFail };
+        let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook).delay_failure();
+        rustbook_cmd.arg("linkcheck").arg(&src);
+        let toolstate = if builder.run(rustbook_cmd).is_success() {
+            ToolState::TestPass
+        } else {
+            ToolState::TestFail
+        };
         builder.save_toolstate("rustc-dev-guide", toolstate);
     }
 }
@@ -3347,7 +3343,7 @@ impl Step for CodegenCranelift {
             .arg("testsuite.extended_sysroot");
         cargo.args(builder.config.test_args());
 
-        builder.run(cargo);
+        builder.run(cargo.into_cmd());
     }
 }
 
@@ -3472,6 +3468,6 @@ impl Step for CodegenGCC {
             .arg("--std-tests");
         cargo.args(builder.config.test_args());
 
-        builder.run(cargo);
+        builder.run(cargo.into_cmd());
     }
 }
