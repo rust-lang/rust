@@ -5,16 +5,20 @@
 // EMIT_MIR lower_array_len.array_bound.GVN.diff
 pub fn array_bound<const N: usize>(index: usize, slice: &[u8; N]) -> u8 {
     // CHECK-LABEL: fn array_bound(
-    // CHECK: [[len:_.*]] = const N;
-    // CHECK: Lt(_1, move [[len]]);
+    // CHECK-NOT: Lt
+    // CHECK: Lt(_1, const N);
+    // CHECK-NOT: Lt
     if index < slice.len() { slice[index] } else { 42 }
 }
 
 // EMIT_MIR lower_array_len.array_bound_mut.GVN.diff
 pub fn array_bound_mut<const N: usize>(index: usize, slice: &mut [u8; N]) -> u8 {
     // CHECK-LABEL: fn array_bound_mut(
-    // CHECK: [[len:_.*]] = const N;
-    // CHECK: Lt(_1, move [[len]]);
+    // CHECK-NOT: Lt
+    // CHECK: Lt(_1, const N);
+    // CHECK-NOT: Lt
+    // CHECK: Lt(const 0_usize, const N)
+    // CHECK-NOT: Lt
     if index < slice.len() {
         slice[index]
     } else {

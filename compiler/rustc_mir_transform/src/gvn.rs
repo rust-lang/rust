@@ -987,23 +987,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     // `*const [T]` -> `*const T` which remove metadata.
                     // We run on potentially-generic MIR, though, so unlike codegen
                     // we can't always know exactly what the metadata are.
-                    // Thankfully, equality on `ptr_metadata_ty_or_tail` gives us
-                    // what we need: `Ok(meta_ty)` if the metadata is known, or
-                    // `Err(tail_ty)` if not. Matching metadata is ok, but if
-                    // that's not known, then matching tail types is also ok,
-                    // allowing things like `*mut (?A, ?T)` <-> `*mut (?B, ?T)`.
+                    // To allow things like `*mut (?A, ?T)` <-> `*mut (?B, ?T)`,
+                    // it's fine to get a projection as the type.
                     // FIXME: Would it be worth trying to normalize, rather than
-                    // passing the identity closure?  Or are the types in the
+                    // just accepting the projection?  Or are the types in the
                     // Cast realistically about as normalized as we can get anyway?
                     Value::Cast { kind: CastKind::PtrToPtr, value: inner, from, to }
-                        if from
-                            .builtin_deref(true)
-                            .unwrap()
-                            .ptr_metadata_ty_or_tail(self.tcx, |t| t)
-                            == to
-                                .builtin_deref(true)
-                                .unwrap()
-                                .ptr_metadata_ty_or_tail(self.tcx, |t| t) =>
+                        if from.pointee_metadata_ty_or_projection(self.tcx)
+                            == to.pointee_metadata_ty_or_projection(self.tcx) =>
                     {
                         arg_index = *inner;
                         was_updated = true;
