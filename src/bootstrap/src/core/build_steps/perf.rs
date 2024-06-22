@@ -22,7 +22,7 @@ Consider setting `rust.debuginfo-level = 1` in `config.toml`."#);
     let sysroot = builder.ensure(Sysroot::new(compiler));
     let rustc = sysroot.join("bin/rustc");
 
-    let results_dir = builder.build.out.join("rustc-perf");
+    let results_dir = builder.build.tempdir().join("rustc-perf");
 
     let mut cmd = Command::new(collector);
     let cmd = cmd

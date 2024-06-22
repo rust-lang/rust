@@ -129,7 +129,7 @@ impl Step for ToolBuild {
             if tool == "tidy" {
                 tool = "rust-tidy";
             }
-            copy_tool_bin(builder, self.compiler, self.target, self.mode, tool)
+            copy_link_tool_bin(builder, self.compiler, self.target, self.mode, tool)
         }
     }
 }
@@ -214,9 +214,9 @@ pub fn prepare_tool_cargo(
     cargo
 }
 
-/// Copies a built tool binary with the given `name` from the build directory to the
+/// Links a built tool binary with the given `name` from the build directory to the
 /// tools directory.
-fn copy_tool_bin(
+fn copy_link_tool_bin(
     builder: &Builder<'_>,
     compiler: Compiler,
     target: TargetSelection,
@@ -413,7 +413,7 @@ impl Step for RustcPerf {
         let collector_bin = builder.ensure(tool.clone());
         // We also need to symlink the `rustc-fake` binary to the corresponding directory,
         // because `collector` expects it in the same directory.
-        copy_tool_bin(builder, tool.compiler, tool.target, tool.mode, "rustc-fake");
+        copy_link_tool_bin(builder, tool.compiler, tool.target, tool.mode, "rustc-fake");
 
         collector_bin
     }
