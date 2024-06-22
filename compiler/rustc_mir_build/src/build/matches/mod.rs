@@ -1258,21 +1258,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // cases.
             let source_info = self.source_info(scrutinee_span);
 
-            // Matching on a `scrutinee_place` with an uninhabited type doesn't
-            // generate any memory reads by itself, and so if the place "expression"
-            // contains unsafe operations like raw pointer dereferences or union
-            // field projections, we wouldn't know to require an `unsafe` block
-            // around a `match` equivalent to `std::intrinsics::unreachable()`.
-            // See issue #47412 for this hole being discovered in the wild.
+            // Matching on a scrutinee place of an uninhabited type doesn't generate any memory
+            // reads by itself, and so if the place is uninitialized we wouldn't know. In order to
+            // disallow the following:
+            // ```rust
+            // let x: !;
+            // match x {}
+            // ```
+            // we add a dummy read on the place.
             //
-            // HACK(eddyb) Work around the above issue by adding a dummy inspection
-            // of `scrutinee_place`, specifically by applying `ReadForMatch`.
-            //
-            // NOTE: ReadForMatch also checks that the scrutinee is initialized.
-            // This is currently needed to not allow matching on an uninitialized,
-            // uninhabited value. If we get never patterns, those will check that
-            // the place is initialized, and so this read would only be used to
-            // check safety.
+            // NOTE: If we require never patterns for empty matches, those will check that the place
+            // is initialized, and so this read would no longer be needed.
             let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
 
             if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
