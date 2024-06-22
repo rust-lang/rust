@@ -1,6 +1,5 @@
 // This tests the different -Crelro-level values, and makes sure that they work properly.
 
-//@ ignore-cross-compile
 //@ only-linux
 
 use run_make_support::llvm_readobj;
