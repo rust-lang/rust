@@ -26,8 +26,11 @@ pub(crate) fn parse_lazy_static(
                 Err(err) => {
                     err.cancel();
                     parser.psess.dcx().reset_err_count();
+                    return None;
                 }
-
+            }
+        }
+    }
     while parser.token.kind != TokenKind::Eof {
         // Parse a `lazy_static!` item.
         let vis = parse_or!(parse_visibility, rustc_parse::parser::FollowedByType::No);
