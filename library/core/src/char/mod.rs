@@ -36,7 +36,7 @@ pub use self::decode::{DecodeUtf16, DecodeUtf16Error};
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::methods::encode_utf16_raw;
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
-pub use self::methods::encode_utf8_raw;
+pub use self::methods::{encode_utf8_raw, encode_utf8_raw_unchecked};
 
 use crate::ascii;
 use crate::error::Error;
