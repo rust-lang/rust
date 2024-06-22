@@ -544,7 +544,7 @@ hir_analysis_unrecognized_intrinsic_function =
 
 hir_analysis_unused_associated_type_bounds =
     unnecessary associated type bound for not object safe associated type
-    .note = this associated type has a `where Self: Sized` bound. Thus, while the associated type can be specified, it cannot be used in any way, because trait objects are not `Sized`.
+    .note = this associated type has a `where Self: Sized` bound, and while the associated type can be specified, it cannot be used because trait objects are never `Sized`
     .suggestion = remove this bound
 
 hir_analysis_unused_generic_parameter =

@@ -14,7 +14,7 @@ passes_abi_of =
     fn_abi_of({$fn_name}) = {$fn_abi}
 
 passes_allow_incoherent_impl =
-    `rustc_allow_incoherent_impl` attribute should be applied to impl items.
+    `rustc_allow_incoherent_impl` attribute should be applied to impl items
     .label = the only currently supported targets are inherent methods
 
 passes_allow_internal_unstable =
@@ -253,8 +253,8 @@ passes_doc_test_unknown_spotlight =
     .no_op_note = `doc(spotlight)` is now a no-op
 
 passes_duplicate_diagnostic_item_in_crate =
-    duplicate diagnostic item in crate `{$crate_name}`: `{$name}`.
-    .note = the diagnostic item is first defined in crate `{$orig_crate_name}`.
+    duplicate diagnostic item in crate `{$crate_name}`: `{$name}`
+    .note = the diagnostic item is first defined in crate `{$orig_crate_name}`
 
 passes_duplicate_feature_err =
     the feature `{$feature}` has already been declared
@@ -263,27 +263,27 @@ passes_duplicate_lang_item =
     found duplicate lang item `{$lang_item_name}`
     .first_defined_span = the lang item is first defined here
     .first_defined_crate_depends = the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)
-    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`.
+    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`
     .first_definition_local = first definition in the local crate (`{$orig_crate_name}`)
     .second_definition_local = second definition in the local crate (`{$crate_name}`)
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
 passes_duplicate_lang_item_crate =
-    duplicate lang item in crate `{$crate_name}`: `{$lang_item_name}`.
+    duplicate lang item in crate `{$crate_name}`: `{$lang_item_name}`
     .first_defined_span = the lang item is first defined here
     .first_defined_crate_depends = the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)
-    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`.
+    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`
     .first_definition_local = first definition in the local crate (`{$orig_crate_name}`)
     .second_definition_local = second definition in the local crate (`{$crate_name}`)
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
 passes_duplicate_lang_item_crate_depends =
-    duplicate lang item in crate `{$crate_name}` (which `{$dependency_of}` depends on): `{$lang_item_name}`.
+    duplicate lang item in crate `{$crate_name}` (which `{$dependency_of}` depends on): `{$lang_item_name}`
     .first_defined_span = the lang item is first defined here
     .first_defined_crate_depends = the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)
-    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`.
+    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`
     .first_definition_local = first definition in the local crate (`{$orig_crate_name}`)
     .second_definition_local = second definition in the local crate (`{$crate_name}`)
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
@@ -315,7 +315,7 @@ passes_ffi_pure_invalid_target =
     `#[ffi_pure]` may only be used on foreign functions
 
 passes_has_incoherent_inherent_impl =
-    `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits.
+    `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits
     .label = only adts, extern types and traits are supported
 
 passes_ignored_attr =
