@@ -960,12 +960,12 @@ impl Build {
 
     /// Execute a command and return its output.
     /// This method should be used for all command executions in bootstrap.
-    fn run<'a, C: Into<BootstrapCommand<'a>>>(&self, command: C) -> CommandOutput {
+    fn run<C: Into<BootstrapCommand>>(&self, command: C) -> CommandOutput {
         if self.config.dry_run() {
             return CommandOutput::default();
         }
 
-        let command = command.into();
+        let mut command = command.into();
 
         self.verbose(|| println!("running: {command:?}"));
 

@@ -37,13 +37,13 @@ pub enum OutputMode {
 /// [allow_failure]: BootstrapCommand::allow_failure
 /// [delay_failure]: BootstrapCommand::delay_failure
 #[derive(Debug)]
-pub struct BootstrapCommand<'a> {
-    pub command: &'a mut Command,
+pub struct BootstrapCommand {
+    pub command: Command,
     pub failure_behavior: BehaviorOnFailure,
     pub output_mode: Option<OutputMode>,
 }
 
-impl<'a> BootstrapCommand<'a> {
+impl BootstrapCommand {
     pub fn delay_failure(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::DelayFail, ..self }
     }
@@ -66,8 +66,33 @@ impl<'a> BootstrapCommand<'a> {
     }
 }
 
-impl<'a> From<&'a mut Command> for BootstrapCommand<'a> {
+/// This implementation is temporary, until all `Command` invocations are migrated to
+/// `BootstrapCommand`.
+impl<'a> From<&'a mut Command> for BootstrapCommand {
     fn from(command: &'a mut Command) -> Self {
+        // This is essentially a manual `Command::clone`
+        let mut cmd = Command::new(command.get_program());
+        if let Some(dir) = command.get_current_dir() {
+            cmd.current_dir(dir);
+        }
+        cmd.args(command.get_args());
+        for (key, value) in command.get_envs() {
+            match value {
+                Some(value) => {
+                    cmd.env(key, value);
+                }
+                None => {
+                    cmd.env_remove(key);
+                }
+            }
+        }
+
+        cmd.into()
+    }
+}
+
+impl From<Command> for BootstrapCommand {
+    fn from(command: Command) -> Self {
         Self { command, failure_behavior: BehaviorOnFailure::Exit, output_mode: None }
     }
 }
