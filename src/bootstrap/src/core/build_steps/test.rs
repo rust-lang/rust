@@ -3064,7 +3064,7 @@ impl Step for TierCheck {
             self.compiler.host,
             self.compiler.host,
         );
-        builder.run(BootstrapCommand::from(&mut cargo.into()).delay_failure());
+        builder.run(BootstrapCommand::from(cargo).delay_failure());
     }
 }
 

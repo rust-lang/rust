@@ -1,3 +1,5 @@
+use std::ffi::OsStr;
+use std::path::Path;
 use std::process::{Command, ExitStatus, Output};
 
 /// What should be done when the command fails.
@@ -88,6 +90,14 @@ impl<'a> From<&'a mut Command> for BootstrapCommand {
         }
 
         cmd.into()
+    }
+}
+
+/// This implementation is temporary, until all `Command` invocations are migrated to
+/// `BootstrapCommand`.
+impl<'a> From<&'a mut BootstrapCommand> for BootstrapCommand {
+    fn from(command: &'a mut BootstrapCommand) -> Self {
+        BootstrapCommand::from(&mut command.command)
     }
 }
 

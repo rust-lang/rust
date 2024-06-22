@@ -25,6 +25,7 @@ use crate::EXTRA_CHECK_CFGS;
 use crate::{Build, CLang, Crate, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
+use crate::utils::exec::BootstrapCommand;
 
 use clap::ValueEnum;
 // FIXME: replace with std::lazy after it gets stabilized and reaches beta
@@ -2620,5 +2621,11 @@ impl From<Cargo> for Command {
         }
 
         cargo.command
+    }
+}
+
+impl From<Cargo> for BootstrapCommand {
+    fn from(cargo: Cargo) -> BootstrapCommand {
+        Command::from(cargo).into()
     }
 }
