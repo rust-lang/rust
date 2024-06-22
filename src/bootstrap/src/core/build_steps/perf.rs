@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use std::process::Command;
 
 use crate::core::build_steps::compile::{Std, Sysroot};
@@ -11,6 +12,15 @@ use crate::core::config::DebuginfoLevel;
 pub struct PerfArgs {
     #[clap(subcommand)]
     cmd: PerfCommand,
+
+    #[clap(flatten)]
+    opts: SharedOpts,
+}
+
+impl Default for PerfArgs {
+    fn default() -> Self {
+        Self { cmd: PerfCommand::Eprintln, opts: SharedOpts::default() }
+    }
 }
 
 #[derive(Debug, Clone, clap::Parser)]
@@ -20,9 +30,66 @@ enum PerfCommand {
     Eprintln,
 }
 
-impl Default for PerfArgs {
-    fn default() -> Self {
-        Self { cmd: PerfCommand::Eprintln }
+#[derive(Debug, Default, Clone, clap::Parser)]
+struct SharedOpts {
+    /// Select the benchmarks that you want to run (separated by commas).
+    /// If unspecified, all benchmarks will be executed.
+    #[clap(long, global = true, value_delimiter = ',')]
+    include: Vec<String>,
+    /// Select the scenarios that should be benchmarked.
+    #[clap(
+        long,
+        global = true,
+        value_delimiter = ',',
+        default_value = "Full,IncrFull,IncrUnchanged,IncrPatched"
+    )]
+    scenarios: Vec<Scenario>,
+    /// Select the profiles that should be benchmarked.
+    #[clap(long, global = true, value_delimiter = ',', default_value = "Check,Debug,Opt")]
+    profiles: Vec<Profile>,
+}
+
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+#[value(rename_all = "PascalCase")]
+enum Profile {
+    Check,
+    Debug,
+    Doc,
+    Opt,
+    Clippy,
+}
+
+impl Display for Profile {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            Profile::Check => "Check",
+            Profile::Debug => "Debug",
+            Profile::Doc => "Doc",
+            Profile::Opt => "Opt",
+            Profile::Clippy => "Clippy",
+        };
+        f.write_str(name)
+    }
+}
+
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+#[value(rename_all = "PascalCase")]
+enum Scenario {
+    Full,
+    IncrFull,
+    IncrUnchanged,
+    IncrPatched,
+}
+
+impl Display for Scenario {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            Scenario::Full => "Full",
+            Scenario::IncrFull => "IncrFull",
+            Scenario::IncrUnchanged => "IncrUnchanged",
+            Scenario::IncrPatched => "IncrPatched",
+        };
+        f.write_str(name)
     }
 }
 
@@ -43,15 +110,28 @@ Consider setting `rust.debuginfo-level = 1` in `config.toml`."#);
     let sysroot = builder.ensure(Sysroot::new(compiler));
     let rustc = sysroot.join("bin/rustc");
 
-    let results_dir = builder.build.tempdir().join("rustc-perf");
+    let rustc_perf_dir = builder.build.tempdir().join("rustc-perf");
 
     let mut cmd = Command::new(collector);
     match args.cmd {
         PerfCommand::Eprintln => {
             cmd.arg("profile_local").arg("eprintln");
+            cmd.arg("--out-dir").arg(rustc_perf_dir.join("results"));
         }
     }
-    cmd.arg("--out-dir").arg(&results_dir).arg("--include").arg("helloworld").arg(&rustc);
+
+    if !args.opts.include.is_empty() {
+        cmd.arg("--include").arg(args.opts.include.join(","));
+    }
+    if !args.opts.profiles.is_empty() {
+        cmd.arg("--profiles")
+            .arg(args.opts.profiles.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(","));
+    }
+    if !args.opts.scenarios.is_empty() {
+        cmd.arg("--scenarios")
+            .arg(args.opts.scenarios.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(","));
+    }
+    cmd.arg(&rustc);
 
     builder.info(&format!("Running `rustc-perf` using `{}`", rustc.display()));
 
@@ -60,5 +140,5 @@ Consider setting `rust.debuginfo-level = 1` in `config.toml`."#);
     let cmd = cmd.current_dir(builder.src.join("src/tools/rustc-perf"));
     builder.run(cmd);
 
-    builder.info(&format!("You can find the results at `{}`", results_dir.display()));
+    builder.info(&format!("You can find the results at `{}`", rustc_perf_dir.display()));
 }
