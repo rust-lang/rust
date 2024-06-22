@@ -2343,7 +2343,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
     let test_args = builder.config.test_args().join(" ");
     cmd.arg("--test-args").arg(test_args);
 
-    let mut cmd = BootstrapCommand::from(&mut cmd).delay_failure();
+    cmd = cmd.delay_failure();
     if !builder.config.verbose_tests {
         cmd = cmd.quiet();
     }
@@ -2941,12 +2941,12 @@ impl Step for Distcheck {
         let _ = fs::remove_dir_all(&dir);
         t!(fs::create_dir_all(&dir));
 
-        let mut cmd = Command::new("tar");
+        let mut cmd = BootstrapCommand::new("tar");
         cmd.arg("-xf")
             .arg(builder.ensure(dist::Src).tarball())
             .arg("--strip-components=1")
             .current_dir(&dir);
-        builder.run(&mut cmd);
+        builder.run(cmd);
 
         let toml = dir.join("rust-src/lib/rustlib/src/rust/library/std/Cargo.toml");
         builder.run(

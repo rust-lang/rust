@@ -1,4 +1,5 @@
 use std::ffi::OsStr;
+use std::ops::{Deref, DerefMut};
 use std::path::Path;
 use std::process::{Command, ExitStatus, Output};
 
@@ -46,6 +47,38 @@ pub struct BootstrapCommand {
 }
 
 impl BootstrapCommand {
+    pub fn new<S: AsRef<OsStr>>(program: S) -> Self {
+        Command::new(program).into()
+    }
+
+    pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
+        self.command.arg(arg.as_ref());
+        self
+    }
+
+    pub fn args<I, S>(&mut self, args: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        self.command.args(args);
+        self
+    }
+
+    pub fn env<K, V>(&mut self, key: K, val: V) -> &mut Self
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        self.command.env(key, val);
+        self
+    }
+
+    pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
+        self.command.current_dir(dir);
+        self
+    }
+
     pub fn delay_failure(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::DelayFail, ..self }
     }
@@ -98,6 +131,24 @@ impl<'a> From<&'a mut Command> for BootstrapCommand {
 impl<'a> From<&'a mut BootstrapCommand> for BootstrapCommand {
     fn from(command: &'a mut BootstrapCommand) -> Self {
         BootstrapCommand::from(&mut command.command)
+    }
+}
+
+/// This implementation is temporary, until all `Command` invocations are migrated to
+/// `BootstrapCommand`.
+impl Deref for BootstrapCommand {
+    type Target = Command;
+
+    fn deref(&self) -> &Self::Target {
+        &self.command
+    }
+}
+
+/// This implementation is temporary, until all `Command` invocations are migrated to
+/// `BootstrapCommand`.
+impl DerefMut for BootstrapCommand {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.command
     }
 }
 

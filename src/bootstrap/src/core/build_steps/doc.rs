@@ -249,6 +249,7 @@ impl Step for TheBook {
         let shared_assets = builder.ensure(SharedAssets { target });
 
         // build the command first so we don't nest GHA groups
+        // FIXME: this doesn't do anything!
         builder.rustdoc_cmd(compiler);
 
         // build the redirect pages
@@ -300,7 +301,7 @@ fn invoke_rustdoc(
         cmd.arg("-Z").arg("unstable-options").arg("--disable-minification");
     }
 
-    builder.run(&mut cmd);
+    builder.run(cmd);
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -394,7 +395,7 @@ impl Step for Standalone {
             } else {
                 cmd.arg("--markdown-css").arg("rust.css");
             }
-            builder.run(&mut cmd);
+            builder.run(cmd);
         }
 
         // We open doc/index.html as the default if invoked as `x.py doc --open`
@@ -493,7 +494,7 @@ impl Step for Releases {
                 cmd.arg("--disable-minification");
             }
 
-            builder.run(&mut cmd);
+            builder.run(cmd);
         }
 
         // We open doc/RELEASES.html as the default if invoked as `x.py doc --open RELEASES.md`

@@ -24,8 +24,8 @@ use crate::utils::helpers::{check_cfg_arg, libdir, linker_flags, output, t, LldT
 use crate::EXTRA_CHECK_CFGS;
 use crate::{Build, CLang, Crate, DocTests, GitRepo, Mode};
 
-pub use crate::Compiler;
 use crate::utils::exec::BootstrapCommand;
+pub use crate::Compiler;
 
 use clap::ValueEnum;
 // FIXME: replace with std::lazy after it gets stabilized and reaches beta
@@ -1311,8 +1311,8 @@ impl<'a> Builder<'a> {
         cmd
     }
 
-    pub fn rustdoc_cmd(&self, compiler: Compiler) -> Command {
-        let mut cmd = Command::new(self.bootstrap_out.join("rustdoc"));
+    pub fn rustdoc_cmd(&self, compiler: Compiler) -> BootstrapCommand {
+        let mut cmd = BootstrapCommand::new(self.bootstrap_out.join("rustdoc"));
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
             .env("RUSTC_SYSROOT", self.sysroot(compiler))
             // Note that this is *not* the sysroot_libdir because rustdoc must be linked
