@@ -10,6 +10,8 @@
 
 use core::any::Any;
 use core::borrow;
+#[cfg(not(no_global_oom_handling))]
+use core::clone::CloneToUninit;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -30,8 +32,6 @@ use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-#[cfg(not(no_global_oom_handling))]
-use crate::alloc::WriteCloneIntoRaw;
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
@@ -2150,7 +2150,8 @@ unsafe impl<T: ?Sized, A: Allocator> DerefPure for Arc<T, A> {}
 #[unstable(feature = "receiver_trait", issue = "none")]
 impl<T: ?Sized> Receiver for Arc<T> {}
 
-impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
+#[cfg(not(no_global_oom_handling))]
+impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Arc<T, A> {
     /// Makes a mutable reference into the given `Arc`.
     ///
     /// If there are other `Arc` pointers to the same allocation, then `make_mut` will
@@ -2201,10 +2202,11 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
     /// assert!(76 == *data);
     /// assert!(weak.upgrade().is_none());
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
+        let size_of_val = mem::size_of_val::<T>(&**this);
+
         // Note that we hold both a strong reference and a weak reference.
         // Thus, releasing our strong reference only will not, by itself, cause
         // the memory to be deallocated.
@@ -2215,13 +2217,19 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
         // deallocated.
         if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
             // Another strong pointer exists, so we must clone.
-            // Pre-allocate memory to allow writing the cloned value directly.
-            let mut arc = Self::new_uninit_in(this.alloc.clone());
-            unsafe {
-                let data = Arc::get_mut_unchecked(&mut arc);
-                (**this).write_clone_into_raw(data.as_mut_ptr());
-                *this = arc.assume_init();
-            }
+
+            let this_data_ref: &T = &**this;
+            // `in_progress` drops the allocation if we panic before finishing initializing it.
+            let mut in_progress: UniqueArcUninit<T, A> =
+                UniqueArcUninit::new(this_data_ref, this.alloc.clone());
+
+            let initialized_clone = unsafe {
+                // Clone. If the clone panics, `in_progress` will be dropped and clean up.
+                this_data_ref.clone_to_uninit(in_progress.data_ptr());
+                // Cast type of pointer, now that it is initialized.
+                in_progress.into_arc()
+            };
+            *this = initialized_clone;
         } else if this.inner().weak.load(Relaxed) != 1 {
             // Relaxed suffices in the above because this is fundamentally an
             // optimization: we are always racing with weak pointers being
@@ -2240,11 +2248,22 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
             let _weak = Weak { ptr: this.ptr, alloc: this.alloc.clone() };
 
             // Can just steal the data, all that's left is Weaks
-            let mut arc = Self::new_uninit_in(this.alloc.clone());
+            //
+            // We don't need panic-protection like the above branch does, but we might as well
+            // use the same mechanism.
+            let mut in_progress: UniqueArcUninit<T, A> =
+                UniqueArcUninit::new(&**this, this.alloc.clone());
             unsafe {
-                let data = Arc::get_mut_unchecked(&mut arc);
-                data.as_mut_ptr().copy_from_nonoverlapping(&**this, 1);
-                ptr::write(this, arc.assume_init());
+                // Initialize `in_progress` with move of **this.
+                // We have to express this in terms of bytes because `T: ?Sized`; there is no
+                // operation that just copies a value based on its `size_of_val()`.
+                ptr::copy_nonoverlapping(
+                    ptr::from_ref(&**this).cast::<u8>(),
+                    in_progress.data_ptr().cast::<u8>(),
+                    size_of_val,
+                );
+
+                ptr::write(this, in_progress.into_arc());
             }
         } else {
             // We were the sole reference of either kind; bump back up the
@@ -3807,6 +3826,68 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
 fn data_offset_align(align: usize) -> usize {
     let layout = Layout::new::<ArcInner<()>>();
     layout.size() + layout.padding_needed_for(align)
+}
+
+/// A unique owning pointer to a [`ArcInner`] **that does not imply the contents are initialized,**
+/// but will deallocate it (without dropping the value) when dropped.
+///
+/// This is a helper for [`Arc::make_mut()`] to ensure correct cleanup on panic.
+#[cfg(not(no_global_oom_handling))]
+struct UniqueArcUninit<T: ?Sized, A: Allocator> {
+    ptr: NonNull<ArcInner<T>>,
+    layout_for_value: Layout,
+    alloc: Option<A>,
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: ?Sized, A: Allocator> UniqueArcUninit<T, A> {
+    /// Allocate a ArcInner with layout suitable to contain `for_value` or a clone of it.
+    fn new(for_value: &T, alloc: A) -> UniqueArcUninit<T, A> {
+        let layout = Layout::for_value(for_value);
+        let ptr = unsafe {
+            Arc::allocate_for_layout(
+                layout,
+                |layout_for_arcinner| alloc.allocate(layout_for_arcinner),
+                |mem| mem.with_metadata_of(ptr::from_ref(for_value) as *const ArcInner<T>),
+            )
+        };
+        Self { ptr: NonNull::new(ptr).unwrap(), layout_for_value: layout, alloc: Some(alloc) }
+    }
+
+    /// Returns the pointer to be written into to initialize the [`Arc`].
+    fn data_ptr(&mut self) -> *mut T {
+        let offset = data_offset_align(self.layout_for_value.align());
+        unsafe { self.ptr.as_ptr().byte_add(offset) as *mut T }
+    }
+
+    /// Upgrade this into a normal [`Arc`].
+    ///
+    /// # Safety
+    ///
+    /// The data must have been initialized (by writing to [`Self::data_ptr()`]).
+    unsafe fn into_arc(mut self) -> Arc<T, A> {
+        let ptr = self.ptr;
+        let alloc = self.alloc.take().unwrap();
+        mem::forget(self);
+        // SAFETY: The pointer is valid as per `UniqueArcUninit::new`, and the caller is responsible
+        // for having initialized the data.
+        unsafe { Arc::from_ptr_in(ptr.as_ptr(), alloc) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: ?Sized, A: Allocator> Drop for UniqueArcUninit<T, A> {
+    fn drop(&mut self) {
+        // SAFETY:
+        // * new() produced a pointer safe to deallocate.
+        // * We own the pointer unless into_arc() was called, which forgets us.
+        unsafe {
+            self.alloc.take().unwrap().deallocate(
+                self.ptr.cast(),
+                arcinner_layout_for_value_layout(self.layout_for_value),
+            );
+        }
+    }
 }
 
 #[stable(feature = "arc_error", since = "1.52.0")]

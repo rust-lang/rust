@@ -103,6 +103,7 @@
 #![feature(assert_matches)]
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
+#![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
 #![feature(const_align_of_val)]
 #![feature(const_box)]
