@@ -8,7 +8,6 @@ use std::fs;
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::{Duration, Instant};
 
 use crate::core::build_steps::tool::{self, SourceType};
@@ -20,7 +19,7 @@ use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::prepare_behaviour_dump_dir;
 use crate::utils::cache::Cache;
 use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, exe, linker_args};
-use crate::utils::helpers::{check_cfg_arg, libdir, linker_flags, output, t, LldThreads};
+use crate::utils::helpers::{check_cfg_arg, libdir, linker_flags, t, LldThreads};
 use crate::EXTRA_CHECK_CFGS;
 use crate::{Build, CLang, Crate, DocTests, GitRepo, Mode};
 
@@ -1919,7 +1918,9 @@ impl<'a> Builder<'a> {
         // platform-specific environment variable as a workaround.
         if mode == Mode::ToolRustc || mode == Mode::Codegen {
             if let Some(llvm_config) = self.llvm_config(target) {
-                let llvm_libdir = output(Command::new(llvm_config).arg("--libdir"));
+                let llvm_libdir = self
+                    .run(BootstrapCommand::new(llvm_config).capture_stdout().arg("--libdir"))
+                    .stdout();
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cargo);
             }
         }

@@ -1,7 +1,8 @@
 //! Runs rustfmt on the repository.
 
 use crate::core::builder::Builder;
-use crate::utils::helpers::{self, output, program_out_of_date, t};
+use crate::utils::exec::BootstrapCommand;
+use crate::utils::helpers::{self, program_out_of_date, t};
 use build_helper::ci::CiEnv;
 use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;
@@ -53,19 +54,17 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
 fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, PathBuf)> {
     let stamp_file = build.out.join("rustfmt.stamp");
 
-    let mut cmd = Command::new(match build.initial_rustfmt() {
+    let mut cmd = BootstrapCommand::new(match build.initial_rustfmt() {
         Some(p) => p,
         None => return None,
     });
     cmd.arg("--version");
-    let output = match cmd.output() {
-        Ok(status) => status,
-        Err(_) => return None,
-    };
-    if !output.status.success() {
+
+    let output = build.run(cmd.capture().allow_failure());
+    if output.is_failure() {
         return None;
     }
-    Some((String::from_utf8(output.stdout).unwrap(), stamp_file))
+    Some((output.stdout(), stamp_file))
 }
 
 /// Return whether the format cache can be reused.
@@ -175,14 +174,16 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
             )
             .is_success();
         if in_working_tree {
-            let untracked_paths_output = output(
-                &mut helpers::git(Some(&build.src))
-                    .arg("status")
-                    .arg("--porcelain")
-                    .arg("-z")
-                    .arg("--untracked-files=normal")
-                    .command,
-            );
+            let untracked_paths_output = build
+                .run(
+                    helpers::git(Some(&build.src))
+                        .capture_stdout()
+                        .arg("status")
+                        .arg("--porcelain")
+                        .arg("-z")
+                        .arg("--untracked-files=normal"),
+                )
+                .stdout();
             let untracked_paths: Vec<_> = untracked_paths_output
                 .split_terminator('\0')
                 .filter_map(

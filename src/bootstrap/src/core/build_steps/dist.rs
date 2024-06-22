@@ -14,7 +14,6 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use object::read::archive::ArchiveFile;
 use object::BinaryFormat;
@@ -28,7 +27,7 @@ use crate::core::config::TargetSelection;
 use crate::utils::channel::{self, Info};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
-    exe, is_dylib, move_file, output, t, target_supports_cranelift_backend, timeit,
+    exe, is_dylib, move_file, t, target_supports_cranelift_backend, timeit,
 };
 use crate::utils::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
@@ -181,9 +180,9 @@ fn make_win_dist(
     }
 
     //Ask gcc where it keeps its stuff
-    let mut cmd = Command::new(builder.cc(target));
+    let mut cmd = BootstrapCommand::new(builder.cc(target));
     cmd.arg("-print-search-dirs");
-    let gcc_out = output(&mut cmd);
+    let gcc_out = builder.run(cmd.capture_stdout()).stdout();
 
     let mut bin_path: Vec<_> = env::split_paths(&env::var_os("PATH").unwrap_or_default()).collect();
     let mut lib_path = Vec::new();
@@ -1024,7 +1023,7 @@ impl Step for PlainSourceTarball {
             }
 
             // Vendor all Cargo dependencies
-            let mut cmd = Command::new(&builder.initial_cargo);
+            let mut cmd = BootstrapCommand::new(&builder.initial_cargo);
             cmd.arg("vendor")
                 .arg("--versioned-dirs")
                 .arg("--sync")
@@ -1062,7 +1061,7 @@ impl Step for PlainSourceTarball {
             }
 
             let config = if !builder.config.dry_run() {
-                t!(String::from_utf8(t!(cmd.output()).stdout))
+                builder.run(cmd.capture()).stdout()
             } else {
                 String::new()
             };
@@ -2079,10 +2078,14 @@ fn maybe_install_llvm(
     } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmResult { llvm_config, .. }) =
         llvm::prebuilt_llvm_config(builder, target)
     {
-        let mut cmd = Command::new(llvm_config);
+        let mut cmd = BootstrapCommand::new(llvm_config);
         cmd.arg("--libfiles");
         builder.verbose(|| println!("running {cmd:?}"));
-        let files = if builder.config.dry_run() { "".into() } else { output(&mut cmd) };
+        let files = if builder.config.dry_run() {
+            "".into()
+        } else {
+            builder.run(cmd.capture_stdout()).stdout()
+        };
         let build_llvm_out = &builder.llvm_out(builder.config.build);
         let target_llvm_out = &builder.llvm_out(target);
         for file in files.trim_end().split(' ') {

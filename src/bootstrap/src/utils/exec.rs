@@ -51,11 +51,7 @@ pub struct BootstrapCommand {
 
 impl BootstrapCommand {
     pub fn new<S: AsRef<OsStr>>(program: S) -> Self {
-        Self {
-            command: Command::new(program),
-            failure_behavior: BehaviorOnFailure::Exit,
-            output_mode: OutputMode::Print,
-        }
+        Command::new(program).into()
     }
 
     pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
@@ -127,6 +123,12 @@ impl BootstrapCommand {
 impl AsMut<BootstrapCommand> for BootstrapCommand {
     fn as_mut(&mut self) -> &mut BootstrapCommand {
         self
+    }
+}
+
+impl From<Command> for BootstrapCommand {
+    fn from(command: Command) -> Self {
+        Self { command, failure_behavior: BehaviorOnFailure::Exit, output_mode: OutputMode::Print }
     }
 }
 

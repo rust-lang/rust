@@ -29,7 +29,7 @@ use crate::core::builder::{Builder, Kind, PathSet, RunConfig, ShouldRun, Step, T
 use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
-    exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, output, symlink_dir, t, up_to_date,
+    exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
 use crate::LLVM_TOOLS;
 use crate::{CLang, Compiler, DependencyType, GitRepo, Mode};
@@ -1498,10 +1498,10 @@ pub fn compiler_file(
     if builder.config.dry_run() {
         return PathBuf::new();
     }
-    let mut cmd = Command::new(compiler);
+    let mut cmd = BootstrapCommand::new(compiler);
     cmd.args(builder.cflags(target, GitRepo::Rustc, c));
     cmd.arg(format!("-print-file-name={file}"));
-    let out = output(&mut cmd);
+    let out = builder.run(cmd.capture_stdout()).stdout();
     PathBuf::from(out.trim())
 }
 
@@ -1833,7 +1833,9 @@ impl Step for Assemble {
             let llvm::LlvmResult { llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: target_compiler.host });
             if !builder.config.dry_run() && builder.config.llvm_tools_enabled {
-                let llvm_bin_dir = output(Command::new(llvm_config).arg("--bindir"));
+                let llvm_bin_dir = builder
+                    .run(BootstrapCommand::new(llvm_config).capture_stdout().arg("--bindir"))
+                    .stdout();
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
 
                 // Since we've already built the LLVM tools, install them to the sysroot.
@@ -2158,8 +2160,7 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     }
 
     let previous_mtime = FileTime::from_last_modification_time(&path.metadata().unwrap());
-    // NOTE: `output` will propagate any errors here.
-    output(Command::new("strip").arg("--strip-debug").arg(path));
+    builder.run(BootstrapCommand::new("strip").capture().arg("--strip-debug").arg(path));
 
     // After running `strip`, we have to set the file modification time to what it was before,
     // otherwise we risk Cargo invalidating its fingerprint and rebuilding the world next time

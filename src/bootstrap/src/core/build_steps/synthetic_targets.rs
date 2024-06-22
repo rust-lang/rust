@@ -9,8 +9,8 @@
 
 use crate::core::builder::{Builder, ShouldRun, Step};
 use crate::core::config::TargetSelection;
+use crate::utils::exec::BootstrapCommand;
 use crate::Compiler;
-use std::process::{Command, Stdio};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct MirOptPanicAbortSyntheticTarget {
@@ -56,7 +56,7 @@ fn create_synthetic_target(
         return TargetSelection::create_synthetic(&name, path.to_str().unwrap());
     }
 
-    let mut cmd = Command::new(builder.rustc(compiler));
+    let mut cmd = BootstrapCommand::new(builder.rustc(compiler));
     cmd.arg("--target").arg(base.rustc_target_arg());
     cmd.args(["-Zunstable-options", "--print", "target-spec-json"]);
 
@@ -64,14 +64,8 @@ fn create_synthetic_target(
     // we cannot use nightly features. So `RUSTC_BOOTSTRAP` is needed here.
     cmd.env("RUSTC_BOOTSTRAP", "1");
 
-    cmd.stdout(Stdio::piped());
-
-    let output = cmd.spawn().unwrap().wait_with_output().unwrap();
-    if !output.status.success() {
-        panic!("failed to gather the target spec for {base}");
-    }
-
-    let mut spec: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let output = builder.run(cmd.capture()).stdout();
+    let mut spec: serde_json::Value = serde_json::from_slice(output.as_bytes()).unwrap();
     let spec_map = spec.as_object_mut().unwrap();
 
     // The `is-builtin` attribute of a spec needs to be removed, otherwise rustc will complain.
