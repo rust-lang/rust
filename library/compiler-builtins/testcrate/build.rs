@@ -24,9 +24,10 @@ fn main() {
         // FIXME(llvm): There is an ABI incompatibility between GCC and Clang on 32-bit x86.
         // See <https://github.com/llvm/llvm-project/issues/77401>.
         || target.starts_with("i686")
-        // 32-bit PowerPC gets code generated that Qemu cannot handle. See
+        // 32-bit PowerPC and 64-bit LE gets code generated that Qemu cannot handle. See
         // <https://github.com/rust-lang/compiler-builtins/pull/606#issuecomment-2105635926>.
         || target.starts_with("powerpc-")
+        || target.starts_with("powerpc64le-")
         // FIXME: We get different results from the builtin functions. See
         // <https://github.com/rust-lang/compiler-builtins/pull/606#issuecomment-2105657287>.
         || target.starts_with("powerpc64-")
