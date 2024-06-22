@@ -9,7 +9,7 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
         let mut _8: *const T;
         scope 2 {
             let _4: std::ptr::NonNull<T>;
-            let _10: usize;
+            let _9: usize;
             scope 3 {
             }
             scope 4 {
@@ -24,7 +24,6 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
                 }
             }
             scope 5 (inlined std::ptr::const_ptr::<impl *const T>::addr) {
-                let mut _9: *const ();
                 scope 6 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
                 }
             }
@@ -34,7 +33,8 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
     }
 
     bb0: {
-        StorageLive(_10);
+        StorageLive(_9);
+        StorageLive(_8);
         StorageLive(_4);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
@@ -61,20 +61,16 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
     }
 
     bb2: {
-        StorageLive(_8);
         _8 = ((*_1).1: *const T);
-        StorageLive(_9);
-        _9 = _8 as *const () (PtrToPtr);
-        _10 = move _9 as usize (Transmute);
-        StorageDead(_9);
-        StorageDead(_8);
-        _0 = Eq(_10, const 0_usize);
+        _9 = _8 as usize (Transmute);
+        _0 = Eq(_9, const 0_usize);
         goto -> bb3;
     }
 
     bb3: {
         StorageDead(_4);
-        StorageDead(_10);
+        StorageDead(_8);
+        StorageDead(_9);
         return;
     }
 }

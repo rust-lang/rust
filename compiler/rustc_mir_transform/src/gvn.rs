@@ -978,12 +978,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     // we can't always know exactly what the metadata are.
                     // To allow things like `*mut (?A, ?T)` <-> `*mut (?B, ?T)`,
                     // it's fine to get a projection as the type.
-                    // FIXME: Would it be worth trying to normalize, rather than
-                    // just accepting the projection?  Or are the types in the
-                    // Cast realistically about as normalized as we can get anyway?
                     Value::Cast { kind: CastKind::PtrToPtr, value: inner, from, to }
-                        if from.pointee_metadata_ty_or_projection(self.tcx)
-                            == to.pointee_metadata_ty_or_projection(self.tcx) =>
+                        if self.pointers_have_same_metadata(*from, *to) =>
                     {
                         arg_index = *inner;
                         was_updated = true;
@@ -1054,7 +1050,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         rhs_operand: &mut Operand<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
-
         let lhs = self.simplify_operand(lhs_operand, location);
         let rhs = self.simplify_operand(rhs_operand, location);
         // Only short-circuit options after we called `simplify_operand`
@@ -1068,13 +1063,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         // types of both casts and the metadata all match.
         if let BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge = op
             && lhs_ty.is_any_ptr()
-            && let Value::Cast { kind: CastKind::PtrToPtr, value: lhs_value, from: lhs_from, .. } =
-                self.get(lhs)
-            && let Value::Cast { kind: CastKind::PtrToPtr, value: rhs_value, from: rhs_from, .. } =
-                self.get(rhs)
+            && let Value::Cast {
+                kind: CastKind::PtrToPtr, value: lhs_value, from: lhs_from, ..
+            } = self.get(lhs)
+            && let Value::Cast {
+                kind: CastKind::PtrToPtr, value: rhs_value, from: rhs_from, ..
+            } = self.get(rhs)
             && lhs_from == rhs_from
-            && lhs_from.pointee_metadata_ty_or_projection(self.tcx)
-                == lhs_ty.pointee_metadata_ty_or_projection(self.tcx)
+            && self.pointers_have_same_metadata(*lhs_from, lhs_ty)
         {
             lhs = *lhs_value;
             rhs = *rhs_value;
@@ -1254,6 +1250,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
+        // PtrToPtr-then-PtrToPtr can skip the intermediate step
         if let PtrToPtr = kind
             && let Value::Cast { kind: inner_kind, value: inner_value, from: inner_from, to: _ } =
                 *self.get(value)
@@ -1261,7 +1258,25 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         {
             from = inner_from;
             value = inner_value;
-            *kind = PtrToPtr;
+            was_updated = true;
+            if inner_from == to {
+                return Some(inner_value);
+            }
+        }
+
+        // PtrToPtr-then-Transmute can just transmute the original, so long as the
+        // PtrToPtr didn't change metadata (and thus the size of the pointer)
+        if let Transmute = kind
+            && let Value::Cast {
+                kind: PtrToPtr,
+                value: inner_value,
+                from: inner_from,
+                to: inner_to,
+            } = *self.get(value)
+            && self.pointers_have_same_metadata(inner_from, inner_to)
+        {
+            from = inner_from;
+            value = inner_value;
             was_updated = true;
             if inner_from == to {
                 return Some(inner_value);
@@ -1314,6 +1329,21 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         // Fallback: a symbolic `Len`.
         Some(self.insert(Value::Len(inner)))
+    }
+
+    fn pointers_have_same_metadata(&self, left_ptr_ty: Ty<'tcx>, right_ptr_ty: Ty<'tcx>) -> bool {
+        let left_meta_ty = left_ptr_ty.pointee_metadata_ty_or_projection(self.tcx);
+        let right_meta_ty = right_ptr_ty.pointee_metadata_ty_or_projection(self.tcx);
+        if left_meta_ty == right_meta_ty {
+            true
+        } else if let Ok(left) =
+            self.tcx.try_normalize_erasing_regions(self.param_env, left_meta_ty)
+            && let Ok(right) = self.tcx.try_normalize_erasing_regions(self.param_env, right_meta_ty)
+        {
+            left == right
+        } else {
+            false
+        }
     }
 }
 

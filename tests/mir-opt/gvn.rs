@@ -913,6 +913,19 @@ fn cast_pointer_eq(p1: *mut u8, p2: *mut u32, p3: *mut u32, p4: *mut [u32]) {
     // CHECK: _0 = const ();
 }
 
+// Transmuting can skip a pointer cast so long as it wasn't a fat-to-thin cast.
+unsafe fn cast_pointer_then_transmute(thin: *mut u32, fat: *mut [u8]) {
+    // CHECK-LABEL: fn cast_pointer_then_transmute
+
+    // CHECK: [[UNUSED:_.+]] = _1 as *const () (PtrToPtr);
+    // CHECK: = _1 as usize (Transmute);
+    let thin_addr: usize = std::intrinsics::transmute(thin as *const ());
+
+    // CHECK: [[TEMP2:_.+]] = _2 as *const () (PtrToPtr);
+    // CHECK: = move [[TEMP2]] as usize (Transmute);
+    let fat_addr: usize = std::intrinsics::transmute(fat as *const ());
+}
+
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -981,3 +994,4 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.array_len.GVN.diff
 // EMIT_MIR gvn.generic_cast_metadata.GVN.diff
 // EMIT_MIR gvn.cast_pointer_eq.GVN.diff
+// EMIT_MIR gvn.cast_pointer_then_transmute.GVN.diff
