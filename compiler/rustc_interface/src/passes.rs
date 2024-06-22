@@ -44,7 +44,7 @@ use std::sync::{Arc, LazyLock};
 use std::{env, fs, iter};
 use tracing::{info, instrument};
 
-pub fn parse<'a>(sess: &'a Session) -> Result<ast::Crate> {
+pub(crate) fn parse<'a>(sess: &'a Session) -> Result<ast::Crate> {
     let krate = sess
         .time("parse_crate", || {
             let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
@@ -643,7 +643,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     *providers
 });
 
-pub fn create_global_ctxt<'tcx>(
+pub(crate) fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     mut krate: rustc_ast::Crate,
     gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
