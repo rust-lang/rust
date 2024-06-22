@@ -64,15 +64,20 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "addcarryx.u32" | "addcarryx.u64" => {
                 this.expect_target_feature_for_intrinsic(link_name, "adx")?;
 
-                if unprefixed_name.ends_with("64") && this.tcx.sess.target.arch != "x86_64" {
+                let is_u64 = unprefixed_name.ends_with("64");
+                if is_u64 && this.tcx.sess.target.arch != "x86_64" {
                     return Ok(EmulateItemResult::NotSupported);
                 }
 
                 let [c_in, a, b, out] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
+                let out = this.deref_pointer_as(
+                    out,
+                    if is_u64 { this.machine.layouts.u64 } else { this.machine.layouts.u32 },
+                )?;
 
                 let (sum, c_out) = carrying_add(this, c_in, a, b, mir::BinOp::AddWithOverflow)?;
                 this.write_scalar(c_out, dest)?;
-                this.write_immediate(*sum, &this.deref_pointer_as(out, sum.layout)?)?;
+                this.write_immediate(*sum, &out)?;
             }
 
             // Used to implement the `_mm_pause` function.
