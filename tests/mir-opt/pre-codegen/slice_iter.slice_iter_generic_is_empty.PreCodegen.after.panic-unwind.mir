@@ -1,0 +1,88 @@
+// MIR for `slice_iter_generic_is_empty` after PreCodegen
+
+fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
+    debug it => _1;
+    let mut _0: bool;
+    scope 1 (inlined <std::slice::Iter<'_, T> as ExactSizeIterator>::is_empty) {
+        let mut _2: *const *const T;
+        let mut _3: *const std::ptr::NonNull<T>;
+        let mut _10: *const T;
+        scope 2 {
+            let _4: std::ptr::NonNull<T>;
+            let _12: usize;
+            scope 3 {
+            }
+            scope 4 {
+                scope 8 (inlined <NonNull<T> as PartialEq>::eq) {
+                    let mut _5: std::ptr::NonNull<T>;
+                    let mut _7: *mut T;
+                    let mut _9: *mut T;
+                    scope 9 (inlined NonNull::<T>::as_ptr) {
+                        let mut _6: *const T;
+                    }
+                    scope 10 (inlined NonNull::<T>::as_ptr) {
+                        let mut _8: *const T;
+                    }
+                }
+            }
+            scope 5 (inlined std::ptr::const_ptr::<impl *const T>::addr) {
+                let mut _11: *const ();
+                scope 6 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
+                }
+            }
+            scope 7 (inlined std::ptr::const_ptr::<impl *const *const T>::cast::<NonNull<T>>) {
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_12);
+        StorageLive(_4);
+        switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        StorageLive(_3);
+        StorageLive(_2);
+        _2 = &raw const ((*_1).1: *const T);
+        _3 = _2 as *const std::ptr::NonNull<T> (PtrToPtr);
+        StorageDead(_2);
+        _4 = (*_3);
+        StorageDead(_3);
+        StorageLive(_7);
+        StorageLive(_5);
+        _5 = ((*_1).0: std::ptr::NonNull<T>);
+        StorageLive(_6);
+        _6 = (_5.0: *const T);
+        _7 = move _6 as *mut T (PtrToPtr);
+        StorageDead(_6);
+        StorageDead(_5);
+        StorageLive(_9);
+        StorageLive(_8);
+        _8 = (_4.0: *const T);
+        _9 = move _8 as *mut T (PtrToPtr);
+        StorageDead(_8);
+        _0 = Eq(move _7, move _9);
+        StorageDead(_9);
+        StorageDead(_7);
+        goto -> bb3;
+    }
+
+    bb2: {
+        StorageLive(_10);
+        _10 = ((*_1).1: *const T);
+        StorageLive(_11);
+        _11 = _10 as *const () (PtrToPtr);
+        _12 = move _11 as usize (Transmute);
+        StorageDead(_11);
+        StorageDead(_10);
+        _0 = Eq(_12, const 0_usize);
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageDead(_4);
+        StorageDead(_12);
+        return;
+    }
+}
