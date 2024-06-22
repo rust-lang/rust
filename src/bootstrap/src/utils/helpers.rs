@@ -242,8 +242,9 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     }
 }
 
-pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
-    let status = match cmd.status() {
+// FIXME: get rid of this function
+pub fn check_run(cmd: &mut BootstrapCommand, print_cmd_on_fail: bool) -> bool {
+    let status = match cmd.command.status() {
         Ok(status) => status,
         Err(e) => {
             println!("failed to execute command: {cmd:?}\nERROR: {e}");

@@ -465,7 +465,7 @@ impl Miri {
         // Tell it where to put the sysroot.
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
 
-        let mut cargo = Command::from(cargo);
+        let mut cargo = BootstrapCommand::from(cargo);
         let _guard =
             builder.msg(Kind::Build, compiler.stage, "miri sysroot", compiler.host, target);
         builder.run(&mut cargo);
@@ -596,7 +596,7 @@ impl Step for Miri {
                     target,
                 );
                 let _time = helpers::timeit(builder);
-                builder.run(&mut cargo);
+                builder.run(cargo);
             }
         }
     }
@@ -661,11 +661,11 @@ impl Step for CargoMiri {
 
         // Finally, pass test-args and run everything.
         cargo.arg("--").args(builder.config.test_args());
-        let mut cargo = Command::from(cargo);
+        let cargo = BootstrapCommand::from(cargo);
         {
             let _guard = builder.msg_sysroot_tool(Kind::Test, stage, "cargo-miri", host, target);
             let _time = helpers::timeit(builder);
-            builder.run(&mut cargo);
+            builder.run(cargo);
         }
     }
 }
@@ -845,7 +845,7 @@ impl Step for RustdocJSStd {
     fn run(self, builder: &Builder<'_>) {
         let nodejs =
             builder.config.nodejs.as_ref().expect("need nodejs to run rustdoc-js-std tests");
-        let mut command = Command::new(nodejs);
+        let mut command = BootstrapCommand::new(nodejs);
         command
             .arg(builder.src.join("src/tools/rustdoc-js/tester.js"))
             .arg("--crate-name")
@@ -879,7 +879,7 @@ impl Step for RustdocJSStd {
             builder.config.build,
             self.target,
         );
-        builder.run(&mut command);
+        builder.run(command);
     }
 }
 
@@ -1304,8 +1304,7 @@ impl Step for RunMakeSupport {
             &[],
         );
 
-        let mut cargo = Command::from(cargo);
-        builder.run(&mut cargo);
+        builder.run(cargo);
 
         let lib_name = "librun_make_support.rlib";
         let lib = builder.tools_dir(self.compiler).join(lib_name);

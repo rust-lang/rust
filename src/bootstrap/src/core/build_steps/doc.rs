@@ -1080,7 +1080,7 @@ impl Step for ErrorIndex {
         index.arg(out);
         index.arg(&builder.version);
 
-        builder.run(&mut index);
+        builder.run(index);
     }
 }
 

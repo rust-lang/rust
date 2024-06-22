@@ -11,6 +11,7 @@ use std::{
 use build_helper::ci::CiEnv;
 use xz2::bufread::XzDecoder;
 
+use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::hex_encode;
 use crate::utils::helpers::{check_run, exe, move_file, program_out_of_date};
 use crate::{t, Config};
@@ -56,7 +57,7 @@ impl Config {
     /// Runs a command, printing out nice contextual information if it fails.
     /// Returns false if do not execute at all, otherwise returns its
     /// `status.success()`.
-    pub(crate) fn check_run(&self, cmd: &mut Command) -> bool {
+    pub(crate) fn check_run(&self, cmd: &mut BootstrapCommand) -> bool {
         if self.dry_run() {
             return true;
         }
@@ -211,7 +212,7 @@ impl Config {
     fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
         println!("downloading {url}");
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
-        let mut curl = Command::new("curl");
+        let mut curl = BootstrapCommand::new("curl");
         curl.args([
             "-y",
             "30",
