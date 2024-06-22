@@ -23,7 +23,7 @@ use std::fmt::Display;
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::{Command, Stdio};
 use std::str;
 use std::sync::OnceLock;
 
@@ -41,7 +41,7 @@ use crate::core::builder::Kind;
 use crate::core::config::{flags, LldMode};
 use crate::core::config::{DryRun, Target};
 use crate::core::config::{LlvmLibunwind, TargetSelection};
-use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, OutputMode};
+use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
 
 mod core;
@@ -585,8 +585,8 @@ impl Build {
             BootstrapCommand::from(submodule_git().args(["diff-index", "--quiet", "HEAD"]))
                 .allow_failure()
                 .output_mode(match self.is_verbose() {
-                    true => OutputMode::PrintAll,
-                    false => OutputMode::PrintOutput,
+                    true => OutputMode::All,
+                    false => OutputMode::OnlyOutput,
                 }),
         );
         if has_local_modifications {
@@ -958,73 +958,36 @@ impl Build {
         })
     }
 
-    /// Runs a command, printing out nice contextual information if it fails.
-    fn run(&self, cmd: &mut Command) {
-        self.run_cmd(BootstrapCommand::from(cmd).fail_fast().output_mode(
-            match self.is_verbose() {
-                true => OutputMode::PrintAll,
-                false => OutputMode::PrintOutput,
-            },
-        ));
-    }
-
-    /// Runs a command, printing out contextual info if it fails, and delaying errors until the build finishes.
-    pub(crate) fn run_delaying_failure(&self, cmd: &mut Command) -> bool {
-        self.run_cmd(BootstrapCommand::from(cmd).delay_failure().output_mode(
-            match self.is_verbose() {
-                true => OutputMode::PrintAll,
-                false => OutputMode::PrintOutput,
-            },
-        ))
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
-    fn run_quiet(&self, cmd: &mut Command) {
-        self.run_cmd(
-            BootstrapCommand::from(cmd).fail_fast().output_mode(OutputMode::SuppressOnSuccess),
-        );
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
-    /// Exits if the command failed to execute at all, otherwise returns its
-    /// `status.success()`.
-    fn run_quiet_delaying_failure(&self, cmd: &mut Command) -> bool {
-        self.run_cmd(
-            BootstrapCommand::from(cmd).delay_failure().output_mode(OutputMode::SuppressOnSuccess),
-        )
-    }
-
-    /// A centralized function for running commands that do not return output.
-    pub(crate) fn run_cmd<'a, C: Into<BootstrapCommand<'a>>>(&self, cmd: C) -> bool {
+    /// Execute a command and return its output.
+    fn run_tracked(&self, command: BootstrapCommand<'_>) -> CommandOutput {
         if self.config.dry_run() {
-            return true;
+            return CommandOutput::default();
         }
 
-        let command = cmd.into();
         self.verbose(|| println!("running: {command:?}"));
 
-        let (output, print_error) = match command.output_mode {
-            mode @ (OutputMode::PrintAll | OutputMode::PrintOutput) => (
-                command.command.status().map(|status| Output {
-                    status,
-                    stdout: Vec::new(),
-                    stderr: Vec::new(),
-                }),
-                matches!(mode, OutputMode::PrintAll),
+        let output_mode = command.output_mode.unwrap_or_else(|| match self.is_verbose() {
+            true => OutputMode::All,
+            false => OutputMode::OnlyOutput,
+        });
+        let (output, print_error): (io::Result<CommandOutput>, bool) = match output_mode {
+            mode @ (OutputMode::All | OutputMode::OnlyOutput) => (
+                command.command.status().map(|status| status.into()),
+                matches!(mode, OutputMode::All),
             ),
-            OutputMode::SuppressOnSuccess => (command.command.output(), true),
+            OutputMode::OnlyOnFailure => (command.command.output().map(|o| o.into()), true),
         };
 
         let output = match output {
             Ok(output) => output,
             Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", command, e)),
         };
-        let result = if !output.status.success() {
+        if !output.is_success() {
             if print_error {
                 println!(
                     "\n\nCommand did not execute successfully.\
-                    \nExpected success, got: {}",
-                    output.status,
+                \nExpected success, got: {}",
+                    output.status(),
                 );
 
                 if !self.is_verbose() {
@@ -1034,37 +997,45 @@ impl Build {
                 self.verbose(|| {
                     println!(
                         "\nSTDOUT ----\n{}\n\
-                        STDERR ----\n{}\n",
-                        String::from_utf8_lossy(&output.stdout),
-                        String::from_utf8_lossy(&output.stderr)
+                    STDERR ----\n{}\n",
+                        output.stdout(),
+                        output.stderr(),
                     )
                 });
             }
-            Err(())
-        } else {
-            Ok(())
-        };
 
-        match result {
-            Ok(_) => true,
-            Err(_) => {
-                match command.failure_behavior {
-                    BehaviorOnFailure::DelayFail => {
-                        if self.fail_fast {
-                            exit!(1);
-                        }
-
-                        let mut failures = self.delayed_failures.borrow_mut();
-                        failures.push(format!("{command:?}"));
-                    }
-                    BehaviorOnFailure::Exit => {
+            match command.failure_behavior {
+                BehaviorOnFailure::DelayFail => {
+                    if self.fail_fast {
                         exit!(1);
                     }
-                    BehaviorOnFailure::Ignore => {}
+
+                    let mut failures = self.delayed_failures.borrow_mut();
+                    failures.push(format!("{command:?}"));
                 }
-                false
+                BehaviorOnFailure::Exit => {
+                    exit!(1);
+                }
+                BehaviorOnFailure::Ignore => {}
             }
         }
+        output
+    }
+
+    /// Runs a command, printing out nice contextual information if it fails.
+    fn run(&self, cmd: &mut Command) {
+        self.run_cmd(BootstrapCommand::from(cmd).fail_fast().output_mode(
+            match self.is_verbose() {
+                true => OutputMode::All,
+                false => OutputMode::OnlyOutput,
+            },
+        ));
+    }
+
+    /// A centralized function for running commands that do not return output.
+    pub(crate) fn run_cmd<'a, C: Into<BootstrapCommand<'a>>>(&self, cmd: C) -> bool {
+        let command = cmd.into();
+        self.run_tracked(command).is_success()
     }
 
     /// Check if verbosity is greater than the `level`
