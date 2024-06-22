@@ -533,7 +533,7 @@ pub struct EarlyContext<'a> {
 }
 
 impl EarlyContext<'_> {
-    /// Emit a lint at the appropriate level, with an optional associated span and an existing
+    /// Emit a lint at the appropriate level, with an associated span and an existing
     /// diagnostic.
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
@@ -544,7 +544,21 @@ impl EarlyContext<'_> {
         span: MultiSpan,
         diagnostic: BuiltinLintDiag,
     ) {
-        self.opt_span_lint(lint, Some(span), |diag| {
+        self.opt_span_lint_with_diagnostics(lint, Some(span), diagnostic);
+    }
+
+    /// Emit a lint at the appropriate level, with an optional associated span and an existing
+    /// diagnostic.
+    ///
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
+    pub fn opt_span_lint_with_diagnostics(
+        &self,
+        lint: &'static Lint,
+        span: Option<MultiSpan>,
+        diagnostic: BuiltinLintDiag,
+    ) {
+        self.opt_span_lint(lint, span, |diag| {
             diagnostics::decorate_lint(self.sess(), diagnostic, diag);
         });
     }
