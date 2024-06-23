@@ -675,8 +675,8 @@ mod parse {
     pub(crate) fn parse_frame_pointer(slot: &mut FramePointer, v: Option<&str>) -> bool {
         let mut yes = false;
         match v {
-            Some(_) if parse_bool(&mut yes, v) && yes => slot.ratchet(FramePointer::Always),
-            Some(_) if parse_bool(&mut yes, v) => slot.ratchet(FramePointer::MayOmit),
+            _ if parse_bool(&mut yes, v) && yes => slot.ratchet(FramePointer::Always),
+            _ if parse_bool(&mut yes, v) => slot.ratchet(FramePointer::MayOmit),
             Some("always") => slot.ratchet(FramePointer::Always),
             Some("non-leaf") => slot.ratchet(FramePointer::NonLeaf),
             _ => return false,
