@@ -6,6 +6,7 @@
 // See https://github.com/rust-lang/rust/pull/32828
 
 //@ ignore-cross-compile
+//@ ignore-windows (symlink creation is priviledged on Windows)
 
 use run_make_support::{create_symlink, cwd, rustc};
 
