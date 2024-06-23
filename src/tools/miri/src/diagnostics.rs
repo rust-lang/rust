@@ -311,7 +311,9 @@ pub fn report_error<'tcx>(
             ResourceExhaustion(_) => "resource exhaustion",
             Unsupported(
                 // We list only the ones that can actually happen.
-                UnsupportedOpInfo::Unsupported(_) | UnsupportedOpInfo::UnsizedLocal,
+                UnsupportedOpInfo::Unsupported(_)
+                | UnsupportedOpInfo::UnsizedLocal
+                | UnsupportedOpInfo::ExternTypeField,
             ) => "unsupported operation",
             InvalidProgram(
                 // We list only the ones that can actually happen.

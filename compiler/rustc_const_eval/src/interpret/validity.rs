@@ -5,6 +5,7 @@
 //! to be const-safe.
 
 use std::fmt::Write;
+use std::hash::Hash;
 use std::num::NonZero;
 
 use either::{Left, Right};
@@ -17,7 +18,8 @@ use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{
     ExpectedKind, InterpError, InvalidMetaKind, Misalignment, PointerKind, Provenance,
-    ValidationErrorInfo, ValidationErrorKind, ValidationErrorKind::*,
+    UnsupportedOpInfo, ValidationErrorInfo,
+    ValidationErrorKind::{self, *},
 };
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
@@ -25,8 +27,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{
     Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
 };
-
-use std::hash::Hash;
 
 use super::{
     err_ub, format_interp_error, machine::AllocMap, throw_ub, AllocId, AllocKind, CheckInAllocMsg,
@@ -1028,7 +1028,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Err(err)
                 if matches!(
                     err.kind(),
-                    err_ub!(ValidationError { .. }) | InterpError::InvalidProgram(_)
+                    err_ub!(ValidationError { .. })
+                        | InterpError::InvalidProgram(_)
+                        | InterpError::Unsupported(UnsupportedOpInfo::ExternTypeField)
                 ) =>
             {
                 Err(err)
