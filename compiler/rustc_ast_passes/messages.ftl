@@ -28,7 +28,7 @@ ast_passes_auto_super_lifetime = auto traits cannot have super traits or lifetim
     .label = {ast_passes_auto_super_lifetime}
     .suggestion = remove the super traits or lifetime bounds
 
-ast_passes_bad_c_variadic = only foreign or `unsafe extern "C"` functions may be C-variadic
+ast_passes_bad_c_variadic = only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
 
 ast_passes_bare_fn_invalid_safety = function pointers cannot be declared with `safe` safety qualifier
     .suggestion = remove safe from this item

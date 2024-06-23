@@ -637,6 +637,7 @@ impl<'a> AstValidator<'a> {
             (Some(FnCtxt::Foreign), _) => return,
             (Some(FnCtxt::Free), Some(header)) => match header.ext {
                 Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }, _)
+                | Extern::Explicit(StrLit { symbol_unescaped: sym::C_dash_unwind, .. }, _)
                 | Extern::Implicit(_)
                     if matches!(header.safety, Safety::Unsafe(_)) =>
                 {
