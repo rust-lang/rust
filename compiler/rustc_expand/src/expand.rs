@@ -1,8 +1,9 @@
 use crate::base::*;
 use crate::config::StripUnconfigured;
 use crate::errors::{
-    EmptyDelegationMac, GlobDelegationOutsideImpls, IncompleteParse, RecursionLimitReached,
-    RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue, WrongFragmentKind,
+    EmptyDelegationMac, GlobDelegationOutsideImpls, GlobDelegationTraitlessQpath, IncompleteParse,
+    RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue,
+    WrongFragmentKind,
 };
 use crate::mbe::diagnostics::annotate_err_with_kind;
 use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
@@ -1989,6 +1990,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 }
                 None if let Some((deleg, item)) = node.delegation() => {
                     let Some(suffixes) = &deleg.suffixes else {
+                        let traitless_qself =
+                            matches!(&deleg.qself, Some(qself) if qself.position == 0);
                         let item = match node.to_annotatable() {
                             Annotatable::ImplItem(item) => item,
                             ann @ (Annotatable::Item(_)
@@ -2000,6 +2003,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                             }
                             _ => unreachable!(),
                         };
+                        if traitless_qself {
+                            let span = item.span;
+                            self.cx.dcx().emit_err(GlobDelegationTraitlessQpath { span });
+                            return Default::default();
+                        }
                         return self.collect_glob_delegation(item, Node::KIND).make_ast::<Node>();
                     };
 
