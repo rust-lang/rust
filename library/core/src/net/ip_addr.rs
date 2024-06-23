@@ -1159,6 +1159,25 @@ impl From<u32> for Ipv4Addr {
     }
 }
 
+// FIXME correct way to set stability attributes
+#[stable(feature = "ip_to_array", since = "CURRENT_RUSTC_VERSION")]
+impl From<Ipv4Addr> for [u8; 4] {
+    /// Converts to the four eight-bit integers that make up this address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::new(127, 0, 0, 1);
+    /// assert_eq!(Into::<[u8; 4]>::into(addr), [127, 0, 0, 1]);
+    /// ```
+    #[inline]
+    fn from(ip: Ipv4Addr) -> [u8; 4] {
+        ip.octets
+    }
+}
+
 #[stable(feature = "from_slice_v4", since = "1.9.0")]
 impl From<[u8; 4]> for Ipv4Addr {
     /// Creates an `Ipv4Addr` from a four element byte array.
@@ -2076,6 +2095,24 @@ impl From<u128> for Ipv6Addr {
     #[inline]
     fn from(ip: u128) -> Ipv6Addr {
         Ipv6Addr::from_bits(ip)
+    }
+}
+
+// FIXME correct way to set stability attributes
+#[stable(feature = "ip_to_array", since = "CURRENT_RUSTC_VERSION")]
+impl From<Ipv6Addr> for [u8; 16] {
+    /// Converts to the sixteen eight-bit integers that make up this address.
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0);
+    /// assert_eq!(Into::<[u8; 16]>::into(addr),
+    ///            [255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    /// ```
+    #[inline]
+    fn from(ip: Ipv6Addr) -> [u8; 16] {
+        ip.octets
     }
 }
 
