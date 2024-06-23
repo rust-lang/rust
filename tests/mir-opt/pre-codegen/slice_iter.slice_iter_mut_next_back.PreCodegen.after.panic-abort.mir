@@ -3,12 +3,205 @@
 fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut T> {
     debug it => _1;
     let mut _0: std::option::Option<&mut T>;
+    scope 1 (inlined <std::slice::IterMut<'_, T> as DoubleEndedIterator>::next_back) {
+        let mut _2: *const *mut T;
+        let mut _3: *const std::ptr::NonNull<T>;
+        let mut _8: bool;
+        let mut _9: *mut T;
+        let mut _25: &mut T;
+        scope 2 {
+            let _4: std::ptr::NonNull<T>;
+            let _10: usize;
+            scope 3 {
+            }
+            scope 4 {
+                scope 8 (inlined <NonNull<T> as PartialEq>::eq) {
+                    let mut _5: std::ptr::NonNull<T>;
+                    scope 9 (inlined NonNull::<T>::as_ptr) {
+                        let mut _6: *const T;
+                    }
+                    scope 10 (inlined NonNull::<T>::as_ptr) {
+                        let mut _7: *const T;
+                    }
+                }
+            }
+            scope 5 (inlined std::ptr::mut_ptr::<impl *mut T>::addr) {
+                scope 6 (inlined std::ptr::mut_ptr::<impl *mut T>::cast::<()>) {
+                }
+            }
+            scope 7 (inlined std::ptr::const_ptr::<impl *const *mut T>::cast::<NonNull<T>>) {
+            }
+        }
+        scope 11 (inlined std::slice::IterMut::<'_, T>::next_back_unchecked) {
+            let mut _17: std::ptr::NonNull<T>;
+            scope 12 (inlined std::slice::IterMut::<'_, T>::pre_dec_end) {
+                let mut _11: *mut *mut T;
+                let mut _12: *mut std::ptr::NonNull<T>;
+                let mut _13: std::ptr::NonNull<T>;
+                let mut _16: std::ptr::NonNull<T>;
+                let mut _18: *mut *mut T;
+                let mut _19: *mut usize;
+                let mut _20: usize;
+                let mut _21: usize;
+                scope 13 {
+                    scope 14 {
+                    }
+                    scope 15 {
+                        scope 18 (inlined NonNull::<T>::sub) {
+                            scope 19 (inlined core::num::<impl isize>::unchecked_neg) {
+                                scope 20 (inlined core::ub_checks::check_language_ub) {
+                                    scope 21 (inlined core::ub_checks::check_language_ub::runtime) {
+                                    }
+                                }
+                            }
+                            scope 22 (inlined NonNull::<T>::offset) {
+                                let mut _14: *const T;
+                                let mut _15: *const T;
+                            }
+                        }
+                    }
+                    scope 16 (inlined std::ptr::mut_ptr::<impl *mut *mut T>::cast::<usize>) {
+                    }
+                    scope 17 (inlined std::ptr::mut_ptr::<impl *mut *mut T>::cast::<NonNull<T>>) {
+                    }
+                }
+            }
+            scope 23 (inlined NonNull::<T>::as_mut::<'_>) {
+                let mut _22: std::ptr::NonNull<T>;
+                let mut _24: *mut T;
+                scope 24 (inlined NonNull::<T>::as_ptr) {
+                    let mut _23: *const T;
+                }
+            }
+        }
+    }
 
     bb0: {
-        _0 = <std::slice::IterMut<'_, T> as DoubleEndedIterator>::next_back(move _1) -> [return: bb1, unwind unreachable];
+        StorageLive(_10);
+        StorageLive(_9);
+        StorageLive(_4);
+        StorageLive(_25);
+        StorageLive(_8);
+        switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {
+        StorageLive(_3);
+        StorageLive(_2);
+        _2 = &raw const ((*_1).1: *mut T);
+        _3 = _2 as *const std::ptr::NonNull<T> (PtrToPtr);
+        StorageDead(_2);
+        _4 = (*_3);
+        StorageDead(_3);
+        StorageLive(_6);
+        StorageLive(_7);
+        StorageLive(_5);
+        _5 = ((*_1).0: std::ptr::NonNull<T>);
+        _6 = (_5.0: *const T);
+        StorageDead(_5);
+        _7 = (_4.0: *const T);
+        _8 = Eq(_6, _7);
+        StorageDead(_7);
+        StorageDead(_6);
+        goto -> bb3;
+    }
+
+    bb2: {
+        _9 = ((*_1).1: *mut T);
+        _10 = _9 as usize (Transmute);
+        _8 = Eq(_10, const 0_usize);
+        goto -> bb3;
+    }
+
+    bb3: {
+        switchInt(move _8) -> [0: bb4, otherwise: bb11];
+    }
+
+    bb4: {
+        StorageLive(_24);
+        StorageLive(_17);
+        StorageLive(_19);
+        StorageLive(_12);
+        switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb5, otherwise: bb9];
+    }
+
+    bb5: {
+        StorageLive(_11);
+        _11 = &raw mut ((*_1).1: *mut T);
+        _12 = _11 as *mut std::ptr::NonNull<T> (PtrToPtr);
+        StorageDead(_11);
+        StorageLive(_16);
+        _13 = (*_12);
+        switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb6, otherwise: bb7];
+    }
+
+    bb6: {
+        StorageLive(_15);
+        StorageLive(_14);
+        _14 = (_13.0: *const T);
+        _15 = Offset(move _14, const -1_isize);
+        StorageDead(_14);
+        _16 = NonNull::<T> { pointer: move _15 };
+        StorageDead(_15);
+        goto -> bb8;
+    }
+
+    bb7: {
+        _16 = _13;
+        goto -> bb8;
+    }
+
+    bb8: {
+        (*_12) = move _16;
+        StorageDead(_16);
+        _17 = (*_12);
+        goto -> bb10;
+    }
+
+    bb9: {
+        StorageLive(_18);
+        _18 = &raw mut ((*_1).1: *mut T);
+        _19 = _18 as *mut usize (PtrToPtr);
+        StorageDead(_18);
+        StorageLive(_21);
+        StorageLive(_20);
+        _20 = (*_19);
+        _21 = SubUnchecked(move _20, const 1_usize);
+        StorageDead(_20);
+        (*_19) = move _21;
+        StorageDead(_21);
+        _17 = ((*_1).0: std::ptr::NonNull<T>);
+        goto -> bb10;
+    }
+
+    bb10: {
+        StorageDead(_12);
+        StorageDead(_19);
+        StorageLive(_22);
+        _22 = _17;
+        StorageLive(_23);
+        _23 = (_22.0: *const T);
+        _24 = move _23 as *mut T (PtrToPtr);
+        StorageDead(_23);
+        StorageDead(_22);
+        _25 = &mut (*_24);
+        StorageDead(_17);
+        StorageDead(_24);
+        _0 = Option::<&mut T>::Some(_25);
+        goto -> bb12;
+    }
+
+    bb11: {
+        _0 = const {transmute(0x0000000000000000): Option<&mut T>};
+        goto -> bb12;
+    }
+
+    bb12: {
+        StorageDead(_8);
+        StorageDead(_25);
+        StorageDead(_4);
+        StorageDead(_9);
+        StorageDead(_10);
         return;
     }
 }
