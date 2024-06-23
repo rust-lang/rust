@@ -629,37 +629,154 @@ complete -c x.py -n "__fish_seen_subcommand_from vendor" -l llvm-profile-generat
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l enable-bolt-settings -d 'Enable BOLT link flags'
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from vendor" -s h -l help -d 'Print help (see more with \'--help\')'
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l config -d 'TOML configuration file for build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l build -d 'build target of the stage0 compiler' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l host -d 'host targets to build' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l target -d 'target targets to build' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l exclude -d 'build paths to exclude' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l skip -d 'build paths to skip' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l rustc-error-format -r -f
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l keep-stage -d 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
-complete -c x.py -n "__fish_seen_subcommand_from perf" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l error-format -d 'rustc error format' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l set -d 'override options in config.toml' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from perf" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
-complete -c x.py -n "__fish_seen_subcommand_from perf" -s i -l incremental -d 'use incremental compilation'
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l include-default-paths -d 'include default paths in addition to the provided ones'
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l dry-run -d 'dry run; don\'t build anything'
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l json-output -d 'use message-format=json'
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l enable-bolt-settings -d 'Enable BOLT link flags'
-complete -c x.py -n "__fish_seen_subcommand_from perf" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
-complete -c x.py -n "__fish_seen_subcommand_from perf" -s h -l help -d 'Print help (see more with \'--help\')'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l include -d 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed' -r
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l scenarios -d 'Select the scenarios that should be benchmarked' -r -f -a "{Full	'',IncrFull	'',IncrUnchanged	'',IncrPatched	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check	'',Debug	'',Doc	'',Opt	'',Clippy	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l config -d 'TOML configuration file for build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l build -d 'build target of the stage0 compiler' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l host -d 'host targets to build' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l target -d 'target targets to build' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l skip -d 'build paths to skip' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l rustc-error-format -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l keep-stage -d 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l error-format -d 'rustc error format' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -s i -l incremental -d 'use incremental compilation'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l include-default-paths -d 'include default paths in addition to the provided ones'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l dry-run -d 'dry run; don\'t build anything'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l json-output -d 'use message-format=json'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -s h -l help -d 'Print help (see more with \'--help\')'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -f -a "eprintln" -d 'Run `profile_local eprintln`. This executes the compiler on the given benchmarks and stores its stderr output'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -f -a "samply" -d 'Run `profile_local samply` This executes the compiler on the given benchmarks and profiles it with `samply`. You need to install `samply`, e.g. using `cargo install samply`'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and not __fish_seen_subcommand_from eprintln; and not __fish_seen_subcommand_from samply; and not __fish_seen_subcommand_from cachegrind" -f -a "cachegrind" -d 'Run `profile_local cachegrind`. This executes the compiler on the given benchmarks under `Cachegrind`'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l include -d 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed' -r
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l scenarios -d 'Select the scenarios that should be benchmarked' -r -f -a "{Full	'',IncrFull	'',IncrUnchanged	'',IncrPatched	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check	'',Debug	'',Doc	'',Opt	'',Clippy	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l config -d 'TOML configuration file for build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l build -d 'build target of the stage0 compiler' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l host -d 'host targets to build' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l target -d 'target targets to build' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l skip -d 'build paths to skip' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l rustc-error-format -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l keep-stage -d 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l error-format -d 'rustc error format' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -s i -l incremental -d 'use incremental compilation'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l include-default-paths -d 'include default paths in addition to the provided ones'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l dry-run -d 'dry run; don\'t build anything'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l json-output -d 'use message-format=json'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from eprintln" -s h -l help -d 'Print help (see more with \'--help\')'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l include -d 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed' -r
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l scenarios -d 'Select the scenarios that should be benchmarked' -r -f -a "{Full	'',IncrFull	'',IncrUnchanged	'',IncrPatched	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check	'',Debug	'',Doc	'',Opt	'',Clippy	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l config -d 'TOML configuration file for build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l build -d 'build target of the stage0 compiler' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l host -d 'host targets to build' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l target -d 'target targets to build' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l skip -d 'build paths to skip' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l rustc-error-format -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l keep-stage -d 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l error-format -d 'rustc error format' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -s i -l incremental -d 'use incremental compilation'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l include-default-paths -d 'include default paths in addition to the provided ones'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l dry-run -d 'dry run; don\'t build anything'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l json-output -d 'use message-format=json'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from samply" -s h -l help -d 'Print help (see more with \'--help\')'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l include -d 'Select the benchmarks that you want to run (separated by commas). If unspecified, all benchmarks will be executed' -r
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l scenarios -d 'Select the scenarios that should be benchmarked' -r -f -a "{Full	'',IncrFull	'',IncrUnchanged	'',IncrPatched	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l profiles -d 'Select the profiles that should be benchmarked' -r -f -a "{Check	'',Debug	'',Doc	'',Opt	'',Clippy	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l config -d 'TOML configuration file for build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l build -d 'build target of the stage0 compiler' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l host -d 'host targets to build' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l target -d 'target targets to build' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l skip -d 'build paths to skip' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l rustc-error-format -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l keep-stage -d 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny	'',warn	'',default	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l error-format -d 'rustc error format' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always	'',never	'',auto	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l llvm-skip-rebuild -d 'whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml' -r -f -a "{true	'',false	''}"
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l set -d 'override options in config.toml' -r -f
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -s i -l incremental -d 'use incremental compilation'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l include-default-paths -d 'include default paths in addition to the provided ones'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l dry-run -d 'dry run; don\'t build anything'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l json-output -d 'use message-format=json'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
+complete -c x.py -n "__fish_seen_subcommand_from perf; and __fish_seen_subcommand_from cachegrind" -s h -l help -d 'Print help (see more with \'--help\')'
