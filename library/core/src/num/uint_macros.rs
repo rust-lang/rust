@@ -455,8 +455,19 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_add(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_add(rhs);
-            if unlikely!(b) { None } else { Some(a) }
+            // This used to use `overflowing_add`, but that means it ends up being
+            // a `wrapping_add`, losing some optimization opportunities. Notably,
+            // phrasing it this way helps `.checked_add(1)` optimize to a check
+            // against `MAX` and a `add nuw`.
+            // Per <https://github.com/rust-lang/rust/pull/124114#issuecomment-2066173305>,
+            // LLVM is happy to re-form the intrinsic later if useful.
+
+            if unlikely!(intrinsics::add_with_overflow(self, rhs).1) {
+                None
+            } else {
+                // SAFETY: Just checked it doesn't overflow
+                Some(unsafe { intrinsics::unchecked_add(self, rhs) })
+            }
         }
 
         /// Strict integer addition. Computes `self + rhs`, panicking
