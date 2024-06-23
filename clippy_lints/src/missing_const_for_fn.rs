@@ -1,11 +1,11 @@
 use clippy_config::msrvs::{self, Msrv};
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::qualify_min_const_fn::is_min_const_fn;
 use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, is_from_proc_macro, trait_ref_of_method};
-use rustc_hir as hir;
+use rustc_errors::Applicability;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, Constness, FnDecl, GenericParamKind};
+use rustc_hir::{self as hir, Body, Constness, FnDecl, GenericParamKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
@@ -120,7 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
                 }
             },
             FnKind::Method(_, sig, ..) => {
-                if trait_ref_of_method(cx, def_id).is_some() || already_const(sig.header) {
+                if already_const(sig.header) || trait_ref_of_method(cx, def_id).is_some() {
                     return;
                 }
             },
@@ -147,10 +147,22 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
 
         let mir = cx.tcx.optimized_mir(def_id);
 
-        if let Ok(()) = is_min_const_fn(cx.tcx, mir, &self.msrv) {
-            span_lint(cx, MISSING_CONST_FOR_FN, span, "this could be a `const fn`");
+        if let Ok(()) = is_min_const_fn(cx.tcx, mir, &self.msrv)
+            && let hir::Node::Item(hir::Item { vis_span, .. }) | hir::Node::ImplItem(hir::ImplItem { vis_span, .. }) =
+                cx.tcx.hir_node_by_def_id(def_id)
+        {
+            let suggestion = if vis_span.is_empty() { "const " } else { " const" };
+            span_lint_and_then(cx, MISSING_CONST_FOR_FN, span, "this could be a `const fn`", |diag| {
+                diag.span_suggestion_verbose(
+                    vis_span.shrink_to_hi(),
+                    "make the function `const`",
+                    suggestion,
+                    Applicability::MachineApplicable,
+                );
+            });
         }
     }
+
     extract_msrv_attr!(LateContext);
 }
 
