@@ -186,5 +186,4 @@ run-make/track-pgo-dep-info/Makefile
 run-make/translation/Makefile
 run-make/type-mismatch-same-crate-name/Makefile
 run-make/unstable-flag-required/Makefile
-run-make/wasm-exceptions-nostd/Makefile
 run-make/x86_64-fortanix-unknown-sgx-lvi/Makefile
