@@ -638,7 +638,7 @@ dependencies = [
  "filetime",
  "futures",
  "if_chain",
- "itertools 0.12.1",
+ "itertools",
  "parking_lot",
  "quote",
  "regex",
@@ -670,7 +670,7 @@ dependencies = [
  "aho-corasick",
  "clap",
  "indoc",
- "itertools 0.12.1",
+ "itertools",
  "opener 0.6.1",
  "shell-escape",
  "walkdir",
@@ -685,7 +685,7 @@ dependencies = [
  "clippy_config",
  "clippy_utils",
  "declare_clippy_lint",
- "itertools 0.12.1",
+ "itertools",
  "quine-mc_cluskey",
  "regex",
  "regex-syntax 0.8.4",
@@ -707,7 +707,7 @@ version = "0.1.81"
 dependencies = [
  "arrayvec",
  "clippy_config",
- "itertools 0.12.1",
+ "itertools",
  "rustc-semver",
  "rustc_apfloat",
 ]
@@ -1026,7 +1026,7 @@ dependencies = [
 name = "declare_clippy_lint"
 version = "0.1.81"
 dependencies = [
- "itertools 0.12.1",
+ "itertools",
  "quote",
  "syn 2.0.66",
 ]
@@ -1133,16 +1133,16 @@ version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a49173b84e034382284f27f1af4dcbbd231ffa358c0fe316541a7337f376a35"
 dependencies = [
- "dirs-sys 0.4.1",
+ "dirs-sys",
 ]
 
 [[package]]
 name = "dirs"
-version = "4.0.0"
+version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
+checksum = "44c45a9d03d6676652bcb5e724c7e988de1acad23a711b5217ab9cbecbec2225"
 dependencies = [
- "dirs-sys 0.3.7",
+ "dirs-sys",
 ]
 
 [[package]]
@@ -1153,17 +1153,6 @@ checksum = "b98cf8ebf19c3d1b223e151f99a4f9f0690dca41414773390fc824184ac833e1"
 dependencies = [
  "cfg-if",
  "dirs-sys-next",
-]
-
-[[package]]
-name = "dirs-sys"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b1d1d91c932ef41c0f2663aa8b0ca0342d444d842c06914aa0a7e352d0bada6"
-dependencies = [
- "libc",
- "redox_users",
- "winapi",
 ]
 
 [[package]]
@@ -2078,15 +2067,6 @@ checksum = "f8478577c03552c21db0e2724ffb8986a5ce7af88107e6be5d2ee6e158c12800"
 
 [[package]]
 name = "itertools"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
@@ -2227,7 +2207,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c2a198fb6b0eada2a8df47933734e6d35d350665a33a3593d7164fa52c75c19"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.5",
 ]
 
 [[package]]
@@ -3665,7 +3645,7 @@ dependencies = [
 name = "rustc_ast_passes"
 version = "0.0.0"
 dependencies = [
- "itertools 0.12.1",
+ "itertools",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -3685,7 +3665,7 @@ dependencies = [
 name = "rustc_ast_pretty"
 version = "0.0.0"
 dependencies = [
- "itertools 0.12.1",
+ "itertools",
  "rustc_ast",
  "rustc_lexer",
  "rustc_span",
@@ -3726,7 +3706,7 @@ name = "rustc_borrowck"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools 0.12.1",
+ "itertools",
  "polonius-engine",
  "rustc_data_structures",
  "rustc_errors",
@@ -3779,7 +3759,7 @@ name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.5.0",
- "itertools 0.12.1",
+ "itertools",
  "libc",
  "measureme",
  "object 0.32.2",
@@ -3818,7 +3798,7 @@ dependencies = [
  "bitflags 2.5.0",
  "cc",
  "either",
- "itertools 0.12.1",
+ "itertools",
  "jobserver",
  "libc",
  "object 0.32.2",
@@ -4098,7 +4078,7 @@ dependencies = [
 name = "rustc_hir_analysis"
 version = "0.0.0"
 dependencies = [
- "itertools 0.12.1",
+ "itertools",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
@@ -4137,7 +4117,7 @@ dependencies = [
 name = "rustc_hir_typeck"
 version = "0.0.0"
 dependencies = [
- "itertools 0.12.1",
+ "itertools",
  "rustc_ast",
  "rustc_ast_ir",
  "rustc_attr",
@@ -4421,7 +4401,7 @@ dependencies = [
 name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
- "itertools 0.12.1",
+ "itertools",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
@@ -4468,7 +4448,7 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools 0.12.1",
+ "itertools",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
@@ -4824,7 +4804,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags 2.5.0",
  "derivative",
- "itertools 0.12.1",
+ "itertools",
  "rustc_ast",
  "rustc_ast_ir",
  "rustc_attr",
@@ -4867,7 +4847,7 @@ dependencies = [
 name = "rustc_transmute"
 version = "0.0.0"
 dependencies = [
- "itertools 0.12.1",
+ "itertools",
  "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_hir",
@@ -4883,7 +4863,7 @@ dependencies = [
 name = "rustc_ty_utils"
 version = "0.0.0"
 dependencies = [
- "itertools 0.12.1",
+ "itertools",
  "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_errors",
@@ -4947,7 +4927,7 @@ dependencies = [
  "base64",
  "expect-test",
  "indexmap",
- "itertools 0.12.1",
+ "itertools",
  "minifier",
  "regex",
  "rustdoc-json-types",
@@ -5028,20 +5008,19 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.7.0"
+version = "1.7.1"
 dependencies = [
  "annotate-snippets 0.9.2",
  "anyhow",
  "bytecount",
- "cargo_metadata 0.15.4",
+ "cargo_metadata 0.18.1",
  "clap",
  "clap-cargo",
  "diff",
  "dirs",
  "getopts",
  "ignore",
- "itertools 0.11.0",
- "lazy_static",
+ "itertools",
  "regex",
  "rustfmt-config_proc_macro",
  "serde",
