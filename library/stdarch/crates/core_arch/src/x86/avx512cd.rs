@@ -294,7 +294,7 @@ pub unsafe fn _mm_maskz_conflict_epi64(k: __mmask8, a: __m128i) -> __m128i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm512_lzcnt_epi32(a: __m512i) -> __m512i {
-    transmute(vplzcntd(a.as_i32x16(), false))
+    transmute(simd_ctlz(a.as_i32x16()))
 }
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -330,7 +330,7 @@ pub unsafe fn _mm512_maskz_lzcnt_epi32(k: __mmask16, a: __m512i) -> __m512i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm256_lzcnt_epi32(a: __m256i) -> __m256i {
-    transmute(vplzcntd256(a.as_i32x8(), false))
+    transmute(simd_ctlz(a.as_i32x8()))
 }
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -366,7 +366,7 @@ pub unsafe fn _mm256_maskz_lzcnt_epi32(k: __mmask8, a: __m256i) -> __m256i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm_lzcnt_epi32(a: __m128i) -> __m128i {
-    transmute(vplzcntd128(a.as_i32x4(), false))
+    transmute(simd_ctlz(a.as_i32x4()))
 }
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -402,7 +402,7 @@ pub unsafe fn _mm_maskz_lzcnt_epi32(k: __mmask8, a: __m128i) -> __m128i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm512_lzcnt_epi64(a: __m512i) -> __m512i {
-    transmute(vplzcntq(a.as_i64x8(), false))
+    transmute(simd_ctlz(a.as_i64x8()))
 }
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -438,7 +438,7 @@ pub unsafe fn _mm512_maskz_lzcnt_epi64(k: __mmask8, a: __m512i) -> __m512i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm256_lzcnt_epi64(a: __m256i) -> __m256i {
-    transmute(vplzcntq256(a.as_i64x4(), false))
+    transmute(simd_ctlz(a.as_i64x4()))
 }
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -474,7 +474,7 @@ pub unsafe fn _mm256_maskz_lzcnt_epi64(k: __mmask8, a: __m256i) -> __m256i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm_lzcnt_epi64(a: __m128i) -> __m128i {
-    transmute(vplzcntq128(a.as_i64x2(), false))
+    transmute(simd_ctlz(a.as_i64x2()))
 }
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -517,20 +517,6 @@ extern "C" {
     fn vpconflictq256(a: i64x4) -> i64x4;
     #[link_name = "llvm.x86.avx512.conflict.q.128"]
     fn vpconflictq128(a: i64x2) -> i64x2;
-
-    #[link_name = "llvm.ctlz.v16i32"]
-    fn vplzcntd(a: i32x16, nonzero: bool) -> i32x16;
-    #[link_name = "llvm.ctlz.v8i32"]
-    fn vplzcntd256(a: i32x8, nonzero: bool) -> i32x8;
-    #[link_name = "llvm.ctlz.v4i32"]
-    fn vplzcntd128(a: i32x4, nonzero: bool) -> i32x4;
-
-    #[link_name = "llvm.ctlz.v8i64"]
-    fn vplzcntq(a: i64x8, nonzero: bool) -> i64x8;
-    #[link_name = "llvm.ctlz.v4i64"]
-    fn vplzcntq256(a: i64x4, nonzero: bool) -> i64x4;
-    #[link_name = "llvm.ctlz.v2i64"]
-    fn vplzcntq128(a: i64x2, nonzero: bool) -> i64x2;
 }
 
 #[cfg(test)]
