@@ -26,7 +26,7 @@ fn main() {
 fn main() {
     // 7 conditions is too many, so issue a diagnostic.
     let [a, b, c, d, e, f, g] = <[bool; 7]>::default();
-    if a && b && c && d && e && f && g { //[bad]~ WARNING Number of conditions in decision
+    if a && b && c && d && e && f && g { //[bad]~ WARNING number of conditions in decision
         core::hint::black_box("hello");
     }
 }

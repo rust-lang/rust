@@ -31,7 +31,6 @@ pub(crate) fn parse_lazy_static(
             }
         }
     }
-
     while parser.token.kind != TokenKind::Eof {
         // Parse a `lazy_static!` item.
         let vis = parse_or!(parse_visibility, rustc_parse::parser::FollowedByType::No);

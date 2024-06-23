@@ -387,7 +387,7 @@ pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
     });
 }
 
-pub fn read_dir<F: Fn(&Path)>(dir: impl AsRef<Path>, callback: F) {
+pub fn read_dir<F: FnMut(&Path)>(dir: impl AsRef<Path>, mut callback: F) {
     for entry in fs_wrapper::read_dir(dir) {
         callback(&entry.unwrap().path());
     }

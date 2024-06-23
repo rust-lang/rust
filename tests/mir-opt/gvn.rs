@@ -883,6 +883,49 @@ fn generic_cast_metadata<T, A: ?Sized, B: ?Sized>(ps: *const [T], pa: *const A, 
     }
 }
 
+fn cast_pointer_eq(p1: *mut u8, p2: *mut u32, p3: *mut u32, p4: *mut [u32]) {
+    // CHECK-LABEL: fn cast_pointer_eq
+    // CHECK: debug p1 => [[P1:_1]];
+    // CHECK: debug p2 => [[P2:_2]];
+    // CHECK: debug p3 => [[P3:_3]];
+    // CHECK: debug p4 => [[P4:_4]];
+
+    // CHECK: [[M1:_.+]] = [[P1]] as *const u32 (PtrToPtr);
+    // CHECK: [[M2:_.+]] = [[P2]] as *const u32 (PtrToPtr);
+    // CHECK: [[M3:_.+]] = [[P3]] as *const u32 (PtrToPtr);
+    // CHECK: [[M4:_.+]] = [[P4]] as *const u32 (PtrToPtr);
+    let m1 = p1 as *const u32;
+    let m2 = p2 as *const u32;
+    let m3 = p3 as *const u32;
+    let m4 = p4 as *const u32;
+
+    // CHECK-NOT: Eq
+    // CHECK: Eq([[M1]], [[M2]])
+    // CHECK-NOT: Eq
+    // CHECK: Eq([[P2]], [[P3]])
+    // CHECK-NOT: Eq
+    // CHECK: Eq([[M3]], [[M4]])
+    // CHECK-NOT: Eq
+    let eq_different_thing = m1 == m2;
+    let eq_optimize = m2 == m3;
+    let eq_thin_fat = m3 == m4;
+
+    // CHECK: _0 = const ();
+}
+
+// Transmuting can skip a pointer cast so long as it wasn't a fat-to-thin cast.
+unsafe fn cast_pointer_then_transmute(thin: *mut u32, fat: *mut [u8]) {
+    // CHECK-LABEL: fn cast_pointer_then_transmute
+
+    // CHECK: [[UNUSED:_.+]] = _1 as *const () (PtrToPtr);
+    // CHECK: = _1 as usize (Transmute);
+    let thin_addr: usize = std::intrinsics::transmute(thin as *const ());
+
+    // CHECK: [[TEMP2:_.+]] = _2 as *const () (PtrToPtr);
+    // CHECK: = move [[TEMP2]] as usize (Transmute);
+    let fat_addr: usize = std::intrinsics::transmute(fat as *const ());
+}
+
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -950,3 +993,5 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.manual_slice_mut_len.GVN.diff
 // EMIT_MIR gvn.array_len.GVN.diff
 // EMIT_MIR gvn.generic_cast_metadata.GVN.diff
+// EMIT_MIR gvn.cast_pointer_eq.GVN.diff
+// EMIT_MIR gvn.cast_pointer_then_transmute.GVN.diff

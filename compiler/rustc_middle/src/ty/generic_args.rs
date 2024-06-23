@@ -591,7 +591,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArgsRef<'tcx> {
         match self.len() {
             1 => {
                 let param0 = self[0].try_fold_with(folder)?;
-                if param0 == self[0] { Ok(self) } else { Ok(folder.interner().mk_args(&[param0])) }
+                if param0 == self[0] { Ok(self) } else { Ok(folder.cx().mk_args(&[param0])) }
             }
             2 => {
                 let param0 = self[0].try_fold_with(folder)?;
@@ -599,7 +599,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArgsRef<'tcx> {
                 if param0 == self[0] && param1 == self[1] {
                     Ok(self)
                 } else {
-                    Ok(folder.interner().mk_args(&[param0, param1]))
+                    Ok(folder.cx().mk_args(&[param0, param1]))
                 }
             }
             0 => Ok(self),
@@ -635,7 +635,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
                 if param0 == self[0] && param1 == self[1] {
                     Ok(self)
                 } else {
-                    Ok(folder.interner().mk_type_list(&[param0, param1]))
+                    Ok(folder.cx().mk_type_list(&[param0, param1]))
                 }
             }
             _ => ty::util::fold_list(self, folder, |tcx, v| tcx.mk_type_list(v)),

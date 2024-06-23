@@ -33,8 +33,8 @@ pub(crate) trait DocVisitor: Sized {
             | TyMethodItem(_)
             | MethodItem(_, _)
             | StructFieldItem(_)
-            | ForeignFunctionItem(_)
-            | ForeignStaticItem(_)
+            | ForeignFunctionItem(..)
+            | ForeignStaticItem(..)
             | ForeignTypeItem
             | MacroItem(_)
             | ProcMacroItem(_)

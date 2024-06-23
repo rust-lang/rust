@@ -6,19 +6,19 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{self as ty, Interner};
 
-use crate::infcx::SolverDelegate;
+use crate::delegate::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, NoSolution, QueryResult, Reveal, SolverMode};
 
-impl<Infcx, I> EvalCtxt<'_, Infcx>
+impl<D, I> EvalCtxt<'_, D>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     pub(super) fn normalize_opaque_type(
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
     ) -> QueryResult<I> {
-        let tcx = self.interner();
+        let tcx = self.cx();
         let opaque_ty = goal.predicate.alias;
         let expected = goal.predicate.term.as_type().expect("no such thing as an opaque const");
 
@@ -34,7 +34,7 @@ where
                     return Err(NoSolution);
                 }
                 // FIXME: This may have issues when the args contain aliases...
-                match uses_unique_placeholders_ignoring_regions(self.interner(), opaque_ty.args) {
+                match uses_unique_placeholders_ignoring_regions(self.cx(), opaque_ty.args) {
                     Err(NotUniqueParam::NotParam(param)) if param.is_non_region_infer() => {
                         return self.evaluate_added_goals_and_make_canonical_response(
                             Certainty::AMBIGUOUS,

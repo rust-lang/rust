@@ -1,3 +1,12 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/default-method-body-is-const-same-trait-ck.rs:1:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error[E0277]: the trait bound `(): ~const Tr` is not satisfied
   --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:12
    |
@@ -6,6 +15,6 @@ LL |         ().a()
    |
    = help: the trait `Tr` is implemented for `()`
 
-error: aborting due to 1 previous error
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

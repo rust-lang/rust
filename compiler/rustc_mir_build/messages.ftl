@@ -103,7 +103,7 @@ mir_build_deref_raw_pointer_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
     .note = raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
     .label = dereference of raw pointer
 
-mir_build_exceeds_mcdc_condition_limit = Number of conditions in decision ({$num_conditions}) exceeds limit ({$max_conditions}). MC/DC analysis will not count this expression.
+mir_build_exceeds_mcdc_condition_limit = number of conditions in decision ({$num_conditions}) exceeds limit ({$max_conditions}), so MC/DC analysis will not count this expression
 
 mir_build_extern_static_requires_unsafe =
     use of extern static is unsafe and requires unsafe block

@@ -304,7 +304,7 @@ struct Canonicalizer<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -773,7 +773,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
         let br = ty::BoundRegion { var, kind: ty::BrAnon };
-        ty::Region::new_bound(self.interner(), self.binder_index, br)
+        ty::Region::new_bound(self.cx(), self.binder_index, br)
     }
 
     /// Given a type variable `ty_var` of the given kind, first check

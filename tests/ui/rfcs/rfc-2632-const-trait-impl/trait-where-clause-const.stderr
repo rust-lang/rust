@@ -1,3 +1,12 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/trait-where-clause-const.rs:7:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error[E0277]: the trait bound `T: ~const Bar` is not satisfied
   --> $DIR/trait-where-clause-const.rs:21:5
    |
@@ -30,6 +39,6 @@ help: consider further restricting this bound
 LL | const fn test1<T: ~const Foo + Bar + ~const Bar>() {
    |                                    ++++++++++++
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

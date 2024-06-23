@@ -1,5 +1,5 @@
 #![feature(const_trait_impl)]
-#![feature(effects)]
+#![feature(effects)] //~ WARN the feature `effects` is incomplete
 
 struct S;
 trait T {}

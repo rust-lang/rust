@@ -156,7 +156,7 @@ where
 {
     type Error = Vec<E>;
 
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.at.infcx.tcx
     }
 
@@ -244,7 +244,7 @@ struct DeeplyNormalizeForDiagnosticsFolder<'a, 'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.at.infcx.tcx
     }
 

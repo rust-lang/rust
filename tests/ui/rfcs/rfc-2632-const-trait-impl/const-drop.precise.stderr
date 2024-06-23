@@ -1,3 +1,9 @@
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-drop.rs:19:22
+   |
+LL | const fn a<T: ~const Destruct>(_: T) {}
+   |                      ^^^^^^^^
+
 error[E0493]: destructor of `S<'_>` cannot be evaluated at compile-time
   --> $DIR/const-drop.rs:24:13
    |
@@ -86,7 +92,7 @@ LL | | }
    | |_- in this macro invocation
    = note: this error originates in the macro `implements_const_drop` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0080, E0493.
 For more information about an error, try `rustc --explain E0080`.

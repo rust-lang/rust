@@ -62,7 +62,7 @@ LL |         }
 LL |         match s.len() {
 LL ~             10 => 2,
 LL |             20 => {
- ...
+...
 LL |                         if foo() {
 LL ~                             return 20;
 LL |                         }

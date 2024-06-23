@@ -666,6 +666,7 @@ pub enum Kind {
     Setup,
     Suggest,
     Vendor,
+    Perf,
 }
 
 impl Kind {
@@ -687,6 +688,7 @@ impl Kind {
             Kind::Setup => "setup",
             Kind::Suggest => "suggest",
             Kind::Vendor => "vendor",
+            Kind::Perf => "perf",
         }
     }
 
@@ -698,6 +700,7 @@ impl Kind {
             Kind::Run => "Running",
             Kind::Suggest => "Suggesting",
             Kind::Clippy => "Linting",
+            Kind::Perf => "Profiling & benchmarking",
             _ => {
                 let title_letter = self.as_str()[0..1].to_ascii_uppercase();
                 return format!("{title_letter}{}ing", &self.as_str()[1..]);
@@ -749,7 +752,8 @@ impl<'a> Builder<'a> {
                 tool::RustdocGUITest,
                 tool::OptimizedDist,
                 tool::CoverageDump,
-                tool::LlvmBitcodeLinker
+                tool::LlvmBitcodeLinker,
+                tool::RustcPerf,
             ),
             Kind::Clippy => describe!(
                 clippy::Std,
@@ -945,7 +949,7 @@ impl<'a> Builder<'a> {
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
             Kind::Vendor => describe!(vendor::Vendor),
             // special-cased in Build::build()
-            Kind::Format | Kind::Suggest => vec![],
+            Kind::Format | Kind::Suggest | Kind::Perf => vec![],
         }
     }
 
@@ -1017,6 +1021,7 @@ impl<'a> Builder<'a> {
                 path.as_ref().map_or([].as_slice(), |path| std::slice::from_ref(path)),
             ),
             Subcommand::Vendor { .. } => (Kind::Vendor, &paths[..]),
+            Subcommand::Perf { .. } => (Kind::Perf, &paths[..]),
         };
 
         Self::new_internal(build, kind, paths.to_owned())

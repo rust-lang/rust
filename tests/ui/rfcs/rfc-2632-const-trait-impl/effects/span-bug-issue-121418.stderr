@@ -8,6 +8,15 @@ LL | impl const dyn T {
    |
    = note: only trait implementations may be annotated with `const`
 
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/span-bug-issue-121418.rs:2:12
+   |
+LL | #![feature(effects)]
+   |            ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error[E0207]: the const parameter `host` is not constrained by the impl trait, self type, or predicates
   --> $DIR/span-bug-issue-121418.rs:7:6
    |
@@ -39,7 +48,7 @@ note: required because it appears within the type `Mutex<(dyn T + 'static)>`
   --> $SRC_DIR/std/src/sync/mutex.rs:LL:COL
    = note: the return type of a function must have a statically known size
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0207, E0277, E0308.
 For more information about an error, try `rustc --explain E0207`.

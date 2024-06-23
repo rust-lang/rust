@@ -1,8 +1,10 @@
 // skip-filecheck
 //@ compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
+//@ only-64bit (constants for `None::<&T>` show in the output)
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![crate_type = "lib"]
+#![feature(exact_size_is_empty)]
 
 // When this test was added, the MIR for `next` was 174 lines just for the basic
 // blocks -- far more if you counted the scopes.  The goal of having this here
@@ -12,6 +14,11 @@
 
 // As such, feel free to `--bless` whatever changes you get here, so long as
 // doing so doesn't add substantially more MIR.
+
+// EMIT_MIR slice_iter.slice_iter_generic_is_empty.PreCodegen.after.mir
+pub fn slice_iter_generic_is_empty<T>(it: &std::slice::Iter<'_, T>) -> bool {
+    it.is_empty()
+}
 
 // EMIT_MIR slice_iter.slice_iter_next.PreCodegen.after.mir
 pub fn slice_iter_next<'a, T>(it: &mut std::slice::Iter<'a, T>) -> Option<&'a T> {

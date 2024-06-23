@@ -14,7 +14,6 @@ run-make/compiler-lookup-paths-2/Makefile
 run-make/compiler-lookup-paths/Makefile
 run-make/compiler-rt-works-on-mingw/Makefile
 run-make/crate-hash-rustc-version/Makefile
-run-make/crate-name-priority/Makefile
 run-make/cross-lang-lto-clang/Makefile
 run-make/cross-lang-lto-pgo-smoketest/Makefile
 run-make/cross-lang-lto-upstream-rlibs/Makefile
@@ -31,7 +30,6 @@ run-make/emit-shared-files/Makefile
 run-make/emit-stack-sizes/Makefile
 run-make/emit-to-stdout/Makefile
 run-make/env-dep-info/Makefile
-run-make/error-writing-dependencies/Makefile
 run-make/export-executable-symbols/Makefile
 run-make/extern-diff-internal-name/Makefile
 run-make/extern-flag-disambiguates/Makefile
@@ -54,7 +52,6 @@ run-make/foreign-rust-exceptions/Makefile
 run-make/include_bytes_deps/Makefile
 run-make/incr-add-rust-src-component/Makefile
 run-make/incr-foreign-head-span/Makefile
-run-make/inline-always-many-cgu/Makefile
 run-make/interdependent-c-libraries/Makefile
 run-make/intrinsic-unreachable/Makefile
 run-make/invalid-library/Makefile
@@ -154,7 +151,6 @@ run-make/raw-dylib-inline-cross-dylib/Makefile
 run-make/raw-dylib-link-ordinal/Makefile
 run-make/raw-dylib-stdcall-ordinal/Makefile
 run-make/redundant-libs/Makefile
-run-make/relocation-model/Makefile
 run-make/relro-levels/Makefile
 run-make/remap-path-prefix-dwarf/Makefile
 run-make/remap-path-prefix/Makefile

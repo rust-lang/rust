@@ -424,29 +424,3 @@ pub mod __alloc_error_handler {
         }
     }
 }
-
-#[cfg(not(no_global_oom_handling))]
-/// Specialize clones into pre-allocated, uninitialized memory.
-/// Used by `Box::clone` and `Rc`/`Arc::make_mut`.
-pub(crate) trait WriteCloneIntoRaw: Sized {
-    unsafe fn write_clone_into_raw(&self, target: *mut Self);
-}
-
-#[cfg(not(no_global_oom_handling))]
-impl<T: Clone> WriteCloneIntoRaw for T {
-    #[inline]
-    default unsafe fn write_clone_into_raw(&self, target: *mut Self) {
-        // Having allocated *first* may allow the optimizer to create
-        // the cloned value in-place, skipping the local and move.
-        unsafe { target.write(self.clone()) };
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-impl<T: Copy> WriteCloneIntoRaw for T {
-    #[inline]
-    unsafe fn write_clone_into_raw(&self, target: *mut Self) {
-        // We can always copy in-place, without ever involving a local value.
-        unsafe { target.copy_from_nonoverlapping(self, 1) };
-    }
-}

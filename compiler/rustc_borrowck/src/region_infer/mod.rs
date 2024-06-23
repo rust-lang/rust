@@ -1110,7 +1110,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             tcx: TyCtxt<'tcx>,
         }
         impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for OpaqueFolder<'tcx> {
-            fn interner(&self) -> TyCtxt<'tcx> {
+            fn cx(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }
             fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
