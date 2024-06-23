@@ -902,7 +902,7 @@ impl HumanEmitter {
         //      <EMPTY LINE>
         //
         let mut annotations_position = vec![];
-        let mut line_len = 0;
+        let mut line_len: usize = 0;
         let mut p = 0;
         for (i, annotation) in annotations.iter().enumerate() {
             for (j, next) in annotations.iter().enumerate() {
@@ -971,6 +971,31 @@ impl HumanEmitter {
         // MultilineLine, then there's only code being shown, stop processing.
         if line.annotations.iter().all(|a| a.is_line()) {
             return vec![];
+        }
+
+        if annotations_position
+            .iter()
+            .all(|(_, ann)| matches!(ann.annotation_type, AnnotationType::MultilineStart(_)))
+            && let Some(max_pos) = annotations_position.iter().map(|(pos, _)| *pos).max()
+        {
+            // Special case the following, so that we minimize overlapping multiline spans.
+            //
+            // 3 │       X0 Y0 Z0
+            //   │ ┏━━━━━┛  │  │     < We are writing these lines
+            //   │ ┃┌───────┘  │     < by reverting the "depth" of
+            //   │ ┃│┌─────────┘     < their multilne spans.
+            // 4 │ ┃││   X1 Y1 Z1
+            // 5 │ ┃││   X2 Y2 Z2
+            //   │ ┃│└────╿──│──┘ `Z` label
+            //   │ ┃└─────│──┤
+            //   │ ┗━━━━━━┥  `Y` is a good letter too
+            //   ╰╴       `X` is a good letter
+            for (pos, _) in &mut annotations_position {
+                *pos = max_pos - *pos;
+            }
+            // We know then that we don't need an additional line for the span label, saving us
+            // one line of vertical space.
+            line_len = line_len.saturating_sub(1);
         }
 
         // Write the column separator.
