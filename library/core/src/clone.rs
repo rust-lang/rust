@@ -346,6 +346,27 @@ unsafe impl<T: Copy> CloneToUninit for [T] {
     }
 }
 
+#[unstable(feature = "clone_to_uninit", issue = "126799")]
+unsafe impl CloneToUninit for str {
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_uninit(&self, dst: *mut Self) {
+        // SAFETY: str is just a [u8] with UTF-8 invariant
+        unsafe { self.as_bytes().clone_to_uninit(dst as *mut [u8]) }
+    }
+}
+
+#[unstable(feature = "clone_to_uninit", issue = "126799")]
+unsafe impl CloneToUninit for crate::ffi::CStr {
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_uninit(&self, dst: *mut Self) {
+        // SAFETY: For now, CStr is just a #[repr(trasnsparent)] [c_char] with some invariants.
+        // And we can cast [c_char] to [u8] on all supported platforms (see: to_bytes_with_nul).
+        // The pointer metadata properly preserves the length (NUL included).
+        // See: `cstr_metadata_is_length_with_nul` in tests.
+        unsafe { self.to_bytes_with_nul().clone_to_uninit(dst as *mut [u8]) }
+    }
+}
+
 /// Ownership of a collection of values stored in a non-owned `[MaybeUninit<T>]`, some of which
 /// are not yet initialized. This is sort of like a `Vec` that doesn't own its allocation.
 /// Its responsibility is to provide cleanup on unwind by dropping the values that *are*
