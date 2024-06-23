@@ -15,7 +15,6 @@ use crate::{
     num::NonZero,
     ptr::NonNull,
     sync::atomic::{AtomicUsize, Ordering},
-    sys::thread_local_dtor::run_dtors,
     time::Duration,
 };
 
@@ -117,7 +116,7 @@ impl Thread {
 
             // Run TLS destructors now because they are not
             // called automatically for terminated tasks.
-            unsafe { run_dtors() };
+            unsafe { crate::sys::thread_local::destructors::run() };
 
             let old_lifecycle = inner
                 .lifecycle
