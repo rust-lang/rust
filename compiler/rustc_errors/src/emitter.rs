@@ -1748,16 +1748,11 @@ impl HumanEmitter {
         let suggestions = suggestion.splice_lines(sm);
         debug!(?suggestions);
 
-        if suggestions
-            .iter()
+        if suggestions.is_empty() {
             // Here we check if there are suggestions that have actual code changes. We sometimes
             // suggest the same code that is already there, instead of changing how we produce the
             // suggestions and filtering there, we just don't emit the suggestion.
-            .filter(|(_, _, highlights, _)| !highlights.iter().all(|parts| parts.is_empty()))
-            .count()
-            == 0
-        {
-            // Suggestions coming from macros can have malformed spans. This is a heavy handed
+            // Suggestions coming from macros can also have malformed spans. This is a heavy handed
             // approach to avoid ICEs by ignoring the suggestion outright.
             return Ok(());
         }
@@ -1771,7 +1766,6 @@ impl HumanEmitter {
         let mut msg = vec![(suggestion.msg.to_owned(), Style::NoStyle)];
         if suggestions
             .iter()
-            .filter(|(_, _, highlights, _)| !highlights.is_empty())
             .take(MAX_SUGGESTIONS)
             .any(|(_, _, _, only_capitalization)| *only_capitalization)
         {
@@ -1788,11 +1782,7 @@ impl HumanEmitter {
 
         let mut row_num = 2;
         draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
-        for (complete, parts, highlights, _) in suggestions
-            .iter()
-            .filter(|(_, _, highlights, _)| !highlights.is_empty())
-            .take(MAX_SUGGESTIONS)
-        {
+        for (complete, parts, highlights, _) in suggestions.iter().take(MAX_SUGGESTIONS) {
             debug!(?complete, ?parts, ?highlights);
 
             let has_deletion = parts.iter().any(|p| p.is_deletion(sm));
