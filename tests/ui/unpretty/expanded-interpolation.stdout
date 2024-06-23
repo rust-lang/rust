@@ -25,12 +25,12 @@ fn break_labeled_loop() {
         'outer: loop { break 'outer 'inner: loop { break 'inner 1; } + 1; };
 
     let paren_around_break_value =
-        'outer: loop { break 'inner: loop { break 'inner 1; } + 1; };
+        'outer: loop { break ('inner: loop { break 'inner 1; } + 1); };
 
     macro_rules! breaking { ($value:expr) => { break $value }; }
 
     let paren_around_break_value =
-        loop { break 'inner: loop { break 'inner 1; } + 1; };
+        loop { break ('inner: loop { break 'inner 1; } + 1); };
 }
 
 fn if_let() {
