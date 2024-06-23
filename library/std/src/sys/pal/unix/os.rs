@@ -748,8 +748,7 @@ pub fn home_dir() -> Option<PathBuf> {
             &mut result,
         ) {
             0 if !result.is_null() => {
-                let passwd = p.assume_init();
-                let ptr = passwd.pw_dir as *const _;
+                let ptr = (*result).pw_dir as *const _;
                 let bytes = CStr::from_ptr(ptr).to_bytes().to_vec();
                 Some(OsStringExt::from_vec(bytes))
             }
