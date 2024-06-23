@@ -943,7 +943,7 @@ pub unsafe fn _mm256_cvttps_epi32(a: __m256) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(
-    all(test, not(target_os = "windows")),
+    all(test, not(target_env = "msvc")),
     assert_instr(vextractf128, IMM1 = 1)
 )]
 #[rustc_legacy_const_generics(1)]
@@ -964,7 +964,7 @@ pub unsafe fn _mm256_extractf128_ps<const IMM1: i32>(a: __m256) -> __m128 {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(
-    all(test, not(target_os = "windows")),
+    all(test, not(target_env = "msvc")),
     assert_instr(vextractf128, IMM1 = 1)
 )]
 #[rustc_legacy_const_generics(1)]
@@ -980,7 +980,7 @@ pub unsafe fn _mm256_extractf128_pd<const IMM1: i32>(a: __m256d) -> __m128d {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(
-    all(test, not(target_os = "windows")),
+    all(test, not(target_env = "msvc")),
     assert_instr(vextractf128, IMM1 = 1)
 )]
 #[rustc_legacy_const_generics(1)]
@@ -1270,7 +1270,7 @@ pub unsafe fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(
-    all(test, not(target_os = "windows")),
+    all(test, not(target_env = "msvc")),
     assert_instr(vinsertf128, IMM1 = 1)
 )]
 #[rustc_legacy_const_generics(2)]
@@ -1292,7 +1292,7 @@ pub unsafe fn _mm256_insertf128_ps<const IMM1: i32>(a: __m256, b: __m128) -> __m
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(
-    all(test, not(target_os = "windows")),
+    all(test, not(target_env = "msvc")),
     assert_instr(vinsertf128, IMM1 = 1)
 )]
 #[rustc_legacy_const_generics(2)]
@@ -1313,7 +1313,7 @@ pub unsafe fn _mm256_insertf128_pd<const IMM1: i32>(a: __m256d, b: __m128d) -> _
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(
-    all(test, not(target_os = "windows")),
+    all(test, not(target_env = "msvc")),
     assert_instr(vinsertf128, IMM1 = 1)
 )]
 #[rustc_legacy_const_generics(2)]

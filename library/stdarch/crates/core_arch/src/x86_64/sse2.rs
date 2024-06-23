@@ -92,7 +92,7 @@ pub unsafe fn _mm_stream_si64(mem_addr: *mut i64, a: i64) {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsi64_si128)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(windows)), assert_instr(movq))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtsi64_si128(a: i64) -> __m128i {
     _mm_set_epi64x(0, a)
@@ -104,7 +104,7 @@ pub unsafe fn _mm_cvtsi64_si128(a: i64) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsi64x_si128)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(windows)), assert_instr(movq))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtsi64x_si128(a: i64) -> __m128i {
     _mm_cvtsi64_si128(a)
@@ -115,7 +115,7 @@ pub unsafe fn _mm_cvtsi64x_si128(a: i64) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsi128_si64)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(windows)), assert_instr(movq))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtsi128_si64(a: __m128i) -> i64 {
     simd_extract!(a.as_i64x2(), 0)
@@ -126,7 +126,7 @@ pub unsafe fn _mm_cvtsi128_si64(a: __m128i) -> i64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsi128_si64x)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(windows)), assert_instr(movq))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtsi128_si64x(a: __m128i) -> i64 {
     _mm_cvtsi128_si64(a)

@@ -896,7 +896,7 @@ pub unsafe fn _mm256_cvtepu8_epi64(a: __m128i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(
-    all(test, not(target_os = "windows")),
+    all(test, not(target_env = "msvc")),
     assert_instr(vextractf128, IMM1 = 1)
 )]
 #[rustc_legacy_const_generics(1)]
@@ -1718,7 +1718,7 @@ pub unsafe fn _mm256_mask_i64gather_pd<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(
-    all(test, not(target_os = "windows")),
+    all(test, not(target_env = "msvc")),
     assert_instr(vinsertf128, IMM1 = 1)
 )]
 #[rustc_legacy_const_generics(2)]

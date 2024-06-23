@@ -39,43 +39,37 @@ fn normalize(mut symbol: &str) -> String {
     symbol
 }
 
-#[cfg(windows)]
+#[cfg(target_env = "msvc")]
 pub(crate) fn disassemble_myself() -> HashSet<Function> {
     let me = env::current_exe().expect("failed to get current exe");
 
-    let disassembly = if cfg!(target_env = "msvc") {
-        let target = if cfg!(target_arch = "x86_64") {
-            "x86_64-pc-windows-msvc"
-        } else if cfg!(target_arch = "x86") {
-            "i686-pc-windows-msvc"
-        } else if cfg!(target_arch = "aarch64") {
-            "aarch64-pc-windows-msvc"
-        } else {
-            panic!("disassembly unimplemented")
-        };
-        let mut cmd = cc::windows_registry::find(target, "dumpbin.exe")
-            .expect("failed to find `dumpbin` tool");
-        let output = cmd
-            .arg("/DISASM:NOBYTES")
-            .arg(&me)
-            .output()
-            .expect("failed to execute dumpbin");
-        println!(
-            "{}\n{}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        );
-        assert!(output.status.success());
-        // Windows does not return valid UTF-8 output:
-        String::from_utf8_lossy(Vec::leak(output.stdout))
+    let target = if cfg!(target_arch = "x86_64") {
+        "x86_64-pc-windows-msvc"
+    } else if cfg!(target_arch = "x86") {
+        "i686-pc-windows-msvc"
+    } else if cfg!(target_arch = "aarch64") {
+        "aarch64-pc-windows-msvc"
     } else {
         panic!("disassembly unimplemented")
     };
-
-    parse(&disassembly)
+    let mut cmd =
+        cc::windows_registry::find(target, "dumpbin.exe").expect("failed to find `dumpbin` tool");
+    let output = cmd
+        .arg("/DISASM:NOBYTES")
+        .arg(&me)
+        .output()
+        .expect("failed to execute dumpbin");
+    println!(
+        "{}\n{}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.status.success());
+    // Windows does not return valid UTF-8 output:
+    parse(&String::from_utf8_lossy(Vec::leak(output.stdout)))
 }
 
-#[cfg(not(windows))]
+#[cfg(not(target_env = "msvc"))]
 pub(crate) fn disassemble_myself() -> HashSet<Function> {
     let me = env::current_exe().expect("failed to get current exe");
 

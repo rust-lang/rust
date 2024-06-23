@@ -852,7 +852,7 @@ pub unsafe fn _mm_cvtt_ss2si(a: __m128) -> i32 {
 #[inline]
 #[target_feature(enable = "sse")]
 // No point in using assert_instrs. In Unix x86_64 calling convention this is a
-// no-op, and on Windows it's just a `mov`.
+// no-op, and on msvc it's just a `mov`.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtss_f32(a: __m128) -> f32 {
     simd_extract!(a, 0)
@@ -958,12 +958,12 @@ pub unsafe fn _mm_set_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(
-    all(test, any(target_os = "windows", target_arch = "x86_64")),
+    all(test, any(target_env = "msvc", target_arch = "x86_64")),
     assert_instr(unpcklps)
 )]
-// On a 32-bit architecture on non-Windows it just copies the operands from the stack.
+// On a 32-bit architecture on non-msvc it just copies the operands from the stack.
 #[cfg_attr(
-    all(test, all(not(target_os = "windows"), target_arch = "x86")),
+    all(test, all(not(target_env = "msvc"), target_arch = "x86")),
     assert_instr(movaps)
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -1053,10 +1053,10 @@ pub unsafe fn _mm_unpacklo_ps(a: __m128, b: __m128) -> __m128 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_movehl_ps)
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(all(test, not(target_os = "windows")), assert_instr(movhlps))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movhlps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
-    // TODO; figure why this is a different instruction on Windows?
+    // TODO; figure why this is a different instruction on msvc?
     simd_shuffle!(a, b, [6, 7, 2, 3])
 }
 
@@ -1066,7 +1066,7 @@ pub unsafe fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_movelh_ps)
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(all(test, not(target_os = "windows")), assert_instr(movlhps))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(movlhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
     simd_shuffle!(a, b, [0, 1, 4, 5])

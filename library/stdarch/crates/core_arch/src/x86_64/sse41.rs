@@ -10,7 +10,7 @@ use stdarch_test::assert_instr;
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_extract_epi64)
 #[inline]
 #[target_feature(enable = "sse4.1")]
-#[cfg_attr(all(test, not(target_os = "windows")), assert_instr(pextrq, IMM1 = 1))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(pextrq, IMM1 = 1))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi64<const IMM1: i32>(a: __m128i) -> i64 {

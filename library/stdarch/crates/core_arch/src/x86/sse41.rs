@@ -191,10 +191,7 @@ pub unsafe fn _mm_blend_ps<const IMM4: i32>(a: __m128, b: __m128) -> __m128 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_extract_ps)
 #[inline]
 #[target_feature(enable = "sse4.1")]
-#[cfg_attr(
-    all(test, not(target_os = "windows")),
-    assert_instr(extractps, IMM8 = 0)
-)]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(extractps, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_ps<const IMM8: i32>(a: __m128) -> i32 {
@@ -223,10 +220,7 @@ pub unsafe fn _mm_extract_epi8<const IMM8: i32>(a: __m128i) -> i32 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_extract_epi32)
 #[inline]
 #[target_feature(enable = "sse4.1")]
-#[cfg_attr(
-    all(test, not(target_os = "windows")),
-    assert_instr(extractps, IMM8 = 1)
-)]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(extractps, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi32<const IMM8: i32>(a: __m128i) -> i32 {
