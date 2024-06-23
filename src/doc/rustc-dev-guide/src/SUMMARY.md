@@ -94,6 +94,7 @@
     - [Lexing and Parsing](./the-parser.md)
     - [Macro expansion](./macro-expansion.md)
     - [Name resolution](./name-resolution.md)
+    - [Attributes](./attributes.md)
     - [`#[test]` Implementation](./test-implementation.md)
     - [Panic Implementation](./panic-implementation.md)
     - [AST Validation](./ast-validation.md)
