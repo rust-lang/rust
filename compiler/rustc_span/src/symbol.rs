@@ -2048,6 +2048,7 @@ symbols! {
         write_str,
         write_via_move,
         writeln_macro,
+        x86_amx_intrinsics,
         x87_reg,
         xer,
         xmm_reg,
