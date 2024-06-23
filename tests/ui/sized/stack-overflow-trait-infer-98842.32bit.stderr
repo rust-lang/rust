@@ -9,15 +9,11 @@ LL | const _: *const Foo = 0 as _;
    | ^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: evaluation of constant value failed
   --> $DIR/stack-overflow-trait-infer-98842.rs:15:1
    |
 LL | const _: *const Foo = 0 as _;
    | ^^^^^^^^^^^^^^^^^^^ a cycle occurred during layout computation
-   |
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               00 00 00 00                                     │ ....
-           }
 
 error: aborting due to 2 previous errors
 

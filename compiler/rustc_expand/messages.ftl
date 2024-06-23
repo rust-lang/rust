@@ -61,6 +61,9 @@ expand_feature_removed =
 expand_glob_delegation_outside_impls =
     glob delegation is only supported in impls
 
+expand_glob_delegation_traitless_qpath =
+    qualified path without a trait in glob delegation
+
 expand_helper_attribute_name_invalid =
     `{$name}` cannot be a name of derive helper attribute
 
