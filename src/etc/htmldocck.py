@@ -270,7 +270,7 @@ KNOWN_DIRECTIVE_NAMES = get_known_directive_names()
 
 LINE_PATTERN = re.compile(r'''
     //@\s+
-    (?P<negated>!?)(?P<cmd>[A-Za-z]+(?:-[A-Za-z]+)*)
+    (?P<negated>!?)(?P<cmd>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)
     (?P<args>.*)$
 ''', re.X | re.UNICODE)
 
