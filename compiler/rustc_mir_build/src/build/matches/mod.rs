@@ -1199,6 +1199,17 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
             |_| {},
         );
     }
+
+    /// Visit the leaf candidates in reverse order.
+    fn visit_leaves_rev<'a>(&'a mut self, mut visit_leaf: impl FnMut(&'a mut Self)) {
+        traverse_candidate(
+            self,
+            &mut (),
+            &mut move |c, _| visit_leaf(c),
+            move |c, _| c.subcandidates.iter_mut().rev(),
+            |_| {},
+        );
+    }
 }
 
 /// A depth-first traversal of the `Candidate` and all of its recursive
@@ -1433,23 +1444,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let otherwise_block =
             self.match_candidates(match_start_span, scrutinee_span, block, candidates);
 
-        // Link each leaf candidate to the `false_edge_start_block` of the next one.
-        let mut previous_candidate: Option<&mut Candidate<'_, '_>> = None;
-        for candidate in candidates {
-            candidate.visit_leaves(|leaf_candidate| {
-                if let Some(ref mut prev) = previous_candidate {
-                    assert!(leaf_candidate.false_edge_start_block.is_some());
-                    prev.next_candidate_start_block = leaf_candidate.false_edge_start_block;
-                }
-                previous_candidate = Some(leaf_candidate);
+        // Link each leaf candidate to the `false_edge_start_block` of the next one. In the
+        // refutable case we also want a false edge to the failure block.
+        let mut next_candidate_start_block = if refutable { Some(otherwise_block) } else { None };
+        for candidate in candidates.iter_mut().rev() {
+            candidate.visit_leaves_rev(|leaf_candidate| {
+                leaf_candidate.next_candidate_start_block = next_candidate_start_block;
+                assert!(leaf_candidate.false_edge_start_block.is_some());
+                next_candidate_start_block = leaf_candidate.false_edge_start_block;
             });
         }
 
-        if refutable {
-            // In refutable cases there's always at least one candidate, and we want a false edge to
-            // the failure block.
-            previous_candidate.as_mut().unwrap().next_candidate_start_block = Some(otherwise_block)
-        } else {
+        if !refutable {
             // Match checking ensures `otherwise_block` is actually unreachable in irrefutable
             // cases.
             let source_info = self.source_info(scrutinee_span);
