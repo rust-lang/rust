@@ -203,7 +203,7 @@ struct AssocTyToOpaque<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTyToOpaque<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

@@ -10,6 +10,15 @@ note: this trait is not a `#[const_trait]`, so it cannot have `~const` trait bou
 LL | trait Bar: ~const Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/super-traits-fail-2.rs:1:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error[E0308]: mismatched types
   --> $DIR/super-traits-fail-2.rs:17:5
    |
@@ -19,6 +28,6 @@ LL |     x.a();
    = note: expected constant `host`
               found constant `true`
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0308`.

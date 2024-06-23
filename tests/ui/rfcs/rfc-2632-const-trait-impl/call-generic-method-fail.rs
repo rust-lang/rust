@@ -1,8 +1,10 @@
-#![feature(const_trait_impl, effects)]
+//@ check-pass
+
+#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
 
 pub const fn equals_self<T: PartialEq>(t: &T) -> bool {
     *t == *t
-    //~^ ERROR mismatched types
+    // FIXME(effects) ~^ ERROR mismatched types
     // FIXME(effects): diagnostic
 }
 

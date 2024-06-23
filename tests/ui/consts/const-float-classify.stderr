@@ -1,0 +1,223 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/const-float-classify.rs:7:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: const `impl` for trait `PartialEq` which is not marked with `#[const_trait]`
+  --> $DIR/const-float-classify.rs:12:12
+   |
+LL | impl const PartialEq<NonDet> for bool {
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
+   = note: adding a non-const method body in the future would be a breaking change
+
+error[E0207]: the const parameter `host` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/const-float-classify.rs:12:6
+   |
+LL | impl const PartialEq<NonDet> for bool {
+   |      ^^^^^ unconstrained const parameter
+   |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error[E0284]: type annotations needed
+  --> $DIR/const-float-classify.rs:21:35
+   |
+LL |               const _: () = assert!($a == $b);
+   |                                     ^^ cannot infer the value of the constant `_`
+...
+LL | / suite! {
+LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
+LL | |      -0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+LL | |       0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+...  |
+LL | |      -1.0 / 0.0 => [ false,        true,     false,     false,            false,             true]
+LL | | }
+   | |_- in this macro invocation
+   |
+note: required for `bool` to implement `PartialEq<NonDet>`
+  --> $DIR/const-float-classify.rs:12:12
+   |
+LL | impl const PartialEq<NonDet> for bool {
+   |      ----- ^^^^^^^^^^^^^^^^^     ^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: this error originates in the macro `const_assert` which comes from the expansion of the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0284]: type annotations needed
+  --> $DIR/const-float-classify.rs:21:35
+   |
+LL |               const _: () = assert!($a == $b);
+   |                                     ^^ cannot infer the value of the constant `_`
+...
+LL | / suite! {
+LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
+LL | |      -0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+LL | |       0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+...  |
+LL | |      -1.0 / 0.0 => [ false,        true,     false,     false,            false,             true]
+LL | | }
+   | |_- in this macro invocation
+   |
+note: required for `bool` to implement `PartialEq<NonDet>`
+  --> $DIR/const-float-classify.rs:12:12
+   |
+LL | impl const PartialEq<NonDet> for bool {
+   |      ----- ^^^^^^^^^^^^^^^^^     ^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: this error originates in the macro `const_assert` which comes from the expansion of the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0284]: type annotations needed
+  --> $DIR/const-float-classify.rs:21:35
+   |
+LL |               const _: () = assert!($a == $b);
+   |                                     ^^ cannot infer the value of the constant `_`
+...
+LL | / suite! {
+LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
+LL | |      -0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+LL | |       0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+...  |
+LL | |      -1.0 / 0.0 => [ false,        true,     false,     false,            false,             true]
+LL | | }
+   | |_- in this macro invocation
+   |
+note: required for `bool` to implement `PartialEq<NonDet>`
+  --> $DIR/const-float-classify.rs:12:12
+   |
+LL | impl const PartialEq<NonDet> for bool {
+   |      ----- ^^^^^^^^^^^^^^^^^     ^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: this error originates in the macro `const_assert` which comes from the expansion of the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0284]: type annotations needed
+  --> $DIR/const-float-classify.rs:21:35
+   |
+LL |               const _: () = assert!($a == $b);
+   |                                     ^^ cannot infer the value of the constant `_`
+...
+LL | / suite! {
+LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
+LL | |      -0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+LL | |       0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+...  |
+LL | |      -1.0 / 0.0 => [ false,        true,     false,     false,            false,             true]
+LL | | }
+   | |_- in this macro invocation
+   |
+note: required for `bool` to implement `PartialEq<NonDet>`
+  --> $DIR/const-float-classify.rs:12:12
+   |
+LL | impl const PartialEq<NonDet> for bool {
+   |      ----- ^^^^^^^^^^^^^^^^^     ^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: this error originates in the macro `const_assert` which comes from the expansion of the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0284]: type annotations needed
+  --> $DIR/const-float-classify.rs:21:35
+   |
+LL |               const _: () = assert!($a == $b);
+   |                                     ^^ cannot infer the value of the constant `_`
+...
+LL | / suite! {
+LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
+LL | |      -0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+LL | |       0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+...  |
+LL | |      -1.0 / 0.0 => [ false,        true,     false,     false,            false,             true]
+LL | | }
+   | |_- in this macro invocation
+   |
+note: required for `bool` to implement `PartialEq<NonDet>`
+  --> $DIR/const-float-classify.rs:12:12
+   |
+LL | impl const PartialEq<NonDet> for bool {
+   |      ----- ^^^^^^^^^^^^^^^^^     ^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: this error originates in the macro `const_assert` which comes from the expansion of the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0284]: type annotations needed
+  --> $DIR/const-float-classify.rs:21:35
+   |
+LL |               const _: () = assert!($a == $b);
+   |                                     ^^ cannot infer the value of the constant `_`
+...
+LL | / suite! {
+LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
+LL | |      -0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+LL | |       0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+...  |
+LL | |      -1.0 / 0.0 => [ false,        true,     false,     false,            false,             true]
+LL | | }
+   | |_- in this macro invocation
+   |
+note: required for `bool` to implement `PartialEq<NonDet>`
+  --> $DIR/const-float-classify.rs:12:12
+   |
+LL | impl const PartialEq<NonDet> for bool {
+   |      ----- ^^^^^^^^^^^^^^^^^     ^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: this error originates in the macro `const_assert` which comes from the expansion of the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0284]: type annotations needed
+  --> $DIR/const-float-classify.rs:21:35
+   |
+LL |               const _: () = assert!($a == $b);
+   |                                     ^^ cannot infer the value of the constant `_`
+...
+LL | / suite! {
+LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
+LL | |      -0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+LL | |       0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+...  |
+LL | |      -1.0 / 0.0 => [ false,        true,     false,     false,            false,             true]
+LL | | }
+   | |_- in this macro invocation
+   |
+note: required for `bool` to implement `PartialEq<NonDet>`
+  --> $DIR/const-float-classify.rs:12:12
+   |
+LL | impl const PartialEq<NonDet> for bool {
+   |      ----- ^^^^^^^^^^^^^^^^^     ^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: this error originates in the macro `const_assert` which comes from the expansion of the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0284]: type annotations needed
+  --> $DIR/const-float-classify.rs:21:35
+   |
+LL |               const _: () = assert!($a == $b);
+   |                                     ^^ cannot infer the value of the constant `_`
+...
+LL | / suite! {
+LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
+LL | |      -0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+LL | |       0.0 / 0.0 => [  true,       false,     false,     false,           NonDet,           NonDet]
+...  |
+LL | |      -1.0 / 0.0 => [ false,        true,     false,     false,            false,             true]
+LL | | }
+   | |_- in this macro invocation
+   |
+note: required for `bool` to implement `PartialEq<NonDet>`
+  --> $DIR/const-float-classify.rs:12:12
+   |
+LL | impl const PartialEq<NonDet> for bool {
+   |      ----- ^^^^^^^^^^^^^^^^^     ^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+   = note: this error originates in the macro `const_assert` which comes from the expansion of the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 10 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0207, E0284.
+For more information about an error, try `rustc --explain E0207`.

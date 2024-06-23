@@ -194,7 +194,7 @@ hir_analysis_inherent_ty_outside = cannot define inherent `impl` for a type outs
     .span_help = alternatively add `#[rustc_has_incoherent_inherent_impls]` to the type and `#[rustc_allow_incoherent_impl]` to the relevant impl items
 
 hir_analysis_inherent_ty_outside_new = cannot define inherent `impl` for a type outside of the crate where the type is defined
-    .label = impl for type defined outside of crate.
+    .label = impl for type defined outside of crate
     .note = define and implement a trait or new type instead
 
 hir_analysis_inherent_ty_outside_primitive = cannot define inherent `impl` for primitive types outside of `core`
@@ -510,7 +510,7 @@ hir_analysis_ty_param_some = type parameter `{$param}` must be used as the type 
     .note = implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
     .only_note = only traits defined in the current crate can be implemented for a type parameter
 
-hir_analysis_type_of = {$type_of}
+hir_analysis_type_of = {$ty}
 
 hir_analysis_typeof_reserved_keyword_used =
     `typeof` is a reserved keyword but unimplemented
@@ -544,7 +544,7 @@ hir_analysis_unrecognized_intrinsic_function =
 
 hir_analysis_unused_associated_type_bounds =
     unnecessary associated type bound for not object safe associated type
-    .note = this associated type has a `where Self: Sized` bound. Thus, while the associated type can be specified, it cannot be used in any way, because trait objects are not `Sized`.
+    .note = this associated type has a `where Self: Sized` bound, and while the associated type can be specified, it cannot be used because trait objects are never `Sized`
     .suggestion = remove this bound
 
 hir_analysis_unused_generic_parameter =
@@ -566,7 +566,7 @@ hir_analysis_value_of_associated_struct_already_specified =
 hir_analysis_variadic_function_compatible_convention = C-variadic function must have a compatible calling convention, like {$conventions}
     .label = C-variadic function must have a compatible calling convention
 
-hir_analysis_variances_of = {$variances_of}
+hir_analysis_variances_of = {$variances}
 
 hir_analysis_where_clause_on_main = `main` function is not allowed to have a `where` clause
     .label = `main` cannot have a `where` clause

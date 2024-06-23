@@ -109,7 +109,7 @@ help: add a dummy let to cause `fptr1`, `fptr2` to be fully captured
    |
 LL ~     thread::spawn(move || { let _ = (&fptr1, &fptr2); unsafe {
 LL |
- ...
+...
 LL |
 LL ~     } }).join().unwrap();
    |

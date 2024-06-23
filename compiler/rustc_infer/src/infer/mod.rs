@@ -1719,7 +1719,7 @@ struct InferenceLiteralEraser<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceLiteralEraser<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1859,7 +1859,7 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
     }
 
     impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceParamAndInferWithPlaceholder<'tcx> {
-        fn interner(&self) -> TyCtxt<'tcx> {
+        fn cx(&self) -> TyCtxt<'tcx> {
             self.tcx
         }
 

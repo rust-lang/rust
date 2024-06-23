@@ -2907,6 +2907,8 @@ impl Path {
     /// prevent time-of-check to time-of-use (TOCTOU) bugs. You should only use it in scenarios
     /// where those bugs are not an issue.
     ///
+    /// This is an alias for [`std::fs::exists`](crate::fs::exists).
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -2919,7 +2921,7 @@ impl Path {
     #[stable(feature = "path_try_exists", since = "1.63.0")]
     #[inline]
     pub fn try_exists(&self) -> io::Result<bool> {
-        fs::try_exists(self)
+        fs::exists(self)
     }
 
     /// Returns `true` if the path exists on disk and is pointing at a regular file.

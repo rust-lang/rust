@@ -847,7 +847,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.fcx.tcx
     }
 

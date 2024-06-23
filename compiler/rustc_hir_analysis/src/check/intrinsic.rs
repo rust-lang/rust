@@ -429,17 +429,17 @@ pub fn check_intrinsic_type(
 
             sym::ptr_guaranteed_cmp => (
                 1,
-                1,
+                0,
                 vec![Ty::new_imm_ptr(tcx, param(0)), Ty::new_imm_ptr(tcx, param(0))],
                 tcx.types.u8,
             ),
 
             sym::const_allocate => {
-                (0, 1, vec![tcx.types.usize, tcx.types.usize], Ty::new_mut_ptr(tcx, tcx.types.u8))
+                (0, 0, vec![tcx.types.usize, tcx.types.usize], Ty::new_mut_ptr(tcx, tcx.types.u8))
             }
             sym::const_deallocate => (
                 0,
-                1,
+                0,
                 vec![Ty::new_mut_ptr(tcx, tcx.types.u8), tcx.types.usize, tcx.types.usize],
                 tcx.types.unit,
             ),
@@ -478,16 +478,16 @@ pub fn check_intrinsic_type(
             | sym::frem_algebraic => (1, 0, vec![param(0), param(0)], param(0)),
             sym::float_to_int_unchecked => (2, 0, vec![param(0)], param(1)),
 
-            sym::assume => (0, 1, vec![tcx.types.bool], tcx.types.unit),
-            sym::likely => (0, 1, vec![tcx.types.bool], tcx.types.bool),
-            sym::unlikely => (0, 1, vec![tcx.types.bool], tcx.types.bool),
+            sym::assume => (0, 0, vec![tcx.types.bool], tcx.types.unit),
+            sym::likely => (0, 0, vec![tcx.types.bool], tcx.types.bool),
+            sym::unlikely => (0, 0, vec![tcx.types.bool], tcx.types.bool),
 
             sym::read_via_copy => (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
             sym::write_via_move => {
                 (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit)
             }
 
-            sym::typed_swap => (1, 1, vec![Ty::new_mut_ptr(tcx, param(0)); 2], tcx.types.unit),
+            sym::typed_swap => (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)); 2], tcx.types.unit),
 
             sym::discriminant_value => {
                 let assoc_items = tcx.associated_item_def_ids(
@@ -566,9 +566,9 @@ pub fn check_intrinsic_type(
 
             sym::black_box => (1, 0, vec![param(0)], param(0)),
 
-            sym::is_val_statically_known => (1, 1, vec![param(0)], tcx.types.bool),
+            sym::is_val_statically_known => (1, 0, vec![param(0)], tcx.types.bool),
 
-            sym::const_eval_select => (4, 1, vec![param(0), param(1), param(2)], param(3)),
+            sym::const_eval_select => (4, 0, vec![param(0), param(1), param(2)], param(3)),
 
             sym::vtable_size | sym::vtable_align => {
                 (0, 0, vec![Ty::new_imm_ptr(tcx, tcx.types.unit)], tcx.types.usize)
@@ -576,10 +576,10 @@ pub fn check_intrinsic_type(
 
             // This type check is not particularly useful, but the `where` bounds
             // on the definition in `core` do the heavy lifting for checking it.
-            sym::aggregate_raw_ptr => (3, 1, vec![param(1), param(2)], param(0)),
-            sym::ptr_metadata => (2, 1, vec![Ty::new_imm_ptr(tcx, param(0))], param(1)),
+            sym::aggregate_raw_ptr => (3, 0, vec![param(1), param(2)], param(0)),
+            sym::ptr_metadata => (2, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(1)),
 
-            sym::ub_checks => (0, 1, Vec::new(), tcx.types.bool),
+            sym::ub_checks => (0, 0, Vec::new(), tcx.types.bool),
 
             sym::simd_eq
             | sym::simd_ne

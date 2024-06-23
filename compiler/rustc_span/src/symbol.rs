@@ -1593,6 +1593,8 @@ symbols! {
         rustc_do_not_const_check,
         rustc_doc_primitive,
         rustc_dummy,
+        rustc_dump_item_bounds,
+        rustc_dump_predicates,
         rustc_dump_user_args,
         rustc_dump_vtable,
         rustc_effective_visibility,
@@ -2054,6 +2056,8 @@ symbols! {
         yes,
         yield_expr,
         ymm_reg,
+        zfh,
+        zfhmin,
         zmm_reg,
     }
 }

@@ -19,7 +19,6 @@ jobs:
       matrix:
         integration: [
           bitflags,
-          error-chain,
           log,
           mdbook,
           packed_simd,

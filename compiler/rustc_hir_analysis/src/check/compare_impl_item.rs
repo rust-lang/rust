@@ -397,7 +397,7 @@ struct RemapLateBound<'a, 'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -790,13 +790,13 @@ impl<'tcx, E> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx, E
 where
     E: 'tcx,
 {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.ocx.infcx.tcx
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Alias(ty::Projection, proj) = ty.kind()
-            && self.interner().is_impl_trait_in_trait(proj.def_id)
+            && self.cx().is_impl_trait_in_trait(proj.def_id)
         {
             if let Some((ty, _)) = self.types.get(&proj.def_id) {
                 return *ty;
@@ -810,9 +810,9 @@ where
             self.types.insert(proj.def_id, (infer_ty, proj.args));
             // Recurse into bounds
             for (pred, pred_span) in self
-                .interner()
+                .cx()
                 .explicit_item_bounds(proj.def_id)
-                .iter_instantiated_copied(self.interner(), proj.args)
+                .iter_instantiated_copied(self.cx(), proj.args)
             {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
@@ -822,7 +822,7 @@ where
                 );
 
                 self.ocx.register_obligation(traits::Obligation::new(
-                    self.interner(),
+                    self.cx(),
                     ObligationCause::new(
                         self.span,
                         self.body_id,
@@ -853,7 +853,7 @@ struct RemapHiddenTyRegions<'tcx> {
 impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
     type Error = ErrorGuaranteed;
 
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -2072,7 +2072,7 @@ struct ReplaceTy<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceTy<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

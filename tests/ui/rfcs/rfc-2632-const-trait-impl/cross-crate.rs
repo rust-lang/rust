@@ -1,6 +1,7 @@
 //@ revisions: stock gated stocknc gatednc
 //@ [gated] check-pass
 #![cfg_attr(any(gated, gatednc), feature(const_trait_impl, effects))]
+//[gated,gatednc]~^ WARN the feature `effects` is incomplete
 
 //@ aux-build: cross-crate.rs
 extern crate cross_crate;
