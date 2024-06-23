@@ -19,7 +19,7 @@ use super::GlobalTestOptions;
 
 /// This struct contains information about the doctest itself which is then used to generate
 /// doctest source code appropriately.
-pub(crate) struct DocTest {
+pub(crate) struct DocTestBuilder {
     pub(crate) supports_color: bool,
     pub(crate) already_has_extern_crate: bool,
     pub(crate) has_main_fn: bool,
@@ -34,7 +34,7 @@ pub(crate) struct DocTest {
     pub(crate) can_be_merged: bool,
 }
 
-impl DocTest {
+impl DocTestBuilder {
     pub(crate) fn new(
         source: &str,
         crate_name: Option<&str>,

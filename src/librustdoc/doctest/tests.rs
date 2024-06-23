@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::{DocTest, GlobalTestOptions};
+use super::{DocTestBuilder, GlobalTestOptions};
 use rustc_span::edition::DEFAULT_EDITION;
 
 fn make_test(
@@ -10,8 +10,13 @@ fn make_test(
     opts: &GlobalTestOptions,
     test_id: Option<&str>,
 ) -> (String, usize) {
-    let doctest =
-        DocTest::new(test_code, crate_name, DEFAULT_EDITION, false, test_id.map(|s| s.to_string()));
+    let doctest = DocTestBuilder::new(
+        test_code,
+        crate_name,
+        DEFAULT_EDITION,
+        false,
+        test_id.map(|s| s.to_string()),
+    );
     let (code, line_offset) =
         doctest.generate_unique_doctest(test_code, dont_insert_main, opts, crate_name);
     (code, line_offset)
