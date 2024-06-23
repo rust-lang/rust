@@ -186,7 +186,6 @@ run-make/track-pgo-dep-info/Makefile
 run-make/translation/Makefile
 run-make/type-mismatch-same-crate-name/Makefile
 run-make/unstable-flag-required/Makefile
-run-make/volatile-intrinsics/Makefile
 run-make/wasm-exceptions-nostd/Makefile
 run-make/wasm-override-linker/Makefile
 run-make/weird-output-filenames/Makefile
