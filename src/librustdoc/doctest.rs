@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::{panic, str};
 
-pub(crate) use make::DocTest;
+pub(crate) use make::DocTestBuilder;
 pub(crate) use markdown::test as test_markdown;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -250,7 +250,7 @@ pub(crate) fn run_tests(
     rustdoc_options: &Arc<RustdocOptions>,
     unused_extern_reports: &Arc<Mutex<Vec<UnusedExterns>>>,
     mut standalone_tests: Vec<test::TestDescAndFn>,
-    mergeable_tests: FxHashMap<Edition, Vec<(DocTest, ScrapedDoctest)>>,
+    mergeable_tests: FxHashMap<Edition, Vec<(DocTestBuilder, ScrapedDoctest)>>,
 ) {
     let mut test_args = Vec::with_capacity(rustdoc_options.test_args.len() + 1);
     test_args.insert(0, "rustdoctest".to_string());
@@ -754,7 +754,7 @@ pub(crate) trait DoctestVisitor {
 
 struct CreateRunnableDoctests {
     standalone_tests: Vec<test::TestDescAndFn>,
-    mergeable_tests: FxHashMap<Edition, Vec<(DocTest, ScrapedDoctest)>>,
+    mergeable_tests: FxHashMap<Edition, Vec<(DocTestBuilder, ScrapedDoctest)>>,
 
     rustdoc_options: Arc<RustdocOptions>,
     opts: GlobalTestOptions,
@@ -803,7 +803,7 @@ impl CreateRunnableDoctests {
         );
 
         let edition = scraped_test.edition(&self.rustdoc_options);
-        let doctest = DocTest::new(
+        let doctest = DocTestBuilder::new(
             &scraped_test.text,
             Some(&self.opts.crate_name),
             edition,
@@ -827,7 +827,7 @@ impl CreateRunnableDoctests {
 
     fn generate_test_desc_and_fn(
         &mut self,
-        test: DocTest,
+        test: DocTestBuilder,
         scraped_test: ScrapedDoctest,
     ) -> test::TestDescAndFn {
         if !scraped_test.langstr.compile_fail {
@@ -845,7 +845,7 @@ impl CreateRunnableDoctests {
 }
 
 fn generate_test_desc_and_fn(
-    test: DocTest,
+    test: DocTestBuilder,
     scraped_test: ScrapedDoctest,
     opts: GlobalTestOptions,
     rustdoc_options: Arc<RustdocOptions>,
@@ -892,7 +892,7 @@ fn generate_test_desc_and_fn(
 fn doctest_run_fn(
     test_opts: IndividualTestOptions,
     global_opts: GlobalTestOptions,
-    doctest: DocTest,
+    doctest: DocTestBuilder,
     scraped_test: ScrapedDoctest,
     rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
