@@ -105,32 +105,37 @@ pub fn source_root() -> PathBuf {
     env_var("SOURCE_ROOT").into()
 }
 
-/// Creates a new symlink to a path on the filesystem, adjusting for Windows or Unix.
-#[cfg(target_family = "windows")]
+/// Creates a new symlink to a path on the filesystem (only available for Unix because symlink
+/// creation is a priviledged operation on Windows; see
+/// <https://doc.rust-lang.org/stable/std/os/windows/fs/fn.symlink_file.html#limitations>).
 pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
-    if link.as_ref().exists() {
-        std::fs::remove_dir(link.as_ref()).unwrap();
+    #[cfg(target_family = "windows")]
+    {
+        panic!(
+            "symlink is an priviledged operation on Windows that is not normally enabled on user machines"
+        );
     }
-    use std::os::windows::fs;
-    fs::symlink_file(original.as_ref(), link.as_ref()).expect(&format!(
-        "failed to create symlink {:?} for {:?}",
-        link.as_ref().display(),
-        original.as_ref().display(),
-    ));
-}
 
-/// Creates a new symlink to a path on the filesystem, adjusting for Windows or Unix.
-#[cfg(target_family = "unix")]
-pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) {
-    if link.as_ref().exists() {
-        std::fs::remove_dir(link.as_ref()).unwrap();
+    #[cfg(target_family = "unix")]
+    {
+        let link = link.as_ref();
+        if link.exists() {
+            std::fs::remove_dir(link)
+                .expect(&format!("failed to remove existing symlink: {}", link.display()));
+        }
+
+        use std::os::unix::fs;
+        fs::symlink(original.as_ref(), link).expect(&format!(
+            "failed to create symlink {} for {}",
+            link.display(),
+            original.as_ref().display(),
+        ));
     }
-    use std::os::unix::fs;
-    fs::symlink(original.as_ref(), link.as_ref()).expect(&format!(
-        "failed to create symlink {:?} for {:?}",
-        link.as_ref().display(),
-        original.as_ref().display(),
-    ));
+
+    #[cfg(not(any(target_family = "unix", target_family = "windows")))]
+    {
+        unimplemented!();
+    }
 }
 
 /// Construct the static library name based on the platform.
