@@ -22,7 +22,7 @@ mod cargo_workspace;
 mod cfg;
 mod env;
 mod manifest_path;
-mod project_json;
+pub mod project_json;
 mod rustc_cfg;
 mod sysroot;
 pub mod target_data_layout;

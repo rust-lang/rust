@@ -183,6 +183,20 @@ fn main() {
     }
 
     #[test]
+    fn no_missing_unsafe_diagnostic_with_deprecated_safe_2024() {
+        check_diagnostics(
+            r#"
+#[rustc_deprecated_safe_2024]
+fn set_var() {}
+
+fn main() {
+    set_var();
+}
+"#,
+        );
+    }
+
+    #[test]
     fn add_unsafe_block_when_dereferencing_a_raw_pointer() {
         check_fix(
             r#"

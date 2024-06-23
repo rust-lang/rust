@@ -141,6 +141,7 @@ impl Unit {
             un Union        Union
             ev TupleV(…)    TupleV(u32)
             bt u32          u32
+            kw async
             kw const
             kw crate::
             kw enum
@@ -217,6 +218,7 @@ fn complete_in_block() {
         expect![[r#"
             fn foo()       fn()
             bt u32         u32
+            kw async
             kw const
             kw crate::
             kw enum
@@ -264,6 +266,7 @@ fn complete_after_if_expr() {
         expect![[r#"
             fn foo()       fn()
             bt u32         u32
+            kw async
             kw const
             kw crate::
             kw else
@@ -336,6 +339,7 @@ fn completes_in_loop_ctx() {
         expect![[r#"
             fn my()        fn()
             bt u32         u32
+            kw async
             kw break
             kw const
             kw continue
@@ -799,6 +803,7 @@ fn foo() { if foo {} $0 }
         expect![[r#"
             fn foo()       fn()
             bt u32         u32
+            kw async
             kw const
             kw crate::
             kw else
@@ -839,6 +844,7 @@ fn foo() { if foo {} el$0 }
         expect![[r#"
             fn foo()       fn()
             bt u32         u32
+            kw async
             kw const
             kw crate::
             kw else
@@ -927,6 +933,7 @@ fn foo() { if foo {} $0 let x = 92; }
         expect![[r#"
             fn foo()       fn()
             bt u32         u32
+            kw async
             kw const
             kw crate::
             kw else
@@ -967,6 +974,7 @@ fn foo() { if foo {} el$0 let x = 92; }
         expect![[r#"
             fn foo()       fn()
             bt u32         u32
+            kw async
             kw const
             kw crate::
             kw else
@@ -1007,6 +1015,7 @@ fn foo() { if foo {} el$0 { let x = 92; } }
         expect![[r#"
             fn foo()       fn()
             bt u32         u32
+            kw async
             kw const
             kw crate::
             kw else
@@ -1059,6 +1068,7 @@ pub struct UnstableThisShouldNotBeListed;
             fn main()      fn()
             md std
             bt u32         u32
+            kw async
             kw const
             kw crate::
             kw enum
@@ -1111,6 +1121,7 @@ pub struct UnstableButWeAreOnNightlyAnyway;
             md std
             st UnstableButWeAreOnNightlyAnyway UnstableButWeAreOnNightlyAnyway
             bt u32                    u32
+            kw async
             kw const
             kw crate::
             kw enum

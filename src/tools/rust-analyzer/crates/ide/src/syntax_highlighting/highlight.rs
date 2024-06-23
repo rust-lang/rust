@@ -584,6 +584,9 @@ fn highlight_method_call(
     if func.is_async(sema.db) {
         h |= HlMod::Async;
     }
+    if func.is_const(sema.db) {
+        h |= HlMod::Const;
+    }
     if func
         .as_assoc_item(sema.db)
         .and_then(|it| it.container_or_implemented_trait(sema.db))

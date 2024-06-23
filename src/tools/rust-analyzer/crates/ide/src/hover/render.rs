@@ -430,6 +430,7 @@ pub(super) fn definition(
             }
             label
         }
+        Definition::Function(fn_) => fn_.display_with_container_bounds(db, true).to_string(),
         _ => def.label(db),
     };
     let docs = def.docs(db, famous_defs);

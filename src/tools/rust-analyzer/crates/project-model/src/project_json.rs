@@ -33,7 +33,7 @@
 //!
 //! * file on disk
 //! * a field in the config (ie, you can send a JSON request with the contents
-//!   of rust-project.json to rust-analyzer, no need to write anything to disk)
+//!   of `rust-project.json` to rust-analyzer, no need to write anything to disk)
 //!
 //! Another possible thing we don't do today, but which would be totally valid,
 //! is to add an extension point to VS Code extension to register custom
@@ -55,8 +55,7 @@ use rustc_hash::FxHashMap;
 use serde::{de, Deserialize, Serialize};
 use span::Edition;
 
-use crate::cfg::CfgFlag;
-use crate::ManifestPath;
+use crate::{cfg::CfgFlag, ManifestPath, TargetKind};
 
 /// Roots and crates that compose this Rust project.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -68,6 +67,10 @@ pub struct ProjectJson {
     project_root: AbsPathBuf,
     manifest: Option<ManifestPath>,
     crates: Vec<Crate>,
+    /// Configuration for CLI commands.
+    ///
+    /// Examples include a check build or a test run.
+    runnables: Vec<Runnable>,
 }
 
 /// A crate points to the root module of a crate and lists the dependencies of the crate. This is
@@ -88,6 +91,86 @@ pub struct Crate {
     pub(crate) exclude: Vec<AbsPathBuf>,
     pub(crate) is_proc_macro: bool,
     pub(crate) repository: Option<String>,
+    pub build: Option<Build>,
+}
+
+/// Additional, build-specific data about a crate.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Build {
+    /// The name associated with this crate.
+    ///
+    /// This is determined by the build system that produced
+    /// the `rust-project.json` in question. For instance, if buck were used,
+    /// the label might be something like `//ide/rust/rust-analyzer:rust-analyzer`.
+    ///
+    /// Do not attempt to parse the contents of this string; it is a build system-specific
+    /// identifier similar to [`Crate::display_name`].
+    pub label: String,
+    /// Path corresponding to the build system-specific file defining the crate.
+    ///
+    /// It is roughly analogous to [`ManifestPath`], but it should *not* be used with
+    /// [`crate::ProjectManifest::from_manifest_file`], as the build file may not be
+    /// be in the `rust-project.json`.
+    pub build_file: Utf8PathBuf,
+    /// The kind of target.
+    ///
+    /// Examples (non-exhaustively) include [`TargetKind::Bin`], [`TargetKind::Lib`],
+    /// and [`TargetKind::Test`]. This information is used to determine what sort
+    /// of runnable codelens to provide, if any.
+    pub target_kind: TargetKind,
+}
+
+/// A template-like structure for describing runnables.
+///
+/// These are used for running and debugging binaries and tests without encoding
+/// build system-specific knowledge into rust-analyzer.
+///
+/// # Example
+///
+/// Below is an example of a test runnable. `{label}` and `{test_id}`
+/// are explained in [`Runnable::args`]'s documentation.
+///
+/// ```json
+/// {
+///     "program": "buck",
+///     "args": [
+///         "test",
+///          "{label}",
+///          "--",
+///          "{test_id}",
+///          "--print-passing-details"
+///     ],
+///     "cwd": "/home/user/repo-root/",
+///     "kind": "testOne"
+/// }
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Runnable {
+    /// The program invoked by the runnable.
+    ///
+    /// For example, this might be `cargo`, `buck`, or `bazel`.
+    pub program: String,
+    /// The arguments passed to [`Runnable::program`].
+    ///
+    /// The args can contain two template strings: `{label}` and `{test_id}`.
+    /// rust-analyzer will find and replace `{label}` with [`Build::label`] and
+    /// `{test_id}` with the test name.
+    pub args: Vec<String>,
+    /// The current working directory of the runnable.
+    pub cwd: Utf8PathBuf,
+    pub kind: RunnableKind,
+}
+
+/// The kind of runnable.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RunnableKind {
+    Check,
+
+    /// Can run a binary.
+    Run,
+
+    /// Run a single test.
+    TestOne,
 }
 
 impl ProjectJson {
@@ -95,6 +178,7 @@ impl ProjectJson {
     ///
     /// # Arguments
     ///
+    /// * `manifest` - The path to the `rust-project.json`.
     /// * `base` - The path to the workspace root (i.e. the folder containing `rust-project.json`)
     /// * `data` - The parsed contents of `rust-project.json`, or project json that's passed via
     ///            configuration.
@@ -109,6 +193,7 @@ impl ProjectJson {
             sysroot_src: data.sysroot_src.map(absolutize_on_base),
             project_root: base.to_path_buf(),
             manifest,
+            runnables: data.runnables.into_iter().map(Runnable::from).collect(),
             crates: data
                 .crates
                 .into_iter()
@@ -125,6 +210,15 @@ impl ProjectJson {
                             (absolutize(src.include_dirs), absolutize(src.exclude_dirs))
                         }
                         None => (vec![root_module.parent().unwrap().to_path_buf()], Vec::new()),
+                    };
+
+                    let build = match crate_data.build {
+                        Some(build) => Some(Build {
+                            label: build.label,
+                            build_file: build.build_file,
+                            target_kind: build.target_kind.into(),
+                        }),
+                        None => None,
                     };
 
                     Crate {
@@ -146,6 +240,7 @@ impl ProjectJson {
                         exclude,
                         is_proc_macro: crate_data.is_proc_macro,
                         repository: crate_data.repository,
+                        build,
                     }
                 })
                 .collect(),
@@ -167,9 +262,26 @@ impl ProjectJson {
         &self.project_root
     }
 
+    pub fn crate_by_root(&self, root: &AbsPath) -> Option<Crate> {
+        self.crates
+            .iter()
+            .filter(|krate| krate.is_workspace_member)
+            .find(|krate| krate.root_module == root)
+            .cloned()
+    }
+
+    /// Returns the path to the project's manifest, if it exists.
+    pub fn manifest(&self) -> Option<&ManifestPath> {
+        self.manifest.as_ref()
+    }
+
     /// Returns the path to the project's manifest or root folder, if no manifest exists.
     pub fn manifest_or_root(&self) -> &AbsPath {
         self.manifest.as_ref().map_or(&self.project_root, |manifest| manifest.as_ref())
+    }
+
+    pub fn runnables(&self) -> &[Runnable] {
+        &self.runnables
     }
 }
 
@@ -178,6 +290,8 @@ pub struct ProjectJsonData {
     sysroot: Option<Utf8PathBuf>,
     sysroot_src: Option<Utf8PathBuf>,
     crates: Vec<CrateData>,
+    #[serde(default)]
+    runnables: Vec<RunnableData>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -200,6 +314,8 @@ struct CrateData {
     is_proc_macro: bool,
     #[serde(default)]
     repository: Option<String>,
+    #[serde(default)]
+    build: Option<BuildData>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -215,6 +331,48 @@ enum EditionData {
     Edition2024,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BuildData {
+    label: String,
+    build_file: Utf8PathBuf,
+    target_kind: TargetKindData,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RunnableData {
+    pub program: String,
+    pub args: Vec<String>,
+    pub cwd: Utf8PathBuf,
+    pub kind: RunnableKindData,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RunnableKindData {
+    Check,
+    Run,
+    TestOne,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TargetKindData {
+    Bin,
+    /// Any kind of Cargo lib crate-type (dylib, rlib, proc-macro, ...).
+    Lib,
+    Test,
+}
+
+impl From<TargetKindData> for TargetKind {
+    fn from(data: TargetKindData) -> Self {
+        match data {
+            TargetKindData::Bin => TargetKind::Bin,
+            TargetKindData::Lib => TargetKind::Lib { is_proc_macro: false },
+            TargetKindData::Test => TargetKind::Test,
+        }
+    }
+}
+
 impl From<EditionData> for Edition {
     fn from(data: EditionData) -> Self {
         match data {
@@ -222,6 +380,22 @@ impl From<EditionData> for Edition {
             EditionData::Edition2018 => Edition::Edition2018,
             EditionData::Edition2021 => Edition::Edition2021,
             EditionData::Edition2024 => Edition::Edition2024,
+        }
+    }
+}
+
+impl From<RunnableData> for Runnable {
+    fn from(data: RunnableData) -> Self {
+        Runnable { program: data.program, args: data.args, cwd: data.cwd, kind: data.kind.into() }
+    }
+}
+
+impl From<RunnableKindData> for RunnableKind {
+    fn from(data: RunnableKindData) -> Self {
+        match data {
+            RunnableKindData::Check => RunnableKind::Check,
+            RunnableKindData::Run => RunnableKind::Run,
+            RunnableKindData::TestOne => RunnableKind::TestOne,
         }
     }
 }

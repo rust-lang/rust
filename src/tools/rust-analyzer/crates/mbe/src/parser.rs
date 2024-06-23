@@ -75,7 +75,7 @@ pub(crate) enum Op {
     Index {
         depth: usize,
     },
-    Length {
+    Len {
         depth: usize,
     },
     Count {
@@ -345,7 +345,7 @@ fn parse_metavar_expr(new_meta_vars: bool, src: &mut TtIter<'_, Span>) -> Result
             Op::Ignore { name: ident.text.clone(), id: ident.span }
         }
         "index" => Op::Index { depth: parse_depth(&mut args)? },
-        "length" => Op::Length { depth: parse_depth(&mut args)? },
+        "len" => Op::Len { depth: parse_depth(&mut args)? },
         "count" => {
             if new_meta_vars {
                 args.expect_dollar()?;

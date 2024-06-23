@@ -22,6 +22,7 @@ path = "src/bin/main.rs"
 [dependencies]
 anyhow.workspace = true
 crossbeam-channel = "0.5.5"
+dirs = "5.0.1"
 dissimilar.workspace = true
 itertools.workspace = true
 scip = "0.3.3"

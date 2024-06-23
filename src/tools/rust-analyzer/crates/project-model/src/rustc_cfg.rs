@@ -21,7 +21,7 @@ pub(crate) fn get(
     extra_env: &FxHashMap<String, String>,
     config: RustcCfgConfig<'_>,
 ) -> Vec<CfgFlag> {
-    let _p = tracing::span!(tracing::Level::INFO, "rustc_cfg::get").entered();
+    let _p = tracing::info_span!("rustc_cfg::get").entered();
     let mut res = Vec::with_capacity(6 * 2 + 1);
 
     // Some nightly-only cfgs, which are required for stdlib

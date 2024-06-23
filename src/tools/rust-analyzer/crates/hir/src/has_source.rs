@@ -8,13 +8,14 @@ use hir_def::{
     Lookup, MacroId, VariantId,
 };
 use hir_expand::{HirFileId, InFile};
+use hir_ty::{db::InternedClosure, CallableDefId};
 use syntax::ast;
 use tt::TextRange;
 
 use crate::{
-    db::HirDatabase, Adt, Const, Enum, ExternCrateDecl, Field, FieldSource, Function, Impl,
-    LifetimeParam, LocalSource, Macro, Module, Static, Struct, Trait, TraitAlias, TypeAlias,
-    TypeOrConstParam, Union, Variant,
+    db::HirDatabase, Adt, Callee, Const, Enum, ExternCrateDecl, Field, FieldSource, Function, Impl,
+    Label, LifetimeParam, LocalSource, Macro, Module, Param, SelfParam, Static, Struct, Trait,
+    TraitAlias, TypeAlias, TypeOrConstParam, Union, Variant,
 };
 
 pub trait HasSource {
@@ -25,7 +26,7 @@ pub trait HasSource {
     ///
     /// The current some implementations can return `InFile` instead of `Option<InFile>`.
     /// But we made this method `Option` to support rlib in the future
-    /// by https://github.com/rust-lang/rust-analyzer/issues/6913
+    /// by <https://github.com/rust-lang/rust-analyzer/issues/6913>
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>>;
 }
 
@@ -202,7 +203,7 @@ impl HasSource for TypeOrConstParam {
     type Ast = Either<ast::TypeOrConstParam, ast::TraitOrAlias>;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         let child_source = self.id.parent.child_source(db.upcast());
-        Some(child_source.map(|it| it[self.id.local_id].clone()))
+        child_source.map(|it| it.get(self.id.local_id).cloned()).transpose()
     }
 }
 
@@ -210,7 +211,7 @@ impl HasSource for LifetimeParam {
     type Ast = ast::LifetimeParam;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         let child_source = self.id.parent.child_source(db.upcast());
-        Some(child_source.map(|it| it[self.id.local_id].clone()))
+        child_source.map(|it| it.get(self.id.local_id).cloned()).transpose()
     }
 }
 
@@ -219,6 +220,68 @@ impl HasSource for LocalSource {
 
     fn source(self, _: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         Some(self.source)
+    }
+}
+
+impl HasSource for Param {
+    type Ast = Either<ast::SelfParam, ast::Param>;
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        match self.func {
+            Callee::Def(CallableDefId::FunctionId(func)) => {
+                let InFile { file_id, value } = Function { id: func }.source(db)?;
+                let params = value.param_list()?;
+                if let Some(self_param) = params.self_param() {
+                    if let Some(idx) = self.idx.checked_sub(1) {
+                        params.params().nth(idx).map(Either::Right)
+                    } else {
+                        Some(Either::Left(self_param))
+                    }
+                } else {
+                    params.params().nth(self.idx).map(Either::Right)
+                }
+                .map(|value| InFile { file_id, value })
+            }
+            Callee::Closure(closure, _) => {
+                let InternedClosure(owner, expr_id) = db.lookup_intern_closure(closure.into());
+                let (_, source_map) = db.body_with_source_map(owner);
+                let ast @ InFile { file_id, value } = source_map.expr_syntax(expr_id).ok()?;
+                let root = db.parse_or_expand(file_id);
+                match value.to_node(&root) {
+                    ast::Expr::ClosureExpr(it) => it
+                        .param_list()?
+                        .params()
+                        .nth(self.idx)
+                        .map(Either::Right)
+                        .map(|value| InFile { file_id: ast.file_id, value }),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+}
+
+impl HasSource for SelfParam {
+    type Ast = ast::SelfParam;
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        let InFile { file_id, value } = Function::from(self.func).source(db)?;
+        value
+            .param_list()
+            .and_then(|params| params.self_param())
+            .map(|value| InFile { file_id, value })
+    }
+}
+
+impl HasSource for Label {
+    type Ast = ast::Label;
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        let (_body, source_map) = db.body_with_source_map(self.parent);
+        let src = source_map.label_syntax(self.label_id);
+        let root = src.file_syntax(db.upcast());
+        Some(src.map(|ast| ast.to_node(&root)))
     }
 }
 

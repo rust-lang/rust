@@ -43,7 +43,7 @@ fn find_and_interpret(db: &RootDatabase, position: FilePosition) -> Option<Strin
         let path = path.as_deref().unwrap_or("<unknown file>");
         match db.line_index(file_id).try_line_col(text_range.start()) {
             Some(line_col) => format!("file://{path}#{}:{}", line_col.line + 1, line_col.col),
-            None => format!("file://{path} range {:?}", text_range),
+            None => format!("file://{path} range {text_range:?}"),
         }
     };
     Some(def.eval(db, span_formatter))

@@ -185,27 +185,6 @@ Zlib OR Apache-2.0 OR MIT
 }
 
 fn check_test_attrs(path: &Path, text: &str) {
-    let ignore_rule =
-        "https://github.com/rust-lang/rust-analyzer/blob/master/docs/dev/style.md#ignore";
-    let need_ignore: &[&str] = &[
-        // This file.
-        "slow-tests/tidy.rs",
-        // Special case to run `#[ignore]` tests.
-        "ide/src/runnables.rs",
-        // A legit test which needs to be ignored, as it takes too long to run
-        // :(
-        "hir-def/src/nameres/collector.rs",
-        // Long sourcegen test to generate lint completions.
-        "ide-db/src/tests/sourcegen_lints.rs",
-        // Obviously needs ignore.
-        "ide-assists/src/handlers/toggle_ignore.rs",
-        // See above.
-        "ide-assists/src/tests/generated.rs",
-    ];
-    if text.contains("#[ignore") && !need_ignore.iter().any(|p| path.ends_with(p)) {
-        panic!("\ndon't `#[ignore]` tests, see:\n\n    {ignore_rule}\n\n   {}\n", path.display(),)
-    }
-
     let panic_rule =
         "https://github.com/rust-lang/rust-analyzer/blob/master/docs/dev/style.md#should_panic";
     let need_panic: &[&str] = &[

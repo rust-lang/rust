@@ -290,4 +290,34 @@ fn f() { let a = 1; let b: Foo<i32> = todo$0!(); }"#,
 fn f() { let a = 1; let b: Foo<i32> = Foo(a); }"#,
         )
     }
+
+    #[test]
+    fn test_struct_assoc_item() {
+        check_assist(
+            term_search,
+            r#"//- minicore: todo, unimplemented
+struct Foo;
+impl Foo { const FOO: i32 = 0; }
+fn f() { let a: i32 = todo$0!(); }"#,
+            r#"struct Foo;
+impl Foo { const FOO: i32 = 0; }
+fn f() { let a: i32 = Foo::FOO; }"#,
+        )
+    }
+
+    #[test]
+    fn test_trait_assoc_item() {
+        check_assist(
+            term_search,
+            r#"//- minicore: todo, unimplemented
+struct Foo;
+trait Bar { const BAR: i32; }
+impl Bar for Foo { const BAR: i32 = 0; }
+fn f() { let a: i32 = todo$0!(); }"#,
+            r#"struct Foo;
+trait Bar { const BAR: i32; }
+impl Bar for Foo { const BAR: i32 = 0; }
+fn f() { let a: i32 = Foo::BAR; }"#,
+        )
+    }
 }

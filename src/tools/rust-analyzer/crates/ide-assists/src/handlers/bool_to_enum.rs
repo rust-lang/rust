@@ -228,7 +228,7 @@ fn replace_usages(
 
                     edit.replace(
                         prefix_expr.syntax().text_range(),
-                        format!("{} == Bool::False", inner_expr),
+                        format!("{inner_expr} == Bool::False"),
                     );
                 } else if let Some((record_field, initializer)) = name
                     .as_name_ref()
@@ -275,7 +275,7 @@ fn replace_usages(
                 } else if let Some(receiver) = find_method_call_expr_usage(&name) {
                     edit.replace(
                         receiver.syntax().text_range(),
-                        format!("({} == Bool::True)", receiver),
+                        format!("({receiver} == Bool::True)"),
                     );
                 } else if name.syntax().ancestors().find_map(ast::UseTree::cast).is_none() {
                     // for any other usage in an expression, replace it with a check that it is the true variant

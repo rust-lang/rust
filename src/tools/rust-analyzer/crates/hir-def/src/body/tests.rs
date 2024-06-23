@@ -156,7 +156,7 @@ fn main() {
     );
 
     expect![[r#"
-        fn main() {
+        fn main() -> () {
             let are = "are";
             let count = 10;
             builtin#lang(Arguments::new_v1_formatted)(
@@ -258,7 +258,7 @@ impl SsrError {
 
     assert_eq!(db.body_with_source_map(def).1.diagnostics(), &[]);
     expect![[r#"
-        fn main() {
+        fn main() -> () {
             _ = $crate::error::SsrError::new(
                 builtin#lang(Arguments::new_v1_formatted)(
                     &[
@@ -303,7 +303,7 @@ macro_rules! m {
     };
 }
 
-fn f() {
+fn f(a: i32, b: u32) -> String {
     m!();
 }
 "#,
@@ -317,7 +317,7 @@ fn f() {
     }
 
     expect![[r#"
-        fn f() {
+        fn f(a: i32, b: u32) -> String {
             {
                 $crate::panicking::panic_fmt(
                     builtin#lang(Arguments::new_v1_formatted)(

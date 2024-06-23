@@ -30,7 +30,7 @@ pub(super) fn hints(
         .filter_map(|(p, arg)| {
             // Only annotate hints for expressions that exist in the original file
             let range = sema.original_range_opt(arg.syntax())?;
-            let source = p.source(sema.db)?;
+            let source = sema.source(p)?;
             let (param_name, name_syntax) = match source.value.as_ref() {
                 Either::Left(pat) => (pat.name()?, pat.name()),
                 Either::Right(param) => match param.pat()? {
@@ -38,8 +38,6 @@ pub(super) fn hints(
                     _ => return None,
                 },
             };
-            // make sure the file is cached so we can map out of macros
-            sema.parse_or_expand(source.file_id);
             Some((name_syntax, param_name, arg, range))
         })
         .filter(|(_, param_name, arg, _)| {

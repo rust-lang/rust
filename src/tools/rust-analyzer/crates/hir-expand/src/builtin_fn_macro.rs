@@ -67,6 +67,10 @@ impl BuiltinFnLikeExpander {
         let span = span_with_def_site_ctxt(db, span, id);
         self.expander()(db, id, tt, span)
     }
+
+    pub fn is_asm(&self) -> bool {
+        matches!(self, Self::Asm | Self::GlobalAsm)
+    }
 }
 
 impl EagerExpander {

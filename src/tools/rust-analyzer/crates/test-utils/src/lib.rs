@@ -224,7 +224,7 @@ pub fn add_cursor(text: &str, offset: TextSize) -> String {
 /// Annotations point to the last line that actually was long enough for the
 /// range, not counting annotations themselves. So overlapping annotations are
 /// possible:
-/// ```no_run
+/// ```text
 /// // stuff        other stuff
 /// // ^^ 'st'
 /// // ^^^^^ 'stuff'

@@ -27,7 +27,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
         hir::AssocItem::Function(id) => {
             let function = id;
             (
-                format!("`fn {}`", redundant_assoc_item_name),
+                format!("`fn {redundant_assoc_item_name}`"),
                 function
                     .source(db)
                     .map(|it| it.syntax().value.text_range())
@@ -38,7 +38,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
         hir::AssocItem::Const(id) => {
             let constant = id;
             (
-                format!("`const {}`", redundant_assoc_item_name),
+                format!("`const {redundant_assoc_item_name}`"),
                 constant
                     .source(db)
                     .map(|it| it.syntax().value.text_range())
@@ -49,7 +49,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
         hir::AssocItem::TypeAlias(id) => {
             let type_alias = id;
             (
-                format!("`type {}`", redundant_assoc_item_name),
+                format!("`type {redundant_assoc_item_name}`"),
                 type_alias
                     .source(db)
                     .map(|it| it.syntax().value.text_range())

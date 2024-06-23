@@ -226,7 +226,7 @@ fn signature_help_for_call(
         let mut buf = String::new();
         for (idx, p) in callable.params().into_iter().enumerate() {
             buf.clear();
-            if let Some(param) = p.source(sema.db) {
+            if let Some(param) = sema.source(p.clone()) {
                 match param.value {
                     Either::Right(param) => match param.pat() {
                         Some(pat) => format_to!(buf, "{}: ", pat),

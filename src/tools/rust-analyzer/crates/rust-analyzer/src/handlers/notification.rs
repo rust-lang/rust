@@ -1,7 +1,7 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles notifications.
 
-use std::ops::Deref;
+use std::ops::{Deref, Not as _};
 
 use itertools::Itertools;
 use lsp_types::{
@@ -13,7 +13,7 @@ use triomphe::Arc;
 use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
 use crate::{
-    config::Config,
+    config::{Config, ConfigChange},
     global_state::GlobalState,
     lsp::{from_proto, utils::apply_document_changes},
     lsp_ext::{self, RunFlycheckParams},
@@ -54,7 +54,7 @@ pub(crate) fn handle_did_open_text_document(
     state: &mut GlobalState,
     params: DidOpenTextDocumentParams,
 ) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_did_open_text_document").entered();
+    let _p = tracing::info_span!("handle_did_open_text_document").entered();
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         let already_exists = state
@@ -71,6 +71,7 @@ pub(crate) fn handle_did_open_text_document(
             tracing::error!("duplicate DidOpenTextDocument: {}", path);
         }
 
+        tracing::info!("New file content set {:?}", params.text_document.text);
         state.vfs.write().0.set_file_contents(path, Some(params.text_document.text.into_bytes()));
         if state.config.notifications().unindexed_project {
             tracing::debug!("queuing task");
@@ -87,7 +88,7 @@ pub(crate) fn handle_did_change_text_document(
     state: &mut GlobalState,
     params: DidChangeTextDocumentParams,
 ) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_did_change_text_document").entered();
+    let _p = tracing::info_span!("handle_did_change_text_document").entered();
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         let Some(DocumentData { version, data }) = state.mem_docs.get_mut(&path) else {
@@ -116,7 +117,7 @@ pub(crate) fn handle_did_close_text_document(
     state: &mut GlobalState,
     params: DidCloseTextDocumentParams,
 ) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_did_close_text_document").entered();
+    let _p = tracing::info_span!("handle_did_close_text_document").entered();
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         if state.mem_docs.remove(&path).is_err() {
@@ -196,10 +197,14 @@ pub(crate) fn handle_did_change_configuration(
                 }
                 (None, Some(mut configs)) => {
                     if let Some(json) = configs.get_mut(0) {
-                        // Note that json can be null according to the spec if the client can't
-                        // provide a configuration. This is handled in Config::update below.
-                        let mut config = Config::clone(&*this.config);
-                        this.config_errors = config.update(json.take()).err();
+                        let config = Config::clone(&*this.config);
+                        let mut change = ConfigChange::default();
+                        change.change_client_config(json.take());
+
+                        let (config, e, _) = config.apply_change(change);
+                        this.config_errors = e.is_empty().not().then_some(e);
+
+                        // Client config changes neccesitates .update_config method to be called.
                         this.update_configuration(config);
                     }
                 }
@@ -254,7 +259,7 @@ pub(crate) fn handle_did_change_watched_files(
 }
 
 fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
-    let _p = tracing::span!(tracing::Level::INFO, "run_flycheck").entered();
+    let _p = tracing::info_span!("run_flycheck").entered();
 
     let file_id = state.vfs.read().0.file_id(&vfs_path);
     if let Some(file_id) = file_id {
@@ -349,13 +354,13 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
 }
 
 pub(crate) fn handle_cancel_flycheck(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_cancel_flycheck").entered();
+    let _p = tracing::info_span!("handle_cancel_flycheck").entered();
     state.flycheck.iter().for_each(|flycheck| flycheck.cancel());
     Ok(())
 }
 
 pub(crate) fn handle_clear_flycheck(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_clear_flycheck").entered();
+    let _p = tracing::info_span!("handle_clear_flycheck").entered();
     state.diagnostics.clear_check_all();
     Ok(())
 }
@@ -364,7 +369,7 @@ pub(crate) fn handle_run_flycheck(
     state: &mut GlobalState,
     params: RunFlycheckParams,
 ) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_run_flycheck").entered();
+    let _p = tracing::info_span!("handle_run_flycheck").entered();
     if let Some(text_document) = params.text_document {
         if let Ok(vfs_path) = from_proto::vfs_path(&text_document.uri) {
             if run_flycheck(state, vfs_path) {

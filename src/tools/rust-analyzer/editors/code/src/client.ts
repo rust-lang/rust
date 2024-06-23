@@ -3,72 +3,12 @@ import * as lc from "vscode-languageclient/node";
 import * as vscode from "vscode";
 import * as ra from "../src/lsp_ext";
 import * as Is from "vscode-languageclient/lib/common/utils/is";
-import { assert } from "./util";
+import { assert, unwrapUndefinable } from "./util";
 import * as diagnostics from "./diagnostics";
 import { WorkspaceEdit } from "vscode";
 import { type Config, prepareVSCodeConfig } from "./config";
-import { randomUUID } from "crypto";
 import { sep as pathSeparator } from "path";
-import { unwrapUndefinable } from "./undefinable";
 import { RaLanguageClient } from "./lang_client";
-
-export interface Env {
-    [name: string]: string;
-}
-
-// Command URIs have a form of command:command-name?arguments, where
-// arguments is a percent-encoded array of data we want to pass along to
-// the command function. For "Show References" this is a list of all file
-// URIs with locations of every reference, and it can get quite long.
-//
-// To work around it we use an intermediary linkToCommand command. When
-// we render a command link, a reference to a command with all its arguments
-// is stored in a map, and instead a linkToCommand link is rendered
-// with the key to that map.
-export const LINKED_COMMANDS = new Map<string, ra.CommandLink>();
-
-// For now the map is cleaned up periodically (I've set it to every
-// 10 minutes). In general case we'll probably need to introduce TTLs or
-// flags to denote ephemeral links (like these in hover popups) and
-// persistent links and clean those separately. But for now simply keeping
-// the last few links in the map should be good enough. Likewise, we could
-// add code to remove a target command from the map after the link is
-// clicked, but assuming most links in hover sheets won't be clicked anyway
-// this code won't change the overall memory use much.
-setInterval(
-    function cleanupOlderCommandLinks() {
-        // keys are returned in insertion order, we'll keep a few
-        // of recent keys available, and clean the rest
-        const keys = [...LINKED_COMMANDS.keys()];
-        const keysToRemove = keys.slice(0, keys.length - 10);
-        for (const key of keysToRemove) {
-            LINKED_COMMANDS.delete(key);
-        }
-    },
-    10 * 60 * 1000,
-);
-
-function renderCommand(cmd: ra.CommandLink): string {
-    const commandId = randomUUID();
-    LINKED_COMMANDS.set(commandId, cmd);
-    return `[${cmd.title}](command:rust-analyzer.linkToCommand?${encodeURIComponent(
-        JSON.stringify([commandId]),
-    )} '${cmd.tooltip}')`;
-}
-
-function renderHoverActions(actions: ra.CommandLinkGroup[]): vscode.MarkdownString {
-    const text = actions
-        .map(
-            (group) =>
-                (group.title ? group.title + " " : "") +
-                group.commands.map(renderCommand).join(" | "),
-        )
-        .join("___");
-
-    const result = new vscode.MarkdownString(text);
-    result.isTrusted = true;
-    return result;
-}
 
 export async function createClient(
     traceOutputChannel: vscode.OutputChannel,
@@ -449,4 +389,33 @@ function isCodeActionWithoutEditsAndCommands(value: any): boolean {
         candidate.edit === void 0 &&
         candidate.command === void 0
     );
+}
+
+// Command URIs have a form of command:command-name?arguments, where
+// arguments is a percent-encoded array of data we want to pass along to
+// the command function. For "Show References" this is a list of all file
+// URIs with locations of every reference, and it can get quite long.
+// So long in fact that it will fail rendering inside an `a` tag so we need
+// to proxy around that. We store the last hover's reference command link
+// here, as only one hover can be active at a time, and we don't need to
+// keep a history of these.
+export let HOVER_REFERENCE_COMMAND: ra.CommandLink | undefined = undefined;
+
+function renderCommand(cmd: ra.CommandLink): string {
+    HOVER_REFERENCE_COMMAND = cmd;
+    return `[${cmd.title}](command:rust-analyzer.hoverRefCommandProxy '${cmd.tooltip}')`;
+}
+
+function renderHoverActions(actions: ra.CommandLinkGroup[]): vscode.MarkdownString {
+    const text = actions
+        .map(
+            (group) =>
+                (group.title ? group.title + " " : "") +
+                group.commands.map(renderCommand).join(" | "),
+        )
+        .join(" | ");
+
+    const result = new vscode.MarkdownString(text);
+    result.isTrusted = true;
+    return result;
 }

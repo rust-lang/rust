@@ -2289,4 +2289,28 @@ macro_rules! baz {
             "#,
         );
     }
+
+    #[test]
+    fn goto_shadowed_preludes_in_block_module() {
+        check(
+            r#"
+//- /main.rs crate:main edition:2021 deps:core
+pub struct S;
+         //^
+
+fn main() {
+    fn f() -> S$0 {
+        fn inner() {} // forces a block def map
+        return S;
+    }
+}
+//- /core.rs crate:core
+pub mod prelude {
+    pub mod rust_2021 {
+        pub enum S;
+    }
+}
+        "#,
+        );
+    }
 }

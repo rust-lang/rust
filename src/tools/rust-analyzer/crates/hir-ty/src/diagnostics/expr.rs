@@ -65,8 +65,7 @@ impl BodyValidationDiagnostic {
         owner: DefWithBodyId,
         validate_lints: bool,
     ) -> Vec<BodyValidationDiagnostic> {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "BodyValidationDiagnostic::collect").entered();
+        let _p = tracing::info_span!("BodyValidationDiagnostic::collect").entered();
         let infer = db.infer(owner);
         let body = db.body(owner);
         let mut validator =

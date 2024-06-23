@@ -242,7 +242,7 @@ fn expand_subtree(
                     .into(),
                 );
             }
-            Op::Length { depth } => {
+            Op::Len { depth } => {
                 let length = ctx.nesting.get(ctx.nesting.len() - 1 - depth).map_or(0, |_nest| {
                     // FIXME: to be implemented
                     0

@@ -26,8 +26,6 @@ pub(crate) fn unlinked_file(
     acc: &mut Vec<Diagnostic>,
     file_id: FileId,
 ) {
-    // Limit diagnostic to the first few characters in the file. This matches how VS Code
-    // renders it with the full span, but on other editors, and is less invasive.
     let fixes = fixes(ctx, file_id);
     // FIXME: This is a hack for the vscode extension to notice whether there is an autofix or not before having to resolve diagnostics.
     // This is to prevent project linking popups from appearing when there is an autofix. https://github.com/rust-lang/rust-analyzer/issues/14523
@@ -37,14 +35,27 @@ pub(crate) fn unlinked_file(
         "file not included in module tree"
     };
 
-    let range = ctx.sema.db.parse(file_id).syntax_node().text_range();
-    let range = FileLoader::file_text(ctx.sema.db, file_id)
-        .char_indices()
-        .take(3)
-        .last()
-        .map(|(i, _)| i)
-        .map(|i| TextRange::up_to(i.try_into().unwrap()))
-        .unwrap_or(range);
+    let mut range = ctx.sema.db.parse(file_id).syntax_node().text_range();
+    let mut unused = true;
+
+    if fixes.is_none() {
+        // If we don't have a fix, the unlinked-file diagnostic is not
+        // actionable. This generally means that rust-analyzer hasn't
+        // finished startup, or we couldn't find the Cargo.toml.
+        //
+        // Only show this diagnostic on the first three characters of
+        // the file, to avoid overwhelming the user during startup.
+        range = FileLoader::file_text(ctx.sema.db, file_id)
+            .char_indices()
+            .take(3)
+            .last()
+            .map(|(i, _)| i)
+            .map(|i| TextRange::up_to(i.try_into().unwrap()))
+            .unwrap_or(range);
+        // Prefer a diagnostic underline over graying out the text,
+        // since we're only highlighting a small region.
+        unused = false;
+    }
 
     acc.push(
         Diagnostic::new(
@@ -52,6 +63,7 @@ pub(crate) fn unlinked_file(
             message,
             FileRange { file_id, range },
         )
+        .with_unused(unused)
         .with_fixes(fixes),
     );
 }

@@ -5,7 +5,7 @@ use std::sync;
 
 use base_db::{
     impl_intern_key,
-    salsa::{self, impl_intern_value_trivial},
+    salsa::{self, InternValueTrivial},
     CrateId, Upcast,
 };
 use hir_def::{
@@ -21,11 +21,12 @@ use crate::{
     chalk_db,
     consteval::ConstEvalError,
     layout::{Layout, LayoutError},
+    lower::{GenericDefaults, GenericPredicates},
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     mir::{BorrowckResult, MirBody, MirLowerError},
-    Binders, CallableDefId, ClosureId, Const, FnDefId, GenericArg, ImplTraitId, ImplTraits,
-    InferenceResult, Interner, PolyFnSig, QuantifiedWhereClause, Substitution, TraitEnvironment,
-    TraitRef, Ty, TyDefId, ValueTyDefId,
+    Binders, CallableDefId, ClosureId, Const, FnDefId, ImplTraitId, ImplTraits, InferenceResult,
+    Interner, PolyFnSig, QuantifiedWhereClause, Substitution, TraitEnvironment, TraitRef, Ty,
+    TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
 
@@ -147,7 +148,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     ) -> Arc<[Binders<QuantifiedWhereClause>]>;
 
     #[salsa::invoke(crate::lower::generic_predicates_query)]
-    fn generic_predicates(&self, def: GenericDefId) -> Arc<[Binders<QuantifiedWhereClause>]>;
+    fn generic_predicates(&self, def: GenericDefId) -> GenericPredicates;
 
     #[salsa::invoke(crate::lower::trait_environment_for_body_query)]
     #[salsa::transparent]
@@ -158,7 +159,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(crate::lower::generic_defaults_query)]
     #[salsa::cycle(crate::lower::generic_defaults_recover)]
-    fn generic_defaults(&self, def: GenericDefId) -> Arc<[Binders<GenericArg>]>;
+    fn generic_defaults(&self, def: GenericDefId) -> GenericDefaults;
 
     #[salsa::invoke(InherentImpls::inherent_impls_in_crate_query)]
     fn inherent_impls_in_crate(&self, krate: CrateId) -> Arc<InherentImpls>;
@@ -298,7 +299,8 @@ impl_intern_key!(InternedClosureId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedClosure(pub DefWithBodyId, pub ExprId);
-impl_intern_value_trivial!(InternedClosure);
+
+impl InternValueTrivial for InternedClosure {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedCoroutineId(salsa::InternId);
@@ -306,7 +308,7 @@ impl_intern_key!(InternedCoroutineId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedCoroutine(pub DefWithBodyId, pub ExprId);
-impl_intern_value_trivial!(InternedCoroutine);
+impl InternValueTrivial for InternedCoroutine {}
 
 /// This exists just for Chalk, because Chalk just has a single `FnDefId` where
 /// we have different IDs for struct and enum variant constructors.

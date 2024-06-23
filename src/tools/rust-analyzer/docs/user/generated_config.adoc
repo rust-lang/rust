@@ -19,7 +19,7 @@ Term search fuel in "units of work" for assists (Defaults to 400).
 --
 Warm up caches on project load.
 --
-[[rust-analyzer.cachePriming.numThreads]]rust-analyzer.cachePriming.numThreads (default: `0`)::
+[[rust-analyzer.cachePriming.numThreads]]rust-analyzer.cachePriming.numThreads (default: `"physical"`)::
 +
 --
 How many worker threads to handle priming caches. The default `0` means to pick automatically.

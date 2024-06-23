@@ -16,8 +16,8 @@
 //!
 //! This happens in the `raw` module, which parses a single source file into a
 //! set of top-level items. Nested imports are desugared to flat imports in this
-//! phase. Macro calls are represented as a triple of (Path, Option<Name>,
-//! TokenTree).
+//! phase. Macro calls are represented as a triple of `(Path, Option<Name>,
+//! TokenTree)`.
 //!
 //! ## Collecting Modules
 //!
@@ -333,7 +333,7 @@ impl DefMap {
         let crate_graph = db.crate_graph();
         let krate = &crate_graph[crate_id];
         let name = krate.display_name.as_deref().unwrap_or_default();
-        let _p = tracing::span!(tracing::Level::INFO, "crate_def_map_query", ?name).entered();
+        let _p = tracing::info_span!("crate_def_map_query", ?name).entered();
 
         let module_data = ModuleData::new(
             ModuleOrigin::CrateRoot { definition: krate.root_file_id },

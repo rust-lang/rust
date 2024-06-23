@@ -15,7 +15,7 @@ use crate::RootDatabase;
 /// you'd want to include minicore (see `test_utils::MiniCore`) declaration at
 /// the start of your tests:
 ///
-/// ```
+/// ```text
 /// //- minicore: iterator, ord, derive
 /// ```
 pub struct FamousDefs<'a, 'b>(pub &'a Semantics<'b, RootDatabase>, pub Crate);

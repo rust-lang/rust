@@ -9,22 +9,27 @@ import {
     applySnippetTextEdits,
     type SnippetTextDocumentEdit,
 } from "./snippets";
-import { spawnSync } from "child_process";
-import { type RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
+import {
+    type RunnableQuickPick,
+    selectRunnable,
+    createTaskFromRunnable,
+    createCargoArgs,
+} from "./run";
 import { AstInspector } from "./ast_inspector";
 import {
     isRustDocument,
+    isCargoRunnableArgs,
     isCargoTomlDocument,
     sleep,
     isRustEditor,
     type RustEditor,
     type RustDocument,
+    unwrapUndefinable,
 } from "./util";
 import { startDebugSession, makeDebugConfig } from "./debug";
 import type { LanguageClient } from "vscode-languageclient/node";
-import { LINKED_COMMANDS } from "./client";
+import { HOVER_REFERENCE_COMMAND } from "./client";
 import type { DependencyId } from "./dependencies_provider";
-import { unwrapUndefinable } from "./undefinable";
 import { log } from "./util";
 
 export * from "./ast_inspector";
@@ -415,10 +420,9 @@ export function serverVersion(ctx: CtxInit): Cmd {
             void vscode.window.showWarningMessage(`rust-analyzer server is not running`);
             return;
         }
-        const { stdout } = spawnSync(ctx.serverPath, ["--version"], { encoding: "utf8" });
-        const versionString = stdout.slice(`rust-analyzer `.length).trim();
-
-        void vscode.window.showInformationMessage(`rust-analyzer version: ${versionString}`);
+        void vscode.window.showInformationMessage(
+            `rust-analyzer version: ${ctx.serverVersion} [${ctx.serverPath}]`,
+        );
     };
 }
 
@@ -1097,7 +1101,7 @@ export function run(ctx: CtxInit): Cmd {
 
         item.detail = "rerun";
         prevRunnable = item;
-        const task = await createTask(item.runnable, ctx.config);
+        const task = await createTaskFromRunnable(item.runnable, ctx.config);
         return await vscode.tasks.executeTask(task);
     };
 }
@@ -1140,7 +1144,7 @@ export function runSingle(ctx: CtxInit): Cmd {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
 
-        const task = await createTask(runnable, ctx.config);
+        const task = await createTaskFromRunnable(runnable, ctx.config);
         task.group = vscode.TaskGroup.Build;
         task.presentationOptions = {
             reveal: vscode.TaskRevealKind.Always,
@@ -1156,8 +1160,8 @@ export function copyRunCommandLine(ctx: CtxInit) {
     let prevRunnable: RunnableQuickPick | undefined;
     return async () => {
         const item = await selectRunnable(ctx, prevRunnable);
-        if (!item) return;
-        const args = createArgs(item.runnable);
+        if (!item || !isCargoRunnableArgs(item.runnable.args)) return;
+        const args = createCargoArgs(item.runnable.args);
         const commandLine = ["cargo", ...args].join(" ");
         await vscode.env.clipboard.writeText(commandLine);
         await vscode.window.showInformationMessage("Cargo invocation copied to the clipboard.");
@@ -1192,11 +1196,10 @@ export function newDebugConfig(ctx: CtxInit): Cmd {
     };
 }
 
-export function linkToCommand(_: Ctx): Cmd {
-    return async (commandId: string) => {
-        const link = LINKED_COMMANDS.get(commandId);
-        if (link) {
-            const { command, arguments: args = [] } = link;
+export function hoverRefCommandProxy(_: Ctx): Cmd {
+    return async () => {
+        if (HOVER_REFERENCE_COMMAND) {
+            const { command, arguments: args = [] } = HOVER_REFERENCE_COMMAND;
             await vscode.commands.executeCommand(command, ...args);
         }
     };
@@ -1484,5 +1487,18 @@ export function toggleCheckOnSave(ctx: Ctx): Cmd {
     return async () => {
         await ctx.config.toggleCheckOnSave();
         ctx.refreshServerStatus();
+    };
+}
+
+export function toggleLSPLogs(ctx: Ctx): Cmd {
+    return async () => {
+        const config = vscode.workspace.getConfiguration("rust-analyzer");
+        const targetValue =
+            config.get<string | undefined>("trace.server") === "verbose" ? undefined : "verbose";
+
+        await config.update("trace.server", targetValue, vscode.ConfigurationTarget.Workspace);
+        if (targetValue && ctx.client && ctx.client.traceOutputChannel) {
+            ctx.client.traceOutputChannel.show();
+        }
     };
 }
