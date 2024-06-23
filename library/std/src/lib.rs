@@ -319,6 +319,7 @@
 // tidy-alphabetical-start
 #![feature(c_str_module)]
 #![feature(char_internals)]
+#![feature(clone_to_uninit)]
 #![feature(core_intrinsics)]
 #![feature(core_io_borrowed_buf)]
 #![feature(duration_constants)]
