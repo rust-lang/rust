@@ -21,7 +21,6 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Pos, Span};
 use rustc_target::abi::VariantIdx;
 use tracing::{debug, instrument};
-use util::visit_bindings;
 
 // helper functions, broken out by category:
 mod simplify;
@@ -691,7 +690,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         initializer: PlaceBuilder<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {
-        let mut candidate = Candidate::new(initializer.clone(), irrefutable_pat, false, self);
+        let candidate = Candidate::new(initializer.clone(), irrefutable_pat, false, self);
+        let built_tree = self.lower_match_tree(
+            block,
+            irrefutable_pat.span,
+            &initializer,
+            irrefutable_pat.span,
+            vec![candidate],
+            false,
+        );
+        let [branch] = built_tree.branches.try_into().unwrap();
 
         // For matches and function arguments, the place that is being matched
         // can be set when creating the variables. But the place for
@@ -712,7 +720,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // };
             // ```
             if let Some(place) = initializer.try_to_place(self) {
-                visit_bindings(&[&mut candidate], |binding: &Binding<'_>| {
+                // Because or-alternatives bind the same variables, we only explore the first one.
+                let first_sub_branch = branch.sub_branches.first().unwrap();
+                for binding in &first_sub_branch.bindings {
                     let local = self.var_local_id(binding.var_id, OutsideGuard);
                     if let LocalInfo::User(BindingForm::Var(VarBindingForm {
                         opt_match_place: Some((ref mut match_place, _)),
@@ -723,19 +733,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     } else {
                         bug!("Let binding to non-user variable.")
                     };
-                });
+                }
             }
         }
-
-        let built_tree = self.lower_match_tree(
-            block,
-            irrefutable_pat.span,
-            &initializer,
-            irrefutable_pat.span,
-            vec![candidate],
-            false,
-        );
-        let [branch] = built_tree.branches.try_into().unwrap();
 
         self.bind_pattern(
             self.source_info(irrefutable_pat.span),

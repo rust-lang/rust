@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
 use crate::build::matches::{Binding, Candidate, FlatPat, MatchPair, TestCase};
 use crate::build::Builder;
@@ -455,57 +453,6 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
         //     x => (),
         // }
         self.fake_borrow_deref_prefixes(*source, FakeBorrowKind::Shallow);
-    }
-}
-
-/// Visit all the bindings of these candidates. Because or-alternatives bind the same variables, we
-/// only explore the first one of each or-pattern.
-pub(super) fn visit_bindings<'tcx>(
-    candidates: &[&mut Candidate<'_, 'tcx>],
-    f: impl FnMut(&Binding<'tcx>),
-) {
-    let mut visitor = BindingsVisitor { f, phantom: PhantomData };
-    for candidate in candidates.iter() {
-        visitor.visit_candidate(candidate);
-    }
-}
-
-pub(super) struct BindingsVisitor<'tcx, F> {
-    f: F,
-    phantom: PhantomData<&'tcx ()>,
-}
-
-impl<'tcx, F> BindingsVisitor<'tcx, F>
-where
-    F: FnMut(&Binding<'tcx>),
-{
-    fn visit_candidate(&mut self, candidate: &Candidate<'_, 'tcx>) {
-        for binding in &candidate.extra_data.bindings {
-            (self.f)(binding)
-        }
-        for match_pair in &candidate.match_pairs {
-            self.visit_match_pair(match_pair);
-        }
-    }
-
-    fn visit_flat_pat(&mut self, flat_pat: &FlatPat<'_, 'tcx>) {
-        for binding in &flat_pat.extra_data.bindings {
-            (self.f)(binding)
-        }
-        for match_pair in &flat_pat.match_pairs {
-            self.visit_match_pair(match_pair);
-        }
-    }
-
-    fn visit_match_pair(&mut self, match_pair: &MatchPair<'_, 'tcx>) {
-        if let TestCase::Or { pats, .. } = &match_pair.test_case {
-            // All the or-alternatives should bind the same locals, so we only visit the first one.
-            self.visit_flat_pat(&pats[0])
-        } else {
-            for subpair in &match_pair.subpairs {
-                self.visit_match_pair(subpair);
-            }
-        }
     }
 }
 
