@@ -875,6 +875,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-sanitizer-shadow-call-stack",
     "needs-sanitizer-support",
     "needs-sanitizer-thread",
+    "needs-symlink",
     "needs-threads",
     "needs-unwind",
     "needs-wasmtime",

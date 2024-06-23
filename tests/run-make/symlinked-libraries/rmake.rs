@@ -6,6 +6,7 @@
 // See https://github.com/rust-lang/rust/issues/12459
 
 //@ ignore-cross-compile
+//@ needs-symlink
 
 use run_make_support::{create_symlink, dynamic_lib_name, fs_wrapper, rustc};
 
