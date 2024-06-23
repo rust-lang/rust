@@ -2746,6 +2746,14 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
+    unsafe fn test_mm256_rsqrt14_pd() {
+        let a = _mm256_set1_pd(3.);
+        let r = _mm256_rsqrt14_pd(a);
+        let e = _mm256_set1_pd(0.5773391723632813);
+        assert_eq_m256d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm256_mask_rsqrt14_pd() {
         let a = _mm256_set1_pd(3.);
         let r = _mm256_mask_rsqrt14_pd(a, 0, a);
@@ -2763,6 +2771,14 @@ mod tests {
         let r = _mm256_maskz_rsqrt14_pd(0b00001111, a);
         let e = _mm256_set1_pd(0.5773391723632813);
         assert_eq_m256d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512vl")]
+    unsafe fn test_mm_rsqrt14_pd() {
+        let a = _mm_set1_pd(3.);
+        let r = _mm_rsqrt14_pd(a);
+        let e = _mm_set1_pd(0.5773391723632813);
+        assert_eq_m128d(r, e);
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]

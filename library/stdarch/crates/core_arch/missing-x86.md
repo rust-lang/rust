@@ -204,8 +204,6 @@
   * [ ] [`_mm256_mmask_i64gather_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mmask_i64gather_epi64)
   * [ ] [`_mm256_mmask_i64gather_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mmask_i64gather_pd)
   * [ ] [`_mm256_mmask_i64gather_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mmask_i64gather_ps)
-  * [ ] [`_mm256_rsqrt14_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_rsqrt14_pd)
-  * [ ] [`_mm256_rsqrt14_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_rsqrt14_ps)
   * [ ] [`_mm_abs_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_abs_epi64)
   * [ ] [`_mm_i32scatter_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32scatter_epi32)
   * [ ] [`_mm_i32scatter_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32scatter_epi64)
@@ -236,8 +234,6 @@
   * [ ] [`_mm_mmask_i64gather_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mmask_i64gather_epi64)
   * [ ] [`_mm_mmask_i64gather_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mmask_i64gather_pd)
   * [ ] [`_mm_mmask_i64gather_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mmask_i64gather_ps)
-  * [ ] [`_mm_rsqrt14_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_rsqrt14_pd)
-  * [ ] [`_mm_rsqrt14_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_rsqrt14_ps)
 </p></details>
 
 
