@@ -4,6 +4,8 @@
 //! but were uplifted in the process of making the new trait solver generic.
 //! So if you got to this crate from the old solver, it's totally normal.
 
+#![feature(let_chains)]
+
 pub mod canonicalizer;
 pub mod delegate;
 pub mod resolve;
