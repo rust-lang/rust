@@ -2,7 +2,7 @@ use crate::errors;
 use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, Token};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, NtExprKind::*, Token};
 use rustc_ast::{tokenstream, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
@@ -85,36 +85,31 @@ pub(super) fn parse(
                                             span.edition()
                                         }
                                     };
-                                    let kind =
-                                        token::NonterminalKind::from_symbol(fragment.name, edition)
-                                            .unwrap_or_else(|| {
-                                                let help = match fragment.name {
-                                                    sym::expr_2021 => {
-                                                        format!(
-                                                            "fragment specifier `expr_2021` \
-                                                             requires Rust 2021 or later\n\
-                                                             {VALID_FRAGMENT_NAMES_MSG}"
-                                                        )
-                                                    }
-                                                    _ if edition().at_least_rust_2021()
-                                                        && features
-                                                            .expr_fragment_specifier_2024 =>
-                                                    {
-                                                        VALID_FRAGMENT_NAMES_MSG_2021.into()
-                                                    }
-                                                    _ => VALID_FRAGMENT_NAMES_MSG.into(),
-                                                };
-                                                sess.dcx().emit_err(
-                                                    errors::InvalidFragmentSpecifier {
-                                                        span,
-                                                        fragment,
-                                                        help,
-                                                    },
-                                                );
-                                                token::NonterminalKind::Ident
+                                    let kind = NonterminalKind::from_symbol(fragment.name, edition)
+                                        .unwrap_or_else(|| {
+                                            let help = match fragment.name {
+                                                sym::expr_2021 => {
+                                                    format!(
+                                                        "fragment specifier `expr_2021` \
+                                                         requires Rust 2021 or later\n\
+                                                         {VALID_FRAGMENT_NAMES_MSG}"
+                                                    )
+                                                }
+                                                _ if edition().at_least_rust_2021()
+                                                    && features.expr_fragment_specifier_2024 =>
+                                                {
+                                                    VALID_FRAGMENT_NAMES_MSG_2021.into()
+                                                }
+                                                _ => VALID_FRAGMENT_NAMES_MSG.into(),
+                                            };
+                                            sess.dcx().emit_err(errors::InvalidFragmentSpecifier {
+                                                span,
+                                                fragment,
+                                                help,
                                             });
-                                    if kind
-                                        == (token::NonterminalKind::Expr2021 { inferred: false })
+                                            NonterminalKind::Ident
+                                        });
+                                    if kind == NonterminalKind::Expr(Expr2021 { inferred: false })
                                         && !features.expr_fragment_specifier_2024
                                     {
                                         rustc_session::parse::feature_err(
