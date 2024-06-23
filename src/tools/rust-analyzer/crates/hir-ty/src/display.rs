@@ -21,8 +21,8 @@ use hir_def::{
     path::{Path, PathKind},
     type_ref::{TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
-    HasModule, ImportPathConfig, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId,
-    TraitId,
+    GenericDefId, HasModule, ImportPathConfig, ItemContainerId, LocalFieldId, Lookup, ModuleDefId,
+    ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use intern::{Internable, Interned};
@@ -988,7 +988,8 @@ impl HirDisplay for Ty {
                 f.end_location_link();
 
                 if parameters.len(Interner) > 0 {
-                    let generics = generics(db.upcast(), def.into());
+                    let generic_def_id = GenericDefId::from(db.upcast(), def);
+                    let generics = generics(db.upcast(), generic_def_id);
                     let (parent_len, self_param, type_, const_, impl_, lifetime) =
                         generics.provenance_split();
                     let parameters = parameters.as_slice(Interner);
@@ -1002,8 +1003,9 @@ impl HirDisplay for Ty {
                         debug_assert_eq!(parent_params.len(), parent_len);
 
                         let parent_params =
-                            generic_args_sans_defaults(f, Some(def.into()), parent_params);
-                        let fn_params = generic_args_sans_defaults(f, Some(def.into()), fn_params);
+                            generic_args_sans_defaults(f, Some(generic_def_id), parent_params);
+                        let fn_params =
+                            generic_args_sans_defaults(f, Some(generic_def_id), fn_params);
 
                         write!(f, "<")?;
                         hir_fmt_generic_arguments(f, parent_params, None)?;

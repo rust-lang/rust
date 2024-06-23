@@ -13,7 +13,8 @@ use hir_def::{
     data::adt::StructFlags,
     hir::Movability,
     lang_item::{LangItem, LangItemTarget},
-    AssocItemId, BlockId, GenericDefId, HasModule, ItemContainerId, Lookup, TypeAliasId, VariantId,
+    AssocItemId, BlockId, CallableDefId, GenericDefId, HasModule, ItemContainerId, Lookup,
+    TypeAliasId, VariantId,
 };
 use hir_expand::name::name;
 
@@ -28,9 +29,9 @@ use crate::{
     to_assoc_type_id, to_chalk_trait_id,
     traits::ChalkContext,
     utils::ClosureSubst,
-    wrap_empty_binders, AliasEq, AliasTy, BoundVar, CallableDefId, DebruijnIndex, FnDefId,
-    Interner, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Substitution, TraitRef,
-    TraitRefExt, Ty, TyBuilder, TyExt, TyKind, WhereClause,
+    wrap_empty_binders, AliasEq, AliasTy, BoundVar, DebruijnIndex, FnDefId, Interner, ProjectionTy,
+    ProjectionTyExt, QuantifiedWhereClause, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder,
+    TyExt, TyKind, WhereClause,
 };
 
 pub(crate) type AssociatedTyDatum = chalk_solve::rust_ir::AssociatedTyDatum<Interner>;
@@ -102,7 +103,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         &self,
         fn_def_id: chalk_ir::FnDefId<Interner>,
     ) -> Arc<rust_ir::FnDefDatum<Interner>> {
-        self.db.fn_def_datum(self.krate, fn_def_id)
+        self.db.fn_def_datum(fn_def_id)
     }
 
     fn impls_for_trait(
@@ -912,16 +913,13 @@ fn type_alias_associated_ty_value(
     Arc::new(value)
 }
 
-pub(crate) fn fn_def_datum_query(
-    db: &dyn HirDatabase,
-    _krate: CrateId,
-    fn_def_id: FnDefId,
-) -> Arc<FnDefDatum> {
+pub(crate) fn fn_def_datum_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Arc<FnDefDatum> {
     let callable_def: CallableDefId = from_chalk(db, fn_def_id);
-    let generic_params = generics(db.upcast(), callable_def.into());
+    let generic_def = GenericDefId::from(db.upcast(), callable_def);
+    let generic_params = generics(db.upcast(), generic_def);
     let (sig, binders) = db.callable_item_signature(callable_def).into_value_and_skipped_binders();
     let bound_vars = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-    let where_clauses = convert_where_clauses(db, callable_def.into(), &bound_vars);
+    let where_clauses = convert_where_clauses(db, generic_def, &bound_vars);
     let bound = rust_ir::FnDefDatumBound {
         // Note: Chalk doesn't actually use this information yet as far as I am aware, but we provide it anyway
         inputs_and_output: chalk_ir::Binders::empty(
@@ -948,7 +946,7 @@ pub(crate) fn fn_def_datum_query(
 
 pub(crate) fn fn_def_variance_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Variances {
     let callable_def: CallableDefId = from_chalk(db, fn_def_id);
-    let generic_params = generics(db.upcast(), callable_def.into());
+    let generic_params = generics(db.upcast(), GenericDefId::from(db.upcast(), callable_def));
     Variances::from_iter(
         Interner,
         std::iter::repeat(chalk_ir::Variance::Invariant).take(generic_params.len()),

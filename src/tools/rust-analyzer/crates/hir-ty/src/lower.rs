@@ -11,10 +11,7 @@ use std::{
     ops::{self, Not as _},
 };
 
-use base_db::{
-    salsa::{Cycle, InternValueTrivial},
-    CrateId,
-};
+use base_db::{salsa::Cycle, CrateId};
 use chalk_ir::{
     cast::Cast,
     fold::{Shift, TypeFoldable},
@@ -38,10 +35,10 @@ use hir_def::{
     type_ref::{
         ConstRef, LifetimeRef, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef,
     },
-    AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
-    GenericDefId, GenericParamId, HasModule, ImplId, InTypeConstLoc, ItemContainerId, LocalFieldId,
-    Lookup, ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId, TypeOwnerId,
-    UnionId, VariantId,
+    AdtId, AssocItemId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId,
+    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, InTypeConstLoc, ItemContainerId,
+    LocalFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId,
+    TypeOwnerId, UnionId, VariantId,
 };
 use hir_expand::{name::Name, ExpandResult};
 use intern::Interned;
@@ -1535,7 +1532,7 @@ pub(crate) fn generic_predicates_for_param_query(
     def: GenericDefId,
     param_id: TypeOrConstParamId,
     assoc_name: Option<Name>,
-) -> Arc<[Binders<QuantifiedWhereClause>]> {
+) -> GenericPredicates {
     let resolver = def.resolver(db.upcast());
     let ctx = if let GenericDefId::FunctionId(_) = def {
         TyLoweringContext::new(db, &resolver, def.into())
@@ -1611,7 +1608,7 @@ pub(crate) fn generic_predicates_for_param_query(
             );
         };
     }
-    predicates.into()
+    GenericPredicates(predicates.is_empty().not().then(|| predicates.into()))
 }
 
 pub(crate) fn generic_predicates_for_param_recover(
@@ -1620,15 +1617,15 @@ pub(crate) fn generic_predicates_for_param_recover(
     _def: &GenericDefId,
     _param_id: &TypeOrConstParamId,
     _assoc_name: &Option<Name>,
-) -> Arc<[Binders<QuantifiedWhereClause>]> {
-    Arc::from_iter(None)
+) -> GenericPredicates {
+    GenericPredicates(None)
 }
 
 pub(crate) fn trait_environment_for_body_query(
     db: &dyn HirDatabase,
     def: DefWithBodyId,
 ) -> Arc<TraitEnvironment> {
-    let Some(def) = def.as_generic_def_id() else {
+    let Some(def) = def.as_generic_def_id(db.upcast()) else {
         let krate = def.module(db.upcast()).krate();
         return TraitEnvironment::empty(krate);
     };
@@ -1995,47 +1992,6 @@ fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum CallableDefId {
-    FunctionId(FunctionId),
-    StructId(StructId),
-    EnumVariantId(EnumVariantId),
-}
-
-impl InternValueTrivial for CallableDefId {}
-
-impl_from!(FunctionId, StructId, EnumVariantId for CallableDefId);
-impl From<CallableDefId> for ModuleDefId {
-    fn from(def: CallableDefId) -> ModuleDefId {
-        match def {
-            CallableDefId::FunctionId(f) => ModuleDefId::FunctionId(f),
-            CallableDefId::StructId(s) => ModuleDefId::AdtId(AdtId::StructId(s)),
-            CallableDefId::EnumVariantId(e) => ModuleDefId::EnumVariantId(e),
-        }
-    }
-}
-
-impl CallableDefId {
-    pub fn krate(self, db: &dyn HirDatabase) -> CrateId {
-        let db = db.upcast();
-        match self {
-            CallableDefId::FunctionId(f) => f.krate(db),
-            CallableDefId::StructId(s) => s.krate(db),
-            CallableDefId::EnumVariantId(e) => e.krate(db),
-        }
-    }
-}
-
-impl From<CallableDefId> for GenericDefId {
-    fn from(def: CallableDefId) -> GenericDefId {
-        match def {
-            CallableDefId::FunctionId(f) => f.into(),
-            CallableDefId::StructId(s) => s.into(),
-            CallableDefId::EnumVariantId(e) => e.into(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TyDefId {
     BuiltinType(BuiltinType),
@@ -2056,12 +2012,12 @@ pub enum ValueTyDefId {
 impl_from!(FunctionId, StructId, UnionId, EnumVariantId, ConstId, StaticId for ValueTyDefId);
 
 impl ValueTyDefId {
-    pub(crate) fn to_generic_def_id(self) -> Option<GenericDefId> {
+    pub(crate) fn to_generic_def_id(self, db: &dyn HirDatabase) -> Option<GenericDefId> {
         match self {
             Self::FunctionId(id) => Some(id.into()),
             Self::StructId(id) => Some(id.into()),
             Self::UnionId(id) => Some(id.into()),
-            Self::EnumVariantId(var) => Some(var.into()),
+            Self::EnumVariantId(var) => Some(var.lookup(db.upcast()).parent.into()),
             Self::ConstId(id) => Some(id.into()),
             Self::StaticId(_) => None,
         }

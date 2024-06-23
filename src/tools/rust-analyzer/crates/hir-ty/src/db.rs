@@ -9,8 +9,8 @@ use base_db::{
     CrateId, Upcast,
 };
 use hir_def::{
-    db::DefDatabase, hir::ExprId, layout::TargetDataLayout, AdtId, BlockId, ConstParamId,
-    DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId,
+    db::DefDatabase, hir::ExprId, layout::TargetDataLayout, AdtId, BlockId, CallableDefId,
+    ConstParamId, DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId,
     LifetimeParamId, LocalFieldId, StaticId, TypeAliasId, TypeOrConstParamId, VariantId,
 };
 use la_arena::ArenaMap;
@@ -24,9 +24,8 @@ use crate::{
     lower::{GenericDefaults, GenericPredicates},
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     mir::{BorrowckResult, MirBody, MirLowerError},
-    Binders, CallableDefId, ClosureId, Const, FnDefId, ImplTraitId, ImplTraits, InferenceResult,
-    Interner, PolyFnSig, QuantifiedWhereClause, Substitution, TraitEnvironment, TraitRef, Ty,
-    TyDefId, ValueTyDefId,
+    Binders, ClosureId, Const, FnDefId, ImplTraitId, ImplTraits, InferenceResult, Interner,
+    PolyFnSig, Substitution, TraitEnvironment, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
 
@@ -145,7 +144,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         def: GenericDefId,
         param_id: TypeOrConstParamId,
         assoc_name: Option<Name>,
-    ) -> Arc<[Binders<QuantifiedWhereClause>]>;
+    ) -> GenericPredicates;
 
     #[salsa::invoke(crate::lower::generic_predicates_query)]
     fn generic_predicates(&self, def: GenericDefId) -> GenericPredicates;
@@ -232,7 +231,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     ) -> sync::Arc<chalk_db::ImplDatum>;
 
     #[salsa::invoke(chalk_db::fn_def_datum_query)]
-    fn fn_def_datum(&self, krate: CrateId, fn_def_id: FnDefId) -> sync::Arc<chalk_db::FnDefDatum>;
+    fn fn_def_datum(&self, fn_def_id: FnDefId) -> sync::Arc<chalk_db::FnDefDatum>;
 
     #[salsa::invoke(chalk_db::fn_def_variance_query)]
     fn fn_def_variance(&self, fn_def_id: FnDefId) -> chalk_db::Variances;

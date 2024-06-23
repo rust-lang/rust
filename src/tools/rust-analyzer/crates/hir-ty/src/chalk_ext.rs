@@ -188,9 +188,10 @@ impl TyExt for Ty {
     fn as_generic_def(&self, db: &dyn HirDatabase) -> Option<GenericDefId> {
         match *self.kind(Interner) {
             TyKind::Adt(AdtId(adt), ..) => Some(adt.into()),
-            TyKind::FnDef(callable, ..) => {
-                Some(db.lookup_intern_callable_def(callable.into()).into())
-            }
+            TyKind::FnDef(callable, ..) => Some(GenericDefId::from(
+                db.upcast(),
+                db.lookup_intern_callable_def(callable.into()),
+            )),
             TyKind::AssociatedType(type_alias, ..) => Some(from_assoc_type_id(type_alias).into()),
             TyKind::Foreign(type_alias, ..) => Some(from_foreign_def_id(type_alias).into()),
             _ => None,

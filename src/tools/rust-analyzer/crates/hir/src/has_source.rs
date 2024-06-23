@@ -5,10 +5,10 @@ use either::Either;
 use hir_def::{
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource as _},
-    Lookup, MacroId, VariantId,
+    CallableDefId, Lookup, MacroId, VariantId,
 };
 use hir_expand::{HirFileId, InFile};
-use hir_ty::{db::InternedClosure, CallableDefId};
+use hir_ty::db::InternedClosure;
 use syntax::ast;
 use tt::TextRange;
 

@@ -209,7 +209,7 @@ impl Expr {
                 }
             }
             Expr::Variant { variant, generics, params } => {
-                let generics = non_default_generics(db, (*variant).into(), generics);
+                let generics = non_default_generics(db, variant.parent_enum(db).into(), generics);
                 let generics_str = match generics.is_empty() {
                     true => String::new(),
                     false => {

@@ -79,8 +79,9 @@ pub fn generic_def_for_node(
     sema: &Semantics<'_, RootDatabase>,
     generic_arg_list: &ast::GenericArgList,
     token: &SyntaxToken,
-) -> Option<(hir::GenericDef, usize, bool)> {
+) -> Option<(hir::GenericDef, usize, bool, Option<hir::Variant>)> {
     let parent = generic_arg_list.syntax().parent()?;
+    let mut variant = None;
     let def = match_ast! {
         match parent {
             ast::PathSegment(ps) => {
@@ -91,7 +92,10 @@ pub fn generic_def_for_node(
                     hir::PathResolution::Def(hir::ModuleDef::Trait(it)) => it.into(),
                     hir::PathResolution::Def(hir::ModuleDef::TraitAlias(it)) => it.into(),
                     hir::PathResolution::Def(hir::ModuleDef::TypeAlias(it)) => it.into(),
-                    hir::PathResolution::Def(hir::ModuleDef::Variant(it)) => it.into(),
+                    hir::PathResolution::Def(hir::ModuleDef::Variant(it)) => {
+                        variant = Some(it);
+                        it.parent_enum(sema.db).into()
+                    },
                     hir::PathResolution::Def(hir::ModuleDef::BuiltinType(_))
                     | hir::PathResolution::Def(hir::ModuleDef::Const(_))
                     | hir::PathResolution::Def(hir::ModuleDef::Macro(_))
@@ -134,5 +138,5 @@ pub fn generic_def_for_node(
         .next()
         .map_or(false, |arg| !matches!(arg, ast::GenericArg::LifetimeArg(_)));
 
-    Some((def, active_param, first_arg_is_non_lifetime))
+    Some((def, active_param, first_arg_is_non_lifetime, variant))
 }
