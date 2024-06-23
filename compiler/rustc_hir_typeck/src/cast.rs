@@ -808,7 +808,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         m_src: ty::TypeAndMut<'tcx>,
         m_dst: ty::TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError> {
-        debug!("check_ptr_ptr_cast m_expr={:?} m_cast={:?}", m_src, m_dst);
+        debug!("check_ptr_ptr_cast m_src={m_src:?} m_dst={m_dst:?}");
         // ptr-ptr cast. vtables must match.
 
         let src_kind = fcx.tcx.erase_regions(fcx.pointer_kind(m_src.ty, self.span)?);
