@@ -557,6 +557,11 @@ impl OsString {
     pub(crate) fn as_mut_vec_for_path_buf(&mut self) -> &mut Vec<u8> {
         self.inner.as_mut_vec_for_path_buf()
     }
+
+    #[inline]
+    pub(crate) fn truncate(&mut self, len: usize) {
+        self.inner.truncate(len);
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

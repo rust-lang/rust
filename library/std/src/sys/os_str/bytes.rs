@@ -207,6 +207,11 @@ impl Buf {
     pub(crate) fn as_mut_vec_for_path_buf(&mut self) -> &mut Vec<u8> {
         &mut self.inner
     }
+
+    #[inline]
+    pub(crate) fn truncate(&mut self, len: usize) {
+        self.inner.truncate(len);
+    }
 }
 
 impl Slice {
