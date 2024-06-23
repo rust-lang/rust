@@ -5,6 +5,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::alloc::Layout;
 use crate::clone;
 use crate::cmp;
 use crate::fmt;
@@ -1235,6 +1236,14 @@ pub trait SizedTypeProperties: Sized {
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
     const IS_ZST: bool = size_of::<Self>() == 0;
+
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    const LAYOUT: Layout =
+        // SAFETY: if the type is instantiated, rustc already ensures that its
+        // layout is valid. Use the unchecked constructor to avoid inserting a
+        // panicking codepath that needs to be optimized out.
+        unsafe { Layout::from_size_align_unchecked(size_of::<Self>(), align_of::<Self>()) };
 }
 #[doc(hidden)]
 #[unstable(feature = "sized_type_properties", issue = "none")]
