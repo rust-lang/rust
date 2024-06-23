@@ -760,7 +760,7 @@ impl Module {
                 impl_assoc_items_scratch.clear();
             }
 
-            for &item in &db.impl_data(impl_def.id).items {
+            for &item in db.impl_data(impl_def.id).items.iter() {
                 AssocItem::from(item).diagnostics(db, acc, style_lints);
             }
         }

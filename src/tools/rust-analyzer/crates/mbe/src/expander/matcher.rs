@@ -59,7 +59,7 @@
 //! eof: [a $( a )* a b ·]
 //! ```
 
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use smallvec::{smallvec, SmallVec};
 use span::{Edition, Span};
@@ -315,7 +315,7 @@ struct MatchState<'t> {
     up: Option<Box<MatchState<'t>>>,
 
     /// The separator if we are in a repetition.
-    sep: Option<Separator>,
+    sep: Option<Arc<Separator>>,
 
     /// The KleeneOp of this sequence if we are in a repetition.
     sep_kind: Option<RepeatKind>,
