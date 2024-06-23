@@ -449,6 +449,13 @@ pub(crate) struct GlobDelegationOutsideImpls {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(expand_glob_delegation_traitless_qpath)]
+pub(crate) struct GlobDelegationTraitlessQpath {
+    #[primary_span]
+    pub span: Span,
+}
+
 // This used to be the `proc_macro_back_compat` lint (#83125). It was later
 // turned into a hard error.
 #[derive(Diagnostic)]
