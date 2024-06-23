@@ -18,18 +18,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         from_block: BasicBlock,
         real_target: BasicBlock,
-        imaginary_target: Option<BasicBlock>,
+        imaginary_target: BasicBlock,
         source_info: SourceInfo,
     ) {
-        match imaginary_target {
-            Some(target) if target != real_target => {
-                self.cfg.terminate(
-                    from_block,
-                    source_info,
-                    TerminatorKind::FalseEdge { real_target, imaginary_target: target },
-                );
-            }
-            _ => self.cfg.goto(from_block, source_info, real_target),
+        if imaginary_target != real_target {
+            self.cfg.terminate(
+                from_block,
+                source_info,
+                TerminatorKind::FalseEdge { real_target, imaginary_target },
+            );
+        } else {
+            self.cfg.goto(from_block, source_info, real_target)
         }
     }
 }

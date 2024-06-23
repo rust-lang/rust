@@ -1152,8 +1152,6 @@ struct Candidate<'pat, 'tcx> {
     /// The earliest block that has only candidates >= this one as descendents. Used for false
     /// edges, see the doc for [`Builder::match_expr`].
     false_edge_start_block: Option<BasicBlock>,
-    /// The `false_edge_start_block` of the next candidate.
-    next_candidate_start_block: Option<BasicBlock>,
 }
 
 impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
@@ -1179,7 +1177,6 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
             otherwise_block: None,
             pre_binding_block: None,
             false_edge_start_block: None,
-            next_candidate_start_block: None,
         }
     }
 
@@ -1444,12 +1441,39 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let otherwise_block =
             self.match_candidates(match_start_span, scrutinee_span, block, candidates);
 
-        // Link each leaf candidate to the `false_edge_start_block` of the next one. In the
-        // refutable case we also want a false edge to the failure block.
+        // Set up false edges so that the borrow-checker cannot make use of the specific CFG we
+        // generated. We falsely branch from each candidate to the one below it to make it as if we
+        // were testing match branches one by one in order. In the refutable case we also want a
+        // false edge to the final failure block.
         let mut next_candidate_start_block = if refutable { Some(otherwise_block) } else { None };
         for candidate in candidates.iter_mut().rev() {
+            let has_guard = candidate.has_guard;
             candidate.visit_leaves_rev(|leaf_candidate| {
-                leaf_candidate.next_candidate_start_block = next_candidate_start_block;
+                if let Some(next_candidate_start_block) = next_candidate_start_block {
+                    let source_info = self.source_info(leaf_candidate.extra_data.span);
+                    // Falsely branch to `next_candidate_start_block` before reaching pre_binding.
+                    let old_pre_binding = leaf_candidate.pre_binding_block.unwrap();
+                    let new_pre_binding = self.cfg.start_new_block();
+                    self.false_edges(
+                        old_pre_binding,
+                        new_pre_binding,
+                        next_candidate_start_block,
+                        source_info,
+                    );
+                    leaf_candidate.pre_binding_block = Some(new_pre_binding);
+                    if has_guard {
+                        // Falsely branch to `next_candidate_start_block` also if the guard fails.
+                        let new_otherwise = self.cfg.start_new_block();
+                        let old_otherwise = leaf_candidate.otherwise_block.unwrap();
+                        self.false_edges(
+                            new_otherwise,
+                            old_otherwise,
+                            next_candidate_start_block,
+                            source_info,
+                        );
+                        leaf_candidate.otherwise_block = Some(new_otherwise);
+                    }
+                }
                 assert!(leaf_candidate.false_edge_start_block.is_some());
                 next_candidate_start_block = leaf_candidate.false_edge_start_block;
             });
@@ -2302,20 +2326,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         debug_assert!(candidate.match_pairs.is_empty());
 
-        let candidate_source_info = self.source_info(candidate.extra_data.span);
-
-        let mut block = candidate.pre_binding_block.unwrap();
-
-        if candidate.next_candidate_start_block.is_some() {
-            let fresh_block = self.cfg.start_new_block();
-            self.false_edges(
-                block,
-                fresh_block,
-                candidate.next_candidate_start_block,
-                candidate_source_info,
-            );
-            block = fresh_block;
-        }
+        let block = candidate.pre_binding_block.unwrap();
 
         if candidate.extra_data.is_never {
             // This arm has a dummy body, we don't need to generate code for it. `block` is already
@@ -2382,16 +2393,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(temp));
             }
 
-            let otherwise_block = candidate.otherwise_block.unwrap_or_else(|| {
-                let unreachable = self.cfg.start_new_block();
-                self.cfg.terminate(unreachable, source_info, TerminatorKind::Unreachable);
-                unreachable
-            });
-            self.false_edges(
+            self.cfg.goto(
                 otherwise_post_guard_block,
-                otherwise_block,
-                candidate.next_candidate_start_block,
                 source_info,
+                candidate.otherwise_block.unwrap(),
             );
 
             // We want to ensure that the matched candidates are bound

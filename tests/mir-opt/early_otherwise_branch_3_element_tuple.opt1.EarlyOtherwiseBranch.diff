@@ -52,7 +52,7 @@
   
       bb3: {
           _8 = discriminant((_4.2: std::option::Option<u32>));
-          switchInt(move _8) -> [1: bb6, 0: bb1, otherwise: bb9];
+          switchInt(move _8) -> [1: bb7, 0: bb1, otherwise: bb9];
       }
   
       bb4: {
@@ -62,10 +62,15 @@
   
       bb5: {
           _10 = discriminant((_4.2: std::option::Option<u32>));
-          switchInt(move _10) -> [0: bb7, 1: bb1, otherwise: bb9];
+          switchInt(move _10) -> [0: bb6, 1: bb1, otherwise: bb9];
       }
   
       bb6: {
+          _0 = const 2_u32;
+          goto -> bb8;
+      }
+  
+      bb7: {
           StorageLive(_13);
           _13 = (((_4.0: std::option::Option<u32>) as Some).0: u32);
           StorageLive(_14);
@@ -76,11 +81,6 @@
           StorageDead(_15);
           StorageDead(_14);
           StorageDead(_13);
-          goto -> bb8;
-      }
-  
-      bb7: {
-          _0 = const 2_u32;
           goto -> bb8;
       }
   
