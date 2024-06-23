@@ -51,7 +51,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
         #[rustfmt::skip]
         match link_name.as_str() {
-            // Environment variables
+            // Environment related shims
             "getenv" => {
                 let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.getenv(name)?;
@@ -76,6 +76,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "chdir" => {
                 let [path] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.chdir(path)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "getpid" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false}, link_name, args)?;
+                let result = this.getpid()?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
@@ -582,11 +587,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let (complete, _) = this.write_os_str_to_c_str(OsStr::new(&formatted), buf, buflen)?;
                 let ret = if complete { 0 } else { this.eval_libc_i32("ERANGE") };
                 this.write_int(ret, dest)?;
-            }
-            "getpid" => {
-                let [] = this.check_shim(abi, Abi::C { unwind: false}, link_name, args)?;
-                let result = this.getpid()?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "getentropy" => {
                 // This function is non-standard but exists with the same signature and behavior on
