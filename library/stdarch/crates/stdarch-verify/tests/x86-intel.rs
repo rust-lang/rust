@@ -12,6 +12,9 @@
 )]
 
 use std::collections::{BTreeMap, HashMap};
+use std::fs::File;
+use std::io;
+use std::io::{BufWriter, Write};
 
 use serde::Deserialize;
 
@@ -115,36 +118,42 @@ struct Data {
 struct Intrinsic {
     #[serde(rename = "return")]
     return_: Return,
+    #[serde(rename = "@name")]
     name: String,
+    #[serde(rename = "@tech")]
+    tech: String,
     #[serde(rename = "CPUID", default)]
     cpuid: Vec<String>,
     #[serde(rename = "parameter", default)]
     parameters: Vec<Parameter>,
+    #[serde(rename = "@sequence", default)]
+    generates_sequence: bool,
     #[serde(default)]
     instruction: Vec<Instruction>,
 }
 
 #[derive(Deserialize)]
 struct Parameter {
-    #[serde(rename = "type")]
+    #[serde(rename = "@type")]
     type_: String,
-    #[serde(default)]
+    #[serde(rename = "@etype", default)]
     etype: String,
 }
 
 #[derive(Deserialize)]
 struct Return {
-    #[serde(rename = "type")]
+    #[serde(rename = "@type", default)]
     type_: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct Instruction {
+    #[serde(rename = "@name")]
     name: String,
 }
 
 macro_rules! bail {
-    ($($t:tt)*) => (return Err(format!($($t)*)))
+    ($($t:tt)*) => { return Err(format!($($t)*)) }
 }
 
 #[test]
@@ -155,12 +164,12 @@ fn verify_all_signatures() {
     //   https://software.intel.com/sites/landingpage/IntrinsicsGuide/#
     //
     // Open up the network console and you'll see an xml file was downloaded
-    // (currently called data-3.4.xml). That's the file we downloaded
+    // (currently called data-3.6.8.xml). That's the file we downloaded
     // here.
     let xml = include_bytes!("../x86-intel.xml");
 
     let xml = &xml[..];
-    let data: Data = serde_xml_rs::from_reader(xml).expect("failed to deserialize xml");
+    let data: Data = quick_xml::de::from_reader(xml).expect("failed to deserialize xml");
     let mut map = HashMap::new();
     for intrinsic in &data.intrinsics {
         map.entry(&intrinsic.name[..])
@@ -332,7 +341,7 @@ fn verify_all_signatures() {
             "__get_cpuid_max" |
             // Not listed with intel, but manually verified
             "cmpxchg16b"
-                => continue,
+            => continue,
             // Intel requires the mask argument for _mm_shuffle_ps to be an
             // unsigned integer, but all other _mm_shuffle_.. intrinsics
             // take a signed-integer. This breaks `_MM_SHUFFLE` for
@@ -368,54 +377,56 @@ fn verify_all_signatures() {
     }
     assert!(all_valid);
 
-    let mut missing = BTreeMap::new();
-    for (name, intel) in &map {
-        // currently focused mainly on missing SIMD intrinsics, but there's
-        // definitely some other assorted ones that we're missing.
-        if !name.starts_with("_mm") {
-            continue;
-        }
+    if PRINT_MISSING_LISTS {
+        print_missing(&map, io::stdout()).unwrap();
+    }
+    if PRINT_MISSING_LISTS_MARKDOWN {
+        print_missing(
+            &map,
+            BufWriter::new(File::create("../core_arch/missing-x86.md").unwrap()),
+        )
+        .unwrap();
+    }
+}
 
-        // we'll get to avx-512 later
-        // let avx512 = intel.iter().any(|i| {
-        //     i.name.starts_with("_mm512") || i.cpuid.iter().any(|c| {
-        //         c.contains("512")
-        //     })
-        // });
-        // if avx512 {
-        //     continue
-        // }
-
-        for intel in intel {
-            missing
-                .entry(&intel.cpuid)
-                .or_insert_with(Vec::new)
-                .push(intel);
-        }
+fn print_missing(map: &HashMap<&str, Vec<&Intrinsic>>, mut f: impl Write) -> io::Result<()> {
+    let mut missing = BTreeMap::new(); // BTreeMap to keep the cpuids ordered
+                                       // we cannot use SVML and MMX, and MPX is not in LLVM, and intrinsics without any cpuid requirement
+                                       // are accessible from safe rust
+    for intrinsic in map.values().flatten().filter(|intrinsic| {
+        intrinsic.tech != "SVML"
+            && intrinsic.tech != "MMX"
+            && !intrinsic.cpuid.is_empty()
+            && !intrinsic.cpuid.contains(&"MPX".to_string())
+    }) {
+        missing
+            .entry(&intrinsic.cpuid)
+            .or_insert_with(Vec::new)
+            .push(intrinsic);
     }
 
-    // generate a bulleted list of missing intrinsics
-    if PRINT_MISSING_LISTS || PRINT_MISSING_LISTS_MARKDOWN {
-        for (k, v) in missing {
-            if PRINT_MISSING_LISTS_MARKDOWN {
-                println!("\n<details><summary>{k:?}</summary><p>\n");
-                for intel in v {
-                    let url = format!(
-                        "https://software.intel.com/sites/landingpage\
-                         /IntrinsicsGuide/#text={}&expand=5236",
-                        intel.name
-                    );
-                    println!("  * [ ] [`{}`]({url})", intel.name);
-                }
-                println!("</p></details>\n");
-            } else {
-                println!("\n{k:?}\n");
-                for intel in v {
-                    println!("\t{}", intel.name);
-                }
+    for (k, v) in &mut missing {
+        v.sort_by_key(|intrinsic| &intrinsic.name); // sort to make the order of everything same
+        if PRINT_MISSING_LISTS_MARKDOWN {
+            writeln!(f, "\n<details><summary>{k:?}</summary><p>\n")?;
+            for intel in v {
+                let url = format!(
+                    "https://software.intel.com/sites/landingpage\
+                         /IntrinsicsGuide/#text={}",
+                    intel.name
+                );
+                writeln!(f, "  * [ ] [`{}`]({url})", intel.name)?;
+            }
+            writeln!(f, "</p></details>\n")?;
+        } else {
+            writeln!(f, "\n{k:?}\n")?;
+            for intel in v {
+                writeln!(f, "\t{}", intel.name)?;
             }
         }
     }
+
+    f.flush()
 }
 
 fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
@@ -478,10 +489,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             continue;
         }
 
-        let cpuid = cpuid
-            .chars()
-            .flat_map(|c| c.to_lowercase())
-            .collect::<String>();
+        let cpuid = cpuid.to_lowercase();
 
         // Fix mismatching feature names:
         let fixup_cpuid = |cpuid: String| match cpuid.as_ref() {
@@ -500,17 +508,24 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             // The XML file names VNNI as "avx512_vnni", while Rust calls
             // it "avx512vnni".
             "avx512_vnni" => String::from("avx512vnni"),
-            // Some AVX512f intrinsics are also supported by Knight's Corner.
-            // The XML lists them as avx512f/kncni, but we are solely gating
-            // them behind avx512f since we don't have a KNC feature yet.
-            "avx512f/kncni" => String::from("avx512f"),
-            // See: https://github.com/rust-lang/stdarch/issues/738
-            // The intrinsics guide calls `f16c` `fp16c` in disagreement with
-            // Intel's architecture manuals.
-            "fp16c" => String::from("f16c"),
-            "avx512_bf16" => String::from("avx512bf16"),
-            // The XML file names VNNI as "avx512_bf16", while Rust calls
+            // The XML file names BF16 as "avx512_bf16", while Rust calls
             // it "avx512bf16".
+            "avx512_bf16" => String::from("avx512bf16"),
+            // The XML file names AVX-VNNI as "avx_vnni", while Rust calls
+            // it "avxvnni"
+            "avx_vnni" => String::from("avxvnni"),
+            // The XML file names AVX-VNNI_INT8 as "avx_vnni_int8", while Rust calls
+            // it "avxvnniint8"
+            "avx_vnni_int8" => String::from("avxvnniint8"),
+            // The XML file names AVX-NE-CONVERT as "avx_ne_convert", while Rust calls
+            // it "avxvnni"
+            "avx_ne_convert" => String::from("avxneconvert"),
+            // The XML file names AVX-IFMA as "avx_ifma", while Rust calls
+            // it "avxifma"
+            "avx_ifma" => String::from("avxifma"),
+            // The XML file names AVX-VNNI_INT16 as "avx_vnni_int16", while Rust calls
+            // it "avxvnniint16"
+            "avx_vnni_int16" => String::from("avxvnniint16"),
             _ => cpuid,
         };
         let fixed_cpuid = fixup_cpuid(cpuid);
@@ -519,20 +534,19 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             .target_feature
             .unwrap_or_else(|| panic!("no target feature listed for {}", rust.name));
 
-        if rust_feature.contains(&fixed_cpuid) {
-            continue;
+        if !rust_feature.contains(&fixed_cpuid) {
+            bail!(
+                "intel cpuid `{}` not in `{}` for {}",
+                fixed_cpuid,
+                rust_feature,
+                rust.name
+            );
         }
-        bail!(
-            "intel cpuid `{}` not in `{}` for {}",
-            fixed_cpuid,
-            rust_feature,
-            rust.name
-        )
     }
 
     if PRINT_INSTRUCTION_VIOLATIONS {
         if rust.instrs.is_empty() {
-            if !intel.instruction.is_empty() {
+            if !intel.instruction.is_empty() && !intel.generates_sequence {
                 println!(
                     "instruction not listed for `{}`, but intel lists {:?}",
                     rust.name, intel.instruction
@@ -544,7 +558,10 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         // some extra assertions on our end.
         } else if !intel.instruction.is_empty() {
             for instr in rust.instrs {
-                let asserting = intel.instruction.iter().any(|a| a.name.starts_with(instr));
+                let asserting = intel
+                    .instruction
+                    .iter()
+                    .any(|a| a.name.to_lowercase().starts_with(instr));
                 if !asserting {
                     println!(
                         "intel failed to list `{}` as an instruction for `{}`",
@@ -563,7 +580,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             "{} returns `{}` with intel, void in rust",
             rust.name,
             intel.return_.type_
-        )
+        );
     }
 
     // If there's no arguments on Rust's side intel may list one "void"
@@ -575,7 +592,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
     } else {
         // Otherwise we want all parameters to be exactly the same
         if rust.arguments.len() != intel.parameters.len() {
-            bail!("wrong number of arguments on {}", rust.name)
+            bail!("wrong number of arguments on {}", rust.name);
         }
         for (i, (a, b)) in intel.parameters.iter().zip(rust.arguments).enumerate() {
             let is_const = rust.required_const.contains(&i);
@@ -673,7 +690,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             "intrinsic `{}` uses a 64-bit bare type but may be \
              available on 32-bit platforms",
             rust.name
-        )
+        );
     }
     Ok(())
 }
@@ -700,32 +717,30 @@ fn equate(
         // The _bittest intrinsics claim to only accept immediates but actually
         // accept run-time values as well.
         if !is_const && !intrinsic.starts_with("_bittest") {
-            return bail!("argument required to be const but isn't");
+            bail!("argument required to be const but isn't");
         }
     } else {
         // const int must be an IMM
         assert_ne!(intel, "const int");
         if is_const {
-            return bail!("argument is const but shouldn't be");
+            bail!("argument is const but shouldn't be");
         }
     }
     match (t, &intel[..]) {
         (&Type::PrimFloat(32), "float") => {}
         (&Type::PrimFloat(64), "double") => {}
-        (&Type::PrimSigned(16), "__int16") => {}
-        (&Type::PrimSigned(16), "short") => {}
-        (&Type::PrimSigned(32), "__int32") => {}
-        (&Type::PrimSigned(32), "const int") => {}
-        (&Type::PrimSigned(32), "int") => {}
-        (&Type::PrimSigned(64), "__int64") => {}
-        (&Type::PrimSigned(64), "long long") => {}
-        (&Type::PrimSigned(8), "__int8") => {}
-        (&Type::PrimSigned(8), "char") => {}
-        (&Type::PrimUnsigned(16), "unsigned short") => {}
-        (&Type::PrimUnsigned(32), "unsigned int") => {}
-        (&Type::PrimUnsigned(32), "const unsigned int") => {}
-        (&Type::PrimUnsigned(64), "unsigned __int64") => {}
+        (&Type::PrimSigned(8), "__int8" | "char") => {}
+        (&Type::PrimSigned(16), "__int16" | "short") => {}
+        (&Type::PrimSigned(32), "__int32" | "const int" | "int") => {}
+        (&Type::PrimSigned(64), "__int64" | "long long") => {}
         (&Type::PrimUnsigned(8), "unsigned char") => {}
+        (&Type::PrimUnsigned(16), "unsigned short") => {}
+        (
+            &Type::PrimUnsigned(32),
+            "unsigned __int32" | "unsigned int" | "unsigned long" | "const unsigned int",
+        ) => {}
+        (&Type::PrimUnsigned(64), "unsigned __int64") => {}
+
         (&Type::M64, "__m64") => {}
         (&Type::M128, "__m128") => {}
         (&Type::M128BH, "__m128bh") => {}
@@ -744,26 +759,22 @@ fn equate(
         (&Type::MMASK16, "__mmask16") => {}
         (&Type::MMASK8, "__mmask8") => {}
 
+        (&Type::MutPtr(_), "void*") => {}
         (&Type::MutPtr(&Type::PrimFloat(32)), "float*") => {}
         (&Type::MutPtr(&Type::PrimFloat(64)), "double*") => {}
-        (&Type::MutPtr(&Type::PrimFloat(32)), "void*") => {}
-        (&Type::MutPtr(&Type::PrimFloat(64)), "void*") => {}
-        (&Type::MutPtr(&Type::PrimSigned(32)), "void*") => {}
-        (&Type::MutPtr(&Type::PrimSigned(16)), "void*") => {}
-        (&Type::MutPtr(&Type::PrimSigned(8)), "void*") => {}
-        (&Type::MutPtr(&Type::PrimSigned(32)), "int*") => {}
-        (&Type::MutPtr(&Type::PrimSigned(32)), "__int32*") => {}
-        (&Type::MutPtr(&Type::PrimSigned(64)), "void*") => {}
-        (&Type::MutPtr(&Type::PrimSigned(64)), "__int64*") => {}
         (&Type::MutPtr(&Type::PrimSigned(8)), "char*") => {}
-        (&Type::MutPtr(&Type::PrimUnsigned(16)), "unsigned short*") => {}
-        (&Type::MutPtr(&Type::PrimUnsigned(32)), "unsigned int*") => {}
-        (&Type::MutPtr(&Type::PrimUnsigned(64)), "unsigned __int64*") => {}
-        (&Type::MutPtr(&Type::PrimUnsigned(8)), "void*") => {}
+        (&Type::MutPtr(&Type::PrimSigned(32)), "__int32*" | "int*") => {}
+        (&Type::MutPtr(&Type::PrimSigned(64)), "__int64*") => {}
         (&Type::MutPtr(&Type::PrimUnsigned(8)), "unsigned char*") => {}
-        (&Type::MutPtr(&Type::PrimUnsigned(32)), "__mmask32*") => {}
-        (&Type::MutPtr(&Type::PrimUnsigned(64)), "__mmask64*") => {}
+        (&Type::MutPtr(&Type::PrimUnsigned(16)), "unsigned short*") => {}
+        (&Type::MutPtr(&Type::PrimUnsigned(32)), "unsigned int*" | "unsigned __int32*") => {}
+        (&Type::MutPtr(&Type::PrimUnsigned(64)), "unsigned __int64*") => {}
+
         (&Type::MutPtr(&Type::MMASK8), "__mmask8*") => {}
+        (&Type::MutPtr(&Type::MMASK32), "__mmask32*") => {}
+        (&Type::MutPtr(&Type::MMASK64), "__mmask64*") => {}
+        (&Type::MutPtr(&Type::MMASK16), "__mmask16*") => {}
+
         (&Type::MutPtr(&Type::M64), "__m64*") => {}
         (&Type::MutPtr(&Type::M128), "__m128*") => {}
         (&Type::MutPtr(&Type::M128BH), "__m128bh*") => {}
@@ -778,23 +789,16 @@ fn equate(
         (&Type::MutPtr(&Type::M512I), "__m512i*") => {}
         (&Type::MutPtr(&Type::M512D), "__m512d*") => {}
 
+        (&Type::ConstPtr(_), "void const*") => {}
         (&Type::ConstPtr(&Type::PrimFloat(32)), "float const*") => {}
         (&Type::ConstPtr(&Type::PrimFloat(64)), "double const*") => {}
-        (&Type::ConstPtr(&Type::PrimFloat(32)), "void const*") => {}
-        (&Type::ConstPtr(&Type::PrimFloat(64)), "void const*") => {}
-        (&Type::ConstPtr(&Type::PrimSigned(32)), "int const*") => {}
-        (&Type::ConstPtr(&Type::PrimSigned(32)), "__int32 const*") => {}
-        (&Type::ConstPtr(&Type::PrimSigned(8)), "void const*") => {}
-        (&Type::ConstPtr(&Type::PrimSigned(16)), "void const*") => {}
-        (&Type::ConstPtr(&Type::PrimSigned(32)), "void const*") => {}
-        (&Type::ConstPtr(&Type::PrimSigned(64)), "void const*") => {}
-        (&Type::ConstPtr(&Type::PrimSigned(64)), "__int64 const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(8)), "char const*") => {}
+        (&Type::ConstPtr(&Type::PrimSigned(32)), "__int32 const*" | "int const*") => {}
+        (&Type::ConstPtr(&Type::PrimSigned(64)), "__int64 const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(16)), "unsigned short const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(32)), "unsigned int const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(64)), "unsigned __int64 const*") => {}
-        (&Type::ConstPtr(&Type::PrimUnsigned(8)), "void const*") => {}
-        (&Type::ConstPtr(&Type::PrimUnsigned(32)), "void const*") => {}
+
         (&Type::ConstPtr(&Type::M64), "__m64 const*") => {}
         (&Type::ConstPtr(&Type::M128), "__m128 const*") => {}
         (&Type::ConstPtr(&Type::M128BH), "__m128bh const*") => {}
@@ -808,9 +812,11 @@ fn equate(
         (&Type::ConstPtr(&Type::M512BH), "__m512bh const*") => {}
         (&Type::ConstPtr(&Type::M512I), "__m512i const*") => {}
         (&Type::ConstPtr(&Type::M512D), "__m512d const*") => {}
-        (&Type::ConstPtr(&Type::PrimUnsigned(32)), "__mmask32*") => {}
-        (&Type::ConstPtr(&Type::PrimUnsigned(64)), "__mmask64*") => {}
+
         (&Type::ConstPtr(&Type::MMASK8), "__mmask8*") => {}
+        (&Type::ConstPtr(&Type::MMASK16), "__mmask16*") => {}
+        (&Type::ConstPtr(&Type::MMASK32), "__mmask32*") => {}
+        (&Type::ConstPtr(&Type::MMASK64), "__mmask64*") => {}
 
         (&Type::MM_CMPINT_ENUM, "_MM_CMPINT_ENUM") => {}
         (&Type::MM_MANTISSA_NORM_ENUM, "_MM_MANTISSA_NORM_ENUM") => {}
@@ -839,6 +845,9 @@ fn equate(
                 || intrinsic == "_xrstor64"
                 || intrinsic == "_fxrstor"
                 || intrinsic == "_fxrstor64" => {}
+        // The _mm_stream_load_si128 intrinsic take a mutable pointer in the intrinsics
+        // guide even though they never write through the pointer
+        (&Type::ConstPtr(&Type::M128I), "void*") if intrinsic == "_mm_stream_load_si128" => {}
 
         _ => bail!(
             "failed to equate: `{}` and {:?} for {}",
