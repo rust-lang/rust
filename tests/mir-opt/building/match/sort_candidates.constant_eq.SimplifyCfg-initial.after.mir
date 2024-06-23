@@ -36,11 +36,11 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb3: {
-        falseEdge -> [real: bb17, imaginary: bb2];
+        falseEdge -> [real: bb12, imaginary: bb2];
     }
 
     bb4: {
-        falseEdge -> [real: bb12, imaginary: bb7];
+        falseEdge -> [real: bb15, imaginary: bb7];
     }
 
     bb5: {
@@ -48,7 +48,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb6: {
-        falseEdge -> [real: bb16, imaginary: bb1];
+        falseEdge -> [real: bb13, imaginary: bb1];
     }
 
     bb7: {
@@ -60,7 +60,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb9: {
-        falseEdge -> [real: bb15, imaginary: bb5];
+        falseEdge -> [real: bb14, imaginary: bb5];
     }
 
     bb10: {
@@ -72,14 +72,29 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb12: {
+        _0 = const 4_u32;
+        goto -> bb18;
+    }
+
+    bb13: {
+        _0 = const 3_u32;
+        goto -> bb18;
+    }
+
+    bb14: {
+        _0 = const 2_u32;
+        goto -> bb18;
+    }
+
+    bb15: {
         _6 = &fake shallow (_3.0: &str);
         _7 = &fake shallow (_3.1: bool);
         StorageLive(_10);
         _10 = const true;
-        switchInt(move _10) -> [0: bb14, otherwise: bb13];
+        switchInt(move _10) -> [0: bb17, otherwise: bb16];
     }
 
-    bb13: {
+    bb16: {
         StorageDead(_10);
         FakeRead(ForMatchGuard, _6);
         FakeRead(ForMatchGuard, _7);
@@ -87,24 +102,9 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
         goto -> bb18;
     }
 
-    bb14: {
+    bb17: {
         StorageDead(_10);
         falseEdge -> [real: bb5, imaginary: bb7];
-    }
-
-    bb15: {
-        _0 = const 2_u32;
-        goto -> bb18;
-    }
-
-    bb16: {
-        _0 = const 3_u32;
-        goto -> bb18;
-    }
-
-    bb17: {
-        _0 = const 4_u32;
-        goto -> bb18;
     }
 
     bb18: {
