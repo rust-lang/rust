@@ -35,6 +35,7 @@ Files: compiler/*
        .gitignore
        .gitmodules
        .mailmap
+       .ignore
 Copyright: The Rust Project Developers (see https://thanks.rust-lang.org)
 License: MIT or Apache-2.0
 
