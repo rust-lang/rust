@@ -797,10 +797,9 @@ impl HumanEmitter {
             if let AnnotationType::MultilineStart(depth) = ann.annotation_type {
                 if source_string.chars().take(ann.start_col.display).all(|c| c.is_whitespace()) {
                     let uline = self.underline(ann.is_primary);
-                    let style = uline.style;
                     let chr = uline.multiline_whole_line;
-                    annotations.push((depth, style));
-                    buffer_ops.push((line_offset, width_offset + depth - 1, chr, style));
+                    annotations.push((depth, uline.style));
+                    buffer_ops.push((line_offset, width_offset + depth - 1, chr, uline.style));
                 } else {
                     short_start = false;
                     break;
@@ -1044,18 +1043,16 @@ impl HumanEmitter {
         //   |  _
         for &(pos, annotation) in &annotations_position {
             let underline = self.underline(annotation.is_primary);
-            let chr = underline.multiline_horizontal;
-            let style = underline.style;
             let pos = pos + 1;
             match annotation.annotation_type {
                 AnnotationType::MultilineStart(depth) | AnnotationType::MultilineEnd(depth) => {
                     self.draw_range(
                         buffer,
-                        chr,
+                        underline.multiline_horizontal,
                         line_offset + pos,
                         width_offset + depth,
                         (code_offset + annotation.start_col.display).saturating_sub(left),
-                        style,
+                        underline.style,
                     );
                 }
                 _ if self.teach => {
@@ -1063,7 +1060,7 @@ impl HumanEmitter {
                         line_offset,
                         (code_offset + annotation.start_col.display).saturating_sub(left),
                         (code_offset + annotation.end_col.display).saturating_sub(left),
-                        style,
+                        underline.style,
                         annotation.is_primary,
                     );
                 }
@@ -1084,13 +1081,6 @@ impl HumanEmitter {
         //   | |_
         for &(pos, annotation) in &annotations_position {
             let underline = self.underline(annotation.is_primary);
-            let style = underline.style;
-            let chr = underline.vertical_text_line;
-            let multiline = underline.multiline_vertical;
-            let start = underline.top_left;
-            let corner = underline.bottom_left;
-            let go_left = underline.bottom_right;
-            let end_with_label = underline.multiline_bottom_right_with_text;
             let pos = pos + 1;
 
             if pos > 1 && (annotation.has_label() || annotation.takes_space()) {
@@ -1099,15 +1089,15 @@ impl HumanEmitter {
                         buffer.putc(
                             p,
                             (code_offset + annotation.start_col.display).saturating_sub(left),
-                            multiline,
-                            style,
+                            underline.multiline_vertical,
+                            underline.style,
                         );
                     } else {
                         buffer.putc(
                             p,
                             (code_offset + annotation.start_col.display).saturating_sub(left),
-                            chr,
-                            style,
+                            underline.vertical_text_line,
+                            underline.style,
                         );
                     }
                 }
@@ -1115,8 +1105,8 @@ impl HumanEmitter {
                     buffer.putc(
                         line_offset + pos,
                         (code_offset + annotation.start_col.display).saturating_sub(left),
-                        go_left,
-                        style,
+                        underline.bottom_right,
+                        underline.style,
                     );
                 }
                 if let AnnotationType::MultilineEnd(_) = annotation.annotation_type
@@ -1125,23 +1115,43 @@ impl HumanEmitter {
                     buffer.putc(
                         line_offset + pos,
                         (code_offset + annotation.start_col.display).saturating_sub(left),
-                        end_with_label,
-                        style,
+                        underline.multiline_bottom_right_with_text,
+                        underline.style,
                     );
                 }
             }
             match annotation.annotation_type {
                 AnnotationType::MultilineStart(depth) => {
-                    buffer.putc(line_offset + pos, width_offset + depth - 1, start, style);
+                    buffer.putc(
+                        line_offset + pos,
+                        width_offset + depth - 1,
+                        underline.top_left,
+                        underline.style,
+                    );
                     for p in line_offset + pos + 1..line_offset + line_len + 2 {
-                        buffer.putc(p, width_offset + depth - 1, multiline, style);
+                        buffer.putc(
+                            p,
+                            width_offset + depth - 1,
+                            underline.multiline_vertical,
+                            underline.style,
+                        );
                     }
                 }
                 AnnotationType::MultilineEnd(depth) => {
                     for p in line_offset..line_offset + pos {
-                        buffer.putc(p, width_offset + depth - 1, multiline, style);
+                        buffer.putc(
+                            p,
+                            width_offset + depth - 1,
+                            underline.multiline_vertical,
+                            underline.style,
+                        );
                     }
-                    buffer.putc(line_offset + pos, width_offset + depth - 1, corner, style);
+                    buffer.putc(
+                        line_offset + pos,
+                        width_offset + depth - 1,
+                        underline.bottom_left,
+                        underline.style,
+                    );
                 }
                 _ => (),
             }
@@ -1197,18 +1207,13 @@ impl HumanEmitter {
         //   |  _^  test
         for &(pos, annotation) in &annotations_position {
             let uline = self.underline(annotation.is_primary);
-            let style = uline.style;
-            let underline = uline.underline;
-            let labeled_start = uline.label_start;
-            let flat_start = uline.top_right_flat;
-            let vertical_start = uline.multiline_start_down;
             for p in annotation.start_col.display..annotation.end_col.display {
                 // The default span label underline.
                 buffer.putc(
                     line_offset + 1,
                     (code_offset + p).saturating_sub(left),
-                    underline,
-                    style,
+                    uline.underline,
+                    uline.style,
                 );
             }
 
@@ -1222,8 +1227,8 @@ impl HumanEmitter {
                 buffer.putc(
                     line_offset + 1,
                     (code_offset + annotation.start_col.display).saturating_sub(left),
-                    flat_start,
-                    style,
+                    uline.top_right_flat,
+                    uline.style,
                 );
             } else if pos != 0
                 && matches!(
@@ -1236,16 +1241,16 @@ impl HumanEmitter {
                 buffer.putc(
                     line_offset + 1,
                     (code_offset + annotation.start_col.display).saturating_sub(left),
-                    vertical_start,
-                    style,
+                    uline.multiline_start_down,
+                    uline.style,
                 );
             } else if pos != 0 && annotation.has_label() {
                 // The beginning of a span label with an actual label, we'll point down.
                 buffer.putc(
                     line_offset + 1,
                     (code_offset + annotation.start_col.display).saturating_sub(left),
-                    labeled_start,
-                    style,
+                    uline.label_start,
+                    uline.style,
                 );
             }
         }
