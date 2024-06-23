@@ -643,8 +643,7 @@ impl<'tcx> ThreadManager<'tcx> {
         if !self.threads[joined_thread_id].state.is_terminated() {
             trace!(
                 "{:?} blocked on {:?} when trying to join",
-                self.active_thread,
-                joined_thread_id
+                self.active_thread, joined_thread_id
             );
             // The joined thread is still running, we need to wait for it.
             // Unce we get unblocked, perform the appropriate synchronization.
