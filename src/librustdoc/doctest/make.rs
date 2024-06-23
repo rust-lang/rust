@@ -43,14 +43,8 @@ impl DocTestBuilder {
         // If `test_id` is `None`, it means we're generating code for a code example "run" link.
         test_id: Option<String>,
     ) -> Self {
-        let SourceInfo {
-            crate_attrs,
-            maybe_crate_attrs,
-            crates,
-            everything_else,
-            has_features,
-            has_no_std,
-        } = partition_source(source, edition);
+        let SourceInfo { crate_attrs, maybe_crate_attrs, crates, everything_else } =
+            partition_source(source, edition);
 
         // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
         // crate already is included.
@@ -92,9 +86,8 @@ impl DocTestBuilder {
         // others. Same if it contains `#[feature]` or `#[no_std]`.
         let can_be_merged = can_merge_doctests
             && !failed_ast
-            && !has_no_std
-            && !has_features
             && !has_global_allocator
+            && crate_attrs.is_empty()
             // If this is a merged doctest and a defined macro uses `$crate`, then the path will
             // not work, so better not put it into merged doctests.
             && !(has_macro_def && everything_else.contains("$crate"));
@@ -427,8 +420,6 @@ fn check_for_main_and_extern_crate(
 enum AttrKind {
     CrateAttr,
     Attr,
-    Feature,
-    NoStd,
 }
 
 /// Returns `Some` if the attribute is complete and `Some(true)` if it is an attribute that can be
@@ -473,11 +464,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> Option<AttrKind>
                 Ok(attr) => {
                     let attr_name = attr.name_or_empty();
 
-                    if attr_name == sym::feature {
-                        Some(AttrKind::Feature)
-                    } else if attr_name == sym::no_std {
-                        Some(AttrKind::NoStd)
-                    } else if not_crate_attrs.contains(&attr_name) {
+                    if not_crate_attrs.contains(&attr_name) {
                         // There is one exception to these attributes:
                         // `#![allow(internal_features)]`. If this attribute is used, we need to
                         // consider it only as a crate-level attribute.
@@ -511,14 +498,6 @@ fn handle_attr(mod_attr_pending: &mut String, source_info: &mut SourceInfo, edit
         let push_to = match attr_kind {
             AttrKind::CrateAttr => &mut source_info.crate_attrs,
             AttrKind::Attr => &mut source_info.maybe_crate_attrs,
-            AttrKind::Feature => {
-                source_info.has_features = true;
-                &mut source_info.crate_attrs
-            }
-            AttrKind::NoStd => {
-                source_info.has_no_std = true;
-                &mut source_info.crate_attrs
-            }
         };
         push_to.push_str(mod_attr_pending);
         push_to.push('\n');
@@ -535,8 +514,6 @@ struct SourceInfo {
     maybe_crate_attrs: String,
     crates: String,
     everything_else: String,
-    has_features: bool,
-    has_no_std: bool,
 }
 
 fn partition_source(s: &str, edition: Edition) -> SourceInfo {
