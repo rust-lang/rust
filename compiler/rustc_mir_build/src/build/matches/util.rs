@@ -70,7 +70,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 ///    a MIR pass run after borrow checking.
 pub(super) fn collect_fake_borrows<'tcx>(
     cx: &mut Builder<'_, 'tcx>,
-    candidates: &[&mut Candidate<'_, 'tcx>],
+    candidates: &[Candidate<'_, 'tcx>],
     temp_span: Span,
     scrutinee_base: PlaceBase,
 ) -> Vec<(Place<'tcx>, Local, FakeBorrowKind)> {

@@ -366,28 +366,37 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let scrutinee_place =
             unpack!(block = self.lower_scrutinee(block, scrutinee_id, scrutinee_span));
 
-        let mut arm_candidates = self.create_match_candidates(&scrutinee_place, arms);
-
-        let match_has_guard = arm_candidates.iter().any(|(_, candidate)| candidate.has_guard);
-        let mut candidates =
-            arm_candidates.iter_mut().map(|(_, candidate)| candidate).collect::<Vec<_>>();
-
-        let match_start_span = span.shrink_to_lo().to(scrutinee_span);
+        let arms = arms.iter().map(|arm| &self.thir[*arm]);
+        // Assemble the initial list of candidates. These top-level candidates are 1:1 with the
+        // original match arms, but other parts of match lowering also introduce subcandidates (for
+        // sub-or-patterns). So inside the algorithm, the candidates list may not correspond to
+        // match arms directly.
+        let candidates: Vec<_> = arms
+            .clone()
+            .map(|arm| {
+                let arm_has_guard = arm.guard.is_some();
+                let arm_candidate =
+                    Candidate::new(scrutinee_place.clone(), &arm.pattern, arm_has_guard, self);
+                arm_candidate
+            })
+            .collect();
 
         // The set of places that we are creating fake borrows of. If there are no match guards then
         // we don't need any fake borrows, so don't track them.
+        let match_has_guard = candidates.iter().any(|candidate| candidate.has_guard);
         let fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)> = if match_has_guard {
             util::collect_fake_borrows(self, &candidates, scrutinee_span, scrutinee_place.base())
         } else {
             Vec::new()
         };
 
-        self.lower_match_tree(
+        let match_start_span = span.shrink_to_lo().to(scrutinee_span);
+        let built_tree = self.lower_match_tree(
             block,
             scrutinee_span,
             &scrutinee_place,
             match_start_span,
-            &mut candidates,
+            candidates,
             false,
         );
 
@@ -395,7 +404,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             destination,
             scrutinee_place,
             scrutinee_span,
-            arm_candidates,
+            arms,
+            built_tree.branches,
             self.source_info(span),
             fake_borrow_temps,
         )
@@ -417,51 +427,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block.and(scrutinee_place_builder)
     }
 
-    /// Create the initial `Candidate`s for a `match` expression.
-    fn create_match_candidates<'pat>(
-        &mut self,
-        scrutinee: &PlaceBuilder<'tcx>,
-        arms: &'pat [ArmId],
-    ) -> Vec<(&'pat Arm<'tcx>, Candidate<'pat, 'tcx>)>
-    where
-        'a: 'pat,
-    {
-        // Assemble the initial list of candidates. These top-level candidates
-        // are 1:1 with the original match arms, but other parts of match
-        // lowering also introduce subcandidates (for subpatterns), and will
-        // also flatten candidates in some cases. So in general a list of
-        // candidates does _not_ necessarily correspond to a list of arms.
-        arms.iter()
-            .copied()
-            .map(|arm| {
-                let arm = &self.thir[arm];
-                let arm_has_guard = arm.guard.is_some();
-                let arm_candidate =
-                    Candidate::new(scrutinee.clone(), &arm.pattern, arm_has_guard, self);
-                (arm, arm_candidate)
-            })
-            .collect()
-    }
-
     /// Lower the bindings, guards and arm bodies of a `match` expression.
     ///
     /// The decision tree should have already been created
     /// (by [Builder::lower_match_tree]).
     ///
     /// `outer_source_info` is the SourceInfo for the whole match.
-    fn lower_match_arms(
+    fn lower_match_arms<'pat>(
         &mut self,
         destination: Place<'tcx>,
         scrutinee_place_builder: PlaceBuilder<'tcx>,
         scrutinee_span: Span,
-        arm_candidates: Vec<(&'_ Arm<'tcx>, Candidate<'_, 'tcx>)>,
+        arms: impl IntoIterator<Item = &'pat Arm<'tcx>>,
+        lowered_branches: impl IntoIterator<Item = MatchTreeBranch<'tcx>>,
         outer_source_info: SourceInfo,
         fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)>,
-    ) -> BlockAnd<()> {
-        let arm_end_blocks: Vec<BasicBlock> = arm_candidates
+    ) -> BlockAnd<()>
+    where
+        'tcx: 'pat,
+    {
+        let arm_end_blocks: Vec<BasicBlock> = arms
             .into_iter()
-            .map(|(arm, candidate)| {
-                debug!("lowering arm {:?}\ncandidate = {:?}", arm, candidate);
+            .zip(lowered_branches)
+            .map(|(arm, branch)| {
+                debug!("lowering arm {:?}\ncorresponding branch = {:?}", arm, branch);
 
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
@@ -494,7 +483,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let arm_block = this.bind_pattern(
                         outer_source_info,
-                        candidate,
+                        branch,
                         &fake_borrow_temps,
                         scrutinee_span,
                         Some((arm, match_scope)),
@@ -548,18 +537,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bind_pattern(
         &mut self,
         outer_source_info: SourceInfo,
-        candidate: Candidate<'_, 'tcx>,
+        branch: MatchTreeBranch<'tcx>,
         fake_borrow_temps: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
         emit_storage_live: EmitStorageLive,
     ) -> BasicBlock {
-        if candidate.subcandidates.is_empty() {
-            // Avoid generating another `BasicBlock` when we only have one
-            // candidate.
+        if branch.sub_branches.len() == 1 {
+            let [sub_branch] = branch.sub_branches.try_into().unwrap();
+            // Avoid generating another `BasicBlock` when we only have one sub branch.
             self.bind_and_guard_matched_candidate(
-                candidate,
-                &[],
+                sub_branch,
                 fake_borrow_temps,
                 scrutinee_span,
                 arm_match_scope,
@@ -587,35 +575,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // We keep a stack of all of the bindings and type ascriptions
             // from the parent candidates that we visit, that also need to
             // be bound for each candidate.
-            traverse_candidate(
-                candidate,
-                &mut Vec::new(),
-                &mut |leaf_candidate, parent_data| {
-                    if let Some(arm) = arm {
-                        self.clear_top_scope(arm.scope);
-                    }
-                    let binding_end = self.bind_and_guard_matched_candidate(
-                        leaf_candidate,
-                        parent_data,
-                        fake_borrow_temps,
-                        scrutinee_span,
-                        arm_match_scope,
-                        schedule_drops,
-                        emit_storage_live,
-                    );
-                    if arm.is_none() {
-                        schedule_drops = ScheduleDrops::No;
-                    }
-                    self.cfg.goto(binding_end, outer_source_info, target_block);
-                },
-                |inner_candidate, parent_data| {
-                    parent_data.push(inner_candidate.extra_data);
-                    inner_candidate.subcandidates.into_iter()
-                },
-                |parent_data| {
-                    parent_data.pop();
-                },
-            );
+            for sub_branch in branch.sub_branches {
+                if let Some(arm) = arm {
+                    self.clear_top_scope(arm.scope);
+                }
+                let binding_end = self.bind_and_guard_matched_candidate(
+                    sub_branch,
+                    fake_borrow_temps,
+                    scrutinee_span,
+                    arm_match_scope,
+                    schedule_drops,
+                    emit_storage_live,
+                );
+                if arm.is_none() {
+                    schedule_drops = ScheduleDrops::No;
+                }
+                self.cfg.goto(binding_end, outer_source_info, target_block);
+            }
 
             target_block
         }
@@ -761,17 +737,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        self.lower_match_tree(
+        let built_tree = self.lower_match_tree(
             block,
             irrefutable_pat.span,
             &initializer,
             irrefutable_pat.span,
-            &mut [&mut candidate],
+            vec![candidate],
             false,
         );
+        let [branch] = built_tree.branches.try_into().unwrap();
+
         self.bind_pattern(
             self.source_info(irrefutable_pat.span),
-            candidate,
+            branch,
             &[],
             irrefutable_pat.span,
             None,
@@ -1417,6 +1395,98 @@ pub(crate) struct ArmHasGuard(pub(crate) bool);
 ///////////////////////////////////////////////////////////////////////////
 // Main matching algorithm
 
+/// A sub-branch in the output of match lowering. Match lowering has generated MIR code that will
+/// branch to `success_block` when the matched value matches the corresponding pattern. If there is
+/// a guard, its failure must continue to `otherwise_block`, which will resume testing patterns.
+#[derive(Debug)]
+struct MatchTreeSubBranch<'tcx> {
+    span: Span,
+    /// The block that is branched to if the corresponding subpattern matches.
+    success_block: BasicBlock,
+    /// The block to branch to if this arm had a guard and the guard fails.
+    otherwise_block: BasicBlock,
+    /// The bindings to set up in this sub-branch.
+    bindings: Vec<Binding<'tcx>>,
+    /// The ascriptions to set up in this sub-branch.
+    ascriptions: Vec<Ascription<'tcx>>,
+    /// Whether the sub-branch corresponds to a never pattern.
+    is_never: bool,
+}
+
+/// A branch in the output of match lowering.
+#[derive(Debug)]
+struct MatchTreeBranch<'tcx> {
+    sub_branches: Vec<MatchTreeSubBranch<'tcx>>,
+}
+
+/// The result of generating MIR for a pattern-matching expression. Each input branch/arm/pattern
+/// gives rise to an output `MatchTreeBranch`. If one of the patterns matches, we branch to the
+/// corresponding `success_block`. If none of the patterns matches, we branch to `otherwise_block`.
+///
+/// Each branch is made of one of more sub-branches, corresponding to or-patterns. E.g.
+/// ```ignore(illustrative)
+/// match foo {
+///     (x, false) | (false, x) => {}
+///     (true, true) => {}
+/// }
+/// ```
+/// Here the first arm gives the first `MatchTreeBranch`, which has two sub-branches, one for each
+/// alternative of the or-pattern. They are kept separate because each needs to bind `x` to a
+/// different place.
+#[derive(Debug)]
+struct BuiltMatchTree<'tcx> {
+    branches: Vec<MatchTreeBranch<'tcx>>,
+    otherwise_block: BasicBlock,
+}
+
+impl<'tcx> MatchTreeSubBranch<'tcx> {
+    fn from_sub_candidate(
+        candidate: Candidate<'_, 'tcx>,
+        parent_data: &Vec<PatternExtraData<'tcx>>,
+    ) -> Self {
+        debug_assert!(candidate.match_pairs.is_empty());
+        MatchTreeSubBranch {
+            span: candidate.extra_data.span,
+            success_block: candidate.pre_binding_block.unwrap(),
+            otherwise_block: candidate.otherwise_block.unwrap(),
+            bindings: parent_data
+                .iter()
+                .flat_map(|d| &d.bindings)
+                .chain(&candidate.extra_data.bindings)
+                .cloned()
+                .collect(),
+            ascriptions: parent_data
+                .iter()
+                .flat_map(|d| &d.ascriptions)
+                .cloned()
+                .chain(candidate.extra_data.ascriptions)
+                .collect(),
+            is_never: candidate.extra_data.is_never,
+        }
+    }
+}
+
+impl<'tcx> MatchTreeBranch<'tcx> {
+    fn from_candidate(candidate: Candidate<'_, 'tcx>) -> Self {
+        let mut sub_branches = Vec::new();
+        traverse_candidate(
+            candidate,
+            &mut Vec::new(),
+            &mut |candidate: Candidate<'_, '_>, parent_data: &mut Vec<PatternExtraData<'_>>| {
+                sub_branches.push(MatchTreeSubBranch::from_sub_candidate(candidate, parent_data));
+            },
+            |inner_candidate, parent_data| {
+                parent_data.push(inner_candidate.extra_data);
+                inner_candidate.subcandidates.into_iter()
+            },
+            |parent_data| {
+                parent_data.pop();
+            },
+        );
+        MatchTreeBranch { sub_branches }
+    }
+}
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// The entrypoint of the matching algorithm. Create the decision tree for the match expression,
     /// starting from `block`.
@@ -1433,13 +1503,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         scrutinee_place_builder: &PlaceBuilder<'tcx>,
         match_start_span: Span,
-        candidates: &mut [&mut Candidate<'pat, 'tcx>],
+        mut candidates: Vec<Candidate<'pat, 'tcx>>,
         refutable: bool,
-    ) -> BasicBlock {
+    ) -> BuiltMatchTree<'tcx> {
         // This will generate code to test scrutinee_place and branch to the appropriate arm block.
-        // See the doc comment on `match_candidates` for why we have an otherwise block.
+        // If none of the arms match, we branch to `otherwise_block`. When lowering a `match`
+        // expression, exhaustiveness checking ensures that this block is unreachable.
+        let mut candidate_refs = candidates.iter_mut().collect::<Vec<_>>();
         let otherwise_block =
-            self.match_candidates(match_start_span, scrutinee_span, block, candidates);
+            self.match_candidates(match_start_span, scrutinee_span, block, &mut candidate_refs);
 
         // Set up false edges so that the borrow-checker cannot make use of the specific CFG we
         // generated. We falsely branch from each candidate to the one below it to make it as if we
@@ -1509,7 +1581,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.cfg.terminate(otherwise_block, source_info, TerminatorKind::Unreachable);
         }
 
-        otherwise_block
+        BuiltMatchTree {
+            branches: candidates.into_iter().map(MatchTreeBranch::from_candidate).collect(),
+            otherwise_block,
+        }
     }
 
     /// The main match algorithm. It begins with a set of candidates `candidates` and has the job of
@@ -2259,17 +2334,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         let expr_span = self.thir[expr_id].span;
         let scrutinee = unpack!(block = self.lower_scrutinee(block, expr_id, expr_span));
-        let mut candidate = Candidate::new(scrutinee.clone(), pat, false, self);
-        let otherwise_block = self.lower_match_tree(
-            block,
-            expr_span,
-            &scrutinee,
-            pat.span,
-            &mut [&mut candidate],
-            true,
-        );
+        let candidate = Candidate::new(scrutinee.clone(), pat, false, self);
+        let built_tree =
+            self.lower_match_tree(block, expr_span, &scrutinee, pat.span, vec![candidate], true);
+        let [branch] = built_tree.branches.try_into().unwrap();
 
-        self.break_for_else(otherwise_block, self.source_info(expr_span));
+        self.break_for_else(built_tree.otherwise_block, self.source_info(expr_span));
 
         match declare_let_bindings {
             DeclareLetBindings::Yes => {
@@ -2291,7 +2361,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let success = self.bind_pattern(
             self.source_info(pat.span),
-            candidate,
+            branch,
             &[],
             expr_span,
             None,
@@ -2299,7 +2369,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
 
         // If branch coverage is enabled, record this branch.
-        self.visit_coverage_conditional_let(pat, success, otherwise_block);
+        self.visit_coverage_conditional_let(pat, success, built_tree.otherwise_block);
 
         success.unit()
     }
@@ -2312,39 +2382,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Note: we do not check earlier that if there is a guard,
     /// there cannot be move bindings. We avoid a use-after-move by only
     /// moving the binding once the guard has evaluated to true (see below).
-    fn bind_and_guard_matched_candidate<'pat>(
+    fn bind_and_guard_matched_candidate(
         &mut self,
-        candidate: Candidate<'pat, 'tcx>,
-        parent_data: &[PatternExtraData<'tcx>],
+        sub_branch: MatchTreeSubBranch<'tcx>,
         fake_borrows: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
         schedule_drops: ScheduleDrops,
         emit_storage_live: EmitStorageLive,
     ) -> BasicBlock {
-        debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
+        debug!("bind_and_guard_matched_candidate(subbranch={:?})", sub_branch);
 
-        debug_assert!(candidate.match_pairs.is_empty());
+        let block = sub_branch.success_block;
 
-        let block = candidate.pre_binding_block.unwrap();
-
-        if candidate.extra_data.is_never {
+        if sub_branch.is_never {
             // This arm has a dummy body, we don't need to generate code for it. `block` is already
             // unreachable (except via false edge).
-            let source_info = self.source_info(candidate.extra_data.span);
+            let source_info = self.source_info(sub_branch.span);
             self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
             return self.cfg.start_new_block();
         }
 
-        let ascriptions = parent_data
-            .iter()
-            .flat_map(|d| &d.ascriptions)
-            .cloned()
-            .chain(candidate.extra_data.ascriptions);
-        let bindings =
-            parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings);
-
-        self.ascribe_types(block, ascriptions);
+        self.ascribe_types(block, sub_branch.ascriptions);
 
         // Lower an instance of the arm guard (if present) for this candidate,
         // and then perform bindings for the arm body.
@@ -2355,9 +2414,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Bindings for guards require some extra handling to automatically
             // insert implicit references/dereferences.
-            self.bind_matched_candidate_for_guard(block, schedule_drops, bindings.clone());
+            self.bind_matched_candidate_for_guard(
+                block,
+                schedule_drops,
+                sub_branch.bindings.iter(),
+            );
             let guard_frame = GuardFrame {
-                locals: bindings.clone().map(|b| GuardFrameLocal::new(b.var_id)).collect(),
+                locals: sub_branch
+                    .bindings
+                    .iter()
+                    .map(|b| GuardFrameLocal::new(b.var_id))
+                    .collect(),
             };
             debug!("entering guard building context: {:?}", guard_frame);
             self.guard_context.push(guard_frame);
@@ -2393,11 +2460,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(temp));
             }
 
-            self.cfg.goto(
-                otherwise_post_guard_block,
-                source_info,
-                candidate.otherwise_block.unwrap(),
-            );
+            self.cfg.goto(otherwise_post_guard_block, source_info, sub_branch.otherwise_block);
 
             // We want to ensure that the matched candidates are bound
             // after we have confirmed this candidate *and* any
@@ -2425,8 +2488,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // ```
             //
             // and that is clearly not correct.
-            let by_value_bindings =
-                bindings.filter(|binding| matches!(binding.binding_mode.0, ByRef::No));
+            let by_value_bindings = sub_branch
+                .bindings
+                .iter()
+                .filter(|binding| matches!(binding.binding_mode.0, ByRef::No));
             // Read all of the by reference bindings to ensure that the
             // place they refer to can't be modified by the guard.
             for binding in by_value_bindings.clone() {
@@ -2454,7 +2519,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.bind_matched_candidate_for_arm_body(
                 block,
                 schedule_drops,
-                bindings,
+                sub_branch.bindings.iter(),
                 emit_storage_live,
             );
             block
