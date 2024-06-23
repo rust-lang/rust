@@ -83,8 +83,18 @@ mod guard {
             pub(super) use windows::enable;
         } else if #[cfg(any(
             all(target_family = "wasm", target_feature = "atomics"),
-            target_os = "hermit",
         ))] {
+            pub(super) fn enable() {
+                // FIXME: Right now there is no concept of "thread exit", but
+                // this is likely going to show up at some point in the form of
+                // an exported symbol that the wasm runtime is going to be
+                // expected to call. For now we just leak everything, but if
+                // such a function starts to exist it will probably need to
+                // iterate the destructor list with this function:
+                #[allow(unused)]
+                use super::destructors::run;
+            }
+        } else if #[cfg(target_os = "hermit")] {
             pub(super) fn enable() {}
         } else if #[cfg(target_os = "solid_asp3")] {
             mod solid;
@@ -105,7 +115,11 @@ mod guard {
 pub(crate) mod key {
     cfg_if::cfg_if! {
         if #[cfg(any(
-            all(not(target_vendor = "apple"), target_family = "unix"),
+            all(
+                not(target_vendor = "apple"),
+                not(target_family = "wasm"),
+                target_family = "unix",
+            ),
             target_os = "teeos",
         ))] {
             mod racy;
