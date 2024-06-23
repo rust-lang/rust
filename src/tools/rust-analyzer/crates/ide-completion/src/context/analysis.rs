@@ -1334,7 +1334,7 @@ fn pattern_context_for(
         .map_or((PatternRefutability::Irrefutable, false), |node| {
             let refutability = match_ast! {
                 match node {
-                    ast::LetStmt(let_) => return (PatternRefutability::Irrefutable, let_.ty().is_some()),
+                    ast::LetStmt(let_) => return (PatternRefutability::Refutable, let_.ty().is_some()),
                     ast::Param(param) => {
                         let has_type_ascription = param.ty().is_some();
                         param_ctx = (|| {
