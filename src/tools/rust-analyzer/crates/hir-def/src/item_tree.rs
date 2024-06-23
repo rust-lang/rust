@@ -616,24 +616,30 @@ impl Index<RawVisibilityId> for ItemTree {
     type Output = RawVisibility;
     fn index(&self, index: RawVisibilityId) -> &Self::Output {
         static VIS_PUB: RawVisibility = RawVisibility::Public;
-        static VIS_PRIV_IMPLICIT: RawVisibility = RawVisibility::Module(
-            ModPath::from_kind(PathKind::SELF),
-            VisibilityExplicitness::Implicit,
-        );
-        static VIS_PRIV_EXPLICIT: RawVisibility = RawVisibility::Module(
-            ModPath::from_kind(PathKind::SELF),
-            VisibilityExplicitness::Explicit,
-        );
-        static VIS_PUB_CRATE: RawVisibility = RawVisibility::Module(
-            ModPath::from_kind(PathKind::Crate),
-            VisibilityExplicitness::Explicit,
-        );
+        static VIS_PRIV_IMPLICIT: OnceCell<RawVisibility> = OnceCell::new();
+        static VIS_PRIV_EXPLICIT: OnceCell<RawVisibility> = OnceCell::new();
+        static VIS_PUB_CRATE: OnceCell<RawVisibility> = OnceCell::new();
 
         match index {
-            RawVisibilityId::PRIV_IMPLICIT => &VIS_PRIV_IMPLICIT,
-            RawVisibilityId::PRIV_EXPLICIT => &VIS_PRIV_EXPLICIT,
+            RawVisibilityId::PRIV_IMPLICIT => VIS_PRIV_IMPLICIT.get_or_init(|| {
+                RawVisibility::Module(
+                    Interned::new(ModPath::from_kind(PathKind::SELF)),
+                    VisibilityExplicitness::Implicit,
+                )
+            }),
+            RawVisibilityId::PRIV_EXPLICIT => VIS_PRIV_EXPLICIT.get_or_init(|| {
+                RawVisibility::Module(
+                    Interned::new(ModPath::from_kind(PathKind::SELF)),
+                    VisibilityExplicitness::Explicit,
+                )
+            }),
             RawVisibilityId::PUB => &VIS_PUB,
-            RawVisibilityId::PUB_CRATE => &VIS_PUB_CRATE,
+            RawVisibilityId::PUB_CRATE => VIS_PUB_CRATE.get_or_init(|| {
+                RawVisibility::Module(
+                    Interned::new(ModPath::from_kind(PathKind::Crate)),
+                    VisibilityExplicitness::Explicit,
+                )
+            }),
             _ => &self.data().vis.arena[Idx::from_raw(index.0.into())],
         }
     }
