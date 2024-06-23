@@ -61,6 +61,14 @@ pub fn target() -> String {
     env_var("TARGET")
 }
 
+/// `AR`
+#[track_caller]
+#[must_use]
+pub fn ar_command() -> Command {
+    let ar_path = env_var("AR");
+    Command::new(ar_path)
+}
+
 /// Check if target is windows-like.
 #[must_use]
 pub fn is_windows() -> bool {
