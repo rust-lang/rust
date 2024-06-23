@@ -1511,15 +1511,14 @@ impl PathBuf {
         // truncate until right after the file stem
         let end_file_stem = file_stem[file_stem.len()..].as_ptr().addr();
         let start = self.inner.as_encoded_bytes().as_ptr().addr();
-        let v = self.as_mut_vec();
-        v.truncate(end_file_stem.wrapping_sub(start));
+        self.inner.truncate(end_file_stem.wrapping_sub(start));
 
         // add the new extension, if any
-        let new = extension.as_encoded_bytes();
+        let new = extension;
         if !new.is_empty() {
-            v.reserve_exact(new.len() + 1);
-            v.push(b'.');
-            v.extend_from_slice(new);
+            self.inner.reserve_exact(new.len() + 1);
+            self.inner.push(OsStr::new("."));
+            self.inner.push(new);
         }
 
         true
