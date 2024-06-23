@@ -32,6 +32,8 @@ use super::FnCtxt;
 
 use crate::errors;
 use crate::type_error_struct;
+use itertools::Itertools;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{codes::*, Applicability, Diag, ErrorGuaranteed};
 use rustc_hir::{self as hir, ExprKind, LangItem};
 use rustc_infer::traits::Obligation;
@@ -827,15 +829,16 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             // trait object -> trait object? need to do additional checks
             (Some(PointerKind::VTable(src_tty)), Some(PointerKind::VTable(dst_tty))) => {
                 match (src_tty.principal(), dst_tty.principal()) {
-                    // A<dyn Trait + Auto> -> B<dyn Trait' + Auto'>. need to make sure
-                    // - traits are the same
+                    // A<dyn Src<...> + SrcAuto> -> B<dyn Dst<...> + DstAuto>. need to make sure
+                    // - `Src` and `Dst` traits are the same
                     // - traits have the same generic arguments
-                    // - Auto' is a subset of Auto
+                    // - `SrcAuto` is a superset of `DstAuto`
                     (Some(src_principal), Some(dst_principal)) => {
                         let tcx = fcx.tcx;
 
                         // Check that the traits are actually the same
                         // (this is required as the `Unsize` check below would allow upcasting, etc)
+                        // N.B.: this is only correct as long as we don't support `trait A<T>: A<()>`.
                         if src_principal.def_id() != dst_principal.def_id() {
                             return Err(CastError::DifferingKinds);
                         }
@@ -845,18 +848,24 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         // contain wrappers, which we do not care about.
                         //
                         // e.g. we want to allow `dyn T -> (dyn T,)`, etc.
+                        //
+                        // We also need to skip auto traits to emit an FCW and not an error.
                         let src_obj = tcx.mk_ty_from_kind(ty::Dynamic(
-                            src_tty,
+                            tcx.mk_poly_existential_predicates(
+                                &src_tty.without_auto_traits().collect::<Vec<_>>(),
+                            ),
                             tcx.lifetimes.re_erased,
                             ty::Dyn,
                         ));
                         let dst_obj = tcx.mk_ty_from_kind(ty::Dynamic(
-                            dst_tty,
+                            tcx.mk_poly_existential_predicates(
+                                &dst_tty.without_auto_traits().collect::<Vec<_>>(),
+                            ),
                             tcx.lifetimes.re_erased,
                             ty::Dyn,
                         ));
 
-                        // `dyn Src: Unsize<dyn Dst>`
+                        // `dyn Src: Unsize<dyn Dst>`, this checks for matching generics
                         let cause = fcx.misc(self.span);
                         let obligation = Obligation::new(
                             tcx,
@@ -870,6 +879,31 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         );
 
                         fcx.register_predicate(obligation);
+
+                        // Check that `SrcAuto` is a superset of `DstAuto`.
+                        // Emit an FCW otherwise.
+                        let src_auto = src_tty.auto_traits().collect::<FxHashSet<_>>();
+                        let added = dst_tty
+                            .auto_traits()
+                            .filter(|trait_did| !src_auto.contains(trait_did))
+                            .collect::<Vec<_>>();
+
+                        if !added.is_empty() {
+                            tcx.emit_node_span_lint(
+                                lint::builtin::PTR_CAST_ADD_AUTO_TO_OBJECT,
+                                self.expr.hir_id,
+                                self.span,
+                                errors::PtrCastAddAutoToObject {
+                                    traits_len: added.len(),
+                                    traits: added
+                                        .into_iter()
+                                        .map(|trait_did| {
+                                            format!("`{}`", tcx.def_path_str(trait_did))
+                                        })
+                                        .join(", "),
+                                },
+                            )
+                        }
 
                         // FIXME: ideally we'd maybe add a flag here, so that borrowck knows that
                         //        it needs to borrowck this ptr cast. this is made annoying by the

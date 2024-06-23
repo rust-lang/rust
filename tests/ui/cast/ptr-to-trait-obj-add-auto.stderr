@@ -1,11 +1,23 @@
-error[E0277]: the trait bound `dyn Trait<'_>: Unsize<dyn Trait<'_> + Send>` is not satisfied
+warning: adding an auto trait `Send` to a trait object in a pointer cast may cause UB later on
   --> $DIR/ptr-to-trait-obj-add-auto.rs:6:5
    |
 LL |     x as _
-   |     ^^^^^^ the trait `Unsize<dyn Trait<'_> + Send>` is not implemented for `dyn Trait<'_>`
+   |     ^^^^^^
    |
-   = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #125289 <https://github.com/rust-lang/rust/issues/125289>
+   = note: `#[warn(ptr_cast_add_auto_to_object)]` on by default
 
-error: aborting due to 1 previous error
+warning: 1 warning emitted
 
-For more information about this error, try `rustc --explain E0277`.
+Future incompatibility report: Future breakage diagnostic:
+warning: adding an auto trait `Send` to a trait object in a pointer cast may cause UB later on
+  --> $DIR/ptr-to-trait-obj-add-auto.rs:6:5
+   |
+LL |     x as _
+   |     ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #125289 <https://github.com/rust-lang/rust/issues/125289>
+   = note: `#[warn(ptr_cast_add_auto_to_object)]` on by default
+
