@@ -7988,11 +7988,7 @@ pub unsafe fn _mm512_fmadd_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let c = c.as_f32x16();
-    let r = vfmadd132psround(a, b, c, ROUNDING);
-    transmute(r)
+    vfmadd132psround(a, b, c, ROUNDING)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).\
@@ -8017,11 +8013,7 @@ pub unsafe fn _mm512_mask_fmadd_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let c = c.as_f32x16();
-    let r = vfmadd132psround(a, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, a))
+    simd_select_bitmask(k, vfmadd132psround(a, b, c, ROUNDING), a)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in a using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8046,12 +8038,7 @@ pub unsafe fn _mm512_maskz_fmadd_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let c = c.as_f32x16();
-    let r = vfmadd132psround(a, b, c, ROUNDING);
-    let zero = _mm512_setzero_ps().as_f32x16();
-    transmute(simd_select_bitmask(k, r, zero))
+    simd_select_bitmask(k, vfmadd132psround(a, b, c, ROUNDING), _mm512_setzero_ps())
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8076,11 +8063,7 @@ pub unsafe fn _mm512_mask3_fmadd_round_ps<const ROUNDING: i32>(
     k: __mmask16,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let c = c.as_f32x16();
-    let r = vfmadd132psround(a, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, c))
+    simd_select_bitmask(k, vfmadd132psround(a, b, c, ROUNDING), c)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst.\
@@ -8104,11 +8087,7 @@ pub unsafe fn _mm512_fmadd_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let c = c.as_f64x8();
-    let r = vfmadd132pdround(a, b, c, ROUNDING);
-    transmute(r)
+    vfmadd132pdround(a, b, c, ROUNDING)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).\
@@ -8133,11 +8112,7 @@ pub unsafe fn _mm512_mask_fmadd_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let c = c.as_f64x8();
-    let r = vfmadd132pdround(a, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, a))
+    simd_select_bitmask(k, vfmadd132pdround(a, b, c, ROUNDING), a)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8162,12 +8137,7 @@ pub unsafe fn _mm512_maskz_fmadd_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let c = c.as_f64x8();
-    let r = vfmadd132pdround(a, b, c, ROUNDING);
-    let zero = _mm512_setzero_pd().as_f64x8();
-    transmute(simd_select_bitmask(k, r, zero))
+    simd_select_bitmask(k, vfmadd132pdround(a, b, c, ROUNDING), _mm512_setzero_pd())
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8192,11 +8162,7 @@ pub unsafe fn _mm512_mask3_fmadd_round_pd<const ROUNDING: i32>(
     k: __mmask8,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let c = c.as_f64x8();
-    let r = vfmadd132pdround(a, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, c))
+    simd_select_bitmask(k, vfmadd132pdround(a, b, c, ROUNDING), c)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst.\
@@ -8212,7 +8178,7 @@ pub unsafe fn _mm512_mask3_fmadd_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_fmsub_round_ps<const ROUNDING: i32>(
     a: __m512,
@@ -8220,12 +8186,7 @@ pub unsafe fn _mm512_fmsub_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let sub = simd_sub(zero, c.as_f32x16());
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let r = vfmadd132psround(a, b, sub, ROUNDING);
-    transmute(r)
+    vfmadd132psround(a, b, simd_neg(c), ROUNDING)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).\
@@ -8241,7 +8202,7 @@ pub unsafe fn _mm512_fmsub_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_fmsub_round_ps<const ROUNDING: i32>(
     a: __m512,
@@ -8250,12 +8211,8 @@ pub unsafe fn _mm512_mask_fmsub_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let sub = simd_sub(zero, c.as_f32x16());
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let r = vfmadd132psround(a, b, sub, ROUNDING);
-    transmute(simd_select_bitmask(k, r, a))
+    let r = vfmadd132psround(a, b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, a)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8271,7 +8228,7 @@ pub unsafe fn _mm512_mask_fmsub_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_maskz_fmsub_round_ps<const ROUNDING: i32>(
     k: __mmask16,
@@ -8280,12 +8237,8 @@ pub unsafe fn _mm512_maskz_fmsub_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let sub = simd_sub(zero, c.as_f32x16());
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let r = vfmadd132psround(a, b, sub, ROUNDING);
-    transmute(simd_select_bitmask(k, r, zero))
+    let r = vfmadd132psround(a, b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, _mm512_setzero_ps())
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8301,7 +8254,7 @@ pub unsafe fn _mm512_maskz_fmsub_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask3_fmsub_round_ps<const ROUNDING: i32>(
     a: __m512,
@@ -8310,13 +8263,8 @@ pub unsafe fn _mm512_mask3_fmsub_round_ps<const ROUNDING: i32>(
     k: __mmask16,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let c = c.as_f32x16();
-    let sub = simd_sub(zero, c);
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let r = vfmadd132psround(a, b, sub, ROUNDING);
-    transmute(simd_select_bitmask(k, r, c))
+    let r = vfmadd132psround(a, b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, c)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst.\
@@ -8332,7 +8280,7 @@ pub unsafe fn _mm512_mask3_fmsub_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_fmsub_round_pd<const ROUNDING: i32>(
     a: __m512d,
@@ -8340,12 +8288,7 @@ pub unsafe fn _mm512_fmsub_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let sub = simd_sub(zero, c.as_f64x8());
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let r = vfmadd132pdround(a, b, sub, ROUNDING);
-    transmute(r)
+    vfmadd132pdround(a, b, simd_neg(c), ROUNDING)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).\
@@ -8361,7 +8304,7 @@ pub unsafe fn _mm512_fmsub_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_fmsub_round_pd<const ROUNDING: i32>(
     a: __m512d,
@@ -8370,12 +8313,8 @@ pub unsafe fn _mm512_mask_fmsub_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let sub = simd_sub(zero, c.as_f64x8());
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let r = vfmadd132pdround(a, b, sub, ROUNDING);
-    transmute(simd_select_bitmask(k, r, a))
+    let r = vfmadd132pdround(a, b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, a)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8391,7 +8330,7 @@ pub unsafe fn _mm512_mask_fmsub_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_maskz_fmsub_round_pd<const ROUNDING: i32>(
     k: __mmask8,
@@ -8400,12 +8339,8 @@ pub unsafe fn _mm512_maskz_fmsub_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let sub = simd_sub(zero, c.as_f64x8());
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let r = vfmadd132pdround(a, b, sub, ROUNDING);
-    transmute(simd_select_bitmask(k, r, zero))
+    let r = vfmadd132pdround(a, b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, _mm512_setzero_pd())
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8421,7 +8356,7 @@ pub unsafe fn _mm512_maskz_fmsub_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask3_fmsub_round_pd<const ROUNDING: i32>(
     a: __m512d,
@@ -8430,13 +8365,8 @@ pub unsafe fn _mm512_mask3_fmsub_round_pd<const ROUNDING: i32>(
     k: __mmask8,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let c = c.as_f64x8();
-    let sub = simd_sub(zero, c);
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let r = vfmadd132pdround(a, b, sub, ROUNDING);
-    transmute(simd_select_bitmask(k, r, c))
+    let r = vfmadd132pdround(a, b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, c)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst.\
@@ -8460,11 +8390,7 @@ pub unsafe fn _mm512_fmaddsub_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let c = c.as_f32x16();
-    let r = vfmaddsub213ps(a, b, c, ROUNDING);
-    transmute(r)
+    vfmaddsubpsround(a, b, c, ROUNDING)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).\
@@ -8489,11 +8415,7 @@ pub unsafe fn _mm512_mask_fmaddsub_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let c = c.as_f32x16();
-    let r = vfmaddsub213ps(a, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, a))
+    simd_select_bitmask(k, vfmaddsubpsround(a, b, c, ROUNDING), a)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8518,12 +8440,7 @@ pub unsafe fn _mm512_maskz_fmaddsub_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let c = c.as_f32x16();
-    let r = vfmaddsub213ps(a, b, c, ROUNDING);
-    let zero = _mm512_setzero_ps().as_f32x16();
-    transmute(simd_select_bitmask(k, r, zero))
+    simd_select_bitmask(k, vfmaddsubpsround(a, b, c, ROUNDING), _mm512_setzero_ps())
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8548,11 +8465,7 @@ pub unsafe fn _mm512_mask3_fmaddsub_round_ps<const ROUNDING: i32>(
     k: __mmask16,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let c = c.as_f32x16();
-    let r = vfmaddsub213ps(a, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, c))
+    simd_select_bitmask(k, vfmaddsubpsround(a, b, c, ROUNDING), c)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst.\
@@ -8576,11 +8489,7 @@ pub unsafe fn _mm512_fmaddsub_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let c = c.as_f64x8();
-    let r = vfmaddsub213pd(a, b, c, ROUNDING);
-    transmute(r)
+    vfmaddsubpdround(a, b, c, ROUNDING)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).\
@@ -8605,11 +8514,7 @@ pub unsafe fn _mm512_mask_fmaddsub_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let c = c.as_f64x8();
-    let r = vfmaddsub213pd(a, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, a))
+    simd_select_bitmask(k, vfmaddsubpdround(a, b, c, ROUNDING), a)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8634,12 +8539,7 @@ pub unsafe fn _mm512_maskz_fmaddsub_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let c = c.as_f64x8();
-    let r = vfmaddsub213pd(a, b, c, ROUNDING);
-    let zero = _mm512_setzero_pd().as_f64x8();
-    transmute(simd_select_bitmask(k, r, zero))
+    simd_select_bitmask(k, vfmaddsubpdround(a, b, c, ROUNDING), _mm512_setzero_pd())
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8664,11 +8564,7 @@ pub unsafe fn _mm512_mask3_fmaddsub_round_pd<const ROUNDING: i32>(
     k: __mmask8,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let c = c.as_f64x8();
-    let r = vfmaddsub213pd(a, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, c))
+    simd_select_bitmask(k, vfmaddsubpdround(a, b, c, ROUNDING), c)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst.\
@@ -8684,7 +8580,7 @@ pub unsafe fn _mm512_mask3_fmaddsub_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
+#[cfg_attr(test, assert_instr(vfmsubadd, ROUNDING = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_fmsubadd_round_ps<const ROUNDING: i32>(
     a: __m512,
@@ -8692,12 +8588,7 @@ pub unsafe fn _mm512_fmsubadd_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let sub = simd_sub(zero, c.as_f32x16());
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let r = vfmaddsub213ps(a, b, sub, ROUNDING);
-    transmute(r)
+    vfmaddsubpsround(a, b, simd_neg(c), ROUNDING)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).\
@@ -8713,7 +8604,7 @@ pub unsafe fn _mm512_fmsubadd_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
+#[cfg_attr(test, assert_instr(vfmsubadd, ROUNDING = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_fmsubadd_round_ps<const ROUNDING: i32>(
     a: __m512,
@@ -8722,12 +8613,8 @@ pub unsafe fn _mm512_mask_fmsubadd_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let sub = simd_sub(zero, c.as_f32x16());
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let r = vfmaddsub213ps(a, b, sub, ROUNDING);
-    transmute(simd_select_bitmask(k, r, a))
+    let r = vfmaddsubpsround(a, b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, a)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8743,7 +8630,7 @@ pub unsafe fn _mm512_mask_fmsubadd_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
+#[cfg_attr(test, assert_instr(vfmsubadd, ROUNDING = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_maskz_fmsubadd_round_ps<const ROUNDING: i32>(
     k: __mmask16,
@@ -8752,12 +8639,8 @@ pub unsafe fn _mm512_maskz_fmsubadd_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let sub = simd_sub(zero, c.as_f32x16());
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let r = vfmaddsub213ps(a, b, sub, ROUNDING);
-    transmute(simd_select_bitmask(k, r, zero))
+    let r = vfmaddsubpsround(a, b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, _mm512_setzero_ps())
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8773,7 +8656,7 @@ pub unsafe fn _mm512_maskz_fmsubadd_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
+#[cfg_attr(test, assert_instr(vfmsubadd, ROUNDING = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask3_fmsubadd_round_ps<const ROUNDING: i32>(
     a: __m512,
@@ -8782,13 +8665,8 @@ pub unsafe fn _mm512_mask3_fmsubadd_round_ps<const ROUNDING: i32>(
     k: __mmask16,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let c = c.as_f32x16();
-    let sub = simd_sub(zero, c);
-    let a = a.as_f32x16();
-    let b = b.as_f32x16();
-    let r = vfmaddsub213ps(a, b, sub, ROUNDING);
-    transmute(simd_select_bitmask(k, r, c))
+    let r = vfmaddsubpsround(a, b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, c)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst.\
@@ -8804,7 +8682,7 @@ pub unsafe fn _mm512_mask3_fmsubadd_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
+#[cfg_attr(test, assert_instr(vfmsubadd, ROUNDING = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_fmsubadd_round_pd<const ROUNDING: i32>(
     a: __m512d,
@@ -8812,12 +8690,7 @@ pub unsafe fn _mm512_fmsubadd_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let sub = simd_sub(zero, c.as_f64x8());
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let r = vfmaddsub213pd(a, b, sub, ROUNDING);
-    transmute(r)
+    vfmaddsubpdround(a, b, simd_neg(c), ROUNDING)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).\
@@ -8833,7 +8706,7 @@ pub unsafe fn _mm512_fmsubadd_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
+#[cfg_attr(test, assert_instr(vfmsubadd, ROUNDING = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_fmsubadd_round_pd<const ROUNDING: i32>(
     a: __m512d,
@@ -8842,12 +8715,8 @@ pub unsafe fn _mm512_mask_fmsubadd_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let sub = simd_sub(zero, c.as_f64x8());
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let r = vfmaddsub213pd(a, b, sub, ROUNDING);
-    transmute(simd_select_bitmask(k, r, a))
+    let r = vfmaddsubpdround(a, b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, a)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8863,7 +8732,7 @@ pub unsafe fn _mm512_mask_fmsubadd_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
+#[cfg_attr(test, assert_instr(vfmsubadd, ROUNDING = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_maskz_fmsubadd_round_pd<const ROUNDING: i32>(
     k: __mmask8,
@@ -8872,12 +8741,8 @@ pub unsafe fn _mm512_maskz_fmsubadd_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let sub = simd_sub(zero, c.as_f64x8());
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let r = vfmaddsub213pd(a, b, sub, ROUNDING);
-    transmute(simd_select_bitmask(k, r, zero))
+    let r = vfmaddsubpdround(a, b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, _mm512_setzero_pd())
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8893,7 +8758,7 @@ pub unsafe fn _mm512_maskz_fmsubadd_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
+#[cfg_attr(test, assert_instr(vfmsubadd, ROUNDING = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask3_fmsubadd_round_pd<const ROUNDING: i32>(
     a: __m512d,
@@ -8902,13 +8767,8 @@ pub unsafe fn _mm512_mask3_fmsubadd_round_pd<const ROUNDING: i32>(
     k: __mmask8,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let c = c.as_f64x8();
-    let sub = simd_sub(zero, c);
-    let a = a.as_f64x8();
-    let b = b.as_f64x8();
-    let r = vfmaddsub213pd(a, b, sub, ROUNDING);
-    transmute(simd_select_bitmask(k, r, c))
+    let r = vfmaddsubpdround(a, b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, c)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst.\
@@ -8924,7 +8784,7 @@ pub unsafe fn _mm512_mask3_fmsubadd_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_fnmadd_round_ps<const ROUNDING: i32>(
     a: __m512,
@@ -8932,12 +8792,7 @@ pub unsafe fn _mm512_fnmadd_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let sub = simd_sub(zero, a.as_f32x16());
-    let b = b.as_f32x16();
-    let c = c.as_f32x16();
-    let r = vfmadd132psround(sub, b, c, ROUNDING);
-    transmute(r)
+    vfmadd132psround(simd_neg(a), b, c, ROUNDING)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).\
@@ -8953,7 +8808,7 @@ pub unsafe fn _mm512_fnmadd_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_fnmadd_round_ps<const ROUNDING: i32>(
     a: __m512,
@@ -8962,12 +8817,8 @@ pub unsafe fn _mm512_mask_fnmadd_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let sub = simd_sub(zero, a.as_f32x16());
-    let b = b.as_f32x16();
-    let c = c.as_f32x16();
-    let r = vfmadd132psround(sub, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, a.as_f32x16()))
+    let r = vfmadd132psround(simd_neg(a), b, c, ROUNDING);
+    simd_select_bitmask(k, r, a)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8983,7 +8834,7 @@ pub unsafe fn _mm512_mask_fnmadd_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_maskz_fnmadd_round_ps<const ROUNDING: i32>(
     k: __mmask16,
@@ -8992,12 +8843,8 @@ pub unsafe fn _mm512_maskz_fnmadd_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let sub = simd_sub(zero, a.as_f32x16());
-    let b = b.as_f32x16();
-    let c = c.as_f32x16();
-    let r = vfmadd132psround(sub, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, zero))
+    let r = vfmadd132psround(simd_neg(a), b, c, ROUNDING);
+    simd_select_bitmask(k, r, _mm512_setzero_ps())
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -9013,7 +8860,7 @@ pub unsafe fn _mm512_maskz_fnmadd_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask3_fnmadd_round_ps<const ROUNDING: i32>(
     a: __m512,
@@ -9022,12 +8869,8 @@ pub unsafe fn _mm512_mask3_fnmadd_round_ps<const ROUNDING: i32>(
     k: __mmask16,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let sub = simd_sub(zero, a.as_f32x16());
-    let b = b.as_f32x16();
-    let c = c.as_f32x16();
-    let r = vfmadd132psround(sub, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, c))
+    let r = vfmadd132psround(simd_neg(a), b, c, ROUNDING);
+    simd_select_bitmask(k, r, c)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst.\
@@ -9043,7 +8886,7 @@ pub unsafe fn _mm512_mask3_fnmadd_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_fnmadd_round_pd<const ROUNDING: i32>(
     a: __m512d,
@@ -9051,12 +8894,7 @@ pub unsafe fn _mm512_fnmadd_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let sub = simd_sub(zero, a.as_f64x8());
-    let b = b.as_f64x8();
-    let c = c.as_f64x8();
-    let r = vfmadd132pdround(sub, b, c, ROUNDING);
-    transmute(r)
+    vfmadd132pdround(simd_neg(a), b, c, ROUNDING)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).\
@@ -9072,7 +8910,7 @@ pub unsafe fn _mm512_fnmadd_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_fnmadd_round_pd<const ROUNDING: i32>(
     a: __m512d,
@@ -9081,13 +8919,8 @@ pub unsafe fn _mm512_mask_fnmadd_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let a = a.as_f64x8();
-    let sub = simd_sub(zero, a);
-    let b = b.as_f64x8();
-    let c = c.as_f64x8();
-    let r = vfmadd132pdround(sub, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, a))
+    let r = vfmadd132pdround(simd_neg(a), b, c, ROUNDING);
+    simd_select_bitmask(k, r, a)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -9103,7 +8936,7 @@ pub unsafe fn _mm512_mask_fnmadd_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_maskz_fnmadd_round_pd<const ROUNDING: i32>(
     k: __mmask8,
@@ -9112,12 +8945,8 @@ pub unsafe fn _mm512_maskz_fnmadd_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let sub = simd_sub(zero, a.as_f64x8());
-    let b = b.as_f64x8();
-    let c = c.as_f64x8();
-    let r = vfmadd132pdround(sub, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, zero))
+    let r = vfmadd132pdround(simd_neg(a), b, c, ROUNDING);
+    simd_select_bitmask(k, r, _mm512_setzero_pd())
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -9133,7 +8962,7 @@ pub unsafe fn _mm512_maskz_fnmadd_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask3_fnmadd_round_pd<const ROUNDING: i32>(
     a: __m512d,
@@ -9142,12 +8971,8 @@ pub unsafe fn _mm512_mask3_fnmadd_round_pd<const ROUNDING: i32>(
     k: __mmask8,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let sub = simd_sub(zero, a.as_f64x8());
-    let b = b.as_f64x8();
-    let c = c.as_f64x8();
-    let r = vfmadd132pdround(sub, b, c, ROUNDING);
-    transmute(simd_select_bitmask(k, r, c))
+    let r = vfmadd132pdround(simd_neg(a), b, c, ROUNDING);
+    simd_select_bitmask(k, r, c)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst.\
@@ -9163,7 +8988,7 @@ pub unsafe fn _mm512_mask3_fnmadd_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_fnmsub_round_ps<const ROUNDING: i32>(
     a: __m512,
@@ -9171,12 +8996,7 @@ pub unsafe fn _mm512_fnmsub_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let suba = simd_sub(zero, a.as_f32x16());
-    let subc = simd_sub(zero, c.as_f32x16());
-    let b = b.as_f32x16();
-    let r = vfmadd132psround(suba, b, subc, ROUNDING);
-    transmute(r)
+    vfmadd132psround(simd_neg(a), b, simd_neg(c), ROUNDING)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).\
@@ -9192,7 +9012,7 @@ pub unsafe fn _mm512_fnmsub_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_fnmsub_round_ps<const ROUNDING: i32>(
     a: __m512,
@@ -9201,13 +9021,8 @@ pub unsafe fn _mm512_mask_fnmsub_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let a = a.as_f32x16();
-    let suba = simd_sub(zero, a);
-    let subc = simd_sub(zero, c.as_f32x16());
-    let b = b.as_f32x16();
-    let r = vfmadd132psround(suba, b, subc, ROUNDING);
-    transmute(simd_select_bitmask(k, r, a))
+    let r = vfmadd132psround(simd_neg(a), b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, a)
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -9223,7 +9038,7 @@ pub unsafe fn _mm512_mask_fnmsub_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_maskz_fnmsub_round_ps<const ROUNDING: i32>(
     k: __mmask16,
@@ -9232,12 +9047,8 @@ pub unsafe fn _mm512_maskz_fnmsub_round_ps<const ROUNDING: i32>(
     c: __m512,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let suba = simd_sub(zero, a.as_f32x16());
-    let subc = simd_sub(zero, c.as_f32x16());
-    let b = b.as_f32x16();
-    let r = vfmadd132psround(suba, b, subc, ROUNDING);
-    transmute(simd_select_bitmask(k, r, zero))
+    let r = vfmadd132psround(simd_neg(a), b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, _mm512_setzero_ps())
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -9253,7 +9064,7 @@ pub unsafe fn _mm512_maskz_fnmsub_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask3_fnmsub_round_ps<const ROUNDING: i32>(
     a: __m512,
@@ -9262,13 +9073,8 @@ pub unsafe fn _mm512_mask3_fnmsub_round_ps<const ROUNDING: i32>(
     k: __mmask16,
 ) -> __m512 {
     static_assert_rounding!(ROUNDING);
-    let zero: f32x16 = mem::zeroed();
-    let suba = simd_sub(zero, a.as_f32x16());
-    let c = c.as_f32x16();
-    let subc = simd_sub(zero, c);
-    let b = b.as_f32x16();
-    let r = vfmadd132psround(suba, b, subc, ROUNDING);
-    transmute(simd_select_bitmask(k, r, c))
+    let r = vfmadd132psround(simd_neg(a), b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, c)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst.\
@@ -9284,7 +9090,7 @@ pub unsafe fn _mm512_mask3_fnmsub_round_ps<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_fnmsub_round_pd<const ROUNDING: i32>(
     a: __m512d,
@@ -9292,12 +9098,7 @@ pub unsafe fn _mm512_fnmsub_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let suba = simd_sub(zero, a.as_f64x8());
-    let subc = simd_sub(zero, c.as_f64x8());
-    let b = b.as_f64x8();
-    let r = vfmadd132pdround(suba, b, subc, ROUNDING);
-    transmute(r)
+    vfmadd132pdround(simd_neg(a), b, simd_neg(c), ROUNDING)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).\
@@ -9313,7 +9114,7 @@ pub unsafe fn _mm512_fnmsub_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_fnmsub_round_pd<const ROUNDING: i32>(
     a: __m512d,
@@ -9322,13 +9123,8 @@ pub unsafe fn _mm512_mask_fnmsub_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let a = a.as_f64x8();
-    let suba = simd_sub(zero, a);
-    let subc = simd_sub(zero, c.as_f64x8());
-    let b = b.as_f64x8();
-    let r = vfmadd132pdround(suba, b, subc, ROUNDING);
-    transmute(simd_select_bitmask(k, r, a))
+    let r = vfmadd132pdround(simd_neg(a), b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, a)
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -9344,7 +9140,7 @@ pub unsafe fn _mm512_mask_fnmsub_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_maskz_fnmsub_round_pd<const ROUNDING: i32>(
     k: __mmask8,
@@ -9353,12 +9149,8 @@ pub unsafe fn _mm512_maskz_fnmsub_round_pd<const ROUNDING: i32>(
     c: __m512d,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let suba = simd_sub(zero, a.as_f64x8());
-    let subc = simd_sub(zero, c.as_f64x8());
-    let b = b.as_f64x8();
-    let r = vfmadd132pdround(suba, b, subc, ROUNDING);
-    transmute(simd_select_bitmask(k, r, zero))
+    let r = vfmadd132pdround(simd_neg(a), b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, _mm512_setzero_pd())
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -9374,7 +9166,7 @@ pub unsafe fn _mm512_maskz_fnmsub_round_pd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask3_fnmsub_round_pd<const ROUNDING: i32>(
     a: __m512d,
@@ -9383,13 +9175,8 @@ pub unsafe fn _mm512_mask3_fnmsub_round_pd<const ROUNDING: i32>(
     k: __mmask8,
 ) -> __m512d {
     static_assert_rounding!(ROUNDING);
-    let zero: f64x8 = mem::zeroed();
-    let suba = simd_sub(zero, a.as_f64x8());
-    let c = c.as_f64x8();
-    let subc = simd_sub(zero, c);
-    let b = b.as_f64x8();
-    let r = vfmadd132pdround(suba, b, subc, ROUNDING);
-    transmute(simd_select_bitmask(k, r, c))
+    let r = vfmadd132pdround(simd_neg(a), b, simd_neg(c), ROUNDING);
+    simd_select_bitmask(k, r, c)
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b, and store packed maximum values in dst.\
@@ -38033,14 +37820,14 @@ pub unsafe fn _mm_maskz_scalef_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm_fmadd_round_ss<const ROUNDING: i32>(a: __m128, b: __m128, c: __m128) -> __m128 {
     static_assert_rounding!(ROUNDING);
     let extracta: f32 = simd_extract!(a, 0);
     let extractb: f32 = simd_extract!(b, 0);
     let extractc: f32 = simd_extract!(c, 0);
-    let r = vfmadd132ss(extracta, extractb, extractc, ROUNDING);
+    let r = vfmaddssround(extracta, extractb, extractc, ROUNDING);
     simd_insert!(a, 0, r)
 }
 
@@ -38057,7 +37844,7 @@ pub unsafe fn _mm_fmadd_round_ss<const ROUNDING: i32>(a: __m128, b: __m128, c: _
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask_fmadd_round_ss<const ROUNDING: i32>(
     a: __m128,
@@ -38070,7 +37857,7 @@ pub unsafe fn _mm_mask_fmadd_round_ss<const ROUNDING: i32>(
     if (k & 0b00000001) != 0 {
         let extractb: f32 = simd_extract!(b, 0);
         let extractc: f32 = simd_extract!(c, 0);
-        fmadd = vfmadd132ss(fmadd, extractb, extractc, ROUNDING);
+        fmadd = vfmaddssround(fmadd, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fmadd)
 }
@@ -38088,7 +37875,7 @@ pub unsafe fn _mm_mask_fmadd_round_ss<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_maskz_fmadd_round_ss<const ROUNDING: i32>(
     k: __mmask8,
@@ -38102,7 +37889,7 @@ pub unsafe fn _mm_maskz_fmadd_round_ss<const ROUNDING: i32>(
         let extracta: f32 = simd_extract!(a, 0);
         let extractb: f32 = simd_extract!(b, 0);
         let extractc: f32 = simd_extract!(c, 0);
-        fmadd = vfmadd132ss(extracta, extractb, extractc, ROUNDING);
+        fmadd = vfmaddssround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fmadd)
 }
@@ -38120,7 +37907,7 @@ pub unsafe fn _mm_maskz_fmadd_round_ss<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask3_fmadd_round_ss<const ROUNDING: i32>(
     a: __m128,
@@ -38133,7 +37920,7 @@ pub unsafe fn _mm_mask3_fmadd_round_ss<const ROUNDING: i32>(
     if (k & 0b00000001) != 0 {
         let extracta: f32 = simd_extract!(a, 0);
         let extractb: f32 = simd_extract!(b, 0);
-        fmadd = vfmadd132ss(extracta, extractb, fmadd, ROUNDING);
+        fmadd = vfmaddssround(extracta, extractb, fmadd, ROUNDING);
     }
     simd_insert!(c, 0, fmadd)
 }
@@ -38151,7 +37938,7 @@ pub unsafe fn _mm_mask3_fmadd_round_ss<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm_fmadd_round_sd<const ROUNDING: i32>(
     a: __m128d,
@@ -38162,7 +37949,7 @@ pub unsafe fn _mm_fmadd_round_sd<const ROUNDING: i32>(
     let extracta: f64 = simd_extract!(a, 0);
     let extractb: f64 = simd_extract!(b, 0);
     let extractc: f64 = simd_extract!(c, 0);
-    let fmadd = vfmadd132sd(extracta, extractb, extractc, ROUNDING);
+    let fmadd = vfmaddsdround(extracta, extractb, extractc, ROUNDING);
     simd_insert!(a, 0, fmadd)
 }
 
@@ -38179,7 +37966,7 @@ pub unsafe fn _mm_fmadd_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask_fmadd_round_sd<const ROUNDING: i32>(
     a: __m128d,
@@ -38192,7 +37979,7 @@ pub unsafe fn _mm_mask_fmadd_round_sd<const ROUNDING: i32>(
     if (k & 0b00000001) != 0 {
         let extractb: f64 = simd_extract!(b, 0);
         let extractc: f64 = simd_extract!(c, 0);
-        fmadd = vfmadd132sd(fmadd, extractb, extractc, ROUNDING);
+        fmadd = vfmaddsdround(fmadd, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fmadd)
 }
@@ -38210,7 +37997,7 @@ pub unsafe fn _mm_mask_fmadd_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_maskz_fmadd_round_sd<const ROUNDING: i32>(
     k: __mmask8,
@@ -38224,7 +38011,7 @@ pub unsafe fn _mm_maskz_fmadd_round_sd<const ROUNDING: i32>(
         let extracta: f64 = simd_extract!(a, 0);
         let extractb: f64 = simd_extract!(b, 0);
         let extractc: f64 = simd_extract!(c, 0);
-        fmadd = vfmadd132sd(extracta, extractb, extractc, ROUNDING);
+        fmadd = vfmaddsdround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fmadd)
 }
@@ -38242,7 +38029,7 @@ pub unsafe fn _mm_maskz_fmadd_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmadd213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask3_fmadd_round_sd<const ROUNDING: i32>(
     a: __m128d,
@@ -38255,7 +38042,7 @@ pub unsafe fn _mm_mask3_fmadd_round_sd<const ROUNDING: i32>(
     if (k & 0b00000001) != 0 {
         let extracta: f64 = simd_extract!(a, 0);
         let extractb: f64 = simd_extract!(b, 0);
-        fmadd = vfmadd132sd(extracta, extractb, fmadd, ROUNDING);
+        fmadd = vfmaddsdround(extracta, extractb, fmadd, ROUNDING);
     }
     simd_insert!(c, 0, fmadd)
 }
@@ -38273,7 +38060,7 @@ pub unsafe fn _mm_mask3_fmadd_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmsub213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm_fmsub_round_ss<const ROUNDING: i32>(a: __m128, b: __m128, c: __m128) -> __m128 {
     static_assert_rounding!(ROUNDING);
@@ -38281,7 +38068,7 @@ pub unsafe fn _mm_fmsub_round_ss<const ROUNDING: i32>(a: __m128, b: __m128, c: _
     let extractb: f32 = simd_extract!(b, 0);
     let extractc: f32 = simd_extract!(c, 0);
     let extractc = -extractc;
-    let fmsub = vfmadd132ss(extracta, extractb, extractc, ROUNDING);
+    let fmsub = vfmaddssround(extracta, extractb, extractc, ROUNDING);
     simd_insert!(a, 0, fmsub)
 }
 
@@ -38298,7 +38085,7 @@ pub unsafe fn _mm_fmsub_round_ss<const ROUNDING: i32>(a: __m128, b: __m128, c: _
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmsub213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask_fmsub_round_ss<const ROUNDING: i32>(
     a: __m128,
@@ -38312,7 +38099,7 @@ pub unsafe fn _mm_mask_fmsub_round_ss<const ROUNDING: i32>(
         let extractb: f32 = simd_extract!(b, 0);
         let extractc: f32 = simd_extract!(c, 0);
         let extractc = -extractc;
-        fmsub = vfmadd132ss(fmsub, extractb, extractc, ROUNDING);
+        fmsub = vfmaddssround(fmsub, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fmsub)
 }
@@ -38330,7 +38117,7 @@ pub unsafe fn _mm_mask_fmsub_round_ss<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmsub213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_maskz_fmsub_round_ss<const ROUNDING: i32>(
     k: __mmask8,
@@ -38345,7 +38132,7 @@ pub unsafe fn _mm_maskz_fmsub_round_ss<const ROUNDING: i32>(
         let extractb: f32 = simd_extract!(b, 0);
         let extractc: f32 = simd_extract!(c, 0);
         let extractc = -extractc;
-        fmsub = vfmadd132ss(extracta, extractb, extractc, ROUNDING);
+        fmsub = vfmaddssround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fmsub)
 }
@@ -38363,7 +38150,7 @@ pub unsafe fn _mm_maskz_fmsub_round_ss<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmsub213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask3_fmsub_round_ss<const ROUNDING: i32>(
     a: __m128,
@@ -38377,7 +38164,7 @@ pub unsafe fn _mm_mask3_fmsub_round_ss<const ROUNDING: i32>(
         let extracta: f32 = simd_extract!(a, 0);
         let extractb: f32 = simd_extract!(b, 0);
         let extractc = -fmsub;
-        fmsub = vfmadd132ss(extracta, extractb, extractc, ROUNDING);
+        fmsub = vfmaddssround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(c, 0, fmsub)
 }
@@ -38395,7 +38182,7 @@ pub unsafe fn _mm_mask3_fmsub_round_ss<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmsub213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm_fmsub_round_sd<const ROUNDING: i32>(
     a: __m128d,
@@ -38407,7 +38194,7 @@ pub unsafe fn _mm_fmsub_round_sd<const ROUNDING: i32>(
     let extractb: f64 = simd_extract!(b, 0);
     let extractc: f64 = simd_extract!(c, 0);
     let extractc = -extractc;
-    let fmsub = vfmadd132sd(extracta, extractb, extractc, ROUNDING);
+    let fmsub = vfmaddsdround(extracta, extractb, extractc, ROUNDING);
     simd_insert!(a, 0, fmsub)
 }
 
@@ -38424,7 +38211,7 @@ pub unsafe fn _mm_fmsub_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmsub213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask_fmsub_round_sd<const ROUNDING: i32>(
     a: __m128d,
@@ -38438,7 +38225,7 @@ pub unsafe fn _mm_mask_fmsub_round_sd<const ROUNDING: i32>(
         let extractb: f64 = simd_extract!(b, 0);
         let extractc: f64 = simd_extract!(c, 0);
         let extractc = -extractc;
-        fmsub = vfmadd132sd(fmsub, extractb, extractc, ROUNDING);
+        fmsub = vfmaddsdround(fmsub, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fmsub)
 }
@@ -38456,7 +38243,7 @@ pub unsafe fn _mm_mask_fmsub_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmsub213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_maskz_fmsub_round_sd<const ROUNDING: i32>(
     k: __mmask8,
@@ -38471,7 +38258,7 @@ pub unsafe fn _mm_maskz_fmsub_round_sd<const ROUNDING: i32>(
         let extractb: f64 = simd_extract!(b, 0);
         let extractc: f64 = simd_extract!(c, 0);
         let extractc = -extractc;
-        fmsub = vfmadd132sd(extracta, extractb, extractc, ROUNDING);
+        fmsub = vfmaddsdround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fmsub)
 }
@@ -38489,7 +38276,7 @@ pub unsafe fn _mm_maskz_fmsub_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfmsub213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask3_fmsub_round_sd<const ROUNDING: i32>(
     a: __m128d,
@@ -38503,7 +38290,7 @@ pub unsafe fn _mm_mask3_fmsub_round_sd<const ROUNDING: i32>(
         let extracta: f64 = simd_extract!(a, 0);
         let extractb: f64 = simd_extract!(b, 0);
         let extractc = -fmsub;
-        fmsub = vfmadd132sd(extracta, extractb, extractc, ROUNDING);
+        fmsub = vfmaddsdround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(c, 0, fmsub)
 }
@@ -38521,7 +38308,7 @@ pub unsafe fn _mm_mask3_fmsub_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmadd213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm_fnmadd_round_ss<const ROUNDING: i32>(a: __m128, b: __m128, c: __m128) -> __m128 {
     static_assert_rounding!(ROUNDING);
@@ -38529,7 +38316,7 @@ pub unsafe fn _mm_fnmadd_round_ss<const ROUNDING: i32>(a: __m128, b: __m128, c: 
     let extracta = -extracta;
     let extractb: f32 = simd_extract!(b, 0);
     let extractc: f32 = simd_extract!(c, 0);
-    let fnmadd = vfmadd132ss(extracta, extractb, extractc, ROUNDING);
+    let fnmadd = vfmaddssround(extracta, extractb, extractc, ROUNDING);
     simd_insert!(a, 0, fnmadd)
 }
 
@@ -38546,7 +38333,7 @@ pub unsafe fn _mm_fnmadd_round_ss<const ROUNDING: i32>(a: __m128, b: __m128, c: 
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmadd213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask_fnmadd_round_ss<const ROUNDING: i32>(
     a: __m128,
@@ -38560,7 +38347,7 @@ pub unsafe fn _mm_mask_fnmadd_round_ss<const ROUNDING: i32>(
         let extracta = -fnmadd;
         let extractb: f32 = simd_extract!(b, 0);
         let extractc: f32 = simd_extract!(c, 0);
-        fnmadd = vfmadd132ss(extracta, extractb, extractc, ROUNDING);
+        fnmadd = vfmaddssround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fnmadd)
 }
@@ -38578,7 +38365,7 @@ pub unsafe fn _mm_mask_fnmadd_round_ss<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmadd213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_maskz_fnmadd_round_ss<const ROUNDING: i32>(
     k: __mmask8,
@@ -38593,7 +38380,7 @@ pub unsafe fn _mm_maskz_fnmadd_round_ss<const ROUNDING: i32>(
         let extracta = -extracta;
         let extractb: f32 = simd_extract!(b, 0);
         let extractc: f32 = simd_extract!(c, 0);
-        fnmadd = vfmadd132ss(extracta, extractb, extractc, ROUNDING);
+        fnmadd = vfmaddssround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fnmadd)
 }
@@ -38611,7 +38398,7 @@ pub unsafe fn _mm_maskz_fnmadd_round_ss<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmadd213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask3_fnmadd_round_ss<const ROUNDING: i32>(
     a: __m128,
@@ -38625,7 +38412,7 @@ pub unsafe fn _mm_mask3_fnmadd_round_ss<const ROUNDING: i32>(
         let extracta: f32 = simd_extract!(a, 0);
         let extracta = -extracta;
         let extractb: f32 = simd_extract!(b, 0);
-        fnmadd = vfmadd132ss(extracta, extractb, fnmadd, ROUNDING);
+        fnmadd = vfmaddssround(extracta, extractb, fnmadd, ROUNDING);
     }
     simd_insert!(c, 0, fnmadd)
 }
@@ -38643,7 +38430,7 @@ pub unsafe fn _mm_mask3_fnmadd_round_ss<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmadd213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm_fnmadd_round_sd<const ROUNDING: i32>(
     a: __m128d,
@@ -38655,7 +38442,7 @@ pub unsafe fn _mm_fnmadd_round_sd<const ROUNDING: i32>(
     let extracta = -extracta;
     let extractb: f64 = simd_extract!(b, 0);
     let extractc: f64 = simd_extract!(c, 0);
-    let fnmadd = vfmadd132sd(extracta, extractb, extractc, ROUNDING);
+    let fnmadd = vfmaddsdround(extracta, extractb, extractc, ROUNDING);
     simd_insert!(a, 0, fnmadd)
 }
 
@@ -38672,7 +38459,7 @@ pub unsafe fn _mm_fnmadd_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmadd213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask_fnmadd_round_sd<const ROUNDING: i32>(
     a: __m128d,
@@ -38686,7 +38473,7 @@ pub unsafe fn _mm_mask_fnmadd_round_sd<const ROUNDING: i32>(
         let extracta = -fnmadd;
         let extractb: f64 = simd_extract!(b, 0);
         let extractc: f64 = simd_extract!(c, 0);
-        fnmadd = vfmadd132sd(extracta, extractb, extractc, ROUNDING);
+        fnmadd = vfmaddsdround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fnmadd)
 }
@@ -38704,7 +38491,7 @@ pub unsafe fn _mm_mask_fnmadd_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmadd213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_maskz_fnmadd_round_sd<const ROUNDING: i32>(
     k: __mmask8,
@@ -38719,7 +38506,7 @@ pub unsafe fn _mm_maskz_fnmadd_round_sd<const ROUNDING: i32>(
         let extracta = -extracta;
         let extractb: f64 = simd_extract!(b, 0);
         let extractc: f64 = simd_extract!(c, 0);
-        fnmadd = vfmadd132sd(extracta, extractb, extractc, ROUNDING);
+        fnmadd = vfmaddsdround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fnmadd)
 }
@@ -38737,7 +38524,7 @@ pub unsafe fn _mm_maskz_fnmadd_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmadd213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmadd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask3_fnmadd_round_sd<const ROUNDING: i32>(
     a: __m128d,
@@ -38751,7 +38538,7 @@ pub unsafe fn _mm_mask3_fnmadd_round_sd<const ROUNDING: i32>(
         let extracta: f64 = simd_extract!(a, 0);
         let extracta = -extracta;
         let extractb: f64 = simd_extract!(b, 0);
-        fnmadd = vfmadd132sd(extracta, extractb, fnmadd, ROUNDING);
+        fnmadd = vfmaddsdround(extracta, extractb, fnmadd, ROUNDING);
     }
     simd_insert!(c, 0, fnmadd)
 }
@@ -38769,7 +38556,7 @@ pub unsafe fn _mm_mask3_fnmadd_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmsub213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm_fnmsub_round_ss<const ROUNDING: i32>(a: __m128, b: __m128, c: __m128) -> __m128 {
     static_assert_rounding!(ROUNDING);
@@ -38778,7 +38565,7 @@ pub unsafe fn _mm_fnmsub_round_ss<const ROUNDING: i32>(a: __m128, b: __m128, c: 
     let extractb: f32 = simd_extract!(b, 0);
     let extractc: f32 = simd_extract!(c, 0);
     let extractc = -extractc;
-    let fnmsub = vfmadd132ss(extracta, extractb, extractc, ROUNDING);
+    let fnmsub = vfmaddssround(extracta, extractb, extractc, ROUNDING);
     simd_insert!(a, 0, fnmsub)
 }
 
@@ -38795,7 +38582,7 @@ pub unsafe fn _mm_fnmsub_round_ss<const ROUNDING: i32>(a: __m128, b: __m128, c: 
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmsub213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask_fnmsub_round_ss<const ROUNDING: i32>(
     a: __m128,
@@ -38810,7 +38597,7 @@ pub unsafe fn _mm_mask_fnmsub_round_ss<const ROUNDING: i32>(
         let extractb: f32 = simd_extract!(b, 0);
         let extractc: f32 = simd_extract!(c, 0);
         let extractc = -extractc;
-        fnmsub = vfmadd132ss(extracta, extractb, extractc, ROUNDING);
+        fnmsub = vfmaddssround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fnmsub)
 }
@@ -38828,7 +38615,7 @@ pub unsafe fn _mm_mask_fnmsub_round_ss<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmsub213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_maskz_fnmsub_round_ss<const ROUNDING: i32>(
     k: __mmask8,
@@ -38844,7 +38631,7 @@ pub unsafe fn _mm_maskz_fnmsub_round_ss<const ROUNDING: i32>(
         let extractb: f32 = simd_extract!(b, 0);
         let extractc: f32 = simd_extract!(c, 0);
         let extractc = -extractc;
-        fnmsub = vfmadd132ss(extracta, extractb, extractc, ROUNDING);
+        fnmsub = vfmaddssround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fnmsub)
 }
@@ -38862,7 +38649,7 @@ pub unsafe fn _mm_maskz_fnmsub_round_ss<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmsub213ss, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask3_fnmsub_round_ss<const ROUNDING: i32>(
     a: __m128,
@@ -38877,7 +38664,7 @@ pub unsafe fn _mm_mask3_fnmsub_round_ss<const ROUNDING: i32>(
         let extracta = -extracta;
         let extractb: f32 = simd_extract!(b, 0);
         let extractc = -fnmsub;
-        fnmsub = vfmadd132ss(extracta, extractb, extractc, ROUNDING);
+        fnmsub = vfmaddssround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(c, 0, fnmsub)
 }
@@ -38895,7 +38682,7 @@ pub unsafe fn _mm_mask3_fnmsub_round_ss<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmsub213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm_fnmsub_round_sd<const ROUNDING: i32>(
     a: __m128d,
@@ -38908,7 +38695,7 @@ pub unsafe fn _mm_fnmsub_round_sd<const ROUNDING: i32>(
     let extractb: f64 = simd_extract!(b, 0);
     let extractc: f64 = simd_extract!(c, 0);
     let extractc = -extractc;
-    let fnmsub = vfmadd132sd(extracta, extractb, extractc, ROUNDING);
+    let fnmsub = vfmaddsdround(extracta, extractb, extractc, ROUNDING);
     simd_insert!(a, 0, fnmsub)
 }
 
@@ -38925,7 +38712,7 @@ pub unsafe fn _mm_fnmsub_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmsub213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask_fnmsub_round_sd<const ROUNDING: i32>(
     a: __m128d,
@@ -38940,7 +38727,7 @@ pub unsafe fn _mm_mask_fnmsub_round_sd<const ROUNDING: i32>(
         let extractb: f64 = simd_extract!(b, 0);
         let extractc: f64 = simd_extract!(c, 0);
         let extractc = -extractc;
-        fnmsub = vfmadd132sd(extracta, extractb, extractc, ROUNDING);
+        fnmsub = vfmaddsdround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fnmsub)
 }
@@ -38958,7 +38745,7 @@ pub unsafe fn _mm_mask_fnmsub_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmsub213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_maskz_fnmsub_round_sd<const ROUNDING: i32>(
     k: __mmask8,
@@ -38974,7 +38761,7 @@ pub unsafe fn _mm_maskz_fnmsub_round_sd<const ROUNDING: i32>(
         let extractb: f64 = simd_extract!(b, 0);
         let extractc: f64 = simd_extract!(c, 0);
         let extractc = -extractc;
-        fnmsub = vfmadd132sd(extracta, extractb, extractc, ROUNDING);
+        fnmsub = vfmaddsdround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(a, 0, fnmsub)
 }
@@ -38992,7 +38779,7 @@ pub unsafe fn _mm_maskz_fnmsub_round_sd<const ROUNDING: i32>(
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vfnmsub213sd, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vfnmsub, ROUNDING = 8))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask3_fnmsub_round_sd<const ROUNDING: i32>(
     a: __m128d,
@@ -39007,7 +38794,7 @@ pub unsafe fn _mm_mask3_fnmsub_round_sd<const ROUNDING: i32>(
         let extracta = -extracta;
         let extractb: f64 = simd_extract!(b, 0);
         let extractc = -fnmsub;
-        fnmsub = vfmadd132sd(extracta, extractb, extractc, ROUNDING);
+        fnmsub = vfmaddsdround(extracta, extractb, extractc, ROUNDING);
     }
     simd_insert!(c, 0, fnmsub)
 }
@@ -40568,14 +40355,14 @@ extern "C" {
     fn vsqrtpd(a: f64x8, rounding: i32) -> f64x8;
 
     #[link_name = "llvm.x86.avx512.vfmadd.ps.512"]
-    fn vfmadd132psround(a: f32x16, b: f32x16, c: f32x16, rounding: i32) -> f32x16;
+    fn vfmadd132psround(a: __m512, b: __m512, c: __m512, rounding: i32) -> __m512;
     #[link_name = "llvm.x86.avx512.vfmadd.pd.512"]
-    fn vfmadd132pdround(a: f64x8, b: f64x8, c: f64x8, rounding: i32) -> f64x8;
+    fn vfmadd132pdround(a: __m512d, b: __m512d, c: __m512d, rounding: i32) -> __m512d;
 
     #[link_name = "llvm.x86.avx512.vfmaddsub.ps.512"]
-    fn vfmaddsub213ps(a: f32x16, b: f32x16, c: f32x16, d: i32) -> f32x16; //from clang
+    fn vfmaddsubpsround(a: __m512, b: __m512, c: __m512, rounding: i32) -> __m512; //from clang
     #[link_name = "llvm.x86.avx512.vfmaddsub.pd.512"]
-    fn vfmaddsub213pd(a: f64x8, b: f64x8, c: f64x8, d: i32) -> f64x8; //from clang
+    fn vfmaddsubpdround(a: __m512d, b: __m512d, c: __m512d, rounding: i32) -> __m512d; //from clang
 
     #[link_name = "llvm.x86.avx512.add.ps.512"]
     fn vaddps(a: f32x16, b: f32x16, rounding: i32) -> f32x16;
@@ -41361,9 +41148,9 @@ extern "C" {
     fn vscalefsd(a: f64x2, b: f64x2, src: f64x2, mask: u8, rounding: i32) -> f64x2;
 
     #[link_name = "llvm.x86.avx512.vfmadd.f32"]
-    fn vfmadd132ss(a: f32, b: f32, c: f32, rounding: i32) -> f32;
+    fn vfmaddssround(a: f32, b: f32, c: f32, rounding: i32) -> f32;
     #[link_name = "llvm.x86.avx512.vfmadd.f64"]
-    fn vfmadd132sd(a: f64, b: f64, c: f64, rounding: i32) -> f64;
+    fn vfmaddsdround(a: f64, b: f64, c: f64, rounding: i32) -> f64;
 
     #[link_name = "llvm.x86.avx512.mask.fixupimm.ss"]
     fn vfixupimmss(a: f32x4, b: f32x4, c: i32x4, imm8: i32, mask: u8, sae: i32) -> f32x4;
