@@ -33,7 +33,7 @@ declare_clippy_lint! {
     /// Checks for the usage of the `to_le_bytes` method and/or the function `from_le_bytes`.
     ///
     /// ### Why restrict this?
-    /// To ensure use of big endian or the target’s endianness rather than little endian.
+    /// To ensure use of big-endian or the target’s endianness rather than little-endian.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -51,7 +51,7 @@ declare_clippy_lint! {
     /// Checks for the usage of the `to_be_bytes` method and/or the function `from_be_bytes`.
     ///
     /// ### Why restrict this?
-    /// To ensure use of little endian or the target’s endianness rather than big endian.
+    /// To ensure use of little-endian or the target’s endianness rather than big-endian.
     ///
     /// ### Example
     /// ```rust,ignore
