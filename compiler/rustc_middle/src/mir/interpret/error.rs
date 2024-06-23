@@ -520,6 +520,8 @@ pub enum UnsupportedOpInfo {
     Unsupported(String),
     /// Unsized local variables.
     UnsizedLocal,
+    /// Extern type field with an indeterminate offset.
+    ExternTypeField,
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
     //

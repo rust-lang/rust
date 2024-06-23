@@ -425,7 +425,7 @@ pub struct ValidationFailure {
     #[primary_span]
     pub span: Span,
     #[note(const_eval_validation_failure_note)]
-    pub ub_note: Option<()>,
+    pub ub_note: (),
     #[subdiagnostic]
     pub frames: Vec<FrameNote>,
     #[subdiagnostic]
@@ -825,6 +825,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
         use crate::fluent_generated::*;
         match self {
             UnsupportedOpInfo::Unsupported(s) => s.clone().into(),
+            UnsupportedOpInfo::ExternTypeField => const_eval_extern_type_field,
             UnsupportedOpInfo::UnsizedLocal => const_eval_unsized_local,
             UnsupportedOpInfo::OverwritePartialPointer(_) => const_eval_partial_pointer_overwrite,
             UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_copy,
@@ -845,7 +846,10 @@ impl ReportErrorExt for UnsupportedOpInfo {
             // `ReadPointerAsInt(Some(info))` is never printed anyway, it only serves as an error to
             // be further processed by validity checking which then turns it into something nice to
             // print. So it's not worth the effort of having diagnostics that can print the `info`.
-            UnsizedLocal | Unsupported(_) | ReadPointerAsInt(_) => {}
+            UnsizedLocal
+            | UnsupportedOpInfo::ExternTypeField
+            | Unsupported(_)
+            | ReadPointerAsInt(_) => {}
             OverwritePartialPointer(ptr) | ReadPartialPointer(ptr) => {
                 diag.arg("ptr", ptr);
             }
