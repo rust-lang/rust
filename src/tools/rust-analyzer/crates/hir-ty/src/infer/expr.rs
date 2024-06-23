@@ -1896,7 +1896,7 @@ impl InferenceContext<'_> {
         if let TyKind::FnDef(fn_def, parameters) = callable_ty.kind(Interner) {
             let def: CallableDefId = from_chalk(self.db, *fn_def);
             let generic_predicates =
-                self.db.generic_predicates(GenericDefId::from(self.db.upcast(), def));
+                self.db.generic_predicates(GenericDefId::from_callable(self.db.upcast(), def));
             for predicate in generic_predicates.iter() {
                 let (predicate, binders) = predicate
                     .clone()

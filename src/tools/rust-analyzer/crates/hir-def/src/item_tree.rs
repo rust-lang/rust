@@ -48,6 +48,7 @@ use either::Either;
 use hir_expand::{attrs::RawAttrs, name::Name, ExpandTo, HirFileId, InFile};
 use intern::Interned;
 use la_arena::{Arena, Idx, IdxRange, RawIdx};
+use once_cell::sync::OnceCell;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{AstIdNode, FileAstId, SyntaxContextId};
@@ -100,6 +101,7 @@ pub struct ItemTree {
 impl ItemTree {
     pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
         let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
+        static EMPTY: OnceCell<Arc<ItemTree>> = OnceCell::new();
 
         let syntax = db.parse_or_expand(file_id);
 
@@ -131,18 +133,47 @@ impl ItemTree {
         if let Some(attrs) = top_attrs {
             item_tree.attrs.insert(AttrOwner::TopLevel, attrs);
         }
-        item_tree.shrink_to_fit();
-        Arc::new(item_tree)
+        if item_tree.data.is_none() && item_tree.top_level.is_empty() && item_tree.attrs.is_empty()
+        {
+            EMPTY
+                .get_or_init(|| {
+                    Arc::new(ItemTree {
+                        top_level: SmallVec::new_const(),
+                        attrs: FxHashMap::default(),
+                        data: None,
+                    })
+                })
+                .clone()
+        } else {
+            item_tree.shrink_to_fit();
+            Arc::new(item_tree)
+        }
     }
 
     pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
+        let _p = tracing::info_span!("block_item_tree_query", ?block).entered();
+        static EMPTY: OnceCell<Arc<ItemTree>> = OnceCell::new();
+
         let loc = block.lookup(db);
         let block = loc.ast_id.to_node(db.upcast());
 
         let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
         let mut item_tree = ctx.lower_block(&block);
-        item_tree.shrink_to_fit();
-        Arc::new(item_tree)
+        if item_tree.data.is_none() && item_tree.top_level.is_empty() && item_tree.attrs.is_empty()
+        {
+            EMPTY
+                .get_or_init(|| {
+                    Arc::new(ItemTree {
+                        top_level: SmallVec::new_const(),
+                        attrs: FxHashMap::default(),
+                        data: None,
+                    })
+                })
+                .clone()
+        } else {
+            item_tree.shrink_to_fit();
+            Arc::new(item_tree)
+        }
     }
 
     /// Returns an iterator over all items located at the top level of the `HirFileId` this

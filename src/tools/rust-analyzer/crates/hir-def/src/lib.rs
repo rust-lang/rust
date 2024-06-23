@@ -977,6 +977,14 @@ impl GenericDefId {
             _ => None,
         }
     }
+
+    pub fn from_callable(db: &dyn DefDatabase, def: CallableDefId) -> GenericDefId {
+        match def {
+            CallableDefId::FunctionId(f) => f.into(),
+            CallableDefId::StructId(s) => s.into(),
+            CallableDefId::EnumVariantId(e) => e.lookup(db).parent.into(),
+        }
+    }
 }
 
 impl From<AssocItemId> for GenericDefId {
@@ -1015,16 +1023,6 @@ impl CallableDefId {
             CallableDefId::FunctionId(f) => f.krate(db),
             CallableDefId::StructId(s) => s.krate(db),
             CallableDefId::EnumVariantId(e) => e.krate(db),
-        }
-    }
-}
-
-impl GenericDefId {
-    pub fn from(db: &dyn DefDatabase, def: CallableDefId) -> GenericDefId {
-        match def {
-            CallableDefId::FunctionId(f) => f.into(),
-            CallableDefId::StructId(s) => s.into(),
-            CallableDefId::EnumVariantId(e) => e.lookup(db).parent.into(),
         }
     }
 }

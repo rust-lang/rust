@@ -80,9 +80,11 @@ pub trait InternDatabase: SourceDatabase {
 
 #[salsa::query_group(DefDatabaseStorage)]
 pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDatabase> {
+    /// Whether to expand procedural macros during name resolution.
     #[salsa::input]
     fn expand_proc_attr_macros(&self) -> bool;
 
+    /// Computes an [`ItemTree`] for the given file or macro expansion.
     #[salsa::invoke(ItemTree::file_item_tree_query)]
     fn file_item_tree(&self, file_id: HirFileId) -> Arc<ItemTree>;
 
@@ -96,6 +98,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     #[salsa::invoke(DefMap::block_def_map_query)]
     fn block_def_map(&self, block: BlockId) -> Arc<DefMap>;
 
+    /// Turns a MacroId into a MacroDefId, describing the macro's definition post name resolution.
     fn macro_def(&self, m: MacroId) -> MacroDefId;
 
     // region:data

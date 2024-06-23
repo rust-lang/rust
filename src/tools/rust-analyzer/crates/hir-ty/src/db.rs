@@ -80,7 +80,31 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::cycle(crate::consteval::const_eval_discriminant_recover)]
     fn const_eval_discriminant(&self, def: EnumVariantId) -> Result<i128, ConstEvalError>;
 
+    #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
+    fn lookup_impl_method(
+        &self,
+        env: Arc<TraitEnvironment>,
+        func: FunctionId,
+        fn_subst: Substitution,
+    ) -> (FunctionId, Substitution);
+
     // endregion:mir
+
+    #[salsa::invoke(crate::layout::layout_of_adt_query)]
+    #[salsa::cycle(crate::layout::layout_of_adt_recover)]
+    fn layout_of_adt(
+        &self,
+        def: AdtId,
+        subst: Substitution,
+        env: Arc<TraitEnvironment>,
+    ) -> Result<Arc<Layout>, LayoutError>;
+
+    #[salsa::invoke(crate::layout::layout_of_ty_query)]
+    #[salsa::cycle(crate::layout::layout_of_ty_recover)]
+    fn layout_of_ty(&self, ty: Ty, env: Arc<TraitEnvironment>) -> Result<Arc<Layout>, LayoutError>;
+
+    #[salsa::invoke(crate::layout::target_data_layout_query)]
+    fn target_data_layout(&self, krate: CrateId) -> Result<Arc<TargetDataLayout>, Arc<str>>;
 
     #[salsa::invoke(crate::lower::ty_query)]
     #[salsa::cycle(crate::lower::ty_recover)]
@@ -103,30 +127,6 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(crate::lower::field_types_query)]
     fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>>;
-
-    #[salsa::invoke(crate::layout::layout_of_adt_query)]
-    #[salsa::cycle(crate::layout::layout_of_adt_recover)]
-    fn layout_of_adt(
-        &self,
-        def: AdtId,
-        subst: Substitution,
-        env: Arc<TraitEnvironment>,
-    ) -> Result<Arc<Layout>, LayoutError>;
-
-    #[salsa::invoke(crate::layout::layout_of_ty_query)]
-    #[salsa::cycle(crate::layout::layout_of_ty_recover)]
-    fn layout_of_ty(&self, ty: Ty, env: Arc<TraitEnvironment>) -> Result<Arc<Layout>, LayoutError>;
-
-    #[salsa::invoke(crate::layout::target_data_layout_query)]
-    fn target_data_layout(&self, krate: CrateId) -> Result<Arc<TargetDataLayout>, Arc<str>>;
-
-    #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
-    fn lookup_impl_method(
-        &self,
-        env: Arc<TraitEnvironment>,
-        func: FunctionId,
-        fn_subst: Substitution,
-    ) -> (FunctionId, Substitution);
 
     #[salsa::invoke(crate::lower::callable_item_sig)]
     fn callable_item_signature(&self, def: CallableDefId) -> PolyFnSig;

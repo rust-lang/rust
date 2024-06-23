@@ -915,7 +915,7 @@ fn type_alias_associated_ty_value(
 
 pub(crate) fn fn_def_datum_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Arc<FnDefDatum> {
     let callable_def: CallableDefId = from_chalk(db, fn_def_id);
-    let generic_def = GenericDefId::from(db.upcast(), callable_def);
+    let generic_def = GenericDefId::from_callable(db.upcast(), callable_def);
     let generic_params = generics(db.upcast(), generic_def);
     let (sig, binders) = db.callable_item_signature(callable_def).into_value_and_skipped_binders();
     let bound_vars = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
@@ -946,7 +946,8 @@ pub(crate) fn fn_def_datum_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Ar
 
 pub(crate) fn fn_def_variance_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Variances {
     let callable_def: CallableDefId = from_chalk(db, fn_def_id);
-    let generic_params = generics(db.upcast(), GenericDefId::from(db.upcast(), callable_def));
+    let generic_params =
+        generics(db.upcast(), GenericDefId::from_callable(db.upcast(), callable_def));
     Variances::from_iter(
         Interner,
         std::iter::repeat(chalk_ir::Variance::Invariant).take(generic_params.len()),

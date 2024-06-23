@@ -988,7 +988,7 @@ impl HirDisplay for Ty {
                 f.end_location_link();
 
                 if parameters.len(Interner) > 0 {
-                    let generic_def_id = GenericDefId::from(db.upcast(), def);
+                    let generic_def_id = GenericDefId::from_callable(db.upcast(), def);
                     let generics = generics(db.upcast(), generic_def_id);
                     let (parent_len, self_param, type_, const_, impl_, lifetime) =
                         generics.provenance_split();
