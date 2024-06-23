@@ -123,9 +123,9 @@ hir_typeck_option_result_asref = use `{$def_path}::as_ref` to convert `{$expecte
 hir_typeck_option_result_cloned = use `{$def_path}::cloned` to clone the value inside the `{$def_path}`
 hir_typeck_option_result_copied = use `{$def_path}::copied` to copy the value inside the `{$def_path}`
 
-hir_typeck_ptr_cast_add_auto_to_object = adding an auto {$traits_len ->
-    [1] trait {$traits}
-    *[other] traits {$traits}
+hir_typeck_ptr_cast_add_auto_to_object = adding {$traits_len ->
+    [1] an auto trait {$traits}
+    *[other] auto traits {$traits}
 } to a trait object in a pointer cast may cause UB later on
 
 hir_typeck_remove_semi_for_coerce = you might have meant to return the `match` expression
