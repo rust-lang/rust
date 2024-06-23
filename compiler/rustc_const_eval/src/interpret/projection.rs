@@ -21,7 +21,7 @@ use rustc_target::abi::{self, VariantIdx};
 use tracing::{debug, instrument};
 
 use super::{
-    throw_ub, throw_unsup_format, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
+    throw_ub, throw_unsup, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
     Provenance, Scalar,
 };
 
@@ -186,8 +186,8 @@ where
                     (base_meta, offset)
                 }
                 None => {
-                    // We don't know the alignment of this field, so we cannot adjust.
-                    throw_unsup_format!("`extern type` does not have a known offset")
+                    // We cannot know the alignment of this field, so we cannot adjust.
+                    throw_unsup!(ExternTypeField)
                 }
             }
         } else {
