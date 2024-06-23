@@ -4,8 +4,8 @@ use rustc_span::edition::Edition;
 use std::fmt::Write;
 
 use crate::doctest::{
-    run_test, DocTest, GlobalTestOptions, IndividualTestOptions, RunnableDoctest, RustdocOptions,
-    ScrapedDoctest, TestFailure, UnusedExterns,
+    run_test, DocTestBuilder, GlobalTestOptions, IndividualTestOptions, RunnableDoctest,
+    RustdocOptions, ScrapedDoctest, TestFailure, UnusedExterns,
 };
 use crate::html::markdown::{Ignore, LangString};
 
@@ -31,7 +31,7 @@ impl DocTestRunner {
 
     pub(crate) fn add_test(
         &mut self,
-        doctest: &DocTest,
+        doctest: &DocTestBuilder,
         scraped_test: &ScrapedDoctest,
         target_str: &str,
     ) {
@@ -193,7 +193,7 @@ std::process::Termination::report(test::test_main(test_args, Vec::from(TESTS), N
 
 /// Push new doctest content into `output`. Returns the test ID for this doctest.
 fn generate_mergeable_doctest(
-    doctest: &DocTest,
+    doctest: &DocTestBuilder,
     scraped_test: &ScrapedDoctest,
     ignore: bool,
     id: usize,
