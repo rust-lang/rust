@@ -389,7 +389,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
     }
 }
 
-impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
+impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
     fn free_region_constraint_info(
         &self,
         borrow_region: RegionVid,

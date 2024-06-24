@@ -75,7 +75,7 @@ impl OutlivesSuggestionBuilder {
     /// Returns a name for the region if it is suggestable. See `region_name_is_suggestable`.
     fn region_vid_to_name(
         &self,
-        mbcx: &MirBorrowckCtxt<'_, '_>,
+        mbcx: &MirBorrowckCtxt<'_, '_, '_, '_>,
         region: RegionVid,
     ) -> Option<RegionName> {
         mbcx.give_region_a_name(region).filter(Self::region_name_is_suggestable)
@@ -84,7 +84,7 @@ impl OutlivesSuggestionBuilder {
     /// Compiles a list of all suggestions to be printed in the final big suggestion.
     fn compile_all_suggestions(
         &self,
-        mbcx: &MirBorrowckCtxt<'_, '_>,
+        mbcx: &MirBorrowckCtxt<'_, '_, '_, '_>,
     ) -> SmallVec<[SuggestedConstraint; 2]> {
         let mut suggested = SmallVec::new();
 
@@ -160,7 +160,7 @@ impl OutlivesSuggestionBuilder {
     /// Emit an intermediate note on the given `Diag` if the involved regions are suggestable.
     pub(crate) fn intermediate_suggestion(
         &mut self,
-        mbcx: &MirBorrowckCtxt<'_, '_>,
+        mbcx: &MirBorrowckCtxt<'_, '_, '_, '_>,
         errci: &ErrorConstraintInfo<'_>,
         diag: &mut Diag<'_>,
     ) {
@@ -179,7 +179,7 @@ impl OutlivesSuggestionBuilder {
 
     /// If there is a suggestion to emit, add a diagnostic to the buffer. This is the final
     /// suggestion including all collected constraints.
-    pub(crate) fn add_suggestion(&self, mbcx: &mut MirBorrowckCtxt<'_, '_>) {
+    pub(crate) fn add_suggestion(&self, mbcx: &mut MirBorrowckCtxt<'_, '_, '_, '_>) {
         // No constraints to add? Done.
         if self.constraints_to_add.is_empty() {
             debug!("No constraints to suggest.");

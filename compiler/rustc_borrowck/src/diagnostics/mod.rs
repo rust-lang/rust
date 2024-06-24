@@ -69,7 +69,7 @@ pub(super) struct DescribePlaceOpt {
 
 pub(super) struct IncludingTupleField(pub(super) bool);
 
-impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
+impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
     /// Adds a suggestion when a closure is invoked twice with a moved variable or when a closure
     /// is moved after being invoked.
     ///
@@ -771,7 +771,7 @@ struct CapturedMessageOpt {
     maybe_reinitialized_locations_is_empty: bool,
 }
 
-impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
+impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
     /// Finds the spans associated to a move or copy of move_place at location.
     pub(super) fn move_spans(
         &self,
