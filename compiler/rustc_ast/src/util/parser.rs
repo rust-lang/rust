@@ -234,7 +234,7 @@ pub const PREC_RANGE: i8 = -10;
 // The range 2..=14 is reserved for AssocOp binary operator precedences.
 pub const PREC_PREFIX: i8 = 50;
 pub const PREC_POSTFIX: i8 = 60;
-pub const PREC_PAREN: i8 = 99;
+pub const PREC_PAREN: i8 = 60;
 pub const PREC_FORCE_PAREN: i8 = 100;
 
 #[derive(Debug, Clone, Copy)]
