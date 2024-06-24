@@ -877,6 +877,12 @@ pub struct Process {
 
 impl Process {
     #[cfg(target_os = "linux")]
+    /// # Safety
+    ///
+    /// `pidfd` must either be -1 (representing no file descriptor) or a valid, exclusively owned file
+    /// descriptor (See [I/O Safety]).
+    ///
+    /// [I/O Safety]: crate::io#io-safety
     unsafe fn new(pid: pid_t, pidfd: pid_t) -> Self {
         use crate::os::unix::io::FromRawFd;
         use crate::sys_common::FromInner;
