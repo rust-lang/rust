@@ -73,7 +73,7 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
     }
 
     let function_features = codegen_fn_attrs
-        .target_features
+        .all_target_features
         .iter()
         .map(|features| features.as_str())
         .collect::<Vec<&str>>();

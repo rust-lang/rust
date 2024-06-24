@@ -1246,6 +1246,11 @@ rustc_queries! {
         feedable
     }
 
+    query struct_target_features(def_id: DefId) -> &'tcx [Symbol] {
+        separate_provide_extern
+        desc { |tcx| "computing target features for struct `{}`", tcx.def_path_str(def_id) }
+    }
+
     query asm_target_features(def_id: DefId) -> &'tcx FxIndexSet<Symbol> {
         desc { |tcx| "computing target features for inline asm of `{}`", tcx.def_path_str(def_id) }
     }

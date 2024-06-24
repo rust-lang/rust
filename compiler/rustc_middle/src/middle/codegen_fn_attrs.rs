@@ -26,9 +26,12 @@ pub struct CodegenFnAttrs {
     /// be set when `link_name` is set. This is for foreign items with the
     /// "raw-dylib" kind.
     pub link_ordinal: Option<u16>,
+    /// All the target features that are enabled for this function. Some features might be enabled
+    /// implicitly.
+    pub all_target_features: Vec<Symbol>,
     /// The `#[target_feature(enable = "...")]` attribute and the enabled
     /// features (only enabled features are supported right now).
-    pub target_features: Vec<Symbol>,
+    pub explicit_target_features: Vec<Symbol>,
     /// The `#[linkage = "..."]` attribute on Rust-defined items and the value we found.
     pub linkage: Option<Linkage>,
     /// The `#[linkage = "..."]` attribute on foreign items and the value we found.
@@ -141,7 +144,8 @@ impl CodegenFnAttrs {
             export_name: None,
             link_name: None,
             link_ordinal: None,
-            target_features: vec![],
+            all_target_features: vec![],
+            explicit_target_features: vec![],
             linkage: None,
             import_linkage: None,
             link_section: None,

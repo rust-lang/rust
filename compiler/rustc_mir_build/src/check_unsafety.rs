@@ -440,7 +440,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     // the call requires `unsafe`. Don't check this on wasm
                     // targets, though. For more information on wasm see the
                     // is_like_wasm check in hir_analysis/src/collect.rs
-                    let callee_features = &self.tcx.codegen_fn_attrs(func_did).target_features;
+                    let callee_features =
+                        &self.tcx.codegen_fn_attrs(func_did).explicit_target_features;
                     if !self.tcx.sess.target.options.is_like_wasm
                         && !callee_features
                             .iter()
@@ -510,10 +511,16 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 user_ty: _,
                 fields: _,
                 base: _,
-            }) => match self.tcx.layout_scalar_valid_range(adt_def.did()) {
-                (Bound::Unbounded, Bound::Unbounded) => {}
-                _ => self.requires_unsafe(expr.span, InitializingTypeWith),
-            },
+            }) => {
+                match self.tcx.layout_scalar_valid_range(adt_def.did()) {
+                    (Bound::Unbounded, Bound::Unbounded) => {}
+                    _ => self.requires_unsafe(expr.span, InitializingTypeWith),
+                }
+                if !self.tcx.struct_target_features(adt_def.did()).is_empty() {
+                    self.requires_unsafe(expr.span, ConstructingTargetFeaturesType)
+                }
+            }
+
             ExprKind::Closure(box ClosureExpr {
                 closure_id,
                 args: _,
@@ -615,6 +622,7 @@ enum UnsafeOpKind {
     CallToUnsafeFunction(Option<DefId>),
     UseOfInlineAssembly,
     InitializingTypeWith,
+    ConstructingTargetFeaturesType,
     UseOfMutableStatic,
     UseOfExternStatic,
     DerefOfRawPointer,
@@ -692,6 +700,15 @@ impl UnsafeOpKind {
                 hir_id,
                 span,
                 UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
+                    span,
+                    unsafe_not_inherited_note,
+                },
+            ),
+            ConstructingTargetFeaturesType => tcx.emit_node_span_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnInitializingTypeWithTargetFeatureRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
                 },
@@ -853,6 +870,20 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 });
             }
+            ConstructingTargetFeaturesType if unsafe_op_in_unsafe_fn_allowed => {
+                dcx.emit_err(
+                    InitializingTypeWithTargetFeatureRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                        span,
+                        unsafe_not_inherited_note,
+                    },
+                );
+            }
+            ConstructingTargetFeaturesType => {
+                dcx.emit_err(InitializingTypeWithTargetFeatureRequiresUnsafe {
+                    span,
+                    unsafe_not_inherited_note,
+                });
+            }
             UseOfMutableStatic if unsafe_op_in_unsafe_fn_allowed => {
                 dcx.emit_err(UseOfMutableStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
@@ -985,7 +1016,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
             SafetyContext::Safe
         }
     });
-    let body_target_features = &tcx.body_codegen_attrs(def.to_def_id()).target_features;
+    let body_target_features = &tcx.body_codegen_attrs(def.to_def_id()).all_target_features;
     let mut warnings = Vec::new();
     let mut visitor = UnsafetyVisitor {
         tcx,

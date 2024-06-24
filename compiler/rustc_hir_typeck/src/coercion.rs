@@ -851,9 +851,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     }
 
                     // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
+                    // FIXME: should this be true also for functions that inherit target features
+                    // from witness types?
 
                     if b_sig.safety() == hir::Safety::Safe
-                        && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                        && !self.tcx.codegen_fn_attrs(def_id).all_target_features.is_empty()
                     {
                         return Err(TypeError::TargetFeatureCast(def_id));
                     }

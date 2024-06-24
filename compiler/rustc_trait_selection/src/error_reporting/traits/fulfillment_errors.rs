@@ -438,7 +438,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let is_target_feature_fn = if let ty::FnDef(def_id, _) =
                             *leaf_trait_ref.skip_binder().self_ty().kind()
                         {
-                            !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                            // FIXME: should a function that inherits target_features through
+                            // witness types implement Fn traits?
+                            !self.tcx.codegen_fn_attrs(def_id).all_target_features.is_empty()
                         } else {
                             false
                         };
