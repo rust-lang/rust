@@ -592,8 +592,8 @@
                 "title": "assist",
                 "properties": {
                     "rust-analyzer.assist.termSearch.fuel": {
-                        "markdownDescription": "Term search fuel in \"units of work\" for assists (Defaults to 400).",
-                        "default": 400,
+                        "markdownDescription": "Term search fuel in \"units of work\" for assists (Defaults to 1800).",
+                        "default": 1800,
                         "type": "integer",
                         "minimum": 0
                     }
@@ -1224,8 +1224,8 @@
                 "title": "completion",
                 "properties": {
                     "rust-analyzer.completion.termSearch.fuel": {
-                        "markdownDescription": "Term search fuel in \"units of work\" for autocompletion (Defaults to 200).",
-                        "default": 200,
+                        "markdownDescription": "Term search fuel in \"units of work\" for autocompletion (Defaults to 1000).",
+                        "default": 1000,
                         "type": "integer",
                         "minimum": 0
                     }

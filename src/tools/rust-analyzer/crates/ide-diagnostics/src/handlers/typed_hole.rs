@@ -276,7 +276,7 @@ impl Foo for Baz {
 }
 fn asd() -> Bar {
     let a = Baz;
-    Foo::foo(_)
+    Foo::foo(a)
 }
 ",
         );
@@ -365,7 +365,7 @@ impl Foo for A {
 }
 fn main() {
     let a = A;
-    let c: Bar = Foo::foo(_);
+    let c: Bar = Foo::foo(&a);
 }"#,
         );
     }
