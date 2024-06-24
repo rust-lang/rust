@@ -702,6 +702,34 @@ impl Step for LldWrapper {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct WasmComponentLd {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for WasmComponentLd {
+    type Output = PathBuf;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.never()
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "wasm-component-ld",
+            mode: Mode::ToolStd,
+            path: "src/tools/wasm-component-ld",
+            source_type: SourceType::InTree,
+            extra_features: Vec::new(),
+            allow_features: "",
+            cargo_args: Vec::new(),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustAnalyzer {
     pub compiler: Compiler,
     pub target: TargetSelection,
