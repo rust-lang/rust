@@ -122,7 +122,7 @@ pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path
                 // don't break out if `self` is the last segment of a path, this mean we got a
                 // use tree like `foo::{self}` which we want to resolve as `foo`
                 if !segments.is_empty() {
-                    kind = PathKind::Super(0);
+                    kind = PathKind::SELF;
                     break;
                 }
             }
@@ -144,7 +144,7 @@ pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path
 
     if segments.is_empty() && kind == PathKind::Plain && type_anchor.is_none() {
         // plain empty paths don't exist, this means we got a single `self` segment as our path
-        kind = PathKind::Super(0);
+        kind = PathKind::SELF;
     }
 
     // handle local_inner_macros :

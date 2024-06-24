@@ -177,12 +177,13 @@ function createCommands(): Record<string, CommandFactory> {
         serverVersion: { enabled: commands.serverVersion },
         viewMemoryLayout: { enabled: commands.viewMemoryLayout },
         toggleCheckOnSave: { enabled: commands.toggleCheckOnSave },
+        toggleLSPLogs: { enabled: commands.toggleLSPLogs },
         // Internal commands which are invoked by the server.
         applyActionGroup: { enabled: commands.applyActionGroup },
         applySnippetWorkspaceEdit: { enabled: commands.applySnippetWorkspaceEditCommand },
         debugSingle: { enabled: commands.debugSingle },
         gotoLocation: { enabled: commands.gotoLocation },
-        linkToCommand: { enabled: commands.linkToCommand },
+        hoverRefCommandProxy: { enabled: commands.hoverRefCommandProxy },
         resolveCodeAction: { enabled: commands.resolveCodeAction },
         runSingle: { enabled: commands.runSingle },
         showReferences: { enabled: commands.showReferences },
@@ -199,16 +200,6 @@ function checkConflictingExtensions() {
                 `You have both the rust-analyzer (rust-lang.rust-analyzer) and Rust (rust-lang.rust) ` +
                     "plugins enabled. These are known to conflict and cause various functions of " +
                     "both plugins to not work correctly. You should disable one of them.",
-                "Got it",
-            )
-            .then(() => {}, console.error);
-    }
-
-    if (vscode.extensions.getExtension("panicbit.cargo")) {
-        vscode.window
-            .showWarningMessage(
-                `You have both the rust-analyzer (rust-lang.rust-analyzer) and Cargo (panicbit.cargo) plugins enabled, ` +
-                    'you can disable it or set {"cargo.automaticCheck": false} in settings.json to avoid invoking cargo twice',
                 "Got it",
             )
             .then(() => {}, console.error);

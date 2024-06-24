@@ -14,25 +14,27 @@ pub(crate) fn complete_pattern(
     ctx: &CompletionContext<'_>,
     pattern_ctx: &PatternContext,
 ) {
+    let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
+
     match pattern_ctx.parent_pat.as_ref() {
         Some(Pat::RangePat(_) | Pat::BoxPat(_)) => (),
         Some(Pat::RefPat(r)) => {
             if r.mut_token().is_none() {
-                acc.add_keyword(ctx, "mut");
+                add_keyword("mut", "mut $0");
             }
         }
         _ => {
             let tok = ctx.token.text_range().start();
             match (pattern_ctx.ref_token.as_ref(), pattern_ctx.mut_token.as_ref()) {
                 (None, None) => {
-                    acc.add_keyword(ctx, "ref");
-                    acc.add_keyword(ctx, "mut");
+                    add_keyword("ref", "ref $0");
+                    add_keyword("mut", "mut $0");
                 }
                 (None, Some(m)) if tok < m.text_range().start() => {
-                    acc.add_keyword(ctx, "ref");
+                    add_keyword("ref", "ref $0");
                 }
                 (Some(r), None) if tok > r.text_range().end() => {
-                    acc.add_keyword(ctx, "mut");
+                    add_keyword("mut", "mut $0");
                 }
                 _ => (),
             }

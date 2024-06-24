@@ -4,13 +4,11 @@ use std::collections::BTreeSet;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Write};
-use std::fs::{self, File};
+use std::fs;
 use std::hash::Hash;
-use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use crate::core::build_steps::tool::{self, SourceType};
@@ -274,7 +272,7 @@ impl PathSet {
     /// This is used for `StepDescription::krate`, which passes all matching crates at once to
     /// `Step::make_run`, rather than calling it many times with a single crate.
     /// See `tests.rs` for examples.
-    fn intersection_removing_matches(&self, needles: &mut Vec<&Path>, module: Kind) -> PathSet {
+    fn intersection_removing_matches(&self, needles: &mut Vec<PathBuf>, module: Kind) -> PathSet {
         let mut check = |p| {
             for (i, n) in needles.iter().enumerate() {
                 let matched = Self::check(p, n, module);
@@ -346,7 +344,7 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
     ),
 ];
 
-fn remap_paths(paths: &mut Vec<&Path>) {
+fn remap_paths(paths: &mut Vec<PathBuf>) {
     let mut remove = vec![];
     let mut add = vec![];
     for (i, path) in paths.iter().enumerate().filter_map(|(i, path)| path.to_str().map(|s| (i, s)))
@@ -355,7 +353,7 @@ fn remap_paths(paths: &mut Vec<&Path>) {
             // Remove leading and trailing slashes so `tests/` and `tests` are equivalent
             if path.trim_matches(std::path::is_separator) == search {
                 remove.push(i);
-                add.extend(replace.iter().map(Path::new));
+                add.extend(replace.iter().map(PathBuf::from));
                 break;
             }
         }
@@ -438,8 +436,25 @@ impl StepDescription {
             }
         }
 
-        // strip CurDir prefix if present
-        let mut paths: Vec<_> = paths.iter().map(|p| p.strip_prefix(".").unwrap_or(p)).collect();
+        // Attempt to resolve paths to be relative to the builder source directory.
+        let mut paths: Vec<PathBuf> = paths
+            .iter()
+            .map(|p| {
+                // If the path does not exist, it may represent the name of a Step, such as `tidy` in `x test tidy`
+                if !p.exists() {
+                    return p.clone();
+                }
+
+                // Make the path absolute, strip the prefix, and convert to a PathBuf.
+                match std::path::absolute(p) {
+                    Ok(p) => p.strip_prefix(&builder.src).unwrap_or(&p).to_path_buf(),
+                    Err(e) => {
+                        eprintln!("ERROR: {:?}", e);
+                        panic!("Due to the above error, failed to resolve path: {:?}", p);
+                    }
+                }
+            })
+            .collect();
 
         remap_paths(&mut paths);
 
@@ -577,7 +592,7 @@ impl<'a> ShouldRun<'a> {
     ///
     /// [`path`]: ShouldRun::path
     pub fn paths(mut self, paths: &[&str]) -> Self {
-        let submodules_paths = self.builder.get_all_submodules();
+        let submodules_paths = build_helper::util::parse_gitmodules(&self.builder.src);
 
         self.paths.insert(PathSet::Set(
             paths
@@ -629,7 +644,7 @@ impl<'a> ShouldRun<'a> {
     /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
     fn pathset_for_paths_removing_matches(
         &self,
-        paths: &mut Vec<&Path>,
+        paths: &mut Vec<PathBuf>,
         kind: Kind,
     ) -> Vec<PathSet> {
         let mut sets = vec![];
@@ -2224,28 +2239,6 @@ impl<'a> Builder<'a> {
         self.verbose_than(1, || println!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
         self.cache.put(step, out.clone());
         out
-    }
-
-    /// Return paths of all submodules.
-    pub fn get_all_submodules(&self) -> &[String] {
-        static SUBMODULES_PATHS: OnceLock<Vec<String>> = OnceLock::new();
-
-        let init_submodules_paths = |src: &PathBuf| {
-            let file = File::open(src.join(".gitmodules")).unwrap();
-
-            let mut submodules_paths = vec![];
-            for line in BufReader::new(file).lines().map_while(Result::ok) {
-                let line = line.trim();
-                if line.starts_with("path") {
-                    let actual_path = line.split(' ').last().expect("Couldn't get value of path");
-                    submodules_paths.push(actual_path.to_owned());
-                }
-            }
-
-            submodules_paths
-        };
-
-        SUBMODULES_PATHS.get_or_init(|| init_submodules_paths(&self.src))
     }
 
     /// Ensure that a given step is built *only if it's supposed to be built by default*, returning

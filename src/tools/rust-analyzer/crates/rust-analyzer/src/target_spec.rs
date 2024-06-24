@@ -1,20 +1,52 @@
-//! See `CargoTargetSpec`
+//! See `TargetSpec`
 
 use std::mem;
 
 use cfg::{CfgAtom, CfgExpr};
 use ide::{Cancellable, CrateId, FileId, RunnableKind, TestId};
+use project_model::project_json::Runnable;
 use project_model::{CargoFeatures, ManifestPath, TargetKind};
 use rustc_hash::FxHashSet;
 use vfs::AbsPathBuf;
 
 use crate::global_state::GlobalStateSnapshot;
 
+/// A target represents a thing we can build or test.
+///
+/// We use it to calculate the CLI arguments required to build, run or
+/// test the target.
+#[derive(Clone, Debug)]
+pub(crate) enum TargetSpec {
+    Cargo(CargoTargetSpec),
+    ProjectJson(ProjectJsonTargetSpec),
+}
+
+impl TargetSpec {
+    pub(crate) fn for_file(
+        global_state_snapshot: &GlobalStateSnapshot,
+        file_id: FileId,
+    ) -> Cancellable<Option<Self>> {
+        let crate_id = match &*global_state_snapshot.analysis.crates_for(file_id)? {
+            &[crate_id, ..] => crate_id,
+            _ => return Ok(None),
+        };
+
+        Ok(global_state_snapshot.target_spec_for_crate(crate_id))
+    }
+
+    pub(crate) fn target_kind(&self) -> TargetKind {
+        match self {
+            TargetSpec::Cargo(cargo) => cargo.target_kind,
+            TargetSpec::ProjectJson(project_json) => project_json.target_kind,
+        }
+    }
+}
+
 /// Abstract representation of Cargo target.
 ///
 /// We use it to cook up the set of cli args we need to pass to Cargo to
 /// build/test/run the target.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct CargoTargetSpec {
     pub(crate) workspace_root: AbsPathBuf,
     pub(crate) cargo_toml: ManifestPath,
@@ -24,6 +56,51 @@ pub(crate) struct CargoTargetSpec {
     pub(crate) crate_id: CrateId,
     pub(crate) required_features: Vec<String>,
     pub(crate) features: FxHashSet<String>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct ProjectJsonTargetSpec {
+    pub(crate) label: String,
+    pub(crate) target_kind: TargetKind,
+    pub(crate) shell_runnables: Vec<Runnable>,
+}
+
+impl ProjectJsonTargetSpec {
+    pub(crate) fn runnable_args(&self, kind: &RunnableKind) -> Option<Runnable> {
+        match kind {
+            RunnableKind::Bin => {
+                for runnable in &self.shell_runnables {
+                    if matches!(runnable.kind, project_model::project_json::RunnableKind::Run) {
+                        return Some(runnable.clone());
+                    }
+                }
+
+                None
+            }
+            RunnableKind::Test { test_id, .. } => {
+                for runnable in &self.shell_runnables {
+                    if matches!(runnable.kind, project_model::project_json::RunnableKind::TestOne) {
+                        let mut runnable = runnable.clone();
+
+                        let replaced_args: Vec<_> = runnable
+                            .args
+                            .iter()
+                            .map(|arg| arg.replace("{test_id}", &test_id.to_string()))
+                            .map(|arg| arg.replace("{label}", &self.label))
+                            .collect();
+                        runnable.args = replaced_args;
+
+                        return Some(runnable);
+                    }
+                }
+
+                None
+            }
+            RunnableKind::TestMod { .. } => None,
+            RunnableKind::Bench { .. } => None,
+            RunnableKind::DocTest { .. } => None,
+        }
+    }
 }
 
 impl CargoTargetSpec {
@@ -120,35 +197,6 @@ impl CargoTargetSpec {
             }
         }
         (cargo_args, executable_args)
-    }
-
-    pub(crate) fn for_file(
-        global_state_snapshot: &GlobalStateSnapshot,
-        file_id: FileId,
-    ) -> Cancellable<Option<CargoTargetSpec>> {
-        let crate_id = match &*global_state_snapshot.analysis.crates_for(file_id)? {
-            &[crate_id, ..] => crate_id,
-            _ => return Ok(None),
-        };
-        let (cargo_ws, target) = match global_state_snapshot.cargo_target_for_crate_root(crate_id) {
-            Some(it) => it,
-            None => return Ok(None),
-        };
-
-        let target_data = &cargo_ws[target];
-        let package_data = &cargo_ws[target_data.package];
-        let res = CargoTargetSpec {
-            workspace_root: cargo_ws.workspace_root().to_path_buf(),
-            cargo_toml: package_data.manifest.clone(),
-            package: cargo_ws.package_flag(package_data),
-            target: target_data.name.clone(),
-            target_kind: target_data.kind,
-            required_features: target_data.required_features.clone(),
-            features: package_data.features.keys().cloned().collect(),
-            crate_id,
-        };
-
-        Ok(Some(res))
     }
 
     pub(crate) fn push_to(self, buf: &mut Vec<String>, kind: &RunnableKind) {

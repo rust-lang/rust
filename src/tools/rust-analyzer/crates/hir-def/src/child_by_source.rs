@@ -6,7 +6,7 @@
 
 use either::Either;
 use hir_expand::{attrs::collect_attrs, HirFileId};
-use syntax::ast;
+use syntax::{ast, AstPtr};
 
 use crate::{
     db::DefDatabase,
@@ -38,7 +38,7 @@ impl ChildBySource for TraitId {
 
         data.attribute_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
-                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_node(db.upcast()), call_id);
+                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db.upcast()), call_id);
             },
         );
         data.items.iter().for_each(|&(_, item)| {
@@ -50,9 +50,10 @@ impl ChildBySource for TraitId {
 impl ChildBySource for ImplId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let data = db.impl_data(*self);
+        // FIXME: Macro calls
         data.attribute_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
-                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_node(db.upcast()), call_id);
+                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db.upcast()), call_id);
             },
         );
         data.items.iter().for_each(|&item| {
@@ -80,7 +81,7 @@ impl ChildBySource for ItemScope {
             .for_each(|konst| insert_item_loc(db, res, file_id, konst, keys::CONST));
         self.attr_macro_invocs().filter(|(id, _)| id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
-                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_node(db.upcast()), call_id);
+                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db.upcast()), call_id);
             },
         );
         self.legacy_macros().for_each(|(_, ids)| {
@@ -88,7 +89,7 @@ impl ChildBySource for ItemScope {
                 if let MacroId::MacroRulesId(id) = id {
                     let loc = id.lookup(db);
                     if loc.id.file_id() == file_id {
-                        res[keys::MACRO_RULES].insert(loc.source(db).value, id);
+                        res[keys::MACRO_RULES].insert(loc.ast_ptr(db).value, id);
                     }
                 }
             })
@@ -100,12 +101,18 @@ impl ChildBySource for ItemScope {
                     if let Some((_, Either::Left(attr))) =
                         collect_attrs(&adt).nth(attr_id.ast_index())
                     {
-                        res[keys::DERIVE_MACRO_CALL].insert(attr, (attr_id, call_id, calls.into()));
+                        res[keys::DERIVE_MACRO_CALL]
+                            .insert(AstPtr::new(&attr), (attr_id, call_id, calls.into()));
                     }
                 });
             },
         );
-
+        self.iter_macro_invoc().filter(|(id, _)| id.file_id == file_id).for_each(
+            |(ast_id, &call)| {
+                let ast = ast_id.to_ptr(db.upcast());
+                res[keys::MACRO_CALL].insert(ast, call);
+            },
+        );
         fn add_module_def(
             db: &dyn DefDatabase,
             map: &mut DynMap,
@@ -155,8 +162,8 @@ impl ChildBySource for VariantId {
         for (local_id, source) in arena_map.value.iter() {
             let id = FieldId { parent, local_id };
             match source.clone() {
-                Either::Left(source) => res[keys::TUPLE_FIELD].insert(source, id),
-                Either::Right(source) => res[keys::RECORD_FIELD].insert(source, id),
+                Either::Left(source) => res[keys::TUPLE_FIELD].insert(AstPtr::new(&source), id),
+                Either::Right(source) => res[keys::RECORD_FIELD].insert(AstPtr::new(&source), id),
             }
         }
     }
@@ -171,29 +178,30 @@ impl ChildBySource for EnumId {
 
         let tree = loc.id.item_tree(db);
         let ast_id_map = db.ast_id_map(loc.id.file_id());
-        let root = db.parse_or_expand(loc.id.file_id());
 
         db.enum_data(*self).variants.iter().for_each(|&(variant, _)| {
-            res[keys::ENUM_VARIANT].insert(
-                ast_id_map.get(tree[variant.lookup(db).id.value].ast_id).to_node(&root),
-                variant,
-            );
+            res[keys::ENUM_VARIANT]
+                .insert(ast_id_map.get(tree[variant.lookup(db).id.value].ast_id), variant);
         });
     }
 }
 
 impl ChildBySource for DefWithBodyId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let body = db.body(*self);
+        let (body, sm) = db.body_with_source_map(*self);
         if let &DefWithBodyId::VariantId(v) = self {
             VariantId::EnumVariantId(v).child_by_source_to(db, res, file_id)
         }
+
+        sm.expansions().filter(|(ast, _)| ast.file_id == file_id).for_each(|(ast, &exp_id)| {
+            res[keys::MACRO_CALL].insert(ast.value, exp_id.macro_call_id);
+        });
 
         for (block, def_map) in body.blocks(db) {
             // All block expressions are merged into the same map, because they logically all add
             // inner items to the containing `DefWithBodyId`.
             def_map[DefMap::ROOT].scope.child_by_source_to(db, res, file_id);
-            res[keys::BLOCK].insert(block.lookup(db).ast_id.to_node(db.upcast()), block);
+            res[keys::BLOCK].insert(block.lookup(db).ast_id.to_ptr(db.upcast()), block);
         }
     }
 }
@@ -220,13 +228,17 @@ impl ChildBySource for GenericDefId {
             {
                 let id = TypeOrConstParamId { parent: *self, local_id };
                 match ast_param {
-                    ast::TypeOrConstParam::Type(a) => res[keys::TYPE_PARAM].insert(a, id),
-                    ast::TypeOrConstParam::Const(a) => res[keys::CONST_PARAM].insert(a, id),
+                    ast::TypeOrConstParam::Type(a) => {
+                        res[keys::TYPE_PARAM].insert(AstPtr::new(&a), id)
+                    }
+                    ast::TypeOrConstParam::Const(a) => {
+                        res[keys::CONST_PARAM].insert(AstPtr::new(&a), id)
+                    }
                 }
             }
             for (local_id, ast_param) in lts_idx_iter.zip(generic_params_list.lifetime_params()) {
                 let id = LifetimeParamId { parent: *self, local_id };
-                res[keys::LIFETIME_PARAM].insert(ast_param, id);
+                res[keys::LIFETIME_PARAM].insert(AstPtr::new(&ast_param), id);
             }
         }
     }
@@ -246,7 +258,7 @@ fn insert_item_loc<ID, N, Data>(
 {
     let loc = id.lookup(db);
     if loc.item_tree_id().file_id() == file_id {
-        res[key].insert(loc.source(db).value, id)
+        res[key].insert(loc.ast_ptr(db).value, id)
     }
 }
 

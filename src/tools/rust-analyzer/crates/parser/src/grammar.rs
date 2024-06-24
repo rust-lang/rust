@@ -13,7 +13,7 @@
 //! Code in this module also contains inline tests, which start with
 //! `// test name-of-the-test` comment and look like this:
 //!
-//! ```
+//! ```text
 //! // test function_with_zero_parameters
 //! // fn foo() {}
 //! ```
@@ -418,7 +418,7 @@ fn delimited(
         }
         if !p.eat(delim) {
             if p.at_ts(first_set) {
-                p.error(format!("expected {:?}", delim));
+                p.error(format!("expected {delim:?}"));
             } else {
                 break;
             }

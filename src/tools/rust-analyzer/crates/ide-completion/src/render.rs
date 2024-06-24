@@ -353,7 +353,7 @@ fn render_resolution_pat(
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> Builder {
-    let _p = tracing::span!(tracing::Level::INFO, "render_resolution_pat").entered();
+    let _p = tracing::info_span!("render_resolution_pat").entered();
     use hir::ModuleDef::*;
 
     if let ScopeDef::ModuleDef(Macro(mac)) = resolution {
@@ -371,7 +371,7 @@ fn render_resolution_path(
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> Builder {
-    let _p = tracing::span!(tracing::Level::INFO, "render_resolution_path").entered();
+    let _p = tracing::info_span!("render_resolution_path").entered();
     use hir::ModuleDef::*;
 
     match resolution {
@@ -479,7 +479,7 @@ fn render_resolution_simple_(
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> Builder {
-    let _p = tracing::span!(tracing::Level::INFO, "render_resolution_simple_").entered();
+    let _p = tracing::info_span!("render_resolution_simple_").entered();
 
     let db = ctx.db();
     let ctx = ctx.import_to_add(import_to_add);
@@ -1799,6 +1799,7 @@ fn go(world: &WorldSnapshot) { go(w$0) }
 "#,
             expect![[r#"
                 lc world [type+name+local]
+                ex world [type]
                 st WorldSnapshot {…} []
                 st &WorldSnapshot {…} [type]
                 st WorldSnapshot []

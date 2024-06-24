@@ -3,6 +3,7 @@
 
 use std::{
     fmt,
+    ops::Div as _,
     time::{Duration, Instant},
 };
 
@@ -17,7 +18,7 @@ use vfs::FileId;
 
 use crate::{
     config::Config,
-    diagnostics::fetch_native_diagnostics,
+    diagnostics::{fetch_native_diagnostics, DiagnosticsGeneration},
     dispatch::{NotificationDispatcher, RequestDispatcher},
     global_state::{file_id_to_url, url_to_file_id, GlobalState},
     hack_recover_crate_name,
@@ -87,7 +88,7 @@ pub(crate) enum Task {
     Response(lsp_server::Response),
     ClientNotification(lsp_ext::UnindexedProjectParams),
     Retry(lsp_server::Request),
-    Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    Diagnostics(DiagnosticsGeneration, Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     DiscoverTest(lsp_ext::DiscoverTestResults),
     PrimeCaches(PrimeCachesProgress),
     FetchWorkspace(ProjectWorkspaceProgress),
@@ -186,6 +187,11 @@ impl GlobalState {
                         scheme: None,
                         pattern: Some("**/Cargo.lock".into()),
                     },
+                    lsp_types::DocumentFilter {
+                        language: None,
+                        scheme: None,
+                        pattern: Some("**/rust-analyzer.toml".into()),
+                    },
                 ]),
             },
         };
@@ -230,7 +236,7 @@ impl GlobalState {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
-        let _p = tracing::span!(Level::INFO, "GlobalState::handle_event", event = %event).entered();
+        let _p = tracing::info_span!("GlobalState::handle_event", event = %event).entered();
 
         let event_dbg_msg = format!("{event:?}");
         tracing::debug!(?loop_start, ?event, "handle_event");
@@ -249,9 +255,7 @@ impl GlobalState {
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
             Event::QueuedTask(task) => {
-                let _p =
-                    tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/queued_task")
-                        .entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/queued_task").entered();
                 self.handle_queued_task(task);
                 // Coalesce multiple task events into one loop turn
                 while let Ok(task) = self.deferred_task_queue.receiver.try_recv() {
@@ -259,8 +263,7 @@ impl GlobalState {
                 }
             }
             Event::Task(task) => {
-                let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/task")
-                    .entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/task").entered();
                 let mut prime_caches_progress = Vec::new();
 
                 self.handle_task(&mut prime_caches_progress, task);
@@ -314,8 +317,7 @@ impl GlobalState {
                 }
             }
             Event::Vfs(message) => {
-                let _p =
-                    tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/vfs").entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/vfs").entered();
                 self.handle_vfs_msg(message);
                 // Coalesce many VFS event into a single loop turn
                 while let Ok(message) = self.loader.receiver.try_recv() {
@@ -323,8 +325,7 @@ impl GlobalState {
                 }
             }
             Event::Flycheck(message) => {
-                let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/flycheck")
-                    .entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/flycheck").entered();
                 self.handle_flycheck_msg(message);
                 // Coalesce many flycheck updates into a single loop turn
                 while let Ok(message) = self.flycheck_receiver.try_recv() {
@@ -332,9 +333,7 @@ impl GlobalState {
                 }
             }
             Event::TestResult(message) => {
-                let _p =
-                    tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/test_result")
-                        .entered();
+                let _p = tracing::info_span!("GlobalState::handle_event/test_result").entered();
                 self.handle_cargo_test_msg(message);
                 // Coalesce many test result event into a single loop turn
                 while let Ok(message) = self.test_run_receiver.try_recv() {
@@ -481,6 +480,7 @@ impl GlobalState {
 
     fn update_diagnostics(&mut self) {
         let db = self.analysis_host.raw_database();
+        let generation = self.diagnostics.next_generation();
         let subscriptions = {
             let vfs = &self.vfs.read().0;
             self.mem_docs
@@ -495,16 +495,37 @@ impl GlobalState {
                     // forever if we emitted them here.
                     !db.source_root(source_root).is_library
                 })
-                .collect::<Vec<_>>()
+                .collect::<std::sync::Arc<_>>()
         };
         tracing::trace!("updating notifications for {:?}", subscriptions);
+        // Split up the work on multiple threads, but we don't wanna fill the entire task pool with
+        // diagnostic tasks, so we limit the number of tasks to a quarter of the total thread pool.
+        let max_tasks = self.config.main_loop_num_threads().div(4).max(1);
+        let chunk_length = subscriptions.len() / max_tasks;
+        let remainder = subscriptions.len() % max_tasks;
 
-        // Diagnostics are triggered by the user typing
-        // so we run them on a latency sensitive thread.
-        self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, {
-            let snapshot = self.snapshot();
-            move || Task::Diagnostics(fetch_native_diagnostics(snapshot, subscriptions))
-        });
+        let mut start = 0;
+        for task_idx in 0..max_tasks {
+            let extra = if task_idx < remainder { 1 } else { 0 };
+            let end = start + chunk_length + extra;
+            let slice = start..end;
+            if slice.is_empty() {
+                break;
+            }
+            // Diagnostics are triggered by the user typing
+            // so we run them on a latency sensitive thread.
+            self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, {
+                let snapshot = self.snapshot();
+                let subscriptions = subscriptions.clone();
+                move || {
+                    Task::Diagnostics(
+                        generation,
+                        fetch_native_diagnostics(snapshot, subscriptions, slice),
+                    )
+                }
+            });
+            start = end;
+        }
     }
 
     fn update_tests(&mut self) {
@@ -591,9 +612,9 @@ impl GlobalState {
             // Only retry requests that haven't been cancelled. Otherwise we do unnecessary work.
             Task::Retry(req) if !self.is_completed(&req) => self.on_request(req),
             Task::Retry(_) => (),
-            Task::Diagnostics(diagnostics_per_file) => {
+            Task::Diagnostics(generation, diagnostics_per_file) => {
                 for (file_id, diagnostics) in diagnostics_per_file {
-                    self.diagnostics.set_native_diagnostics(file_id, diagnostics)
+                    self.diagnostics.set_native_diagnostics(generation, file_id, diagnostics)
                 }
             }
             Task::PrimeCaches(progress) => match progress {
@@ -669,12 +690,11 @@ impl GlobalState {
     }
 
     fn handle_vfs_msg(&mut self, message: vfs::loader::Message) {
-        let _p = tracing::span!(Level::INFO, "GlobalState::handle_vfs_msg").entered();
+        let _p = tracing::info_span!("GlobalState::handle_vfs_msg").entered();
         let is_changed = matches!(message, vfs::loader::Message::Changed { .. });
         match message {
             vfs::loader::Message::Changed { files } | vfs::loader::Message::Loaded { files } => {
-                let _p = tracing::span!(Level::INFO, "GlobalState::handle_vfs_msg{changed/load}")
-                    .entered();
+                let _p = tracing::info_span!("GlobalState::handle_vfs_msg{changed/load}").entered();
                 let vfs = &mut self.vfs.write().0;
                 for (path, contents) in files {
                     let path = VfsPath::from(path);
@@ -688,8 +708,7 @@ impl GlobalState {
                 }
             }
             vfs::loader::Message::Progress { n_total, n_done, dir, config_version } => {
-                let _p =
-                    tracing::span!(Level::INFO, "GlobalState::handle_vfs_mgs/progress").entered();
+                let _p = tracing::info_span!("GlobalState::handle_vfs_mgs/progress").entered();
                 always!(config_version <= self.vfs_config_version);
 
                 let state = match n_done {
@@ -731,8 +750,7 @@ impl GlobalState {
                 let snap = self.snapshot();
 
                 self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
-                    let _p = tracing::span!(tracing::Level::INFO, "GlobalState::check_if_indexed")
-                        .entered();
+                    let _p = tracing::info_span!("GlobalState::check_if_indexed").entered();
                     tracing::debug!(?uri, "handling uri");
                     let id = from_proto::file_id(&snap, &uri).expect("unable to get FileId");
                     if let Ok(crates) = &snap.analysis.crates_for(id) {
@@ -981,6 +999,8 @@ impl GlobalState {
             .on::<NO_RETRY, lsp_ext::ExternalDocs>(handlers::handle_open_docs)
             .on::<NO_RETRY, lsp_ext::OpenCargoToml>(handlers::handle_open_cargo_toml)
             .on::<NO_RETRY, lsp_ext::MoveItem>(handlers::handle_move_item)
+            //
+            .on::<NO_RETRY, lsp_ext::InternalTestingFetchConfig>(handlers::internal_testing_fetch_config)
             .finish();
     }
 

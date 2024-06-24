@@ -9,8 +9,8 @@ use hir_ty::{
 use itertools::Itertools;
 
 use crate::{
-    Adt, AsAssocItem, Const, ConstParam, Field, Function, GenericDef, Local, ModuleDef,
-    SemanticsScope, Static, Struct, StructKind, Trait, Type, Variant,
+    Adt, AsAssocItem, AssocItemContainer, Const, ConstParam, Field, Function, GenericDef, Local,
+    ModuleDef, SemanticsScope, Static, Struct, StructKind, Trait, Type, Variant,
 };
 
 /// Helper function to get path to `ModuleDef`
@@ -138,7 +138,17 @@ impl Expr {
         let db = sema_scope.db;
         let mod_item_path_str = |s, def| mod_item_path_str(s, def, cfg);
         match self {
-            Expr::Const(it) => mod_item_path_str(sema_scope, &ModuleDef::Const(*it)),
+            Expr::Const(it) => match it.as_assoc_item(db).map(|it| it.container(db)) {
+                Some(container) => {
+                    let container_name = container_name(container, sema_scope, cfg)?;
+                    let const_name = it
+                        .name(db)
+                        .map(|c| c.display(db.upcast()).to_string())
+                        .unwrap_or(String::new());
+                    Ok(format!("{container_name}::{const_name}"))
+                }
+                None => mod_item_path_str(sema_scope, &ModuleDef::Const(*it)),
+            },
             Expr::Static(it) => mod_item_path_str(sema_scope, &ModuleDef::Static(*it)),
             Expr::Local(it) => Ok(it.name(db).display(db.upcast()).to_string()),
             Expr::ConstParam(it) => Ok(it.name(db).display(db.upcast()).to_string()),
@@ -153,22 +163,7 @@ impl Expr {
 
                 match func.as_assoc_item(db).map(|it| it.container(db)) {
                     Some(container) => {
-                        let container_name = match container {
-                            crate::AssocItemContainer::Trait(trait_) => {
-                                mod_item_path_str(sema_scope, &ModuleDef::Trait(trait_))?
-                            }
-                            crate::AssocItemContainer::Impl(imp) => {
-                                let self_ty = imp.self_ty(db);
-                                // Should it be guaranteed that `mod_item_path` always exists?
-                                match self_ty
-                                    .as_adt()
-                                    .and_then(|adt| mod_item_path(sema_scope, &adt.into(), cfg))
-                                {
-                                    Some(path) => path.display(sema_scope.db.upcast()).to_string(),
-                                    None => self_ty.display(db).to_string(),
-                                }
-                            }
-                        };
+                        let container_name = container_name(container, sema_scope, cfg)?;
                         let fn_name = func.name(db).display(db.upcast()).to_string();
                         Ok(format!("{container_name}::{fn_name}({args})"))
                     }
@@ -413,4 +408,26 @@ impl Expr {
     pub fn is_many(&self) -> bool {
         matches!(self, Expr::Many(_))
     }
+}
+
+/// Helper function to find name of container
+fn container_name(
+    container: AssocItemContainer,
+    sema_scope: &SemanticsScope<'_>,
+    cfg: ImportPathConfig,
+) -> Result<String, DisplaySourceCodeError> {
+    let container_name = match container {
+        crate::AssocItemContainer::Trait(trait_) => {
+            mod_item_path_str(sema_scope, &ModuleDef::Trait(trait_), cfg)?
+        }
+        crate::AssocItemContainer::Impl(imp) => {
+            let self_ty = imp.self_ty(sema_scope.db);
+            // Should it be guaranteed that `mod_item_path` always exists?
+            match self_ty.as_adt().and_then(|adt| mod_item_path(sema_scope, &adt.into(), cfg)) {
+                Some(path) => path.display(sema_scope.db.upcast()).to_string(),
+                None => self_ty.display(sema_scope.db).to_string(),
+            }
+        }
+    };
+    Ok(container_name)
 }

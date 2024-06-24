@@ -24,7 +24,7 @@ use std::fmt;
 
 use base_db::{AnchoredPathBuf, FileId, FileRange};
 use either::Either;
-use hir::{FieldSource, HasSource, HirFileIdExt, InFile, ModuleSource, Semantics};
+use hir::{FieldSource, HirFileIdExt, InFile, ModuleSource, Semantics};
 use span::SyntaxContextId;
 use stdx::{never, TupleExt};
 use syntax::{
@@ -109,7 +109,7 @@ impl Definition {
         let syn_ctx_is_root = |(range, ctx): (_, SyntaxContextId)| ctx.is_root().then_some(range);
         let res = match self {
             Definition::Macro(mac) => {
-                let src = mac.source(sema.db)?;
+                let src = sema.source(mac)?;
                 let name = match &src.value {
                     Either::Left(it) => it.name()?,
                     Either::Right(it) => it.name()?,
@@ -119,7 +119,7 @@ impl Definition {
                     .and_then(syn_ctx_is_root)
             }
             Definition::Field(field) => {
-                let src = field.source(sema.db)?;
+                let src = sema.source(field)?;
                 match &src.value {
                     FieldSource::Named(record_field) => {
                         let name = record_field.name()?;
@@ -154,18 +154,18 @@ impl Definition {
             }
             Definition::GenericParam(generic_param) => match generic_param {
                 hir::GenericParam::LifetimeParam(lifetime_param) => {
-                    let src = lifetime_param.source(sema.db)?;
+                    let src = sema.source(lifetime_param)?;
                     src.with_value(src.value.lifetime()?.syntax())
                         .original_file_range_opt(sema.db)
                         .and_then(syn_ctx_is_root)
                 }
                 _ => {
-                    let x = match generic_param {
+                    let param = match generic_param {
                         hir::GenericParam::TypeParam(it) => it.merge(),
                         hir::GenericParam::ConstParam(it) => it.merge(),
                         hir::GenericParam::LifetimeParam(_) => return None,
                     };
-                    let src = x.source(sema.db)?;
+                    let src = sema.source(param)?;
                     let name = match &src.value {
                         Either::Left(x) => x.name()?,
                         Either::Right(_) => return None,
@@ -176,14 +176,14 @@ impl Definition {
                 }
             },
             Definition::Label(label) => {
-                let src = label.source(sema.db);
+                let src = sema.source(label)?;
                 let lifetime = src.value.lifetime()?;
                 src.with_value(lifetime.syntax())
                     .original_file_range_opt(sema.db)
                     .and_then(syn_ctx_is_root)
             }
             Definition::ExternCrateDecl(it) => {
-                let src = it.source(sema.db)?;
+                let src = sema.source(it)?;
                 if let Some(rename) = src.value.rename() {
                     let name = rename.name()?;
                     src.with_value(name.syntax())
@@ -212,10 +212,10 @@ impl Definition {
             sema: &Semantics<'_, RootDatabase>,
         ) -> Option<(FileRange, SyntaxContextId)>
         where
-            D: HasSource,
+            D: hir::HasSource,
             D::Ast: ast::HasName,
         {
-            let src = def.source(sema.db)?;
+            let src = sema.source(def)?;
             let name = src.value.name()?;
             src.with_value(name.syntax()).original_file_range_opt(sema.db)
         }

@@ -161,12 +161,11 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         // we could omit generic parameters cause compiler can deduce it automatically
         if !need_to_take_receiver_as_first_arg && !generic_parameters.is_empty() {
             let generic_parameters = generic_parameters.join(", ");
-            receiver_type_adt_name =
-                format!("{}::<{}>", receiver_type_adt_name, generic_parameters);
+            receiver_type_adt_name = format!("{receiver_type_adt_name}::<{generic_parameters}>");
         }
 
         let method_name = call.name_ref()?;
-        let assoc_func_call = format!("{}::{}()", receiver_type_adt_name, method_name);
+        let assoc_func_call = format!("{receiver_type_adt_name}::{method_name}()");
 
         let assoc_func_call = make::expr_path(make::path_from_text(&assoc_func_call));
 
@@ -184,8 +183,7 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         Some(Assist {
             id: AssistId("method_call_to_assoc_func_call_fix", AssistKind::QuickFix),
             label: Label::new(format!(
-                "Use associated func call instead: `{}`",
-                assoc_func_call_expr_string
+                "Use associated func call instead: `{assoc_func_call_expr_string}`"
             )),
             group: None,
             target: range,

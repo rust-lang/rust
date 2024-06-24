@@ -69,9 +69,6 @@ pub struct FileId(u32);
 // pub struct FileId(NonMaxU32);
 
 impl FileId {
-    /// Think twice about using this outside of tests. If this ends up in a wrong place it will cause panics!
-    // FIXME: To be removed once we get rid of all `SpanData::DUMMY` usages.
-    pub const BOGUS: FileId = FileId(0xe4e4e);
     pub const MAX_FILE_ID: u32 = 0x7fff_ffff;
 
     #[inline]
@@ -282,7 +279,7 @@ impl Vfs {
     /// Returns the id associated with `path`
     ///
     /// - If `path` does not exists in the `Vfs`, allocate a new id for it, associated with a
-    /// deleted file;
+    ///   deleted file;
     /// - Else, returns `path`'s id.
     ///
     /// Does not record a change.

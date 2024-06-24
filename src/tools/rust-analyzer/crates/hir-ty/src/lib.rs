@@ -22,6 +22,7 @@ extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 mod builder;
 mod chalk_db;
 mod chalk_ext;
+mod generics;
 mod infer;
 mod inhabitedness;
 mod interner;
@@ -52,7 +53,7 @@ use std::{
     hash::{BuildHasherDefault, Hash},
 };
 
-use base_db::salsa::impl_intern_value_trivial;
+use base_db::salsa::InternValueTrivial;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
@@ -67,11 +68,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast::{make, ConstArg};
 use traits::FnTrait;
 use triomphe::Arc;
-use utils::Generics;
 
 use crate::{
-    consteval::unknown_const, db::HirDatabase, display::HirDisplay, infer::unify::InferenceTable,
-    utils::generics,
+    consteval::unknown_const, db::HirDatabase, display::HirDisplay, generics::Generics,
+    infer::unify::InferenceTable,
 };
 
 pub use autoderef::autoderef;
@@ -289,7 +289,7 @@ impl Hash for ConstScalar {
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
-    generics(db.upcast(), id.parent).type_or_const_param_idx(id)
+    generics::generics(db.upcast(), id.parent).type_or_const_param_idx(id)
 }
 
 pub(crate) fn wrap_empty_binders<T>(value: T) -> Binders<T>
@@ -330,18 +330,15 @@ pub(crate) fn make_single_type_binders<T: HasInterner<Interner = Interner>>(
     )
 }
 
-pub(crate) fn make_binders_with_count<T: HasInterner<Interner = Interner>>(
+pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
     db: &dyn HirDatabase,
-    count: usize,
     generics: &Generics,
     value: T,
 ) -> Binders<T> {
-    let it = generics.iter_id().take(count);
-
     Binders::new(
         VariableKinds::from_iter(
             Interner,
-            it.map(|x| match x {
+            generics.iter_id().map(|x| match x {
                 hir_def::GenericParamId::ConstParamId(id) => {
                     chalk_ir::VariableKind::Const(db.const_param_ty(id))
                 }
@@ -353,14 +350,6 @@ pub(crate) fn make_binders_with_count<T: HasInterner<Interner = Interner>>(
         ),
         value,
     )
-}
-
-pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
-    db: &dyn HirDatabase,
-    generics: &Generics,
-    value: T,
-) -> Binders<T> {
-    make_binders_with_count(db, usize::MAX, generics, value)
 }
 
 // FIXME: get rid of this, just replace it by FnPointer
@@ -524,14 +513,16 @@ pub type PolyFnSig = Binders<CallableSig>;
 
 impl CallableSig {
     pub fn from_params_and_return(
-        mut params: Vec<Ty>,
+        params: impl ExactSizeIterator<Item = Ty>,
         ret: Ty,
         is_varargs: bool,
         safety: Safety,
         abi: FnAbi,
     ) -> CallableSig {
-        params.push(ret);
-        CallableSig { params_and_return: params.into(), is_varargs, safety, abi }
+        let mut params_and_return = Vec::with_capacity(params.len() + 1);
+        params_and_return.extend(params);
+        params_and_return.push(ret);
+        CallableSig { params_and_return: params_and_return.into(), is_varargs, safety, abi }
     }
 
     pub fn from_def(db: &dyn HirDatabase, def: FnDefId, substs: &Substitution) -> CallableSig {
@@ -606,7 +597,7 @@ pub enum ImplTraitId {
     AssociatedTypeImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
-impl_intern_value_trivial!(ImplTraitId);
+impl InternValueTrivial for ImplTraitId {}
 
 #[derive(PartialEq, Eq, Debug, Hash)]
 pub struct ImplTraits {
@@ -946,8 +937,7 @@ pub fn callable_sig_from_fn_trait(
                     .as_tuple()?
                     .iter(Interner)
                     .map(|it| it.assert_ty_ref(Interner))
-                    .cloned()
-                    .collect();
+                    .cloned();
 
                 return Some((
                     fn_x,

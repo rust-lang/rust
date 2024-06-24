@@ -340,7 +340,7 @@ impl ImplData {
         db: &dyn DefDatabase,
         id: ImplId,
     ) -> (Arc<ImplData>, DefDiagnostics) {
-        let _p = tracing::span!(tracing::Level::INFO, "impl_data_with_diagnostics_query").entered();
+        let _p = tracing::info_span!("impl_data_with_diagnostics_query").entered();
         let ItemLoc { container: module_id, id: tree_id } = id.lookup(db);
 
         let item_tree = tree_id.item_tree(db);
@@ -628,7 +628,7 @@ impl<'a> AssocItemCollector<'a> {
             'attrs: for attr in &*attrs {
                 let ast_id =
                     AstId::new(self.expander.current_file_id(), item.ast_id(item_tree).upcast());
-                let ast_id_with_path = AstIdWithPath { path: (*attr.path).clone(), ast_id };
+                let ast_id_with_path = AstIdWithPath { path: attr.path.clone(), ast_id };
 
                 match self.def_map.resolve_attr_macro(
                     self.db,
@@ -642,7 +642,7 @@ impl<'a> AssocItemCollector<'a> {
                             continue 'attrs;
                         }
                         let loc = self.db.lookup_intern_macro_call(call_id);
-                        if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
+                        if let MacroDefKind::ProcMacro(_, exp, _) = loc.def.kind {
                             // If there's no expander for the proc macro (e.g. the
                             // proc macro is ignored, or building the proc macro
                             // crate failed), skip expansion like we would if it was
@@ -719,12 +719,12 @@ impl<'a> AssocItemCollector<'a> {
                 let MacroCall { ast_id, expand_to, ctxt, ref path } = item_tree[call];
                 let module = self.expander.module.local_id;
 
-                let resolver = |path| {
+                let resolver = |path: &_| {
                     self.def_map
                         .resolve_path(
                             self.db,
                             module,
-                            &path,
+                            path,
                             crate::item_scope::BuiltinShadowMode::Other,
                             Some(MacroSubNs::Bang),
                         )

@@ -6,9 +6,9 @@ import * as tasks from "./tasks";
 import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
 import type { Config, RunnableEnvCfg, RunnableEnvCfgItem } from "./config";
-import { unwrapUndefinable } from "./undefinable";
 import type { LanguageClient } from "vscode-languageclient/node";
-import type { RustEditor } from "./util";
+import { unwrapUndefinable, type RustEditor } from "./util";
+import * as toolchain from "./toolchain";
 
 const quickPickButtons = [
     { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configuration." },
@@ -66,17 +66,23 @@ export class RunnableQuickPick implements vscode.QuickPickItem {
     }
 }
 
+export function prepareBaseEnv(): Record<string, string> {
+    const env: Record<string, string> = { RUST_BACKTRACE: "short" };
+    Object.assign(env, process.env as { [key: string]: string });
+    return env;
+}
+
 export function prepareEnv(
-    runnable: ra.Runnable,
+    label: string,
+    runnableArgs: ra.CargoRunnableArgs,
     runnableEnvCfg: RunnableEnvCfg,
 ): Record<string, string> {
-    const env: Record<string, string> = { RUST_BACKTRACE: "short" };
+    const env = prepareBaseEnv();
 
-    if (runnable.args.expectTest) {
+    if (runnableArgs.expectTest) {
         env["UPDATE_EXPECT"] = "1";
     }
 
-    Object.assign(env, process.env as { [key: string]: string });
     const platform = process.platform;
 
     const checkPlatform = (it: RunnableEnvCfgItem) => {
@@ -90,7 +96,7 @@ export function prepareEnv(
     if (runnableEnvCfg) {
         if (Array.isArray(runnableEnvCfg)) {
             for (const it of runnableEnvCfg) {
-                const masked = !it.mask || new RegExp(it.mask).test(runnable.label);
+                const masked = !it.mask || new RegExp(it.mask).test(label);
                 if (masked && checkPlatform(it)) {
                     Object.assign(env, it.env);
                 }
@@ -103,34 +109,52 @@ export function prepareEnv(
     return env;
 }
 
-export async function createTask(runnable: ra.Runnable, config: Config): Promise<vscode.Task> {
-    if (runnable.kind !== "cargo") {
-        // rust-analyzer supports only one kind, "cargo"
-        // do not use tasks.TASK_TYPE here, these are completely different meanings.
+export async function createTaskFromRunnable(
+    runnable: ra.Runnable,
+    config: Config,
+): Promise<vscode.Task> {
+    let definition: tasks.RustTargetDefinition;
+    if (runnable.kind === "cargo") {
+        const runnableArgs = runnable.args;
+        let args = createCargoArgs(runnableArgs);
 
-        throw `Unexpected runnable kind: ${runnable.kind}`;
+        let program: string;
+        if (runnableArgs.overrideCargo) {
+            // Split on spaces to allow overrides like "wrapper cargo".
+            const cargoParts = runnableArgs.overrideCargo.split(" ");
+
+            program = unwrapUndefinable(cargoParts[0]);
+            args = [...cargoParts.slice(1), ...args];
+        } else {
+            program = await toolchain.cargoPath();
+        }
+
+        definition = {
+            type: tasks.CARGO_TASK_TYPE,
+            command: program,
+            args,
+            cwd: runnableArgs.workspaceRoot || ".",
+            env: prepareEnv(runnable.label, runnableArgs, config.runnablesExtraEnv),
+        };
+    } else {
+        const runnableArgs = runnable.args;
+        definition = {
+            type: tasks.SHELL_TASK_TYPE,
+            command: runnableArgs.program,
+            args: runnableArgs.args,
+            cwd: runnableArgs.cwd,
+            env: prepareBaseEnv(),
+        };
     }
 
-    const args = createArgs(runnable);
-
-    const definition: tasks.CargoTaskDefinition = {
-        type: tasks.TASK_TYPE,
-        command: unwrapUndefinable(args[0]), // run, test, etc...
-        args: args.slice(1),
-        cwd: runnable.args.workspaceRoot || ".",
-        env: prepareEnv(runnable, config.runnablesExtraEnv),
-        overrideCargo: runnable.args.overrideCargo,
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    const target = vscode.workspace.workspaceFolders![0]; // safe, see main activate()
+    const target = vscode.workspace.workspaceFolders?.[0];
+    const exec = await tasks.targetToExecution(definition, config.cargoRunner, true);
     const task = await tasks.buildRustTask(
         target,
         definition,
         runnable.label,
         config.problemMatcher,
-        config.cargoRunner,
-        true,
+        exec,
     );
 
     task.presentationOptions.clear = true;
@@ -141,13 +165,13 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
     return task;
 }
 
-export function createArgs(runnable: ra.Runnable): string[] {
-    const args = [...runnable.args.cargoArgs]; // should be a copy!
-    if (runnable.args.cargoExtraArgs) {
-        args.push(...runnable.args.cargoExtraArgs); // Append user-specified cargo options.
+export function createCargoArgs(runnableArgs: ra.CargoRunnableArgs): string[] {
+    const args = [...runnableArgs.cargoArgs]; // should be a copy!
+    if (runnableArgs.cargoExtraArgs) {
+        args.push(...runnableArgs.cargoExtraArgs); // Append user-specified cargo options.
     }
-    if (runnable.args.executableArgs.length > 0) {
-        args.push("--", ...runnable.args.executableArgs);
+    if (runnableArgs.executableArgs.length > 0) {
+        args.push("--", ...runnableArgs.executableArgs);
     }
     return args;
 }

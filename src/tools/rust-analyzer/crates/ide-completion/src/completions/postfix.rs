@@ -668,7 +668,7 @@ fn main() {
         check_edit(
             "unsafe",
             r#"fn main() { let x = true else {panic!()}.$0}"#,
-            r#"fn main() { let x = true else {panic!()}.unsafe}"#,
+            r#"fn main() { let x = true else {panic!()}.unsafe $0}"#,
         );
     }
 

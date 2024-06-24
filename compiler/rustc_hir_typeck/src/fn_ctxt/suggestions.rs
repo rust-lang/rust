@@ -26,10 +26,8 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{
-    self, suggest_constraining_type_params, Article, Binder, IsSuggestable, Ty, TypeVisitableExt,
-    Upcast,
-};
+use rustc_middle::ty::{self, suggest_constraining_type_params, Article, Binder};
+use rustc_middle::ty::{IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Upcast};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
@@ -1111,12 +1109,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx.hir().span_with_body(self.tcx.local_def_id_to_hir_id(fn_id)),
             )
         {
-            err.multipart_suggestion(
+            // When the expr is in a match arm's body, we shouldn't add semicolon ';' at the end.
+            // For example:
+            // fn mismatch_types() -> i32 {
+            //     match 1 {
+            //         x => dbg!(x),
+            //     }
+            //     todo!()
+            // }
+            // -------------^^^^^^^-
+            // Don't add semicolon `;` at the end of `dbg!(x)` expr
+            fn is_in_arm<'tcx>(expr: &'tcx hir::Expr<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
+                for (_, node) in tcx.hir().parent_iter(expr.hir_id) {
+                    match node {
+                        hir::Node::Block(block) => {
+                            if let Some(ret) = block.expr
+                                && ret.hir_id == expr.hir_id
+                            {
+                                continue;
+                            }
+                        }
+                        hir::Node::Arm(arm) => {
+                            if let hir::ExprKind::Block(block, _) = arm.body.kind
+                                && let Some(ret) = block.expr
+                                && ret.hir_id == expr.hir_id
+                            {
+                                return true;
+                            }
+                        }
+                        hir::Node::Expr(e) if let hir::ExprKind::Block(block, _) = e.kind => {
+                            if let Some(ret) = block.expr
+                                && ret.hir_id == expr.hir_id
+                            {
+                                continue;
+                            }
+                        }
+                        _ => {
+                            return false;
+                        }
+                    }
+                }
+
+                false
+            }
+            let mut suggs = vec![(span.shrink_to_lo(), "return ".to_string())];
+            if !is_in_arm(expr, self.tcx) {
+                suggs.push((span.shrink_to_hi(), ";".to_string()));
+            }
+            err.multipart_suggestion_verbose(
                 "you might have meant to return this value",
-                vec![
-                    (span.shrink_to_lo(), "return ".to_string()),
-                    (span.shrink_to_hi(), ";".to_string()),
-                ],
+                suggs,
                 Applicability::MaybeIncorrect,
             );
         }

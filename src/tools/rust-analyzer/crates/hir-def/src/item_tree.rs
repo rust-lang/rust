@@ -99,7 +99,7 @@ pub struct ItemTree {
 
 impl ItemTree {
     pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
-        let _p = tracing::span!(tracing::Level::INFO, "file_item_tree_query", ?file_id).entered();
+        let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
 
         let syntax = db.parse_or_expand(file_id);
 
@@ -242,11 +242,11 @@ impl ItemVisibilities {
         match &vis {
             RawVisibility::Public => RawVisibilityId::PUB,
             RawVisibility::Module(path, explicitiy) if path.segments().is_empty() => {
-                match (&path.kind, explicitiy) {
-                    (PathKind::Super(0), VisibilityExplicitness::Explicit) => {
+                match (path.kind, explicitiy) {
+                    (PathKind::SELF, VisibilityExplicitness::Explicit) => {
                         RawVisibilityId::PRIV_EXPLICIT
                     }
-                    (PathKind::Super(0), VisibilityExplicitness::Implicit) => {
+                    (PathKind::SELF, VisibilityExplicitness::Implicit) => {
                         RawVisibilityId::PRIV_IMPLICIT
                     }
                     (PathKind::Crate, _) => RawVisibilityId::PUB_CRATE,
@@ -586,11 +586,11 @@ impl Index<RawVisibilityId> for ItemTree {
     fn index(&self, index: RawVisibilityId) -> &Self::Output {
         static VIS_PUB: RawVisibility = RawVisibility::Public;
         static VIS_PRIV_IMPLICIT: RawVisibility = RawVisibility::Module(
-            ModPath::from_kind(PathKind::Super(0)),
+            ModPath::from_kind(PathKind::SELF),
             VisibilityExplicitness::Implicit,
         );
         static VIS_PRIV_EXPLICIT: RawVisibility = RawVisibility::Module(
-            ModPath::from_kind(PathKind::Super(0)),
+            ModPath::from_kind(PathKind::SELF),
             VisibilityExplicitness::Explicit,
         );
         static VIS_PUB_CRATE: RawVisibility = RawVisibility::Module(
@@ -928,7 +928,7 @@ impl UseTree {
                         _ => None,
                     }
                 }
-                (Some(prefix), PathKind::Super(0)) if path.segments().is_empty() => {
+                (Some(prefix), PathKind::SELF) if path.segments().is_empty() => {
                     // `some::path::self` == `some::path`
                     Some((prefix, ImportKind::TypeOnly))
                 }

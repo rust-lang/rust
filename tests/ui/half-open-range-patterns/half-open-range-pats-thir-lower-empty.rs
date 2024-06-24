@@ -27,6 +27,7 @@ fn main() {
     m!(0, ..i128::MIN);
     //~^ ERROR lower range bound must be less than upper
 
+    // FIXME(f16_f128): add tests when NEG_INFINITY is available
     m!(0f32, ..f32::NEG_INFINITY);
     //~^ ERROR lower range bound must be less than upper
     m!(0f64, ..f64::NEG_INFINITY);

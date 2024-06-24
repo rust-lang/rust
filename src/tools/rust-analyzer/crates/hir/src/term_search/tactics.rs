@@ -5,6 +5,7 @@
 //! * `defs` - Set of items in scope at term search target location
 //! * `lookup` - Lookup table for types
 //! * `should_continue` - Function that indicates when to stop iterating
+//!
 //! And they return iterator that yields type trees that unify with the `goal` type.
 
 use std::iter;
@@ -79,12 +80,61 @@ pub(super) fn trivial<'a, DB: HirDatabase>(
         lookup.insert(ty.clone(), std::iter::once(expr.clone()));
 
         // Don't suggest local references as they are not valid for return
-        if matches!(expr, Expr::Local(_)) && ty.contains_reference(db) {
+        if matches!(expr, Expr::Local(_))
+            && ty.contains_reference(db)
+            && ctx.config.enable_borrowcheck
+        {
             return None;
         }
 
         ty.could_unify_with_deeply(db, &ctx.goal).then_some(expr)
     })
+}
+
+/// # Associated constant tactic
+///
+/// Attempts to fulfill the goal by trying constants defined as associated items.
+/// Only considers them on types that are in scope.
+///
+/// # Arguments
+/// * `ctx` - Context for the term search
+/// * `defs` - Set of items in scope at term search target location
+/// * `lookup` - Lookup table for types
+///
+/// Returns iterator that yields elements that unify with `goal`.
+///
+/// _Note that there is no use of calling this tactic in every iteration as the output does not
+/// depend on the current state of `lookup`_
+pub(super) fn assoc_const<'a, DB: HirDatabase>(
+    ctx: &'a TermSearchCtx<'a, DB>,
+    defs: &'a FxHashSet<ScopeDef>,
+    lookup: &'a mut LookupTable,
+) -> impl Iterator<Item = Expr> + 'a {
+    let db = ctx.sema.db;
+    let module = ctx.scope.module();
+
+    defs.iter()
+        .filter_map(|def| match def {
+            ScopeDef::ModuleDef(ModuleDef::Adt(it)) => Some(it),
+            _ => None,
+        })
+        .flat_map(|it| Impl::all_for_type(db, it.ty(db)))
+        .filter(|it| !it.is_unsafe(db))
+        .flat_map(|it| it.items(db))
+        .filter(move |it| it.is_visible_from(db, module))
+        .filter_map(AssocItem::as_const)
+        .filter_map(|it| {
+            let expr = Expr::Const(it);
+            let ty = it.ty(db);
+
+            if ty.contains_unknown() {
+                return None;
+            }
+
+            lookup.insert(ty.clone(), std::iter::once(expr.clone()));
+
+            ty.could_unify_with_deeply(db, &ctx.goal).then_some(expr)
+        })
 }
 
 /// # Data constructor tactic

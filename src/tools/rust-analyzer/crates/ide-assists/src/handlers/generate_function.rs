@@ -393,9 +393,9 @@ impl FunctionBuilder {
 /// The rule for whether we focus a return type or not (and thus focus the function body),
 /// is rather simple:
 /// * If we could *not* infer what the return type should be, focus it (so the user can fill-in
-/// the correct return type).
+///   the correct return type).
 /// * If we could infer the return type, don't focus it (and thus focus the function body) so the
-/// user can change the `todo!` function body.
+///   user can change the `todo!` function body.
 fn make_return_type(
     ctx: &AssistContext<'_>,
     expr: &ast::Expr,
@@ -918,9 +918,9 @@ fn filter_generic_params(ctx: &AssistContext<'_>, node: SyntaxNode) -> Option<hi
 /// Say we have a trait bound `Struct<T>: Trait<U>`. Given `necessary_params`, when is it relevant
 /// and when not? Some observations:
 /// - When `necessary_params` contains `T`, it's likely that we want this bound, but now we have
-/// an extra param to consider: `U`.
+///   an extra param to consider: `U`.
 /// - On the other hand, when `necessary_params` contains `U` (but not `T`), then it's unlikely
-/// that we want this bound because it doesn't really constrain `U`.
+///   that we want this bound because it doesn't really constrain `U`.
 ///
 /// (FIXME?: The latter clause might be overstating. We may want to include the bound if the self
 /// type does *not* include generic params at all - like `Option<i32>: From<U>`)
@@ -928,7 +928,7 @@ fn filter_generic_params(ctx: &AssistContext<'_>, node: SyntaxNode) -> Option<hi
 /// Can we make this a bit more formal? Let's define "dependency" between generic parameters and
 /// trait bounds:
 /// - A generic parameter `T` depends on a trait bound if `T` appears in the self type (i.e. left
-/// part) of the bound.
+///   part) of the bound.
 /// - A trait bound depends on a generic parameter `T` if `T` appears in the bound.
 ///
 /// Using the notion, what we want is all the bounds that params in `necessary_params`

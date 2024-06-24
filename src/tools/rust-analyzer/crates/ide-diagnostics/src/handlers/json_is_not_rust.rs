@@ -37,7 +37,7 @@ impl State {
             self.names.insert(name.clone(), 1);
             1
         };
-        make::name(&format!("{}{}", name, count))
+        make::name(&format!("{name}{count}"))
     }
 
     fn serde_derive(&self) -> String {

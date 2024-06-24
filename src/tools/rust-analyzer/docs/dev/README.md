@@ -145,7 +145,7 @@ To log all communication between the server and the client, there are two choice
   ```
   env RA_LOG=lsp_server=debug code .
   ```
-* You can log on the client side, by enabling `"rust-analyzer.trace.server": "verbose"` workspace setting.
+* You can log on the client side, by the `rust-analyzer: Toggle LSP Logs` command or enabling `"rust-analyzer.trace.server": "verbose"` workspace setting.
   These logs are shown in a separate tab in the output and could be used with LSP inspector.
   Kudos to [@DJMcNab](https://github.com/DJMcNab) for setting this awesome infra up!
 

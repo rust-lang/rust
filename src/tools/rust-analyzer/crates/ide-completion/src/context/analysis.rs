@@ -74,7 +74,7 @@ fn expand(
     mut fake_ident_token: SyntaxToken,
     relative_offset: TextSize,
 ) -> ExpansionResult {
-    let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::expand").entered();
+    let _p = tracing::info_span!("CompletionContext::expand").entered();
     let mut derive_ctx = None;
 
     'expansion: loop {
@@ -278,7 +278,7 @@ fn analyze(
     original_token: &SyntaxToken,
     self_token: &SyntaxToken,
 ) -> Option<(CompletionAnalysis, (Option<Type>, Option<ast::NameOrNameRef>), QualifierCtx)> {
-    let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::analyze").entered();
+    let _p = tracing::info_span!("CompletionContext::analyze").entered();
     let ExpansionResult { original_file, speculative_file, offset, fake_ident_token, derive_ctx } =
         expansion_result;
 

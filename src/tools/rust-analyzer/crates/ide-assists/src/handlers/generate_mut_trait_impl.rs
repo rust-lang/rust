@@ -105,7 +105,7 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
         "Generate `IndexMut` impl from this `Index` trait",
         target,
         |edit| {
-            edit.insert(target.start(), format!("$0{}\n\n", impl_def));
+            edit.insert(target.start(), format!("$0{impl_def}\n\n"));
         },
     )
 }

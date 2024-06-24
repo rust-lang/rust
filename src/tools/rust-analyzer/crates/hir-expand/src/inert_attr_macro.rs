@@ -36,11 +36,6 @@ pub fn find_builtin_attr_idx(name: &str) -> Option<usize> {
         .copied()
 }
 
-// impl AttributeTemplate {
-//     const DEFAULT: AttributeTemplate =
-//         AttributeTemplate { word: false, list: None, name_value_str: None };
-// }
-
 /// A convenience macro for constructing attribute templates.
 /// E.g., `template!(Word, List: "description")` means that the attribute
 /// supports forms `#[attr]` and `#[attr(description)]`.
@@ -627,6 +622,10 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_safe_intrinsic, Normal, template!(Word), WarnFollowing,
         "the `#[rustc_safe_intrinsic]` attribute is used internally to mark intrinsics as safe"
+    ),
+    rustc_attr!(
+        rustc_deprecated_safe_2024, Normal, template!(Word), WarnFollowing,
+        "the `#[rustc_safe_intrinsic]` marks functions as unsafe in Rust 2024",
     ),
 
     // ==========================================================================

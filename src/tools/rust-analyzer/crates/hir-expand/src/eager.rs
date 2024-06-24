@@ -39,7 +39,7 @@ pub fn expand_eager_macro_input(
     ast_id: AstId<ast::MacroCall>,
     def: MacroDefId,
     call_site: SyntaxContextId,
-    resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
+    resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<MacroCallId>> {
     let expand_to = ExpandTo::from_call_site(macro_call);
 
@@ -138,7 +138,7 @@ fn eager_macro_recur(
     curr: InFile<SyntaxNode>,
     krate: CrateId,
     call_site: SyntaxContextId,
-    macro_resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
+    macro_resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<(SyntaxNode, TextSize)>> {
     let original = curr.value.clone_for_update();
 
@@ -172,7 +172,7 @@ fn eager_macro_recur(
         let def = match call.path().and_then(|path| {
             ModPath::from_src(db, path, &mut |range| span_map.span_at(range.start()).ctx)
         }) {
-            Some(path) => match macro_resolver(path.clone()) {
+            Some(path) => match macro_resolver(&path) {
                 Some(def) => def,
                 None => {
                     error =

@@ -52,8 +52,6 @@ impl BuiltinAttrExpander {
 
 register_builtin! {
     (bench, Bench) => dummy_attr_expand,
-    (cfg, Cfg) => dummy_attr_expand,
-    (cfg_attr, CfgAttr) => dummy_attr_expand,
     (cfg_accessible, CfgAccessible) => dummy_attr_expand,
     (cfg_eval, CfgEval) => dummy_attr_expand,
     (derive, Derive) => derive_expand,

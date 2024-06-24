@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::fluent_generated as fluent;
-use rustc_ast::{ast, Label};
+use rustc_ast::Label;
 use rustc_errors::{
     codes::*, Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee,
     Level, MultiSpan, SubdiagMessageOp, Subdiagnostic,
@@ -861,15 +861,6 @@ pub struct InvalidAttrAtCrateLevel {
     pub sugg_span: Option<Span>,
     pub name: Symbol,
     pub item: Option<ItemFollowingInnerAttr>,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_invalid_attr_unsafe)]
-#[note]
-pub struct InvalidAttrUnsafe {
-    #[primary_span]
-    pub span: Span,
-    pub name: ast::Path,
 }
 
 #[derive(Clone, Copy)]

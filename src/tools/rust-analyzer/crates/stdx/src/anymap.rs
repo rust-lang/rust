@@ -1,6 +1,6 @@
-//! This file is a port of only the necessary features from https://github.com/chris-morgan/anymap version 1.0.0-beta.2 for use within rust-analyzer.
+//! This file is a port of only the necessary features from <https://github.com/chris-morgan/anymap> version 1.0.0-beta.2 for use within rust-analyzer.
 //! Copyright © 2014–2022 Chris Morgan.
-//! COPYING: https://github.com/chris-morgan/anymap/blob/master/COPYING
+//! COPYING: <https://github.com/chris-morgan/anymap/blob/master/COPYING>
 //! Note that the license is changed from Blue Oak Model 1.0.0 or MIT or Apache-2.0 to MIT OR Apache-2.0
 //!
 //! This implementation provides a safe and convenient store for one value of each type.

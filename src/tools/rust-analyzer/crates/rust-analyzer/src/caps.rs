@@ -223,7 +223,7 @@ fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProvi
 
 fn more_trigger_character(config: &Config) -> Vec<String> {
     let mut res = vec![".".to_owned(), ">".to_owned(), "{".to_owned(), "(".to_owned()];
-    if config.snippet_cap() {
+    if config.snippet_cap().is_some() {
         res.push("<".to_owned());
     }
     res

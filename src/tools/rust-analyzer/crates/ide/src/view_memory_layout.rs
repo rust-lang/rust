@@ -40,7 +40,7 @@ impl fmt::Display for RecursiveMemoryLayout {
                 "{}: {} (size: {}, align: {}, field offset: {})\n",
                 node.item_name, node.typename, node.size, node.alignment, node.offset
             );
-            write!(fmt, "{}", out)?;
+            write!(fmt, "{out}")?;
             if node.children_start != -1 {
                 for j in nodes[idx].children_start
                     ..(nodes[idx].children_start + nodes[idx].children_len as i64)

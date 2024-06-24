@@ -418,9 +418,7 @@ fn check_opaque_type_parameter_valid<'tcx>(
             let opaque_param = opaque_generics.param_at(i, tcx);
             let kind = opaque_param.kind.descr();
 
-            if let Err(guar) = opaque_env.param_is_error(i) {
-                return Err(guar);
-            }
+            opaque_env.param_is_error(i)?;
 
             return Err(tcx.dcx().emit_err(NonGenericOpaqueTypeParam {
                 ty: arg,

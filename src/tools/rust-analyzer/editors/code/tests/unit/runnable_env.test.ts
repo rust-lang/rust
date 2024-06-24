@@ -10,6 +10,7 @@ function makeRunnable(label: string): ra.Runnable {
         kind: "cargo",
         args: {
             cargoArgs: [],
+            cwd: ".",
             executableArgs: [],
             cargoExtraArgs: [],
         },
@@ -18,7 +19,8 @@ function makeRunnable(label: string): ra.Runnable {
 
 function fakePrepareEnv(runnableName: string, config: RunnableEnvCfg): Record<string, string> {
     const runnable = makeRunnable(runnableName);
-    return prepareEnv(runnable, config);
+    const runnableArgs = runnable.args as ra.CargoRunnableArgs;
+    return prepareEnv(runnable.label, runnableArgs, config);
 }
 
 export async function getTests(ctx: Context) {

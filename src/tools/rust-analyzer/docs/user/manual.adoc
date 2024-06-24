@@ -21,7 +21,7 @@ The LSP allows various code editors, like VS Code, Emacs or Vim, to implement se
 To improve this document, send a pull request: +
 https://github.com/rust-lang/rust-analyzer/blob/master/docs/user/manual.adoc[https://github.com/rust-analyzer/.../manual.adoc]
 
-The manual is written in https://asciidoc.org[AsciiDoc] and includes some extra files which are generated from the source code. Run `cargo test` and `cargo test -p xtask` to create these and then `asciidoctor manual.adoc` to create an HTML copy.
+The manual is written in https://asciidoc.org[AsciiDoc] and includes some extra files which are generated from the source code. Run `cargo test` and `cargo xtask codegen` to create these and then `asciidoctor manual.adoc` to create an HTML copy.
 ====
 
 If you have questions about using rust-analyzer, please ask them in the https://users.rust-lang.org/c/ide/14["`IDEs and Editors`"] topic of Rust users forum.
@@ -591,7 +591,7 @@ The next thing to check would be panic messages in rust-analyzer's log.
 Log messages are printed to stderr, in VS Code you can see them in the `Output > Rust Analyzer Language Server` tab of the panel.
 To see more logs, set the `RA_LOG=info` environment variable, this can be done either by setting the environment variable manually or by using `rust-analyzer.server.extraEnv`, note that both of these approaches require the server to be restarted.
 
-To fully capture LSP messages between the editor and the server, set `"rust-analyzer.trace.server": "verbose"` config and check
+To fully capture LSP messages between the editor and the server, run the `rust-analyzer: Toggle LSP Logs` command and check
 `Output > Rust Analyzer Language Server Trace`.
 
 The root cause for many "`nothing works`" problems is that rust-analyzer fails to understand the project structure.

@@ -3,6 +3,7 @@
 use base_db::CrateId;
 use hir_expand::{
     attrs::{Attr, AttrId, AttrInput},
+    inert_attr_macro::find_builtin_attr_idx,
     MacroCallId, MacroCallKind, MacroDefId,
 };
 use span::SyntaxContextId;
@@ -10,7 +11,6 @@ use syntax::{ast, SmolStr};
 use triomphe::Arc;
 
 use crate::{
-    attr::builtin::find_builtin_attr_idx,
     db::DefDatabase,
     item_scope::BuiltinShadowMode,
     nameres::path_resolution::ResolveMode,
@@ -59,7 +59,7 @@ impl DefMap {
                     return Ok(ResolvedAttr::Other);
                 }
             }
-            None => return Err(UnresolvedMacro { path: ast_id.path }),
+            None => return Err(UnresolvedMacro { path: ast_id.path.as_ref().clone() }),
         };
 
         Ok(ResolvedAttr::Macro(attr_macro_as_call_id(
@@ -89,9 +89,12 @@ impl DefMap {
             }
 
             if segments.len() == 1 {
-                let mut registered = self.data.registered_attrs.iter().map(SmolStr::as_str);
-                let is_inert = find_builtin_attr_idx(&name).is_some() || registered.any(pred);
-                return is_inert;
+                if find_builtin_attr_idx(&name).is_some() {
+                    return true;
+                }
+                if self.data.registered_attrs.iter().map(SmolStr::as_str).any(pred) {
+                    return true;
+                }
             }
         }
         false
@@ -134,12 +137,12 @@ pub(super) fn derive_macro_as_call_id(
     derive_pos: u32,
     call_site: SyntaxContextId,
     krate: CrateId,
-    resolver: impl Fn(path::ModPath) -> Option<(MacroId, MacroDefId)>,
+    resolver: impl Fn(&path::ModPath) -> Option<(MacroId, MacroDefId)>,
     derive_macro_id: MacroCallId,
 ) -> Result<(MacroId, MacroDefId, MacroCallId), UnresolvedMacro> {
-    let (macro_id, def_id) = resolver(item_attr.path.clone())
+    let (macro_id, def_id) = resolver(&item_attr.path)
         .filter(|(_, def_id)| def_id.is_derive())
-        .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
+        .ok_or_else(|| UnresolvedMacro { path: item_attr.path.as_ref().clone() })?;
     let call_id = def_id.make_call(
         db.upcast(),
         krate,

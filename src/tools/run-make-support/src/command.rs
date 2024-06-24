@@ -36,8 +36,10 @@ impl Command {
         Self { cmd: StdCommand::new(program), stdin: None, drop_bomb: DropBomb::arm(program) }
     }
 
-    pub fn set_stdin(&mut self, stdin: Box<[u8]>) {
-        self.stdin = Some(stdin);
+    /// Specify a stdin input
+    pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
+        self.stdin = Some(input.as_ref().to_vec().into_boxed_slice());
+        self
     }
 
     /// Specify an environment variable.
