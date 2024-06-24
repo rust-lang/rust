@@ -476,35 +476,47 @@ impl Command {
 
                 weak! { fn pidfd_getpid(libc::c_int) -> libc::c_int }
 
-                static PIDFD_SPAWN_SUPPORTED: AtomicU8 = AtomicU8::new(0);
+                static PIDFD_SUPPORTED: AtomicU8 = AtomicU8::new(0);
                 const UNKNOWN: u8 = 0;
-                const YES: u8 = 1;
-                // NO currently forces a fallback to fork/exec. We could be more nuanced here and keep using spawn
-                // if we know pidfd's aren't supported at all and the fallback would be futile.
-                const NO: u8 = 2;
+                const SPAWN: u8 = 1;
+                // Obtaining a pidfd via the fork+exec path might work
+                const FORK_EXEC: u8 = 2;
+                // Neither pidfd_spawn nor fork/exec will get us a pidfd.
+                // Instead we'll just posix_spawn if the other preconditions are met.
+                const NO: u8 = 3;
 
                 if self.get_create_pidfd() {
-                    let flag = PIDFD_SPAWN_SUPPORTED.load(Ordering::Relaxed);
-                    if flag == NO || pidfd_spawnp.get().is_none() || pidfd_getpid.get().is_none() {
+                    let mut support = PIDFD_SUPPORTED.load(Ordering::Relaxed);
+                    if support == FORK_EXEC {
                         return Ok(None);
                     }
-                    if flag == UNKNOWN {
-                        let mut support = NO;
+                    if support == UNKNOWN {
+                        support = NO;
                         let our_pid = crate::process::id();
-                        let pidfd =
-                            unsafe { libc::syscall(libc::SYS_pidfd_open, our_pid, 0) } as libc::c_int;
-                        if pidfd >= 0 {
-                            let pid = unsafe { pidfd_getpid.get().unwrap()(pidfd) } as u32;
-                            unsafe { libc::close(pidfd) };
-                            if pid == our_pid {
-                                support = YES
-                            };
+                        let pidfd = cvt(unsafe { libc::syscall(libc::SYS_pidfd_open, our_pid, 0) } as c_int);
+                        match pidfd {
+                            Ok(pidfd) => {
+                                support = FORK_EXEC;
+                                if let Some(Ok(pid)) = pidfd_getpid.get().map(|f| cvt(unsafe { f(pidfd) } as i32)) {
+                                    if pidfd_spawnp.get().is_some() && pid as u32 == our_pid {
+                                        support = SPAWN
+                                    }
+                                }
+                                unsafe { libc::close(pidfd) };
+                            }
+                            Err(e) if e.raw_os_error() == Some(libc::EMFILE) => {
+                                // We're temporarily(?) out of file descriptors.  In this case obtaining a pidfd would also fail
+                                // Don't update the support flag so we can probe again later.
+                                return Err(e)
+                            }
+                            _ => {}
                         }
-                        PIDFD_SPAWN_SUPPORTED.store(support, Ordering::Relaxed);
-                        if support != YES {
+                        PIDFD_SUPPORTED.store(support, Ordering::Relaxed);
+                        if support == FORK_EXEC {
                             return Ok(None);
                         }
                     }
+                    core::assert_matches::debug_assert_matches!(support, SPAWN | NO);
                 }
             } else {
                 if self.get_create_pidfd() {
@@ -691,7 +703,7 @@ impl Command {
             let spawn_fn = retrying_libc_posix_spawnp;
 
             #[cfg(target_os = "linux")]
-            if self.get_create_pidfd() {
+            if self.get_create_pidfd() && PIDFD_SUPPORTED.load(Ordering::Relaxed) == SPAWN {
                 let mut pidfd: libc::c_int = -1;
                 let spawn_res = pidfd_spawnp.get().unwrap()(
                     &mut pidfd,
@@ -706,7 +718,7 @@ impl Command {
                 if let Err(ref e) = spawn_res
                     && e.raw_os_error() == Some(libc::ENOSYS)
                 {
-                    PIDFD_SPAWN_SUPPORTED.store(NO, Ordering::Relaxed);
+                    PIDFD_SUPPORTED.store(FORK_EXEC, Ordering::Relaxed);
                     return Ok(None);
                 }
                 spawn_res?;
