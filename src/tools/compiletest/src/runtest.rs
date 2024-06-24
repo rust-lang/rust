@@ -374,11 +374,12 @@ impl<'test> TestCx<'test> {
 
         // if a test does not crash, consider it an error
         if proc_res.status.success() || matches!(proc_res.status.code(), Some(1 | 0)) {
-            self.fatal(
-                "test no longer crashes/triggers ICE! Please give it a mearningful name, \
+            self.fatal(&format!(
+                "crashtest no longer crashes/triggers ICE, horray! Please give it a meaningful name, \
             add a doc-comment to the start of the test explaining why it exists and \
-            move it to tests/ui or wherever you see fit.",
-            );
+            move it to tests/ui or wherever you see fit. Adding 'Fixes #<issueNr>' to your PR description \
+            ensures that the corresponding ticket is auto-closed upon merge."
+            ));
         }
     }
 
