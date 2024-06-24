@@ -324,7 +324,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty: None,
                     const_: method,
                 })),
-                args: vec![Spanned { node: Operand::Move(ref_src), span }],
+                args: [Spanned { node: Operand::Move(ref_src), span }].into(),
                 destination: temp,
                 target: Some(target_block),
                 unwind: UnwindAction::Continue,
@@ -486,10 +486,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     const_: method,
                 })),
-                args: vec![
+                args: [
                     Spanned { node: Operand::Copy(val), span: DUMMY_SP },
                     Spanned { node: expect, span: DUMMY_SP },
-                ],
+                ]
+                .into(),
                 destination: eq_result,
                 target: Some(eq_block),
                 unwind: UnwindAction::Continue,

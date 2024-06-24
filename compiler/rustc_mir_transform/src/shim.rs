@@ -562,7 +562,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             vec![statement],
             TerminatorKind::Call {
                 func,
-                args: vec![Spanned { node: Operand::Move(ref_loc), span: DUMMY_SP }],
+                args: [Spanned { node: Operand::Move(ref_loc), span: DUMMY_SP }].into(),
                 destination: dest,
                 target: Some(next),
                 unwind: UnwindAction::Cleanup(cleanup),
@@ -843,7 +843,7 @@ fn build_call_shim<'tcx>(
     };
 
     // BB #0
-    let args = args.into_iter().map(|a| Spanned { node: a, span: DUMMY_SP }).collect::<Vec<_>>();
+    let args = args.into_iter().map(|a| Spanned { node: a, span: DUMMY_SP }).collect();
     block(
         &mut blocks,
         statements,
