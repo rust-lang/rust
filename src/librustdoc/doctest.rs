@@ -448,6 +448,12 @@ struct RunnableDoctest {
     no_run: bool,
 }
 
+impl RunnableDoctest {
+    fn path_for_merged_doctest(&self) -> PathBuf {
+        self.test_opts.outdir.path().join(&format!("doctest_{}.rs", self.edition))
+    }
+}
+
 fn run_test(
     doctest: RunnableDoctest,
     rustdoc_options: &RustdocOptions,
@@ -528,8 +534,7 @@ fn run_test(
     if is_multiple_tests {
         // It makes the compilation failure much faster if it is for a combined doctest.
         compiler.arg("--error-format=short");
-        let input_file =
-            doctest.test_opts.outdir.path().join(&format!("doctest_{}.rs", doctest.edition));
+        let input_file = doctest.path_for_merged_doctest();
         if std::fs::write(&input_file, &doctest.full_test_code).is_err() {
             // If we cannot write this file for any reason, we leave. All combined tests will be
             // tested as standalone tests.
@@ -809,9 +814,9 @@ impl CreateRunnableDoctests {
             edition,
             self.can_merge_doctests,
             Some(test_id),
+            Some(&scraped_test.langstr),
         );
-        let is_standalone = !self.can_merge_doctests
-            || !doctest.can_be_merged
+        let is_standalone = !doctest.can_be_merged
             || scraped_test.langstr.compile_fail
             || scraped_test.langstr.test_harness
             || scraped_test.langstr.standalone
