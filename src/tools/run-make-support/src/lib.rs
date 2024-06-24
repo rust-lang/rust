@@ -63,10 +63,15 @@ pub fn target() -> String {
 
 /// `AR`
 #[track_caller]
-#[must_use]
-pub fn ar_command() -> Command {
-    let ar_path = env_var("AR");
-    Command::new(ar_path)
+pub fn ar(inputs: &[impl AsRef<Path>], output_path: impl AsRef<Path>) {
+    let output = fs::File::create(&output_path).expect(&format!(
+        "the file in path \"{}\" could not be created",
+        output_path.as_ref().display()
+    ));
+    let mut builder = ar::Builder::new(output);
+    for input in inputs {
+        builder.append_path(input).unwrap();
+    }
 }
 
 /// Check if target is windows-like.
