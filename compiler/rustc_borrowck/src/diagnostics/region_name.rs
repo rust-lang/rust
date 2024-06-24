@@ -519,7 +519,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     }
 
                     // Otherwise, let's descend into the referent types.
-                    search_stack.push((*referent_ty, &referent_hir_ty.ty));
+                    search_stack.push((*referent_ty, referent_hir_ty.ty));
                 }
 
                 // Match up something like `Foo<'1>`
@@ -558,7 +558,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 }
 
                 (ty::RawPtr(mut_ty, _), hir::TyKind::Ptr(mut_hir_ty)) => {
-                    search_stack.push((*mut_ty, &mut_hir_ty.ty));
+                    search_stack.push((*mut_ty, mut_hir_ty.ty));
                 }
 
                 _ => {
@@ -652,7 +652,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let upvar_index = self.regioncx.get_upvar_index_for_region(self.infcx.tcx, fr)?;
         let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(
             self.infcx.tcx,
-            &self.upvars,
+            self.upvars,
             upvar_index,
         );
         let region_name = self.synthesize_region_name();
@@ -717,7 +717,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                             .output;
                         span = output.span();
                         if let hir::FnRetTy::Return(ret) = output {
-                            hir_ty = Some(self.get_future_inner_return_ty(*ret));
+                            hir_ty = Some(self.get_future_inner_return_ty(ret));
                         }
                         " of async function"
                     }
@@ -958,7 +958,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         {
             let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(
                 self.infcx.tcx,
-                &self.upvars,
+                self.upvars,
                 upvar_index,
             );
             let region_name = self.synthesize_region_name();
