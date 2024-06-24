@@ -531,7 +531,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let args = if self.tcx.get_diagnostic_item(sym::iterator_collect_fn)
                     == Some(generics_def_id)
                 {
-                    "Vec<_>".to_string()
+                    "Vec<_>".into()
                 } else {
                     let mut printer = fmt_printer(self, Namespace::TypeNS);
                     printer
@@ -547,7 +547,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             }
                         }))
                         .unwrap();
-                    printer.into_buffer()
+                    printer.into_buffer().into()
                 };
 
                 if !have_turbofish {

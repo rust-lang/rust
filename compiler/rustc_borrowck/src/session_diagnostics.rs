@@ -426,7 +426,7 @@ pub(crate) enum CaptureReasonSuggest<'tcx> {
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum CaptureArgLabel {
+pub(crate) enum CaptureArgLabel<'a> {
     #[label(borrowck_value_capture_here)]
     Capture {
         is_within: bool,
@@ -435,7 +435,7 @@ pub(crate) enum CaptureArgLabel {
     },
     #[label(borrowck_move_out_place_here)]
     MoveOutPlace {
-        place: String,
+        place: &'a str,
         #[primary_span]
         args_span: Span,
     },

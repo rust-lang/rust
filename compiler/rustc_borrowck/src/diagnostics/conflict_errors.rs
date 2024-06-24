@@ -38,6 +38,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::error_reporting::FindExprBySpan;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
+use std::borrow::Cow;
 use std::iter;
 
 use crate::borrow_set::TwoPhaseActivation;
@@ -262,8 +263,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                         format!(
                             "consider creating a fresh reborrow of {} here",
                             self.describe_place(moved_place)
-                                .map(|n| format!("`{n}`"))
-                                .unwrap_or_else(|| "the mutable reference".to_string()),
+                                .map(|n| Cow::Owned(format!("`{n}`")))
+                                .unwrap_or_else(|| "the mutable reference".into()),
                         ),
                         "&mut *",
                         Applicability::MachineApplicable,
@@ -452,10 +453,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                     && let Some(arg) = fn_sig.decl.inputs.get(pos + offset)
                 {
                     let mut span: MultiSpan = arg.span.into();
-                    span.push_span_label(
-                        arg.span,
-                        "this parameter takes ownership of the value".to_string(),
-                    );
+                    span.push_span_label(arg.span, "this parameter takes ownership of the value");
                     let descr = match node.fn_kind() {
                         Some(hir::intravisit::FnKind::ItemFn(..)) | None => "function",
                         Some(hir::intravisit::FnKind::Method(..)) => "method",
@@ -536,15 +534,15 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             moved_place,
             DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
         ) {
-            Some(name) => (format!("`{name}`"), format!("`{name}` ")),
-            None => ("the variable".to_string(), String::new()),
+            Some(name) => (&*format!("`{name}`"), format!("`{name}` ")),
+            None => ("the variable", String::new()),
         };
         let path = match self.describe_place_with_options(
             used_place,
             DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
         ) {
-            Some(name) => format!("`{name}`"),
-            None => "value".to_string(),
+            Some(name) => &format!("`{name}`"),
+            None => "value",
         };
 
         // We use the statements were the binding was initialized, and inspect the HIR to look
@@ -908,7 +906,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                 lines.dedup();
                 let fmt_span = |span: Span| {
                     if lines.len() == loop_spans.len() {
-                        format!("line {}", sm.lookup_char_pos(span.lo()).line)
+                        format!("line {}", sm.lookup_char_pos(span.lo()).line).into()
                     } else {
                         sm.span_to_diagnostic_string(span)
                     }
@@ -966,9 +964,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                     // We know with high certainty that this move would affect the early return of a
                     // loop, so we suggest moving the expression with the move out of the loop.
                     let indent = if let Some(indent) = sm.indentation_before(span) {
-                        format!("\n{indent}")
+                        &format!("\n{indent}")
                     } else {
-                        " ".to_string()
+                        " "
                     };
                     err.multipart_suggestion(
                         "consider moving the expression out of the loop so it is only moved once",
@@ -3239,19 +3237,18 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             } else {
                 "local data "
             };
-            (format!("{local_kind}`{place_desc}`"), format!("`{place_desc}` is borrowed here"))
+            (&*format!("{local_kind}`{place_desc}`"), format!("`{place_desc}` is borrowed here"))
         } else {
             let local = borrow.borrowed_place.local;
             match self.body.local_kind(local) {
-                LocalKind::Arg => (
-                    "function parameter".to_string(),
-                    "function parameter borrowed here".to_string(),
-                ),
+                LocalKind::Arg => {
+                    ("function parameter", "function parameter borrowed here".to_string())
+                }
                 LocalKind::Temp if self.body.local_decls[local].is_user_variable() => {
-                    ("local binding".to_string(), "local binding introduced here".to_string())
+                    ("local binding", "local binding introduced here".to_string())
                 }
                 LocalKind::ReturnPointer | LocalKind::Temp => {
-                    ("temporary value".to_string(), "temporary value created here".to_string())
+                    ("temporary value", "temporary value created here".to_string())
                 }
             }
         };

@@ -84,8 +84,8 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             kind @ StmtKind::Let { pattern, .. } => {
                 return Err(ParseError {
                     span: pattern.span,
-                    item_description: format!("{kind:?}"),
-                    expected: "expression".to_string(),
+                    item_description: format!("{kind:?}").into(),
+                    expected: "expression",
                 });
             }
         }
@@ -100,8 +100,8 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     _ => {
                         return Err(ParseError {
                             span: pat.span,
-                            item_description: format!("{:?}", pat.kind),
-                            expected: "local".to_string(),
+                            item_description: format!("{:?}", pat.kind).into(),
+                            expected: "local",
                         });
                     }
                 }
@@ -234,8 +234,8 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 StmtKind::Let { span, .. } => {
                     return Err(ParseError {
                         span,
-                        item_description: format!("{:?}", stmt),
-                        expected: "debuginfo".to_string(),
+                        item_description: format!("{:?}", stmt).into(),
+                        expected: "debuginfo",
                     });
                 }
                 StmtKind::Expr { expr, .. } => expr,
@@ -252,8 +252,8 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             let Some(name) = name.node.str() else {
                 return Err(ParseError {
                     span,
-                    item_description: format!("{:?}", name),
-                    expected: "string".to_string(),
+                    item_description: format!("{:?}", name).into(),
+                    expected: "string",
                 });
             };
             let operand = self.parse_operand(operand)?;
@@ -296,8 +296,8 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 _ => {
                     break Err(ParseError {
                         span: pat.span,
-                        item_description: format!("{:?}", pat.kind),
-                        expected: "local".to_string(),
+                        item_description: format!("{:?}", pat.kind).into(),
+                        expected: "local",
                     });
                 }
             }

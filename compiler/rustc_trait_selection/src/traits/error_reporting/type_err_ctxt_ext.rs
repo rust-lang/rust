@@ -2536,7 +2536,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 (
                                     "use the fully-qualified path to the only available \
                                      implementation",
-                                    format!(
+                                    &*format!(
                                         "{}",
                                         self.tcx.type_of(impl_def_id).instantiate_identity()
                                     ),
@@ -2545,7 +2545,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 (
                                     "use a fully-qualified path to a specific available \
                                      implementation",
-                                    "/* self type */".to_string(),
+                                    "/* self type */",
                                 )
                             };
                             let mut suggestions =
@@ -3444,11 +3444,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         def_id: DefId,
     ) -> ErrorGuaranteed {
         let name = match self.tcx.opaque_type_origin(def_id.expect_local()) {
-            hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
-                "opaque type".to_string()
-            }
+            hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => "opaque type",
             hir::OpaqueTyOrigin::TyAlias { .. } => {
-                format!("`{}`", self.tcx.def_path_debug_str(def_id))
+                &format!("`{}`", self.tcx.def_path_debug_str(def_id))
             }
         };
         let mut err = self.dcx().struct_span_err(

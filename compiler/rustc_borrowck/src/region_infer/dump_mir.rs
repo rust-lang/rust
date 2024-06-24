@@ -79,7 +79,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 Locations::All(span) => {
                     ("All", tcx.sess.source_map().span_to_embeddable_string(*span))
                 }
-                Locations::Single(loc) => ("Single", format!("{loc:?}")),
+                Locations::Single(loc) => ("Single", format!("{loc:?}").into()),
             };
             with_msg(&format!("{sup:?}: {sub:?} due to {category:?} at {name}({arg}) ({span:?}"))?;
         }

@@ -21,6 +21,7 @@ pub use Count::*;
 pub use Piece::*;
 pub use Position::*;
 
+use std::borrow::Cow;
 use std::iter;
 use std::str;
 use std::string;
@@ -206,11 +207,11 @@ pub enum Count<'a> {
 }
 
 pub struct ParseError {
-    pub description: string::String,
-    pub note: Option<string::String>,
-    pub label: string::String,
+    pub description: Cow<'static, str>,
+    pub note: Option<Cow<'static, str>>,
+    pub label: Cow<'static, str>,
     pub span: InnerSpan,
-    pub secondary_label: Option<(string::String, InnerSpan)>,
+    pub secondary_label: Option<(Cow<'static, str>, InnerSpan)>,
     pub suggestion: Suggestion,
 }
 
@@ -362,10 +363,10 @@ impl<'a> Parser<'a> {
     /// Notifies of an error. The message doesn't actually need to be of type
     /// String, but I think it does when this eventually uses conditions so it
     /// might as well start using it now.
-    fn err<S1: Into<string::String>, S2: Into<string::String>>(
+    fn err(
         &mut self,
-        description: S1,
-        label: S2,
+        description: impl Into<Cow<'static, str>>,
+        label: impl Into<Cow<'static, str>>,
         span: InnerSpan,
     ) {
         self.errors.push(ParseError {
@@ -381,15 +382,11 @@ impl<'a> Parser<'a> {
     /// Notifies of an error. The message doesn't actually need to be of type
     /// String, but I think it does when this eventually uses conditions so it
     /// might as well start using it now.
-    fn err_with_note<
-        S1: Into<string::String>,
-        S2: Into<string::String>,
-        S3: Into<string::String>,
-    >(
+    fn err_with_note(
         &mut self,
-        description: S1,
-        label: S2,
-        note: S3,
+        description: impl Into<Cow<'static, str>>,
+        label: impl Into<Cow<'static, str>>,
+        note: impl Into<Cow<'static, str>>,
         span: InnerSpan,
     ) {
         self.errors.push(ParseError {
@@ -474,25 +471,25 @@ impl<'a> Parser<'a> {
             }
 
             pos = peek_pos;
-            description = format!("expected `'}}'`, found `{maybe:?}`");
+            description = format!("expected `'}}'`, found `{maybe:?}`").into();
         } else {
-            description = "expected `'}'` but string was terminated".to_owned();
+            description = "expected `'}'` but string was terminated".into();
             // point at closing `"`
             pos = self.input.len() - if self.append_newline { 1 } else { 0 };
         }
 
         let pos = self.to_span_index(pos);
 
-        let label = "expected `'}'`".to_owned();
+        let label = "expected `'}'`".into();
         let (note, secondary_label) = if arg.format.fill == Some('}') {
             (
-                Some("the character `'}'` is interpreted as a fill character because of the `:` that precedes it".to_owned()),
-                arg.format.fill_span.map(|sp| ("this is not interpreted as a formatting closing brace".to_owned(), sp)),
+                Some("the character `'}'` is interpreted as a fill character because of the `:` that precedes it".into()),
+                arg.format.fill_span.map(|sp| ("this is not interpreted as a formatting closing brace".into(), sp)),
             )
         } else {
             (
-                Some("if you intended to print `{`, you can escape it using `{{`".to_owned()),
-                self.last_opening_brace.map(|sp| ("because of this opening brace".to_owned(), sp)),
+                Some("if you intended to print `{`, you can escape it using `{{`".into()),
+                self.last_opening_brace.map(|sp| ("because of this opening brace".into(), sp)),
             )
         };
 
@@ -599,9 +596,9 @@ impl<'a> Parser<'a> {
                                 let prefix_span = self.span(lo, lo + 2);
                                 let full_span = self.span(lo, lo + 2 + word.len());
                                 self.errors.insert(0, ParseError {
-                                    description: "raw identifiers are not supported".to_owned(),
-                                    note: Some("identifiers in format strings can be keywords and don't need to be prefixed with `r#`".to_string()),
-                                    label: "raw identifier used here".to_owned(),
+                                    description: "raw identifiers are not supported".into(),
+                                    note: Some("identifiers in format strings can be keywords and don't need to be prefixed with `r#`".into()),
+                                    label: "raw identifier used here".into(),
                                     span: full_span,
                                     secondary_label: None,
                                     suggestion: Suggestion::RemoveRawIdent(prefix_span),
@@ -874,9 +871,9 @@ impl<'a> Parser<'a> {
             self.errors.insert(
                 0,
                 ParseError {
-                    description: "expected format parameter to occur after `:`".to_owned(),
-                    note: Some(format!("`?` comes after `:`, try `{}:{}` instead", word, "?")),
-                    label: "expected `?` to occur after `:`".to_owned(),
+                    description: "expected format parameter to occur after `:`".into(),
+                    note: Some(format!("`?` comes after `:`, try `{word}:?` instead").into()),
+                    label: "expected `?` to occur after `:`".into(),
                     span: pos.to(pos),
                     secondary_label: None,
                     suggestion: Suggestion::None,
@@ -891,9 +888,9 @@ impl<'a> Parser<'a> {
             self.errors.insert(
                 0,
                 ParseError {
-                    description: "expected format parameter to occur after `:`".to_owned(),
+                    description: "expected format parameter to occur after `:`".into(),
                     note: None,
-                    label: format!("expected `{}` to occur after `:`", alignment),
+                    label: format!("expected `{}` to occur after `:`", alignment).into(),
                     span: pos.to(pos),
                     secondary_label: None,
                     suggestion: Suggestion::None,
@@ -918,9 +915,9 @@ impl<'a> Parser<'a> {
                         self.errors.insert(
                             0,
                             ParseError {
-                                description: "field access isn't supported".to_string(),
+                                description: "field access isn't supported".into(),
                                 note: None,
-                                label: "not supported".to_string(),
+                                label: "not supported".into(),
                                 span: InnerSpan::new(
                                     arg.position_span.start,
                                     field.position_span.end,
@@ -934,9 +931,9 @@ impl<'a> Parser<'a> {
                         self.errors.insert(
                             0,
                             ParseError {
-                                description: "tuple index access isn't supported".to_string(),
+                                description: "tuple index access isn't supported".into(),
                                 note: None,
-                                label: "not supported".to_string(),
+                                label: "not supported".into(),
                                 span: InnerSpan::new(
                                     arg.position_span.start,
                                     field.position_span.end,

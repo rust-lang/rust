@@ -513,7 +513,7 @@ fn suggestion_signature<'tcx>(
                 .build()
                 .err_ctxt()
                 .ty_kind_suggestion(tcx.param_env(assoc.def_id), ty)
-                .unwrap_or_else(|| "value".to_string());
+                .unwrap_or_else(|| "value".into());
             format!("const {}: {} = {};", assoc.name, ty, val)
         }
     }

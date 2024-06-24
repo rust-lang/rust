@@ -400,12 +400,12 @@ impl SourceMap {
         &self,
         sp: Span,
         filename_display_pref: FileNameDisplayPreference,
-    ) -> String {
+    ) -> Cow<'static, str> {
         let (source_file, lo_line, lo_col, hi_line, hi_col) = self.span_to_location_info(sp);
 
-        let file_name = match source_file {
-            Some(sf) => sf.name.display(filename_display_pref).to_string(),
-            None => return "no-location".to_string(),
+        let file_name = match source_file.as_ref() {
+            Some(sf) => sf.name.display(filename_display_pref),
+            None => return "no-location".into(),
         };
 
         format!(
@@ -416,6 +416,7 @@ impl SourceMap {
                 format!(": {hi_line}:{hi_col}")
             }
         )
+        .into()
     }
 
     pub fn span_to_location_info(
@@ -432,14 +433,14 @@ impl SourceMap {
     }
 
     /// Format the span location suitable for embedding in build artifacts
-    pub fn span_to_embeddable_string(&self, sp: Span) -> String {
+    pub fn span_to_embeddable_string(&self, sp: Span) -> Cow<'static, str> {
         self.span_to_string(sp, FileNameDisplayPreference::Remapped)
     }
 
     /// Format the span location to be printed in diagnostics. Must not be emitted
     /// to build artifacts as this may leak local file paths. Use span_to_embeddable_string
     /// for string suitable for embedding.
-    pub fn span_to_diagnostic_string(&self, sp: Span) -> String {
+    pub fn span_to_diagnostic_string(&self, sp: Span) -> Cow<'static, str> {
         self.span_to_string(sp, self.path_mapping.filename_display_for_diagnostics)
     }
 

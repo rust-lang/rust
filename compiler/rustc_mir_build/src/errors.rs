@@ -537,9 +537,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNo
             // Get the span for the empty match body `{}`.
             let (indentation, more) = if let Some(snippet) = sm.indentation_before(self.scrut_span)
             {
-                (format!("\n{snippet}"), "    ")
+                (&*format!("\n{snippet}"), "    ")
             } else {
-                (" ".to_string(), "")
+                (" ", "")
             };
             diag.span_suggestion_verbose(
                 braces_span,

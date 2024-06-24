@@ -21,6 +21,7 @@ use crate::infer::error_reporting::{
     ObligationCauseAsDiagArg,
 };
 
+use std::borrow::Cow;
 use std::path::PathBuf;
 
 pub mod note_and_explain;
@@ -153,7 +154,7 @@ pub enum SourceKindSubdiag<'a> {
         #[primary_span]
         span: Span,
         arg_count: usize,
-        args: String,
+        args: Cow<'static, str>,
     },
 }
 

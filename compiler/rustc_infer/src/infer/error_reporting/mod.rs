@@ -176,14 +176,14 @@ pub(super) fn note_and_explain_region<'tcx>(
         ty::ReError(_) => return,
 
         // FIXME(#125431): `ReVar` shouldn't reach here.
-        ty::ReVar(_) => (format!("lifetime `{region}`"), alt_span),
+        ty::ReVar(_) => (format!("lifetime `{region}`").into(), alt_span),
 
         ty::ReBound(..) | ty::ReErased => {
             bug!("unexpected region for note_and_explain_region: {:?}", region);
         }
     };
 
-    emit_msg_span(err, prefix, description, span, suffix);
+    emit_msg_span(err, prefix, description.as_ref(), span, suffix);
 }
 
 fn explain_free_region<'tcx>(
@@ -196,7 +196,7 @@ fn explain_free_region<'tcx>(
 ) {
     let (description, span) = msg_span_from_named_region(tcx, generic_param_scope, region, None);
 
-    label_msg_span(err, prefix, description, span, suffix);
+    label_msg_span(err, prefix, description.as_ref(), span, suffix);
 }
 
 fn msg_span_from_named_region<'tcx>(
@@ -204,7 +204,7 @@ fn msg_span_from_named_region<'tcx>(
     generic_param_scope: LocalDefId,
     region: ty::Region<'tcx>,
     alt_span: Option<Span>,
-) -> (String, Option<Span>) {
+) -> (Cow<'static, str>, Option<Span>) {
     match *region {
         ty::ReEarlyParam(br) => {
             let scope = tcx
@@ -218,9 +218,9 @@ fn msg_span_from_named_region<'tcx>(
                 tcx.def_span(scope)
             };
             let text = if br.has_name() {
-                format!("the lifetime `{}` as defined here", br.name)
+                format!("the lifetime `{}` as defined here", br.name).into()
             } else {
-                "the anonymous lifetime as defined here".to_string()
+                "the anonymous lifetime as defined here".into()
             };
             (text, Some(span))
         }
@@ -229,7 +229,7 @@ fn msg_span_from_named_region<'tcx>(
                 && let Some((ty, _)) =
                     find_anon_type(tcx, generic_param_scope, region, &fr.bound_region)
             {
-                ("the anonymous lifetime defined here".to_string(), Some(ty.span))
+                ("the anonymous lifetime defined here".into(), Some(ty.span))
             } else {
                 match fr.bound_region {
                     ty::BoundRegionKind::BrNamed(_, name) => {
@@ -243,32 +243,32 @@ fn msg_span_from_named_region<'tcx>(
                             tcx.def_span(generic_param_scope)
                         };
                         let text = if name == kw::UnderscoreLifetime {
-                            "the anonymous lifetime as defined here".to_string()
+                            "the anonymous lifetime as defined here".into()
                         } else {
-                            format!("the lifetime `{name}` as defined here")
+                            format!("the lifetime `{name}` as defined here").into()
                         };
                         (text, Some(span))
                     }
                     ty::BrAnon => (
-                        "the anonymous lifetime as defined here".to_string(),
+                        "the anonymous lifetime as defined here".into(),
                         Some(tcx.def_span(generic_param_scope)),
                     ),
                     _ => (
-                        format!("the lifetime `{region}` as defined here"),
+                        format!("the lifetime `{region}` as defined here").into(),
                         Some(tcx.def_span(generic_param_scope)),
                     ),
                 }
             }
         }
-        ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
+        ty::ReStatic => ("the static lifetime".into(), alt_span),
         ty::RePlaceholder(ty::PlaceholderRegion {
             bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrNamed(def_id, name), .. },
             ..
-        }) => (format!("the lifetime `{name}` as defined here"), Some(tcx.def_span(def_id))),
+        }) => (format!("the lifetime `{name}` as defined here").into(), Some(tcx.def_span(def_id))),
         ty::RePlaceholder(ty::PlaceholderRegion {
             bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon, .. },
             ..
-        }) => ("an anonymous lifetime".to_owned(), None),
+        }) => ("an anonymous lifetime".into(), None),
         _ => bug!("{:?}", region),
     }
 }
@@ -276,7 +276,7 @@ fn msg_span_from_named_region<'tcx>(
 fn emit_msg_span(
     err: &mut Diag<'_>,
     prefix: &str,
-    description: String,
+    description: &str,
     span: Option<Span>,
     suffix: &str,
 ) {
@@ -292,7 +292,7 @@ fn emit_msg_span(
 fn label_msg_span(
     err: &mut Diag<'_>,
     prefix: &str,
-    description: String,
+    description: &str,
     span: Option<Span>,
     suffix: &str,
 ) {
@@ -973,7 +973,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .regions()
             .map(|lifetime| {
                 let s = lifetime.to_string();
-                if s.is_empty() { "'_".to_string() } else { s }
+                if s.is_empty() { Cow::Borrowed("'_") } else { s.into() }
             })
             .collect::<Vec<_>>()
             .join(", ");
@@ -1090,8 +1090,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let (lt2, sig2) = get_lifetimes(sig2);
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
-        let mut values =
-            (DiagStyledString::normal("".to_string()), DiagStyledString::normal("".to_string()));
+        let mut values = (DiagStyledString::normal(""), DiagStyledString::normal(""));
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         // ^^^^^^
@@ -2399,10 +2398,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::ReStatic => {
                     msg_span_from_named_region(self.tcx, generic_param_scope, sub, Some(span))
                 }
-                _ => (format!("lifetime `{sub}`"), Some(span)),
+                _ => (format!("lifetime `{sub}`").into(), Some(span)),
             };
             let prefix = format!("{labeled_user_string} must be valid for ");
-            label_msg_span(&mut err, &prefix, description, span, "...");
+            label_msg_span(&mut err, &prefix, description.as_ref(), span, "...");
             if let Some(origin) = origin {
                 self.note_region_origin(&mut err, &origin);
             }
@@ -2802,28 +2801,28 @@ impl<'tcx> InferCtxt<'tcx> {
             s
         };
         let var_description = match var_origin {
-            infer::MiscVariable(_) => String::new(),
-            infer::PatternRegion(_) => " for pattern".to_string(),
-            infer::AddrOfRegion(_) => " for borrow expression".to_string(),
-            infer::Autoref(_) => " for autoref".to_string(),
-            infer::Coercion(_) => " for automatic coercion".to_string(),
+            infer::MiscVariable(_) => "",
+            infer::PatternRegion(_) => " for pattern",
+            infer::AddrOfRegion(_) => " for borrow expression",
+            infer::Autoref(_) => " for autoref",
+            infer::Coercion(_) => " for automatic coercion",
             infer::BoundRegion(_, br, infer::FnCall) => {
-                format!(" for lifetime parameter {}in function call", br_string(br))
+                &format!(" for lifetime parameter {}in function call", br_string(br))
             }
             infer::BoundRegion(_, br, infer::HigherRankedType) => {
-                format!(" for lifetime parameter {}in generic type", br_string(br))
+                &format!(" for lifetime parameter {}in generic type", br_string(br))
             }
-            infer::BoundRegion(_, br, infer::AssocTypeProjection(def_id)) => format!(
+            infer::BoundRegion(_, br, infer::AssocTypeProjection(def_id)) => &format!(
                 " for lifetime parameter {}in trait containing associated type `{}`",
                 br_string(br),
                 self.tcx.associated_item(def_id).name
             ),
             infer::RegionParameterDefinition(_, name) => {
-                format!(" for lifetime parameter `{name}`")
+                &format!(" for lifetime parameter `{name}`")
             }
             infer::UpvarRegion(ref upvar_id, _) => {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
-                format!(" for capture of `{var_name}` by closure")
+                &format!(" for capture of `{var_name}` by closure")
             }
             infer::Nll(..) => bug!("NLL variable found in lexical phase"),
         };

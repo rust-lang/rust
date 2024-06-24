@@ -992,18 +992,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut sp = MultiSpan::from_span(path_segment.ident.span);
+        let reciever = match rcvr.kind {
+            ExprKind::Path(QPath::Resolved(None, hir::Path { segments: [segment], .. })) => {
+                &format!("`{}`", segment.ident)
+            }
+            _ => "its receiver",
+        };
+
         sp.push_span_label(
             path_segment.ident.span,
-            format!(
-                "this call modifies {} in-place",
-                match rcvr.kind {
-                    ExprKind::Path(QPath::Resolved(
-                        None,
-                        hir::Path { segments: [segment], .. },
-                    )) => format!("`{}`", segment.ident),
-                    _ => "its receiver".to_string(),
-                }
-            ),
+            format!("this call modifies {reciever} in-place",),
         );
 
         let modifies_rcvr_note =

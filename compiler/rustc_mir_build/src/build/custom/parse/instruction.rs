@@ -121,8 +121,8 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         let Some((otherwise, rest)) = arms.split_last() else {
             return Err(ParseError {
                 span,
-                item_description: "no arms".to_string(),
-                expected: "at least one arm".to_string(),
+                item_description: "no arms".into(),
+                expected: "at least one arm",
             });
         };
 
@@ -130,8 +130,8 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         let PatKind::Wild = otherwise.pattern.kind else {
             return Err(ParseError {
                 span: otherwise.span,
-                item_description: format!("{:?}", otherwise.pattern.kind),
-                expected: "wildcard pattern".to_string(),
+                item_description: format!("{:?}", otherwise.pattern.kind).into(),
+                expected: "wildcard pattern",
             });
         };
         let otherwise = self.parse_block(otherwise.body)?;
@@ -143,8 +143,8 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             let PatKind::Constant { value } = arm.pattern.kind else {
                 return Err(ParseError {
                     span: arm.pattern.span,
-                    item_description: format!("{:?}", arm.pattern.kind),
-                    expected: "constant pattern".to_string(),
+                    item_description: format!("{:?}", arm.pattern.kind).into(),
+                    expected: "constant pattern",
                 });
             };
             values.push(value.eval_bits(self.tcx, self.param_env));

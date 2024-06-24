@@ -163,12 +163,12 @@ fn dump_path<'tcx>(
     };
 
     let pass_num = if tcx.sess.opts.unstable_opts.dump_mir_exclude_pass_number {
-        String::new()
+        ""
     } else {
         if pass_num {
-            format!(".{:03}-{:03}", body.phase.phase_index(), body.pass_count)
+            &format!(".{:03}-{:03}", body.phase.phase_index(), body.pass_count)
         } else {
-            ".-------".to_string()
+            ".-------"
         }
     };
 
@@ -1306,36 +1306,34 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 })
             };
 
-            // FIXME: call pretty_print_const_valtree?
-            let fmt_valtree = |valtree: &ty::ValTree<'tcx>| match valtree {
-                ty::ValTree::Leaf(leaf) => format!("Leaf({leaf:?})"),
-                ty::ValTree::Branch(_) => "Branch(..)".to_string(),
-            };
-
             let val = match const_ {
                 Const::Ty(_, ct) => match ct.kind() {
-                    ty::ConstKind::Param(p) => format!("ty::Param({p})"),
-                    ty::ConstKind::Unevaluated(uv) => {
-                        format!("ty::Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.args,)
+                    ty::ConstKind::Param(p) => &format!("ty::Param({p})"),
+                    ty::ConstKind::Unevaluated(uv) => &format!(
+                        "ty::Unevaluated({}, {:?})",
+                        self.tcx.def_path_str(uv.def),
+                        uv.args,
+                    ),
+                    // FIXME: call pretty_print_const_valtree?
+                    ty::ConstKind::Value(_, ty::ValTree::Leaf(leaf)) => {
+                        &format!("ty::Valtree(Leaf({leaf:?}))")
                     }
-                    ty::ConstKind::Value(_, val) => format!("ty::Valtree({})", fmt_valtree(&val)),
+                    ty::ConstKind::Value(_, ty::ValTree::Branch(_)) => "Branch(..)",
                     // No `ty::` prefix since we also use this to represent errors from `mir::Unevaluated`.
-                    ty::ConstKind::Error(_) => "Error".to_string(),
+                    ty::ConstKind::Error(_) => "Error",
                     // These variants shouldn't exist in the MIR.
                     ty::ConstKind::Placeholder(_)
                     | ty::ConstKind::Infer(_)
                     | ty::ConstKind::Expr(_)
                     | ty::ConstKind::Bound(..) => bug!("unexpected MIR constant: {:?}", const_),
                 },
-                Const::Unevaluated(uv, _) => {
-                    format!(
-                        "Unevaluated({}, {:?}, {:?})",
-                        self.tcx.def_path_str(uv.def),
-                        uv.args,
-                        uv.promoted,
-                    )
-                }
-                Const::Val(val, ty) => format!("Value({})", fmt_val(*val, *ty)),
+                Const::Unevaluated(uv, _) => &format!(
+                    "Unevaluated({}, {:?}, {:?})",
+                    self.tcx.def_path_str(uv.def),
+                    uv.args,
+                    uv.promoted,
+                ),
+                Const::Val(val, ty) => &format!("Value({})", fmt_val(*val, *ty)),
             };
 
             // This reflects what `Const` looked liked before `val` was renamed

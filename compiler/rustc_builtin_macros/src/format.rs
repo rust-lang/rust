@@ -195,9 +195,9 @@ fn make_format_args(
                                 );
                             } else {
                                 let sugg_fmt = match args.explicit_args().len() {
-                                    0 => "{}".to_string(),
+                                    0 => "{}",
                                     _ => {
-                                        format!("{}{{}}", "{} ".repeat(args.explicit_args().len()))
+                                        &format!("{}{{}}", "{} ".repeat(args.explicit_args().len()))
                                     }
                                 };
                                 err.span_suggestion(
@@ -811,9 +811,9 @@ fn report_invalid_references(
     parser: parse::Parser<'_>,
 ) {
     let num_args_desc = match args.explicit_args().len() {
-        0 => "no arguments were given".to_string(),
-        1 => "there is 1 argument".to_string(),
-        n => format!("there are {n} arguments"),
+        0 => "no arguments were given",
+        1 => "there is 1 argument",
+        n => &format!("there are {n} arguments"),
     };
 
     let mut e;

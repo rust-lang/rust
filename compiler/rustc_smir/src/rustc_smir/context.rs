@@ -228,7 +228,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         }
     }
 
-    fn span_to_string(&self, span: stable_mir::ty::Span) -> String {
+    fn span_to_string(&self, span: stable_mir::ty::Span) -> std::borrow::Cow<'static, str> {
         let tables = self.0.borrow();
         tables.tcx.sess.source_map().span_to_diagnostic_string(tables[span])
     }

@@ -42,6 +42,7 @@ use rustc_span::symbol::{kw, Ident};
 use rustc_span::{sym, BytePos, Span, DUMMY_SP};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
+use std::borrow::Cow;
 use std::iter;
 use std::mem;
 
@@ -992,9 +993,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty_to_snippet = |ty: Ty<'tcx>, expected_idx: ExpectedIdx| {
             if ty.is_unit() {
-                "()".to_string()
+                Cow::Borrowed("()")
             } else if ty.is_suggestable(tcx, false) {
-                format!("/* {ty} */")
+                format!("/* {ty} */").into()
             } else if let Some(fn_def_id) = fn_def_id
                 && self.tcx.def_kind(fn_def_id).is_fn_like()
                 && let self_implicit =
@@ -1003,9 +1004,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.fn_arg_names(fn_def_id).get(expected_idx.as_usize() + self_implicit)
                 && arg.name != kw::SelfLower
             {
-                format!("/* {} */", arg.name)
+                format!("/* {} */", arg.name).into()
             } else {
-                "/* value */".to_string()
+                "/* value */".into()
             }
         };
 
@@ -1327,7 +1328,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // To suggest a multipart suggestion when encountering `foo(1, "")` where the def
                 // was `fn foo(())`.
                 let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
-                suggestions.push((*arg_span, ty_to_snippet(expected_ty, expected_idx)));
+                suggestions
+                    .push((*arg_span, ty_to_snippet(expected_ty, expected_idx).into_owned()));
             }
         }
 
@@ -1352,10 +1354,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         // And add a suggestion block for all of the parameters
-        let suggestion_text = match suggestion_text {
+        let suggestion_text: Option<Cow<'static, str>> = match suggestion_text {
             SuggestionText::None => None,
             SuggestionText::Provide(plural) => {
-                Some(format!("provide the argument{}", if plural { "s" } else { "" }))
+                Some(format!("provide the argument{}", if plural { "s" } else { "" }).into())
             }
             SuggestionText::Remove(plural) => {
                 err.multipart_suggestion(
@@ -1365,9 +1367,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 None
             }
-            SuggestionText::Swap => Some("swap these arguments".to_string()),
-            SuggestionText::Reorder => Some("reorder these arguments".to_string()),
-            SuggestionText::DidYouMean => Some("did you mean".to_string()),
+            SuggestionText::Swap => Some("swap these arguments".into()),
+            SuggestionText::Reorder => Some("reorder these arguments".into()),
+            SuggestionText::DidYouMean => Some("did you mean".into()),
         };
         if let Some(suggestion_text) = suggestion_text {
             let source_map = self.sess().source_map();
@@ -1399,7 +1401,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let (_, provided_span) = provided_arg_tys[*provided_idx]
                     && let Ok(arg_text) = source_map.span_to_snippet(provided_span)
                 {
-                    arg_text
+                    arg_text.into()
                 } else {
                     // Propose a placeholder of the correct type
                     let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
@@ -2274,13 +2276,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .collect();
 
                 if !other_params_matched.is_empty() {
-                    let other_param_matched_names: Vec<String> = other_params_matched
+                    let other_param_matched_names: Vec<Cow<'static, str>> = other_params_matched
                         .iter()
                         .map(|(_, other_param)| {
                             if let hir::PatKind::Binding(_, _, ident, _) = other_param.pat.kind {
-                                format!("`{ident}`")
+                                format!("`{ident}`").into()
                             } else {
-                                "{unknown}".to_string()
+                                "{unknown}".into()
                             }
                         })
                         .collect();
@@ -2333,7 +2335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     generics_with_unmatched_params.iter().any(|y| x.name.ident() == y.name.ident())
                 })
             {
-                let param_idents_matching: Vec<String> = params_with_generics
+                let param_idents_matching: Vec<Cow<'static, str>> = params_with_generics
                     .iter()
                     .filter(|(generic, _)| {
                         if let Some(generic) = generic {
@@ -2344,9 +2346,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     })
                     .map(|(_, param)| {
                         if let hir::PatKind::Binding(_, _, ident, _) = param.pat.kind {
-                            format!("`{ident}`")
+                            format!("`{ident}`").into()
                         } else {
-                            "{unknown}".to_string()
+                            "{unknown}".into()
                         }
                     })
                     .collect();

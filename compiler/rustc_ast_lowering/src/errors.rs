@@ -31,7 +31,7 @@ pub struct InvalidAbi {
     #[label]
     pub span: Span,
     pub abi: Symbol,
-    pub command: String,
+    pub command: &'static str,
     #[subdiagnostic]
     pub explain: Option<InvalidAbiReason>,
     #[subdiagnostic]

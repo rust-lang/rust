@@ -531,12 +531,12 @@ pub struct NoAssociatedItem {
 
 #[derive(Subdiagnostic)]
 #[note(hir_typeck_candidate_trait_note)]
-pub struct CandidateTraitNote {
+pub struct CandidateTraitNote<'a> {
     #[primary_span]
     pub span: Span,
     pub trait_name: String,
     pub item_name: Ident,
-    pub action_or_ty: String,
+    pub action_or_ty: Cow<'a, str>,
 }
 
 #[derive(Diagnostic)]

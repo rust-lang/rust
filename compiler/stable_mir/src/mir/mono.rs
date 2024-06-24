@@ -200,7 +200,7 @@ impl TryFrom<CrateItem> for Instance {
             if !context.requires_monomorphization(def_id) {
                 Ok(context.mono_instance(def_id))
             } else {
-                Err(Error::new("Item requires monomorphization".to_string()))
+                Err(Error::new("Item requires monomorphization"))
             }
         })
     }

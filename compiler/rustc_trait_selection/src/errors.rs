@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::fluent_generated as fluent;
 use rustc_errors::{
     codes::*, Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
@@ -62,7 +64,10 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for NegativePositiveConflict<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(dcx, level, fluent::trait_selection_negative_positive_conflict);
         diag.arg("trait_desc", self.trait_desc.print_only_trait_path().to_string());
-        diag.arg("self_desc", self.self_ty.map_or_else(|| "none".to_string(), |ty| ty.to_string()));
+        diag.arg(
+            "self_desc",
+            self.self_ty.map_or_else(|| Cow::Borrowed("none"), |ty| ty.to_string().into()),
+        );
         diag.span(self.impl_span);
         diag.code(E0751);
         match self.negative_impl_span {

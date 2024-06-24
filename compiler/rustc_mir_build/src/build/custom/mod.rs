@@ -149,8 +149,8 @@ struct ParseCtxt<'tcx, 'body> {
 
 struct ParseError {
     span: Span,
-    item_description: String,
-    expected: String,
+    item_description: std::borrow::Cow<'static, str>,
+    expected: &'static str,
 }
 
 impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
@@ -158,8 +158,8 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         let expr = &self.thir[expr];
         ParseError {
             span: expr.span,
-            item_description: format!("{:?}", expr.kind),
-            expected: expected.to_string(),
+            item_description: format!("{:?}", expr.kind).into(),
+            expected,
         }
     }
 
@@ -169,11 +169,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             StmtKind::Expr { expr, .. } => self.thir[expr].span,
             StmtKind::Let { span, .. } => span,
         };
-        ParseError {
-            span,
-            item_description: format!("{:?}", stmt.kind),
-            expected: expected.to_string(),
-        }
+        ParseError { span, item_description: format!("{:?}", stmt.kind).into(), expected }
     }
 }
 

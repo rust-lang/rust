@@ -1059,7 +1059,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     err.span_suggestion_verbose(
                         obligation.cause.span.shrink_to_hi(),
                         "consider using clone here",
-                        ".clone()".to_string(),
+                        ".clone()",
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -1491,9 +1491,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
             if self.predicate_may_hold(&new_obligation) {
                 let msg = if count == 1 {
-                    "consider removing the leading `&`-reference".to_string()
+                    Cow::Borrowed("consider removing the leading `&`-reference")
                 } else {
-                    format!("consider removing {count} leading `&`-references")
+                    format!("consider removing {count} leading `&`-references").into()
                 };
 
                 err.multipart_suggestion_verbose(
@@ -2080,11 +2080,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 format!(
                     "{name}{}",
                     if ty.has_infer_types() {
-                        String::new()
+                        Cow::Borrowed("")
                     } else if ty.references_error() {
-                        ": /* type */".to_string()
+                        ": /* type */".into()
                     } else {
-                        format!(": {ty}")
+                        format!(": {ty}").into()
                     }
                 )
             })
@@ -2582,8 +2582,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let snippet = match source_map.span_to_snippet(interior_span) {
                 // #70935: If snippet contains newlines, display "the value" instead
                 // so that we do not emit complex diagnostics.
-                Ok(snippet) if !snippet.contains('\n') => format!("`{snippet}`"),
-                _ => "the value".to_string(),
+                Ok(snippet) if !snippet.contains('\n') => &format!("`{snippet}`"),
+                _ => "the value",
             };
             // note: future is not `Send` as this value is used across an await
             //   --> $DIR/issue-70935-complex-spans.rs:13:9
@@ -4518,7 +4518,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         );
     }
 
-    fn ty_kind_suggestion(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> Option<String> {
+    fn ty_kind_suggestion(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<Cow<'static, str>> {
         let tcx = self.infcx.tcx;
         let implements_default = |ty| {
             let Some(default_trait) = tcx.get_diagnostic_item(sym::Default) else {
@@ -4529,54 +4533,56 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         Some(match *ty.kind() {
             ty::Never | ty::Error(_) => return None,
-            ty::Bool => "false".to_string(),
-            ty::Char => "\'x\'".to_string(),
+            ty::Bool => "false".into(),
+            ty::Char => "\'x\'".into(),
             ty::Int(_) | ty::Uint(_) => "42".into(),
             ty::Float(_) => "3.14159".into(),
-            ty::Slice(_) => "[]".to_string(),
+            ty::Slice(_) => "[]".into(),
             ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Vec) => {
-                "vec![]".to_string()
+                "vec![]".into()
             }
             ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::String) => {
-                "String::new()".to_string()
+                "String::new()".into()
             }
             ty::Adt(def, args) if def.is_box() => {
                 format!("Box::new({})", self.ty_kind_suggestion(param_env, args[0].expect_ty())?)
+                    .into()
             }
             ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Option) => {
-                "None".to_string()
+                "None".into()
             }
             ty::Adt(def, args) if Some(def.did()) == tcx.get_diagnostic_item(sym::Result) => {
-                format!("Ok({})", self.ty_kind_suggestion(param_env, args[0].expect_ty())?)
+                format!("Ok({})", self.ty_kind_suggestion(param_env, args[0].expect_ty())?).into()
             }
-            ty::Adt(_, _) if implements_default(ty) => "Default::default()".to_string(),
+            ty::Adt(_, _) if implements_default(ty) => "Default::default()".into(),
             ty::Ref(_, ty, mutability) => {
                 if let (ty::Str, hir::Mutability::Not) = (ty.kind(), mutability) {
-                    "\"\"".to_string()
+                    "\"\"".into()
                 } else {
                     let ty = self.ty_kind_suggestion(param_env, ty)?;
-                    format!("&{}{ty}", mutability.prefix_str())
+                    format!("&{}{ty}", mutability.prefix_str()).into()
                 }
             }
             ty::Array(ty, len) if let Some(len) = len.try_eval_target_usize(tcx, param_env) => {
                 if len == 0 {
-                    "[]".to_string()
+                    "[]".into()
                 } else if self.type_is_copy_modulo_regions(param_env, ty) || len == 1 {
                     // Can only suggest `[ty; 0]` if sz == 1 or copy
-                    format!("[{}; {}]", self.ty_kind_suggestion(param_env, ty)?, len)
+                    format!("[{}; {}]", self.ty_kind_suggestion(param_env, ty)?, len).into()
                 } else {
-                    "/* value */".to_string()
+                    "/* value */".into()
                 }
             }
             ty::Tuple(tys) => format!(
                 "({}{})",
                 tys.iter()
                     .map(|ty| self.ty_kind_suggestion(param_env, ty))
-                    .collect::<Option<Vec<String>>>()?
+                    .collect::<Option<Vec<_>>>()?
                     .join(", "),
                 if tys.len() == 1 { "," } else { "" }
-            ),
-            _ => "/* value */".to_string(),
+            )
+            .into(),
+            _ => "/* value */".into(),
         })
     }
 

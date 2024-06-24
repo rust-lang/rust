@@ -1414,19 +1414,19 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
                 .filter_map(|(index, vtable_entry)| {
                     let (field_name, field_type_di_node) = match vtable_entry {
                         ty::VtblEntry::MetadataDropInPlace => {
-                            ("drop_in_place".to_string(), void_pointer_type_di_node)
+                            ("drop_in_place", void_pointer_type_di_node)
                         }
                         ty::VtblEntry::Method(_) => {
                             // Note: This code does not try to give a proper name to each method
                             //       because their might be multiple methods with the same name
                             //       (coming from different traits).
-                            (format!("__method{index}"), void_pointer_type_di_node)
+                            (&*format!("__method{index}"), void_pointer_type_di_node)
                         }
                         ty::VtblEntry::TraitVPtr(_) => {
-                            (format!("__super_trait_ptr{index}"), void_pointer_type_di_node)
+                            (&*format!("__super_trait_ptr{index}"), void_pointer_type_di_node)
                         }
-                        ty::VtblEntry::MetadataAlign => ("align".to_string(), usize_di_node),
-                        ty::VtblEntry::MetadataSize => ("size".to_string(), usize_di_node),
+                        ty::VtblEntry::MetadataAlign => ("align", usize_di_node),
+                        ty::VtblEntry::MetadataSize => ("size", usize_di_node),
                         ty::VtblEntry::Vacant => return None,
                     };
 

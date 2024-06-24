@@ -1479,7 +1479,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let head_span = source_map.guess_head_span(span);
             err.subdiagnostic(ConsiderAddingADerive {
                 span: head_span.shrink_to_lo(),
-                suggestion: "#[derive(Default)]\n".to_string(),
+                suggestion: "#[derive(Default)]\n",
             });
         }
         for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {
@@ -1492,23 +1492,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 None,
             ) {
                 let desc = match binding.res() {
-                    Res::Def(DefKind::Macro(MacroKind::Bang), _) => {
-                        "a function-like macro".to_string()
-                    }
+                    Res::Def(DefKind::Macro(MacroKind::Bang), _) => "a function-like macro",
                     Res::Def(DefKind::Macro(MacroKind::Attr), _) | Res::NonMacroAttr(..) => {
-                        format!("an attribute: `#[{ident}]`")
+                        &format!("an attribute: `#[{ident}]`")
                     }
                     Res::Def(DefKind::Macro(MacroKind::Derive), _) => {
-                        format!("a derive macro: `#[derive({ident})]`")
+                        &format!("a derive macro: `#[derive({ident})]`")
                     }
                     Res::ToolMod => {
                         // Don't confuse the user with tool modules.
                         continue;
                     }
                     Res::Def(DefKind::Trait, _) if macro_kind == MacroKind::Derive => {
-                        "only a trait, without a derive macro".to_string()
+                        "only a trait, without a derive macro"
                     }
-                    res => format!(
+                    res => &format!(
                         "{} {}, not {} {}",
                         res.article(),
                         res.descr(),
@@ -1532,7 +1530,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 let note = errors::IdentInScopeButItIsDesc {
                     imported_ident: ident,
-                    imported_ident_desc: &desc,
+                    imported_ident_desc: desc,
                 };
                 err.subdiagnostic(note);
                 return;
@@ -1706,7 +1704,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             msg: format!("`{ident}` is ambiguous"),
             span: ident.span,
             label_span: ident.span,
-            label_msg: "ambiguous name".to_string(),
+            label_msg: "ambiguous name",
             note_msg: format!("ambiguous because of {}", kind.descr()),
             b1_span,
             b1_note_msg,

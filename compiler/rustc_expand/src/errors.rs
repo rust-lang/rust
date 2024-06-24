@@ -462,6 +462,6 @@ pub(crate) struct GlobDelegationTraitlessQpath {
 #[diag(expand_proc_macro_back_compat)]
 #[note]
 pub struct ProcMacroBackCompat {
-    pub crate_name: String,
-    pub fixed_version: String,
+    pub crate_name: &'static str,
+    pub fixed_version: &'static str,
 }

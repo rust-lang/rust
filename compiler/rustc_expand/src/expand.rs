@@ -37,6 +37,7 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::{ErrorGuaranteed, FileName, LocalExpnId, Span};
 
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -2207,7 +2208,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 }
 
 pub struct ExpansionConfig<'feat> {
-    pub crate_name: String,
+    pub crate_name: Cow<'static, str>,
     pub features: &'feat Features,
     pub recursion_limit: Limit,
     pub trace_mac: bool,
@@ -2220,9 +2221,12 @@ pub struct ExpansionConfig<'feat> {
 }
 
 impl ExpansionConfig<'_> {
-    pub fn default(crate_name: String, features: &Features) -> ExpansionConfig<'_> {
+    pub fn default(
+        crate_name: impl Into<Cow<'static, str>>,
+        features: &Features,
+    ) -> ExpansionConfig<'_> {
         ExpansionConfig {
-            crate_name,
+            crate_name: crate_name.into(),
             features,
             recursion_limit: Limit::new(1024),
             trace_mac: false,

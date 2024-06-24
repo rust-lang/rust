@@ -36,6 +36,7 @@ use rustc_span::Span;
 use smallvec::SmallVec;
 use tracing::debug;
 
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::mem;
 
@@ -777,7 +778,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         debug!(
             "(resolving import for module) resolving import `{}::...` in `{}`",
             Segment::names_to_string(&import.module_path),
-            module_to_string(import.parent_scope.module).unwrap_or_else(|| "???".to_string()),
+            module_to_string(import.parent_scope.module).as_deref().unwrap_or("???"),
         );
         let module = if let Some(module) = import.imported_module.get() {
             module
@@ -1501,32 +1502,37 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 }
 
-fn import_path_to_string(names: &[Ident], import_kind: &ImportKind<'_>, span: Span) -> String {
+fn import_path_to_string<'a>(
+    names: &[Ident],
+    import_kind: &'a ImportKind<'_>,
+    span: Span,
+) -> Cow<'a, str> {
     let pos = names.iter().position(|p| span == p.span && p.name != kw::PathRoot);
     let global = !names.is_empty() && names[0].name == kw::PathRoot;
     if let Some(pos) = pos {
         let names = if global { &names[1..pos + 1] } else { &names[..pos + 1] };
-        names_to_string(&names.iter().map(|ident| ident.name).collect::<Vec<_>>())
+        names_to_string(&names.iter().map(|ident| ident.name).collect::<Vec<_>>()).into()
     } else {
         let names = if global { &names[1..] } else { names };
         if names.is_empty() {
-            import_kind_to_string(import_kind)
+            import_kind_to_string(import_kind).into()
         } else {
             format!(
                 "{}::{}",
                 names_to_string(&names.iter().map(|ident| ident.name).collect::<Vec<_>>()),
                 import_kind_to_string(import_kind),
             )
+            .into()
         }
     }
 }
 
-fn import_kind_to_string(import_kind: &ImportKind<'_>) -> String {
+fn import_kind_to_string<'a>(import_kind: &'a ImportKind<'_>) -> &'a str {
     match import_kind {
-        ImportKind::Single { source, .. } => source.to_string(),
-        ImportKind::Glob { .. } => "*".to_string(),
-        ImportKind::ExternCrate { .. } => "<extern crate>".to_string(),
-        ImportKind::MacroUse { .. } => "#[macro_use]".to_string(),
-        ImportKind::MacroExport => "#[macro_export]".to_string(),
+        ImportKind::Single { source, .. } => source.as_str(),
+        ImportKind::Glob { .. } => "*",
+        ImportKind::ExternCrate { .. } => "<extern crate>",
+        ImportKind::MacroUse { .. } => "#[macro_use]",
+        ImportKind::MacroExport => "#[macro_export]",
     }
 }

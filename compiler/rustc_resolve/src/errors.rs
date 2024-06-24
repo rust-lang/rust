@@ -683,7 +683,7 @@ pub(crate) struct AddedMacroUse;
 pub(crate) struct ConsiderAddingADerive {
     #[primary_span]
     pub(crate) span: Span,
-    pub(crate) suggestion: String,
+    pub(crate) suggestion: &'static str,
 }
 
 #[derive(Diagnostic)]

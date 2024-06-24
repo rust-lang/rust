@@ -713,15 +713,15 @@ fn incremental_verify_ich_failed<Tcx>(
         tcx.sess().dcx().emit_err(crate::error::Reentrant);
     } else {
         let run_cmd = if let Some(crate_name) = &tcx.sess().opts.crate_name {
-            format!("`cargo clean -p {crate_name}` or `cargo clean`")
+            &format!("`cargo clean -p {crate_name}` or `cargo clean`")
         } else {
-            "`cargo clean`".to_string()
+            "`cargo clean`"
         };
 
         let dep_node = tcx.dep_graph().data().unwrap().prev_node_of(prev_index);
         tcx.sess().dcx().emit_err(crate::error::IncrementCompilation {
             run_cmd,
-            dep_node: format!("{dep_node:?}"),
+            dep_node: &format!("{dep_node:?}"),
         });
         panic!("Found unstable fingerprints for {dep_node:?}: {}", result());
     }

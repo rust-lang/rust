@@ -585,7 +585,11 @@ impl UseSpans<'_> {
 
     /// Add a span label to the arguments of the closure, if it exists.
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub(super) fn args_subdiag(self, err: &mut Diag<'_>, f: impl FnOnce(Span) -> CaptureArgLabel) {
+    pub(super) fn args_subdiag<'a>(
+        self,
+        err: &mut Diag<'_>,
+        f: impl FnOnce(Span) -> CaptureArgLabel<'a>,
+    ) {
         if let UseSpans::ClosureUse { args_span, .. } = self {
             err.subdiagnostic(f(args_span));
         }

@@ -4,12 +4,13 @@
 //! - [CompilerError]: This represents errors that can be raised when invoking the compiler.
 //! - [Error]: Generic error that represents the reason why a request that could not be fulfilled.
 
+use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter};
 use std::{fmt, io};
 
 macro_rules! error {
-     ($fmt: literal $(,)?) => { Error(format!($fmt)) };
-     ($fmt: literal, $($arg:tt)*) => { Error(format!($fmt, $($arg)*)) };
+     ($fmt: literal $(,)?) => { Error::new(format!($fmt)) };
+     ($fmt: literal, $($arg:tt)*) => { Error::new(format!($fmt, $($arg)*)) };
 }
 
 pub(crate) use error;
@@ -28,16 +29,28 @@ pub enum CompilerError<T> {
 
 /// A generic error to represent an API request that cannot be fulfilled.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Error(pub(crate) String);
+pub struct Error(pub(crate) Cow<'static, str>);
 
 impl Error {
-    pub fn new(msg: String) -> Self {
-        Self(msg)
+    pub fn new(msg: impl Into<Cow<'static, str>>) -> Self {
+        Self(msg.into())
     }
 }
 
-impl From<&str> for Error {
-    fn from(value: &str) -> Self {
+impl From<Cow<'static, str>> for Error {
+    fn from(value: Cow<'static, str>) -> Self {
+        Self(value)
+    }
+}
+
+impl From<&'static str> for Error {
+    fn from(value: &'static str) -> Self {
+        Self(value.into())
+    }
+}
+
+impl From<String> for Error {
+    fn from(value: String) -> Self {
         Self(value.into())
     }
 }
@@ -80,6 +93,6 @@ impl<T> std::error::Error for CompilerError<T> where T: Display + Debug {}
 
 impl From<io::Error> for Error {
     fn from(value: io::Error) -> Self {
-        Error(value.to_string())
+        Error(value.to_string().into())
     }
 }

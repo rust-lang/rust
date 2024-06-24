@@ -571,8 +571,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
                     let place_desc = match self.describe_place(move_from.as_ref()) {
-                        Some(desc) => format!("`{desc}`"),
-                        None => "value".to_string(),
+                        Some(desc) => &format!("`{desc}`"),
+                        None => "value",
                     };
 
                     if let Some(expr) = self.find_expr(span) {
@@ -603,8 +603,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                 let use_span = use_spans.var_or_use();
                 let place_ty = original_path.ty(self.body, self.infcx.tcx).ty;
                 let place_desc = match self.describe_place(original_path.as_ref()) {
-                    Some(desc) => format!("`{desc}`"),
-                    None => "value".to_string(),
+                    Some(desc) => &format!("`{desc}`"),
+                    None => "value",
                 };
 
                 if let Some(expr) = self.find_expr(use_span) {

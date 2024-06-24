@@ -262,7 +262,7 @@ pub trait LayoutCalculator {
         let only_variant = &variants[VariantIdx::new(0)];
         for field in only_variant {
             if field.is_unsized() {
-                self.delayed_bug("unsized field in union".to_string());
+                self.delayed_bug("unsized field in union");
             }
 
             align = align.max(field.align);

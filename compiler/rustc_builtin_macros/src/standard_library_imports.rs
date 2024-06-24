@@ -41,7 +41,7 @@ pub fn inject(
     let span = DUMMY_SP.with_def_site_ctxt(expn_id.to_expn_id());
     let call_site = DUMMY_SP.with_call_site_ctxt(expn_id.to_expn_id());
 
-    let ecfg = ExpansionConfig::default("std_lib_injection".to_string(), features);
+    let ecfg = ExpansionConfig::default("std_lib_injection", features);
     let cx = ExtCtxt::new(sess, ecfg, resolver, None);
 
     // .rev() to preserve ordering above in combination with insert(0, ...)

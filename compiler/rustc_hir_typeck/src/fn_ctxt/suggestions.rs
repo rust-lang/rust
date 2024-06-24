@@ -126,11 +126,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let msg = match def_id_or_name {
                 DefIdOrName::DefId(def_id) => match self.tcx.def_kind(def_id) {
-                    DefKind::Ctor(CtorOf::Struct, _) => "construct this tuple struct".to_string(),
-                    DefKind::Ctor(CtorOf::Variant, _) => "construct this tuple variant".to_string(),
-                    kind => format!("call this {}", self.tcx.def_kind_descr(kind, def_id)),
+                    DefKind::Ctor(CtorOf::Struct, _) => "construct this tuple struct",
+                    DefKind::Ctor(CtorOf::Variant, _) => "construct this tuple variant",
+                    kind => &format!("call this {}", self.tcx.def_kind_descr(kind, def_id)),
                 },
-                DefIdOrName::Name(name) => format!("call this {name}"),
+                DefIdOrName::Name(name) => &format!("call this {name}"),
             };
 
             let sugg = match expr.kind {
@@ -1229,8 +1229,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .must_apply_modulo_regions()
         {
             let suggestion = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
-                Some(ident) => format!(": {ident}.clone()"),
-                None => ".clone()".to_string(),
+                Some(ident) => &format!(": {ident}.clone()"),
+                None => ".clone()",
             };
 
             diag.span_suggestion_verbose(
@@ -1394,8 +1394,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let suggestion = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
-            Some(ident) => format!(": {ident}.is_some()"),
-            None => ".is_some()".to_string(),
+            Some(ident) => &format!(": {ident}.is_some()"),
+            None => ".is_some()",
         };
 
         diag.span_suggestion_verbose(
@@ -2035,12 +2035,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let span = expr.span;
 
             let (msg, suggestion) = if expected.is_never() {
-                (
-                    "consider adding a diverging expression here",
-                    "`loop {}` or `panic!(\"...\")`".to_string(),
-                )
+                ("consider adding a diverging expression here", "`loop {}` or `panic!(\"...\")`")
             } else {
-                ("consider returning a value here", format!("`{expected}` value"))
+                ("consider returning a value here", &*format!("`{expected}` value"))
             };
 
             let src_map = self.tcx.sess.source_map();

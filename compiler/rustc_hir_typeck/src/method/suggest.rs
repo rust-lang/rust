@@ -3638,7 +3638,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             let candidates_len = candidates.len();
-            let message = |action| {
+            let message = |action: Cow<'_, str>| {
                 format!(
                     "the following {traits_define} an item `{name}`, perhaps you need to {action} \
                      {one_of_them}:",
@@ -3675,10 +3675,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
                                 return;
                             }
-                            let msg = message(format!(
-                                "restrict type parameter `{}` with",
-                                param.name.ident(),
-                            ));
+                            let msg = message(
+                                format!("restrict type parameter `{}` with", param.name.ident(),)
+                                    .into(),
+                            );
                             let bounds_span = hir_generics.bounds_span_for_suggestions(def_id);
                             if rcvr_ty.is_ref()
                                 && param.is_impl_trait()
@@ -3754,7 +3754,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             };
                             err.span_suggestions(
                                 sp,
-                                message(format!("add {article} supertrait for")),
+                                message(format!("add {article} supertrait for").into()),
                                 candidates.iter().map(|t| {
                                     format!("{} {}", sep, self.tcx.def_path_str(t.def_id),)
                                 }),
@@ -3829,11 +3829,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             trait_name: self.tcx.def_path_str(trait_info.def_id),
                             item_name,
                             action_or_ty: if trait_missing_method {
-                                "NONE".to_string()
+                                "NONE".into()
                             } else {
                                 param_type.map_or_else(
-                                    || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
-                                    |p| p.to_string(),
+                                    || "implement".into(), // FIXME: it might only need to be imported into scope, not implemented.
+                                    |p| p.to_string().into(),
                                 )
                             },
                         });
@@ -3841,8 +3841,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 trait_infos => {
                     let mut msg = message(param_type.map_or_else(
-                        || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
-                        |param| format!("restrict type parameter `{param}` with"),
+                        || Cow::Borrowed("implement"), // FIXME: it might only need to be imported into scope, not implemented.
+                        |param| format!("restrict type parameter `{param}` with").into(),
                     ));
                     for (i, trait_info) in trait_infos.iter().enumerate() {
                         if impls_trait(trait_info.def_id) {
@@ -4042,16 +4042,15 @@ fn print_disambiguation_help<'tcx>(
             .join(", ");
 
             let args = format!("({}{})", rcvr_ref, args);
+            let candidate = if let Some(candidate) = candidate_idx {
+                &format!("candidate #{candidate}")
+            } else {
+                "the candidate"
+            };
+
             err.span_suggestion_verbose(
                 span,
-                format!(
-                    "disambiguate the {def_kind_descr} for {}",
-                    if let Some(candidate) = candidate_idx {
-                        format!("candidate #{candidate}")
-                    } else {
-                        "the candidate".to_string()
-                    },
-                ),
+                format!("disambiguate the {def_kind_descr} for {candidate}",),
                 format!("{trait_ref}::{item_name}{args}"),
                 Applicability::HasPlaceholders,
             );

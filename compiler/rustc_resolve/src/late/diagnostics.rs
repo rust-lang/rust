@@ -140,7 +140,7 @@ pub(super) enum LifetimeElisionCandidate {
 #[derive(Debug)]
 struct BaseError {
     msg: String,
-    fallback_label: String,
+    fallback_label: Cow<'static, str>,
     span: Span,
     span_label: Option<(Span, &'static str)>,
     could_be_expr: bool,
@@ -179,7 +179,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         if let Some(res) = res {
             BaseError {
                 msg: format!("expected {}, found {} `{}`", expected, res.descr(), path_str),
-                fallback_label: format!("not a {expected}"),
+                fallback_label: format!("not a {expected}").into(),
                 span,
                 span_label: match res {
                     Res::Def(DefKind::TyParam, def_id) => {
@@ -293,23 +293,18 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 } else {
                     None
                 };
-                (String::new(), "this scope".to_string(), None, suggestion)
+                (String::new(), "this scope", None, suggestion)
             } else if path.len() == 2 && path[0].ident.name == kw::PathRoot {
                 if self.r.tcx.sess.edition() > Edition::Edition2015 {
                     // In edition 2018 onwards, the `::foo` syntax may only pull from the extern prelude
                     // which overrides all other expectations of item type
                     expected = "crate";
-                    (String::new(), "the list of imported crates".to_string(), None, None)
+                    (String::new(), "the list of imported crates", None, None)
                 } else {
-                    (
-                        String::new(),
-                        "the crate root".to_string(),
-                        Some(CRATE_DEF_ID.to_def_id()),
-                        None,
-                    )
+                    (String::new(), "the crate root", Some(CRATE_DEF_ID.to_def_id()), None)
                 }
             } else if path.len() == 2 && path[0].ident.name == kw::Crate {
-                (String::new(), "the crate root".to_string(), Some(CRATE_DEF_ID.to_def_id()), None)
+                (String::new(), "the crate root", Some(CRATE_DEF_ID.to_def_id()), None)
             } else {
                 let mod_path = &path[..path.len() - 1];
                 let mod_res = self.resolve_path(mod_path, Some(TypeNS), None);
@@ -323,31 +318,35 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 let mod_prefix =
                     mod_prefix.map_or_else(String::new, |res| (format!("{} ", res.descr())));
 
-                (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)), module_did, None)
+                (
+                    mod_prefix,
+                    &*format!("`{}`", Segment::names_to_string(mod_path)),
+                    module_did,
+                    None,
+                )
             };
 
             let (fallback_label, suggestion) = if path_str == "async"
                 && expected.starts_with("struct")
             {
-                ("`async` blocks are only allowed in Rust 2018 or later".to_string(), suggestion)
+                ("`async` blocks are only allowed in Rust 2018 or later".into(), suggestion)
             } else {
                 // check if we are in situation of typo like `True` instead of `true`.
-                let override_suggestion =
-                    if ["true", "false"].contains(&item_str.to_string().to_lowercase().as_str()) {
-                        let item_typo = item_str.to_string().to_lowercase();
-                        Some((item_span, "you may want to use a bool value instead", item_typo))
-                    // FIXME(vincenzopalazzo): make the check smarter,
-                    // and maybe expand with levenshtein distance checks
-                    } else if item_str.as_str() == "printf" {
-                        Some((
-                            item_span,
-                            "you may have meant to use the `print` macro",
-                            "print!".to_owned(),
-                        ))
-                    } else {
-                        suggestion
-                    };
-                (format!("not found in {mod_str}"), override_suggestion)
+                let item_str_lower = item_str.as_str().to_lowercase();
+                let override_suggestion = if ["true", "false"].contains(&item_str_lower.as_str()) {
+                    Some((item_span, "you may want to use a bool value instead", item_str_lower))
+                // FIXME(vincenzopalazzo): make the check smarter,
+                // and maybe expand with levenshtein distance checks
+                } else if item_str_lower == "printf" {
+                    Some((
+                        item_span,
+                        "you may have meant to use the `print` macro",
+                        "print!".to_owned(),
+                    ))
+                } else {
+                    suggestion
+                };
+                (format!("not found in {mod_str}").into(), override_suggestion)
             };
 
             BaseError {
@@ -1556,9 +1555,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                     fields.map(|f| format!("{f}{tail}")).collect::<Vec<String>>()
                                 };
 
-                                (fields.join(", "), applicability)
+                                (&*fields.join(", "), applicability)
                             }
-                            None => ("/* fields */".to_string(), Applicability::HasPlaceholders),
+                            None => ("/* fields */", Applicability::HasPlaceholders),
                         };
                         let pad = match field_ids {
                             Some([]) => "",
@@ -1792,8 +1791,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 let def_id = self.r.tcx.parent(ctor_def_id);
                 err.span_label(self.r.def_span(def_id), format!("`{path_str}` defined here"));
                 let fields = self.r.field_def_ids(def_id).map_or_else(
-                    || "/* fields */".to_string(),
-                    |field_ids| vec!["_"; field_ids.len()].join(", "),
+                    || Cow::Borrowed("/* fields */"),
+                    |field_ids| vec!["_"; field_ids.len()].join(", ").into(),
                 );
                 err.span_suggestion(
                     span,
@@ -2970,7 +2969,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 lt.span,
                 format!(
                     "expected {} lifetime parameter{}",
-                    if lt.count == 1 { "named".to_string() } else { lt.count.to_string() },
+                    if lt.count == 1 {
+                        Cow::Borrowed("named")
+                    } else {
+                        lt.count.to_string().into()
+                    },
                     pluralize!(lt.count),
                 ),
             );

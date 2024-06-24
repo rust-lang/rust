@@ -752,11 +752,11 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
 
 /// Converts a number to a disambiguator (see
 /// <https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html>).
-fn to_disambiguator(num: u64) -> String {
+fn to_disambiguator(num: u64) -> std::borrow::Cow<'static, str> {
     if let Some(num) = num.checked_sub(1) {
-        format!("s{}_", num.to_base(ALPHANUMERIC_ONLY))
+        format!("s{}_", num.to_base(ALPHANUMERIC_ONLY)).into()
     } else {
-        "s_".to_string()
+        "s_".into()
     }
 }
 

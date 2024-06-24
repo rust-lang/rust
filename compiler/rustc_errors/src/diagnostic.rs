@@ -680,16 +680,13 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     ) -> &mut Self {
         let expected_label = expected_label.to_string();
         let expected_label = if expected_label.is_empty() {
-            "expected".to_string()
+            "expected"
         } else {
-            format!("expected {expected_label}")
+            &format!("expected {expected_label}")
         };
         let found_label = found_label.to_string();
-        let found_label = if found_label.is_empty() {
-            "found".to_string()
-        } else {
-            format!("found {found_label}")
-        };
+        let found_label =
+            if found_label.is_empty() { "found" } else { &format!("found {found_label}") };
         let (found_padding, expected_padding) = if expected_label.len() > found_label.len() {
             (expected_label.len() - found_label.len(), 0)
         } else {

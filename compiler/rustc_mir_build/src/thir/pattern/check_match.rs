@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::errors::*;
 
 use rustc_arena::{DroplessArena, TypedArena};
@@ -1052,9 +1054,9 @@ fn report_non_exhaustive_match<'p, 'tcx>(
         [] if let Some(braces_span) = braces_span => {
             // Get the span for the empty match body `{}`.
             let (indentation, more) = if let Some(snippet) = sm.indentation_before(sp) {
-                (format!("\n{snippet}"), "    ")
+                (&*format!("\n{snippet}"), "    ")
             } else {
-                (" ".to_string(), "")
+                (" ", "")
             };
             suggestion = Some((
                 braces_span,
@@ -1069,9 +1071,9 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                     sm.span_extend_while(only.span, |c| c.is_whitespace() || c == ',')
                 && sm.is_multiline(with_trailing)
             {
-                (format!("\n{snippet}"), true)
+                (&*format!("\n{snippet}"), true)
             } else {
-                (" ".to_string(), false)
+                (" ", false)
             };
             let only_body = &thir[only.body];
             let comma = if matches!(only_body.kind, ExprKind::Block { .. })
@@ -1100,9 +1102,9 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                     ","
                 };
                 let spacing = if sm.is_multiline(prev.span.between(last.span)) {
-                    sm.indentation_before(last.span).map(|indent| format!("\n{indent}"))
+                    sm.indentation_before(last.span).map(|indent| format!("\n{indent}").into())
                 } else {
-                    Some(" ".to_string())
+                    Some(Cow::Borrowed(" "))
                 };
                 if let Some(spacing) = spacing {
                     suggestion = Some((

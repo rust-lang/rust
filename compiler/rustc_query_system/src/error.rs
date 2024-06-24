@@ -72,9 +72,9 @@ pub struct Reentrant;
 #[help]
 #[note(query_system_increment_compilation_note1)]
 #[note(query_system_increment_compilation_note2)]
-pub struct IncrementCompilation {
-    pub run_cmd: String,
-    pub dep_node: String,
+pub struct IncrementCompilation<'a> {
+    pub run_cmd: &'a str,
+    pub dep_node: &'a str,
 }
 
 #[derive(Diagnostic)]

@@ -99,7 +99,7 @@ pub(crate) struct TargetRequiresUnwindTables;
 #[derive(Diagnostic)]
 #[diag(session_instrumentation_not_supported)]
 pub(crate) struct InstrumentationNotSupported {
-    pub(crate) us: String,
+    pub(crate) us: &'static str,
 }
 
 #[derive(Diagnostic)]

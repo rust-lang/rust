@@ -160,7 +160,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 let mut span = MultiSpan::from_span(pat.span);
                 span.push_span_label(
                     pat.span,
-                    "this lock is not assigned to a binding and is immediately dropped".to_string(),
+                    "this lock is not assigned to a binding and is immediately dropped",
                 );
                 cx.emit_span_lint(LET_UNDERSCORE_LOCK, span, NonBindingLet::SyncLock { sub });
             // Only emit let_underscore_drop for top-level `_` patterns.

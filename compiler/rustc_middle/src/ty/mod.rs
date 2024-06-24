@@ -64,6 +64,7 @@ use tracing::{debug, instrument};
 pub use vtable::*;
 
 use std::assert_matches::assert_matches;
+use std::borrow::Cow;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -296,18 +297,18 @@ pub enum Visibility<Id = LocalDefId> {
 }
 
 impl Visibility {
-    pub fn to_string(self, def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
+    pub fn to_string(self, def_id: LocalDefId, tcx: TyCtxt<'_>) -> Cow<'static, str> {
         match self {
             ty::Visibility::Restricted(restricted_id) => {
                 if restricted_id.is_top_level_module() {
-                    "pub(crate)".to_string()
+                    "pub(crate)".into()
                 } else if restricted_id == tcx.parent_module_from_def_id(def_id).to_local_def_id() {
-                    "pub(self)".to_string()
+                    "pub(self)".into()
                 } else {
-                    format!("pub({})", tcx.item_name(restricted_id.to_def_id()))
+                    format!("pub({})", tcx.item_name(restricted_id.to_def_id())).into()
                 }
             }
-            ty::Visibility::Public => "pub".to_string(),
+            ty::Visibility::Public => "pub".into(),
         }
     }
 }

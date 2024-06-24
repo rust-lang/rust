@@ -56,7 +56,7 @@ pub trait Context {
     fn def_name(&self, def_id: DefId, trimmed: bool) -> Symbol;
 
     /// Returns printable, human readable form of `Span`
-    fn span_to_string(&self, span: Span) -> String;
+    fn span_to_string(&self, span: Span) -> std::borrow::Cow<'static, str>;
 
     /// Return filename from given `Span`, for diagnostic purposes
     fn get_filename(&self, span: &Span) -> Filename;

@@ -387,14 +387,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
         };
 
+        let expr_text_owned;
         let (expr_text, precise) = if let Some(expr_text) = expr
             .span
             .find_ancestor_inside(outer)
             .and_then(|span| self.sess().source_map().span_to_snippet(span).ok())
         {
-            (expr_text, true)
+            expr_text_owned = expr_text;
+            (&*expr_text_owned, true)
         } else {
-            ("(..)".to_string(), false)
+            ("(..)", false)
         };
 
         let adjusted_text = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =

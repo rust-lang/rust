@@ -92,6 +92,7 @@
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked `#[inline]`.
 
+use std::borrow::Cow;
 use std::cmp;
 use std::collections::hash_map::Entry;
 use std::fs::{self, File};
@@ -1031,10 +1032,10 @@ fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<
 
         // Converts a slice to a string, capturing repetitions to save space.
         // E.g. `[4, 4, 4, 3, 2, 1, 1, 1, 1, 1]` -> "[4 (x3), 3, 2, 1 (x5)]".
-        fn list(ns: &[usize]) -> String {
+        fn list(ns: &[usize]) -> Cow<'static, str> {
             let mut v = Vec::new();
             if ns.is_empty() {
-                return "[]".to_string();
+                return "[]".into();
             }
 
             let mut elem = |curr, curr_count| {
@@ -1059,7 +1060,7 @@ fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<
             }
             elem(curr, curr_count);
 
-            format!("[{}]", v.join(", "))
+            format!("[{}]", v.join(", ")).into()
         }
     };
 

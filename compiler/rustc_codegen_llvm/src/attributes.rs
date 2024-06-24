@@ -1,5 +1,7 @@
 //! Set and unset common attributes on LLVM values.
 
+use std::borrow::Cow;
+
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -456,13 +458,15 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     let mut function_features = function_features
         .iter()
         .flat_map(|feat| {
-            llvm_util::to_llvm_features(cx.tcx.sess, feat).into_iter().map(|f| format!("+{f}"))
+            llvm_util::to_llvm_features(cx.tcx.sess, feat)
+                .into_iter()
+                .map(|f| format!("+{f}").into())
         })
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
-            InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
-            InstructionSetAttr::ArmT32 => "+thumb-mode".to_string(),
+            InstructionSetAttr::ArmA32 => "-thumb-mode".into(),
+            InstructionSetAttr::ArmT32 => "+thumb-mode".into(),
         }))
-        .collect::<Vec<String>>();
+        .collect::<Vec<Cow<'_, str>>>();
 
     if cx.tcx.sess.target.is_like_wasm {
         // If this function is an import from the environment but the wasm
@@ -483,13 +487,13 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         if !cx.tcx.is_closure_like(instance.def_id()) {
             let abi = cx.tcx.fn_sig(instance.def_id()).skip_binder().abi();
             if abi == Abi::Wasm {
-                function_features.push("+multivalue".to_string());
+                function_features.push("+multivalue".into());
             }
         }
     }
 
     let global_features = cx.tcx.global_backend_features(()).iter().map(|s| s.as_str());
-    let function_features = function_features.iter().map(|s| s.as_str());
+    let function_features = function_features.iter().map(|s| s.as_ref());
     let target_features: String =
         global_features.chain(function_features).intersperse(",").collect();
     if !target_features.is_empty() {

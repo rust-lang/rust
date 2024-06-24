@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::coercion::{AsCoercionSite, CoerceMany};
 use crate::{Diverges, Expectation, FnCtxt, Needs};
 use rustc_errors::{Applicability, Diag};
@@ -290,7 +292,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn explain_if_expr(
         &self,
         err: &mut Diag<'_>,
-        ret_reason: Option<(Span, String)>,
+        ret_reason: Option<(Span, Cow<'static, str>)>,
         if_span: Span,
         cond_expr: &'tcx hir::Expr<'tcx>,
         then_expr: &'tcx hir::Expr<'tcx>,
@@ -377,7 +379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         hir_id: hir::HirId,
         sp: Span,
-    ) -> Option<(Span, String)> {
+    ) -> Option<(Span, Cow<'static, str>)> {
         let node = self.tcx.hir_node(hir_id);
         if let hir::Node::Block(block) = node {
             // check that the body's parent is an fn
@@ -389,16 +391,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if expr.span == sp {
                     return self.get_fn_decl(hir_id).map(|(_, fn_decl, _)| {
                         let (ty, span) = match fn_decl.output {
-                            hir::FnRetTy::DefaultReturn(span) => ("()".to_string(), span),
-                            hir::FnRetTy::Return(ty) => (ty_to_string(&self.tcx, ty), ty.span),
+                            hir::FnRetTy::DefaultReturn(span) => ("()", span),
+                            hir::FnRetTy::Return(ty) => (&*ty_to_string(&self.tcx, ty), ty.span),
                         };
-                        (span, format!("expected `{ty}` because of this return type"))
+                        (span, format!("expected `{ty}` because of this return type").into())
                     });
                 }
             }
         }
         if let hir::Node::LetStmt(hir::LetStmt { ty: Some(_), pat, .. }) = node {
-            return Some((pat.span, "expected because of this assignment".to_string()));
+            return Some((pat.span, "expected because of this assignment".into()));
         }
         None
     }

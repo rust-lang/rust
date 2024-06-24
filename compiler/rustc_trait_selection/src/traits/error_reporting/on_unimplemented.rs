@@ -18,6 +18,7 @@ use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
+use std::borrow::Cow;
 use std::iter;
 use std::path::PathBuf;
 
@@ -385,8 +386,8 @@ pub struct InvalidFormatSpecifier;
 #[derive(LintDiagnostic)]
 #[diag(trait_selection_wrapped_parser_error)]
 pub struct WrappedParserError {
-    description: String,
-    label: String,
+    description: Cow<'static, str>,
+    label: Cow<'static, str>,
 }
 
 impl<'tcx> OnUnimplementedDirective {

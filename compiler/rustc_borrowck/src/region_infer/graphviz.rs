@@ -10,10 +10,10 @@ use itertools::Itertools;
 use rustc_graphviz as dot;
 use rustc_middle::ty::UniverseIndex;
 
-fn render_outlives_constraint(constraint: &OutlivesConstraint<'_>) -> String {
+fn render_outlives_constraint(constraint: &OutlivesConstraint<'_>) -> Cow<'static, str> {
     match constraint.locations {
-        Locations::All(_) => "All(...)".to_string(),
-        Locations::Single(loc) => format!("{loc:?}"),
+        Locations::All(_) => "All(...)".into(),
+        Locations::Single(loc) => format!("{loc:?}").into(),
     }
 }
 
@@ -80,7 +80,7 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for RawConstraints<'a, 'tcx> {
         dot::LabelText::LabelStr(render_region_vid(*n, self.regioncx).into())
     }
     fn edge_label(&'this self, e: &OutlivesConstraint<'tcx>) -> dot::LabelText<'this> {
-        dot::LabelText::LabelStr(render_outlives_constraint(e).into())
+        dot::LabelText::LabelStr(render_outlives_constraint(e))
     }
 }
 
@@ -118,7 +118,7 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for SccConstraints<'a, 'tcx> {
     type Edge = (ConstraintSccIndex, ConstraintSccIndex);
 
     fn graph_id(&'this self) -> dot::Id<'this> {
-        dot::Id::new("RegionInferenceContext".to_string()).unwrap()
+        dot::Id::new("RegionInferenceContext").unwrap()
     }
     fn node_id(&'this self, n: &ConstraintSccIndex) -> dot::Id<'this> {
         dot::Id::new(format!("r{}", n.index())).unwrap()

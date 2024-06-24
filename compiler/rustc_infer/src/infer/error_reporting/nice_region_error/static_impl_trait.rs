@@ -238,8 +238,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         let arg = match param.param.pat.simple_ident() {
-            Some(simple_ident) => format!("argument `{simple_ident}`"),
-            None => "the argument".to_string(),
+            Some(simple_ident) => &format!("argument `{simple_ident}`"),
+            None => "the argument",
         };
         let captures = format!("captures data from {arg}");
         suggest_new_region_bound(
@@ -263,7 +263,7 @@ pub fn suggest_new_region_bound(
     err: &mut Diag<'_>,
     fn_returns: Vec<&rustc_hir::Ty<'_>>,
     lifetime_name: String,
-    arg: Option<String>,
+    arg: Option<&str>,
     captures: String,
     param: Option<(Span, String)>,
     scope_def_id: Option<LocalDefId>,

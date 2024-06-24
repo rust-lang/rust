@@ -49,6 +49,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         let mut err;
         let item_msg;
         let reason;
+        let reason_owned;
         let mut opt_source = None;
         let access_place_desc = self.describe_any_place(access_place.as_ref());
         debug!("report_mutability_error: access_place_desc={:?}", access_place_desc);
@@ -57,10 +58,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             PlaceRef { local, projection: [] } => {
                 item_msg = access_place_desc;
                 if access_place.as_local().is_some() {
-                    reason = ", as it is not declared as mutable".to_string();
+                    reason = ", as it is not declared as mutable";
                 } else {
                     let name = self.local_names[local].expect("immutable unnamed local");
-                    reason = format!(", as `{name}` is not declared as mutable");
+                    reason_owned = format!(", as `{name}` is not declared as mutable");
+                    reason = &reason_owned;
                 }
             }
 
@@ -88,11 +90,12 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                     return;
                 } else {
                     item_msg = access_place_desc;
-                    if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
-                        reason = ", as it is not declared as mutable".to_string();
+                    reason = if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
+                        ", as it is not declared as mutable"
                     } else {
                         let name = self.upvars[upvar_index.index()].to_string(self.infcx.tcx);
-                        reason = format!(", as `{name}` is not declared as mutable");
+                        reason_owned = format!(", as `{name}` is not declared as mutable");
+                        &reason_owned
                     }
                 }
             }
@@ -101,20 +104,21 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                 if self.body.local_decls[local].is_ref_for_guard() =>
             {
                 item_msg = access_place_desc;
-                reason = ", as it is immutable for the pattern guard".to_string();
+                reason = ", as it is immutable for the pattern guard";
             }
             PlaceRef { local, projection: [ProjectionElem::Deref] }
                 if self.body.local_decls[local].is_ref_to_static() =>
             {
                 if access_place.projection.len() == 1 {
                     item_msg = format!("immutable static item {access_place_desc}");
-                    reason = String::new();
+                    reason = "";
                 } else {
                     item_msg = access_place_desc;
                     let local_info = self.body.local_decls[local].local_info();
                     if let LocalInfo::StaticRef { def_id, .. } = *local_info {
                         let static_name = &self.infcx.tcx.item_name(def_id);
-                        reason = format!(", as `{static_name}` is an immutable static item");
+                        reason_owned = format!(", as `{static_name}` is an immutable static item");
+                        reason = &reason_owned;
                     } else {
                         bug!("is_ref_to_static return true, but not ref to static?");
                     }
@@ -130,9 +134,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                     debug_assert!(is_closure_like(the_place_err.ty(self.body, self.infcx.tcx).ty));
 
                     reason = if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
-                        ", as it is a captured variable in a `Fn` closure".to_string()
+                        ", as it is a captured variable in a `Fn` closure"
                     } else {
-                        ", as `Fn` closures cannot mutate their captured variables".to_string()
+                        ", as `Fn` closures cannot mutate their captured variables"
                     }
                 } else {
                     let source = self.borrowed_content_source(PlaceRef {
@@ -143,15 +147,16 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                     opt_source = Some(source);
                     if let Some(desc) = self.describe_place(access_place.as_ref()) {
                         item_msg = format!("`{desc}`");
-                        reason = match error_access {
+                        reason_owned = match error_access {
                             AccessKind::Mutate => format!(", which is behind {pointer_type}"),
                             AccessKind::MutableBorrow => {
                                 format!(", as it is behind {pointer_type}")
                             }
-                        }
+                        };
+                        reason = &reason_owned;
                     } else {
                         item_msg = format!("data in {pointer_type}");
-                        reason = String::new();
+                        reason = "";
                     }
                 }
             }
@@ -183,7 +188,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
 
         let span = match error_access {
             AccessKind::Mutate => {
-                err = self.cannot_assign(span, &(item_msg + &reason));
+                err = self.cannot_assign(span, &(item_msg + reason));
                 act = "assign";
                 acted_on = "written";
                 span

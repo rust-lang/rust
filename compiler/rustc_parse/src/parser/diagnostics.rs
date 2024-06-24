@@ -41,6 +41,7 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, SpanSnippetError, Symbol, DUMMY_SP};
+use std::borrow::Cow;
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
 use thin_vec::{thin_vec, ThinVec};
@@ -432,19 +433,20 @@ impl<'a> Parser<'a> {
         inedible: &[TokenKind],
     ) -> PResult<'a, Recovered> {
         debug!("expected_one_of_not_found(edible: {:?}, inedible: {:?})", edible, inedible);
-        fn tokens_to_string(tokens: &[TokenType]) -> String {
+        fn tokens_to_string(tokens: &[TokenType]) -> Cow<'static, str> {
             let mut i = tokens.iter();
             // This might be a sign we need a connect method on `Iterator`.
-            let b = i.next().map_or_else(String::new, |t| t.to_string());
+            let b = i.next().map_or(Cow::Borrowed(""), |t| t.to_string());
             i.enumerate().fold(b, |mut b, (i, a)| {
+                let b_owned = b.to_mut();
                 if tokens.len() > 2 && i == tokens.len() - 2 {
-                    b.push_str(", or ");
+                    b_owned.push_str(", or ");
                 } else if tokens.len() == 2 && i == tokens.len() - 2 {
-                    b.push_str(" or ");
+                    b_owned.push_str(" or ");
                 } else {
-                    b.push_str(", ");
+                    b_owned.push_str(", ");
                 }
-                b.push_str(&a.to_string());
+                b_owned.push_str(&a.to_string());
                 b
             })
         }
@@ -580,20 +582,26 @@ impl<'a> Parser<'a> {
         let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
             let fmt = format!("expected one of {expect}, found {actual}");
             let short_expect = if expected.len() > 6 {
-                format!("{} possible tokens", expected.len())
+                &format!("{} possible tokens", expected.len())
             } else {
-                expect
+                expect.as_ref()
             };
-            (fmt, (self.prev_token.span.shrink_to_hi(), format!("expected one of {short_expect}")))
+            (
+                fmt,
+                (
+                    self.prev_token.span.shrink_to_hi(),
+                    format!("expected one of {short_expect}").into(),
+                ),
+            )
         } else if expected.is_empty() {
             (
                 format!("unexpected token: {actual}"),
-                (self.prev_token.span, "unexpected token after this".to_string()),
+                (self.prev_token.span, Cow::Borrowed("unexpected token after this")),
             )
         } else {
             (
                 format!("expected {expect}, found {actual}"),
-                (self.prev_token.span.shrink_to_hi(), format!("expected {expect}")),
+                (self.prev_token.span.shrink_to_hi(), format!("expected {expect}").into()),
             )
         };
         self.last_unexpected_token_span = Some(self.token.span);
@@ -697,7 +705,7 @@ impl<'a> Parser<'a> {
                         (token::CommentKind::Block, ast::AttrStyle::Outer) => "the last `*`",
                     },
                 ),
-                " ".to_string(),
+                " ",
                 Applicability::MachineApplicable,
             );
         }
@@ -2221,7 +2229,7 @@ impl<'a> Parser<'a> {
                     PatKind::Ident(_, ident, _) => (
                         ident,
                         "self: ",
-                        ": TypeName".to_string(),
+                        ": TypeName",
                         "_: ",
                         pat.span.shrink_to_lo(),
                         pat.span.shrink_to_hi(),
@@ -2237,7 +2245,7 @@ impl<'a> Parser<'a> {
                                 (
                                     ident,
                                     "self: ",
-                                    format!("{ident}: &{mutab}TypeName"),
+                                    &*format!("{ident}: &{mutab}TypeName"),
                                     "_: ",
                                     pat.span.shrink_to_lo(),
                                     pat.span,

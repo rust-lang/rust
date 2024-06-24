@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::fmt::Write;
 use std::rc::Rc;
 
 use rustc_data_structures::binary_search_util;
@@ -335,7 +336,7 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
 
     let mut reg_vars_to_origins_str = "region variables to origins:\n".to_string();
     for (reg_var, origin) in var_to_origin_sorted.into_iter() {
-        reg_vars_to_origins_str.push_str(&format!("{reg_var:?}: {origin:?}\n"));
+        writeln!(reg_vars_to_origins_str, "{reg_var:?}: {origin:?}").unwrap();
     }
     debug!("{}", reg_vars_to_origins_str);
 
@@ -351,11 +352,13 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
     let mut components_str = "strongly connected components:".to_string();
     for (scc_idx, reg_vars_origins) in components.iter().enumerate() {
         let regions_info = reg_vars_origins.clone().into_iter().collect::<Vec<_>>();
-        components_str.push_str(&format!(
+        write!(
+            components_str,
             "{:?}: {:?},\n)",
             ConstraintSccIndex::from_usize(scc_idx),
             regions_info,
-        ))
+        )
+        .unwrap();
     }
     debug!("{}", components_str);
 

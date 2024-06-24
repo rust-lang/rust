@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use rustc_errors::{
     codes::*, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan,
     SingleLabelManySpans, SubdiagMessageOp, Subdiagnostic,
@@ -508,8 +510,8 @@ pub(crate) struct InvalidFormatString {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
-    pub(crate) desc: String,
-    pub(crate) label1: String,
+    pub(crate) desc: Cow<'static, str>,
+    pub(crate) label1: Cow<'static, str>,
     #[subdiagnostic]
     pub(crate) note_: Option<InvalidFormatStringNote>,
     #[subdiagnostic]
@@ -521,7 +523,7 @@ pub(crate) struct InvalidFormatString {
 #[derive(Subdiagnostic)]
 #[note(builtin_macros_note)]
 pub(crate) struct InvalidFormatStringNote {
-    pub(crate) note: String,
+    pub(crate) note: Cow<'static, str>,
 }
 
 #[derive(Subdiagnostic)]
@@ -529,7 +531,7 @@ pub(crate) struct InvalidFormatStringNote {
 pub(crate) struct InvalidFormatStringLabel {
     #[primary_span]
     pub(crate) span: Span,
-    pub(crate) label: String,
+    pub(crate) label: Cow<'static, str>,
 }
 
 #[derive(Subdiagnostic)]
@@ -629,11 +631,11 @@ pub(crate) struct FormatUnusedArgs {
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_format_pos_mismatch)]
-pub(crate) struct FormatPositionalMismatch {
+pub(crate) struct FormatPositionalMismatch<'a> {
     #[primary_span]
     pub(crate) span: MultiSpan,
     pub(crate) n: usize,
-    pub(crate) desc: String,
+    pub(crate) desc: &'a str,
     #[subdiagnostic]
     pub(crate) highlight: SingleLabelManySpans,
 }

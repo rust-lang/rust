@@ -2415,9 +2415,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         for br in referenced_regions.difference(&constrained_regions) {
             let br_name = match *br {
                 ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon | ty::BrEnv => {
-                    "an anonymous lifetime".to_string()
+                    "an anonymous lifetime"
                 }
-                ty::BrNamed(_, name) => format!("lifetime `{name}`"),
+                ty::BrNamed(_, name) => &format!("lifetime `{name}`"),
             };
 
             let mut err = generate_err(&br_name);

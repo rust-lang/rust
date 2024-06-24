@@ -1498,11 +1498,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // Report special messages for path segment keywords in wrong positions.
             if ident.is_path_segment_keyword() && segment_idx != 0 {
                 return PathResult::failed(ident, false, finalize.is_some(), module, || {
-                    let name_str = if name == kw::PathRoot {
-                        "crate root".to_string()
-                    } else {
-                        format!("`{name}`")
-                    };
+                    let name_str =
+                        if name == kw::PathRoot { "crate root" } else { &format!("`{name}`") };
                     let label = if segment_idx == 1 && path[0].ident.name == kw::PathRoot {
                         format!("global paths cannot start with {name_str}")
                     } else {

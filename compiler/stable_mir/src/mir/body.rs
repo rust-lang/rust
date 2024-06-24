@@ -1046,7 +1046,7 @@ impl ProjectionElem {
                 let len = size - from - to;
                 Ty::try_new_array(inner, len)
             }
-            _ => Err(Error(format!("Cannot subslice non-array type: `{ty_kind:?}`"))),
+            _ => Err(Error::new(format!("Cannot subslice non-array type: `{ty_kind:?}`"))),
         }
     }
 

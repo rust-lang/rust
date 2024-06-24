@@ -294,8 +294,10 @@ impl<'a> Parser<'a> {
                         colon_sp,
                         format!(
                             "while parsing the type for {}",
-                            pat.descr()
-                                .map_or_else(|| "the binding".to_string(), |n| format!("`{n}`"))
+                            pat.descr().map_or_else(
+                                || "the binding".into(),
+                                |n| Cow::Owned(format!("`{n}`"))
+                            )
                         ),
                     );
                     // we use noexpect here because we don't actually expect Eq to be here
@@ -770,8 +772,8 @@ impl<'a> Parser<'a> {
                                 format!(
                                     "while parsing the type for {}",
                                     local.pat.descr().map_or_else(
-                                        || "the binding".to_string(),
-                                        |n| format!("`{n}`")
+                                        || "the binding".into(),
+                                        |n| Cow::Owned(format!("`{n}`"))
                                     )
                                 ),
                             );

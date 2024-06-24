@@ -105,7 +105,7 @@ pub fn report_unstable(
     feature: Symbol,
     reason: Option<Symbol>,
     issue: Option<NonZero<u32>>,
-    suggestion: Option<(Span, String, String, Applicability)>,
+    suggestion: Option<(Span, &'static str, String, Applicability)>,
     is_soft: bool,
     span: Span,
     soft_handler: impl FnOnce(&'static Lint, Span, String),
@@ -265,7 +265,7 @@ pub enum EvalResult {
         feature: Symbol,
         reason: Option<Symbol>,
         issue: Option<NonZero<u32>>,
-        suggestion: Option<(Span, String, String, Applicability)>,
+        suggestion: Option<(Span, &'static str, String, Applicability)>,
         is_soft: bool,
     },
     /// The item does not have the `#[stable]` or `#[unstable]` marker assigned.
@@ -294,7 +294,7 @@ fn suggestion_for_allocator_api(
     def_id: DefId,
     span: Span,
     feature: Symbol,
-) -> Option<(Span, String, String, Applicability)> {
+) -> Option<(Span, &'static str, String, Applicability)> {
     if feature == sym::allocator_api {
         if let Some(trait_) = tcx.opt_parent(def_id) {
             if tcx.is_diagnostic_item(sym::Vec, trait_) {
@@ -303,7 +303,7 @@ fn suggestion_for_allocator_api(
                 if let Ok(snippet) = sm.span_to_snippet(inner_types) {
                     return Some((
                         inner_types,
-                        "consider wrapping the inner types in tuple".to_string(),
+                        "consider wrapping the inner types in tuple",
                         format!("({snippet})"),
                         Applicability::MaybeIncorrect,
                     ));

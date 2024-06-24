@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::ty::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
 
@@ -330,12 +332,12 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
 }
 
 // This is only used by query descriptions
-pub fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {
+pub fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> Cow<'static, str> {
     let def_id = def_id.into();
     if def_id.is_top_level_module() {
-        "top-level module".to_string()
+        "top-level module".into()
     } else {
-        format!("module `{}`", tcx.def_path_str(def_id))
+        format!("module `{}`", tcx.def_path_str(def_id)).into()
     }
 }
 

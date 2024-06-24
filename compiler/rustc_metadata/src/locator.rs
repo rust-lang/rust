@@ -428,10 +428,9 @@ impl<'a> CrateLocator<'a> {
                     (f, CrateFlavor::Dylib)
                 } else {
                     if f.starts_with(staticlib_prefix) && f.ends_with(staticlib_suffix.as_ref()) {
-                        self.crate_rejections.via_kind.push(CrateMismatch {
-                            path: spf.path.clone(),
-                            got: "static".to_string(),
-                        });
+                        self.crate_rejections
+                            .via_kind
+                            .push(CrateMismatch { path: spf.path.clone(), got: "static".into() });
                     }
                     continue;
                 };
@@ -591,7 +590,7 @@ impl<'a> CrateLocator<'a> {
                     );
                     self.crate_rejections
                         .via_version
-                        .push(CrateMismatch { path: lib, got: found_version });
+                        .push(CrateMismatch { path: lib, got: found_version.into() });
                     continue;
                 }
                 Err(MetadataError::LoadFailure(err)) => {
@@ -599,7 +598,9 @@ impl<'a> CrateLocator<'a> {
                     // The file was present and created by the same compiler version, but we
                     // couldn't load it for some reason. Give a hard error instead of silently
                     // ignoring it, but only if we would have given an error anyway.
-                    self.crate_rejections.via_invalid.push(CrateMismatch { path: lib, got: err });
+                    self.crate_rejections
+                        .via_invalid
+                        .push(CrateMismatch { path: lib, got: err.into() });
                     continue;
                 }
                 Err(err @ MetadataError::NotPresent(_)) => {
@@ -679,7 +680,7 @@ impl<'a> CrateLocator<'a> {
             info!("Rejecting via crate triple: expected {} got {}", self.triple, header.triple);
             self.crate_rejections.via_triple.push(CrateMismatch {
                 path: libpath.to_path_buf(),
-                got: header.triple.to_string(),
+                got: header.triple.to_string().into(),
             });
             return None;
         }
@@ -690,7 +691,7 @@ impl<'a> CrateLocator<'a> {
                 info!("Rejecting via hash: expected {} got {}", expected_hash, hash);
                 self.crate_rejections
                     .via_hash
-                    .push(CrateMismatch { path: libpath.to_path_buf(), got: hash.to_string() });
+                    .push(CrateMismatch { path: libpath.to_path_buf(), got: hash.to_hex().into() });
                 return None;
             }
         }
@@ -748,7 +749,7 @@ impl<'a> CrateLocator<'a> {
             } else {
                 self.crate_rejections
                     .via_filename
-                    .push(CrateMismatch { path: loc.original().clone(), got: String::new() });
+                    .push(CrateMismatch { path: loc.original().clone(), got: "".into() });
             }
         }
 
@@ -904,7 +905,7 @@ fn get_flavor_from_path(path: &Path) -> CrateFlavor {
 #[derive(Clone)]
 struct CrateMismatch {
     path: PathBuf,
-    got: String,
+    got: Cow<'static, str>,
 }
 
 #[derive(Clone, Default)]
@@ -1109,7 +1110,8 @@ impl CrateError {
                             .opts
                             .crate_name
                             .clone()
-                            .unwrap_or("<unknown>".to_string()),
+                            .map(Cow::from)
+                            .unwrap_or("<unknown>".into()),
                         is_nightly_build: sess.is_nightly_build(),
                         profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                         locator_triple: locator.triple,
@@ -1130,7 +1132,12 @@ impl CrateError {
                     crate_name,
                     add_info: String::new(),
                     missing_core,
-                    current_crate: sess.opts.crate_name.clone().unwrap_or("<unknown>".to_string()),
+                    current_crate: sess
+                        .opts
+                        .crate_name
+                        .clone()
+                        .map(Cow::from)
+                        .unwrap_or("<unknown>".into()),
                     is_nightly_build: sess.is_nightly_build(),
                     profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                     locator_triple: sess.opts.target_triple.clone(),

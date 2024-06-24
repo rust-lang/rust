@@ -250,7 +250,7 @@ impl ParseSess {
         self.line_of_byte_pos(a) == self.line_of_byte_pos(b)
     }
 
-    pub(crate) fn span_to_debug_info(&self, span: Span) -> String {
+    pub(crate) fn span_to_debug_info(&self, span: Span) -> std::borrow::Cow<'static, str> {
         self.raw_psess.source_map().span_to_diagnostic_string(span)
     }
 

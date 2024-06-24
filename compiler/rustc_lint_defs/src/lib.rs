@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 pub use self::Level::*;
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
@@ -557,7 +559,7 @@ pub struct AmbiguityErrorDiag {
     pub msg: String,
     pub span: Span,
     pub label_span: Span,
-    pub label_msg: String,
+    pub label_msg: &'static str,
     pub note_msg: String,
     pub b1_span: Span,
     pub b1_note_msg: String,
@@ -702,8 +704,8 @@ pub enum BuiltinLintDiag {
     },
     RedundantImportVisibility {
         span: Span,
-        max_vis: String,
-        import_vis: String,
+        max_vis: Cow<'static, str>,
+        import_vis: Cow<'static, str>,
     },
     UnknownDiagnosticAttribute {
         span: Span,

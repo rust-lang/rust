@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for MapUnitFn {
                                     argument_label: args[0].span,
                                     map_label: arg_ty.default_span(cx.tcx),
                                     suggestion: path.ident.span,
-                                    replace: "for_each".to_string(),
+                                    replace: "for_each",
                                 },
                             )
                         }
@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for MapUnitFn {
                                     argument_label: args[0].span,
                                     map_label: arg_ty.default_span(cx.tcx),
                                     suggestion: path.ident.span,
-                                    replace: "for_each".to_string(),
+                                    replace: "for_each",
                                 },
                             )
                         }

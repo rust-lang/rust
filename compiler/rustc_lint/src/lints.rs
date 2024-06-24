@@ -1,6 +1,6 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-use std::num::NonZero;
+use std::{borrow::Cow, num::NonZero};
 
 use crate::errors::RequestedLevel;
 use crate::fluent_generated as fluent;
@@ -880,7 +880,7 @@ pub struct MappingToUnit {
     pub map_label: Span,
     #[suggestion(style = "verbose", code = "{replace}", applicability = "maybe-incorrect")]
     pub suggestion: Span,
-    pub replace: String,
+    pub replace: &'static str,
 }
 
 // internal.rs
@@ -2887,8 +2887,8 @@ pub struct RedundantImportVisibility {
     #[help]
     pub help: (),
 
-    pub import_vis: String,
-    pub max_vis: String,
+    pub import_vis: Cow<'static, str>,
+    pub max_vis: Cow<'static, str>,
 }
 
 #[derive(LintDiagnostic)]

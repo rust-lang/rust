@@ -321,16 +321,16 @@ enum TokenType {
 }
 
 impl TokenType {
-    fn to_string(&self) -> String {
+    fn to_string(&self) -> std::borrow::Cow<'static, str> {
         match self {
-            TokenType::Token(t) => format!("`{}`", pprust::token_kind_to_string(t)),
-            TokenType::Keyword(kw) => format!("`{kw}`"),
-            TokenType::Operator => "an operator".to_string(),
-            TokenType::Lifetime => "lifetime".to_string(),
-            TokenType::Ident => "identifier".to_string(),
-            TokenType::Path => "path".to_string(),
-            TokenType::Type => "type".to_string(),
-            TokenType::Const => "a const expression".to_string(),
+            TokenType::Token(t) => format!("`{}`", pprust::token_kind_to_string(t)).into(),
+            TokenType::Keyword(kw) => format!("`{kw}`").into(),
+            TokenType::Operator => "an operator".into(),
+            TokenType::Lifetime => "lifetime".into(),
+            TokenType::Ident => "identifier".into(),
+            TokenType::Path => "path".into(),
+            TokenType::Type => "type".into(),
+            TokenType::Const => "a const expression".into(),
         }
     }
 }

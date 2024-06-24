@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::attributes;
 use crate::builder::Builder;
 use crate::common::Funclet;
@@ -35,7 +37,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
         // Collect the types of output operands
-        let mut constraints = vec![];
+        let mut constraints: Vec<Cow<'_, str>> = vec![];
         let mut clobbers = vec![];
         let mut output_types = vec![];
         let mut op_idx = FxHashMap::default();
@@ -77,9 +79,9 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         // FP stack in inline assembly.
                         if !clobbered_x87 {
                             clobbered_x87 = true;
-                            clobbers.push("~{st}".to_string());
+                            clobbers.push("~{st}".into());
                             for i in 1..=7 {
-                                clobbers.push(format!("~{{st({})}}", i));
+                                clobbers.push(format!("~{{st({})}}", i).into());
                             }
                         }
                         continue;
@@ -91,7 +93,9 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         // disabled. This is necessary otherwise LLVM will try
                         // to actually allocate a register for the dummy output.
                         assert!(matches!(reg, InlineAsmRegOrRegClass::Reg(_)));
-                        clobbers.push(format!("~{}", reg_to_llvm(reg, None)));
+                        let mut clobber = reg_to_llvm(reg, None);
+                        clobber.to_mut().insert(0, '~');
+                        clobbers.push(clobber);
                         continue;
                     } else {
                         // If the output is discarded, we don't really care what
@@ -101,8 +105,10 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     };
                     output_types.push(ty);
                     op_idx.insert(idx, constraints.len());
-                    let prefix = if late { "=" } else { "=&" };
-                    constraints.push(format!("{}{}", prefix, reg_to_llvm(reg, layout)));
+
+                    let mut constraint = reg_to_llvm(reg, layout);
+                    constraint.to_mut().insert_str(0, if late { "=" } else { "=&" });
+                    constraints.push(constraint);
                 }
                 InlineAsmOperandRef::InOut { reg, late, in_value, out_place } => {
                     let layout = if let Some(ref out_place) = out_place {
@@ -115,8 +121,10 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     let ty = llvm_fixup_output_type(self.cx, reg.reg_class(), layout, instance);
                     output_types.push(ty);
                     op_idx.insert(idx, constraints.len());
-                    let prefix = if late { "=" } else { "=&" };
-                    constraints.push(format!("{}{}", prefix, reg_to_llvm(reg, Some(layout))));
+
+                    let mut constraint = reg_to_llvm(reg, Some(layout));
+                    constraint.to_mut().insert_str(0, if late { "=" } else { "=&" });
+                    constraints.push(constraint);
                 }
                 _ => {}
             }
@@ -153,20 +161,20 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     // We prefer the latter because it matches the behavior of
                     // Clang.
                     if late && matches!(reg, InlineAsmRegOrRegClass::Reg(_)) {
-                        constraints.push(reg_to_llvm(reg, Some(&in_value.layout)).to_string());
+                        constraints.push(reg_to_llvm(reg, Some(&in_value.layout)));
                     } else {
-                        constraints.push(format!("{}", op_idx[&idx]));
+                        constraints.push(format!("{}", op_idx[&idx]).into());
                     }
                 }
                 InlineAsmOperandRef::SymFn { instance } => {
                     inputs.push(self.cx.get_fn(instance));
                     op_idx.insert(idx, constraints.len());
-                    constraints.push("s".to_string());
+                    constraints.push("s".into());
                 }
                 InlineAsmOperandRef::SymStatic { def_id } => {
                     inputs.push(self.cx.get_static(def_id));
                     op_idx.insert(idx, constraints.len());
-                    constraints.push("s".to_string());
+                    constraints.push("s".into());
                 }
                 _ => {}
             }
@@ -216,7 +224,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         }
                         InlineAsmOperandRef::Label { label } => {
                             template_str.push_str(&format!("${{{}:l}}", constraints.len()));
-                            constraints.push("!i".to_owned());
+                            constraints.push("!i".into());
                             labels.push(label);
                         }
                     }
@@ -228,53 +236,53 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         if !options.contains(InlineAsmOptions::PRESERVES_FLAGS) {
             match asm_arch {
                 InlineAsmArch::AArch64 | InlineAsmArch::Arm64EC | InlineAsmArch::Arm => {
-                    constraints.push("~{cc}".to_string());
+                    constraints.push("~{cc}".into());
                 }
                 InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
                     constraints.extend_from_slice(&[
-                        "~{dirflag}".to_string(),
-                        "~{fpsr}".to_string(),
-                        "~{flags}".to_string(),
+                        "~{dirflag}".into(),
+                        "~{fpsr}".into(),
+                        "~{flags}".into(),
                     ]);
                 }
                 InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
                     constraints.extend_from_slice(&[
-                        "~{vtype}".to_string(),
-                        "~{vl}".to_string(),
-                        "~{vxsat}".to_string(),
-                        "~{vxrm}".to_string(),
+                        "~{vtype}".into(),
+                        "~{vl}".into(),
+                        "~{vxsat}".into(),
+                        "~{vxrm}".into(),
                     ]);
                 }
                 InlineAsmArch::Avr => {
-                    constraints.push("~{sreg}".to_string());
+                    constraints.push("~{sreg}".into());
                 }
                 InlineAsmArch::Nvptx64 => {}
                 InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {}
                 InlineAsmArch::Hexagon => {}
                 InlineAsmArch::LoongArch64 => {
                     constraints.extend_from_slice(&[
-                        "~{$fcc0}".to_string(),
-                        "~{$fcc1}".to_string(),
-                        "~{$fcc2}".to_string(),
-                        "~{$fcc3}".to_string(),
-                        "~{$fcc4}".to_string(),
-                        "~{$fcc5}".to_string(),
-                        "~{$fcc6}".to_string(),
-                        "~{$fcc7}".to_string(),
+                        "~{$fcc0}".into(),
+                        "~{$fcc1}".into(),
+                        "~{$fcc2}".into(),
+                        "~{$fcc3}".into(),
+                        "~{$fcc4}".into(),
+                        "~{$fcc5}".into(),
+                        "~{$fcc6}".into(),
+                        "~{$fcc7}".into(),
                     ]);
                 }
                 InlineAsmArch::Mips | InlineAsmArch::Mips64 => {}
                 InlineAsmArch::S390x => {
-                    constraints.push("~{cc}".to_string());
+                    constraints.push("~{cc}".into());
                 }
                 InlineAsmArch::SpirV => {}
                 InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {}
                 InlineAsmArch::Bpf => {}
                 InlineAsmArch::Msp430 => {
-                    constraints.push("~{sr}".to_string());
+                    constraints.push("~{sr}".into());
                 }
                 InlineAsmArch::M68k => {
-                    constraints.push("~{ccr}".to_string());
+                    constraints.push("~{ccr}".into());
                 }
                 InlineAsmArch::CSKY => {}
             }
@@ -283,7 +291,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             // This is actually ignored by LLVM, but it's probably best to keep
             // it just in case. LLVM instead uses the ReadOnly/ReadNone
             // attributes on the call instruction to optimize.
-            constraints.push("~{memory}".to_string());
+            constraints.push("~{memory}".into());
         }
         let volatile = !options.contains(InlineAsmOptions::PURE);
         let alignstack = !options.contains(InlineAsmOptions::NOSTACK);
@@ -594,7 +602,7 @@ fn a64_vreg_index(reg: InlineAsmReg) -> Option<u32> {
 }
 
 /// Converts a register class to an LLVM constraint code.
-fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) -> String {
+fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) -> Cow<'static, str> {
     match reg {
         // For vector registers LLVM wants the register name to match the type size.
         InlineAsmRegOrRegClass::Reg(reg) => {
@@ -609,7 +617,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     // We use f32 as the type for discarded outputs
                     'x'
                 };
-                format!("{{{}mm{}}}", class, idx)
+                format!("{{{}mm{}}}", class, idx).into()
             } else if let Some(idx) = a64_reg_index(reg) {
                 let class = if let Some(layout) = layout {
                     match layout.size.bytes() {
@@ -622,9 +630,9 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                 };
                 if class == 'x' && reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) {
                     // LLVM doesn't recognize x30. use lr instead.
-                    "{lr}".to_string()
+                    "{lr}".into()
                 } else {
-                    format!("{{{}{}}}", class, idx)
+                    format!("{{{}{}}}", class, idx).into()
                 }
             } else if let Some(idx) = a64_vreg_index(reg) {
                 let class = if let Some(layout) = layout {
@@ -640,12 +648,12 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     // We use i64x2 as the type for discarded outputs
                     'q'
                 };
-                format!("{{{}{}}}", class, idx)
+                format!("{{{}{}}}", class, idx).into()
             } else if reg == InlineAsmReg::Arm(ArmInlineAsmReg::r14) {
                 // LLVM doesn't recognize r14
-                "{lr}".to_string()
+                "{lr}".into()
             } else {
-                format!("{{{}}}", reg.name())
+                format!("{{{}}}", reg.name()).into()
             }
         }
         // The constraints can be retrieved from
@@ -721,7 +729,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             }
             InlineAsmRegClass::Err => unreachable!(),
         }
-        .to_string(),
+        .into(),
     }
 }
 
