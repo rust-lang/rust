@@ -221,7 +221,7 @@ late_lint_methods!(
             NoopMethodCall: NoopMethodCall,
             EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
             InvalidAtomicOrdering: InvalidAtomicOrdering,
-            NamedAsmLabels: NamedAsmLabels,
+            AsmLabels: AsmLabels,
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
             MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
             MapUnitFn: MapUnitFn,
