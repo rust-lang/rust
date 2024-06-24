@@ -164,6 +164,8 @@ The following header commands will check rustc build settings and target setting
 * `needs-rust-lld` — ignores if the rust lld support is not enabled
   (`rust.lld = true` in `config.toml`)
 * `needs-threads` — ignores if the target does not have threading support
+* `needs-symlink` — ignores if the target does not support symlinks. This can be the case on Windows
+  if the developer did not enable priviledged symlink permissions.
 
 The following header commands will check LLVM support:
 
