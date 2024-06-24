@@ -83,6 +83,7 @@ pub(crate) enum OverflowableItem<'a> {
     TuplePatField(&'a TuplePatField<'a>),
     Ty(&'a ast::Ty),
     Pat(&'a ast::Pat),
+    PreciseCapturingArg(&'a ast::PreciseCapturingArg),
 }
 
 impl<'a> Rewrite for OverflowableItem<'a> {
@@ -123,6 +124,7 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::TuplePatField(pat) => f(*pat),
             OverflowableItem::Ty(ty) => f(*ty),
             OverflowableItem::Pat(pat) => f(*pat),
+            OverflowableItem::PreciseCapturingArg(arg) => f(*arg),
         }
     }
 
@@ -137,6 +139,9 @@ impl<'a> OverflowableItem<'a> {
                     matches!(meta_item.kind, ast::MetaItemKind::Word)
                 }
             },
+            // FIXME: Why don't we consider `SegmentParam` to be simple?
+            // FIXME: If we also fix `SegmentParam`, then we should apply the same
+            // heuristic to `PreciseCapturingArg`.
             _ => false,
         }
     }
@@ -244,7 +249,15 @@ macro_rules! impl_into_overflowable_item_for_rustfmt_types {
     }
 }
 
-impl_into_overflowable_item_for_ast_node!(Expr, GenericParam, NestedMetaItem, FieldDef, Ty, Pat);
+impl_into_overflowable_item_for_ast_node!(
+    Expr,
+    GenericParam,
+    NestedMetaItem,
+    FieldDef,
+    Ty,
+    Pat,
+    PreciseCapturingArg
+);
 impl_into_overflowable_item_for_rustfmt_types!([MacroArg], [SegmentParam, TuplePatField]);
 
 pub(crate) fn into_overflowable_list<'a, T>(
