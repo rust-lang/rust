@@ -3113,6 +3113,7 @@ impl Path {
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
 unsafe impl CloneToUninit for Path {
+    #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dst: *mut Self) {
         // SAFETY: Path is just a wrapper around OsStr

@@ -272,6 +272,7 @@ pub unsafe trait CloneToUninit {
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
 unsafe impl<T: Clone> CloneToUninit for T {
+    #[inline]
     default unsafe fn clone_to_uninit(&self, dst: *mut Self) {
         // SAFETY: The safety conditions of clone_to_uninit() are a superset of those of
         // ptr::write().
@@ -285,8 +286,10 @@ unsafe impl<T: Clone> CloneToUninit for T {
 
 // Specialized implementation for types that are [`Copy`], not just [`Clone`],
 // and can therefore be copied bitwise.
+#[doc(hidden)]
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
 unsafe impl<T: Copy> CloneToUninit for T {
+    #[inline]
     unsafe fn clone_to_uninit(&self, dst: *mut Self) {
         // SAFETY: The safety conditions of clone_to_uninit() are a superset of those of
         // ptr::copy_nonoverlapping().
@@ -298,6 +301,7 @@ unsafe impl<T: Copy> CloneToUninit for T {
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
 unsafe impl<T: Clone> CloneToUninit for [T] {
+    #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     default unsafe fn clone_to_uninit(&self, dst: *mut Self) {
         let len = self.len();
@@ -326,8 +330,10 @@ unsafe impl<T: Clone> CloneToUninit for [T] {
     }
 }
 
+#[doc(hidden)]
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
 unsafe impl<T: Copy> CloneToUninit for [T] {
+    #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dst: *mut Self) {
         let len = self.len();
@@ -348,6 +354,7 @@ unsafe impl<T: Copy> CloneToUninit for [T] {
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
 unsafe impl CloneToUninit for str {
+    #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dst: *mut Self) {
         // SAFETY: str is just a [u8] with UTF-8 invariant

@@ -1051,6 +1051,7 @@ impl Hash for Wtf8 {
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
 unsafe impl CloneToUninit for Wtf8 {
+    #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dst: *mut Self) {
         // SAFETY: we're just a wrapper around [u8]

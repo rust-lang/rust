@@ -274,6 +274,7 @@ impl Slice {
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
 unsafe impl CloneToUninit for Slice {
+    #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dst: *mut Self) {
         // SAFETY: we're just a wrapper around Wtf8
