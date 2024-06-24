@@ -1501,7 +1501,7 @@ function initSearch(rawSearchIndex) {
             const mappedNames = new Map();
             const whereClause = new Map();
 
-            const fnParamNames = (await searchState.loadParamNames(obj.crate))[obj.bitIndex - 1];
+            const fnParamNames = obj.paramNames;
             const queryParamNames = [];
             /**
              * Recursively writes a map of IDs to query generic names,
@@ -2525,6 +2525,7 @@ function initSearch(rawSearchIndex) {
                 ty: item.ty,
                 parent: item.parent,
                 type: item.type,
+                paramNames: item.paramNames,
                 is_alias: true,
                 bitIndex: item.bitIndex,
                 implDisambiguator: item.implDisambiguator,
@@ -4015,6 +4016,13 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             searchIndexEmptyDesc.set(crate, new RoaringBitmap(crateCorpus.e));
             let descIndex = 0;
 
+            /**
+             * List of generic function type parameter names.
+             * Used for display, not for searching.
+             * @type {[string]}
+             */
+            let lastParamNames = [];
+
             // This object should have exactly the same set of fields as the "row"
             // object defined below. Your JavaScript runtime will thank you.
             // https://mathiasbynens.be/notes/shapes-ics
@@ -4029,6 +4037,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 desc: crateCorpus.doc,
                 parent: undefined,
                 type: null,
+                paramNames: lastParamNames,
                 id,
                 word: crate,
                 normalizedName: crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, ""),
@@ -4065,6 +4074,10 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // an array of [(String) alias name
             //             [Number] index to items]
             const aliases = crateCorpus.a;
+            // an array of [(Number) item index,
+            //              (String) comma-separated list of function generic param names]
+            // an item whose index is not present will fall back to the previous present path
+            const itemParamNames = new Map(crateCorpus.P);
 
             // an array of [{name: String, ty: Number}]
             const lowercasePaths = [];
@@ -4123,6 +4136,9 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     word = itemNames[i].toLowerCase();
                 }
                 const path = itemPaths.has(i) ? itemPaths.get(i) : lastPath;
+                const paramNames = itemParamNames.has(i) ?
+                    itemParamNames.get(i).split(",") :
+                    lastParamNames;
                 const type = itemFunctionDecoder.next();
                 if (type !== null) {
                     if (type) {
@@ -4153,6 +4169,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     exactPath: itemReexports.has(i) ? itemPaths.get(itemReexports.get(i)) : path,
                     parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                     type,
+                    paramNames,
                     id,
                     word,
                     normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
@@ -4162,6 +4179,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 id += 1;
                 searchIndex.push(row);
                 lastPath = row.path;
+                lastParamNames = row.paramNames;
                 if (!searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
                     descIndex += 1;
                 }

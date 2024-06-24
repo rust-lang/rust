@@ -353,26 +353,6 @@ function preLoadCss(cssUrl) {
         loadedDescShard: function(crate, shard, data) {
             this.descShards.get(crate)[shard].resolve(data.split("\n"));
         },
-        paramNameShards: new Map(),
-        paramNameResolvers: new Map(),
-        loadParamNames: async function(crate) {
-            if (this.paramNameShards.has(crate)) {
-                return this.paramNameShards.get(crate);
-            }
-            const promise = new Promise((resolve, reject) => {
-                this.paramNameResolvers.set(crate, resolve);
-                const url = resourcePath(
-                    `search.desc/${crate}/${crate}-param-names`,
-                    ".js",
-                );
-                loadScript(url, reject);
-            });
-            this.paramNameShards.set(crate, promise);
-            return promise;
-        },
-        loadedParamNames: function(crate, data) {
-            this.paramNameResolvers.get(crate)(JSON.parse(data));
-        },
     };
 
     const toggleAllDocsId = "toggle-all-docs";

@@ -361,22 +361,6 @@ else if (window.initSearch) window.initSearch(searchIndex);
             &path
         );
     }
-    let output_filename = static_files::suffix_path(
-        &format!("{kratename}-param-names.js"),
-        &cx.shared.resource_suffix,
-    );
-    let path = search_desc_dir.join(output_filename);
-    try_err!(
-        std::fs::write(
-            &path,
-            &format!(
-                r##"searchState.loadedParamNames('{kratename}','{data}')"##,
-                data = search_index.param_names,
-            )
-            .into_bytes()
-        ),
-        &path
-    );
 
     write_invocation_specific("crates.js", &|| {
         let krates = krates.iter().map(|k| format!("\"{k}\"")).join(",");

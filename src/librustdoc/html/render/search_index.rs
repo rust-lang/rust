@@ -49,7 +49,6 @@ use encode::{bitmap_to_string, write_vlqhex_to_string};
 pub(crate) struct SerializedSearchIndex {
     pub(crate) index: String,
     pub(crate) desc: Vec<(usize, String)>,
-    pub(crate) param_names: String,
 }
 
 const DESC_INDEX_SHARD_LEN: usize = 128 * 1024;
@@ -622,9 +621,25 @@ pub(crate) fn build_index<'tcx>(
                 full_paths.push((*index, path));
             }
 
+            let param_names: Vec<(usize, String)> = {
+                let mut prev = Vec::new();
+                let mut result = Vec::new();
+                for (index, item) in self.items.iter().enumerate() {
+                    if let Some(ty) = &item.search_type
+                        && let my =
+                            ty.param_names.iter().map(|sym| sym.as_str()).collect::<Vec<_>>()
+                        && my != prev
+                    {
+                        result.push((index, my.join(",")));
+                        prev = my;
+                    }
+                }
+                result
+            };
+
             let has_aliases = !self.aliases.is_empty();
             let mut crate_data =
-                serializer.serialize_struct("CrateData", if has_aliases { 9 } else { 8 })?;
+                serializer.serialize_struct("CrateData", if has_aliases { 13 } else { 12 })?;
             crate_data.serialize_field("t", &types)?;
             crate_data.serialize_field("n", &names)?;
             crate_data.serialize_field("q", &full_paths)?;
@@ -636,6 +651,7 @@ pub(crate) fn build_index<'tcx>(
             crate_data.serialize_field("b", &self.associated_item_disambiguators)?;
             crate_data.serialize_field("c", &bitmap_to_string(&deprecated))?;
             crate_data.serialize_field("e", &bitmap_to_string(&self.empty_desc))?;
+            crate_data.serialize_field("P", &param_names)?;
             if has_aliases {
                 crate_data.serialize_field("a", &self.aliases)?;
             }
@@ -682,23 +698,6 @@ pub(crate) fn build_index<'tcx>(
         desc.iter().map(|(len, _)| *len).sum::<usize>() + empty_desc.len()
     );
 
-    let param_names = {
-        let result: Vec<Vec<&str>> = crate_items
-            .iter()
-            .map(|item| match &item.search_type {
-                Some(ty) => ty.param_names.iter().map(|sym| sym.as_str()).collect(),
-                None => Vec::new(),
-            })
-            .collect();
-        serde_json::to_string(&result)
-            .expect("failed serde conversion")
-            // All these `replace` calls are because we have to go through JS string for JSON content.
-            .replace('\\', r"\\")
-            .replace('\'', r"\'")
-            // We need to escape double quotes for the JSON.
-            .replace("\\\"", "\\\\\"")
-    };
-
     // The index, which is actually used to search, is JSON
     // It uses `JSON.parse(..)` to actually load, since JSON
     // parses faster than the full JavaScript syntax.
@@ -720,7 +719,7 @@ pub(crate) fn build_index<'tcx>(
         // We need to escape double quotes for the JSON.
         .replace("\\\"", "\\\\\"")
     );
-    SerializedSearchIndex { index, desc, param_names }
+    SerializedSearchIndex { index, desc }
 }
 
 pub(crate) fn get_function_type_for_search<'tcx>(
