@@ -14,7 +14,7 @@ Rust's analogue of C's `va_list` type.
 ```rust
 #![feature(c_variadic)]
 
-use std::ffi::VaList;
+use std::ffi::va_list::VaList;
 
 pub unsafe extern "C" fn vadd(n: usize, mut args: VaList) -> usize {
     let mut sum = 0;

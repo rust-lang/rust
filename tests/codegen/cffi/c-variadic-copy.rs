@@ -3,7 +3,7 @@
 #![crate_type = "lib"]
 #![feature(c_variadic)]
 #![no_std]
-use core::ffi::VaList;
+use core::ffi::va_list::VaList;
 
 extern "C" {
     fn foreign_c_variadic_1(_: VaList, ...);

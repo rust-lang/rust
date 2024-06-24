@@ -1,7 +1,7 @@
 //@ run-pass
 #![feature(c_variadic)]
 
-use std::ffi::VaList;
+use std::ffi::va_list::VaList;
 
 #[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
