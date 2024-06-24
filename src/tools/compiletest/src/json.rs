@@ -91,7 +91,12 @@ pub fn rustfix_diagnostics_only(output: &str) -> String {
         .collect()
 }
 
-pub fn extract_rendered(output: &str) -> String {
+pub enum OnUnknownJson {
+    Error,
+    Print,
+}
+
+pub fn extract_rendered(output: &str, on_unknown_json: OnUnknownJson) -> String {
     output
         .lines()
         .filter_map(|line| {
@@ -125,11 +130,16 @@ pub fn extract_rendered(output: &str) -> String {
                     // Ignore the notification.
                     None
                 } else {
-                    print!(
-                        "failed to decode compiler output as json: line: {}\noutput: {}",
-                        line, output
-                    );
-                    panic!()
+                    match on_unknown_json {
+                        OnUnknownJson::Error => {
+                            print!(
+                                "failed to decode compiler output as json: line: {}\noutput: {}",
+                                line, output
+                            );
+                            panic!()
+                        }
+                        OnUnknownJson::Print => Some(format!("{}\n", line)),
+                    }
                 }
             } else {
                 // preserve non-JSON lines, such as ICEs

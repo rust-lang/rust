@@ -31,7 +31,7 @@ use std::io::{self, BufReader};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
-use std::str;
+use std::str::{self, FromStr};
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -3783,7 +3783,7 @@ impl<'test> TestCx<'test> {
         } else if explicit_format {
             proc_res.stderr.clone()
         } else {
-            json::extract_rendered(&proc_res.stderr)
+            json::extract_rendered(&proc_res.stderr, json::OnUnknownJson::Error)
         };
 
         let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
@@ -3938,6 +3938,17 @@ impl<'test> TestCx<'test> {
                 }
             } else if proc_res.status.success() {
                 self.fatal_proc_rec("test run succeeded!", &proc_res);
+            }
+
+            if self.props.check_run_stdout_is_json_lines {
+                for (line, n) in proc_res.stdout.lines().zip(1..) {
+                    if serde_json::Value::from_str(line).is_err() {
+                        self.fatal_proc_rec(
+                            &format!("invalid JSON on line {n} of stdout: {line:?}"),
+                            &proc_res,
+                        );
+                    }
+                }
             }
 
             if !self.props.error_patterns.is_empty() || !self.props.regex_error_patterns.is_empty()
@@ -4564,7 +4575,7 @@ pub struct ProcRes {
 impl ProcRes {
     pub fn print_info(&self) {
         fn render(name: &str, contents: &str) -> String {
-            let contents = json::extract_rendered(contents);
+            let contents = json::extract_rendered(contents, json::OnUnknownJson::Print);
             let contents = contents.trim_end();
             if contents.is_empty() {
                 format!("{name}: none")
