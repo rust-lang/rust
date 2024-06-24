@@ -309,7 +309,8 @@ impl<'tcx> LayoutCalculator for LayoutCx<'tcx, TyCtxt<'tcx>> {
 #[derive(Copy, Clone, Debug)]
 pub enum SizeSkeleton<'tcx> {
     /// Any statically computable Layout.
-    Known(Size),
+    /// Alignment can be `None` if unknown.
+    Known(Size, Option<Align>),
 
     /// This is a generic const expression (i.e. N * 2), which may contain some parameters.
     /// It must be of type usize, and represents the size of a type in bytes.
@@ -339,7 +340,12 @@ impl<'tcx> SizeSkeleton<'tcx> {
         // First try computing a static layout.
         let err = match tcx.layout_of(param_env.and(ty)) {
             Ok(layout) => {
-                return Ok(SizeSkeleton::Known(layout.size));
+                if layout.abi.is_sized() {
+                    return Ok(SizeSkeleton::Known(layout.size, Some(layout.align.abi)));
+                } else {
+                    // Just to be safe, don't claim a known layout for unsized types.
+                    return Err(tcx.arena.alloc(LayoutError::Unknown(ty)));
+                }
             }
             Err(err @ LayoutError::Unknown(_)) => err,
             // We can't extract SizeSkeleton info from other layout errors
@@ -389,19 +395,20 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ty::Array(inner, len) if tcx.features().transmute_generic_consts => {
                 let len_eval = len.try_eval_target_usize(tcx, param_env);
                 if len_eval == Some(0) {
-                    return Ok(SizeSkeleton::Known(Size::from_bytes(0)));
+                    return Ok(SizeSkeleton::Known(Size::from_bytes(0), None));
                 }
 
                 match SizeSkeleton::compute(inner, tcx, param_env)? {
                     // This may succeed because the multiplication of two types may overflow
                     // but a single size of a nested array will not.
-                    SizeSkeleton::Known(s) => {
+                    SizeSkeleton::Known(s, a) => {
                         if let Some(c) = len_eval {
                             let size = s
                                 .bytes()
                                 .checked_mul(c)
                                 .ok_or_else(|| &*tcx.arena.alloc(LayoutError::SizeOverflow(ty)))?;
-                            return Ok(SizeSkeleton::Known(Size::from_bytes(size)));
+                            // Alignment is unchanged by arrays.
+                            return Ok(SizeSkeleton::Known(Size::from_bytes(size), a));
                         }
                         Err(tcx.arena.alloc(LayoutError::Unknown(ty)))
                     }
@@ -427,8 +434,10 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     for field in fields {
                         let field = field?;
                         match field {
-                            SizeSkeleton::Known(size) => {
-                                if size.bytes() > 0 {
+                            SizeSkeleton::Known(size, align) => {
+                                let is_1zst = size.bytes() == 0
+                                    && align.is_some_and(|align| align.bytes() == 1);
+                                if !is_1zst {
                                     return Err(err);
                                 }
                             }
@@ -492,7 +501,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
 
     pub fn same_size(self, other: SizeSkeleton<'tcx>) -> bool {
         match (self, other) {
-            (SizeSkeleton::Known(a), SizeSkeleton::Known(b)) => a == b,
+            (SizeSkeleton::Known(a, _), SizeSkeleton::Known(b, _)) => a == b,
             (SizeSkeleton::Pointer { tail: a, .. }, SizeSkeleton::Pointer { tail: b, .. }) => {
                 a == b
             }
