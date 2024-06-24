@@ -135,7 +135,7 @@ mod spurious_read {
 
     impl Exhaustive for PtrSelector {
         fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
-            use PtrSelector::*;
+            use self::PtrSelector::*;
             Box::new(vec![X, Y, Other].into_iter())
         }
     }
@@ -152,7 +152,7 @@ mod spurious_read {
 
     impl Exhaustive for RelPosXY {
         fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
-            use RelPosXY::*;
+            use self::RelPosXY::*;
             Box::new(vec![MutuallyForeign, XChildY].into_iter())
         }
     }
@@ -178,7 +178,7 @@ mod spurious_read {
         /// or an `AncestorAccess` relative to `y`, but it doesn't really matter
         /// because `DistantAccess.is_foreign() == AncestorAccess.is_foreign()`).
         fn rel_pair(self, xy_rel: RelPosXY) -> (AccessRelatedness, AccessRelatedness) {
-            use AccessRelatedness::*;
+            use self::AccessRelatedness::*;
             match xy_rel {
                 RelPosXY::MutuallyForeign =>
                     match self {

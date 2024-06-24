@@ -36,7 +36,7 @@ enum PermissionPriv {
     /// rejects: all child accesses (UB).
     Disabled,
 }
-use PermissionPriv::*;
+use self::PermissionPriv::*;
 
 impl PartialOrd for PermissionPriv {
     /// PermissionPriv is ordered by the reflexive transitive closure of
@@ -483,14 +483,14 @@ mod propagation_optimization_checks {
 
     impl Exhaustive for AccessKind {
         fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
-            use AccessKind::*;
+            use self::AccessKind::*;
             Box::new(vec![Read, Write].into_iter())
         }
     }
 
     impl Exhaustive for AccessRelatedness {
         fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
-            use AccessRelatedness::*;
+            use self::AccessRelatedness::*;
             Box::new(vec![This, StrictChildAccess, AncestorAccess, DistantAccess].into_iter())
         }
     }
@@ -499,7 +499,7 @@ mod propagation_optimization_checks {
     // For any kind of access, if we do it twice the second should be a no-op.
     // Even if the protector has disappeared.
     fn all_transitions_idempotent() {
-        use transition::*;
+        use self::transition::*;
         for old in PermissionPriv::exhaustive() {
             for (old_protected, new_protected) in <(bool, bool)>::exhaustive() {
                 // Protector can't appear out of nowhere: either the permission was
@@ -525,7 +525,7 @@ mod propagation_optimization_checks {
     #[test]
     #[rustfmt::skip]
     fn foreign_read_is_noop_after_foreign_write() {
-        use transition::*;
+        use self::transition::*;
         let old_access = AccessKind::Write;
         let new_access = AccessKind::Read;
         for old in PermissionPriv::exhaustive() {

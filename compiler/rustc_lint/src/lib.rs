@@ -77,6 +77,7 @@ mod reference_casting;
 mod shadowed_into_iter;
 mod traits;
 mod types;
+mod unclear_local_imports;
 mod unit_bindings;
 mod unused;
 
@@ -113,6 +114,7 @@ use reference_casting::*;
 use shadowed_into_iter::ShadowedIntoIter;
 use traits::*;
 use types::*;
+use unclear_local_imports::*;
 use unit_bindings::*;
 use unused::*;
 
@@ -230,6 +232,7 @@ late_lint_methods!(
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
             ImplTraitOvercaptures: ImplTraitOvercaptures,
+            UnclearLocalImports: UnclearLocalImports,
         ]
     ]
 );

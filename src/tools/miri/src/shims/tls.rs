@@ -237,7 +237,7 @@ impl<'tcx> TlsDtorsState<'tcx> {
         &mut self,
         this: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Poll<()>> {
-        use TlsDtorsStatePriv::*;
+        use self::TlsDtorsStatePriv::*;
         let new_state = 'new_state: {
             match &mut self.0 {
                 Init => {

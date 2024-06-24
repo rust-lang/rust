@@ -216,7 +216,7 @@ impl<'tcx> MainThreadState<'tcx> {
         &mut self,
         this: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Poll<()>> {
-        use MainThreadState::*;
+        use self::MainThreadState::*;
         match self {
             Running => {
                 *self = TlsDtors(Default::default());
