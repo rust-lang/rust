@@ -3,6 +3,6 @@
 
 #![crate_name="issue_15347"]
 
-// @has issue_15347/fn.foo.html
+//@ has issue_15347/fn.foo.html
 #[doc(hidden)]
 pub fn foo() {}

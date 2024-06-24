@@ -3,4 +3,4 @@
 
 pub use std::vec::Vec;
 
-// @!has trait.impl/core/clone/trait.Clone.js
+//@ !has trait.impl/core/clone/trait.Clone.js

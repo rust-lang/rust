@@ -16,8 +16,8 @@ extern crate rustdoc_extern_default_method as ext;
 // general: If the type `Struct` also had an inherent method called `provided`, the impl item
 // would link to that one even though those two methods are distinct items!
 
-// @count extern_default_method/struct.Struct.html '//*[@id="method.provided"]' 1
-// @count extern_default_method/struct.Struct.html '//*[@id="method.provided"]//a[@class="fn"]' 1
-// @snapshot no_href_on_anchor - '//*[@id="method.provided"]//a[@class="fn"]'
-// @has extern_default_method/struct.Struct.html '//*[@id="method.provided"]//a[@class="anchor"]/@href' #method.provided
+//@ count extern_default_method/struct.Struct.html '//*[@id="method.provided"]' 1
+//@ count extern_default_method/struct.Struct.html '//*[@id="method.provided"]//a[@class="fn"]' 1
+//@ snapshot no_href_on_anchor - '//*[@id="method.provided"]//a[@class="fn"]'
+//@ has extern_default_method/struct.Struct.html '//*[@id="method.provided"]//a[@class="anchor"]/@href' #method.provided
 pub use ext::Struct;

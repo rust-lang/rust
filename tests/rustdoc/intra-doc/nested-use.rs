@@ -2,9 +2,9 @@
 
 #![crate_name = "foo"]
 
-// @has foo/struct.Foo.html
-// @has - '//a[@href="struct.Foo.html"]' 'Foo'
-// @has - '//a[@href="struct.Bar.html"]' 'Bar'
+//@ has foo/struct.Foo.html
+//@ has - '//a[@href="struct.Foo.html"]' 'Foo'
+//@ has - '//a[@href="struct.Bar.html"]' 'Bar'
 
 /// [`Foo`]
 pub use m::{Foo, Bar};

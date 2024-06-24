@@ -5,7 +5,7 @@ pub mod io {
 }
 
 pub mod bufreader {
-    // @has crate_relative_assoc/bufreader/index.html '//a/@href' 'struct.TcpStream.html#method.read'
+    //@ has crate_relative_assoc/bufreader/index.html '//a/@href' 'struct.TcpStream.html#method.read'
     //! [`crate::TcpStream::read`]
     use crate::io::Read;
 }

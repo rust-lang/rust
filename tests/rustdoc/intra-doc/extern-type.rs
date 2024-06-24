@@ -24,12 +24,12 @@ impl G<usize> for ExternType {
     fn g(&self, n: usize) {}
 }
 
-// @has 'extern_type/foreigntype.ExternType.html'
-// @hasraw 'extern_type/fn.links_to_extern_type.html' \
+//@ has 'extern_type/foreigntype.ExternType.html'
+//@ hasraw 'extern_type/fn.links_to_extern_type.html' \
 // 'href="foreigntype.ExternType.html#method.f"'
-// @hasraw 'extern_type/fn.links_to_extern_type.html' \
+//@ hasraw 'extern_type/fn.links_to_extern_type.html' \
 // 'href="foreigntype.ExternType.html#method.test"'
-// @hasraw 'extern_type/fn.links_to_extern_type.html' \
+//@ hasraw 'extern_type/fn.links_to_extern_type.html' \
 // 'href="foreigntype.ExternType.html#method.g"'
 /// See also [ExternType::f]
 /// See also [ExternType::test]

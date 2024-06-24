@@ -23,12 +23,12 @@ pub trait MyFrom {
 
 pub struct NonZero;
 
-// @has 'foo/struct.NonZero.html'
+//@ has 'foo/struct.NonZero.html'
 impl MyFrom for NonZero {
-    // @matches - '//*[@class="docblock"]' '^Hello Read more$'
+    //@ matches - '//*[@class="docblock"]' '^Hello Read more$'
     fn try_from1() {}
-    // @matches - '//*[@class="docblock"]' '^a\sb\sc$'
+    //@ matches - '//*[@class="docblock"]' '^a\sb\sc$'
     fn try_from2() {}
-    // @matches - '//*[@class="docblock"]' '^a Read more$'
+    //@ matches - '//*[@class="docblock"]' '^a Read more$'
     fn try_from3() {}
 }

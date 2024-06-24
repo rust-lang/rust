@@ -8,9 +8,9 @@ pub trait Trait {
 
 pub struct Bar;
 
-// @has 'foo/struct.Bar.html'
-// @!has - '//div[@class="sidebar-elems"]//h3' 'Associated Constants'
-// @!has - '//div[@class="sidebar-elems"]//a' 'FOO'
+//@ has 'foo/struct.Bar.html'
+//@ !has - '//div[@class="sidebar-elems"]//h3' 'Associated Constants'
+//@ !has - '//div[@class="sidebar-elems"]//a' 'FOO'
 impl Trait for Bar {
     const FOO: u32 = 1;
 
@@ -21,9 +21,9 @@ pub enum Foo {
     A,
 }
 
-// @has 'foo/enum.Foo.html'
-// @!has - '//div[@class="sidebar-elems"]//h3' 'Associated Constants'
-// @!has - '//div[@class="sidebar-elems"]//a' 'FOO'
+//@ has 'foo/enum.Foo.html'
+//@ !has - '//div[@class="sidebar-elems"]//h3' 'Associated Constants'
+//@ !has - '//div[@class="sidebar-elems"]//a' 'FOO'
 impl Trait for Foo {
     const FOO: u32 = 1;
 
@@ -32,9 +32,9 @@ impl Trait for Foo {
 
 pub struct Baz;
 
-// @has 'foo/struct.Baz.html'
-// @has - '//div[@class="sidebar-elems"]//h3' 'Associated Constants'
-// @has - '//div[@class="sidebar-elems"]//a' 'FOO'
+//@ has 'foo/struct.Baz.html'
+//@ has - '//div[@class="sidebar-elems"]//h3' 'Associated Constants'
+//@ has - '//div[@class="sidebar-elems"]//a' 'FOO'
 impl Baz {
     pub const FOO: u32 = 42;
 }
@@ -43,9 +43,9 @@ pub enum Quux {
     B,
 }
 
-// @has 'foo/enum.Quux.html'
-// @has - '//div[@class="sidebar-elems"]//h3' 'Associated Constants'
-// @has - '//div[@class="sidebar-elems"]//a' 'FOO'
+//@ has 'foo/enum.Quux.html'
+//@ has - '//div[@class="sidebar-elems"]//h3' 'Associated Constants'
+//@ has - '//div[@class="sidebar-elems"]//a' 'FOO'
 impl Quux {
     pub const FOO: u32 = 42;
 }

@@ -2,21 +2,21 @@
 
 #![crate_name = "foo"]
 
-// @has 'src/foo/jump-to-def-doc-links-calls.rs.html'
+//@ has 'src/foo/jump-to-def-doc-links-calls.rs.html'
 
-// @has - '//a[@href="../../foo/struct.Bar.html"]' 'Bar'
+//@ has - '//a[@href="../../foo/struct.Bar.html"]' 'Bar'
 pub struct Bar;
 
 impl std::default::Default for Bar {
-    // @has - '//a[@href="#20-22"]' 'Self::new'
+    //@ has - '//a[@href="#20-22"]' 'Self::new'
     fn default() -> Self {
         Self::new()
     }
 }
 
-// @has - '//a[@href="#8"]' 'Bar'
+//@ has - '//a[@href="#8"]' 'Bar'
 impl Bar {
-     // @has - '//a[@href="#24-26"]' 'Self::bar'
+     //@ has - '//a[@href="#24-26"]' 'Self::bar'
      pub fn new()-> Self {
          Self::bar()
      }

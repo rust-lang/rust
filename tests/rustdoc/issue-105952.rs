@@ -9,6 +9,6 @@ pub trait Parse {
 }
 pub trait RenderRaw {}
 
-// @hasraw foo/trait.RenderRaw.html 'impl'
-// @hasraw foo/trait.RenderRaw.html 'ParseMode::Raw'
+//@ hasraw foo/trait.RenderRaw.html 'impl'
+//@ hasraw foo/trait.RenderRaw.html 'ParseMode::Raw'
 impl<T: Parse<PARSE_MODE = { ParseMode::Raw }>> RenderRaw for T {}

@@ -15,5 +15,5 @@ impl Bar {
 /// The minimum is [`Self::MIN`].
 pub type Int = i32;
 
-// @has foo/type.Bar.html '//a[@href="struct.Foo.html#method.bar"]' 'Self::bar'
-// @has foo/type.Int.html '//a[@href="{{channel}}/std/primitive.i32.html#associatedconstant.MIN"]' 'Self::MIN'
+//@ has foo/type.Bar.html '//a[@href="struct.Foo.html#method.bar"]' 'Self::bar'
+//@ has foo/type.Int.html '//a[@href="{{channel}}/std/primitive.i32.html#associatedconstant.MIN"]' 'Self::MIN'

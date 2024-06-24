@@ -11,7 +11,7 @@ impl std::ops::Deref for Vec {
     }
 }
 
-// @has foo/struct.Vec.html '//*[@class="sidebar-elems"]//section//li/a[@href="#method.is_empty"]' \
+//@ has foo/struct.Vec.html '//*[@class="sidebar-elems"]//section//li/a[@href="#method.is_empty"]' \
 //          "is_empty"
 impl Vec {
     pub fn is_empty(&self) -> bool {
@@ -19,9 +19,9 @@ impl Vec {
     }
 }
 
-// @has foo/struct.Vec.html '//*[@class="sidebar-elems"]//section//li/a[@href="#method.is_empty-1"]' \
+//@ has foo/struct.Vec.html '//*[@class="sidebar-elems"]//section//li/a[@href="#method.is_empty-1"]' \
 //          "is_empty"
-// @has foo/struct.Slice.html '//*[@class="sidebar-elems"]//section//li/a[@href="#method.is_empty"]' \
+//@ has foo/struct.Slice.html '//*[@class="sidebar-elems"]//section//li/a[@href="#method.is_empty"]' \
 //          "is_empty"
 impl Slice {
     pub fn is_empty(&self) -> bool {

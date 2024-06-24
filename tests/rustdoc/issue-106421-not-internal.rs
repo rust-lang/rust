@@ -4,5 +4,5 @@
 // In this case, the item shouldn't be documented, because regular users can't get at it.
 extern crate foo;
 
-// @!has issue_106421_not_internal/struct.FatalError.html '//*[@id="method.raise"]' 'fn raise'
+//@ !has issue_106421_not_internal/struct.FatalError.html '//*[@id="method.raise"]' 'fn raise'
 pub use foo::FatalError;
