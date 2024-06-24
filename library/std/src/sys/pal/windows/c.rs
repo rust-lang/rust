@@ -13,6 +13,8 @@ use crate::os::raw::{c_char, c_long, c_longlong, c_uint, c_ulong, c_ushort, c_vo
 use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
 use crate::ptr;
 
+mod windows_targets;
+
 mod windows_sys;
 pub use windows_sys::*;
 
@@ -503,7 +505,7 @@ if #[cfg(not(target_vendor = "uwp"))] {
     #[cfg(target_arch = "arm")]
     pub enum CONTEXT {}
 }}
-
+// WSAStartup is only redefined here so that we can override WSADATA for Arm32
 #[link(name = "ws2_32")]
 extern "system" {
     pub fn WSAStartup(wversionrequested: u16, lpwsadata: *mut WSADATA) -> i32;
