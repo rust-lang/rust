@@ -40,7 +40,7 @@ pub struct G;
 pub struct H;
 
 // @has foo/struct.I.html
-// @matches - '//pre[@class="rust rust-example-rendered"]' '(?m)4 whitespaces!\Z'
+// @has - '//div[@class="docblock"]/p' '4 whitespaces! something'
 ///     4 whitespaces!
 #[doc = "something"]
 pub struct I;
