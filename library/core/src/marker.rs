@@ -1054,14 +1054,15 @@ pub mod effects {
 
     #[lang = "EffectsTyCompat"]
     #[marker]
-    pub trait TyCompat<T> {}
+    pub trait TyCompat<T: ?Sized> {}
 
-    impl<T> TyCompat<T> for T {}
-    impl<T> TyCompat<T> for Maybe {}
+    impl<T: ?Sized> TyCompat<T> for T {}
+    impl<T: ?Sized> TyCompat<T> for Maybe {}
+    impl<T: ?Sized> TyCompat<Maybe> for T {}
 
     #[lang = "EffectsMin"]
     pub trait Min {
         #[lang = "EffectsMinOutput"]
-        type Output;
+        type Output: ?Sized;
     }
 }

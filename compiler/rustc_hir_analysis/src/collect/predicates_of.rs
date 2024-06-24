@@ -122,7 +122,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
         let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
         let preds = tcx.explicit_predicates_of(parent);
-        predicates.extend(preds.instantiate_own(tcx, identity_args));
+
         if let ty::AssocItemContainer::TraitContainer = tcx.associated_item(def_id).container {
             // for traits, emit `type Effects: TyCompat<<(T1::Effects, ..) as Min>::Output>`
             // TODO do the same for impls
