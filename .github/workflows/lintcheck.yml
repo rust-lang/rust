@@ -12,12 +12,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Generates `lintcheck-logs/base.json` and stores it in a cache
+  # Runs lintcheck on the PR's target branch and stores the results as an artifact
   base:
     runs-on: ubuntu-latest
-
-    outputs:
-      key: ${{ steps.key.outputs.key }}
 
     steps:
     - name: Checkout
@@ -37,57 +34,67 @@ jobs:
         rm -rf lintcheck
         git checkout ${{ github.sha }} -- lintcheck
 
+    - name: Cache lintcheck bin
+      id: cache-lintcheck-bin
+      uses: actions/cache@v4
+      with:
+        path: target/debug/lintcheck
+        key: lintcheck-bin-${{ hashfiles('lintcheck/**') }}
+
+    - name: Build lintcheck
+      if: steps.cache-lintcheck-bin.outputs.cache-hit != 'true'
+      run: cargo build --manifest-path=lintcheck/Cargo.toml
+
     - name: Create cache key
       id: key
       run: echo "key=lintcheck-base-${{ hashfiles('lintcheck/**') }}-$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-    - name: Cache results
-      id: cache
+    - name: Cache results JSON
+      id: cache-json
       uses: actions/cache@v4
       with:
-        path: lintcheck-logs/base.json
+        path: lintcheck-logs/lintcheck_crates_logs.json
         key: ${{ steps.key.outputs.key }}
 
     - name: Run lintcheck
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: cargo lintcheck --format json
+      if: steps.cache-json.outputs.cache-hit != 'true'
+      run: ./target/debug/lintcheck --format json
 
-    - name: Rename JSON file
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: mv lintcheck-logs/lintcheck_crates_logs.json lintcheck-logs/base.json
+    - name: Upload base JSON
+      uses: actions/upload-artifact@v4
+      with:
+        name: base
+        path: lintcheck-logs/lintcheck_crates_logs.json
 
-  # Generates `lintcheck-logs/head.json` and stores it in a cache
+  # Runs lintcheck on the PR and stores the results as an artifact
   head:
     runs-on: ubuntu-latest
-
-    outputs:
-      key: ${{ steps.key.outputs.key }}
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Create cache key
-      id: key
-      run: echo "key=lintcheck-head-${{ github.sha }}" >> "$GITHUB_OUTPUT"
-
-    - name: Cache results
-      id: cache
+    - name: Cache lintcheck bin
+      id: cache-lintcheck-bin
       uses: actions/cache@v4
       with:
-        path: lintcheck-logs/head.json
-        key: ${{ steps.key.outputs.key }}
+        path: target/debug/lintcheck
+        key: lintcheck-bin-${{ hashfiles('lintcheck/**') }}
+
+    - name: Build lintcheck
+      if: steps.cache-lintcheck-bin.outputs.cache-hit != 'true'
+      run: cargo build --manifest-path=lintcheck/Cargo.toml
 
     - name: Run lintcheck
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: cargo lintcheck --format json
+      run: ./target/debug/lintcheck --format json
 
-    - name: Rename JSON file
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: mv lintcheck-logs/lintcheck_crates_logs.json lintcheck-logs/head.json
+    - name: Upload head JSON
+      uses: actions/upload-artifact@v4
+      with:
+        name: head
+        path: lintcheck-logs/lintcheck_crates_logs.json
 
-  # Retrieves `lintcheck-logs/base.json` and `lintcheck-logs/head.json` from the cache and prints
-  # the diff to the GH actions step summary
+  # Retrieves the head and base JSON results and prints the diff to the GH actions step summary
   diff:
     runs-on: ubuntu-latest
 
@@ -97,19 +104,15 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Restore base JSON
+    - name: Restore lintcheck bin
       uses: actions/cache/restore@v4
       with:
-        key: ${{ needs.base.outputs.key }}
-        path: lintcheck-logs/base.json
+        path: target/debug/lintcheck
+        key: lintcheck-bin-${{ hashfiles('lintcheck/**') }}
         fail-on-cache-miss: true
 
-    - name: Restore head JSON
-      uses: actions/cache/restore@v4
-      with:
-        key: ${{ needs.head.outputs.key }}
-        path: lintcheck-logs/head.json
-        fail-on-cache-miss: true
+    - name: Download JSON
+      uses: actions/download-artifact@v4
 
     - name: Diff results
-      run: cargo lintcheck diff lintcheck-logs/base.json lintcheck-logs/head.json >> $GITHUB_STEP_SUMMARY
+      run: ./target/debug/lintcheck diff {base,head}/lintcheck_crates_logs.json >> $GITHUB_STEP_SUMMARY
