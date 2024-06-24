@@ -90,6 +90,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{ExprId, LintLevel};
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::Level;
 use rustc_span::{Span, DUMMY_SP};
@@ -1141,6 +1142,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     {
                         return;
                     }
+                    // Opaque type may not have been scheduled if its underlying
+                    // type does not need drop.
+                    None if self.local_decls[local].ty.has_opaque_types() => return,
                     _ => bug!(
                         "found wrong drop, expected value drop of {:?}, found {:?}",
                         local,
