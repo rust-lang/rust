@@ -98,10 +98,9 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             }
 
             if tcx.sess.opts.optimize != OptLevel::No {
-                tcx.dcx().warn("Miri does not support optimizations. If you have enabled optimizations \
-                    by selecting a Cargo profile (such as --release) which changes other profile settings \
-                    such as whether debug assertions and overflow checks are enabled, those settings are \
-                    still applied.");
+                tcx.dcx().warn("Miri does not support optimizations: the opt-level is ignored. The only effect \
+                    of selecting a Cargo profile that enables optimizations (such as --release) is to apply \
+                    its remaining settings, such as whether debug assertions and overflow checks are enabled.");
             }
             if tcx.sess.mir_opt_level() > 0 {
                 tcx.dcx().warn("You have explicitly enabled MIR optimizations, overriding Miri's default \
