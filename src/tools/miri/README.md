@@ -425,8 +425,12 @@ to Miri failing to detect cases of undefined behavior in a program.
   value from a load. This can help diagnose problems that disappear under
   `-Zmiri-disable-weak-memory-emulation`.
 * `-Zmiri-tree-borrows` replaces [Stacked Borrows] with the [Tree Borrows] rules.
-  The soundness rules are already experimental without this flag, but even more
-  so with this flag.
+  Tree Borrows is even more experimental than Stacked Borrows. While Tree Borrows
+  is still sound in the sense of catching all aliasing violations that current versions
+  of the compiler might exploit, it is likely that the eventual final aliasing model
+  of Rust will be stricter than Tree Borrows. In other words, if you use Tree Borrows,
+  even if your code is accepted today, it might be declared UB in the future.
+  This is much less likely with Stacked Borrows.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
   `4` is default for most targets. This value should always be a power of 2 and nonzero.
 * `-Zmiri-unique-is-unique` performs additional aliasing checks for `core::ptr::Unique` to ensure
