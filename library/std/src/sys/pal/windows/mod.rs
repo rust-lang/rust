@@ -225,7 +225,7 @@ where
     // This initial size also works around `GetFullPathNameW` returning
     // incorrect size hints for some short paths:
     // https://github.com/dylni/normpath/issues/5
-    let mut stack_buf: [MaybeUninit<u16>; 512] = MaybeUninit::uninit_array();
+    let mut stack_buf: [MaybeUninit<u16>; 512] = [MaybeUninit::uninit(); 512];
     let mut heap_buf: Vec<MaybeUninit<u16>> = Vec::new();
     unsafe {
         let mut n = stack_buf.len();
