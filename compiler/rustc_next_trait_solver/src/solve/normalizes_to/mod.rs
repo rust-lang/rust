@@ -864,6 +864,65 @@ where
     ) -> Result<Candidate<I>, NoSolution> {
         panic!("`BikeshedIntrinsicFrom` does not have an associated type: {:?}", goal)
     }
+
+    fn consider_builtin_effects_min_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        let ty::Tuple(types) = goal.predicate.self_ty().kind() else {
+            return Err(NoSolution);
+        };
+
+
+        let cx = ecx.cx();
+
+        let mut first_non_maybe = None;
+        let mut non_maybe_count = 0;
+        for ty in types {
+            if !matches!(ty::EffectKind::try_from_ty(cx, ty), Some(ty::EffectKind::Maybe)) {
+                first_non_maybe.get_or_insert(ty);
+                non_maybe_count += 1;
+            }
+        }
+
+        match non_maybe_count {
+            0 => {
+                let ty = ty::EffectKind::Maybe.to_ty(cx);
+                ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                    ecx.instantiate_normalizes_to_term(goal, ty.into());
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                })
+            }
+            1 => {
+                let ty = first_non_maybe.unwrap();
+                ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                    ecx.instantiate_normalizes_to_term(goal, ty.into());
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                })
+            }
+            _ => {
+                let mut min = ty::EffectKind::Maybe;
+
+                for ty in types {
+                    let Some(kind) = ty::EffectKind::try_from_ty(cx, ty) else {
+                        return Err(NoSolution);
+                    };
+        
+                    let Some(result) = ty::EffectKind::min(min, kind) else {
+                        return Err(NoSolution);
+                    };
+        
+                    min = result;
+                }
+
+                let ty = min.to_ty(cx);
+                ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                    ecx.instantiate_normalizes_to_term(goal, ty.into());
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                })
+            }
+        }
+    }
 }
 
 impl<D, I> EvalCtxt<'_, D>
