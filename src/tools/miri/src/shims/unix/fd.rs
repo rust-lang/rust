@@ -273,6 +273,34 @@ impl FdTable {
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    fn dup(&mut self, old_fd: i32) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        match this.machine.fds.dup(old_fd) {
+            Some(dup_fd) => Ok(this.machine.fds.insert_fd_with_min_fd(dup_fd, 0)),
+            None => this.fd_not_found(),
+        }
+    }
+
+    fn dup2(&mut self, old_fd: i32, new_fd: i32) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        match this.machine.fds.dup(old_fd) {
+            Some(dup_fd) => {
+                if new_fd != old_fd {
+                    // Close new_fd if it is previously opened.
+                    // If old_fd and new_fd point to the same description, then `dup_fd` ensures we keep the underlying file description alive.
+                    if let Some(file_descriptor) = this.machine.fds.fds.insert(new_fd, dup_fd) {
+                        // Ignore close error (not interpreter's) according to dup2() doc.
+                        file_descriptor.close(this.machine.communicate())?.ok();
+                    }
+                }
+                Ok(new_fd)
+            }
+            None => this.fd_not_found(),
+        }
+    }
+
     fn fcntl(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
