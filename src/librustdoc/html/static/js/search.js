@@ -25,17 +25,13 @@ function takeFromArray(array, count) {
 }
 
 function onEachBtwn(arr, func, funcBtwn) {
-    let i = 0;
+    let skipped = true;
     for (const value of arr) {
-        if (i !== 0) {
-            funcBtwn(value, i);
+        if (!skipped) {
+            funcBtwn(value);
         }
-        if (func(value, i)) {
-            return true;
-        }
-        i += 1;
+        skipped = func(value);
     }
-    return false;
 }
 
 (function() {
@@ -292,6 +288,13 @@ function initSearch(rawSearchIndex) {
      * @type {Map<string, {id: integer, assocOnly: boolean}>}
      */
     const typeNameIdMap = new Map();
+    /**
+     * Map from type ID to associated type name. Used for display,
+     * not for search.
+     *
+     * @type {Map<integer, string>}
+     */
+    const assocTypeIdNameMap = new Map();
     const ALIASES = new Map();
 
     /**
@@ -1680,14 +1683,28 @@ function initSearch(rawSearchIndex) {
                         return;
                     }
                     pushText(fnType, result);
-                    if (fnType.bindings.size > 0 || fnType.generics.length > 0) {
-                        pushText({ name: "<", highlighted: false }, result);
-                    }
+                    let hasBindings = false;
                     if (fnType.bindings.size > 0) {
                         onEachBtwn(
                             fnType.bindings,
                             ([key, values]) => {
-                                pushText(key, result);
+                                const name = assocTypeIdNameMap.get(key);
+                                if (values.length === 1 && values[0].id < 0 &&
+                                    `${fnType.name}::${name}` === fnParamNames[-1 - values[0].id]
+                                ) {
+                                    // the internal `Item=Iterator::Item` type variable should be
+                                    // shown in the where clause and name mapping output, but is
+                                    // redundant in this spot
+                                    for (const value of values) {
+                                        writeFn(value, []);
+                                    }
+                                    return true;
+                                }
+                                if (!hasBindings) {
+                                    hasBindings = true;
+                                    pushText({ name: "<", highlighted: false }, result);
+                                }
+                                pushText({ name, highlighted: false }, result);
                                 pushText({
                                     name: values.length > 1 ? "=(" : "=",
                                     highlighted: false,
@@ -1704,15 +1721,15 @@ function initSearch(rawSearchIndex) {
                             () => pushText({ name: ", ",  highlighted: false }, result),
                         );
                     }
-                    if (fnType.bindings.size > 0 && fnType.generics.length > 0) {
-                        pushText({ name: ", ", highlighted: false }, result);
+                    if (fnType.generics.length > 0) {
+                        pushText({ name: hasBindings ? ", " : "<", highlighted: false }, result);
                     }
                     onEachBtwn(
                         fnType.generics,
                         value => writeFn(value, result),
                         () => pushText({ name: ", ",  highlighted: false }, result),
                     );
-                    if (fnType.bindings.size > 0 || fnType.generics.length > 0) {
+                    if (hasBindings || fnType.generics.length > 0) {
                         pushText({ name: ">", highlighted: false }, result);
                     }
                 }
@@ -3554,8 +3571,12 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             };
         } else {
             const item = lowercasePaths[pathIndex - 1];
+            const id = buildTypeMapIndex(item.name, isAssocType);
+            if (isAssocType) {
+                assocTypeIdNameMap.set(id, paths[pathIndex - 1].name);
+            }
             result = {
-                id: buildTypeMapIndex(item.name, isAssocType),
+                id,
                 name: paths[pathIndex - 1].name,
                 ty: item.ty,
                 path: item.path,
