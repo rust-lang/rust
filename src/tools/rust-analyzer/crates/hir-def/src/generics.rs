@@ -582,13 +582,11 @@ impl GenericParams {
             GenericDefId::TraitAliasId(id) => id_to_generics(db, id, enabled_params),
             GenericDefId::TypeAliasId(id) => id_to_generics(db, id, enabled_params),
             GenericDefId::ImplId(id) => id_to_generics(db, id, enabled_params),
-            GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => {
-                Interned::new(GenericParams {
-                    type_or_consts: Default::default(),
-                    lifetimes: Default::default(),
-                    where_predicates: Default::default(),
-                })
-            }
+            GenericDefId::ConstId(_) => Interned::new(GenericParams {
+                type_or_consts: Default::default(),
+                lifetimes: Default::default(),
+                where_predicates: Default::default(),
+            }),
         }
     }
 

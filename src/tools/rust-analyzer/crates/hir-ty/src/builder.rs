@@ -252,8 +252,9 @@ impl TyBuilder<()> {
     /// This method prepopulates the builder with placeholder substitution of `parent`, so you
     /// should only push exactly 3 `GenericArg`s before building.
     pub fn subst_for_coroutine(db: &dyn HirDatabase, parent: DefWithBodyId) -> TyBuilder<()> {
-        let parent_subst =
-            parent.as_generic_def_id().map(|p| generics(db.upcast(), p).placeholder_subst(db));
+        let parent_subst = parent
+            .as_generic_def_id(db.upcast())
+            .map(|p| generics(db.upcast(), p).placeholder_subst(db));
         // These represent resume type, yield type, and return type of coroutine.
         let params = std::iter::repeat(ParamKind::Type).take(3).collect();
         TyBuilder::new((), params, parent_subst)
@@ -266,7 +267,7 @@ impl TyBuilder<()> {
     ) -> Substitution {
         let sig_ty = sig_ty.cast(Interner);
         let self_subst = iter::once(&sig_ty);
-        let Some(parent) = parent.as_generic_def_id() else {
+        let Some(parent) = parent.as_generic_def_id(db.upcast()) else {
             return Substitution::from_iter(Interner, self_subst);
         };
         Substitution::from_iter(

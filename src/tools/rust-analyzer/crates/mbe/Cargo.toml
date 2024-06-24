@@ -16,6 +16,7 @@ cov-mark = "2.0.0-pre.1"
 rustc-hash.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
+arrayvec.workspace = true
 
 # local deps
 syntax.workspace = true

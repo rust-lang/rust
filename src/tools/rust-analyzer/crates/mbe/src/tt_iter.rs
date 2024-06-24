@@ -3,7 +3,7 @@
 
 use core::fmt;
 
-use smallvec::{smallvec, SmallVec};
+use arrayvec::ArrayVec;
 use syntax::SyntaxKind;
 
 use crate::{to_parser_input::to_parser_input, ExpandError, ExpandResult};
@@ -93,13 +93,15 @@ impl<'a, S: Copy> TtIter<'a, S> {
     ///
     /// This method currently may return a single quotation, which is part of lifetime ident and
     /// conceptually not a punct in the context of mbe. Callers should handle this.
-    pub(crate) fn expect_glued_punct(&mut self) -> Result<SmallVec<[tt::Punct<S>; 3]>, ()> {
+    pub(crate) fn expect_glued_punct(&mut self) -> Result<ArrayVec<tt::Punct<S>, 3>, ()> {
         let tt::TokenTree::Leaf(tt::Leaf::Punct(first)) = self.next().ok_or(())?.clone() else {
             return Err(());
         };
 
+        let mut res = ArrayVec::new();
         if first.spacing == tt::Spacing::Alone {
-            return Ok(smallvec![first]);
+            res.push(first);
+            return Ok(res);
         }
 
         let (second, third) = match (self.peek_n(0), self.peek_n(1)) {
@@ -108,14 +110,19 @@ impl<'a, S: Copy> TtIter<'a, S> {
                 Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p3))),
             ) if p2.spacing == tt::Spacing::Joint => (p2, Some(p3)),
             (Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p2))), _) => (p2, None),
-            _ => return Ok(smallvec![first]),
+            _ => {
+                res.push(first);
+                return Ok(res);
+            }
         };
 
         match (first.char, second.char, third.map(|it| it.char)) {
             ('.', '.', Some('.' | '=')) | ('<', '<', Some('=')) | ('>', '>', Some('=')) => {
                 let _ = self.next().unwrap();
                 let _ = self.next().unwrap();
-                Ok(smallvec![first, *second, *third.unwrap()])
+                res.push(first);
+                res.push(*second);
+                res.push(*third.unwrap());
             }
             ('-' | '!' | '*' | '/' | '&' | '%' | '^' | '+' | '<' | '=' | '>' | '|', '=', _)
             | ('-' | '=' | '>', '>', _)
@@ -126,10 +133,12 @@ impl<'a, S: Copy> TtIter<'a, S> {
             | ('<', '<', _)
             | ('|', '|', _) => {
                 let _ = self.next().unwrap();
-                Ok(smallvec![first, *second])
+                res.push(first);
+                res.push(*second);
             }
-            _ => Ok(smallvec![first]),
+            _ => res.push(first),
         }
+        Ok(res)
     }
     pub(crate) fn peek_n(&self, n: usize) -> Option<&'a tt::TokenTree<S>> {
         self.inner.as_slice().get(n)

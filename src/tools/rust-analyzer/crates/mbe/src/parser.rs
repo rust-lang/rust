@@ -1,7 +1,9 @@
 //! Parser recognizes special macro syntax, `$var` and `$(repeat)*`, in token
 //! trees.
 
-use smallvec::{smallvec, SmallVec};
+use std::sync::Arc;
+
+use arrayvec::ArrayVec;
 use span::{Edition, Span, SyntaxContextId};
 use syntax::SmolStr;
 
@@ -86,14 +88,14 @@ pub(crate) enum Op {
     Repeat {
         tokens: MetaTemplate,
         kind: RepeatKind,
-        separator: Option<Separator>,
+        separator: Option<Arc<Separator>>,
     },
     Subtree {
         tokens: MetaTemplate,
         delimiter: tt::Delimiter<Span>,
     },
     Literal(tt::Literal<Span>),
-    Punct(SmallVec<[tt::Punct<Span>; 3]>),
+    Punct(Box<ArrayVec<tt::Punct<Span>, 3>>),
     Ident(tt::Ident<Span>),
 }
 
@@ -126,7 +128,7 @@ pub(crate) enum MetaVarKind {
 pub(crate) enum Separator {
     Literal(tt::Literal<Span>),
     Ident(tt::Ident<Span>),
-    Puncts(SmallVec<[tt::Punct<Span>; 3]>),
+    Puncts(ArrayVec<tt::Punct<Span>, 3>),
 }
 
 // Note that when we compare a Separator, we just care about its textual value.
@@ -165,7 +167,13 @@ fn next_op(
             src.next().expect("first token already peeked");
             // Note that the '$' itself is a valid token inside macro_rules.
             let second = match src.next() {
-                None => return Ok(Op::Punct(smallvec![*p])),
+                None => {
+                    return Ok(Op::Punct({
+                        let mut res = ArrayVec::new();
+                        res.push(*p);
+                        Box::new(res)
+                    }))
+                }
                 Some(it) => it,
             };
             match second {
@@ -173,7 +181,7 @@ fn next_op(
                     tt::DelimiterKind::Parenthesis => {
                         let (separator, kind) = parse_repeat(src)?;
                         let tokens = MetaTemplate::parse(edition, subtree, mode, new_meta_vars)?;
-                        Op::Repeat { tokens, separator, kind }
+                        Op::Repeat { tokens, separator: separator.map(Arc::new), kind }
                     }
                     tt::DelimiterKind::Brace => match mode {
                         Mode::Template => {
@@ -216,7 +224,11 @@ fn next_op(
                                 "`$$` is not allowed on the pattern side",
                             ))
                         }
-                        Mode::Template => Op::Punct(smallvec![*punct]),
+                        Mode::Template => Op::Punct({
+                            let mut res = ArrayVec::new();
+                            res.push(*punct);
+                            Box::new(res)
+                        }),
                     },
                     tt::Leaf::Punct(_) | tt::Leaf::Literal(_) => {
                         return Err(ParseError::expected("expected ident"))
@@ -238,7 +250,7 @@ fn next_op(
         tt::TokenTree::Leaf(tt::Leaf::Punct(_)) => {
             // There's at least one punct so this shouldn't fail.
             let puncts = src.expect_glued_punct().unwrap();
-            Op::Punct(puncts)
+            Op::Punct(Box::new(puncts))
         }
 
         tt::TokenTree::Subtree(subtree) => {
@@ -290,7 +302,7 @@ fn is_boolean_literal(lit: &tt::Literal<Span>) -> bool {
 }
 
 fn parse_repeat(src: &mut TtIter<'_, Span>) -> Result<(Option<Separator>, RepeatKind), ParseError> {
-    let mut separator = Separator::Puncts(SmallVec::new());
+    let mut separator = Separator::Puncts(ArrayVec::new());
     for tt in src {
         let tt = match tt {
             tt::TokenTree::Leaf(leaf) => leaf,
@@ -312,7 +324,7 @@ fn parse_repeat(src: &mut TtIter<'_, Span>) -> Result<(Option<Separator>, Repeat
                     '+' => RepeatKind::OneOrMore,
                     '?' => RepeatKind::ZeroOrOne,
                     _ => match &mut separator {
-                        Separator::Puncts(puncts) if puncts.len() != 3 => {
+                        Separator::Puncts(puncts) if puncts.len() < 3 => {
                             puncts.push(*punct);
                             continue;
                         }

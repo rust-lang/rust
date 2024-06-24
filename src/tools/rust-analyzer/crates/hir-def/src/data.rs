@@ -323,7 +323,7 @@ impl TraitAliasData {
 pub struct ImplData {
     pub target_trait: Option<Interned<TraitRef>>,
     pub self_ty: Interned<TypeRef>,
-    pub items: Vec<AssocItemId>,
+    pub items: Box<[AssocItemId]>,
     pub is_negative: bool,
     pub is_unsafe: bool,
     // box it as the vec is usually empty anyways
