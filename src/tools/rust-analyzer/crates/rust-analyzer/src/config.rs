@@ -845,7 +845,7 @@ impl Config {
         }
 
         // IMPORTANT : This holds as long as ` completion_snippets_custom` is declared `client`.
-        config.snippets = vec![];
+        config.snippets.clear();
 
         let snips = self.completion_snippets_custom().to_owned();
 
