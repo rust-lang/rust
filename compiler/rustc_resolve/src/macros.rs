@@ -140,9 +140,10 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
             }
         }
     }
-    // We implicitly add `rustfmt`, `clippy`, `diagnostic` to known tools,
-    // but it's not an error to register them explicitly.
-    let predefined_tools = [sym::clippy, sym::rustfmt, sym::diagnostic, sym::miri];
+    // We implicitly add `rustfmt`, `clippy`, `diagnostic`, `miri` and `rust_analyzer` to known
+    // tools, but it's not an error to register them explicitly.
+    let predefined_tools =
+        [sym::clippy, sym::rustfmt, sym::diagnostic, sym::miri, sym::rust_analyzer];
     registered_tools.extend(predefined_tools.iter().cloned().map(Ident::with_dummy_span));
     registered_tools
 }
