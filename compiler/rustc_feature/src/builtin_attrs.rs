@@ -1145,10 +1145,6 @@ pub fn is_valid_for_get_attr(name: Symbol) -> bool {
     })
 }
 
-pub fn is_unsafe_attr(name: Symbol) -> bool {
-    BUILTIN_ATTRIBUTE_MAP.get(&name).is_some_and(|attr| attr.safety == AttributeSafety::Unsafe)
-}
-
 pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>> =
     LazyLock::new(|| {
         let mut map = FxHashMap::default();

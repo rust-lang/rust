@@ -115,6 +115,7 @@ declare_lint_pass! {
         UNNAMEABLE_TYPES,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
+        UNSAFE_ATTR_OUTSIDE_UNSAFE,
         UNSAFE_OP_IN_UNSAFE_FN,
         UNSTABLE_NAME_COLLISIONS,
         UNSTABLE_SYNTAX_PRE_EXPANSION,
@@ -4900,5 +4901,47 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
         reference: "issue #123743 <https://github.com/rust-lang/rust/issues/123743>",
+    };
+}
+
+declare_lint! {
+    /// The `unsafe_attr_outside_unsafe` lint detects a missing unsafe keyword
+    /// on attributes considered unsafe.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(unsafe_attributes)]
+    /// #![warn(unsafe_attr_outside_unsafe)]
+    ///
+    /// #[no_mangle]
+    /// extern "C" fn foo() {}
+    ///
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Some attributes (e.g. `no_mangle`, `export_name`, `link_section` -- see
+    /// [issue #82499] for a more complete list) are considered "unsafe" attributes.
+    /// An unsafe attribute must only be used inside unsafe(...).
+    ///
+    /// This lint can automatically wrap the attributes in `unsafe(...)` , but this
+    /// obviously cannot verify that the preconditions of the `unsafe`
+    /// attributes are fulfilled, so that is still up to the user.
+    ///
+    /// The lint is currently "allow" by default, but that might change in the
+    /// future.
+    ///
+    /// [editions]: https://doc.rust-lang.org/edition-guide/
+    /// [issue #82499]: https://github.com/rust-lang/rust/issues/82499
+    pub UNSAFE_ATTR_OUTSIDE_UNSAFE,
+    Allow,
+    "detects unsafe attributes outside of unsafe",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "issue #123757 <https://github.com/rust-lang/rust/issues/123757>",
     };
 }
