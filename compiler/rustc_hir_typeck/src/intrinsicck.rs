@@ -73,7 +73,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Special-case transmuting from `typeof(function)` and
             // `Option<typeof(function)>` to present a clearer error.
             let from = unpack_option_like(tcx, from);
-            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to)
+            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to, _)) = (from.kind(), sk_to)
                 && size_to == Pointer(dl.instruction_address_space).size(&tcx)
             {
                 struct_span_code_err!(tcx.dcx(), span, E0591, "can't transmute zero-sized type")
@@ -88,7 +88,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Try to display a sensible error with as much information as possible.
         let skeleton_string = |ty: Ty<'tcx>, sk: Result<_, &_>| match sk {
             Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
-            Ok(SizeSkeleton::Known(size)) => {
+            Ok(SizeSkeleton::Known(size, _)) => {
                 if let Some(v) = u128::from(size.bytes()).checked_mul(8) {
                     format!("{v} bits")
                 } else {
