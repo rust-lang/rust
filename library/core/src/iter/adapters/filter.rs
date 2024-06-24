@@ -41,8 +41,9 @@ where
 
         let result = self.iter.try_for_each(|element| {
             let idx = initialized;
+            // branchless index update combined with unconditionally copying the value even when
+            // it is filtered reduces branching and dependencies in the loop.
             initialized = idx + (self.predicate)(&element) as usize;
-
             // SAFETY: Loop conditions ensure the index is in bounds.
             unsafe { array.get_unchecked_mut(idx) }.write(element);
 
@@ -99,6 +100,7 @@ where
     fn next_chunk<const N: usize>(
         &mut self,
     ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>> {
+        // avoid codegen for the dead branch
         let fun = const {
             if crate::mem::needs_drop::<I::Item>() {
                 array::iter_next_chunk::<I::Item, N>
