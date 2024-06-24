@@ -1,8 +1,7 @@
 import * as vscode from "vscode";
 
 import type { Ctx, Disposable } from "./ctx";
-import { type RustEditor, isRustEditor } from "./util";
-import { unwrapUndefinable } from "./undefinable";
+import { type RustEditor, isRustEditor, unwrapUndefinable } from "./util";
 
 // FIXME: consider implementing this via the Tree View API?
 // https://code.visualstudio.com/api/extension-guides/tree-view

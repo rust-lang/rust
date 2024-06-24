@@ -1,6 +1,8 @@
 pub use BinOpToken::*;
 pub use LitKind::*;
 pub use Nonterminal::*;
+pub use NtExprKind::*;
+pub use NtPatKind::*;
 pub use TokenKind::*;
 
 use crate::ast;
@@ -871,6 +873,27 @@ impl PartialEq<TokenKind> for Token {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable)]
+pub enum NtPatKind {
+    // Matches or-patterns. Was written using `pat` in edition 2021 or later.
+    PatWithOr,
+    // Doesn't match or-patterns.
+    // - `inferred`: was written using `pat` in edition 2015 or 2018.
+    // - `!inferred`: was written using `pat_param`.
+    PatParam { inferred: bool },
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable)]
+pub enum NtExprKind {
+    // Matches expressions using the post-edition 2024. Was written using
+    // `expr` in edition 2024 or later.
+    Expr,
+    // Matches expressions using the pre-edition 2024 rules.
+    // - `inferred`: was written using `expr` in edition 2021 or earlier.
+    // - `!inferred`: was written using `expr_2021`.
+    Expr2021 { inferred: bool },
+}
+
 #[derive(Clone, Encodable, Decodable)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
@@ -892,19 +915,8 @@ pub enum NonterminalKind {
     Item,
     Block,
     Stmt,
-    PatParam {
-        /// Keep track of whether the user used `:pat_param` or `:pat` and we inferred it from the
-        /// edition of the span. This is used for diagnostics.
-        inferred: bool,
-    },
-    PatWithOr,
-    Expr,
-    /// Matches an expression using the rules from edition 2021 and earlier.
-    Expr2021 {
-        /// Keep track of whether the user used `:expr` or `:expr_2021` and we inferred it from the
-        /// edition of the span. This is used for diagnostics AND feature gating.
-        inferred: bool,
-    },
+    Pat(NtPatKind),
+    Expr(NtExprKind),
     Ty,
     Ident,
     Lifetime,
@@ -926,20 +938,22 @@ impl NonterminalKind {
             sym::item => NonterminalKind::Item,
             sym::block => NonterminalKind::Block,
             sym::stmt => NonterminalKind::Stmt,
-            sym::pat => match edition() {
-                Edition::Edition2015 | Edition::Edition2018 => {
-                    NonterminalKind::PatParam { inferred: true }
+            sym::pat => {
+                if edition().at_least_rust_2021() {
+                    NonterminalKind::Pat(PatWithOr)
+                } else {
+                    NonterminalKind::Pat(PatParam { inferred: true })
                 }
-                Edition::Edition2021 | Edition::Edition2024 => NonterminalKind::PatWithOr,
-            },
-            sym::pat_param => NonterminalKind::PatParam { inferred: false },
-            sym::expr => match edition() {
-                Edition::Edition2015 | Edition::Edition2018 | Edition::Edition2021 => {
-                    NonterminalKind::Expr2021 { inferred: true }
+            }
+            sym::pat_param => NonterminalKind::Pat(PatParam { inferred: false }),
+            sym::expr => {
+                if edition().at_least_rust_2024() {
+                    NonterminalKind::Expr(Expr)
+                } else {
+                    NonterminalKind::Expr(Expr2021 { inferred: true })
                 }
-                Edition::Edition2024 => NonterminalKind::Expr,
-            },
-            sym::expr_2021 => NonterminalKind::Expr2021 { inferred: false },
+            }
+            sym::expr_2021 => NonterminalKind::Expr(Expr2021 { inferred: false }),
             sym::ty => NonterminalKind::Ty,
             sym::ident => NonterminalKind::Ident,
             sym::lifetime => NonterminalKind::Lifetime,
@@ -951,15 +965,16 @@ impl NonterminalKind {
             _ => return None,
         })
     }
+
     fn symbol(self) -> Symbol {
         match self {
             NonterminalKind::Item => sym::item,
             NonterminalKind::Block => sym::block,
             NonterminalKind::Stmt => sym::stmt,
-            NonterminalKind::PatParam { inferred: false } => sym::pat_param,
-            NonterminalKind::PatParam { inferred: true } | NonterminalKind::PatWithOr => sym::pat,
-            NonterminalKind::Expr | NonterminalKind::Expr2021 { inferred: true } => sym::expr,
-            NonterminalKind::Expr2021 { inferred: false } => sym::expr_2021,
+            NonterminalKind::Pat(PatParam { inferred: true } | PatWithOr) => sym::pat,
+            NonterminalKind::Pat(PatParam { inferred: false }) => sym::pat_param,
+            NonterminalKind::Expr(Expr2021 { inferred: true } | Expr) => sym::expr,
+            NonterminalKind::Expr(Expr2021 { inferred: false }) => sym::expr_2021,
             NonterminalKind::Ty => sym::ty,
             NonterminalKind::Ident => sym::ident,
             NonterminalKind::Lifetime => sym::lifetime,

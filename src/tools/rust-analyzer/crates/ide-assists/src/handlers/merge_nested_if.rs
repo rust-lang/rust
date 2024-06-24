@@ -86,7 +86,7 @@ pub(crate) fn merge_nested_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
                 nested_if_cond.syntax().text().to_string()
             };
 
-            let replace_cond = format!("{} && {}", cond_text, nested_if_cond_text);
+            let replace_cond = format!("{cond_text} && {nested_if_cond_text}");
 
             edit.replace(cond_range, replace_cond);
             edit.replace(then_branch_range, nested_if_then_branch.syntax().text());

@@ -44,6 +44,10 @@ pub enum PathKind {
     DollarCrate(CrateId),
 }
 
+impl PathKind {
+    pub const SELF: PathKind = PathKind::Super(0);
+}
+
 impl ModPath {
     pub fn from_src(
         db: &dyn ExpandDatabase,
@@ -96,7 +100,7 @@ impl ModPath {
     pub fn textual_len(&self) -> usize {
         let base = match self.kind {
             PathKind::Plain => 0,
-            PathKind::Super(0) => "self".len(),
+            PathKind::SELF => "self".len(),
             PathKind::Super(i) => "super".len() * i as usize,
             PathKind::Crate => "crate".len(),
             PathKind::Abs => 0,
@@ -113,7 +117,7 @@ impl ModPath {
     }
 
     pub fn is_self(&self) -> bool {
-        self.kind == PathKind::Super(0) && self.segments.is_empty()
+        self.kind == PathKind::SELF && self.segments.is_empty()
     }
 
     #[allow(non_snake_case)]
@@ -193,7 +197,7 @@ fn display_fmt_path(
     };
     match path.kind {
         PathKind::Plain => {}
-        PathKind::Super(0) => add_segment("self")?,
+        PathKind::SELF => add_segment("self")?,
         PathKind::Super(n) => {
             for _ in 0..n {
                 add_segment("super")?;
@@ -316,7 +320,7 @@ fn convert_path_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModP
         tt::Leaf::Ident(tt::Ident { text, span }) if text == "$crate" => {
             resolve_crate_root(db, span.ctx).map(PathKind::DollarCrate).unwrap_or(PathKind::Crate)
         }
-        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "self" => PathKind::Super(0),
+        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "self" => PathKind::SELF,
         tt::Leaf::Ident(tt::Ident { text, .. }) if text == "super" => {
             let mut deg = 1;
             while let Some(tt::Leaf::Ident(tt::Ident { text, .. })) = leaves.next() {

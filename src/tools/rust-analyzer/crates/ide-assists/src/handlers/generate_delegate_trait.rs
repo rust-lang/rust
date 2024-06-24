@@ -758,7 +758,7 @@ fn ty_assoc_item(item: syntax::ast::TypeAlias, qual_path_ty: Path) -> Option<Ass
 }
 
 fn qualified_path(qual_path_ty: ast::Path, path_expr_seg: ast::Path) -> ast::Path {
-    make::path_from_text(&format!("{}::{}", qual_path_ty, path_expr_seg))
+    make::path_from_text(&format!("{qual_path_ty}::{path_expr_seg}"))
 }
 
 #[cfg(test)]

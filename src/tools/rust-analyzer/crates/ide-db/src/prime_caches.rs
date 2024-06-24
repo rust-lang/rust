@@ -11,9 +11,9 @@ use hir::db::DefDatabase;
 use crate::{
     base_db::{
         salsa::{Database, ParallelDatabase, Snapshot},
-        Cancelled, CrateGraph, CrateId, SourceDatabase, SourceDatabaseExt,
+        Cancelled, CrateId, SourceDatabase, SourceDatabaseExt,
     },
-    FxHashSet, FxIndexMap, RootDatabase,
+    FxIndexMap, RootDatabase,
 };
 
 /// We're indexing many crates.
@@ -29,26 +29,17 @@ pub struct ParallelPrimeCachesProgress {
 
 pub fn parallel_prime_caches(
     db: &RootDatabase,
-    num_worker_threads: u8,
+    num_worker_threads: usize,
     cb: &(dyn Fn(ParallelPrimeCachesProgress) + Sync),
 ) {
-    let _p = tracing::span!(tracing::Level::INFO, "parallel_prime_caches").entered();
+    let _p = tracing::info_span!("parallel_prime_caches").entered();
 
     let graph = db.crate_graph();
     let mut crates_to_prime = {
-        let crate_ids = compute_crates_to_prime(db, &graph);
-
         let mut builder = topologic_sort::TopologicalSortIter::builder();
 
-        for &crate_id in &crate_ids {
-            let crate_data = &graph[crate_id];
-            let dependencies = crate_data
-                .dependencies
-                .iter()
-                .map(|d| d.crate_id)
-                .filter(|i| crate_ids.contains(i));
-
-            builder.add(crate_id, dependencies);
+        for crate_id in graph.iter() {
+            builder.add(crate_id, graph[crate_id].dependencies.iter().map(|d| d.crate_id));
         }
 
         builder.build()
@@ -62,13 +53,20 @@ pub fn parallel_prime_caches(
     let (work_sender, progress_receiver) = {
         let (progress_sender, progress_receiver) = crossbeam_channel::unbounded();
         let (work_sender, work_receiver) = crossbeam_channel::unbounded();
+        let graph = graph.clone();
         let prime_caches_worker = move |db: Snapshot<RootDatabase>| {
             while let Ok((crate_id, crate_name)) = work_receiver.recv() {
                 progress_sender
                     .send(ParallelPrimeCacheWorkerProgress::BeginCrate { crate_id, crate_name })?;
 
-                // This also computes the DefMap
-                db.import_map(crate_id);
+                let file_id = graph[crate_id].root_file_id;
+                let root_id = db.file_source_root(file_id);
+                if db.source_root(root_id).is_library {
+                    db.crate_def_map(crate_id);
+                } else {
+                    // This also computes the DefMap
+                    db.import_map(crate_id);
+                }
 
                 progress_sender.send(ParallelPrimeCacheWorkerProgress::EndCrate { crate_id })?;
             }
@@ -76,13 +74,13 @@ pub fn parallel_prime_caches(
             Ok::<_, crossbeam_channel::SendError<_>>(())
         };
 
-        for _ in 0..num_worker_threads {
+        for id in 0..num_worker_threads {
             let worker = prime_caches_worker.clone();
             let db = db.snapshot();
 
             stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
                 .allow_leak(true)
-                .name("PrimeCaches".to_owned())
+                .name(format!("PrimeCaches#{id}"))
                 .spawn(move || Cancelled::catch(|| worker(db)))
                 .expect("failed to spawn thread");
         }
@@ -96,7 +94,7 @@ pub fn parallel_prime_caches(
     // an index map is used to preserve ordering so we can sort the progress report in order of
     // "longest crate to index" first
     let mut crates_currently_indexing =
-        FxIndexMap::with_capacity_and_hasher(num_worker_threads as _, Default::default());
+        FxIndexMap::with_capacity_and_hasher(num_worker_threads, Default::default());
 
     while crates_done < crates_total {
         db.unwind_if_cancelled();
@@ -143,20 +141,4 @@ pub fn parallel_prime_caches(
 
         cb(progress);
     }
-}
-
-fn compute_crates_to_prime(db: &RootDatabase, graph: &CrateGraph) -> FxHashSet<CrateId> {
-    // We're only interested in the workspace crates and the `ImportMap`s of their direct
-    // dependencies, though in practice the latter also compute the `DefMap`s.
-    // We don't prime transitive dependencies because they're generally not visible in
-    // the current workspace.
-    graph
-        .iter()
-        .filter(|&id| {
-            let file_id = graph[id].root_file_id;
-            let root_id = db.file_source_root(file_id);
-            !db.source_root(root_id).is_library
-        })
-        .flat_map(|id| graph[id].dependencies.iter().map(|krate| krate.crate_id))
-        .collect()
 }

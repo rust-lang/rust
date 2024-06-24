@@ -147,7 +147,7 @@ pub struct Punct<S> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Spacing {
     Alone,
-    /// Whether the following token is joint to the current one.
+    /// Whether the following token is joint to this one.
     Joint,
 }
 

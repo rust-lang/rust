@@ -144,6 +144,11 @@ pub(super) fn handle_needs(
             condition: config.runner.as_ref().is_some_and(|r| r.contains("wasmtime")),
             ignore_reason: "ignored when wasmtime runner is not available",
         },
+        Need {
+            name: "needs-symlink",
+            condition: cache.symlinks,
+            ignore_reason: "ignored if symlinks are unavailable",
+        },
     ];
 
     let (name, comment) = match ln.split_once([':', ' ']) {
@@ -209,6 +214,7 @@ pub(super) struct CachedNeedsConditions {
     xray: bool,
     rust_lld: bool,
     dlltool: bool,
+    symlinks: bool,
 }
 
 impl CachedNeedsConditions {
@@ -253,6 +259,7 @@ impl CachedNeedsConditions {
                 .exists(),
 
             dlltool: find_dlltool(&config),
+            symlinks: has_symlinks(),
         }
     }
 }
@@ -278,4 +285,23 @@ fn find_dlltool(config: &Config) -> bool {
         false
     };
     dlltool_found
+}
+
+#[cfg(windows)]
+fn has_symlinks() -> bool {
+    if std::env::var_os("CI").is_some() {
+        return true;
+    }
+    let link = std::env::temp_dir().join("RUST_COMPILETEST_SYMLINK_CHECK");
+    if std::os::windows::fs::symlink_file("DOES NOT EXIST", &link).is_ok() {
+        std::fs::remove_file(&link).unwrap();
+        true
+    } else {
+        false
+    }
+}
+
+#[cfg(not(windows))]
+fn has_symlinks() -> bool {
+    true
 }

@@ -9,6 +9,7 @@
 // can result in successful compilation.
 
 //@ ignore-cross-compile
+//@ needs-symlink
 
 use run_make_support::{create_symlink, cwd, fs_wrapper, rustc};
 

@@ -895,7 +895,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             for alias_ty in alias_tys {
                 if alias_ty.span.desugaring_kind().is_some() {
                     // Skip `async` desugaring `impl Future`.
-                    ()
                 }
                 if let TyKind::TraitObject(_, lt, _) = alias_ty.kind {
                     if lt.ident.name == kw::Empty {

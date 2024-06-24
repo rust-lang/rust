@@ -738,17 +738,17 @@ pub fn home_dir() -> Option<PathBuf> {
             n => n as usize,
         };
         let mut buf = Vec::with_capacity(amt);
-        let mut passwd: libc::passwd = mem::zeroed();
+        let mut p = mem::MaybeUninit::<libc::passwd>::uninit();
         let mut result = ptr::null_mut();
         match libc::getpwuid_r(
             libc::getuid(),
-            &mut passwd,
+            p.as_mut_ptr(),
             buf.as_mut_ptr(),
             buf.capacity(),
             &mut result,
         ) {
             0 if !result.is_null() => {
-                let ptr = passwd.pw_dir as *const _;
+                let ptr = (*result).pw_dir as *const _;
                 let bytes = CStr::from_ptr(ptr).to_bytes().to_vec();
                 Some(OsStringExt::from_vec(bytes))
             }

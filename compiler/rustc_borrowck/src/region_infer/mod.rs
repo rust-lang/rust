@@ -344,7 +344,7 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
 
     for (reg_var_idx, scc_idx) in sccs.scc_indices().iter().enumerate() {
         let reg_var = ty::RegionVid::from_usize(reg_var_idx);
-        let origin = var_to_origin.get(&reg_var).unwrap_or_else(|| &RegionCtxt::Unknown);
+        let origin = var_to_origin.get(&reg_var).unwrap_or(&RegionCtxt::Unknown);
         components[scc_idx.as_usize()].insert((reg_var, *origin));
     }
 
@@ -2216,7 +2216,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // #114907 where this happens via liveness and dropck outlives results.
         // Therefore, we return a default value in case that happens, which should at worst emit a
         // suboptimal error, instead of the ICE.
-        self.universe_causes.get(&universe).cloned().unwrap_or_else(|| UniverseInfo::other())
+        self.universe_causes.get(&universe).cloned().unwrap_or_else(UniverseInfo::other)
     }
 
     /// Tries to find the terminator of the loop in which the region 'r' resides.

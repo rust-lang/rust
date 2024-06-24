@@ -151,7 +151,6 @@ run-make/raw-dylib-inline-cross-dylib/Makefile
 run-make/raw-dylib-link-ordinal/Makefile
 run-make/raw-dylib-stdcall-ordinal/Makefile
 run-make/redundant-libs/Makefile
-run-make/relro-levels/Makefile
 run-make/remap-path-prefix-dwarf/Makefile
 run-make/remap-path-prefix/Makefile
 run-make/reproducible-build-2/Makefile
@@ -177,7 +176,6 @@ run-make/split-debuginfo/Makefile
 run-make/stable-symbol-names/Makefile
 run-make/static-dylib-by-default/Makefile
 run-make/static-extern-type/Makefile
-run-make/static-pie/Makefile
 run-make/staticlib-blank-lib/Makefile
 run-make/staticlib-dylib-linkage/Makefile
 run-make/std-core-cycle/Makefile

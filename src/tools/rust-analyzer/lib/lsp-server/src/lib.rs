@@ -433,8 +433,7 @@ mod tests {
         initialize_start_test(TestCase {
             test_messages: vec![notification_msg.clone()],
             expected_resp: Err(ProtocolError::new(format!(
-                "expected initialize request, got {:?}",
-                notification_msg
+                "expected initialize request, got {notification_msg:?}"
             ))),
         });
     }

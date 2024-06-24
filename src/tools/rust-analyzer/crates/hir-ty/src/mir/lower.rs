@@ -28,6 +28,7 @@ use crate::{
     db::{HirDatabase, InternedClosure},
     display::HirDisplay,
     error_lifetime,
+    generics::generics,
     infer::{CaptureKind, CapturedItem, TypeMismatch},
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
@@ -42,7 +43,7 @@ use crate::{
     },
     static_lifetime,
     traits::FnTrait,
-    utils::{generics, ClosureSubst},
+    utils::ClosureSubst,
     Adjust, Adjustment, AutoBorrow, CallableDefId, TyBuilder, TyExt,
 };
 
@@ -213,7 +214,7 @@ impl MirLowerError {
             | MirLowerError::LangItemNotFound(_)
             | MirLowerError::MutatingRvalue
             | MirLowerError::UnresolvedLabel
-            | MirLowerError::UnresolvedUpvar(_) => writeln!(f, "{:?}", self)?,
+            | MirLowerError::UnresolvedUpvar(_) => writeln!(f, "{self:?}")?,
         }
         Ok(())
     }
@@ -2133,7 +2134,7 @@ pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<Mi
         }
         DefWithBodyId::InTypeConstId(it) => format!("in type const {it:?}"),
     };
-    let _p = tracing::span!(tracing::Level::INFO, "mir_body_query", ?detail).entered();
+    let _p = tracing::info_span!("mir_body_query", ?detail).entered();
     let body = db.body(def);
     let infer = db.infer(def);
     let mut result = lower_to_mir(db, def, &body, &infer, body.body_expr)?;

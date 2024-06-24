@@ -1048,8 +1048,6 @@ impl Step for Tidy {
     /// Once tidy passes, this step also runs `fmt --check` if tests are being run
     /// for the `dev` or `nightly` channels.
     fn run(self, builder: &Builder<'_>) {
-        builder.build.update_submodule(Path::new("src/tools/rustc-perf"));
-
         let mut cmd = builder.tool_cmd(Tool::Tidy);
         cmd.arg(&builder.src);
         cmd.arg(&builder.initial_cargo);

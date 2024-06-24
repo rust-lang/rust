@@ -304,7 +304,7 @@ impl FlycheckActor {
                             Some(c) => c,
                             None => continue,
                         };
-                    let formatted_command = format!("{:?}", command);
+                    let formatted_command = format!("{command:?}");
 
                     tracing::debug!(?command, "will restart flycheck");
                     let (sender, receiver) = unbounded();
@@ -318,8 +318,7 @@ impl FlycheckActor {
                         }
                         Err(error) => {
                             self.report_progress(Progress::DidFailToRestart(format!(
-                                "Failed to run the following command: {} error={}",
-                                formatted_command, error
+                                "Failed to run the following command: {formatted_command} error={error}"
                             )));
                             self.status = FlycheckStatus::Finished;
                         }
@@ -331,7 +330,7 @@ impl FlycheckActor {
                     // Watcher finished
                     let command_handle = self.command_handle.take().unwrap();
                     self.command_receiver.take();
-                    let formatted_handle = format!("{:?}", command_handle);
+                    let formatted_handle = format!("{command_handle:?}");
 
                     let res = command_handle.join();
                     if let Err(error) = &res {
@@ -387,6 +386,7 @@ impl FlycheckActor {
                 "did  cancel flycheck"
             );
             command_handle.cancel();
+            self.command_receiver.take();
             self.report_progress(Progress::DidCancel);
             self.status = FlycheckStatus::Finished;
         }

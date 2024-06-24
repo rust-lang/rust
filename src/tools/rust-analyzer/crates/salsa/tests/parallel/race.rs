@@ -28,7 +28,7 @@ fn in_par_get_set_race() {
     // cancellation, it'll unwind.
     let result1 = thread1.join().unwrap();
     if let Ok(value1) = result1 {
-        assert!(value1 == 111 || value1 == 1011, "illegal result {}", value1);
+        assert!(value1 == 111 || value1 == 1011, "illegal result {value1}");
     }
 
     // thread2 can not observe a cancellation because it performs a

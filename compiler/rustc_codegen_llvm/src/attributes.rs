@@ -108,9 +108,10 @@ pub fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attr
     let opts = &cx.sess().opts;
     // "mcount" function relies on stack pointer.
     // See <https://sourceware.org/binutils/docs/gprof/Implementation.html>.
-    if opts.unstable_opts.instrument_mcount || matches!(opts.cg.force_frame_pointers, Some(true)) {
-        fp = FramePointer::Always;
+    if opts.unstable_opts.instrument_mcount {
+        fp.ratchet(FramePointer::Always);
     }
+    fp.ratchet(opts.cg.force_frame_pointers);
     let attr_value = match fp {
         FramePointer::Always => "all",
         FramePointer::NonLeaf => "non-leaf",

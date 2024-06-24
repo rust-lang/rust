@@ -219,8 +219,7 @@ impl Sysroot {
                         ", try running `rustup component add rust-src` to possibly fix this"
                     };
                     sysroot.error = Some(format!(
-                        "sysroot at `{}` is missing a `core` library{var_note}",
-                        src_root,
+                        "sysroot at `{src_root}` is missing a `core` library{var_note}",
                     ));
                 }
             }

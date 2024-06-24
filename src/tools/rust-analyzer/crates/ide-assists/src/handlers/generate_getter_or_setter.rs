@@ -47,7 +47,7 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     }
 
     // Prepend set_ to fn names.
-    fn_names.iter_mut().for_each(|name| *name = format!("set_{}", name));
+    fn_names.iter_mut().for_each(|name| *name = format!("set_{name}"));
 
     // Return early if we've found an existing fn
     let impl_def = find_struct_impl(ctx, &ast::Adt::Struct(strukt.clone()), &fn_names)?;

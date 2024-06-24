@@ -503,11 +503,11 @@ impl BindingAnnotation {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum BindingProblems {
-    /// https://doc.rust-lang.org/stable/error_codes/E0416.html
+    /// <https://doc.rust-lang.org/stable/error_codes/E0416.html>
     BoundMoreThanOnce,
-    /// https://doc.rust-lang.org/stable/error_codes/E0409.html
+    /// <https://doc.rust-lang.org/stable/error_codes/E0409.html>
     BoundInconsistently,
-    /// https://doc.rust-lang.org/stable/error_codes/E0408.html
+    /// <https://doc.rust-lang.org/stable/error_codes/E0408.html>
     NotBoundAcrossAll,
 }
 

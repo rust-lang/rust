@@ -66,10 +66,12 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="operator macro">&</span><span class="keyword macro">raw</span> <span class="keyword macro">const</span> <span class="parenthesis macro">(</span><span class="parenthesis macro">)</span><span class="semicolon macro">;</span>
         <span class="keyword macro">const</span>
     <span class="parenthesis macro">)</span><span class="semicolon">;</span>
+    <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="operator">.</span><span class="method const consuming trait">assoc_const_method</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 <span class="keyword">trait</span> <span class="trait declaration">ConstTrait</span> <span class="brace">{</span>
     <span class="keyword const">const</span> <span class="constant associated const declaration static trait">ASSOC_CONST</span><span class="colon">:</span> <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">=</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="keyword const">const</span> <span class="keyword">fn</span> <span class="function associated const declaration static trait">assoc_const_fn</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+    <span class="keyword const">const</span> <span class="keyword">fn</span> <span class="method associated const consuming declaration trait">assoc_const_method</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="brace">}</span>
 <span class="keyword">impl</span> <span class="keyword const">const</span> <span class="trait">ConstTrait</span> <span class="keyword">for</span> <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
     <span class="keyword const">const</span> <span class="constant associated const declaration static trait">ASSOC_CONST</span><span class="colon">:</span> <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">=</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>

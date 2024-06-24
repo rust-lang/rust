@@ -12,10 +12,9 @@ use rustc_span::edition::Edition;
 use rustc_span::RealFileName;
 use rustc_span::SourceFileHashAlgorithm;
 use rustc_target::spec::{
-    CodeModel, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy, SanitizerSet, WasmCAbi,
-};
-use rustc_target::spec::{
-    RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
+    CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
+    RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
+    WasmCAbi,
 };
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hasher};
@@ -374,6 +373,7 @@ mod desc {
     pub const parse_opt_comma_list: &str = parse_comma_list;
     pub const parse_number: &str = "a number";
     pub const parse_opt_number: &str = parse_number;
+    pub const parse_frame_pointer: &str = "one of `true`/`yes`/`on`, `false`/`no`/`off`, or (with -Zunstable-options) `non-leaf` or `always`";
     pub const parse_threads: &str = parse_number;
     pub const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub const parse_passes: &str = "a space-separated list of passes, or `all`";
@@ -670,6 +670,18 @@ mod parse {
             }
             None => false,
         }
+    }
+
+    pub(crate) fn parse_frame_pointer(slot: &mut FramePointer, v: Option<&str>) -> bool {
+        let mut yes = false;
+        match v {
+            _ if parse_bool(&mut yes, v) && yes => slot.ratchet(FramePointer::Always),
+            _ if parse_bool(&mut yes, v) => slot.ratchet(FramePointer::MayOmit),
+            Some("always") => slot.ratchet(FramePointer::Always),
+            Some("non-leaf") => slot.ratchet(FramePointer::NonLeaf),
+            _ => return false,
+        };
+        true
     }
 
     pub(crate) fn parse_passes(slot: &mut Passes, v: Option<&str>) -> bool {
@@ -1479,7 +1491,7 @@ options! {
         "emit bitcode in rlibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
         "extra data to put in each output filename"),
-    force_frame_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    force_frame_pointers: FramePointer = (FramePointer::MayOmit, parse_frame_pointer, [TRACKED],
         "force use of the frame pointers"),
     #[rustc_lint_opt_deny_field_access("use `Session::must_emit_unwind_tables` instead of this field")]
     force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED],

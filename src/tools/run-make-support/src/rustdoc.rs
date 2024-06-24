@@ -92,7 +92,7 @@ impl Rustdoc {
 
     /// Specify a stdin input
     pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
-        self.cmd.set_stdin(input.as_ref().to_vec().into_boxed_slice());
+        self.cmd.stdin(input);
         self
     }
 

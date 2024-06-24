@@ -122,11 +122,14 @@ fn test_intersection() {
         PathSet::Set(paths.into_iter().map(|p| TaskPath { path: p.into(), kind: None }).collect())
     };
     let library_set = set(&["library/core", "library/alloc", "library/std"]);
-    let mut command_paths =
-        vec![Path::new("library/core"), Path::new("library/alloc"), Path::new("library/stdarch")];
+    let mut command_paths = vec![
+        PathBuf::from("library/core"),
+        PathBuf::from("library/alloc"),
+        PathBuf::from("library/stdarch"),
+    ];
     let subset = library_set.intersection_removing_matches(&mut command_paths, Kind::Build);
     assert_eq!(subset, set(&["library/core", "library/alloc"]),);
-    assert_eq!(command_paths, vec![Path::new("library/stdarch")]);
+    assert_eq!(command_paths, vec![PathBuf::from("library/stdarch")]);
 }
 
 #[test]

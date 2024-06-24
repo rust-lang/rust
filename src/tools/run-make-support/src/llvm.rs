@@ -102,6 +102,24 @@ impl LlvmReadobj {
         self
     }
 
+    /// Pass `--program-headers` to display program headers.
+    pub fn program_headers(&mut self) -> &mut Self {
+        self.cmd.arg("--program-headers");
+        self
+    }
+
+    /// Pass `--symbols` to display the symbol.
+    pub fn symbols(&mut self) -> &mut Self {
+        self.cmd.arg("--symbols");
+        self
+    }
+
+    /// Pass `--dynamic-table` to display the dynamic symbol table.
+    pub fn dynamic_table(&mut self) -> &mut Self {
+        self.cmd.arg("--dynamic-table");
+        self
+    }
+
     /// Specify the section to display.
     pub fn section(&mut self, section: &str) -> &mut Self {
         self.cmd.arg("--string-dump");
@@ -153,7 +171,7 @@ impl LlvmFilecheck {
 
     /// Pipe a read file into standard input containing patterns that will be matched against the .patterns(path) call.
     pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
-        self.cmd.set_stdin(input.as_ref().to_vec().into_boxed_slice());
+        self.cmd.stdin(input);
         self
     }
 

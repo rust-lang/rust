@@ -14,10 +14,10 @@ use hir_def::{
 use smallvec::SmallVec;
 
 use crate::{
-    consteval::unknown_const_as_generic, db::HirDatabase, error_lifetime,
-    infer::unify::InferenceTable, primitive, to_assoc_type_id, to_chalk_trait_id, utils::generics,
-    Binders, BoundVar, CallableSig, GenericArg, GenericArgData, Interner, ProjectionTy,
-    Substitution, TraitRef, Ty, TyDefId, TyExt, TyKind,
+    consteval::unknown_const_as_generic, db::HirDatabase, error_lifetime, generics::generics,
+    infer::unify::InferenceTable, primitive, to_assoc_type_id, to_chalk_trait_id, Binders,
+    BoundVar, CallableSig, GenericArg, GenericArgData, Interner, ProjectionTy, Substitution,
+    TraitRef, Ty, TyDefId, TyExt, TyKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -246,6 +246,7 @@ impl TyBuilder<()> {
     /// - yield type of coroutine ([`Coroutine::Yield`](std::ops::Coroutine::Yield))
     /// - return type of coroutine ([`Coroutine::Return`](std::ops::Coroutine::Return))
     /// - generic parameters in scope on `parent`
+    ///
     /// in this order.
     ///
     /// This method prepopulates the builder with placeholder substitution of `parent`, so you

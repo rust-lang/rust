@@ -665,6 +665,10 @@ impl Step for Std {
     }
 }
 
+/// Tarball containing the compiler that gets downloaded and used by
+/// `rust.download-rustc`.
+///
+/// (Don't confuse this with [`RustDev`], without the `c`!)
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct RustcDev {
     pub compiler: Compiler,
@@ -1014,7 +1018,7 @@ impl Step for PlainSourceTarball {
             // perhaps it should be removed in favor of making `dist` perform the `vendor` step?
 
             // Ensure we have all submodules from src and other directories checked out.
-            for submodule in builder.get_all_submodules() {
+            for submodule in build_helper::util::parse_gitmodules(&builder.src) {
                 builder.update_submodule(Path::new(submodule));
             }
 
@@ -2225,6 +2229,11 @@ impl Step for LlvmBitcodeLinker {
 /// Tarball intended for internal consumption to ease rustc/std development.
 ///
 /// Should not be considered stable by end users.
+///
+/// In practice, this is the tarball that gets downloaded and used by
+/// `llvm.download-ci-llvm`.
+///
+/// (Don't confuse this with [`RustcDev`], with a `c`!)
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct RustDev {
     pub target: TargetSelection,
