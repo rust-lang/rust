@@ -1,6 +1,8 @@
 //! Logic for transforming the raw code given by the user into something actually
 //! runnable, e.g. by adding a `main` function if it doesn't already exist.
 
+use crate::html::markdown::LangString;
+
 use std::io;
 
 use rustc_ast as ast;
@@ -42,7 +44,13 @@ impl DocTestBuilder {
         can_merge_doctests: bool,
         // If `test_id` is `None`, it means we're generating code for a code example "run" link.
         test_id: Option<String>,
+        lang_str: Option<&LangString>,
     ) -> Self {
+        let can_merge_doctests = can_merge_doctests
+            && lang_str.is_some_and(|lang_str| {
+                !lang_str.compile_fail && !lang_str.test_harness && !lang_str.standalone
+            });
+
         let SourceInfo { crate_attrs, maybe_crate_attrs, crates, everything_else } =
             partition_source(source, edition);
 

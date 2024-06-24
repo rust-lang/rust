@@ -16,6 +16,7 @@ fn make_test(
         DEFAULT_EDITION,
         false,
         test_id.map(|s| s.to_string()),
+        None,
     );
     let (code, line_offset) =
         doctest.generate_unique_doctest(test_code, dont_insert_main, opts, crate_name);
