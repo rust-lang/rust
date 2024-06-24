@@ -207,7 +207,7 @@ pub use core::ffi::c_void;
               all supported platforms",
     issue = "44930"
 )]
-pub use core::ffi::{VaList, VaListImpl};
+pub use core::ffi::va_list;
 
 #[unstable(feature = "os_str_display", issue = "120048")]
 pub mod os_str;
