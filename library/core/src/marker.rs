@@ -1018,3 +1018,12 @@ pub trait FnPtr: Copy + Clone {
     #[lang = "fn_ptr_addr"]
     fn addr(self) -> *const ();
 }
+
+/// Derive macro generating impls of traits related to smart pointers.
+#[cfg(not(bootstrap))]
+#[rustc_builtin_macro]
+#[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
+#[unstable(feature = "derive_smart_pointer", issue = "123430")]
+pub macro SmartPointer($item:item) {
+    /* compiler built-in */
+}
