@@ -1328,10 +1328,11 @@ impl HumanEmitter {
                 buffer.append(0, ": ", header_style);
                 label_width += 2;
             }
+            let mut line = 0;
             for (text, _) in msgs.iter() {
                 let text = self.translate_message(text, args).map_err(Report::new).unwrap();
                 // Account for newlines to align output to its label.
-                for (line, text) in normalize_whitespace(&text).lines().enumerate() {
+                for text in normalize_whitespace(&text).lines() {
                     buffer.append(
                         line,
                         &format!(
@@ -1341,6 +1342,25 @@ impl HumanEmitter {
                         ),
                         header_style,
                     );
+                    line += 1;
+                }
+            }
+            if self.short_message {
+                let labels = msp
+                    .span_labels()
+                    .into_iter()
+                    .filter_map(|label| match label.label {
+                        Some(msg) if label.is_primary => {
+                            let text = self.translate_message(&msg, args).ok()?;
+                            if !text.trim().is_empty() { Some(text.to_string()) } else { None }
+                        }
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                if !labels.is_empty() {
+                    buffer.append(line, ": ", Style::NoStyle);
+                    buffer.append(line, &labels, Style::NoStyle);
                 }
             }
         }
