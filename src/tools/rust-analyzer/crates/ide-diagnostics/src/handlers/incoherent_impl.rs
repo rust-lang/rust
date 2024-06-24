@@ -1,16 +1,23 @@
 use hir::InFile;
+use syntax::{AstNode, TextRange};
 
-use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: incoherent-impl
 //
 // This diagnostic is triggered if the targe type of an impl is from a foreign crate.
 pub(crate) fn incoherent_impl(ctx: &DiagnosticsContext<'_>, d: &hir::IncoherentImpl) -> Diagnostic {
-    Diagnostic::new_with_syntax_node_ptr(
-        ctx,
+    let display_range = adjusted_display_range(ctx, InFile::new(d.file_id, d.impl_), &|node| {
+        Some(TextRange::new(
+            node.syntax().text_range().start(),
+            node.self_ty()?.syntax().text_range().end(),
+        ))
+    });
+
+    Diagnostic::new(
         DiagnosticCode::RustcHardError("E0210"),
         "cannot define inherent `impl` for foreign type".to_owned(),
-        InFile::new(d.file_id, d.impl_.into()),
+        display_range,
     )
 }
 
@@ -23,7 +30,7 @@ mod change_case {
         check_diagnostics(
             r#"
   impl bool {}
-//^^^^^^^^^^^^ error: cannot define inherent `impl` for foreign type
+//^^^^^^^^^ error: cannot define inherent `impl` for foreign type
 "#,
         );
     }
@@ -60,7 +67,7 @@ impl foo::S {
 pub struct S;
 //- /main.rs crate:main deps:foo
   impl foo::S { #[rustc_allow_incoherent_impl] fn func(self) {} }
-//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: cannot define inherent `impl` for foreign type
+//^^^^^^^^^^^ error: cannot define inherent `impl` for foreign type
 "#,
         );
         check_diagnostics(
@@ -70,7 +77,7 @@ pub struct S;
 pub struct S;
 //- /main.rs crate:main deps:foo
   impl foo::S { fn func(self) {} }
-//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: cannot define inherent `impl` for foreign type
+//^^^^^^^^^^^ error: cannot define inherent `impl` for foreign type
 "#,
         );
     }

@@ -6,8 +6,9 @@ use std::sync::Arc;
 use arrayvec::ArrayVec;
 use span::{Edition, Span, SyntaxContextId};
 use syntax::SmolStr;
+use tt::iter::TtIter;
 
-use crate::{tt_iter::TtIter, ParseError};
+use crate::ParseError;
 
 /// Consider
 ///
