@@ -844,6 +844,9 @@ impl Config {
             config.source_root_parent_map = source_root_map;
         }
 
+        // IMPORTANT : This holds as long as ` completion_snippets_custom` is declared `client`.
+        config.snippets = vec![];
+
         let snips = self.completion_snippets_custom().to_owned();
 
         for (name, def) in snips.iter() {
