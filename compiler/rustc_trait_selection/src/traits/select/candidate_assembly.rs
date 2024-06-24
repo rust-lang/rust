@@ -545,6 +545,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Provide an impl for suitable functions, rejecting `#[target_feature]` functions (RFC 2396).
             ty::FnDef(def_id, args) => {
                 let tcx = self.tcx();
+                // FIXME(struct_target_features): should a function that inherits target_features
+                // through an argument implement Fn traits?
                 if tcx.fn_sig(def_id).skip_binder().is_fn_trait_compatible()
                     && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                 {
