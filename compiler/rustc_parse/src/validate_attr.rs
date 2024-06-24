@@ -4,8 +4,10 @@ use crate::{errors, parse_in};
 
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_ast::MetaItemKind;
-use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem, Safety};
+use rustc_ast::{
+    self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem, MetaItemKind,
+    NestedMetaItem, Safety,
+};
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{
     AttributeSafety, AttributeTemplate, BuiltinAttribute, Features, BUILTIN_ATTRIBUTE_MAP,
@@ -184,9 +186,13 @@ pub(super) fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim
 
 /// Checks that the given meta-item is compatible with this `AttributeTemplate`.
 fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaItemKind) -> bool {
+    let is_one_allowed_subword = |items: &[NestedMetaItem]| match items {
+        [item] => item.is_word() && template.one_of.iter().any(|&word| item.has_name(word)),
+        _ => false,
+    };
     match meta {
         MetaItemKind::Word => template.word,
-        MetaItemKind::List(..) => template.list.is_some(),
+        MetaItemKind::List(items) => template.list.is_some() || is_one_allowed_subword(items),
         MetaItemKind::NameValue(lit) if lit.kind.is_str() => template.name_value_str.is_some(),
         MetaItemKind::NameValue(..) => false,
     }
@@ -230,6 +236,7 @@ fn emit_malformed_attribute(
     if let Some(descr) = template.list {
         suggestions.push(format!("#{inner}[{name}({descr})]"));
     }
+    suggestions.extend(template.one_of.iter().map(|&word| format!("#{inner}[{name}({word})]")));
     if let Some(descr) = template.name_value_str {
         suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
     }
