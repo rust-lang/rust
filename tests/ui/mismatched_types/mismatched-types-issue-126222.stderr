@@ -1,0 +1,51 @@
+error[E0308]: mismatched types
+  --> $DIR/mismatched-types-issue-126222.rs:7:18
+   |
+LL |             x => dbg!(x),
+   |                  ^^^^^^^ expected `()`, found integer
+   |
+   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might have meant to return this value
+   |
+LL |             x => return dbg!(x),
+   |                  ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-types-issue-126222.rs:15:17
+   |
+LL |                 dbg!(x)
+   |                 ^^^^^^^ expected `()`, found integer
+   |
+   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might have meant to return this value
+   |
+LL |                 return dbg!(x)
+   |                 ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-types-issue-126222.rs:23:18
+   |
+LL |             _ => dbg!(1)
+   |                  ^^^^^^^ expected `()`, found integer
+   |
+   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might have meant to return this value
+   |
+LL |             _ => return dbg!(1)
+   |                  ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched-types-issue-126222.rs:30:19
+   |
+LL |             _ => {dbg!(1)}
+   |                   ^^^^^^^ expected `()`, found integer
+   |
+   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might have meant to return this value
+   |
+LL |             _ => {return dbg!(1)}
+   |                   ++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
