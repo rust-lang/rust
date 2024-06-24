@@ -144,6 +144,9 @@ auto:
   - image: dist-loongarch64-linux
     <<: *job-linux-4c
 
+  - image: dist-loongarch64-musl
+    <<: *job-linux-4c
+
   - image: dist-ohos
     <<: *job-linux-4c
 
