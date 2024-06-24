@@ -18,7 +18,7 @@ pub fn target() -> Target {
             endian: Endian::Big,
             late_link_args: TargetOptions::link_args(
                 LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-                &["-mv8plus"],
+                &["-mcpu=v9", "-m32"],
             ),
             max_atomic_width: Some(32),
             ..base::linux_gnu::opts()
