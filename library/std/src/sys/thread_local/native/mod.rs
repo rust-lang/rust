@@ -29,8 +29,6 @@
 //! eliminates the `Destroyed` state for these values, which can allow more niche
 //! optimizations to occur for the `State` enum. For `Drop` types, `()` is used.
 
-#![deny(unsafe_op_in_unsafe_fn)]
-
 mod eager;
 mod lazy;
 

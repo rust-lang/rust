@@ -1,9 +1,9 @@
-use super::abi::tls::{Key as AbiKey, Tls};
+use crate::sys::pal::abi::tls::{Key as AbiKey, Tls};
 
 pub type Key = usize;
 
 #[inline]
-pub unsafe fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
+pub fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
     Tls::create(dtor).as_usize()
 }
 

@@ -1,7 +1,3 @@
-// This file only tests the thread local key fallback.
-// Windows targets with native thread local support do not use this.
-#![cfg(not(target_thread_local))]
-
 use super::StaticKey;
 use crate::ptr;
 
@@ -27,7 +23,7 @@ fn destructors() {
     use crate::thread;
 
     unsafe extern "C" fn destruct(ptr: *mut u8) {
-        drop(Arc::from_raw(ptr as *const ()));
+        drop(unsafe { Arc::from_raw(ptr as *const ()) });
     }
 
     static KEY: StaticKey = StaticKey::new(Some(destruct));

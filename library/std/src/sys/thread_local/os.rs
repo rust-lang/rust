@@ -2,7 +2,7 @@ use super::abort_on_dtor_unwind;
 use crate::cell::Cell;
 use crate::marker::PhantomData;
 use crate::ptr;
-use crate::sys_common::thread_local_key::StaticKey as OsKey;
+use crate::sys::thread_local::key::StaticKey as OsKey;
 
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals)]
