@@ -1,57 +1,277 @@
-error[E0788]: `#[coverage]` must be applied to coverable code
-  --> $DIR/word-only.rs:23:1
+error: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:11:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^
-LL | struct MyStruct;
-   | ---------------- not coverable code
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   |
+LL | #[coverage(on)]
+   |
 
-error[E0788]: `#[coverage]` must be applied to coverable code
-  --> $DIR/word-only.rs:36:5
+error: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:17:5
+   |
+LL |     #![coverage]
+   |     ^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL |     #![coverage(off)]
+   |
+LL |     #![coverage(on)]
+   |
+
+error: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:22:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   |
+LL | #[coverage(on)]
+   |
+
+error: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:31:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^
-LL |     const X: u32;
-   |     ------------- not coverable code
+   |
+help: the following are the possible correct uses
+   |
+LL |     #[coverage(off)]
+   |
+LL |     #[coverage(on)]
+   |
 
-error[E0788]: `#[coverage]` must be applied to coverable code
-  --> $DIR/word-only.rs:39:5
+error: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:27:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   |
+LL | #[coverage(on)]
+   |
+
+error: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:41:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^
-LL |     type T;
-   |     ------- not coverable code
-
-error[E0788]: `#[coverage]` must be applied to coverable code
-  --> $DIR/word-only.rs:29:5
    |
-LL |     #[coverage]
-   |     ^^^^^^^^^^^
-LL |     const X: u32 = 7;
-   |     ----------------- not coverable code
+help: the following are the possible correct uses
+   |
+LL |     #[coverage(off)]
+   |
+LL |     #[coverage(on)]
+   |
 
-error[E0788]: `#[coverage]` must be applied to coverable code
+error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:46:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^
-LL |     const X: u32 = 8;
-   |     ----------------- not coverable code
-
-error[E0788]: `#[coverage]` must be applied to coverable code
-  --> $DIR/word-only.rs:49:5
    |
-LL |     #[coverage]
-   |     ^^^^^^^^^^^
-LL |     type T = ();
-   |     ------------ not coverable code
+help: the following are the possible correct uses
+   |
+LL |     #[coverage(off)]
+   |
+LL |     #[coverage(on)]
+   |
 
-error: expected `coverage(off)` or `coverage(on)`
-  --> $DIR/word-only.rs:53:1
+error: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:37:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   |
+LL | #[coverage(on)]
+   |
 
-error: aborting due to 7 previous errors
+error: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:56:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL |     #[coverage(off)]
+   |
+LL |     #[coverage(on)]
+   |
+
+error: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:61:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL |     #[coverage(off)]
+   |
+LL |     #[coverage(on)]
+   |
+
+error: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:52:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   |
+LL | #[coverage(on)]
+   |
+
+error: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:67:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   |
+LL | #[coverage(on)]
+   |
+
+error[E0788]: attribute should be applied to a function definition or closure
+  --> $DIR/word-only.rs:11:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+...
+LL | mod my_mod {}
+   | ------------- not a function or closure
+
+error[E0788]: attribute should be applied to a function definition or closure
+  --> $DIR/word-only.rs:17:5
+   |
+LL | / mod my_mod_inner {
+LL | |     #![coverage]
+   | |     ^^^^^^^^^^^^
+LL | |
+LL | |
+LL | | }
+   | |_- not a function or closure
+
+error[E0788]: attribute should be applied to a function definition or closure
+  --> $DIR/word-only.rs:22:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+...
+LL | struct MyStruct;
+   | ---------------- not a function or closure
+
+error[E0788]: attribute should be applied to a function definition or closure
+  --> $DIR/word-only.rs:27:1
+   |
+LL |   #[coverage]
+   |   ^^^^^^^^^^^
+...
+LL | / impl MyStruct {
+LL | |     #[coverage]
+LL | |
+LL | |
+LL | |     const X: u32 = 7;
+LL | | }
+   | |_- not a function or closure
+
+error[E0788]: attribute should be applied to a function definition or closure
+  --> $DIR/word-only.rs:37:1
+   |
+LL |   #[coverage]
+   |   ^^^^^^^^^^^
+...
+LL | / trait MyTrait {
+LL | |     #[coverage]
+LL | |
+LL | |
+...  |
+LL | |     type T;
+LL | | }
+   | |_- not a function or closure
+
+error[E0788]: attribute should be applied to a function definition or closure
+  --> $DIR/word-only.rs:52:1
+   |
+LL |   #[coverage]
+   |   ^^^^^^^^^^^
+...
+LL | / impl MyTrait for MyStruct {
+LL | |     #[coverage]
+LL | |
+LL | |
+...  |
+LL | |     type T = ();
+LL | | }
+   | |_- not a function or closure
+
+error[E0788]: attribute should be applied to a function definition or closure
+  --> $DIR/word-only.rs:41:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+...
+LL |     const X: u32;
+   |     ------------- not a function or closure
+
+error[E0788]: attribute should be applied to a function definition or closure
+  --> $DIR/word-only.rs:46:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+...
+LL |     type T;
+   |     ------- not a function or closure
+
+error[E0788]: attribute should be applied to a function definition or closure
+  --> $DIR/word-only.rs:31:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+...
+LL |     const X: u32 = 7;
+   |     ----------------- not a function or closure
+
+error[E0788]: attribute should be applied to a function definition or closure
+  --> $DIR/word-only.rs:56:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+...
+LL |     const X: u32 = 8;
+   |     ----------------- not a function or closure
+
+error[E0788]: attribute should be applied to a function definition or closure
+  --> $DIR/word-only.rs:61:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+...
+LL |     type T = ();
+   |     ------------ not a function or closure
+
+error: aborting due to 23 previous errors
 
 For more information about this error, try `rustc --explain E0788`.

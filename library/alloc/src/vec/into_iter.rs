@@ -254,7 +254,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
     #[inline]
     fn next_chunk<const N: usize>(&mut self) -> Result<[T; N], core::array::IntoIter<T, N>> {
-        let mut raw_ary = MaybeUninit::uninit_array();
+        let mut raw_ary = [const { MaybeUninit::uninit() }; N];
 
         let len = self.len();
 

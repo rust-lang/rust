@@ -15,11 +15,7 @@ use rustc_span::{sym, Span};
 use rustc_target::spec::{abi, SanitizerSet};
 
 use crate::errors;
-use crate::target_features::from_target_feature;
-use crate::{
-    errors::{ExpectedCoverageSymbol, ExpectedUsedSymbol},
-    target_features::check_target_feature_trait_unsafe,
-};
+use crate::target_features::{check_target_feature_trait_unsafe, from_target_feature};
 
 fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
     use rustc_middle::mir::mono::Linkage::*;
@@ -139,7 +135,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         // coverage on a smaller scope within an excluded larger scope.
                     }
                     Some(_) | None => {
-                        tcx.dcx().emit_err(ExpectedCoverageSymbol { span: attr.span });
+                        tcx.dcx()
+                            .span_delayed_bug(attr.span, "unexpected value of coverage attribute");
                     }
                 }
             }
@@ -174,7 +171,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
                     }
                     Some(_) => {
-                        tcx.dcx().emit_err(ExpectedUsedSymbol { span: attr.span });
+                        tcx.dcx().emit_err(errors::ExpectedUsedSymbol { span: attr.span });
                     }
                     None => {
                         // Unfortunately, unconditionally using `llvm.used` causes

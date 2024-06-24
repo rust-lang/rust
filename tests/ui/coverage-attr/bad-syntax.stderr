@@ -1,18 +1,109 @@
 error: malformed `coverage` attribute input
-  --> $DIR/bad-syntax.rs:23:1
+  --> $DIR/bad-syntax.rs:15:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   | ~~~~~~~~~~~~~~~~
+LL | #[coverage(on)]
+   | ~~~~~~~~~~~~~~~
+
+error: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:18:1
    |
 LL | #[coverage = true]
    | ^^^^^^^^^^^^^^^^^^
    |
 help: the following are the possible correct uses
    |
-LL | #[coverage(on|off)]
+LL | #[coverage(off)]
+   | ~~~~~~~~~~~~~~~~
+LL | #[coverage(on)]
+   | ~~~~~~~~~~~~~~~
+
+error: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:21:1
    |
-LL | #[coverage]
+LL | #[coverage()]
+   | ^^^^^^^^^^^^^
    |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   | ~~~~~~~~~~~~~~~~
+LL | #[coverage(on)]
+   | ~~~~~~~~~~~~~~~
+
+error: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:24:1
+   |
+LL | #[coverage(off, off)]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   | ~~~~~~~~~~~~~~~~
+LL | #[coverage(on)]
+   | ~~~~~~~~~~~~~~~
+
+error: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:27:1
+   |
+LL | #[coverage(off, on)]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   | ~~~~~~~~~~~~~~~~
+LL | #[coverage(on)]
+   | ~~~~~~~~~~~~~~~
+
+error: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:30:1
+   |
+LL | #[coverage(bogus)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   | ~~~~~~~~~~~~~~~~
+LL | #[coverage(on)]
+   | ~~~~~~~~~~~~~~~
+
+error: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:33:1
+   |
+LL | #[coverage(bogus, off)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   | ~~~~~~~~~~~~~~~~
+LL | #[coverage(on)]
+   | ~~~~~~~~~~~~~~~
+
+error: malformed `coverage` attribute input
+  --> $DIR/bad-syntax.rs:36:1
+   |
+LL | #[coverage(off, bogus)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   | ~~~~~~~~~~~~~~~~
+LL | #[coverage(on)]
+   | ~~~~~~~~~~~~~~~
 
 error: expected identifier, found `,`
-  --> $DIR/bad-syntax.rs:52:12
+  --> $DIR/bad-syntax.rs:42:12
    |
 LL | #[coverage(,off)]
    |            ^
@@ -20,59 +111,29 @@ LL | #[coverage(,off)]
    |            expected identifier
    |            help: remove this comma
 
-error: expected `coverage(off)` or `coverage(on)`
-  --> $DIR/bad-syntax.rs:18:1
+error: multiple `coverage` attributes
+  --> $DIR/bad-syntax.rs:7:1
    |
-LL | #[coverage]
-   | ^^^^^^^^^^^
+LL | #[coverage(off)]
+   | ^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/bad-syntax.rs:8:1
+   |
+LL | #[coverage(off)]
+   | ^^^^^^^^^^^^^^^^
 
-error: expected `coverage(off)` or `coverage(on)`
-  --> $DIR/bad-syntax.rs:23:1
+error: multiple `coverage` attributes
+  --> $DIR/bad-syntax.rs:11:1
    |
-LL | #[coverage = true]
-   | ^^^^^^^^^^^^^^^^^^
-
-error: expected `coverage(off)` or `coverage(on)`
-  --> $DIR/bad-syntax.rs:30:1
+LL | #[coverage(off)]
+   | ^^^^^^^^^^^^^^^^ help: remove this attribute
    |
-LL | #[coverage()]
-   | ^^^^^^^^^^^^^
-
-error: expected `coverage(off)` or `coverage(on)`
-  --> $DIR/bad-syntax.rs:33:1
+note: attribute also specified here
+  --> $DIR/bad-syntax.rs:12:1
    |
-LL | #[coverage(off, off)]
-   | ^^^^^^^^^^^^^^^^^^^^^
-
-error: expected `coverage(off)` or `coverage(on)`
-  --> $DIR/bad-syntax.rs:36:1
-   |
-LL | #[coverage(off, on)]
-   | ^^^^^^^^^^^^^^^^^^^^
-
-error: expected `coverage(off)` or `coverage(on)`
-  --> $DIR/bad-syntax.rs:39:1
-   |
-LL | #[coverage(bogus)]
-   | ^^^^^^^^^^^^^^^^^^
-
-error: expected `coverage(off)` or `coverage(on)`
-  --> $DIR/bad-syntax.rs:42:1
-   |
-LL | #[coverage(bogus, off)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
-
-error: expected `coverage(off)` or `coverage(on)`
-  --> $DIR/bad-syntax.rs:45:1
-   |
-LL | #[coverage(off, bogus)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
-
-error: expected `coverage(off)` or `coverage(on)`
-  --> $DIR/bad-syntax.rs:52:1
-   |
-LL | #[coverage(,off)]
-   | ^^^^^^^^^^^^^^^^^
+LL | #[coverage(on)]
+   | ^^^^^^^^^^^^^^^
 
 error: aborting due to 11 previous errors
 

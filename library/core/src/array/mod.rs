@@ -127,7 +127,7 @@ where
     R: Try,
     R::Residual: Residual<[R::Output; N]>,
 {
-    let mut array = MaybeUninit::uninit_array::<N>();
+    let mut array = [const { MaybeUninit::uninit() }; N];
     match try_from_fn_erased(&mut array, cb) {
         ControlFlow::Break(r) => FromResidual::from_residual(r),
         ControlFlow::Continue(()) => {
@@ -918,7 +918,7 @@ impl<T> Drop for Guard<'_, T> {
 pub(crate) fn iter_next_chunk<T, const N: usize>(
     iter: &mut impl Iterator<Item = T>,
 ) -> Result<[T; N], IntoIter<T, N>> {
-    let mut array = MaybeUninit::uninit_array::<N>();
+    let mut array = [const { MaybeUninit::uninit() }; N];
     let r = iter_next_chunk_erased(&mut array, iter);
     match r {
         Ok(()) => {

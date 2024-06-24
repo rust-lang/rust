@@ -135,7 +135,6 @@
 #![feature(layout_for_ptr)]
 #![feature(local_waker)]
 #![feature(maybe_uninit_slice)]
-#![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(panic_internals)]
 #![feature(pattern)]

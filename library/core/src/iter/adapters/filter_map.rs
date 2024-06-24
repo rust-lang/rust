@@ -68,7 +68,7 @@ where
     fn next_chunk<const N: usize>(
         &mut self,
     ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>> {
-        let mut array: [MaybeUninit<Self::Item>; N] = MaybeUninit::uninit_array();
+        let mut array: [MaybeUninit<Self::Item>; N] = [const { MaybeUninit::uninit() }; N];
 
         struct Guard<'a, T> {
             array: &'a mut [MaybeUninit<T>],

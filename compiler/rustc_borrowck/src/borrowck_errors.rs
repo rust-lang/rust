@@ -6,7 +6,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
-impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
+impl<'tcx> crate::MirBorrowckCtxt<'_, '_, '_, 'tcx> {
     pub fn dcx(&self) -> DiagCtxtHandle<'tcx> {
         self.infcx.dcx()
     }

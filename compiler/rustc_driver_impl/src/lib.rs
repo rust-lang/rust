@@ -1133,7 +1133,11 @@ pub fn describe_flag_categories(early_dcx: &EarlyDiagCtxt, matches: &Matches) ->
     }
 
     if cg_flags.iter().any(|x| *x == "no-stack-check") {
-        early_dcx.early_warn("the --no-stack-check flag is deprecated and does nothing");
+        early_dcx.early_warn("the `-Cno-stack-check` flag is deprecated and does nothing");
+    }
+
+    if cg_flags.iter().any(|x| x.starts_with("inline-threshold")) {
+        early_dcx.early_warn("the `-Cinline-threshold` flag is deprecated and does nothing (consider using `-Cllvm-args=--inline-threshold=...`)");
     }
 
     if cg_flags.iter().any(|x| *x == "passes=list") {

@@ -337,7 +337,6 @@
 #![feature(hint_assert_unchecked)]
 #![feature(ip)]
 #![feature(maybe_uninit_slice)]
-#![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(panic_can_unwind)]
 #![feature(panic_info_message)]
@@ -407,7 +406,6 @@
 #![feature(const_ip)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
-#![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_waker)]
 #![feature(thread_local_internals)]
 // tidy-alphabetical-end

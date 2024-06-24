@@ -2915,53 +2915,27 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::RepeatElementCopy {
                 is_constable,
-                elt_type,
+                elt_type: _,
                 elt_span,
-                elt_stmt_span,
+                elt_stmt_span: _,
             } => {
                 err.note(
                     "the `Copy` trait is required because this value will be copied for each element of the array",
                 );
-                let value_kind = match is_constable {
-                    IsConstable::Fn => Some("the result of the function call"),
-                    IsConstable::Ctor => Some("the result of the constructor"),
-                    _ => None,
-                };
                 let sm = tcx.sess.source_map();
-                if let Some(value_kind) = value_kind
+                if matches!(is_constable, IsConstable::Fn | IsConstable::Ctor)
                     && let Ok(snip) = sm.span_to_snippet(elt_span)
                 {
-                    let help_msg = format!(
-                        "consider creating a new `const` item and initializing it with {value_kind} \
-                        to be used in the repeat position"
-                    );
-                    let indentation = sm.indentation_before(elt_stmt_span).unwrap_or_default();
-                    err.multipart_suggestion(
-                        help_msg,
-                        vec![
-                            (
-                                elt_stmt_span.shrink_to_lo(),
-                                format!(
-                                    "const ARRAY_REPEAT_VALUE: {elt_type} = {snip};\n{indentation}"
-                                ),
-                            ),
-                            (elt_span, "ARRAY_REPEAT_VALUE".to_string()),
-                        ],
+                    err.span_suggestion(
+                        elt_span,
+                        "create an inline `const` block",
+                        format!("const {{ {snip} }}"),
                         Applicability::MachineApplicable,
                     );
                 } else {
                     // FIXME: we may suggest array::repeat instead
                     err.help("consider using `core::array::from_fn` to initialize the array");
                     err.help("see https://doc.rust-lang.org/stable/std/array/fn.from_fn.html for more information");
-                }
-
-                if tcx.sess.is_nightly_build()
-                    && matches!(is_constable, IsConstable::Fn | IsConstable::Ctor)
-                {
-                    err.help(
-                        "create an inline `const` block, see RFC #2920 \
-                         <https://github.com/rust-lang/rfcs/pull/2920> for more information",
-                    );
                 }
             }
             ObligationCauseCode::VariableType(hir_id) => {
