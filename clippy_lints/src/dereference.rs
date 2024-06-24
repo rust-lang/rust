@@ -6,7 +6,7 @@ use clippy_utils::{
     expr_use_ctxt, get_parent_expr, is_block_like, is_lint_allowed, path_to_local, DefinedTy, ExprUseNode,
 };
 use core::mem;
-use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
+use rustc_ast::util::parser::{PREC_UNAMBIGUOUS, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_ty, Visitor};
@@ -1013,7 +1013,7 @@ fn report<'tcx>(
                     let (precedence, calls_field) = match cx.tcx.parent_hir_node(data.first_expr.hir_id) {
                         Node::Expr(e) => match e.kind {
                             ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => (0, false),
-                            ExprKind::Call(..) => (PREC_POSTFIX, matches!(expr.kind, ExprKind::Field(..))),
+                            ExprKind::Call(..) => (PREC_UNAMBIGUOUS, matches!(expr.kind, ExprKind::Field(..))),
                             _ => (e.precedence().order(), false),
                         },
                         _ => (0, false),
@@ -1160,7 +1160,7 @@ impl<'tcx> Dereferencing<'tcx> {
                         },
                         Some(parent) if !parent.span.from_expansion() => {
                             // Double reference might be needed at this point.
-                            if parent.precedence().order() == PREC_POSTFIX {
+                            if parent.precedence().order() == PREC_UNAMBIGUOUS {
                                 // Parentheses would be needed here, don't lint.
                                 *outer_pat = None;
                             } else {
