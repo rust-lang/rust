@@ -30,7 +30,7 @@ pub(crate) enum AccessKind {
     Mutate,
 }
 
-impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
+impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
     pub(crate) fn report_mutability_error(
         &mut self,
         access_place: Place<'tcx>,
