@@ -1,31 +1,27 @@
-//! Check that destructors of the thread locals are executed on all OSes
-//! (even when we do not support concurrency, and cannot run the other test).
+//! Check that destructors of main thread thread locals are executed.
 
-use std::cell::RefCell;
+struct Bar;
 
-struct TestCell {
-    value: RefCell<u8>,
-}
-
-impl Drop for TestCell {
+impl Drop for Bar {
     fn drop(&mut self) {
-        eprintln!("Dropping: {}", *self.value.borrow())
+        println!("Bar dtor");
     }
 }
 
-thread_local! {
-    static A: TestCell = TestCell { value: RefCell::new(0) };
-    static A_CONST: TestCell = const { TestCell { value: RefCell::new(10) } };
+struct Foo;
+
+impl Drop for Foo {
+    fn drop(&mut self) {
+        println!("Foo dtor");
+        // We initialize another thread-local inside the dtor, which is an interesting corner case.
+        // Also we use a `const` thread-local here, just to also have that code path covered.
+        thread_local!(static BAR: Bar = const { Bar });
+        BAR.with(|_| {});
+    }
 }
 
+thread_local!(static FOO: Foo = Foo);
+
 fn main() {
-    A.with(|f| {
-        assert_eq!(*f.value.borrow(), 0);
-        *f.value.borrow_mut() = 5;
-    });
-    A_CONST.with(|f| {
-        assert_eq!(*f.value.borrow(), 10);
-        *f.value.borrow_mut() = 5; // Same value as above since the drop order is different on different platforms
-    });
-    eprintln!("Continue main.")
+    FOO.with(|_| {});
 }
