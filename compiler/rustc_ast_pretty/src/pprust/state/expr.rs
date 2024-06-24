@@ -217,7 +217,7 @@ impl<'a> State<'a> {
     fn print_expr_call(&mut self, func: &ast::Expr, args: &[P<ast::Expr>], fixup: FixupContext) {
         let prec = match func.kind {
             ast::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
-            _ => parser::PREC_POSTFIX,
+            _ => parser::PREC_UNAMBIGUOUS,
         };
 
         // Independent of parenthesization related to precedence, we must
@@ -257,7 +257,7 @@ impl<'a> State<'a> {
         // boundaries, `$receiver.method()` can be parsed back as a statement
         // containing an expression if and only if `$receiver` can be parsed as
         // a statement containing an expression.
-        self.print_expr_maybe_paren(receiver, parser::PREC_POSTFIX, fixup);
+        self.print_expr_maybe_paren(receiver, parser::PREC_UNAMBIGUOUS, fixup);
 
         self.word(".");
         self.print_ident(segment.ident);
@@ -489,7 +489,7 @@ impl<'a> State<'a> {
                         self.space();
                     }
                     MatchKind::Postfix => {
-                        self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX, fixup);
+                        self.print_expr_maybe_paren(expr, parser::PREC_UNAMBIGUOUS, fixup);
                         self.word_nbsp(".match");
                     }
                 }
@@ -549,7 +549,7 @@ impl<'a> State<'a> {
                 self.print_block_with_attrs(blk, attrs);
             }
             ast::ExprKind::Await(expr, _) => {
-                self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX, fixup);
+                self.print_expr_maybe_paren(expr, parser::PREC_UNAMBIGUOUS, fixup);
                 self.word(".await");
             }
             ast::ExprKind::Assign(lhs, rhs, _) => {
@@ -568,14 +568,14 @@ impl<'a> State<'a> {
                 self.print_expr_maybe_paren(rhs, prec, fixup.subsequent_subexpression());
             }
             ast::ExprKind::Field(expr, ident) => {
-                self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX, fixup);
+                self.print_expr_maybe_paren(expr, parser::PREC_UNAMBIGUOUS, fixup);
                 self.word(".");
                 self.print_ident(*ident);
             }
             ast::ExprKind::Index(expr, index, _) => {
                 self.print_expr_maybe_paren(
                     expr,
-                    parser::PREC_POSTFIX,
+                    parser::PREC_UNAMBIGUOUS,
                     fixup.leftmost_subexpression(),
                 );
                 self.word("[");
@@ -713,7 +713,7 @@ impl<'a> State<'a> {
                 }
             }
             ast::ExprKind::Try(e) => {
-                self.print_expr_maybe_paren(e, parser::PREC_POSTFIX, fixup);
+                self.print_expr_maybe_paren(e, parser::PREC_UNAMBIGUOUS, fixup);
                 self.word("?")
             }
             ast::ExprKind::TryBlock(blk) => {
