@@ -618,7 +618,7 @@ extern "system" {
 extern "system" {
     pub fn WriteConsoleW(
         hconsoleoutput: HANDLE,
-        lpbuffer: *const core::ffi::c_void,
+        lpbuffer: PCWSTR,
         nnumberofcharstowrite: u32,
         lpnumberofcharswritten: *mut u32,
         lpreserved: *const core::ffi::c_void,
