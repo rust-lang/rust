@@ -2252,6 +2252,7 @@ dependencies = [
 name = "tt"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "smol_str",
  "stdx",
  "text-size",

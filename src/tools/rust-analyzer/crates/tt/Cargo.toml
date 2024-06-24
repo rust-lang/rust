@@ -12,6 +12,7 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
+arrayvec.workspace = true
 smol_str.workspace = true
 text-size.workspace = true
 
