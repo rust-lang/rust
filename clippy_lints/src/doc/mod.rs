@@ -1,4 +1,6 @@
 mod lazy_continuation;
+mod too_long_first_doc_paragraph;
+
 use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
@@ -422,6 +424,38 @@ declare_clippy_lint! {
     "require every line of a paragraph to be indented and marked"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks if the first line in the documentation of items listed in module page is too long.
+    ///
+    /// ### Why is this bad?
+    /// Documentation will show the first paragraph of the doscstring in the summary page of a
+    /// module, so having a nice, short summary in the first paragraph is part of writing good docs.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// /// A very short summary.
+    /// /// A much longer explanation that goes into a lot more detail about
+    /// /// how the thing works, possibly with doclinks and so one,
+    /// /// and probably spanning a many rows.
+    /// struct Foo {}
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// /// A very short summary.
+    /// ///
+    /// /// A much longer explanation that goes into a lot more detail about
+    /// /// how the thing works, possibly with doclinks and so one,
+    /// /// and probably spanning a many rows.
+    /// struct Foo {}
+    /// ```
+    #[clippy::version = "1.81.0"]
+    pub TOO_LONG_FIRST_DOC_PARAGRAPH,
+    style,
+    "ensure that the first line of a documentation paragraph isn't too long"
+}
+
+#[derive(Clone)]
 pub struct Documentation {
     valid_idents: &'static FxHashSet<String>,
     check_private_items: bool,
@@ -448,6 +482,7 @@ impl_lint_pass!(Documentation => [
     SUSPICIOUS_DOC_COMMENTS,
     EMPTY_DOCS,
     DOC_LAZY_CONTINUATION,
+    TOO_LONG_FIRST_DOC_PARAGRAPH,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Documentation {
@@ -457,39 +492,44 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
         };
 
         match cx.tcx.hir_node(cx.last_node_with_lint_attrs) {
-            Node::Item(item) => match item.kind {
-                ItemKind::Fn(sig, _, body_id) => {
-                    if !(is_entrypoint_fn(cx, item.owner_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
-                        let body = cx.tcx.hir().body(body_id);
+            Node::Item(item) => {
+                too_long_first_doc_paragraph::check(cx, attrs, item.kind, headers.first_paragraph_len);
+                match item.kind {
+                    ItemKind::Fn(sig, _, body_id) => {
+                        if !(is_entrypoint_fn(cx, item.owner_id.to_def_id())
+                            || in_external_macro(cx.tcx.sess, item.span))
+                        {
+                            let body = cx.tcx.hir().body(body_id);
 
-                        let panic_info = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
-                        missing_headers::check(
+                            let panic_info = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
+                            missing_headers::check(
+                                cx,
+                                item.owner_id,
+                                sig,
+                                headers,
+                                Some(body_id),
+                                panic_info,
+                                self.check_private_items,
+                            );
+                        }
+                    },
+                    ItemKind::Trait(_, unsafety, ..) => match (headers.safety, unsafety) {
+                        (false, Safety::Unsafe) => span_lint(
                             cx,
-                            item.owner_id,
-                            sig,
-                            headers,
-                            Some(body_id),
-                            panic_info,
-                            self.check_private_items,
-                        );
-                    }
-                },
-                ItemKind::Trait(_, unsafety, ..) => match (headers.safety, unsafety) {
-                    (false, Safety::Unsafe) => span_lint(
-                        cx,
-                        MISSING_SAFETY_DOC,
-                        cx.tcx.def_span(item.owner_id),
-                        "docs for unsafe trait missing `# Safety` section",
-                    ),
-                    (true, Safety::Safe) => span_lint(
-                        cx,
-                        UNNECESSARY_SAFETY_DOC,
-                        cx.tcx.def_span(item.owner_id),
-                        "docs for safe trait have unnecessary `# Safety` section",
-                    ),
+                            MISSING_SAFETY_DOC,
+                            cx.tcx.def_span(item.owner_id),
+                            "docs for unsafe trait missing `# Safety` section",
+                        ),
+                        (true, Safety::Safe) => span_lint(
+                            cx,
+                            UNNECESSARY_SAFETY_DOC,
+                            cx.tcx.def_span(item.owner_id),
+                            "docs for safe trait have unnecessary `# Safety` section",
+                        ),
+                        _ => (),
+                    },
                     _ => (),
-                },
-                _ => (),
+                }
             },
             Node::TraitItem(trait_item) => {
                 if let TraitItemKind::Fn(sig, ..) = trait_item.kind
@@ -547,6 +587,7 @@ struct DocHeaders {
     safety: bool,
     errors: bool,
     panics: bool,
+    first_paragraph_len: usize,
 }
 
 /// Does some pre-processing on raw, desugared `#[doc]` attributes such as parsing them and
@@ -586,8 +627,9 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         acc
     });
     doc.pop();
+    let doc = doc.trim();
 
-    if doc.trim().is_empty() {
+    if doc.is_empty() {
         if let Some(span) = span_of_fragments(&fragments) {
             span_lint_and_help(
                 cx,
@@ -611,7 +653,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         cx,
         valid_idents,
         parser.into_offset_iter(),
-        &doc,
+        doc,
         Fragments {
             fragments: &fragments,
             doc: &doc,
@@ -653,6 +695,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut paragraph_range = 0..0;
     let mut code_level = 0;
     let mut blockquote_level = 0;
+    let mut is_first_paragraph = true;
 
     let mut containers = Vec::new();
 
@@ -720,6 +763,10 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 }
                 ticks_unbalanced = false;
                 paragraph_range = range;
+                if is_first_paragraph {
+                    headers.first_paragraph_len = doc[paragraph_range.clone()].chars().count();
+                    is_first_paragraph = false;
+                }
             },
             End(TagEnd::Heading(_) | TagEnd::Paragraph | TagEnd::Item) => {
                 if let End(TagEnd::Heading(_)) = event {

@@ -148,6 +148,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::doc::NEEDLESS_DOCTEST_MAIN_INFO,
     crate::doc::SUSPICIOUS_DOC_COMMENTS_INFO,
     crate::doc::TEST_ATTR_IN_DOCTEST_INFO,
+    crate::doc::TOO_LONG_FIRST_DOC_PARAGRAPH_INFO,
     crate::doc::UNNECESSARY_SAFETY_DOC_INFO,
     crate::double_parens::DOUBLE_PARENS_INFO,
     crate::drop_forget_ref::DROP_NON_DROP_INFO,
