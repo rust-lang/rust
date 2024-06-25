@@ -1847,6 +1847,7 @@ pub trait Iterator {
     /// Sum: 3
     /// ```
     #[inline]
+    #[doc(alias = "tap")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_do_not_const_check]
     fn inspect<F>(self, f: F) -> Inspect<Self, F>
