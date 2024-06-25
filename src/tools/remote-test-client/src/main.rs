@@ -18,6 +18,9 @@ use std::time::Duration;
 const REMOTE_ADDR_ENV: &str = "TEST_DEVICE_ADDR";
 const DEFAULT_ADDR: &str = "127.0.0.1:12345";
 
+const TCP_TIMEOUT_ENV: &str = "TCP_TIMEOUT";
+const DEFAULT_TCP_TIMEOUT: u64 = 100;
+
 macro_rules! t {
     ($e:expr) => {
         match $e {
@@ -69,16 +72,26 @@ fn spawn_emulator(target: &str, server: &Path, tmpdir: &Path, rootfs: Option<Pat
         start_qemu_emulator(target, rootfs, server, tmpdir);
     }
 
+    let timeout = if let Ok(setting) = env::var(TCP_TIMEOUT_ENV) {
+        t!(setting.parse())
+    } else {
+        DEFAULT_TCP_TIMEOUT
+    };
+    let dur = Duration::from_millis(timeout);
+
     // Wait for the emulator to come online
     loop {
-        let dur = Duration::from_millis(100);
         if let Ok(mut client) = TcpStream::connect(&device_address) {
             t!(client.set_read_timeout(Some(dur)));
             t!(client.set_write_timeout(Some(dur)));
             if client.write_all(b"ping").is_ok() {
                 let mut b = [0; 4];
-                if client.read_exact(&mut b).is_ok() {
-                    break;
+                match client.read_exact(&mut b) {
+                    Ok(_) => break,
+                    Err(e) if e.kind() == io::ErrorKind::WouldBlock => panic!(
+                        "TCP timeout of {timeout}ms exceeded, set `{TCP_TIMEOUT_ENV}` to a larger value"
+                    ),
+                    Err(_) => (),
                 }
             }
         }
