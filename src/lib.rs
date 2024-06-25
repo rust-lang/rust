@@ -89,7 +89,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use errors::LTONotSupported;
-#[cfg(not(feature = "master"))]
 use gccjit::CType;
 use gccjit::{Context, OptimizationLevel};
 #[cfg(feature = "master")]
@@ -147,6 +146,10 @@ impl TargetInfo {
     fn supports_128bit_int(&self) -> bool {
         self.supports_128bit_integers.load(Ordering::SeqCst)
     }
+
+    fn supports_target_dependent_type(&self, _typ: CType) -> bool {
+        false
+    }
 }
 
 #[derive(Clone)]
@@ -167,6 +170,10 @@ impl LockedTargetInfo {
 
     fn supports_128bit_int(&self) -> bool {
         self.info.lock().expect("lock").supports_128bit_int()
+    }
+
+    fn supports_target_dependent_type(&self, typ: CType) -> bool {
+        self.info.lock().expect("lock").supports_target_dependent_type(typ)
     }
 }
 
@@ -438,7 +445,8 @@ impl WriteBackendMethods for GccCodegenBackend {
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     #[cfg(feature = "master")]
     let info = {
-        // Check whether the target supports 128-bit integers.
+        // Check whether the target supports 128-bit integers, and sized floating point types (like
+        // Float16).
         let context = Context::default();
         Arc::new(Mutex::new(IntoDynSyncSend(context.get_target_info())))
     };
