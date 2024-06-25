@@ -292,7 +292,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
     let trait_ref = TraitRef::new(
         tcx,
         trait_id,
-        Some(GenericArg::from(ty)).into_iter().chain(args).chain(effect_arg),
+        [GenericArg::from(ty)].into_iter().chain(args).chain(effect_arg),
     );
 
     debug_assert_matches!(
@@ -1126,7 +1126,7 @@ pub fn make_projection<'tcx>(
         #[cfg(debug_assertions)]
         assert_generic_args_match(tcx, assoc_item.def_id, args);
 
-        Some(AliasTy::new(tcx, assoc_item.def_id, args))
+        Some(AliasTy::new_from_args(tcx, assoc_item.def_id, args))
     }
     helper(
         tcx,
@@ -1165,7 +1165,7 @@ pub fn make_normalized_projection<'tcx>(
             );
             return None;
         }
-        match tcx.try_normalize_erasing_regions(param_env, Ty::new_projection(tcx, ty.def_id, ty.args)) {
+        match tcx.try_normalize_erasing_regions(param_env, Ty::new_projection_from_args(tcx, ty.def_id, ty.args)) {
             Ok(ty) => Some(ty),
             Err(e) => {
                 debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");
@@ -1289,7 +1289,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
             .infer_ctxt()
             .build()
             .at(&cause, param_env)
-            .query_normalize(Ty::new_projection(tcx, ty.def_id, ty.args))
+            .query_normalize(Ty::new_projection_from_args(tcx, ty.def_id, ty.args))
         {
             Ok(ty) => Some(ty.value),
             Err(e) => {

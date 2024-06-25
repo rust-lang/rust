@@ -940,7 +940,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let ty = traits::normalize_projection_ty(
                 self,
                 param_env,
-                ty::AliasTy::new(tcx, tcx.lang_items().deref_target()?, trait_ref.args),
+                ty::AliasTy::new_from_args(tcx, tcx.lang_items().deref_target()?, trait_ref.args),
                 cause.clone(),
                 0,
                 // We're *intentionally* throwing these away,

@@ -499,7 +499,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_opaque(tcx: TyCtxt<'tcx>, def_id: DefId, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        Ty::new_alias(tcx, ty::Opaque, AliasTy::new(tcx, def_id, args))
+        Ty::new_alias(tcx, ty::Opaque, AliasTy::new_from_args(tcx, def_id, args))
     }
 
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
@@ -667,6 +667,15 @@ impl<'tcx> Ty<'tcx> {
         repr: DynKind,
     ) -> Ty<'tcx> {
         Ty::new(tcx, Dynamic(obj, reg, repr))
+    }
+
+    #[inline]
+    pub fn new_projection_from_args(
+        tcx: TyCtxt<'tcx>,
+        item_def_id: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Ty<'tcx> {
+        Ty::new_alias(tcx, ty::Projection, AliasTy::new_from_args(tcx, item_def_id, args))
     }
 
     #[inline]
@@ -1409,7 +1418,7 @@ impl<'tcx> Ty<'tcx> {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::DiscriminantKind, None),
                 );
-                Ty::new_projection(tcx, assoc_items[0], tcx.mk_args(&[self.into()]))
+                Ty::new_projection_from_args(tcx, assoc_items[0], tcx.mk_args(&[self.into()]))
             }
 
             ty::Pat(ty, _) => ty.discriminant_ty(tcx),

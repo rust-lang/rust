@@ -109,7 +109,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     return;
                 }
 
-                let proj_ty = Ty::new_projection(
+                let proj_ty = Ty::new_projection_from_args(
                     cx.tcx,
                     proj.projection_term.def_id,
                     proj.projection_term.args,

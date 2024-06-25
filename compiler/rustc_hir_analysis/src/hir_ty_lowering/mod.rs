@@ -693,7 +693,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?bound_vars);
 
         let poly_trait_ref = ty::Binder::bind_with_vars(
-            ty::TraitRef::new(tcx, trait_def_id, generic_args),
+            ty::TraitRef::new_from_args(tcx, trait_def_id, generic_args),
             bound_vars,
         );
 
@@ -759,7 +759,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Some((trait_def_id, trait_segment, span)),
             );
         }
-        ty::TraitRef::new(self.tcx(), trait_def_id, generic_args)
+        ty::TraitRef::new_from_args(self.tcx(), trait_def_id, generic_args)
     }
 
     fn probe_trait_that_defines_assoc_item(
@@ -789,7 +789,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Type aliases defined in crates that have the
             // feature `lazy_type_alias` enabled get encoded as a type alias that normalization will
             // then actually instantiate the where bounds of.
-            let alias_ty = ty::AliasTy::new(tcx, did, args);
+            let alias_ty = ty::AliasTy::new_from_args(tcx, did, args);
             Ty::new_alias(tcx, ty::Weak, alias_ty)
         } else {
             tcx.at(span).type_of(did).instantiate(tcx, args)
@@ -1267,7 +1267,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .chain(args.into_iter().skip(parent_args.len())),
         );
 
-        let ty = Ty::new_alias(tcx, ty::Inherent, ty::AliasTy::new(tcx, assoc_item, args));
+        let ty =
+            Ty::new_alias(tcx, ty::Inherent, ty::AliasTy::new_from_args(tcx, assoc_item, args));
 
         Ok(Some((ty, assoc_item)))
     }
@@ -1534,7 +1535,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let item_args =
             self.lower_generic_args_of_assoc_item(span, item_def_id, item_segment, trait_ref.args);
 
-        Ty::new_projection(tcx, item_def_id, item_args)
+        Ty::new_projection_from_args(tcx, item_def_id, item_args)
     }
 
     pub fn prohibit_generic_args<'a>(
@@ -2302,7 +2303,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?args);
 
         if in_trait {
-            Ty::new_projection(tcx, def_id, args)
+            Ty::new_projection_from_args(tcx, def_id, args)
         } else {
             Ty::new_opaque(tcx, def_id, args)
         }

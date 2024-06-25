@@ -220,7 +220,7 @@ impl<'tcx> ConstToPat<'tcx> {
             tcx,
             ObligationCause::dummy(),
             self.param_env,
-            ty::TraitRef::new(
+            ty::TraitRef::new_from_args(
                 tcx,
                 partial_eq_trait_id,
                 tcx.with_opt_host_effect_param(

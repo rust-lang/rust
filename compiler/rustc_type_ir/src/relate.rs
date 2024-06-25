@@ -82,7 +82,7 @@ pub trait TypeRelation<I: Interner>: Sized {
 
         let tcx = self.tcx();
         let opt_variances = tcx.variances_of(item_def_id);
-        relate_args_with_variances(self, item_def_id, &opt_variances, a_arg, b_arg, true)
+        relate_args_with_variances(self, item_def_id, opt_variances, a_arg, b_arg, true)
     }
 
     /// Switch variance for the purpose of relating `a` and `b`.
@@ -128,7 +128,7 @@ pub fn relate_args_invariantly<I: Interner, R: TypeRelation<I>>(
     a_arg: I::GenericArgs,
     b_arg: I::GenericArgs,
 ) -> RelateResult<I, I::GenericArgs> {
-    relation.tcx().mk_args_from_iter(iter::zip(a_arg, b_arg).map(|(a, b)| {
+    relation.tcx().mk_args_from_iter(iter::zip(a_arg.iter(), b_arg.iter()).map(|(a, b)| {
         relation.relate_with_variance(ty::Invariant, VarianceDiagInfo::default(), a, b)
     }))
 }
@@ -136,7 +136,7 @@ pub fn relate_args_invariantly<I: Interner, R: TypeRelation<I>>(
 pub fn relate_args_with_variances<I: Interner, R: TypeRelation<I>>(
     relation: &mut R,
     ty_def_id: I::DefId,
-    variances: &[ty::Variance],
+    variances: I::VariancesOf,
     a_arg: I::GenericArgs,
     b_arg: I::GenericArgs,
     fetch_ty_for_diag: bool,
@@ -144,11 +144,11 @@ pub fn relate_args_with_variances<I: Interner, R: TypeRelation<I>>(
     let tcx = relation.tcx();
 
     let mut cached_ty = None;
-    let params = iter::zip(a_arg, b_arg).enumerate().map(|(i, (a, b))| {
-        let variance = variances[i];
+    let params = iter::zip(a_arg.iter(), b_arg.iter()).enumerate().map(|(i, (a, b))| {
+        let variance = variances.get(i).unwrap();
         let variance_info = if variance == ty::Invariant && fetch_ty_for_diag {
             let ty =
-                *cached_ty.get_or_insert_with(|| tcx.type_of(ty_def_id).instantiate(tcx, &a_arg));
+                *cached_ty.get_or_insert_with(|| tcx.type_of(ty_def_id).instantiate(tcx, a_arg));
             VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
         } else {
             VarianceDiagInfo::default()
@@ -185,7 +185,7 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
         }
 
         let inputs_and_output = iter::zip(a_inputs.iter(), b_inputs.iter())
-            .map(|(&a, &b)| ((a, b), false))
+            .map(|(a, b)| ((a, b), false))
             .chain(iter::once(((a.output(), b.output()), true)))
             .map(|((a, b), is_output)| {
                 if is_output {
@@ -249,7 +249,7 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
                 ty::Opaque => relate_args_with_variances(
                     relation,
                     a.def_id,
-                    &relation.tcx().variances_of(a.def_id),
+                    relation.tcx().variances_of(a.def_id),
                     a.args,
                     b.args,
                     false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
@@ -258,7 +258,7 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
             };
-            Ok(ty::AliasTy::new(relation.tcx(), a.def_id, args))
+            Ok(ty::AliasTy::new_from_args(relation.tcx(), a.def_id, args))
         }
     }
 }
@@ -280,7 +280,7 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                 ty::AliasTermKind::OpaqueTy => relate_args_with_variances(
                     relation,
                     a.def_id,
-                    &relation.tcx().variances_of(a.def_id),
+                    relation.tcx().variances_of(a.def_id),
                     a.args,
                     b.args,
                     false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
@@ -293,7 +293,7 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
             };
-            Ok(ty::AliasTerm::new(relation.tcx(), a.def_id, args))
+            Ok(ty::AliasTerm::new_from_args(relation.tcx(), a.def_id, args))
         }
     }
 }
@@ -343,7 +343,7 @@ impl<I: Interner> Relate<I> for ty::TraitRef<I> {
             }))
         } else {
             let args = relate_args_invariantly(relation, a.args, b.args)?;
-            Ok(ty::TraitRef::new(relation.tcx(), a.def_id, args))
+            Ok(ty::TraitRef::new_from_args(relation.tcx(), a.def_id, args))
         }
     }
 }
@@ -525,7 +525,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             if as_.len() == bs.len() {
                 Ok(Ty::new_tup_from_iter(
                     tcx,
-                    iter::zip(as_, bs).map(|(a, b)| relation.relate(a, b)),
+                    iter::zip(as_.iter(), bs.iter()).map(|(a, b)| relation.relate(a, b)),
                 )?)
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(ExpectedFound::new(true, as_.len(), bs.len())))
@@ -607,8 +607,8 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
         // be stabilized.
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu)) if au.def == bu.def => {
             if cfg!(debug_assertions) {
-                let a_ty = tcx.type_of(au.def).instantiate(tcx, &au.args);
-                let b_ty = tcx.type_of(bu.def).instantiate(tcx, &bu.args);
+                let a_ty = tcx.type_of(au.def).instantiate(tcx, au.args);
+                let b_ty = tcx.type_of(bu.def).instantiate(tcx, bu.args);
                 assert_eq!(a_ty, b_ty);
             }
 

@@ -25,11 +25,11 @@ where
         self.add_goals(
             GoalSource::Misc,
             tcx.predicates_of(weak_ty.def_id)
-                .iter_instantiated(tcx, &weak_ty.args)
+                .iter_instantiated(tcx, weak_ty.args)
                 .map(|pred| goal.with(tcx, pred)),
         );
 
-        let actual = tcx.type_of(weak_ty.def_id).instantiate(tcx, &weak_ty.args);
+        let actual = tcx.type_of(weak_ty.def_id).instantiate(tcx, weak_ty.args);
         self.instantiate_normalizes_to_term(goal, actual.into());
 
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
