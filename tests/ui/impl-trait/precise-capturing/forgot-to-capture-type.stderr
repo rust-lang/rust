@@ -1,3 +1,11 @@
+error: `use<...>` precise capturing syntax is currently not allowed in return-position `impl Trait` in traits
+  --> $DIR/forgot-to-capture-type.rs:7:30
+   |
+LL |     fn bar() -> impl Sized + use<>;
+   |                              ^^^^^
+   |
+   = note: currently, return-position `impl Trait` in traits and trait implementations capture all lifetimes in scope
+
 error: `impl Trait` must mention all type parameters in scope in `use<...>`
   --> $DIR/forgot-to-capture-type.rs:3:23
    |
@@ -18,5 +26,5 @@ LL |     fn bar() -> impl Sized + use<>;
    |
    = note: currently, all type parameters are required to be mentioned in the precise captures list
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
