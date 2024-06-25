@@ -8,7 +8,7 @@ LL | #![feature(const_trait_impl, effects)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0277]: the trait bound `Add::{synthetic#0}: Compat` is not satisfied
-  --> $DIR/assoc-type.rs:40:15
+  --> $DIR/assoc-type.rs:41:15
    |
 LL |     type Qux: Add;
    |               ^^^ the trait `Compat` is not implemented for `Add::{synthetic#0}`
