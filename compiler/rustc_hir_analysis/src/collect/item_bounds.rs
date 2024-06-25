@@ -130,7 +130,6 @@ pub(super) fn explicit_item_bounds_with_filter(
 
         let parent = tcx.local_parent(def_id);
 
-        let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
         let preds = tcx.explicit_predicates_of(parent);
 
         if let ty::AssocItemContainer::TraitContainer = tcx.associated_item(def_id).container {
@@ -141,8 +140,7 @@ pub(super) fn explicit_item_bounds_with_filter(
             let span = tcx.def_span(def_id);
             let assoc = tcx.require_lang_item(hir::LangItem::EffectsMinOutput, Some(span));
             let proj = Ty::new_projection(tcx, assoc, [tup]);
-            // TODO this is bad
-            let self_proj = Ty::new_projection(tcx, def_id.to_def_id(), identity_args);
+            let self_proj = Ty::new_projection(tcx, def_id.to_def_id(), ty::GenericArgs::identity_for_item(tcx, def_id));
             let trait_ = tcx.require_lang_item(hir::LangItem::EffectsTyCompat, Some(span));
             let trait_ref = ty::TraitRef::new(tcx, trait_, [self_proj, proj]);
             predicates.push((ty::Binder::dummy(trait_ref).upcast(tcx), span));
