@@ -624,8 +624,7 @@ impl<'tcx> Inliner<'tcx> {
         };
 
         // Copy the arguments if needed.
-        let args: Vec<_> =
-            self.make_call_args(args, &callsite, caller_body, &callee_body, return_block);
+        let args = self.make_call_args(args, &callsite, caller_body, &callee_body, return_block);
 
         let mut integrator = Integrator {
             args: &args,
@@ -736,12 +735,12 @@ impl<'tcx> Inliner<'tcx> {
 
     fn make_call_args(
         &self,
-        args: Vec<Spanned<Operand<'tcx>>>,
+        args: Box<[Spanned<Operand<'tcx>>]>,
         callsite: &CallSite<'tcx>,
         caller_body: &mut Body<'tcx>,
         callee_body: &Body<'tcx>,
         return_block: Option<BasicBlock>,
-    ) -> Vec<Local> {
+    ) -> Box<[Local]> {
         let tcx = self.tcx;
 
         // There is a bit of a mismatch between the *caller* of a closure and the *callee*.
@@ -768,7 +767,8 @@ impl<'tcx> Inliner<'tcx> {
         //
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
         if callsite.fn_sig.abi() == Abi::RustCall && callee_body.spread_arg.is_none() {
-            let mut args = args.into_iter();
+            // FIXME(edition_2024): switch back to a normal method call.
+            let mut args = <_>::into_iter(args);
             let self_ = self.create_temp_if_necessary(
                 args.next().unwrap().node,
                 callsite,
@@ -802,7 +802,8 @@ impl<'tcx> Inliner<'tcx> {
 
             closure_ref_arg.chain(tuple_tmp_args).collect()
         } else {
-            args.into_iter()
+            // FIXME(edition_2024): switch back to a normal method call.
+            <_>::into_iter(args)
                 .map(|a| self.create_temp_if_necessary(a.node, callsite, caller_body, return_block))
                 .collect()
         }

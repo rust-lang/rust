@@ -4,9 +4,9 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/index.html'
-// @count - '//*[@id="main-content"]//a[@class="macro"]' 1
-// @has - '//*[@id="main-content"]//a[@class="macro"]' 'foo'
+//@ has 'foo/index.html'
+//@ count - '//*[@id="main-content"]//a[@class="macro"]' 1
+//@ has - '//*[@id="main-content"]//a[@class="macro"]' 'foo'
 
 #[doc(hidden)]
 pub mod __internal {

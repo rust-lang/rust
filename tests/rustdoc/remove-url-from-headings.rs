@@ -2,11 +2,11 @@
 
 #![crate_name = "foo"]
 
-// @has foo/fn.foo.html
-// @has - '//a[@href="http://a.a"]' 'stuff'
-// @has - '//*[@id="implementing-stuff-somewhere"]' 'Implementing stuff somewhere'
-// @has - '//a[@href="http://b.b"]' 'one'
-// @has - '//*[@id="another-one-urg"]' 'Another one urg'
+//@ has foo/fn.foo.html
+//@ has - '//a[@href="http://a.a"]' 'stuff'
+//@ has - '//*[@id="implementing-stuff-somewhere"]' 'Implementing stuff somewhere'
+//@ has - '//a[@href="http://b.b"]' 'one'
+//@ has - '//*[@id="another-one-urg"]' 'Another one urg'
 
 /// fooo
 ///

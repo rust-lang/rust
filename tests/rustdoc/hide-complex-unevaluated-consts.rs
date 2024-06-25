@@ -7,7 +7,7 @@
 // Read the documentation of `rustdoc::clean::utils::print_const_expr`
 // for further details.
 
-// @has hide_complex_unevaluated_consts/trait.Container.html
+//@ has hide_complex_unevaluated_consts/trait.Container.html
 pub trait Container {
     // A helper constant that prevents const expressions containing it
     // from getting fully evaluated since it doesn't have a body and
@@ -17,11 +17,11 @@ pub trait Container {
 
     // Ensure that the private field does not get leaked:
     //
-    // @has - '//*[@id="associatedconstant.STRUCT0"]' \
+    //@ has - '//*[@id="associatedconstant.STRUCT0"]' \
     //        'const STRUCT0: Struct = _'
     const STRUCT0: Struct = Struct { private: () };
 
-    // @has - '//*[@id="associatedconstant.STRUCT1"]' \
+    //@ has - '//*[@id="associatedconstant.STRUCT1"]' \
     //        'const STRUCT1: (Struct,) = _'
     const STRUCT1: (Struct,) = (Struct{private: /**/()},);
 
@@ -30,20 +30,20 @@ pub trait Container {
     // show it. However for the time being, the printing logic is a bit
     // conservative.
     //
-    // @has - '//*[@id="associatedconstant.STRUCT2"]' \
+    //@ has - '//*[@id="associatedconstant.STRUCT2"]' \
     //        'const STRUCT2: Record = _'
     const STRUCT2: Record = Record { public: 5 };
 
     // Test that we do not show the incredibly verbose match expr:
     //
-    // @has - '//*[@id="associatedconstant.MATCH0"]' \
+    //@ has - '//*[@id="associatedconstant.MATCH0"]' \
     //        'const MATCH0: i32 = _'
     const MATCH0: i32 = match 234 {
         0 => 1,
         _ => Self::ABSTRACT,
     };
 
-    // @has - '//*[@id="associatedconstant.MATCH1"]' \
+    //@ has - '//*[@id="associatedconstant.MATCH1"]' \
     //        'const MATCH1: bool = _'
     const MATCH1: bool = match Self::ABSTRACT {
         _ => true,
@@ -61,7 +61,7 @@ pub trait Container {
     // For now, the implementation is quite simple and the choices
     // rather conservative.
     //
-    // @has - '//*[@id="associatedconstant.ARITH_OPS"]' \
+    //@ has - '//*[@id="associatedconstant.ARITH_OPS"]' \
     //        'const ARITH_OPS: i32 = _'
     const ARITH_OPS: i32 = Self::ABSTRACT * 2 + 1;
 }

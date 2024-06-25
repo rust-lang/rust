@@ -677,8 +677,8 @@ fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
 fn eliminate_get_context_call<'tcx>(bb_data: &mut BasicBlockData<'tcx>) -> Local {
     let terminator = bb_data.terminator.take().unwrap();
-    if let TerminatorKind::Call { mut args, destination, target, .. } = terminator.kind {
-        let arg = args.pop().unwrap();
+    if let TerminatorKind::Call { args, destination, target, .. } = terminator.kind {
+        let [arg] = *Box::try_from(args).unwrap();
         let local = arg.node.place().unwrap().local;
 
         let arg = Rvalue::Use(arg.node);

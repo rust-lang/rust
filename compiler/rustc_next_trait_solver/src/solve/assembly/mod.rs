@@ -527,7 +527,7 @@ where
         };
 
         for assumption in
-            self.cx().item_bounds(alias_ty.def_id).iter_instantiated(self.cx(), &alias_ty.args)
+            self.cx().item_bounds(alias_ty.def_id).iter_instantiated(self.cx(), alias_ty.args)
         {
             candidates.extend(G::probe_and_consider_implied_clause(
                 self,
@@ -603,7 +603,7 @@ where
         // Consider all of the auto-trait and projection bounds, which don't
         // need to be recorded as a `BuiltinImplSource::Object` since they don't
         // really have a vtable base...
-        for bound in bounds {
+        for bound in bounds.iter() {
             match bound.skip_binder() {
                 ty::ExistentialPredicate::Trait(_) => {
                     // Skip principal

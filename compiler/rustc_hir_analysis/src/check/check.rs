@@ -719,7 +719,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                             tcx,
                             assoc_item,
                             assoc_item,
-                            ty::TraitRef::new(tcx, def_id.to_def_id(), trait_args),
+                            ty::TraitRef::new_from_args(tcx, def_id.to_def_id(), trait_args),
                         );
                     }
                     _ => {}

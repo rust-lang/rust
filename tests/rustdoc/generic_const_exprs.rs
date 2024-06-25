@@ -5,7 +5,7 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/trait.Foo.html'
+//@ has 'foo/trait.Foo.html'
 
 pub trait Foo: Sized {
     const WIDTH: usize;
@@ -16,7 +16,7 @@ pub trait Foo: Sized {
 impl<T: Sized> Foo for T {
     const WIDTH: usize = 1;
 
-    // @has - '//*[@id="tymethod.arrayify"]/*[@class="code-header"]' \
+    //@ has - '//*[@id="tymethod.arrayify"]/*[@class="code-header"]' \
     // 'fn arrayify(self) -> [Self; Self::WIDTH]'
     fn arrayify(self) -> [Self; Self::WIDTH] {
         [self]

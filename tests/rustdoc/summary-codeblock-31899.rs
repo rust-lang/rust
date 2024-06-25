@@ -1,11 +1,11 @@
 // https://github.com/rust-lang/rust/issues/31899
 #![crate_name="issue_31899"]
 
-// @has issue_31899/index.html
-// @hasraw - 'Make this line a bit longer.'
-// @!hasraw - 'rust rust-example-rendered'
-// @!hasraw - 'use ndarray::arr2'
-// @!hasraw - 'prohibited'
+//@ has issue_31899/index.html
+//@ hasraw - 'Make this line a bit longer.'
+//@ !hasraw - 'rust rust-example-rendered'
+//@ !hasraw - 'use ndarray::arr2'
+//@ !hasraw - 'prohibited'
 
 /// A tuple or fixed size array that can be used to index an array.
 /// Make this line a bit longer.

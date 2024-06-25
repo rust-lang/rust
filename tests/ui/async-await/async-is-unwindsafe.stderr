@@ -2,9 +2,8 @@ error[E0277]: the type `&mut Context<'_>` may not be safely transferred across a
   --> $DIR/async-is-unwindsafe.rs:12:5
    |
 LL |        is_unwindsafe(async {
-   |   _____^_____________-
-   |  |_____|
-   | ||
+   |  ______^             -
+   | | ___________________|
 LL | ||
 LL | ||         use std::ptr::null;
 LL | ||         use std::task::{Context, RawWaker, RawWakerVTable, Waker};

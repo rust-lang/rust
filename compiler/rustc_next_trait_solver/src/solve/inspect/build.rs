@@ -7,6 +7,7 @@
 use std::marker::PhantomData;
 use std::mem;
 
+use rustc_type_ir::inherent::*;
 use rustc_type_ir::{self as ty, Interner};
 
 use crate::delegate::SolverDelegate;

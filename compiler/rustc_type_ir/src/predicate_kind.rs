@@ -127,7 +127,6 @@ impl std::fmt::Display for AliasRelationDirection {
     }
 }
 
-// FIXME: Convert to DebugWithInfcx impl
 impl<I: Interner> fmt::Debug for ClauseKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -144,7 +143,6 @@ impl<I: Interner> fmt::Debug for ClauseKind<I> {
     }
 }
 
-// FIXME: Convert to DebugWithInfcx impl
 impl<I: Interner> fmt::Debug for PredicateKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

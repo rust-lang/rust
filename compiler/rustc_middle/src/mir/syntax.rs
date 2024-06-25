@@ -730,7 +730,7 @@ pub enum TerminatorKind<'tcx> {
         /// reused across function calls without duplicating the contents.
         /// The span for each arg is also included
         /// (e.g. `a` and `b` in `x.foo(a, b)`).
-        args: Vec<Spanned<Operand<'tcx>>>,
+        args: Box<[Spanned<Operand<'tcx>>]>,
         /// Where the returned value will be written
         destination: Place<'tcx>,
         /// Where to go after this call returns. If none, the call necessarily diverges.
@@ -837,7 +837,7 @@ pub enum TerminatorKind<'tcx> {
         template: &'tcx [InlineAsmTemplatePiece],
 
         /// The operands for the inline assembly, as `Operand`s or `Place`s.
-        operands: Vec<InlineAsmOperand<'tcx>>,
+        operands: Box<[InlineAsmOperand<'tcx>]>,
 
         /// Miscellaneous options for the inline assembly.
         options: InlineAsmOptions,
@@ -849,7 +849,7 @@ pub enum TerminatorKind<'tcx> {
         /// Valid targets for the inline assembly.
         /// The first element is the fallthrough destination, unless
         /// InlineAsmOptions::NORETURN is set.
-        targets: Vec<BasicBlock>,
+        targets: Box<[BasicBlock]>,
 
         /// Action to be taken if the inline assembly unwinds. This is present
         /// if and only if InlineAsmOptions::MAY_UNWIND is set.
@@ -1561,6 +1561,6 @@ mod size_asserts {
     static_assert_size!(PlaceElem<'_>, 24);
     static_assert_size!(Rvalue<'_>, 40);
     static_assert_size!(StatementKind<'_>, 16);
-    static_assert_size!(TerminatorKind<'_>, 96);
+    static_assert_size!(TerminatorKind<'_>, 80);
     // tidy-alphabetical-end
 }

@@ -5,8 +5,8 @@
 #![no_core]
 #![feature(no_core)]
 
-// @matchesraw 'foo/sidebar-items.js' '"repro"'
-// @!matchesraw 'foo/sidebar-items.js' '"repro".*"repro"'
+//@ matchesraw 'foo/sidebar-items.js' '"repro"'
+//@ !matchesraw 'foo/sidebar-items.js' '"repro".*"repro"'
 
 #[macro_export]
 macro_rules! repro {

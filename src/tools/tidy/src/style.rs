@@ -186,6 +186,11 @@ fn should_ignore(line: &str) -> bool {
     // - `//@[rev] normalize-stderr-test`
         || static_regex!("\\s*//@(\\[.*\\]) (compile-flags|normalize-stderr-test|error-pattern).*")
             .is_match(line)
+        // Matching for rustdoc tests commands.
+        // It allows to prevent them emitting warnings like `line longer than 100 chars`.
+        || static_regex!(
+            "\\s*//@ \\!?(count|files|has|has-dir|hasraw|matches|matchesraw|snapshot)\\s.*"
+        ).is_match(line)
 }
 
 /// Returns `true` if `line` is allowed to be longer than the normal limit.

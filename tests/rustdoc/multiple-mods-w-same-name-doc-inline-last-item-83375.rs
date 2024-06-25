@@ -12,6 +12,6 @@ pub mod sub {
 #[doc(inline)]
 pub use sub::*;
 
-// @count foo/index.html '//a[@class="mod"][@title="mod foo::prelude"]' 1
-// @count foo/prelude/index.html '//div[@class="item-row"]' 0
+//@ count foo/index.html '//a[@class="mod"][@title="mod foo::prelude"]' 1
+//@ count foo/prelude/index.html '//div[@class="item-row"]' 0
 pub mod prelude {}

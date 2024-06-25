@@ -301,7 +301,7 @@ fn read_buf() {
         });
 
         let mut s = t!(srv.accept()).0;
-        let mut buf: [MaybeUninit<u8>; 128] = MaybeUninit::uninit_array();
+        let mut buf: [MaybeUninit<u8>; 128] = [MaybeUninit::uninit(); 128];
         let mut buf = BorrowedBuf::from(buf.as_mut_slice());
         t!(s.read_buf(buf.unfilled()));
         assert_eq!(buf.filled(), &[1, 2, 3, 4]);

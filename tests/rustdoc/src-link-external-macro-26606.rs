@@ -5,10 +5,10 @@
 // https://github.com/rust-lang/rust/issues/26606
 #![crate_name="issue_26606"]
 
-// @has issue_26606_macro/macro.make_item.html
+//@ has issue_26606_macro/macro.make_item.html
 #[macro_use]
 extern crate issue_26606_macro;
 
-// @has issue_26606/constant.FOO.html
-// @has - '//a[@href="../src/issue_26606/src-link-external-macro-26606.rs.html#14"]' 'source'
+//@ has issue_26606/constant.FOO.html
+//@ has - '//a[@href="../src/issue_26606/src-link-external-macro-26606.rs.html#14"]' 'source'
 make_item!(FOO);

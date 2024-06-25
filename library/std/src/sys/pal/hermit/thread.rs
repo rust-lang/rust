@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use super::hermit_abi;
-use super::thread_local_dtor::run_dtors;
 use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
@@ -50,7 +49,7 @@ impl Thread {
                 Box::from_raw(ptr::with_exposed_provenance::<Box<dyn FnOnce()>>(main).cast_mut())();
 
                 // run all destructors
-                run_dtors();
+                crate::sys::thread_local::destructors::run();
             }
         }
     }

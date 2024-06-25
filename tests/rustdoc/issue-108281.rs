@@ -3,7 +3,7 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/index.html'
+//@ has 'foo/index.html'
 
 #[doc(hidden)]
 pub fn bar() {}
@@ -11,15 +11,15 @@ mod sub {
     pub fn public() {}
 }
 
-// @matches - '//*[@class="desc docblock-short"]' '^Displayed$'
+//@ matches - '//*[@class="desc docblock-short"]' '^Displayed$'
 /// Displayed
 #[doc(inline)]
 pub use crate::bar as Bar;
-// @matches - '//*[@class="desc docblock-short"]' '^Hello\sDisplayed$'
+//@ matches - '//*[@class="desc docblock-short"]' '^Hello\sDisplayed$'
 #[doc(inline)]
 /// Hello
 pub use crate::Bar as Bar2;
 
-// @matches - '//*[@class="desc docblock-short"]' '^Public$'
+//@ matches - '//*[@class="desc docblock-short"]' '^Public$'
 /// Public
 pub use crate::sub::public as Public;

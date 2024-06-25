@@ -8,57 +8,62 @@
 // and in places that cannot have a coverage attribute, to demonstrate the
 // interaction between multiple errors.
 
-// FIXME(#126658): The error messages for using this syntax are inconsistent
-// with the error message in other cases. They also sometimes appear together
-// with other errors, and they suggest using the incorrect `#[coverage]` syntax.
-
-#[coverage = "off"] //~ ERROR malformed `coverage` attribute input
+#[coverage = "off"]
+//~^ ERROR malformed `coverage` attribute input
+//~| ERROR attribute should be applied to a function definition or closure
 mod my_mod {}
 
 mod my_mod_inner {
-    #![coverage = "off"] //~ ERROR malformed `coverage` attribute input
+    #![coverage = "off"]
+    //~^ ERROR malformed `coverage` attribute input
+    //~| ERROR attribute should be applied to a function definition or closure
 }
 
 #[coverage = "off"]
-//~^ ERROR `#[coverage]` must be applied to coverable code
-//~| ERROR malformed `coverage` attribute input
+//~^ ERROR malformed `coverage` attribute input
+//~| ERROR attribute should be applied to a function definition or closure
 struct MyStruct;
 
-#[coverage = "off"] //~ ERROR malformed `coverage` attribute input
+#[coverage = "off"]
+//~^ ERROR malformed `coverage` attribute input
+//~| ERROR attribute should be applied to a function definition or closure
 impl MyStruct {
     #[coverage = "off"]
-    //~^ ERROR `#[coverage]` must be applied to coverable code
-    //~| ERROR malformed `coverage` attribute input
+    //~^ ERROR malformed `coverage` attribute input
+    //~| ERROR attribute should be applied to a function definition or closure
     const X: u32 = 7;
 }
 
-#[coverage = "off"] //~ ERROR malformed `coverage` attribute input
+#[coverage = "off"]
+//~^ ERROR malformed `coverage` attribute input
+//~| ERROR attribute should be applied to a function definition or closure
 trait MyTrait {
     #[coverage = "off"]
-    //~^ ERROR `#[coverage]` must be applied to coverable code
-    //~| ERROR malformed `coverage` attribute input
+    //~^ ERROR malformed `coverage` attribute input
+    //~| ERROR attribute should be applied to a function definition or closure
     const X: u32;
 
     #[coverage = "off"]
-    //~^ ERROR `#[coverage]` must be applied to coverable code
-    //~| ERROR malformed `coverage` attribute input
+    //~^ ERROR malformed `coverage` attribute input
+    //~| ERROR attribute should be applied to a function definition or closure
     type T;
 }
 
-#[coverage = "off"] //~ ERROR malformed `coverage` attribute input
+#[coverage = "off"]
+//~^ ERROR malformed `coverage` attribute input
+//~| ERROR attribute should be applied to a function definition or closure
 impl MyTrait for MyStruct {
     #[coverage = "off"]
-    //~^ ERROR `#[coverage]` must be applied to coverable code
-    //~| ERROR malformed `coverage` attribute input
+    //~^ ERROR malformed `coverage` attribute input
+    //~| ERROR attribute should be applied to a function definition or closure
     const X: u32 = 8;
 
     #[coverage = "off"]
-    //~^ ERROR `#[coverage]` must be applied to coverable code
-    //~| ERROR malformed `coverage` attribute input
+    //~^ ERROR malformed `coverage` attribute input
+    //~| ERROR attribute should be applied to a function definition or closure
     type T = ();
 }
 
 #[coverage = "off"]
-//~^ ERROR expected `coverage(off)` or `coverage(on)`
-//~| ERROR malformed `coverage` attribute input
+//~^ ERROR malformed `coverage` attribute input
 fn main() {}

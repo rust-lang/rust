@@ -11,7 +11,7 @@ pub struct DisplayBuffer<const SIZE: usize> {
 impl<const SIZE: usize> DisplayBuffer<SIZE> {
     #[inline]
     pub const fn new() -> Self {
-        Self { buf: MaybeUninit::uninit_array(), len: 0 }
+        Self { buf: [MaybeUninit::uninit(); SIZE], len: 0 }
     }
 
     #[inline]

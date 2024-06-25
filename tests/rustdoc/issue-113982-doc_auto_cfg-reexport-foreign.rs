@@ -6,14 +6,14 @@
 
 extern crate colors;
 
-// @has 'foo/index.html' '//*[@class="stab portability"]' 'Non-colors'
-// @has 'foo/struct.Color.html' '//*[@class="stab portability"]' \
+//@ has 'foo/index.html' '//*[@class="stab portability"]' 'Non-colors'
+//@ has 'foo/struct.Color.html' '//*[@class="stab portability"]' \
 //      'Available on non-crate feature colors only.'
 #[cfg(not(feature = "colors"))]
 pub use colors::*;
 
-// @has 'foo/index.html' '//*[@class="stab portability"]' 'Non-fruits'
-// @has 'foo/struct.Red.html' '//*[@class="stab portability"]' \
+//@ has 'foo/index.html' '//*[@class="stab portability"]' 'Non-fruits'
+//@ has 'foo/struct.Red.html' '//*[@class="stab portability"]' \
 //      'Available on non-crate feature fruits only.'
 #[cfg(not(feature = "fruits"))]
 pub use colors::Color as Red;

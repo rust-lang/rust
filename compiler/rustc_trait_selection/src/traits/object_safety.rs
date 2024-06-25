@@ -689,7 +689,7 @@ fn receiver_is_dispatchable<'tcx>(
                 if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
             });
 
-            ty::TraitRef::new(tcx, trait_def_id, args).upcast(tcx)
+            ty::TraitRef::new_from_args(tcx, trait_def_id, args).upcast(tcx)
         };
 
         let caller_bounds =

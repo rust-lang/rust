@@ -3,8 +3,8 @@
 
 #![allow(rustdoc::invalid_rust_codeblocks)]
 
-// @has foo/struct.NonGen.html
-// @has - '//h2' 'Example'
+//@ has foo/struct.NonGen.html
+//@ has - '//h2' 'Example'
 
 /// Item docs.
 ///

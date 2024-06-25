@@ -60,21 +60,9 @@ pub struct InlineNotFnOrClosure {
     pub defn_span: Span,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(passes_coverage_ignored_function_prototype)]
-pub struct IgnoredCoverageFnProto;
-
-#[derive(LintDiagnostic)]
-#[diag(passes_coverage_propagate)]
-pub struct IgnoredCoveragePropagate;
-
-#[derive(LintDiagnostic)]
-#[diag(passes_coverage_fn_defn)]
-pub struct IgnoredCoverageFnDefn;
-
 #[derive(Diagnostic)]
-#[diag(passes_coverage_not_coverable, code = E0788)]
-pub struct IgnoredCoverageNotCoverable {
+#[diag(passes_coverage_not_fn_or_closure, code = E0788)]
+pub struct CoverageNotFnOrClosure {
     #[primary_span]
     pub attr_span: Span,
     #[label]

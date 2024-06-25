@@ -4,10 +4,10 @@
 
 pub struct Error;
 
-// @has 'foo/trait.Write.html'
+//@ has 'foo/trait.Write.html'
 
 pub trait Write {
-    // @snapshot 'declaration' - '//*[@class="rust item-decl"]//code'
+    //@ snapshot 'declaration' - '//*[@class="rust item-decl"]//code'
     fn poll_write(
         self,
         cx: &mut Option<String>,

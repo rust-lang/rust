@@ -4,10 +4,10 @@
 #![feature(no_core)]
 #![no_core]
 
-// @has 'foo/struct.Bar.html'
-// @has - '//*[@id="main-content"]//pre[@class="language-whatever hoho-c"]' 'main;'
-// @has - '//*[@id="main-content"]//pre[@class="language-whatever2 haha-c"]' 'main;'
-// @has - '//*[@id="main-content"]//pre[@class="language-whatever4 huhu-c"]' 'main;'
+//@ has 'foo/struct.Bar.html'
+//@ has - '//*[@id="main-content"]//pre[@class="language-whatever hoho-c"]' 'main;'
+//@ has - '//*[@id="main-content"]//pre[@class="language-whatever2 haha-c"]' 'main;'
+//@ has - '//*[@id="main-content"]//pre[@class="language-whatever4 huhu-c"]' 'main;'
 
 /// ```{class=hoho-c},whatever
 /// main;

@@ -917,11 +917,10 @@ impl<T> MaybeUninit<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_uninit_array)]
     /// #![feature(maybe_uninit_array_assume_init)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let mut array: [MaybeUninit<i32>; 3] = MaybeUninit::uninit_array();
+    /// let mut array: [MaybeUninit<i32>; 3] = [MaybeUninit::uninit(); 3];
     /// array[0].write(0);
     /// array[1].write(1);
     /// array[2].write(2);

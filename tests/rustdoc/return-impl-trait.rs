@@ -8,7 +8,7 @@ pub struct Module<T>(T);
 
 pub type BackendImpl = impl Backend;
 
-// @has return_impl_trait/fn.make_module.html
+//@ has return_impl_trait/fn.make_module.html
 /// Documentation
 pub fn make_module() -> Module<BackendImpl> {
     Module(())

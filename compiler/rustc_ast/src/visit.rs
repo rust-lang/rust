@@ -298,8 +298,8 @@ pub trait Visitor<'ast>: Sized {
 }
 
 pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) -> V::Result {
-    walk_list!(visitor, visit_item, &krate.items);
     walk_list!(visitor, visit_attribute, &krate.attrs);
+    walk_list!(visitor, visit_item, &krate.items);
     V::Result::output()
 }
 
@@ -462,25 +462,25 @@ pub fn walk_variant<'a, V: Visitor<'a>>(visitor: &mut V, variant: &'a Variant) -
 where
     V: Visitor<'a>,
 {
+    walk_list!(visitor, visit_attribute, &variant.attrs);
     try_visit!(visitor.visit_ident(variant.ident));
     try_visit!(visitor.visit_vis(&variant.vis));
     try_visit!(visitor.visit_variant_data(&variant.data));
     visit_opt!(visitor, visit_variant_discr, &variant.disr_expr);
-    walk_list!(visitor, visit_attribute, &variant.attrs);
     V::Result::output()
 }
 
 pub fn walk_expr_field<'a, V: Visitor<'a>>(visitor: &mut V, f: &'a ExprField) -> V::Result {
+    walk_list!(visitor, visit_attribute, &f.attrs);
     try_visit!(visitor.visit_expr(&f.expr));
     try_visit!(visitor.visit_ident(f.ident));
-    walk_list!(visitor, visit_attribute, &f.attrs);
     V::Result::output()
 }
 
 pub fn walk_pat_field<'a, V: Visitor<'a>>(visitor: &mut V, fp: &'a PatField) -> V::Result {
+    walk_list!(visitor, visit_attribute, &fp.attrs);
     try_visit!(visitor.visit_ident(fp.ident));
     try_visit!(visitor.visit_pat(&fp.pat));
-    walk_list!(visitor, visit_attribute, &fp.attrs);
     V::Result::output()
 }
 
@@ -722,8 +722,8 @@ pub fn walk_generic_param<'a, V: Visitor<'a>>(
     visitor: &mut V,
     param: &'a GenericParam,
 ) -> V::Result {
-    try_visit!(visitor.visit_ident(param.ident));
     walk_list!(visitor, visit_attribute, &param.attrs);
+    try_visit!(visitor.visit_ident(param.ident));
     walk_list!(visitor, visit_param_bound, &param.bounds, BoundKind::Bound);
     match &param.kind {
         GenericParamKind::Lifetime => (),
@@ -882,10 +882,10 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(
     ctxt: AssocCtxt,
 ) -> V::Result {
     let &Item { id: _, span: _, ident, ref vis, ref attrs, ref kind, tokens: _ } = item;
+    walk_list!(visitor, visit_attribute, attrs);
     try_visit!(visitor.visit_vis(vis));
     try_visit!(visitor.visit_ident(ident));
     try_visit!(kind.walk(item, ctxt, visitor));
-    walk_list!(visitor, visit_attribute, attrs);
     V::Result::output()
 }
 
@@ -898,10 +898,10 @@ pub fn walk_struct_def<'a, V: Visitor<'a>>(
 }
 
 pub fn walk_field_def<'a, V: Visitor<'a>>(visitor: &mut V, field: &'a FieldDef) -> V::Result {
+    walk_list!(visitor, visit_attribute, &field.attrs);
     try_visit!(visitor.visit_vis(&field.vis));
     visit_opt!(visitor, visit_ident, field.ident);
     try_visit!(visitor.visit_ty(&field.ty));
-    walk_list!(visitor, visit_attribute, &field.attrs);
     V::Result::output()
 }
 
@@ -918,8 +918,8 @@ pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) -> V:
         StmtKind::Empty => {}
         StmtKind::MacCall(mac) => {
             let MacCallStmt { mac, attrs, style: _, tokens: _ } = &**mac;
-            try_visit!(visitor.visit_mac_call(mac));
             walk_list!(visitor, visit_attribute, attrs);
+            try_visit!(visitor.visit_mac_call(mac));
         }
     }
     V::Result::output()
@@ -1141,10 +1141,10 @@ pub fn walk_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Param) -> V::R
 }
 
 pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) -> V::Result {
+    walk_list!(visitor, visit_attribute, &arm.attrs);
     try_visit!(visitor.visit_pat(&arm.pat));
     visit_opt!(visitor, visit_expr, &arm.guard);
     visit_opt!(visitor, visit_expr, &arm.body);
-    walk_list!(visitor, visit_attribute, &arm.attrs);
     V::Result::output()
 }
 
