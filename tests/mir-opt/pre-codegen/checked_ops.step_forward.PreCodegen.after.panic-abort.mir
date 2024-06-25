@@ -11,15 +11,9 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
         scope 3 (inlined <u16 as Step>::forward_checked) {
             scope 4 {
                 scope 6 (inlined core::num::<impl u16>::checked_add) {
+                    let mut _5: (u16, bool);
+                    let mut _6: bool;
                     let mut _7: bool;
-                    scope 7 {
-                    }
-                    scope 8 (inlined core::num::<impl u16>::overflowing_add) {
-                        let mut _5: (u16, bool);
-                        let _6: bool;
-                        scope 9 {
-                        }
-                    }
                 }
             }
             scope 5 (inlined convert::num::ptr_try_from_impls::<impl TryFrom<usize> for u16>::try_from) {
@@ -27,11 +21,11 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
                 let mut _4: u16;
             }
         }
-        scope 10 (inlined Option::<u16>::is_none) {
-            scope 11 (inlined Option::<u16>::is_some) {
+        scope 7 (inlined Option::<u16>::is_none) {
+            scope 8 (inlined Option::<u16>::is_some) {
             }
         }
-        scope 12 (inlined core::num::<impl u16>::wrapping_add) {
+        scope 9 (inlined core::num::<impl u16>::wrapping_add) {
         }
     }
 
@@ -45,12 +39,11 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     bb1: {
         _4 = _2 as u16 (IntToInt);
         StorageDead(_3);
+        StorageLive(_7);
         StorageLive(_6);
         StorageLive(_5);
         _5 = AddWithOverflow(_1, _4);
         _6 = (_5.1: bool);
-        StorageDead(_5);
-        StorageLive(_7);
         _7 = unlikely(move _6) -> [return: bb2, unwind unreachable];
     }
 
@@ -59,14 +52,16 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     }
 
     bb3: {
-        StorageDead(_7);
+        StorageDead(_5);
         StorageDead(_6);
+        StorageDead(_7);
         goto -> bb7;
     }
 
     bb4: {
-        StorageDead(_7);
+        StorageDead(_5);
         StorageDead(_6);
+        StorageDead(_7);
         goto -> bb6;
     }
 
