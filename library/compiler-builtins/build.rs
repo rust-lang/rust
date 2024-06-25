@@ -219,8 +219,6 @@ fn configure_check_cfg() {
 
 #[cfg(feature = "c")]
 mod c {
-    extern crate cc;
-
     use std::collections::{BTreeMap, HashSet};
     use std::env;
     use std::fs::{self, File};
