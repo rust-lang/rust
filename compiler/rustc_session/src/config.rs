@@ -498,9 +498,11 @@ pub enum OutputType {
     DepInfo,
 }
 
-// Safety: Trivial C-Style enums have a stable sort order across compilation sessions.
-unsafe impl StableOrd for OutputType {
+impl StableOrd for OutputType {
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // Trivial C-Style enums have a stable sort order across compilation sessions.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
