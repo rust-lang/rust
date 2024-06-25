@@ -6,6 +6,7 @@ resolver = "2"
 
 [dependencies]
 core = { path = "./sysroot_src/library/core" }
+# TODO: after the sync, revert to using version 0.1.
 # compiler_builtins = "0.1"
 compiler_builtins = "=0.1.109"
 alloc = { path = "./sysroot_src/library/alloc" }
