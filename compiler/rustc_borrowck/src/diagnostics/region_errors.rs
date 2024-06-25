@@ -1151,7 +1151,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         // Get the arguments for the found method, only specifying that `Self` is the receiver type.
         let Some(possible_rcvr_ty) = typeck_results.node_type_opt(rcvr.hir_id) else { return };
         let args = GenericArgs::for_item(tcx, method_def_id, |param, _| {
-            if param.index == 0 {
+            if let ty::GenericParamDefKind::Lifetime = param.kind {
+                tcx.lifetimes.re_erased.into()
+            } else if param.index == 0 && param.name == kw::SelfUpper {
                 possible_rcvr_ty.into()
             } else if param.index == closure_param.index {
                 closure_ty.into()
@@ -1168,7 +1170,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             Obligation::misc(tcx, span, self.mir_def_id(), self.param_env, pred)
         }));
 
-        if ocx.select_all_or_error().is_empty() {
+        if ocx.select_all_or_error().is_empty() && count > 0 {
             diag.span_suggestion_verbose(
                 tcx.hir().body(*body).value.peel_blocks().span.shrink_to_lo(),
                 "dereference the return value",

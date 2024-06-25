@@ -1,5 +1,4 @@
-//@ known-bug: rust-lang/rust#124563
-
+// #124563
 use std::marker::PhantomData;
 
 pub trait Trait {}
@@ -17,11 +16,11 @@ where
     T: Trait,
 {
     type Trait = T;
-    type Bar = BarImpl<'a, 'b, T>;
+    type Bar = BarImpl<'a, 'b, T>; //~ ERROR lifetime bound not satisfied
 
     fn foo(&mut self) {
-        self.enter_scope(|ctx| {
-            BarImpl(ctx);
+        self.enter_scope(|ctx| { //~ ERROR lifetime may not live long enough
+            BarImpl(ctx); //~ ERROR lifetime may not live long enough
         });
     }
 }
@@ -44,3 +43,5 @@ where
 {
     type Foo = FooImpl<'a, 'b, T>;
 }
+
+fn main() {}
