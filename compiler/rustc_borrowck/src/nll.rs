@@ -81,7 +81,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
-    flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'_, 'cx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     upvars: &[&ty::CapturedPlace<'tcx>],
