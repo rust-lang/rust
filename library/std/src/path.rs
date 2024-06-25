@@ -1163,11 +1163,6 @@ pub struct PathBuf {
 }
 
 impl PathBuf {
-    #[inline]
-    fn as_mut_vec(&mut self) -> &mut Vec<u8> {
-        self.inner.as_mut_vec_for_path_buf()
-    }
-
     /// Allocates an empty `PathBuf`.
     ///
     /// # Examples
@@ -2645,18 +2640,18 @@ impl Path {
             None => {
                 // Enough capacity for the extension and the dot
                 let capacity = self_len + extension.len() + 1;
-                let whole_path = self_bytes.iter();
+                let whole_path = self_bytes;
                 (capacity, whole_path)
             }
             Some(previous_extension) => {
                 let capacity = self_len + extension.len() - previous_extension.len();
-                let path_till_dot = self_bytes[..self_len - previous_extension.len()].iter();
+                let path_till_dot = &self_bytes[..self_len - previous_extension.len()];
                 (capacity, path_till_dot)
             }
         };
 
         let mut new_path = PathBuf::with_capacity(new_capacity);
-        new_path.as_mut_vec().extend(slice_to_copy);
+        new_path.inner.extend_from_slice(slice_to_copy);
         new_path.set_extension(extension);
         new_path
     }
