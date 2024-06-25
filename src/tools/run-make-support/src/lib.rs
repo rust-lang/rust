@@ -272,7 +272,6 @@ pub fn shallow_find_files<P: AsRef<Path>, F: Fn(&PathBuf) -> bool>(
     for entry in fs_wrapper::read_dir(path) {
         let entry = entry.expect("failed to read directory entry.");
         let path = entry.path();
-
         if path.is_file() && closure(&path) {
             matching_files.push(path);
         }
