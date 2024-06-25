@@ -1120,7 +1120,7 @@ impl<'a> State<'a> {
     fn print_expr_call(&mut self, func: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
         let prec = match func.kind {
             hir::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
-            _ => parser::PREC_POSTFIX,
+            _ => parser::PREC_UNAMBIGUOUS,
         };
 
         self.print_expr_maybe_paren(func, prec);
@@ -1134,7 +1134,7 @@ impl<'a> State<'a> {
         args: &[hir::Expr<'_>],
     ) {
         let base_args = args;
-        self.print_expr_maybe_paren(receiver, parser::PREC_POSTFIX);
+        self.print_expr_maybe_paren(receiver, parser::PREC_UNAMBIGUOUS);
         self.word(".");
         self.print_ident(segment.ident);
 
@@ -1478,12 +1478,12 @@ impl<'a> State<'a> {
                 self.print_expr_maybe_paren(rhs, prec);
             }
             hir::ExprKind::Field(expr, ident) => {
-                self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
+                self.print_expr_maybe_paren(expr, parser::PREC_UNAMBIGUOUS);
                 self.word(".");
                 self.print_ident(ident);
             }
             hir::ExprKind::Index(expr, index, _) => {
-                self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
+                self.print_expr_maybe_paren(expr, parser::PREC_UNAMBIGUOUS);
                 self.word("[");
                 self.print_expr(index);
                 self.word("]");

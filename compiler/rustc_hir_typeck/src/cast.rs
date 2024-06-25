@@ -946,7 +946,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
     fn lossy_provenance_ptr2int_lint(&self, fcx: &FnCtxt<'a, 'tcx>, t_c: ty::cast::IntTy) {
         let expr_prec = self.expr.precedence().order();
-        let needs_parens = expr_prec < rustc_ast::util::parser::PREC_POSTFIX;
+        let needs_parens = expr_prec < rustc_ast::util::parser::PREC_UNAMBIGUOUS;
 
         let needs_cast = !matches!(t_c, ty::cast::IntTy::U(ty::UintTy::Usize));
         let cast_span = self.expr_span.shrink_to_hi().to(self.cast_span);
