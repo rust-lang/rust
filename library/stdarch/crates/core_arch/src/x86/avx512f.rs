@@ -15717,7 +15717,7 @@ pub unsafe fn _mm_maskz_cvttpd_epu32(k: __mmask8, a: __m128d) -> __m128i {
 #[cfg_attr(test, assert_instr(vxorps))]
 pub unsafe fn _mm512_setzero_pd() -> __m512d {
     // All-0 is a properly initialized __m512d
-    mem::zeroed()
+    const { mem::zeroed() }
 }
 
 /// Returns vector of type `__m512` with all elements set to zero.
@@ -15729,7 +15729,7 @@ pub unsafe fn _mm512_setzero_pd() -> __m512d {
 #[cfg_attr(test, assert_instr(vxorps))]
 pub unsafe fn _mm512_setzero_ps() -> __m512 {
     // All-0 is a properly initialized __m512
-    mem::zeroed()
+    const { mem::zeroed() }
 }
 
 /// Return vector of type `__m512` with all elements set to zero.
@@ -15741,7 +15741,7 @@ pub unsafe fn _mm512_setzero_ps() -> __m512 {
 #[cfg_attr(test, assert_instr(vxorps))]
 pub unsafe fn _mm512_setzero() -> __m512 {
     // All-0 is a properly initialized __m512
-    mem::zeroed()
+    const { mem::zeroed() }
 }
 
 /// Returns vector of type `__m512i` with all elements set to zero.
@@ -15753,7 +15753,7 @@ pub unsafe fn _mm512_setzero() -> __m512 {
 #[cfg_attr(test, assert_instr(vxorps))]
 pub unsafe fn _mm512_setzero_si512() -> __m512i {
     // All-0 is a properly initialized __m512i
-    mem::zeroed()
+    const { mem::zeroed() }
 }
 
 /// Return vector of type `__m512i` with all elements set to zero.
@@ -15765,7 +15765,7 @@ pub unsafe fn _mm512_setzero_si512() -> __m512i {
 #[cfg_attr(test, assert_instr(vxorps))]
 pub unsafe fn _mm512_setzero_epi32() -> __m512i {
     // All-0 is a properly initialized __m512i
-    mem::zeroed()
+    const { mem::zeroed() }
 }
 
 /// Sets packed 32-bit integers in `dst` with the supplied values in reverse
