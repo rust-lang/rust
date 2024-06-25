@@ -179,6 +179,11 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
 /// If `def_id` is an impl, then synthesize the associated type according
 /// to the constness of the impl.
 fn associated_type_for_effects(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DefId> {
+    // don't synthesize the associated type even if the user has written `const_trait`
+    // if the effects feature is disabled.
+    if !tcx.features().effects {
+        return None;
+    }
     match tcx.def_kind(def_id) {
         DefKind::Trait => {
             let trait_def_id = def_id;
@@ -309,7 +314,7 @@ fn associated_type_for_effects(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<De
                 }
             });
 
-            impl_assoc_ty.explicit_item_bounds(ty::EarlyBinder::bind(&[]));
+            // impl_assoc_ty.explicit_item_bounds(ty::EarlyBinder::bind(&[]));
             impl_assoc_ty.explicit_item_super_predicates(ty::EarlyBinder::bind(&[]));
 
             // There are no inferred outlives for the synthesized associated type.

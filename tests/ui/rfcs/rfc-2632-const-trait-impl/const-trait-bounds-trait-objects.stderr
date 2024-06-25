@@ -1,11 +1,11 @@
 error: const trait bounds are not allowed in trait object types
-  --> $DIR/const-trait-bounds-trait-objects.rs:8:17
+  --> $DIR/const-trait-bounds-trait-objects.rs:9:17
    |
 LL |     let _: &dyn const Trait;
    |                 ^^^^^^^^^^^
 
 error: `~const` is not allowed here
-  --> $DIR/const-trait-bounds-trait-objects.rs:9:17
+  --> $DIR/const-trait-bounds-trait-objects.rs:10:17
    |
 LL |     let _: &dyn ~const Trait;
    |                 ^^^^^^
@@ -13,27 +13,18 @@ LL |     let _: &dyn ~const Trait;
    = note: trait objects cannot have `~const` trait bounds
 
 error: const trait bounds are not allowed in trait object types
-  --> $DIR/const-trait-bounds-trait-objects.rs:14:25
+  --> $DIR/const-trait-bounds-trait-objects.rs:15:25
    |
 LL | const fn handle(_: &dyn const NonConst) {}
    |                         ^^^^^^^^^^^^^^
 
 error: `~const` is not allowed here
-  --> $DIR/const-trait-bounds-trait-objects.rs:16:23
+  --> $DIR/const-trait-bounds-trait-objects.rs:17:23
    |
 LL | const fn take(_: &dyn ~const NonConst) {}
    |                       ^^^^^^
    |
    = note: trait objects cannot have `~const` trait bounds
 
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/const-trait-bounds-trait-objects.rs:1:30
-   |
-LL | #![feature(const_trait_impl, effects)]
-   |                              ^^^^^^^
-   |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors
 

@@ -1,4 +1,5 @@
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+#![feature(const_trait_impl)]
+// FIXME(effects) add effects
 //@ edition: 2021
 
 #[const_trait]
