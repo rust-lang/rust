@@ -1,5 +1,6 @@
-//@ check-pass
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+// FIXME(effects) check-pass
+//@ known-bug: #110395
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 trait Foo {
