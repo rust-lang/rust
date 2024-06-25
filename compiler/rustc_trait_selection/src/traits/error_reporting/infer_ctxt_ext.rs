@@ -165,10 +165,10 @@ impl<'tcx> InferCtxt<'tcx> {
                     found_args
                         .iter()
                         .map(|arg| match arg {
-                            ArgKind::Arg(name, _) => name.to_owned(),
-                            _ => "_".to_owned(),
+                            ArgKind::Arg(name, _) => &*name,
+                            _ => "_",
                         })
-                        .collect::<Vec<String>>()
+                        .collect::<Vec<_>>()
                         .join(", "),
                     // add type annotations if available
                     if found_args.iter().any(|arg| match arg {

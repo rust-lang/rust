@@ -995,7 +995,7 @@ impl Subdiagnostic for MoreTargeted {
 
 #[derive(Diagnostic)]
 #[diag(infer_but_needs_to_satisfy, code = E0759)]
-pub struct ButNeedsToSatisfy {
+pub struct ButNeedsToSatisfy<'a> {
     #[primary_span]
     pub sp: Span,
     #[label(infer_influencer)]
@@ -1016,7 +1016,7 @@ pub struct ButNeedsToSatisfy {
     pub param_name: String,
     pub spans_empty: bool,
     pub has_lifetime: bool,
-    pub lifetime: String,
+    pub lifetime: &'a str,
 }
 
 #[derive(Diagnostic)]

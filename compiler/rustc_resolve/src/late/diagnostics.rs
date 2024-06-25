@@ -627,9 +627,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 // (that it's a variant) for E0573 "expected type, found variant".
                 let preamble = if res.is_none() {
                     let others = match enum_candidates.len() {
-                        1 => String::new(),
-                        2 => " and 1 other".to_owned(),
-                        n => format!(" and {n} others"),
+                        1 => "",
+                        2 => " and 1 other",
+                        n => &format!(" and {n} others"),
                     };
                     format!("there is an enum variant `{}`{}; ", enum_candidates[0].0, others)
                 } else {

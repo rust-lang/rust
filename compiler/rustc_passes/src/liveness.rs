@@ -126,15 +126,15 @@ enum LiveNodeKind {
     ErrNode,
 }
 
-fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
+fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> std::borrow::Cow<'static, str> {
     let sm = tcx.sess.source_map();
     match lnk {
-        UpvarNode(s) => format!("Upvar node [{}]", sm.span_to_diagnostic_string(s)),
-        ExprNode(s, _) => format!("Expr node [{}]", sm.span_to_diagnostic_string(s)),
-        VarDefNode(s, _) => format!("Var def node [{}]", sm.span_to_diagnostic_string(s)),
-        ClosureNode => "Closure node".to_owned(),
-        ExitNode => "Exit node".to_owned(),
-        ErrNode => "Error node".to_owned(),
+        UpvarNode(s) => format!("Upvar node [{}]", sm.span_to_diagnostic_string(s)).into(),
+        ExprNode(s, _) => format!("Expr node [{}]", sm.span_to_diagnostic_string(s)).into(),
+        VarDefNode(s, _) => format!("Var def node [{}]", sm.span_to_diagnostic_string(s)).into(),
+        ClosureNode => "Closure node".into(),
+        ExitNode => "Exit node".into(),
+        ErrNode => "Error node".into(),
     }
 }
 

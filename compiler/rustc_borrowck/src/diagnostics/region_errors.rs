@@ -873,7 +873,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                     self.infcx.tcx,
                     diag,
                     fn_returns,
-                    lifetime.to_string(),
+                    lifetime.as_str(),
                     Some(arg),
                     captures,
                     Some((param.param_ty_span, param.param_ty.to_string())),

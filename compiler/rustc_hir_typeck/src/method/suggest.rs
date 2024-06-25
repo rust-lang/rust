@@ -2201,7 +2201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     args.iter().collect()
                 };
-                format!(
+                &format!(
                     "({}{})",
                     first_arg.unwrap_or(""),
                     explicit_args
@@ -2211,16 +2211,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .sess
                             .source_map()
                             .span_to_snippet(arg.span)
+                            .map(Cow::Owned)
                             .unwrap_or_else(|_| {
                                 applicability = Applicability::HasPlaceholders;
-                                "_".to_owned()
+                                "_".into()
                             }))
                         .collect::<Vec<_>>()
                         .join(", "),
                 )
             } else {
                 applicability = Applicability::HasPlaceholders;
-                "(...)".to_owned()
+                "(...)"
             };
             err.span_suggestion(
                 sugg_span,
@@ -2436,7 +2437,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .sess
                         .source_map()
                         .span_to_snippet(lit.span)
-                        .unwrap_or_else(|_| "<numeric literal>".to_owned());
+                        .map(Cow::Owned)
+                        .unwrap_or("<numeric literal>".into());
 
                     // If this is a floating point literal that ends with '.',
                     // get rid of it to stop this from becoming a member access.
@@ -4036,7 +4038,11 @@ fn print_disambiguation_help<'tcx>(
             .into_iter()
             .chain(args)
             .map(|arg| {
-                tcx.sess.source_map().span_to_snippet(arg.span).unwrap_or_else(|_| "_".to_owned())
+                tcx.sess
+                    .source_map()
+                    .span_to_snippet(arg.span)
+                    .map(Cow::Owned)
+                    .unwrap_or("_".into())
             })
             .collect::<Vec<_>>()
             .join(", ");

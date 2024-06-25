@@ -277,10 +277,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                 DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
             );
             let note_msg = match opt_name {
-                Some(name) => format!("`{name}`"),
-                None => "value".to_owned(),
+                Some(name) => &format!("`{name}`"),
+                None => "value",
             };
-            if self.suggest_borrow_fn_like(&mut err, ty, &move_site_vec, &note_msg)
+            if self.suggest_borrow_fn_like(&mut err, ty, &move_site_vec, note_msg)
                 || if let UseSpans::FnSelfUse { kind, .. } = use_spans
                     && let CallKind::FnCall { fn_trait_id, self_ty } = kind
                     && let ty::Param(_) = self_ty.kind()

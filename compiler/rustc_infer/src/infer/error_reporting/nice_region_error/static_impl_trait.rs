@@ -98,7 +98,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let return_sp = sub_origin.span();
         let param = self.find_param_with_region(*sup_r, *sub_r)?;
         let simple_ident = param.param.pat.simple_ident();
-        let lifetime_name = if sup_r.has_name() { sup_r.to_string() } else { "'_".to_owned() };
+        let lifetime_name = if sup_r.has_name() { &sup_r.to_string() } else { "'_" };
 
         let (mention_influencer, influencer_point) =
             if sup_origin.span().overlaps(param.param_ty_span) {
@@ -187,7 +187,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             req_introduces_loc: subdiag,
 
             has_lifetime: sup_r.has_name(),
-            lifetime: lifetime_name.clone(),
+            lifetime: lifetime_name,
             has_param_name: simple_ident.is_some(),
             param_name: simple_ident.map(|x| x.to_string()).unwrap_or_default(),
             spans_empty,
@@ -262,7 +262,7 @@ pub fn suggest_new_region_bound(
     tcx: TyCtxt<'_>,
     err: &mut Diag<'_>,
     fn_returns: Vec<&rustc_hir::Ty<'_>>,
-    lifetime_name: String,
+    lifetime_name: &str,
     arg: Option<&str>,
     captures: String,
     param: Option<(Span, String)>,
@@ -319,7 +319,7 @@ pub fn suggest_new_region_bound(
                 } else if opaque.bounds.iter().any(|arg| {
                     matches!(arg,
                         GenericBound::Outlives(Lifetime { ident, .. })
-                        if ident.name.to_string() == lifetime_name )
+                        if ident.name.as_str() == lifetime_name )
                 }) {
                 } else {
                     // get a lifetime name of existing named lifetimes if any

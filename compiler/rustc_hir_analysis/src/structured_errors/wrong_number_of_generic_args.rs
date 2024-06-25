@@ -358,7 +358,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     matches!(fn_decl.output, hir::FnRetTy::Return(ty) if ty.hir_id == ty_id);
 
                 if in_arg || (in_ret && fn_decl.lifetime_elision_allowed) {
-                    return std::iter::repeat("'_".to_owned())
+                    return std::iter::repeat("'_")
                         .take(num_params_to_take)
                         .collect::<Vec<_>>()
                         .join(", ");
@@ -384,7 +384,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             })
             | hir::Node::AnonConst(..) = node
             {
-                return std::iter::repeat("'static".to_owned())
+                return std::iter::repeat("'static")
                     .take(num_params_to_take.saturating_sub(ret.len()))
                     .collect::<Vec<_>>()
                     .join(", ");

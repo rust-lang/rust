@@ -375,7 +375,7 @@ pub(crate) enum CaptureReasonLabel<'a> {
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum CaptureReasonNote {
+pub(crate) enum CaptureReasonNote<'a> {
     #[note(borrowck_moved_a_fn_once_in_call)]
     FnOnceMoveInCall {
         #[primary_span]
@@ -394,7 +394,7 @@ pub(crate) enum CaptureReasonNote {
     #[note(borrowck_func_take_self_moved_place)]
     FuncTakeSelf {
         func: String,
-        place_name: String,
+        place_name: &'a str,
         #[primary_span]
         span: Span,
     },

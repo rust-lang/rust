@@ -4859,9 +4859,9 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
     obligation: &PredicateObligation<'tcx>,
     trait_predicate: ty::PolyTraitPredicate<'tcx>,
     pre_message: String,
-) -> String {
+) -> Cow<'static, str> {
     if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
-        "consider using `()`, or a `Result`".to_owned()
+        "consider using `()`, or a `Result`".into()
     } else {
         let ty_desc = match trait_predicate.self_ty().skip_binder().kind() {
             ty::FnDef(_, _) => Some("fn item"),
@@ -4896,6 +4896,7 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             // FIXME: add note explaining explicit negative trait bounds.
             format!("{pre_message}the trait bound `{trait_predicate}` is not satisfied{post}")
         }
+        .into()
     }
 }
 

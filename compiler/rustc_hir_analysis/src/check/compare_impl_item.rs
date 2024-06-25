@@ -963,10 +963,10 @@ fn report_trait_method_mismatch<'tcx>(
         {
             let ty = trait_sig.inputs()[0];
             let sugg = match ExplicitSelf::determine(ty, |ty| ty == impl_trait_ref.self_ty()) {
-                ExplicitSelf::ByValue => "self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
-                _ => format!("self: {ty}"),
+                ExplicitSelf::ByValue => "self",
+                ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self",
+                ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self",
+                _ => &format!("self: {ty}"),
             };
 
             // When the `impl` receiver is an arbitrary self type, like `self: Box<Self>`, the
@@ -1182,10 +1182,10 @@ fn compare_self_type<'tcx>(
         let self_arg_ty = tcx.liberate_late_bound_regions(method.def_id, self_arg_ty);
         let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty);
         match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
-            ExplicitSelf::ByValue => "self".to_owned(),
-            ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
-            ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
-            _ => format!("self: {self_arg_ty}"),
+            ExplicitSelf::ByValue => "self".into(),
+            ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".into(),
+            ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".into(),
+            _ => Cow::Owned(format!("self: {self_arg_ty}")),
         }
     };
 

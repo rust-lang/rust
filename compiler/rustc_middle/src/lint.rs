@@ -1,4 +1,4 @@
-use std::cmp;
+use std::{borrow::Cow, cmp};
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -367,21 +367,21 @@ pub fn lint_level(
                 | FutureIncompatibilityReason::FutureReleaseErrorReportInDeps => {
                     "this was previously accepted by the compiler but is being phased out; \
                          it will become a hard error in a future release!"
-                        .to_owned()
+                        .into()
                 }
                 FutureIncompatibilityReason::FutureReleaseSemanticsChange => {
-                    "this will change its meaning in a future release!".to_owned()
+                    "this will change its meaning in a future release!".into()
                 }
                 FutureIncompatibilityReason::EditionError(edition) => {
                     let current_edition = sess.edition();
                     format!(
                         "this is accepted in the current edition (Rust {current_edition}) but is a hard error in Rust {edition}!"
-                    )
+                    ).into()
                 }
                 FutureIncompatibilityReason::EditionSemanticsChange(edition) => {
-                    format!("this changes meaning in Rust {edition}")
+                    format!("this changes meaning in Rust {edition}").into()
                 }
-                FutureIncompatibilityReason::Custom(reason) => reason.to_owned(),
+                FutureIncompatibilityReason::Custom(reason) => Cow::Borrowed(reason),
             };
 
             if future_incompatible.explain_reason {

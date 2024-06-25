@@ -2772,7 +2772,7 @@ pub struct SingleUseLifetimeSugg {
     #[suggestion_part(code = "{replace_lt}")]
     pub use_span: Span,
 
-    pub replace_lt: String,
+    pub replace_lt: &'static str,
 }
 
 #[derive(LintDiagnostic)]

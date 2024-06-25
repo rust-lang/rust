@@ -2196,8 +2196,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 let (open, close) = match ctor_kind {
-                    Some(CtorKind::Fn) => ("(".to_owned(), ")"),
-                    None => (format!(" {{ {field_name}: "), " }"),
+                    Some(CtorKind::Fn) => ("(", ")"),
+                    None => (&*format!(" {{ {field_name}: "), " }"),
 
                     Some(CtorKind::Const) => unreachable!("unit variants don't have fields"),
                 };

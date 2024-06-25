@@ -31,6 +31,7 @@ use rustc_span::{BytePos, Pos, SpanData, SpanDecoder, SyntaxContext, DUMMY_SP};
 use tracing::debug;
 
 use proc_macro::bridge::client::ProcMacro;
+use std::borrow::Cow;
 use std::iter::TrustedLen;
 use std::path::Path;
 use std::{io, iter, mem};
@@ -708,10 +709,10 @@ impl MetadataBlob {
     pub(crate) fn check_compatibility(
         &self,
         cfg_version: &'static str,
-    ) -> Result<(), Option<String>> {
+    ) -> Result<(), Option<Cow<'static, str>>> {
         if !self.blob().starts_with(METADATA_HEADER) {
             if self.blob().starts_with(b"rust") {
-                return Err(Some("<unknown rustc version>".to_owned()));
+                return Err(Some("<unknown rustc version>".into()));
             }
             return Err(None);
         }
@@ -720,7 +721,7 @@ impl MetadataBlob {
             LazyValue::<String>::from_position(NonZero::new(METADATA_HEADER.len() + 8).unwrap())
                 .decode(self);
         if rustc_version(cfg_version) != found_version {
-            return Err(Some(found_version));
+            return Err(Some(found_version.into()));
         }
 
         Ok(())
@@ -750,12 +751,7 @@ impl MetadataBlob {
     ) -> io::Result<()> {
         let root = self.get_root();
 
-        let all_ls_kinds = vec![
-            "root".to_owned(),
-            "lang_items".to_owned(),
-            "features".to_owned(),
-            "items".to_owned(),
-        ];
+        let all_ls_kinds = ["root", "lang_items", "features", "items"].map(str::to_string);
         let ls_kinds = if ls_kinds.contains(&"all".to_owned()) { &all_ls_kinds } else { ls_kinds };
 
         for kind in ls_kinds {

@@ -949,7 +949,7 @@ enum MetadataError<'a> {
     /// The file was present and invalid.
     LoadFailure(String),
     /// The file was present, but compiled with a different rustc version.
-    VersionMismatch { expected_version: String, found_version: String },
+    VersionMismatch { expected_version: String, found_version: Cow<'static, str> },
 }
 
 impl fmt::Display for MetadataError<'_> {

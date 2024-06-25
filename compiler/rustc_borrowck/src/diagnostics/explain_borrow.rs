@@ -180,15 +180,15 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     // If type is an ADT that implements Drop, then
                     // simplify output by reporting just the ADT name.
                     ty::Adt(adt, _args) if adt.has_dtor(tcx) && !adt.is_box() => {
-                        ("`Drop` code", format!("type `{}`", tcx.def_path_str(adt.did())))
+                        ("`Drop` code", &*format!("type `{}`", tcx.def_path_str(adt.did())))
                     }
 
                     // Otherwise, just report the whole type (and use
                     // the intentionally fuzzy phrase "destructor")
-                    ty::Closure(..) => ("destructor", "closure".to_owned()),
-                    ty::Coroutine(..) => ("destructor", "coroutine".to_owned()),
+                    ty::Closure(..) => ("destructor", "closure"),
+                    ty::Coroutine(..) => ("destructor", "coroutine"),
 
-                    _ => ("destructor", format!("type `{}`", local_decl.ty)),
+                    _ => ("destructor", &*format!("type `{}`", local_decl.ty)),
                 };
 
                 match local_names[dropped_local] {

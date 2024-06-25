@@ -1377,10 +1377,10 @@ pub struct OnlyHasEffectOn {
 
 #[derive(Diagnostic)]
 #[diag(passes_object_lifetime_err)]
-pub struct ObjectLifetimeErr {
+pub struct ObjectLifetimeErr<'a> {
     #[primary_span]
     pub span: Span,
-    pub repr: String,
+    pub repr: &'a str,
 }
 
 #[derive(Diagnostic)]

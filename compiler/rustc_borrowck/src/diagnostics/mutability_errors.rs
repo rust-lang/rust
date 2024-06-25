@@ -19,6 +19,7 @@ use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
+use std::borrow::Cow;
 
 use crate::diagnostics::BorrowedContentSource;
 use crate::util::FindAssignments;
@@ -1108,9 +1109,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         let label = match *local_decl.local_info() {
             LocalInfo::User(mir::BindingForm::ImplicitSelf(_)) => {
                 let suggestion = suggest_ampmut_self(self.infcx.tcx, decl_span);
-                let additional =
-                    local_trait.map(|span| (span, suggest_ampmut_self(self.infcx.tcx, span)));
-                Some((true, decl_span, suggestion, additional))
+                let additional = local_trait
+                    .map(|span| (span, suggest_ampmut_self(self.infcx.tcx, span).into_owned()));
+                Some((true, decl_span, suggestion.into_owned(), additional))
             }
 
             LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
@@ -1176,7 +1177,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                                 ),
                             }
                         };
-                        Some((has_sugg, decl_span, sugg, None))
+                        Some((has_sugg, decl_span, sugg.into_owned(), None))
                     }
                 }
             }
@@ -1187,7 +1188,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             })) => {
                 let pattern_span: Span = local_decl.source_info.span;
                 suggest_ref_mut(self.infcx.tcx, pattern_span)
-                    .map(|span| (true, span, "mut ".to_owned(), None))
+                    .map(|span| (true, span, "mut ".into(), None))
             }
 
             _ => unreachable!(),
@@ -1404,17 +1405,17 @@ pub fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<
     }
 }
 
-fn suggest_ampmut_self<'tcx>(tcx: TyCtxt<'tcx>, span: Span) -> String {
+fn suggest_ampmut_self<'tcx>(tcx: TyCtxt<'tcx>, span: Span) -> Cow<'static, str> {
     match tcx.sess.source_map().span_to_snippet(span) {
         Ok(snippet) => {
             let lt_pos = snippet.find('\'');
             if let Some(lt_pos) = lt_pos {
-                format!("&{}mut self", &snippet[lt_pos..snippet.len() - 4])
+                format!("&{}mut self", &snippet[lt_pos..snippet.len() - 4]).into()
             } else {
-                "&mut self".to_string()
+                "&mut self".into()
             }
         }
-        _ => "&mut self".to_string(),
+        _ => "&mut self".into(),
     }
 }
 
@@ -1439,7 +1440,7 @@ fn suggest_ampmut<'tcx>(
     decl_span: Span,
     opt_assignment_rhs_span: Option<Span>,
     opt_ty_info: Option<Span>,
-) -> (bool, Span, String) {
+) -> (bool, Span, Cow<'static, str>) {
     // if there is a RHS and it starts with a `&` from it, then check if it is
     // mutable, and if not, put suggest putting `mut ` to make it mutable.
     // we don't have to worry about lifetime annotations here because they are
@@ -1475,7 +1476,7 @@ fn suggest_ampmut<'tcx>(
 
             // FIXME(Ezrashaw): returning is bad because we still might want to
             // update the annotated type, see #106857.
-            return (true, span, "mut ".to_owned());
+            return (true, span, "mut ".into());
         }
     }
 
@@ -1500,18 +1501,18 @@ fn suggest_ampmut<'tcx>(
         && let Some(ws_pos) = src.find(char::is_whitespace)
     {
         let span = span.with_lo(span.lo() + BytePos(ws_pos as u32)).shrink_to_lo();
-        (true, span, " mut".to_owned())
+        (true, span, " mut".into())
     // if there is already a binding, we modify it to be `mut`
     } else if binding_exists {
         // shrink the span to just after the `&` in `&variable`
         let span = span.with_lo(span.lo() + BytePos(1)).shrink_to_lo();
-        (true, span, "mut ".to_owned())
+        (true, span, "mut ".into())
     } else {
         // otherwise, suggest that the user annotates the binding; we provide the
         // type of the local.
         let ty = decl_ty.builtin_deref(true).unwrap();
 
-        (false, span, format!("{}mut {}", if decl_ty.is_ref() { "&" } else { "*" }, ty))
+        (false, span, format!("{}mut {}", if decl_ty.is_ref() { "&" } else { "*" }, ty).into())
     }
 }
 

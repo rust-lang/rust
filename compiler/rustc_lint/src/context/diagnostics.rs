@@ -133,11 +133,11 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
         } => {
             let sub = suggestion.map(|suggestion| stability::DeprecationSuggestion {
                 span: suggestion_span,
-                kind: "macro".to_owned(),
+                kind: "macro",
                 suggestion,
             });
 
-            stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind }
+            stability::Deprecated { sub, kind: "macro", path, note, since_kind }
                 .decorate_lint(diag);
         }
         BuiltinLintDiag::UnusedDocComment(attr_span) => {
@@ -215,9 +215,9 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
             let suggestion = if let Some(deletion_span) = deletion_span {
                 let (use_span, replace_lt) = if elide {
                     let use_span = sess.source_map().span_extend_while_whitespace(use_span);
-                    (use_span, String::new())
+                    (use_span, "")
                 } else {
-                    (use_span, "'_".to_owned())
+                    (use_span, "'_")
                 };
                 debug!(?deletion_span, ?use_span);
 

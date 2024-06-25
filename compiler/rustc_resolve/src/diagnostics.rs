@@ -2022,10 +2022,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // ::foo is mounted at the crate root for 2015, and is the extern
                 // prelude for 2018+
                 kw::PathRoot if self.tcx.sess.edition() > Edition::Edition2015 => {
-                    "the list of imported crates".to_owned()
+                    "the list of imported crates"
                 }
-                kw::PathRoot | kw::Crate => "the crate root".to_owned(),
-                _ => format!("`{parent}`"),
+                kw::PathRoot | kw::Crate => "the crate root",
+                _ => &format!("`{parent}`"),
             };
 
             let mut msg = format!("could not find `{ident}` in {parent}");
