@@ -1163,11 +1163,6 @@ pub struct PathBuf {
 }
 
 impl PathBuf {
-    #[inline]
-    fn as_mut_vec(&mut self) -> &mut Vec<u8> {
-        self.inner.as_mut_vec_for_path_buf()
-    }
-
     /// Allocates an empty `PathBuf`.
     ///
     /// # Examples
@@ -1290,7 +1285,8 @@ impl PathBuf {
 
     fn _push(&mut self, path: &Path) {
         // in general, a separator is needed if the rightmost byte is not a separator
-        let mut need_sep = self.as_mut_vec().last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
+        let buf = self.inner.as_encoded_bytes();
+        let mut need_sep = buf.last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
 
         // in the special case of `C:` on Windows, do *not* add a separator
         let comps = self.components();
@@ -1304,7 +1300,7 @@ impl PathBuf {
 
         // absolute `path` replaces `self`
         if path.is_absolute() || path.prefix().is_some() {
-            self.as_mut_vec().truncate(0);
+            self.inner.truncate(0);
 
         // verbatim paths need . and .. removed
         } else if comps.prefix_verbatim() && !path.inner.is_empty() {
@@ -1349,7 +1345,7 @@ impl PathBuf {
         // `path` has a root but no prefix, e.g., `\windows` (Windows only)
         } else if path.has_root() {
             let prefix_len = self.components().prefix_remaining();
-            self.as_mut_vec().truncate(prefix_len);
+            self.inner.truncate(prefix_len);
 
         // `path` is a pure relative path
         } else if need_sep {
@@ -1382,7 +1378,7 @@ impl PathBuf {
     pub fn pop(&mut self) -> bool {
         match self.parent().map(|p| p.as_u8_slice().len()) {
             Some(len) => {
-                self.as_mut_vec().truncate(len);
+                self.inner.truncate(len);
                 true
             }
             None => false,
@@ -1510,15 +1506,14 @@ impl PathBuf {
         // truncate until right after the file stem
         let end_file_stem = file_stem[file_stem.len()..].as_ptr().addr();
         let start = self.inner.as_encoded_bytes().as_ptr().addr();
-        let v = self.as_mut_vec();
-        v.truncate(end_file_stem.wrapping_sub(start));
+        self.inner.truncate(end_file_stem.wrapping_sub(start));
 
         // add the new extension, if any
-        let new = extension.as_encoded_bytes();
+        let new = extension;
         if !new.is_empty() {
-            v.reserve_exact(new.len() + 1);
-            v.push(b'.');
-            v.extend_from_slice(new);
+            self.inner.reserve_exact(new.len() + 1);
+            self.inner.push(OsStr::new("."));
+            self.inner.push(new);
         }
 
         true
@@ -2645,18 +2640,18 @@ impl Path {
             None => {
                 // Enough capacity for the extension and the dot
                 let capacity = self_len + extension.len() + 1;
-                let whole_path = self_bytes.iter();
+                let whole_path = self_bytes;
                 (capacity, whole_path)
             }
             Some(previous_extension) => {
                 let capacity = self_len + extension.len() - previous_extension.len();
-                let path_till_dot = self_bytes[..self_len - previous_extension.len()].iter();
+                let path_till_dot = &self_bytes[..self_len - previous_extension.len()];
                 (capacity, path_till_dot)
             }
         };
 
         let mut new_path = PathBuf::with_capacity(new_capacity);
-        new_path.as_mut_vec().extend(slice_to_copy);
+        new_path.inner.extend_from_slice(slice_to_copy);
         new_path.set_extension(extension);
         new_path
     }
