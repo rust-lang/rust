@@ -4,15 +4,15 @@
 
 use crate::ptr;
 use crate::sys::thread_local::destructors;
-use crate::sys::thread_local::key::StaticKey;
+use crate::sys::thread_local::key::{set, LazyKey};
 
 pub fn enable() {
-    static DTORS: StaticKey = StaticKey::new(Some(run));
+    static DTORS: LazyKey = LazyKey::new(Some(run));
 
     // Setting the key value to something other than NULL will result in the
     // destructor being run at thread exit.
     unsafe {
-        DTORS.set(ptr::without_provenance_mut(1));
+        set(DTORS.force(), ptr::without_provenance_mut(1));
     }
 
     unsafe extern "C" fn run(_: *mut u8) {

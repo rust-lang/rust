@@ -2,7 +2,7 @@ use super::abort_on_dtor_unwind;
 use crate::cell::Cell;
 use crate::marker::PhantomData;
 use crate::ptr;
-use crate::sys::thread_local::key::StaticKey as OsKey;
+use crate::sys::thread_local::key::{get, set, Key, LazyKey};
 
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals)]
@@ -22,12 +22,12 @@ pub macro thread_local_inner {
 
         unsafe {
             use $crate::thread::LocalKey;
-            use $crate::thread::local_impl::Key;
+            use $crate::thread::local_impl::Storage;
 
             // Inlining does not work on windows-gnu due to linking errors around
             // dllimports. See https://github.com/rust-lang/rust/issues/109797.
             LocalKey::new(#[cfg_attr(windows, inline(never))] |init| {
-                static VAL: Key<$t> = Key::new();
+                static VAL: Storage<$t> = Storage::new();
                 VAL.get(init, __init)
             })
         }
@@ -41,22 +41,22 @@ pub macro thread_local_inner {
 /// Use a regular global static to store this key; the state provided will then be
 /// thread-local.
 #[allow(missing_debug_implementations)]
-pub struct Key<T> {
-    os: OsKey,
+pub struct Storage<T> {
+    key: LazyKey,
     marker: PhantomData<Cell<T>>,
 }
 
-unsafe impl<T> Sync for Key<T> {}
+unsafe impl<T> Sync for Storage<T> {}
 
 struct Value<T: 'static> {
     value: T,
-    key: &'static Key<T>,
+    key: Key,
 }
 
-impl<T: 'static> Key<T> {
+impl<T: 'static> Storage<T> {
     #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
-    pub const fn new() -> Key<T> {
-        Key { os: OsKey::new(Some(destroy_value::<T>)), marker: PhantomData }
+    pub const fn new() -> Storage<T> {
+        Storage { key: LazyKey::new(Some(destroy_value::<T>)), marker: PhantomData }
     }
 
     /// Get a pointer to the TLS value, potentially initializing it with the
@@ -66,19 +66,19 @@ impl<T: 'static> Key<T> {
     /// The resulting pointer may not be used after reentrant inialialization
     /// or thread destruction has occurred.
     pub fn get(&'static self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
-        // SAFETY: (FIXME: get should actually be safe)
-        let ptr = unsafe { self.os.get() as *mut Value<T> };
+        let key = self.key.force();
+        let ptr = unsafe { get(key) as *mut Value<T> };
         if ptr.addr() > 1 {
             // SAFETY: the check ensured the pointer is safe (its destructor
             // is not running) + it is coming from a trusted source (self).
             unsafe { &(*ptr).value }
         } else {
-            self.try_initialize(ptr, i, f)
+            unsafe { Self::try_initialize(key, ptr, i, f) }
         }
     }
 
-    fn try_initialize(
-        &'static self,
+    unsafe fn try_initialize(
+        key: Key,
         ptr: *mut Value<T>,
         i: Option<&mut Option<T>>,
         f: impl FnOnce() -> T,
@@ -88,13 +88,13 @@ impl<T: 'static> Key<T> {
             return ptr::null();
         }
 
-        let value = i.and_then(Option::take).unwrap_or_else(f);
-        let ptr = Box::into_raw(Box::new(Value { value, key: self }));
-        // SAFETY: (FIXME: get should actually be safe)
-        let old = unsafe { self.os.get() as *mut Value<T> };
+        let value = Box::new(Value { value: i.and_then(Option::take).unwrap_or_else(f), key });
+        let ptr = Box::into_raw(value);
+
+        let old = unsafe { get(key) as *mut Value<T> };
         // SAFETY: `ptr` is a correct pointer that can be destroyed by the key destructor.
         unsafe {
-            self.os.set(ptr as *mut u8);
+            set(key, ptr as *mut u8);
         }
         if !old.is_null() {
             // If the variable was recursively initialized, drop the old value.
@@ -123,8 +123,8 @@ unsafe extern "C" fn destroy_value<T: 'static>(ptr: *mut u8) {
     abort_on_dtor_unwind(|| {
         let ptr = unsafe { Box::from_raw(ptr as *mut Value<T>) };
         let key = ptr.key;
-        unsafe { key.os.set(ptr::without_provenance_mut(1)) };
+        unsafe { set(key, ptr::without_provenance_mut(1)) };
         drop(ptr);
-        unsafe { key.os.set(ptr::null_mut()) };
+        unsafe { set(key, ptr::null_mut()) };
     });
 }
