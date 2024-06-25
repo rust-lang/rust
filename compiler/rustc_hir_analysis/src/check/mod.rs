@@ -211,11 +211,18 @@ fn missing_items_err(
         .collect::<Vec<_>>()
         .join("`, `");
 
-    // `Span` before impl block closing brace.
-    let hi = full_impl_span.hi() - BytePos(1);
-    // Point at the place right before the closing brace of the relevant `impl` to suggest
-    // adding the associated item at the end of its body.
-    let sugg_sp = full_impl_span.with_lo(hi).with_hi(hi);
+    let sugg_sp = if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(full_impl_span)
+        && snippet.ends_with("}")
+    {
+        // `Span` before impl block closing brace.
+        let hi = full_impl_span.hi() - BytePos(1);
+        // Point at the place right before the closing brace of the relevant `impl` to suggest
+        // adding the associated item at the end of its body.
+        full_impl_span.with_lo(hi).with_hi(hi)
+    } else {
+        full_impl_span.shrink_to_hi()
+    };
+
     // Obtain the level of indentation ending in `sugg_sp`.
     let padding =
         tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(|| String::new());
