@@ -257,10 +257,6 @@ These builtins are needed to support `f16` and `f128`, which are in the process 
 - [ ] floatunsitf.c
 - [x] multf3.c
 - [ ] powitf2.c
-- [ ] ppc/fixtfdi.c
-- [ ] ppc/fixunstfdi.c
-- [ ] ppc/floatditf.c
-- [ ] ppc/floatunditf.c
 - [x] subtf3.c
 - [x] truncdfhf2.c
 - [x] truncsfhf2.c
@@ -270,12 +266,9 @@ These builtins are needed to support `f16` and `f128`, which are in the process 
 
 ## Unimplemented functions
 
-These builtins involve floating-point types ("`f80`" and complex numbers) that are not supported by Rust.
+These builtins are for x87 `f80` floating-point numbers that are not supported
+by Rust.
 
-- ~~divdc3.c~~
-- ~~divsc3.c~~
-- ~~divtc3.c~~
-- ~~divxc3.c~~
 - ~~fixunsxfdi.c~~
 - ~~fixunsxfsi.c~~
 - ~~fixunsxfti.c~~
@@ -287,19 +280,35 @@ These builtins involve floating-point types ("`f80`" and complex numbers) that a
 - ~~floatuntixf.c~~
 - ~~i386/floatdixf.S~~
 - ~~i386/floatundixf.S~~
-- ~~muldc3.c~~
-- ~~mulsc3.c~~
-- ~~multc3.c~~
-- ~~mulxc3.c~~
-- ~~powixf2.c~~
+- ~~x86_64/floatdixf.c~~
+- ~~x86_64/floatundixf.S~~
+
+These builtins are for IBM "extended double" non-IEEE 128-bit floating-point
+numbers.
+
 - ~~ppc/divtc3.c~~
+- ~~ppc/fixtfdi.c~~
+- ~~ppc/fixunstfdi.c~~
+- ~~ppc/floatditf.c~~
+- ~~ppc/floatunditf.c~~
 - ~~ppc/gcc_qadd.c~~
 - ~~ppc/gcc_qdiv.c~~
 - ~~ppc/gcc_qmul.c~~
 - ~~ppc/gcc_qsub.c~~
 - ~~ppc/multc3.c~~
-- ~~x86_64/floatdixf.c~~
-- ~~x86_64/floatundixf.S~~
+
+These builtins involve complex floating-point types that are not supported by
+Rust.
+
+- ~~divdc3.c~~
+- ~~divsc3.c~~
+- ~~divtc3.c~~
+- ~~divxc3.c~~
+- ~~muldc3.c~~
+- ~~mulsc3.c~~
+- ~~multc3.c~~
+- ~~mulxc3.c~~
+- ~~powixf2.c~~
 
 These builtins are never called by LLVM.
 
