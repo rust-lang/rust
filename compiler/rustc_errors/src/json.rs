@@ -135,7 +135,12 @@ impl Emitter for JsonEmitter {
         let data: Vec<FutureBreakageItem<'_>> = diags
             .into_iter()
             .map(|mut diag| {
-                if diag.level == crate::Level::Allow {
+                // The `FutureBreakageItem` is collected and serialized.
+                // However, the `allow` and `expect` lint levels can't usually
+                // be serialized. The lint level is overwritten to allow the
+                // serialization again and force a lint emission.
+                // (This is an educated guess. I didn't originally add this)
+                if matches!(diag.level, crate::Level::Allow | crate::Level::Expect(..)) {
                     diag.level = crate::Level::Warning;
                 }
                 FutureBreakageItem {
