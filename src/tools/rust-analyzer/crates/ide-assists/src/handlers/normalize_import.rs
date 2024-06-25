@@ -120,9 +120,38 @@ mod tests {
     }
 
     #[test]
+    fn test_braces_kept() {
+        check_assist_not_applicable_variations!("foo::bar::{$0self}");
+
+        // This code compiles but transforming "bar::{self}" into "bar" causes a
+        // compilation error (the name `bar` is defined multiple times).
+        // Therefore, the normalize_input assist must not apply here.
+        check_assist_not_applicable(
+            normalize_import,
+            r"
+mod foo {
+
+    pub mod bar {}
+
+    pub const bar: i32 = 8;
+}
+
+use foo::bar::{$0self};
+
+const bar: u32 = 99;
+
+fn main() {
+    let local_bar = bar;
+}
+
+",
+        );
+    }
+
+    #[test]
     fn test_redundant_braces() {
         check_assist_variations!("foo::{bar::{baz, Qux}}", "foo::bar::{baz, Qux}");
-        check_assist_variations!("foo::{bar::{self}}", "foo::bar");
+        check_assist_variations!("foo::{bar::{self}}", "foo::bar::{self}");
         check_assist_variations!("foo::{bar::{*}}", "foo::bar::*");
         check_assist_variations!("foo::{bar::{Qux as Quux}}", "foo::bar::Qux as Quux");
         check_assist_variations!(
