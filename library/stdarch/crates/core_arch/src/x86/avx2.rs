@@ -3124,8 +3124,6 @@ pub unsafe fn _mm256_srlv_epi64(a: __m256i, count: __m256i) -> __m256i {
     transmute(psrlvq256(a.as_i64x4(), count.as_i64x4()))
 }
 
-// TODO _mm256_stream_load_si256 (__m256i const* mem_addr)
-
 /// Subtract packed 16-bit integers in `b` from packed 16-bit integers in `a`
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sub_epi16)

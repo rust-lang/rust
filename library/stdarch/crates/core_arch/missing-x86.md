@@ -53,6 +53,7 @@
 
 <details><summary>["AVX2"]</summary><p>
 
+  * [ ] [`_mm256_stream_load_si256`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_stream_load_si256)
   * [ ] [`_mm_broadcastsi128_si256`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_broadcastsi128_si256)
 </p></details>
 
@@ -174,6 +175,7 @@
   * [ ] [`_mm512_mask_i32logather_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_i32logather_pd)
   * [ ] [`_mm512_mask_i32loscatter_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_i32loscatter_epi64)
   * [ ] [`_mm512_mask_i32loscatter_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_i32loscatter_pd)
+  * [ ] [`_mm512_stream_load_si512`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_stream_load_si512)
   * [ ] [`_mm_mask_load_sd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_load_sd)
   * [ ] [`_mm_mask_load_ss`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_load_ss)
   * [ ] [`_mm_mask_store_sd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_store_sd)
@@ -1539,95 +1541,24 @@
 
 <details><summary>["SSE"]</summary><p>
 
-  * [ ] [`_m_maskmovq`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_m_maskmovq)
-  * [ ] [`_m_pavgb`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_m_pavgb)
-  * [ ] [`_m_pavgw`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_m_pavgw)
-  * [ ] [`_m_pextrw`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_m_pextrw)
-  * [ ] [`_m_pinsrw`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_m_pinsrw)
-  * [ ] [`_m_pmaxsw`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_m_pmaxsw)
-  * [ ] [`_m_pmaxub`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_m_pmaxub)
-  * [ ] [`_m_pminsw`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_m_pminsw)
-  * [ ] [`_m_pminub`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_m_pminub)
-  * [ ] [`_m_pmovmskb`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_m_pmovmskb)
-  * [ ] [`_m_pmulhuw`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_m_pmulhuw)
-  * [ ] [`_m_psadbw`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_m_psadbw)
-  * [ ] [`_m_pshufw`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_m_pshufw)
-  * [ ] [`_mm_avg_pu16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_avg_pu16)
-  * [ ] [`_mm_avg_pu8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_avg_pu8)
-  * [ ] [`_mm_cvt_pi2ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvt_pi2ps)
-  * [ ] [`_mm_cvt_ps2pi`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvt_ps2pi)
-  * [ ] [`_mm_cvtpi16_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtpi16_ps)
-  * [ ] [`_mm_cvtpi32_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtpi32_ps)
-  * [ ] [`_mm_cvtpi32x2_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtpi32x2_ps)
-  * [ ] [`_mm_cvtpi8_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtpi8_ps)
-  * [ ] [`_mm_cvtps_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtps_pi16)
-  * [ ] [`_mm_cvtps_pi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtps_pi32)
-  * [ ] [`_mm_cvtps_pi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtps_pi8)
-  * [ ] [`_mm_cvtpu16_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtpu16_ps)
-  * [ ] [`_mm_cvtpu8_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtpu8_ps)
-  * [ ] [`_mm_cvtt_ps2pi`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtt_ps2pi)
-  * [ ] [`_mm_cvttps_pi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvttps_pi32)
-  * [ ] [`_mm_extract_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_extract_pi16)
   * [ ] [`_mm_free`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_free)
-  * [ ] [`_mm_insert_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_insert_pi16)
-  * [ ] [`_mm_loadh_pi`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadh_pi)
-  * [ ] [`_mm_loadl_pi`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadl_pi)
   * [ ] [`_mm_malloc`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_malloc)
-  * [ ] [`_mm_maskmove_si64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskmove_si64)
-  * [ ] [`_mm_max_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_max_pi16)
-  * [ ] [`_mm_max_pu8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_max_pu8)
-  * [ ] [`_mm_min_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_min_pi16)
-  * [ ] [`_mm_min_pu8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_min_pu8)
-  * [ ] [`_mm_movemask_pi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_movemask_pi8)
-  * [ ] [`_mm_mulhi_pu16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mulhi_pu16)
-  * [ ] [`_mm_sad_pu8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sad_pu8)
-  * [ ] [`_mm_shuffle_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shuffle_pi16)
-  * [ ] [`_mm_shuffle_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shuffle_ps)
-  * [ ] [`_mm_storeh_pi`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storeh_pi)
-  * [ ] [`_mm_storel_pi`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storel_pi)
-  * [ ] [`_mm_stream_pi`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_stream_pi)
 </p></details>
 
 
 <details><summary>["SSE2"]</summary><p>
 
-  * [ ] [`_mm_add_si64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_add_si64)
-  * [ ] [`_mm_cvtpd_pi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtpd_pi32)
-  * [ ] [`_mm_cvtpi32_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtpi32_pd)
-  * [ ] [`_mm_cvttpd_pi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvttpd_pi32)
   * [ ] [`_mm_loadu_si16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadu_si16)
   * [ ] [`_mm_loadu_si32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadu_si32)
-  * [ ] [`_mm_movepi64_pi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_movepi64_pi64)
-  * [ ] [`_mm_movpi64_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_movpi64_epi64)
-  * [ ] [`_mm_mul_su32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mul_su32)
-  * [ ] [`_mm_set1_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_set1_epi64)
-  * [ ] [`_mm_set_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_set_epi64)
-  * [ ] [`_mm_setr_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_setr_epi64)
   * [ ] [`_mm_storeu_si16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storeu_si16)
   * [ ] [`_mm_storeu_si32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storeu_si32)
   * [ ] [`_mm_storeu_si64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storeu_si64)
-  * [ ] [`_mm_sub_si64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sub_si64)
 </p></details>
 
 
-<details><summary>["SSSE3"]</summary><p>
+<details><summary>["SSE4.1"]</summary><p>
 
-  * [ ] [`_mm_abs_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_abs_pi16)
-  * [ ] [`_mm_abs_pi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_abs_pi32)
-  * [ ] [`_mm_abs_pi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_abs_pi8)
-  * [ ] [`_mm_alignr_pi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_alignr_pi8)
-  * [ ] [`_mm_hadd_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hadd_pi16)
-  * [ ] [`_mm_hadd_pi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hadd_pi32)
-  * [ ] [`_mm_hadds_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hadds_pi16)
-  * [ ] [`_mm_hsub_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hsub_pi16)
-  * [ ] [`_mm_hsub_pi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hsub_pi32)
-  * [ ] [`_mm_hsubs_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hsubs_pi16)
-  * [ ] [`_mm_maddubs_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maddubs_pi16)
-  * [ ] [`_mm_mulhrs_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mulhrs_pi16)
-  * [ ] [`_mm_shuffle_pi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shuffle_pi8)
-  * [ ] [`_mm_sign_pi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sign_pi16)
-  * [ ] [`_mm_sign_pi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sign_pi32)
-  * [ ] [`_mm_sign_pi8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sign_pi8)
+  * [ ] [`_mm_stream_load_si128`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_stream_load_si128)
 </p></details>
 
 

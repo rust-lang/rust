@@ -1308,11 +1308,11 @@ pub unsafe fn _mm_storel_epi64(mem_addr: *mut __m128i, a: __m128i) {
 /// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "sse,sse2")]
-#[cfg_attr(test, assert_instr(movntps))] // FIXME movntdq
+#[cfg_attr(test, assert_instr(movntdq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
     crate::arch::asm!(
-        "movntps [{mem_addr}], {a}",
+        "movntdq [{mem_addr}], {a}",
         mem_addr = in(reg) mem_addr,
         a = in(xmm_reg) a,
         options(nostack, preserves_flags),
@@ -2537,12 +2537,12 @@ pub unsafe fn _mm_loadl_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
 /// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "sse,sse2")]
-#[cfg_attr(test, assert_instr(movntps))] // FIXME movntpd
+#[cfg_attr(test, assert_instr(movntpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_stream_pd(mem_addr: *mut f64, a: __m128d) {
     crate::arch::asm!(
-        "movntps [{mem_addr}], {a}",
+        "movntpd [{mem_addr}], {a}",
         mem_addr = in(reg) mem_addr,
         a = in(xmm_reg) a,
         options(nostack, preserves_flags),
@@ -2711,6 +2711,18 @@ pub unsafe fn _mm_loadu_pd(mem_addr: *const f64) -> __m128d {
         mem::size_of::<__m128d>(),
     );
     dst
+}
+
+/// Loads unaligned 64-bits of integer data from memory into new vector.
+///
+/// `mem_addr` does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_loadu_si64)
+#[inline]
+#[target_feature(enable = "sse2")]
+#[stable(feature = "simd_x86_mm_loadu_si64", since = "1.46.0")]
+pub unsafe fn _mm_loadu_si64(mem_addr: *const u8) -> __m128i {
+    transmute(i64x2::new(ptr::read_unaligned(mem_addr as *const i64), 0))
 }
 
 /// Constructs a 128-bit floating-point vector of `[2 x double]` from two
@@ -4769,6 +4781,13 @@ mod tests {
         let r = _mm_loadu_pd(d);
         let e = _mm_add_pd(_mm_setr_pd(1.0, 2.0), _mm_set1_pd(offset as f64));
         assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "sse2")]
+    unsafe fn test_mm_loadu_si64() {
+        let a = _mm_setr_epi64x(5, 6);
+        let r = _mm_loadu_si64(ptr::addr_of!(a) as *const _);
+        assert_eq_m128i(r, _mm_setr_epi64x(5, 0));
     }
 
     #[simd_test(enable = "sse2")]

@@ -1204,18 +1204,6 @@ pub unsafe fn _mm_loadr_ps(p: *const f32) -> __m128 {
     simd_shuffle!(a, a, [3, 2, 1, 0])
 }
 
-/// Loads unaligned 64-bits of integer data from memory into new vector.
-///
-/// `mem_addr` does not need to be aligned on any particular boundary.
-///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_loadu_si64)
-#[inline]
-#[target_feature(enable = "sse")]
-#[stable(feature = "simd_x86_mm_loadu_si64", since = "1.46.0")]
-pub unsafe fn _mm_loadu_si64(mem_addr: *const u8) -> __m128i {
-    transmute(i64x2::new(ptr::read_unaligned(mem_addr as *const i64), 0))
-}
-
 /// Stores the lowest 32 bit float of `a` into memory.
 ///
 /// This intrinsic corresponds to the `MOVSS` instruction.
@@ -3187,13 +3175,6 @@ mod tests {
         let r = _mm_loadr_ps(p);
         let e = _mm_add_ps(_mm_setr_ps(4.0, 3.0, 2.0, 1.0), _mm_set1_ps(fixup));
         assert_eq_m128(r, e);
-    }
-
-    #[simd_test(enable = "sse2")]
-    unsafe fn test_mm_loadu_si64() {
-        let a = _mm_setr_epi64x(5, 6);
-        let r = _mm_loadu_si64(ptr::addr_of!(a) as *const _);
-        assert_eq_m128i(r, _mm_setr_epi64x(5, 0));
     }
 
     #[simd_test(enable = "sse")]

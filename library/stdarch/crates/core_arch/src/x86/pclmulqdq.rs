@@ -25,11 +25,7 @@ extern "C" {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_clmulepi64_si128)
 #[inline]
 #[target_feature(enable = "pclmulqdq")]
-#[cfg_attr(all(test, not(target_os = "linux")), assert_instr(pclmulqdq, IMM8 = 0))]
-#[cfg_attr(all(test, target_os = "linux"), assert_instr(pclmullqlqdq, IMM8 = 0))]
-#[cfg_attr(all(test, target_os = "linux"), assert_instr(pclmulhqlqdq, IMM8 = 1))]
-#[cfg_attr(all(test, target_os = "linux"), assert_instr(pclmullqhqdq, IMM8 = 16))]
-#[cfg_attr(all(test, target_os = "linux"), assert_instr(pclmulhqhqdq, IMM8 = 17))]
+#[cfg_attr(test, assert_instr(pclmul, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_clmulepi64_si128<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {

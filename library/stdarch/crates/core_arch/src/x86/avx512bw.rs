@@ -4575,6 +4575,7 @@ pub unsafe fn _mm_storeu_epi8(mem_addr: *mut i8, a: __m128i) {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_loadu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw")]
+#[cfg_attr(test, assert_instr(vmovdqu16))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_loadu_epi16(src: __m512i, k: __mmask32, mem_addr: *const i16) -> __m512i {
     let mut dst: __m512i = src;
@@ -4583,7 +4584,7 @@ pub unsafe fn _mm512_mask_loadu_epi16(src: __m512i, k: __mmask32, mem_addr: *con
         p = in(reg) mem_addr,
         k = in(kreg) k,
         dst = inout(zmm_reg) dst,
-        options(pure, readonly, nostack)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
@@ -4595,6 +4596,7 @@ pub unsafe fn _mm512_mask_loadu_epi16(src: __m512i, k: __mmask32, mem_addr: *con
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_loadu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw")]
+#[cfg_attr(test, assert_instr(vmovdqu16))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_maskz_loadu_epi16(k: __mmask32, mem_addr: *const i16) -> __m512i {
     let mut dst: __m512i;
@@ -4603,7 +4605,7 @@ pub unsafe fn _mm512_maskz_loadu_epi16(k: __mmask32, mem_addr: *const i16) -> __
         p = in(reg) mem_addr,
         k = in(kreg) k,
         dst = out(zmm_reg) dst,
-        options(pure, readonly, nostack)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
@@ -4615,6 +4617,7 @@ pub unsafe fn _mm512_maskz_loadu_epi16(k: __mmask32, mem_addr: *const i16) -> __
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_loadu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw")]
+#[cfg_attr(test, assert_instr(vmovdqu8))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_loadu_epi8(src: __m512i, k: __mmask64, mem_addr: *const i8) -> __m512i {
     let mut dst: __m512i = src;
@@ -4623,7 +4626,7 @@ pub unsafe fn _mm512_mask_loadu_epi8(src: __m512i, k: __mmask64, mem_addr: *cons
         p = in(reg) mem_addr,
         k = in(kreg) k,
         dst = inout(zmm_reg) dst,
-        options(pure, readonly, nostack)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
@@ -4635,6 +4638,7 @@ pub unsafe fn _mm512_mask_loadu_epi8(src: __m512i, k: __mmask64, mem_addr: *cons
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_loadu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw")]
+#[cfg_attr(test, assert_instr(vmovdqu8))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_maskz_loadu_epi8(k: __mmask64, mem_addr: *const i8) -> __m512i {
     let mut dst: __m512i;
@@ -4643,7 +4647,7 @@ pub unsafe fn _mm512_maskz_loadu_epi8(k: __mmask64, mem_addr: *const i8) -> __m5
         p = in(reg) mem_addr,
         k = in(kreg) k,
         dst = out(zmm_reg) dst,
-        options(pure, readonly, nostack)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
@@ -4655,6 +4659,7 @@ pub unsafe fn _mm512_maskz_loadu_epi8(k: __mmask64, mem_addr: *const i8) -> __m5
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_loadu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vl,avx")]
+#[cfg_attr(test, assert_instr(vmovdqu16))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_loadu_epi16(src: __m256i, k: __mmask16, mem_addr: *const i16) -> __m256i {
     let mut dst: __m256i = src;
@@ -4663,7 +4668,7 @@ pub unsafe fn _mm256_mask_loadu_epi16(src: __m256i, k: __mmask16, mem_addr: *con
         p = in(reg) mem_addr,
         k = in(kreg) k,
         dst = inout(ymm_reg) dst,
-        options(pure, readonly, nostack)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
@@ -4675,6 +4680,7 @@ pub unsafe fn _mm256_mask_loadu_epi16(src: __m256i, k: __mmask16, mem_addr: *con
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_loadu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vl,avx")]
+#[cfg_attr(test, assert_instr(vmovdqu16))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_maskz_loadu_epi16(k: __mmask16, mem_addr: *const i16) -> __m256i {
     let mut dst: __m256i;
@@ -4683,7 +4689,7 @@ pub unsafe fn _mm256_maskz_loadu_epi16(k: __mmask16, mem_addr: *const i16) -> __
         p = in(reg) mem_addr,
         k = in(kreg) k,
         dst = out(ymm_reg) dst,
-        options(pure, readonly, nostack)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
@@ -4695,6 +4701,7 @@ pub unsafe fn _mm256_maskz_loadu_epi16(k: __mmask16, mem_addr: *const i16) -> __
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_loadu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vl,avx")]
+#[cfg_attr(test, assert_instr(vmovdqu8))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_loadu_epi8(src: __m256i, k: __mmask32, mem_addr: *const i8) -> __m256i {
     let mut dst: __m256i = src;
@@ -4703,7 +4710,7 @@ pub unsafe fn _mm256_mask_loadu_epi8(src: __m256i, k: __mmask32, mem_addr: *cons
         p = in(reg) mem_addr,
         k = in(kreg) k,
         dst = inout(ymm_reg) dst,
-        options(pure, readonly, nostack)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
@@ -4715,6 +4722,7 @@ pub unsafe fn _mm256_mask_loadu_epi8(src: __m256i, k: __mmask32, mem_addr: *cons
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_loadu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vl,avx")]
+#[cfg_attr(test, assert_instr(vmovdqu8))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_maskz_loadu_epi8(k: __mmask32, mem_addr: *const i8) -> __m256i {
     let mut dst: __m256i;
@@ -4723,7 +4731,7 @@ pub unsafe fn _mm256_maskz_loadu_epi8(k: __mmask32, mem_addr: *const i8) -> __m2
         p = in(reg) mem_addr,
         k = in(kreg) k,
         dst = out(ymm_reg) dst,
-        options(pure, readonly, nostack)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
@@ -4735,6 +4743,7 @@ pub unsafe fn _mm256_maskz_loadu_epi8(k: __mmask32, mem_addr: *const i8) -> __m2
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_loadu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vl,avx,sse")]
+#[cfg_attr(test, assert_instr(vmovdqu16))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_loadu_epi16(src: __m128i, k: __mmask8, mem_addr: *const i16) -> __m128i {
     let mut dst: __m128i = src;
@@ -4743,7 +4752,7 @@ pub unsafe fn _mm_mask_loadu_epi16(src: __m128i, k: __mmask8, mem_addr: *const i
         p = in(reg) mem_addr,
         k = in(kreg) k,
         dst = inout(xmm_reg) dst,
-        options(pure, readonly, nostack)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
@@ -4755,6 +4764,7 @@ pub unsafe fn _mm_mask_loadu_epi16(src: __m128i, k: __mmask8, mem_addr: *const i
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_loadu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vl,avx,sse")]
+#[cfg_attr(test, assert_instr(vmovdqu16))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_maskz_loadu_epi16(k: __mmask8, mem_addr: *const i16) -> __m128i {
     let mut dst: __m128i;
@@ -4763,7 +4773,7 @@ pub unsafe fn _mm_maskz_loadu_epi16(k: __mmask8, mem_addr: *const i16) -> __m128
         p = in(reg) mem_addr,
         k = in(kreg) k,
         dst = out(xmm_reg) dst,
-        options(pure, readonly, nostack)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
@@ -4775,6 +4785,7 @@ pub unsafe fn _mm_maskz_loadu_epi16(k: __mmask8, mem_addr: *const i16) -> __m128
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_loadu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vl,avx,sse")]
+#[cfg_attr(test, assert_instr(vmovdqu8))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_loadu_epi8(src: __m128i, k: __mmask16, mem_addr: *const i8) -> __m128i {
     let mut dst: __m128i = src;
@@ -4783,7 +4794,7 @@ pub unsafe fn _mm_mask_loadu_epi8(src: __m128i, k: __mmask16, mem_addr: *const i
         p = in(reg) mem_addr,
         k = in(kreg) k,
         dst = inout(xmm_reg) dst,
-        options(pure, readonly, nostack)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
@@ -4795,6 +4806,7 @@ pub unsafe fn _mm_mask_loadu_epi8(src: __m128i, k: __mmask16, mem_addr: *const i
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_loadu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vl,avx,sse")]
+#[cfg_attr(test, assert_instr(vmovdqu8))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_maskz_loadu_epi8(k: __mmask16, mem_addr: *const i8) -> __m128i {
     let mut dst: __m128i;
@@ -4803,7 +4815,7 @@ pub unsafe fn _mm_maskz_loadu_epi8(k: __mmask16, mem_addr: *const i8) -> __m128i
         p = in(reg) mem_addr,
         k = in(kreg) k,
         dst = out(xmm_reg) dst,
-        options(pure, readonly, nostack)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
@@ -4814,6 +4826,7 @@ pub unsafe fn _mm_maskz_loadu_epi8(k: __mmask16, mem_addr: *const i8) -> __m128i
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_storeu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw")]
+#[cfg_attr(test, assert_instr(vmovdqu16))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask32, a: __m512i) {
     asm!(
@@ -4821,7 +4834,7 @@ pub unsafe fn _mm512_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask32, a: _
         p = in(reg) mem_addr,
         mask = in(kreg) mask,
         a = in(zmm_reg) a,
-        options(nostack)
+        options(nostack, preserves_flags)
     );
 }
 
@@ -4831,6 +4844,7 @@ pub unsafe fn _mm512_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask32, a: _
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_storeu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw")]
+#[cfg_attr(test, assert_instr(vmovdqu8))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask64, a: __m512i) {
     asm!(
@@ -4838,7 +4852,7 @@ pub unsafe fn _mm512_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask64, a: __m
         p = in(reg) mem_addr,
         mask = in(kreg) mask,
         a = in(zmm_reg) a,
-        options(nostack)
+        options(nostack, preserves_flags)
     );
 }
 
@@ -4848,6 +4862,7 @@ pub unsafe fn _mm512_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask64, a: __m
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_storeu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vl,avx")]
+#[cfg_attr(test, assert_instr(vmovdqu16))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask16, a: __m256i) {
     asm!(
@@ -4855,7 +4870,7 @@ pub unsafe fn _mm256_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask16, a: _
         p = in(reg) mem_addr,
         mask = in(kreg) mask,
         a = in(ymm_reg) a,
-        options(nostack)
+        options(nostack, preserves_flags)
     );
 }
 
@@ -4865,6 +4880,7 @@ pub unsafe fn _mm256_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask16, a: _
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_storeu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vl,avx")]
+#[cfg_attr(test, assert_instr(vmovdqu8))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm256_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask32, a: __m256i) {
     asm!(
@@ -4872,7 +4888,7 @@ pub unsafe fn _mm256_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask32, a: __m
         p = in(reg) mem_addr,
         mask = in(kreg) mask,
         a = in(ymm_reg) a,
-        options(nostack)
+        options(nostack, preserves_flags)
     );
 }
 
@@ -4882,6 +4898,7 @@ pub unsafe fn _mm256_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask32, a: __m
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_storeu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vl,avx,sse")]
+#[cfg_attr(test, assert_instr(vmovdqu16))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask8, a: __m128i) {
     asm!(
@@ -4889,7 +4906,7 @@ pub unsafe fn _mm_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask8, a: __m12
         p = in(reg) mem_addr,
         mask = in(kreg) mask,
         a = in(xmm_reg) a,
-        options(nostack)
+        options(nostack, preserves_flags)
     );
 }
 
@@ -4899,6 +4916,7 @@ pub unsafe fn _mm_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask8, a: __m12
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_storeu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vl,avx,sse")]
+#[cfg_attr(test, assert_instr(vmovdqu8))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask16, a: __m128i) {
     asm!(
@@ -4906,7 +4924,7 @@ pub unsafe fn _mm_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask16, a: __m128
         p = in(reg) mem_addr,
         mask = in(kreg) mask,
         a = in(xmm_reg) a,
-        options(nostack)
+        options(nostack, preserves_flags)
     );
 }
 
@@ -8761,7 +8779,7 @@ pub unsafe fn _mm_mask_testn_epi8_mask(k: __mmask16, a: __m128i, b: __m128i) -> 
 #[target_feature(enable = "avx512bw")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(mov))] //should be kmovq
-pub unsafe fn _store_mask64(mem_addr: *mut u64, a: __mmask64) {
+pub unsafe fn _store_mask64(mem_addr: *mut __mmask64, a: __mmask64) {
     ptr::write(mem_addr as *mut __mmask64, a);
 }
 
@@ -8772,7 +8790,7 @@ pub unsafe fn _store_mask64(mem_addr: *mut u64, a: __mmask64) {
 #[target_feature(enable = "avx512bw")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(mov))] //should be kmovd
-pub unsafe fn _store_mask32(mem_addr: *mut u32, a: __mmask32) {
+pub unsafe fn _store_mask32(mem_addr: *mut __mmask32, a: __mmask32) {
     ptr::write(mem_addr as *mut __mmask32, a);
 }
 
@@ -8783,7 +8801,7 @@ pub unsafe fn _store_mask32(mem_addr: *mut u32, a: __mmask32) {
 #[target_feature(enable = "avx512bw")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(mov))] //should be kmovq
-pub unsafe fn _load_mask64(mem_addr: *const u64) -> __mmask64 {
+pub unsafe fn _load_mask64(mem_addr: *const __mmask64) -> __mmask64 {
     ptr::read(mem_addr as *const __mmask64)
 }
 
@@ -8794,7 +8812,7 @@ pub unsafe fn _load_mask64(mem_addr: *const u64) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(mov))] //should be kmovd
-pub unsafe fn _load_mask32(mem_addr: *const u32) -> __mmask32 {
+pub unsafe fn _load_mask32(mem_addr: *const __mmask32) -> __mmask32 {
     ptr::read(mem_addr as *const __mmask32)
 }
 

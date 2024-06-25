@@ -346,7 +346,10 @@ fn verify_all_signatures() {
             // unsigned integer, but all other _mm_shuffle_.. intrinsics
             // take a signed-integer. This breaks `_MM_SHUFFLE` for
             // `_mm_shuffle_ps`:
-            "_mm_shuffle_ps" => continue,
+            name@"_mm_shuffle_ps" => {
+                map.remove(name);
+                continue;
+            },
             _ => {}
         }
 
@@ -391,13 +394,19 @@ fn verify_all_signatures() {
 
 fn print_missing(map: &HashMap<&str, Vec<&Intrinsic>>, mut f: impl Write) -> io::Result<()> {
     let mut missing = BTreeMap::new(); // BTreeMap to keep the cpuids ordered
-                                       // we cannot use SVML and MMX, and MPX is not in LLVM, and intrinsics without any cpuid requirement
-                                       // are accessible from safe rust
+
+    // we cannot use SVML and MMX, and MPX is not in LLVM, and intrinsics without any cpuid requirement
+    // are accessible from safe rust
     for intrinsic in map.values().flatten().filter(|intrinsic| {
         intrinsic.tech != "SVML"
             && intrinsic.tech != "MMX"
             && !intrinsic.cpuid.is_empty()
             && !intrinsic.cpuid.contains(&"MPX".to_string())
+            && intrinsic.return_.type_ != "__m64"
+            && !intrinsic
+                .parameters
+                .iter()
+                .any(|param| param.type_.contains("__m64"))
     }) {
         missing
             .entry(&intrinsic.cpuid)
