@@ -51,8 +51,8 @@ pub const _MM_FROUND_NEARBYINT: i32 = _MM_FROUND_NO_EXC | _MM_FROUND_CUR_DIRECTI
 /// Blend packed 8-bit integers from `a` and `b` using `mask`
 ///
 /// The high bit of each corresponding mask byte determines the selection.
-/// If the high bit is set the element of `a` is selected. The element
-/// of `b` is selected otherwise.
+/// If the high bit is set, the element of `b` is selected.
+/// Otherwise, the element of `a` is selected.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_blendv_epi8)
 #[inline]
