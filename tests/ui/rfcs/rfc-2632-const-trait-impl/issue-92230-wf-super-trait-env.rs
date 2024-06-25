@@ -4,6 +4,7 @@
 //@ compile-flags: -Znext-solver
 
 #![feature(const_trait_impl, effects)]
+#![allow(incomplete_features)]
 
 #[const_trait]
 pub trait Super {}

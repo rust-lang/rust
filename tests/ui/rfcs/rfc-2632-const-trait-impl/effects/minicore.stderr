@@ -7,12 +7,11 @@ LL | #![feature(const_trait_impl, effects, const_mut_refs)]
    = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0094]: intrinsic has wrong number of const parameters: found 1, expected 0
-  --> $DIR/minicore.rs:517:27
+error: requires `EffectsCompat` lang_item
+  --> $DIR/minicore.rs:455:9
    |
-LL | const fn const_eval_select<ARG: Tuple, F, G, RET>(
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^ expected 0 const parameters
+LL | impl<T: Clone> Clone for RefCell<T> {
+   |         ^^^^^
 
 error: aborting due to 1 previous error; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0094`.

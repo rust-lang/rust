@@ -18,7 +18,8 @@ impl Trait for Ty {
 }
 
 fn main() {
-    require::<Ty>(); //~ ERROR the trait bound `Ty: const Trait` is not satisfied
+    // FIXME(effects): improve diagnostics on this
+    require::<Ty>(); //~ ERROR the trait bound `Trait::{synthetic#0}: const Compat` is not satisfied
 }
 
 struct Container<const N: u32>;

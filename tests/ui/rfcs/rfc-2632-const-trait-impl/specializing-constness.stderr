@@ -13,5 +13,17 @@ error: cannot specialize on const impl with non-const impl
 LL | impl<T: Spec + Sup> A for T {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: cannot specialize on trait `Compat`
+  --> $DIR/specializing-constness.rs:23:16
+   |
+LL | impl<T: Spec + Sup> A for T {
+   |                ^^^
+
+error: cannot specialize on trait `Compat`
+  --> $DIR/specializing-constness.rs:23:9
+   |
+LL | impl<T: Spec + Sup> A for T {
+   |         ^^^^
+
+error: aborting due to 3 previous errors; 1 warning emitted
 
