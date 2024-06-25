@@ -2,7 +2,7 @@
 #![no_std]
 #![feature(c_variadic)]
 
-use core::ffi::{VaList, VaListImpl};
+use core::ffi::va_list::{VaList, VaListImpl};
 
 pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f> {
     ap
