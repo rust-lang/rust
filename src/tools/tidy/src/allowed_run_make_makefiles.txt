@@ -138,7 +138,6 @@ run-make/pretty-print-to-file/Makefile
 run-make/pretty-print-with-dep-file/Makefile
 run-make/print-calling-conventions/Makefile
 run-make/print-target-list/Makefile
-run-make/profile/Makefile
 run-make/prune-link-args/Makefile
 run-make/raw-dylib-alt-calling-convention/Makefile
 run-make/raw-dylib-c/Makefile
