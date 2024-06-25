@@ -358,8 +358,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     where
         'a: 'pat,
     {
-        // Assemble a list of candidates: there is one candidate per pattern,
-        // which means there may be more than one candidate *per arm*.
+        // Assemble the initial list of candidates. These top-level candidates
+        // are 1:1 with the original match arms, but other parts of match
+        // lowering also introduce subcandidates (for subpatterns), and will
+        // also flatten candidates in some cases. So in general a list of
+        // candidates does _not_ necessarily correspond to a list of arms.
         arms.iter()
             .copied()
             .map(|arm| {
