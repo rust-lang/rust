@@ -2319,7 +2319,62 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Ptr(_)), Some(CastTy::Ptr(_))) => (),
+                            (Some(CastTy::Ptr(src)), Some(CastTy::Ptr(dst))) => {
+                                let src_tail = tcx.struct_tail_without_normalization(src.ty);
+                                let dst_tail = tcx.struct_tail_without_normalization(dst.ty);
+
+                                if let ty::Dynamic(src_tty, ..) = src_tail.kind()
+                                    && let ty::Dynamic(dst_tty, ..) = dst_tail.kind()
+                                    && src_tty.principal().is_some()
+                                    && dst_tty.principal().is_some()
+                                {
+                                    // Erase trait object lifetimes, to allow casts like `*mut dyn FnOnce()` -> `*mut dyn FnOnce() + 'static`
+                                    // and remove auto traits.
+                                    let src_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                                        tcx.mk_poly_existential_predicates(
+                                            &src_tty.without_auto_traits().collect::<Vec<_>>(),
+                                        ),
+                                        tcx.lifetimes.re_erased,
+                                        ty::Dyn,
+                                    ));
+                                    let dst_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                                        tcx.mk_poly_existential_predicates(
+                                            &dst_tty.without_auto_traits().collect::<Vec<_>>(),
+                                        ),
+                                        tcx.lifetimes.re_erased,
+                                        ty::Dyn,
+                                    ));
+
+                                    // FIXME:
+                                    // this currently does nothing, but once we make `ptr_cast_add_auto_to_object`
+                                    // into a hard error, we can remove the above removal of auto traits and only
+                                    // keep this.
+                                    let src_obj = erase_single_trait_object_lifetime(tcx, src_obj);
+                                    let dst_obj = erase_single_trait_object_lifetime(tcx, dst_obj);
+
+                                    let trait_ref = ty::TraitRef::new(
+                                        tcx,
+                                        tcx.require_lang_item(LangItem::Unsize, Some(span)),
+                                        [src_obj, dst_obj],
+                                    );
+
+                                    debug!(?src_tty, ?dst_tty, ?src_obj, ?dst_obj);
+
+                                    self.prove_trait_ref(
+                                        trait_ref,
+                                        location.to_locations(),
+                                        ConstraintCategory::Cast {
+                                            unsize_to: Some(tcx.fold_regions(dst_obj, |r, _| {
+                                                if let ty::ReVar(_) = r.kind() {
+                                                    tcx.lifetimes.re_erased
+                                                } else {
+                                                    r
+                                                }
+                                            })),
+                                        },
+                                    );
+                                }
+                            }
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -2841,4 +2896,16 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
         output.error_info = Some(self);
         Ok(output)
     }
+}
+
+fn erase_single_trait_object_lifetime<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+    let &ty::Dynamic(tty, region, dyn_kind @ ty::Dyn) = ty.kind() else {
+        bug!("expected trait object")
+    };
+
+    if region.is_erased() {
+        return ty;
+    }
+
+    tcx.mk_ty_from_kind(ty::Dynamic(tty, tcx.lifetimes.re_erased, dyn_kind))
 }

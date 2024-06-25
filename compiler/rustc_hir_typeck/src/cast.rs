@@ -32,9 +32,11 @@ use super::FnCtxt;
 
 use crate::errors;
 use crate::type_error_struct;
-use hir::ExprKind;
+use itertools::Itertools;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{codes::*, Applicability, Diag, ErrorGuaranteed};
-use rustc_hir as hir;
+use rustc_hir::{self as hir, ExprKind, LangItem};
+use rustc_infer::traits::Obligation;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
 use rustc_middle::mir::Mutability;
@@ -44,7 +46,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitableExt, VariantDef};
 use rustc_session::lint;
-use rustc_span::def_id::{DefId, LOCAL_CRATE};
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_span::DUMMY_SP;
@@ -73,7 +75,7 @@ enum PointerKind<'tcx> {
     /// No metadata attached, ie pointer to sized type or foreign type
     Thin,
     /// A trait object
-    VTable(Option<DefId>),
+    VTable(&'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>),
     /// Slice
     Length,
     /// The unsize info of this projection or opaque type
@@ -101,7 +103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         Ok(match *t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
-            ty::Dynamic(tty, _, ty::Dyn) => Some(PointerKind::VTable(tty.principal_def_id())),
+            ty::Dynamic(tty, _, ty::Dyn) => Some(PointerKind::VTable(tty)),
             ty::Adt(def, args) if def.is_struct() => match def.non_enum_variant().tail_opt() {
                 None => Some(PointerKind::Thin),
                 Some(f) => {
@@ -759,7 +761,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 Err(CastError::IllegalCast)
             }
 
-            // ptr -> *
+            // ptr -> ptr
             (Ptr(m_e), Ptr(m_c)) => self.check_ptr_ptr_cast(fcx, m_e, m_c), // ptr-ptr-cast
 
             // ptr-addr-cast
@@ -803,40 +805,129 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     fn check_ptr_ptr_cast(
         &self,
         fcx: &FnCtxt<'a, 'tcx>,
-        m_expr: ty::TypeAndMut<'tcx>,
-        m_cast: ty::TypeAndMut<'tcx>,
+        m_src: ty::TypeAndMut<'tcx>,
+        m_dst: ty::TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError> {
-        debug!("check_ptr_ptr_cast m_expr={:?} m_cast={:?}", m_expr, m_cast);
+        debug!("check_ptr_ptr_cast m_src={m_src:?} m_dst={m_dst:?}");
         // ptr-ptr cast. vtables must match.
 
-        let expr_kind = fcx.pointer_kind(m_expr.ty, self.span)?;
-        let cast_kind = fcx.pointer_kind(m_cast.ty, self.span)?;
+        let src_kind = fcx.tcx.erase_regions(fcx.pointer_kind(m_src.ty, self.span)?);
+        let dst_kind = fcx.tcx.erase_regions(fcx.pointer_kind(m_dst.ty, self.span)?);
 
-        let Some(cast_kind) = cast_kind else {
+        match (src_kind, dst_kind) {
             // We can't cast if target pointer kind is unknown
-            return Err(CastError::UnknownCastPtrKind);
-        };
+            (_, None) => Err(CastError::UnknownCastPtrKind),
+            // Cast to thin pointer is OK
+            (_, Some(PointerKind::Thin)) => Ok(CastKind::PtrPtrCast),
 
-        // Cast to thin pointer is OK
-        if cast_kind == PointerKind::Thin {
-            return Ok(CastKind::PtrPtrCast);
-        }
-
-        let Some(expr_kind) = expr_kind else {
             // We can't cast to fat pointer if source pointer kind is unknown
-            return Err(CastError::UnknownExprPtrKind);
-        };
+            (None, _) => Err(CastError::UnknownExprPtrKind),
 
-        // thin -> fat? report invalid cast (don't complain about vtable kinds)
-        if expr_kind == PointerKind::Thin {
-            return Err(CastError::SizedUnsizedCast);
-        }
+            // thin -> fat? report invalid cast (don't complain about vtable kinds)
+            (Some(PointerKind::Thin), _) => Err(CastError::SizedUnsizedCast),
 
-        // vtable kinds must match
-        if fcx.tcx.erase_regions(cast_kind) == fcx.tcx.erase_regions(expr_kind) {
-            Ok(CastKind::PtrPtrCast)
-        } else {
-            Err(CastError::DifferingKinds)
+            // trait object -> trait object? need to do additional checks
+            (Some(PointerKind::VTable(src_tty)), Some(PointerKind::VTable(dst_tty))) => {
+                match (src_tty.principal(), dst_tty.principal()) {
+                    // A<dyn Src<...> + SrcAuto> -> B<dyn Dst<...> + DstAuto>. need to make sure
+                    // - `Src` and `Dst` traits are the same
+                    // - traits have the same generic arguments
+                    // - `SrcAuto` is a superset of `DstAuto`
+                    (Some(src_principal), Some(dst_principal)) => {
+                        let tcx = fcx.tcx;
+
+                        // Check that the traits are actually the same
+                        // (this is required as the `Unsize` check below would allow upcasting, etc)
+                        // N.B.: this is only correct as long as we don't support `trait A<T>: A<()>`.
+                        if src_principal.def_id() != dst_principal.def_id() {
+                            return Err(CastError::DifferingKinds);
+                        }
+
+                        // We need to reconstruct trait object types.
+                        // `m_src` and `m_dst` won't work for us here because they will potentially
+                        // contain wrappers, which we do not care about.
+                        //
+                        // e.g. we want to allow `dyn T -> (dyn T,)`, etc.
+                        //
+                        // We also need to skip auto traits to emit an FCW and not an error.
+                        let src_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                            tcx.mk_poly_existential_predicates(
+                                &src_tty.without_auto_traits().collect::<Vec<_>>(),
+                            ),
+                            tcx.lifetimes.re_erased,
+                            ty::Dyn,
+                        ));
+                        let dst_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                            tcx.mk_poly_existential_predicates(
+                                &dst_tty.without_auto_traits().collect::<Vec<_>>(),
+                            ),
+                            tcx.lifetimes.re_erased,
+                            ty::Dyn,
+                        ));
+
+                        // `dyn Src: Unsize<dyn Dst>`, this checks for matching generics
+                        let cause = fcx.misc(self.span);
+                        let obligation = Obligation::new(
+                            tcx,
+                            cause,
+                            fcx.param_env,
+                            ty::TraitRef::new(
+                                tcx,
+                                tcx.require_lang_item(LangItem::Unsize, Some(self.span)),
+                                [src_obj, dst_obj],
+                            ),
+                        );
+
+                        fcx.register_predicate(obligation);
+
+                        // Check that `SrcAuto` is a superset of `DstAuto`.
+                        // Emit an FCW otherwise.
+                        let src_auto = src_tty.auto_traits().collect::<FxHashSet<_>>();
+                        let added = dst_tty
+                            .auto_traits()
+                            .filter(|trait_did| !src_auto.contains(trait_did))
+                            .collect::<Vec<_>>();
+
+                        if !added.is_empty() {
+                            tcx.emit_node_span_lint(
+                                lint::builtin::PTR_CAST_ADD_AUTO_TO_OBJECT,
+                                self.expr.hir_id,
+                                self.span,
+                                errors::PtrCastAddAutoToObject {
+                                    traits_len: added.len(),
+                                    traits: added
+                                        .into_iter()
+                                        .map(|trait_did| {
+                                            format!("`{}`", tcx.def_path_str(trait_did))
+                                        })
+                                        .join(", "),
+                                },
+                            )
+                        }
+
+                        // FIXME: ideally we'd maybe add a flag here, so that borrowck knows that
+                        //        it needs to borrowck this ptr cast. this is made annoying by the
+                        //        fact that `thir` does not have `CastKind` and mir restores it
+                        //        from types.
+                        Ok(CastKind::PtrPtrCast)
+                    }
+
+                    // dyn Auto -> dyn Auto'? ok.
+                    (None, None) => Ok(CastKind::PtrPtrCast),
+
+                    // dyn Trait -> dyn Auto? should be ok, but we used to not allow it.
+                    // FIXME: allow this
+                    (Some(_), None) => Err(CastError::DifferingKinds),
+
+                    // dyn Auto -> dyn Trait? not ok.
+                    (None, Some(_)) => Err(CastError::DifferingKinds),
+                }
+            }
+
+            // fat -> fat? metadata kinds must match
+            (Some(src_kind), Some(dst_kind)) if src_kind == dst_kind => Ok(CastKind::PtrPtrCast),
+
+            (_, _) => Err(CastError::DifferingKinds),
         }
     }
 

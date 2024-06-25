@@ -253,6 +253,14 @@ pub struct LossyProvenanceInt2Ptr<'tcx> {
     pub sugg: LossyProvenanceInt2PtrSuggestion,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_ptr_cast_add_auto_to_object)]
+//#[help]
+pub struct PtrCastAddAutoToObject {
+    pub traits_len: usize,
+    pub traits: String,
+}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(hir_typeck_suggestion, applicability = "has-placeholders")]
 pub struct LossyProvenanceInt2PtrSuggestion {
