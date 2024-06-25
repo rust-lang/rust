@@ -6,6 +6,7 @@
 use crate::errors::{self, CandidateTraitNote, NoAssociatedItem};
 use crate::Expectation;
 use crate::FnCtxt;
+use core::fmt::Write;
 use core::ops::ControlFlow;
 use hir::Expr;
 use rustc_ast::ast::Mutability;
@@ -4047,17 +4048,17 @@ fn print_disambiguation_help<'tcx>(
             .collect::<Vec<_>>()
             .join(", ");
 
-            let args = format!("({}{})", rcvr_ref, args);
-            let candidate = if let Some(candidate) = candidate_idx {
-                &format!("candidate #{candidate}")
-            } else {
-                "the candidate"
-            };
+            let mut candidate_msg = format!("disambiguate the {def_kind_descr} for ");
+            match candidate_idx {
+                Some(candidate) => write!(candidate_msg, "candidate #{candidate}"),
+                None => write!(candidate_msg, "the candidate"),
+            }
+            .unwrap();
 
             err.span_suggestion_verbose(
                 span,
-                format!("disambiguate the {def_kind_descr} for {candidate}",),
-                format!("{trait_ref}::{item_name}{args}"),
+                candidate_msg,
+                format!("{trait_ref}::{item_name}({rcvr_ref}{args})"),
                 Applicability::HasPlaceholders,
             );
             return None;
