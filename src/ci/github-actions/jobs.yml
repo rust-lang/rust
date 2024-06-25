@@ -91,6 +91,9 @@ pr:
     <<: *job-linux-16c
   - image: x86_64-gnu-tools
     <<: *job-linux-16c
+  # TODO: Temporary! Remove me prior to merge!
+  - image: riscv64gc-gnu
+    <<: *job-linux-16c
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
@@ -203,6 +206,9 @@ auto:
     <<: *job-linux-8c
 
   - image: mingw-check
+    <<: *job-linux-4c
+
+  - image: riscv64gc-gnu
     <<: *job-linux-4c
 
   - image: test-various
