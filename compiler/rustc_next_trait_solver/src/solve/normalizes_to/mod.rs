@@ -877,7 +877,7 @@ where
 
         let mut first_non_maybe = None;
         let mut non_maybe_count = 0;
-        for ty in types {
+        for ty in types.iter() {
             if !matches!(ty::EffectKind::try_from_ty(cx, ty), Some(ty::EffectKind::Maybe)) {
                 first_non_maybe.get_or_insert(ty);
                 non_maybe_count += 1;
@@ -902,7 +902,7 @@ where
             _ => {
                 let mut min = ty::EffectKind::Maybe;
 
-                for ty in types {
+                for ty in types.iter() {
                     let Some(kind) = ty::EffectKind::try_from_ty(cx, ty) else {
                         return Err(NoSolution);
                     };

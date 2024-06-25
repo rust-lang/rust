@@ -717,7 +717,7 @@ where
 
         let cx = ecx.cx();
         let maybe_count = types
-            .into_iter()
+            .iter()
             .filter_map(|ty| ty::EffectKind::try_from_ty(cx, ty))
             .filter(|&ty| ty == ty::EffectKind::Maybe)
             .count();
@@ -727,7 +727,7 @@ where
         if types.len() - maybe_count > 1 {
             let mut min = ty::EffectKind::Maybe;
 
-            for ty in types {
+            for ty in types.iter() {
                 let Some(kind) = ty::EffectKind::try_from_ty(ecx.cx(), ty) else {
                     return Err(NoSolution);
                 };

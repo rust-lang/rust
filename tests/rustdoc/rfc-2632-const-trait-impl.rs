@@ -8,7 +8,8 @@
 //
 // FIXME(effects) add `const_trait` to `Fn` so we use `~const`
 // FIXME(effects) restore `const_trait` to `Destruct`
-#![feature(const_trait_impl)]
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, effects)]
 #![crate_name = "foo"]
 
 use std::marker::Destruct;
