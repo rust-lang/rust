@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::env;
 use std::time::Instant;
 
-use gccjit::{FunctionType, GlobalKind};
+use gccjit::{CType, FunctionType, GlobalKind};
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::DebugInfoMethods;
@@ -181,7 +181,24 @@ pub fn compile_codegen_unit(
         context.set_allow_unreachable_blocks(true);
 
         {
-            let cx = CodegenCx::new(&context, cgu, tcx, target_info.supports_128bit_int());
+            // TODO: to make it less error-prone (calling get_target_info() will add the flag
+            // -fsyntax-only), forbid the compilation when get_target_info() is called on a
+            // context.
+            let f16_type_supported = target_info.supports_target_dependent_type(CType::Float16);
+            let f32_type_supported = target_info.supports_target_dependent_type(CType::Float32);
+            let f64_type_supported = target_info.supports_target_dependent_type(CType::Float64);
+            let f128_type_supported = target_info.supports_target_dependent_type(CType::Float128);
+            // TODO: improve this to avoid passing that many arguments.
+            let cx = CodegenCx::new(
+                &context,
+                cgu,
+                tcx,
+                target_info.supports_128bit_int(),
+                f16_type_supported,
+                f32_type_supported,
+                f64_type_supported,
+                f128_type_supported,
+            );
 
             let mono_items = cgu.items_in_deterministic_order(tcx);
             for &(mono_item, data) in &mono_items {

@@ -748,6 +748,24 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             // FIXME(antoyo): this seems to produce the wrong result.
             return self.context.new_call(self.location, fmodf, &[a, b]);
         }
+
+        #[cfg(feature = "master")]
+        match self.cx.type_kind(a_type) {
+            TypeKind::Half | TypeKind::Float => {
+                let fmodf = self.context.get_builtin_function("fmodf");
+                return self.context.new_call(self.location, fmodf, &[a, b]);
+            }
+            TypeKind::Double => {
+                let fmod = self.context.get_builtin_function("fmod");
+                return self.context.new_call(self.location, fmod, &[a, b]);
+            }
+            TypeKind::FP128 => {
+                let fmodl = self.context.get_builtin_function("fmodl");
+                return self.context.new_call(self.location, fmodl, &[a, b]);
+            }
+            _ => (),
+        }
+
         if let Some(vector_type) = a_type_unqualified.dyncast_vector() {
             assert_eq!(a_type_unqualified, b.get_type().unqualified());
 
