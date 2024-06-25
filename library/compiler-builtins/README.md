@@ -57,7 +57,7 @@ features = ["c"]
 5. Add the intrinsic to `examples/intrinsics.rs` to verify it can be linked on
    all targets.
 6. Send a Pull Request (PR).
-7. Once the PR passes our extensive [testing infrastructure][4], we'll merge it!
+7. Once the PR passes our extensive testing infrastructure, we'll merge it!
 8. Celebrate :tada:
 
 [1]: https://github.com/rust-lang/llvm-project/tree/9e3de9490ff580cd484fbfa2908292b4838d56e7/compiler-rt/test/builtins/Unit
