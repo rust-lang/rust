@@ -1594,6 +1594,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
         debug!(?captured_lifetimes_to_duplicate);
 
+        match fn_kind {
+            // Deny `use<>` on RPITIT in trait/trait-impl for now.
+            Some(FnDeclKind::Trait | FnDeclKind::Impl) => {
+                if let Some(span) = bounds.iter().find_map(|bound| match *bound {
+                    ast::GenericBound::Use(_, span) => Some(span),
+                    _ => None,
+                }) {
+                    self.tcx.dcx().emit_err(errors::NoPreciseCapturesOnRpitit { span });
+                }
+            }
+            None
+            | Some(
+                FnDeclKind::Fn
+                | FnDeclKind::Inherent
+                | FnDeclKind::ExternFn
+                | FnDeclKind::Closure
+                | FnDeclKind::Pointer,
+            ) => {}
+        }
+
         self.lower_opaque_inner(
             opaque_ty_node_id,
             origin,
