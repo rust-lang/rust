@@ -129,6 +129,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         context: &'gcc Context<'gcc>,
         codegen_unit: &'tcx CodegenUnit<'tcx>,
