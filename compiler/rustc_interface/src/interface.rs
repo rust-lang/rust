@@ -495,9 +495,8 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let res = {
                 // If `f` panics, `finish_diagnostics` will run during
                 // unwinding because of the `defer`.
-                let mut guar = None;
                 let sess_abort_guard = defer(|| {
-                    guar = compiler.sess.finish_diagnostics(&config.registry);
+                    compiler.sess.finish_diagnostics(&config.registry);
                 });
 
                 let res = f(&compiler);
@@ -506,16 +505,14 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 // normally when `sess_abort_guard` is dropped.
                 drop(sess_abort_guard);
 
-                // If `finish_diagnostics` emits errors (e.g. stashed
-                // errors) we can't return an error directly, because the
-                // return type of this function is `R`, not `Result<R, E>`.
-                // But we need to communicate the errors' existence to the
-                // caller, otherwise the caller might mistakenly think that
-                // no errors occurred and return a zero exit code. So we
-                // abort (panic) instead, similar to if `f` had panicked.
-                if guar.is_some() {
-                    compiler.sess.dcx().abort_if_errors();
-                }
+                // If error diagnostics have been emitted, we can't return an
+                // error directly, because the return type of this function
+                // is `R`, not `Result<R, E>`. But we need to communicate the
+                // errors' existence to the caller, otherwise the caller might
+                // mistakenly think that no errors occurred and return a zero
+                // exit code. So we abort (panic) instead, similar to if `f`
+                // had panicked.
+                compiler.sess.dcx().abort_if_errors();
 
                 res
             };
