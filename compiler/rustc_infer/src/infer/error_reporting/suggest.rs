@@ -209,8 +209,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             (Some(ty), _) if self.same_type_modulo_infer(ty, exp_found.found) => match cause.code()
             {
-                ObligationCauseCode::Pattern { span: Some(then_span), .. } => {
-                    Some(ConsiderAddingAwait::FutureSugg { span: then_span.shrink_to_hi() })
+                ObligationCauseCode::Pattern { span: Some(then_span), origin_expr, .. } => {
+                    origin_expr.then_some(ConsiderAddingAwait::FutureSugg {
+                        span: then_span.shrink_to_hi(),
+                    })
                 }
                 ObligationCauseCode::IfExpression(box IfExpressionCause { then_id, .. }) => {
                     let then_span = self.find_block_span_from_hir_id(*then_id);
