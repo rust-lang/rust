@@ -338,7 +338,7 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
     for (reg_var, origin) in var_to_origin_sorted.into_iter() {
         writeln!(reg_vars_to_origins_str, "{reg_var:?}: {origin:?}").unwrap();
     }
-    debug!("{}", reg_vars_to_origins_str);
+    debug!("{reg_vars_to_origins_str}");
 
     let num_components = sccs.num_sccs();
     let mut components = vec![FxIndexSet::default(); num_components];
