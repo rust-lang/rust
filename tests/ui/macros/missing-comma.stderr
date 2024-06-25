@@ -4,7 +4,7 @@ error: expected `,`, found `a`
 LL |     println!("{}" a);
    |                   ^ expected `,`
 
-error: no rules expected the token `b`
+error: no rules expected `b`
   --> $DIR/missing-comma.rs:21:12
    |
 LL | macro_rules! foo {
@@ -21,7 +21,7 @@ note: while trying to match meta-variable `$a:ident`
 LL |     ($a:ident) => ();
    |      ^^^^^^^^
 
-error: no rules expected the token `e`
+error: no rules expected `e`
   --> $DIR/missing-comma.rs:23:21
    |
 LL | macro_rules! foo {
@@ -38,7 +38,7 @@ note: while trying to match meta-variable `$d:ident`
 LL |     ($a:ident, $b:ident, $c:ident, $d:ident) => ();
    |                                    ^^^^^^^^
 
-error: no rules expected the token `d`
+error: no rules expected `d`
   --> $DIR/missing-comma.rs:25:18
    |
 LL | macro_rules! foo {
@@ -55,7 +55,7 @@ note: while trying to match meta-variable `$c:ident`
 LL |     ($a:ident, $b:ident, $c:ident) => ();
    |                          ^^^^^^^^
 
-error: no rules expected the token `d`
+error: no rules expected `d`
   --> $DIR/missing-comma.rs:27:18
    |
 LL | macro_rules! foo {
@@ -85,7 +85,7 @@ note: while trying to match meta-variable `$arg:tt`
 LL |     ($lvl:expr, $($arg:tt)+) => {}
    |                   ^^^^^^^
 
-error: no rules expected the token `,`
+error: no rules expected `,`
   --> $DIR/missing-comma.rs:32:38
    |
 LL | macro_rules! check {

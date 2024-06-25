@@ -76,7 +76,7 @@ error: suffixes on a tuple index are invalid
 LL |     offset_of!((u8, u8), 1_u8);
    |                          ^^^^ invalid suffix `u8`
 
-error: no rules expected the token `+`
+error: no rules expected `+`
   --> $DIR/offset-of-tuple.rs:11:26
    |
 LL |     offset_of!((u8, u8), +1);
