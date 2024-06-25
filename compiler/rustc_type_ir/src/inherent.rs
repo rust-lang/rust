@@ -5,7 +5,6 @@
 
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::ops::Deref;
 
 use rustc_ast_ir::Mutability;
 
@@ -46,6 +45,14 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
     fn new_alias(interner: I, kind: ty::AliasTyKind, alias_ty: ty::AliasTy<I>) -> Self;
+
+    fn new_projection_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self {
+        Ty::new_alias(
+            interner,
+            ty::AliasTyKind::Projection,
+            ty::AliasTy::new_from_args(interner, def_id, args),
+        )
+    }
 
     fn new_projection(
         interner: I,
@@ -120,7 +127,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
         match self.kind() {
             ty::FnPtr(sig) => sig,
-            ty::FnDef(def_id, args) => interner.fn_sig(def_id).instantiate(interner, &args),
+            ty::FnDef(def_id, args) => interner.fn_sig(def_id).instantiate(interner, args),
             ty::Error(_) => {
                 // ignore errors (#54954)
                 ty::Binder::dummy(ty::FnSig {
@@ -182,14 +189,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 }
 
 pub trait Tys<I: Interner<Tys = Self>>:
-    Copy
-    + Debug
-    + Hash
-    + Eq
-    + IntoIterator<Item = I::Ty>
-    + Deref<Target: Deref<Target = [I::Ty]>>
-    + TypeFoldable<I>
-    + Default
+    Copy + Debug + Hash + Eq + SliceLike<Item = I::Ty> + TypeFoldable<I> + Default
 {
     fn split_inputs_and_output(self) -> (I::FnInputTys, I::Ty);
 }
@@ -354,14 +354,7 @@ pub trait Term<I: Interner<Term = Self>>:
 }
 
 pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
-    Copy
-    + Debug
-    + Hash
-    + Eq
-    + IntoIterator<Item = I::GenericArg>
-    + Deref<Target: Deref<Target = [I::GenericArg]>>
-    + Default
-    + Relate<I>
+    Copy + Debug + Hash + Eq + SliceLike<Item = I::GenericArg> + Default + Relate<I>
 {
     fn rebase_onto(
         self,
@@ -553,12 +546,7 @@ pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 }
 
 pub trait BoundExistentialPredicates<I: Interner>:
-    Copy
-    + Debug
-    + Hash
-    + Eq
-    + Relate<I>
-    + IntoIterator<Item = ty::Binder<I, ty::ExistentialPredicate<I>>>
+    Copy + Debug + Hash + Eq + Relate<I> + SliceLike<Item = ty::Binder<I, ty::ExistentialPredicate<I>>>
 {
     fn principal_def_id(self) -> Option<I::DefId>;
 
@@ -569,4 +557,83 @@ pub trait BoundExistentialPredicates<I: Interner>:
     fn projection_bounds(
         self,
     ) -> impl IntoIterator<Item = ty::Binder<I, ty::ExistentialProjection<I>>>;
+}
+
+pub trait SliceLike: Sized + Copy {
+    type Item: Copy;
+    type IntoIter: Iterator<Item = Self::Item>;
+
+    fn iter(self) -> Self::IntoIter;
+
+    fn as_slice(&self) -> &[Self::Item];
+
+    fn get(self, idx: usize) -> Option<Self::Item> {
+        self.as_slice().get(idx).copied()
+    }
+
+    fn len(self) -> usize {
+        self.as_slice().len()
+    }
+
+    fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
+    fn contains(self, t: &Self::Item) -> bool
+    where
+        Self::Item: PartialEq,
+    {
+        self.as_slice().contains(t)
+    }
+
+    fn to_vec(self) -> Vec<Self::Item> {
+        self.as_slice().to_vec()
+    }
+
+    fn last(self) -> Option<Self::Item> {
+        self.as_slice().last().copied()
+    }
+
+    fn split_last(&self) -> Option<(&Self::Item, &[Self::Item])> {
+        self.as_slice().split_last()
+    }
+}
+
+impl<'a, T: Copy> SliceLike for &'a [T] {
+    type Item = T;
+    type IntoIter = std::iter::Copied<std::slice::Iter<'a, T>>;
+
+    fn iter(self) -> Self::IntoIter {
+        self.iter().copied()
+    }
+
+    fn as_slice(&self) -> &[Self::Item] {
+        *self
+    }
+}
+
+impl<'a, T: Copy, const N: usize> SliceLike for &'a [T; N] {
+    type Item = T;
+    type IntoIter = std::iter::Copied<std::slice::Iter<'a, T>>;
+
+    fn iter(self) -> Self::IntoIter {
+        self.into_iter().copied()
+    }
+
+    fn as_slice(&self) -> &[Self::Item] {
+        *self
+    }
+}
+
+impl<'a, S: SliceLike> SliceLike for &'a S {
+    type Item = S::Item;
+    type IntoIter = S::IntoIter;
+
+    fn iter(self) -> Self::IntoIter {
+        (*self).iter()
+    }
+
+    fn as_slice(&self) -> &[Self::Item] {
+        (*self).as_slice()
+    }
 }

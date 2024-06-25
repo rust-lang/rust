@@ -4,10 +4,10 @@
   // has task_lists/index.html '//li/input[@type="checkbox"]/following-sibling::text()' 'b'
 // Unfortunately that requires LXML, because the built-in xml module doesn't support all of xpath.
 
-// @has task_lists/index.html '//ul/li/input[@type="checkbox"]' ''
-// @has task_lists/index.html '//ul/li/input[@disabled]' ''
-// @has task_lists/index.html '//ul/li' 'a'
-// @has task_lists/index.html '//ul/li' 'b'
+//@ has task_lists/index.html '//ul/li/input[@type="checkbox"]' ''
+//@ has task_lists/index.html '//ul/li/input[@disabled]' ''
+//@ has task_lists/index.html '//ul/li' 'a'
+//@ has task_lists/index.html '//ul/li' 'b'
 //! This tests 'task list' support, a common markdown extension.
 //! - [ ] a
 //! - [x] b

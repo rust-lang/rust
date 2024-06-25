@@ -110,7 +110,8 @@ impl<I: Iterator, const N: usize> MapWindowsInner<I, N> {
 impl<T, const N: usize> Buffer<T, N> {
     fn try_from_iter(iter: &mut impl Iterator<Item = T>) -> Option<Self> {
         let first_half = crate::array::iter_next_chunk(iter).ok()?;
-        let buffer = [MaybeUninit::new(first_half).transpose(), MaybeUninit::uninit_array()];
+        let buffer =
+            [MaybeUninit::new(first_half).transpose(), [const { MaybeUninit::uninit() }; N]];
         Some(Self { buffer, start: 0 })
     }
 
@@ -204,7 +205,7 @@ impl<T, const N: usize> Buffer<T, N> {
 impl<T: Clone, const N: usize> Clone for Buffer<T, N> {
     fn clone(&self) -> Self {
         let mut buffer = Buffer {
-            buffer: [MaybeUninit::uninit_array(), MaybeUninit::uninit_array()],
+            buffer: [[const { MaybeUninit::uninit() }; N], [const { MaybeUninit::uninit() }; N]],
             start: self.start,
         };
         buffer.as_uninit_array_mut().write(self.as_array_ref().clone());

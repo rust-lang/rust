@@ -650,10 +650,8 @@ where
                         [ty.into()],
                         self.source_info.span,
                     ),
-                    args: vec![Spanned {
-                        node: Operand::Move(Place::from(ref_place)),
-                        span: DUMMY_SP,
-                    }],
+                    args: [Spanned { node: Operand::Move(Place::from(ref_place)), span: DUMMY_SP }]
+                        .into(),
                     destination: unit_temp,
                     target: Some(succ),
                     unwind: unwind.into_action(),

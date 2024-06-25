@@ -2,9 +2,9 @@
 
 #![crate_name = "foo"]
 
-// @!has foo/private/struct.Quz.html
-// @!has foo/hidden/struct.Bar.html
-// @has foo/redirect-map.json
+//@ !has foo/private/struct.Quz.html
+//@ !has foo/hidden/struct.Bar.html
+//@ has foo/redirect-map.json
 pub use private::Quz;
 pub use hidden::Bar;
 

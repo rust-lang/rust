@@ -9,7 +9,7 @@ extern crate issue_99221_aux;
 
 pub use issue_99221_aux::*;
 
-// @count foo/index.html '//a[@class="macro"]' 1
+//@ count foo/index.html '//a[@class="macro"]' 1
 
 #[macro_export]
 macro_rules! print {

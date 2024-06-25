@@ -160,8 +160,9 @@ fn remap_mir_for_const_eval_select<'tcx>(
             } if let ty::FnDef(def_id, _) = *const_.ty().kind()
                 && tcx.is_intrinsic(def_id, sym::const_eval_select) =>
             {
-                let [tupled_args, called_in_const, called_at_rt]: [_; 3] =
-                    std::mem::take(args).try_into().unwrap();
+                let Ok([tupled_args, called_in_const, called_at_rt]) = take_array(args) else {
+                    unreachable!()
+                };
                 let ty = tupled_args.node.ty(&body.local_decls, tcx);
                 let fields = ty.tuple_fields();
                 let num_args = fields.len();
@@ -209,6 +210,11 @@ fn remap_mir_for_const_eval_select<'tcx>(
         }
     }
     body
+}
+
+fn take_array<T, const N: usize>(b: &mut Box<[T]>) -> Result<[T; N], Box<[T]>> {
+    let b: Box<[T; N]> = std::mem::take(b).try_into()?;
+    Ok(*b)
 }
 
 fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {

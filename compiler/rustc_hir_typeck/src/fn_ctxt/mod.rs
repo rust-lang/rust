@@ -297,7 +297,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             trait_ref.args,
         );
 
-        Ty::new_projection(self.tcx(), item_def_id, item_args)
+        Ty::new_projection_from_args(self.tcx(), item_def_id, item_args)
     }
 
     fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {

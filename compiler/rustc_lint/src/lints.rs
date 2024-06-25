@@ -2911,3 +2911,10 @@ pub struct UnsafeAttrOutsideUnsafeSuggestion {
     #[suggestion_part(code = ")")]
     pub right: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_out_of_scope_macro_calls)]
+#[help]
+pub struct OutOfScopeMacroCalls {
+    pub path: String,
+}

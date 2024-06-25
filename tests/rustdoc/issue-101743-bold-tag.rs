@@ -14,6 +14,6 @@ impl<const B: Word> Repr<B> {
     // If we change back to rendering the value of consts, check this doesn't add
     // a <b> tag, but escapes correctly
 
-    // @has foo/struct.Repr.html '//section[@id="associatedconstant.BASE"]/h4' '= _'
+    //@ has foo/struct.Repr.html '//section[@id="associatedconstant.BASE"]/h4' '= _'
     pub const BASE: IBig = base_as_ibig::<B>();
 }

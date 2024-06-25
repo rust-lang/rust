@@ -4,8 +4,8 @@
 
 extern crate extern_impl_trait;
 
-// @has 'foo/struct.X.html' '//h4[@class="code-header"]' "impl Foo<Associated = ()> + 'a"
+//@ has 'foo/struct.X.html' '//h4[@class="code-header"]' "impl Foo<Associated = ()> + 'a"
 pub use extern_impl_trait::X;
 
-// @has 'foo/struct.Y.html' '//h4[@class="code-header"]' "impl Foo<Associated = ()> + ?Sized + 'a"
+//@ has 'foo/struct.Y.html' '//h4[@class="code-header"]' "impl Foo<Associated = ()> + ?Sized + 'a"
 pub use extern_impl_trait::Y;

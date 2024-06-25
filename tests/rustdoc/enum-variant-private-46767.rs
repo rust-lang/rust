@@ -6,5 +6,5 @@ mod private {
 }
 pub use self::private::Enum::*;
 
-// @!has-dir foo/private
-// @!has foo/index.html '//a/@href' 'private/index.html'
+//@ !has-dir foo/private
+//@ !has foo/index.html '//a/@href' 'private/index.html'

@@ -870,7 +870,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         trait_def_id: DefId,
     ) {
         let trait_args = self.fresh_args_for_item(self.span, trait_def_id);
-        let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, trait_args);
+        let trait_ref = ty::TraitRef::new_from_args(self.tcx, trait_def_id, trait_args);
 
         if self.tcx.is_trait_alias(trait_def_id) {
             // For trait aliases, recursively assume all explicitly named traits are relevant

@@ -8,47 +8,62 @@
 // and in places that cannot have a coverage attribute, to demonstrate the
 // interaction between multiple errors.
 
-// FIXME(#126658): The error messages for using this syntax give the impression
-// that it is legal, even though it should never be legal.
-
-// FIXME(#126658): This is silently allowed, but should not be.
 #[coverage]
+//~^ ERROR malformed `coverage` attribute input
+//~| ERROR attribute should be applied to a function definition or closure
 mod my_mod {}
 
-// FIXME(#126658): This is silently allowed, but should not be.
 mod my_mod_inner {
     #![coverage]
+    //~^ ERROR malformed `coverage` attribute input
+    //~| ERROR attribute should be applied to a function definition or closure
 }
 
-#[coverage] //~ ERROR `#[coverage]` must be applied to coverable code
+#[coverage]
+//~^ ERROR malformed `coverage` attribute input
+//~| ERROR attribute should be applied to a function definition or closure
 struct MyStruct;
 
-// FIXME(#126658): This is silently allowed, but should not be.
 #[coverage]
+//~^ ERROR malformed `coverage` attribute input
+//~| ERROR attribute should be applied to a function definition or closure
 impl MyStruct {
-    #[coverage] //~ ERROR `#[coverage]` must be applied to coverable code
+    #[coverage]
+    //~^ ERROR malformed `coverage` attribute input
+    //~| ERROR attribute should be applied to a function definition or closure
     const X: u32 = 7;
 }
 
-// FIXME(#126658): This is silently allowed, but should not be.
 #[coverage]
+//~^ ERROR malformed `coverage` attribute input
+//~| ERROR attribute should be applied to a function definition or closure
 trait MyTrait {
-    #[coverage] //~ ERROR `#[coverage]` must be applied to coverable code
+    #[coverage]
+    //~^ ERROR malformed `coverage` attribute input
+    //~| ERROR attribute should be applied to a function definition or closure
     const X: u32;
 
-    #[coverage] //~ ERROR `#[coverage]` must be applied to coverable code
+    #[coverage]
+    //~^ ERROR malformed `coverage` attribute input
+    //~| ERROR attribute should be applied to a function definition or closure
     type T;
 }
 
-// FIXME(#126658): This is silently allowed, but should not be.
 #[coverage]
+//~^ ERROR malformed `coverage` attribute input
+//~| ERROR attribute should be applied to a function definition or closure
 impl MyTrait for MyStruct {
-    #[coverage] //~ ERROR `#[coverage]` must be applied to coverable code
+    #[coverage]
+    //~^ ERROR malformed `coverage` attribute input
+    //~| ERROR attribute should be applied to a function definition or closure
     const X: u32 = 8;
 
-    #[coverage] //~ ERROR `#[coverage]` must be applied to coverable code
+    #[coverage]
+    //~^ ERROR malformed `coverage` attribute input
+    //~| ERROR attribute should be applied to a function definition or closure
     type T = ();
 }
 
-#[coverage] //~ ERROR expected `coverage(off)` or `coverage(on)`
+#[coverage]
+//~^ ERROR malformed `coverage` attribute input
 fn main() {}

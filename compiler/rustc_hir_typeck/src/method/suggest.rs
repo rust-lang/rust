@@ -1978,7 +1978,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err,
                             self_source,
                             args,
-                            ty::TraitRef::new(
+                            ty::TraitRef::new_from_args(
                                 self.tcx,
                                 trait_did,
                                 self.fresh_args_for_item(sugg_span, trait_did),

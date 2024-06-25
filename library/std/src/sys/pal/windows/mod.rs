@@ -31,8 +31,6 @@ pub mod process;
 pub mod rand;
 pub mod stdio;
 pub mod thread;
-pub mod thread_local_dtor;
-pub mod thread_local_key;
 pub mod time;
 cfg_if::cfg_if! {
     if #[cfg(not(target_vendor = "uwp"))] {
@@ -227,7 +225,7 @@ where
     // This initial size also works around `GetFullPathNameW` returning
     // incorrect size hints for some short paths:
     // https://github.com/dylni/normpath/issues/5
-    let mut stack_buf: [MaybeUninit<u16>; 512] = MaybeUninit::uninit_array();
+    let mut stack_buf: [MaybeUninit<u16>; 512] = [MaybeUninit::uninit(); 512];
     let mut heap_buf: Vec<MaybeUninit<u16>> = Vec::new();
     unsafe {
         let mut n = stack_buf.len();

@@ -14,7 +14,7 @@ mod sub4 {
 #[doc(inline)]
 pub use sub4::inner::*;
 
-// @has 'foo/index.html'
-// @has - '//div[@class="desc docblock-short"]' '1'
-// @!has - '//div[@class="desc docblock-short"]' '0'
+//@ has 'foo/index.html'
+//@ has - '//div[@class="desc docblock-short"]' '1'
+//@ !has - '//div[@class="desc docblock-short"]' '0'
 fn main() { assert_eq!(X, 1); }

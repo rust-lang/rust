@@ -84,3 +84,17 @@ pub fn checked_shr_signed(a: i32, b: u32) -> Option<i32> {
     // CHECK: ret { i32, i32 } %[[R1]]
     a.checked_shr(b)
 }
+
+// CHECK-LABEL: @checked_add_one_unwrap_unsigned
+// CHECK-SAME: (i32 noundef %x)
+#[no_mangle]
+pub fn checked_add_one_unwrap_unsigned(x: u32) -> u32 {
+    // CHECK: %[[IS_MAX:.+]] = icmp eq i32 %x, -1
+    // CHECK: br i1 %[[IS_MAX]], label %[[NONE_BB:.+]], label %[[SOME_BB:.+]]
+    // CHECK: [[SOME_BB]]:
+    // CHECK: %[[R:.+]] = add nuw i32 %x, 1
+    // CHECK: ret i32 %[[R]]
+    // CHECK: [[NONE_BB]]:
+    // CHECK: call {{.+}}unwrap_failed
+    x.checked_add(1).unwrap()
+}

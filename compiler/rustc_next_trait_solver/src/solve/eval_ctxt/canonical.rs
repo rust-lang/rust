@@ -267,7 +267,9 @@ where
         // We therefore instantiate the existential variable in the canonical response with the
         // inference variable of the input right away, which is more performant.
         let mut opt_values = IndexVec::from_elem_n(None, response.variables.len());
-        for (original_value, result_value) in iter::zip(original_values, var_values.var_values) {
+        for (original_value, result_value) in
+            iter::zip(original_values, var_values.var_values.iter())
+        {
             match result_value.kind() {
                 ty::GenericArgKind::Type(t) => {
                     if let ty::Bound(debruijn, b) = t.kind() {
@@ -291,7 +293,7 @@ where
         }
 
         let var_values = delegate.cx().mk_args_from_iter(
-            response.variables.into_iter().enumerate().map(|(index, info)| {
+            response.variables.iter().enumerate().map(|(index, info)| {
                 if info.universe() != ty::UniverseIndex::ROOT {
                     // A variable from inside a binder of the query. While ideally these shouldn't
                     // exist at all (see the FIXME at the start of this method), we have to deal with
@@ -344,7 +346,7 @@ where
     ) {
         assert_eq!(original_values.len(), var_values.len());
 
-        for (&orig, response) in iter::zip(original_values, var_values.var_values) {
+        for (&orig, response) in iter::zip(original_values, var_values.var_values.iter()) {
             let goals =
                 delegate.eq_structurally_relating_aliases(param_env, orig, response).unwrap();
             assert!(goals.is_empty());
@@ -413,7 +415,8 @@ where
     // In case any fresh inference variables have been created between `state`
     // and the previous instantiation, extend `orig_values` for it.
     assert!(orig_values.len() <= state.value.var_values.len());
-    for &arg in &state.value.var_values.var_values[orig_values.len()..state.value.var_values.len()]
+    for &arg in &state.value.var_values.var_values.as_slice()
+        [orig_values.len()..state.value.var_values.len()]
     {
         // FIXME: This is so ugly.
         let unconstrained = delegate.fresh_var_for_kind_with_span(arg, span);

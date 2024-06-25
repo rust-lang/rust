@@ -1,6 +1,7 @@
 //! Performs various peephole optimizations.
 
 use crate::simplify::simplify_duplicate_switch_targets;
+use crate::take_array;
 use rustc_ast::attr;
 use rustc_middle::bug;
 use rustc_middle::mir::*;
@@ -285,7 +286,8 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
             return;
         }
 
-        let Some(arg_place) = args.pop().unwrap().node.place() else { return };
+        let Ok([arg]) = take_array(args) else { return };
+        let Some(arg_place) = arg.node.place() else { return };
 
         statements.push(Statement {
             source_info: terminator.source_info,

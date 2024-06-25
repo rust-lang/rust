@@ -138,7 +138,7 @@ impl<I: Interner> ClosureArgs<I> {
     /// for the closure parent, alongside additional closure-specific components.
     pub fn new(tcx: I, parts: ClosureArgsParts<I>) -> ClosureArgs<I> {
         ClosureArgs {
-            args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
+            args: tcx.mk_args_from_iter(parts.parent_args.iter().chain([
                 parts.closure_kind_ty.into(),
                 parts.closure_sig_as_fn_ptr_ty.into(),
                 parts.tupled_upvars_ty.into(),
@@ -260,7 +260,7 @@ pub struct CoroutineClosureArgsParts<I: Interner> {
 impl<I: Interner> CoroutineClosureArgs<I> {
     pub fn new(tcx: I, parts: CoroutineClosureArgsParts<I>) -> CoroutineClosureArgs<I> {
         CoroutineClosureArgs {
-            args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
+            args: tcx.mk_args_from_iter(parts.parent_args.iter().chain([
                 parts.closure_kind_ty.into(),
                 parts.signature_parts_ty.into(),
                 parts.tupled_upvars_ty.into(),
@@ -309,10 +309,10 @@ impl<I: Interner> CoroutineClosureArgs<I> {
         let interior = self.coroutine_witness_ty();
         let ty::FnPtr(sig) = self.signature_parts_ty().kind() else { panic!() };
         sig.map_bound(|sig| {
-            let [resume_ty, tupled_inputs_ty] = *sig.inputs() else {
+            let [resume_ty, tupled_inputs_ty] = *sig.inputs().as_slice() else {
                 panic!();
             };
-            let [yield_ty, return_ty] = **sig.output().tuple_fields() else { panic!() };
+            let [yield_ty, return_ty] = *sig.output().tuple_fields().as_slice() else { panic!() };
             CoroutineClosureSignature {
                 interior,
                 tupled_inputs_ty,
@@ -496,16 +496,16 @@ impl<I: Interner> CoroutineClosureSignature<I> {
                     tcx,
                     tupled_inputs_ty
                         .tuple_fields()
-                        .into_iter()
-                        .chain(coroutine_captures_by_ref_ty.tuple_fields()),
+                        .iter()
+                        .chain(coroutine_captures_by_ref_ty.tuple_fields().iter()),
                 )
             }
             ty::ClosureKind::FnOnce => Ty::new_tup_from_iter(
                 tcx,
                 tupled_inputs_ty
                     .tuple_fields()
-                    .into_iter()
-                    .chain(closure_tupled_upvars_ty.tuple_fields()),
+                    .iter()
+                    .chain(closure_tupled_upvars_ty.tuple_fields().iter()),
             ),
         }
     }
@@ -617,7 +617,7 @@ impl<I: Interner> CoroutineArgs<I> {
     /// for the coroutine parent, alongside additional coroutine-specific components.
     pub fn new(tcx: I, parts: CoroutineArgsParts<I>) -> CoroutineArgs<I> {
         CoroutineArgs {
-            args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
+            args: tcx.mk_args_from_iter(parts.parent_args.iter().chain([
                 parts.kind_ty.into(),
                 parts.resume_ty.into(),
                 parts.yield_ty.into(),

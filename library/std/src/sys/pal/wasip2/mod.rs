@@ -34,10 +34,6 @@ pub mod process;
 pub mod stdio;
 #[path = "../wasi/thread.rs"]
 pub mod thread;
-#[path = "../unsupported/thread_local_dtor.rs"]
-pub mod thread_local_dtor;
-#[path = "../unsupported/thread_local_key.rs"]
-pub mod thread_local_key;
 #[path = "../wasi/time.rs"]
 pub mod time;
 

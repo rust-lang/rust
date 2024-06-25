@@ -4,16 +4,16 @@
 // Check that yes/no in `#[coverage(yes)]` and `#[coverage(no)]` must be bare
 // words, not part of a more complicated substructure.
 
-#[coverage(yes(milord))] //~ ERROR expected `coverage(off)` or `coverage(on)`
+#[coverage(yes(milord))] //~ ERROR malformed `coverage` attribute input
 fn yes_list() {}
 
-#[coverage(no(milord))] //~ ERROR expected `coverage(off)` or `coverage(on)`
+#[coverage(no(milord))] //~ ERROR malformed `coverage` attribute input
 fn no_list() {}
 
-#[coverage(yes = "milord")] //~ ERROR expected `coverage(off)` or `coverage(on)`
+#[coverage(yes = "milord")] //~ ERROR malformed `coverage` attribute input
 fn yes_key() {}
 
-#[coverage(no = "milord")] //~ ERROR expected `coverage(off)` or `coverage(on)`
+#[coverage(no = "milord")] //~ ERROR malformed `coverage` attribute input
 fn no_key() {}
 
 fn main() {}

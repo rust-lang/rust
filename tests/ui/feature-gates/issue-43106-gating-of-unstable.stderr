@@ -1,4 +1,16 @@
 error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:7:1
+   |
+LL | #![unstable()]
+   | ^^^^^^^^^^^^^^
+
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:10:1
+   |
+LL | #[unstable()]
+   | ^^^^^^^^^^^^^
+
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-unstable.rs:14:9
    |
 LL |         #![unstable()]
@@ -27,18 +39,6 @@ error[E0734]: stability attributes may not be used outside of the standard libra
    |
 LL |     #[unstable()]
    |     ^^^^^^^^^^^^^
-
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:10:1
-   |
-LL | #[unstable()]
-   | ^^^^^^^^^^^^^
-
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:7:1
-   |
-LL | #![unstable()]
-   | ^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 

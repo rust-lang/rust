@@ -133,6 +133,20 @@ impl<H, T> RawList<H, T> {
     }
 }
 
+impl<'a, H, T: Copy> rustc_type_ir::inherent::SliceLike for &'a RawList<H, T> {
+    type Item = T;
+
+    type IntoIter = iter::Copied<<&'a [T] as IntoIterator>::IntoIter>;
+
+    fn iter(self) -> Self::IntoIter {
+        (*self).iter()
+    }
+
+    fn as_slice(&self) -> &[Self::Item] {
+        (*self).as_slice()
+    }
+}
+
 macro_rules! impl_list_empty {
     ($header_ty:ty, $header_init:expr) => {
         impl<T> RawList<$header_ty, T> {

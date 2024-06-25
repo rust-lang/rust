@@ -86,7 +86,7 @@ where
             }
             (Reveal::All, _) => {
                 // FIXME: Add an assertion that opaque type storage is empty.
-                let actual = tcx.type_of(opaque_ty.def_id).instantiate(tcx, &opaque_ty.args);
+                let actual = tcx.type_of(opaque_ty.def_id).instantiate(tcx, opaque_ty.args);
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
@@ -102,7 +102,7 @@ pub fn uses_unique_placeholders_ignoring_regions<I: Interner>(
     args: I::GenericArgs,
 ) -> Result<(), NotUniqueParam<I>> {
     let mut seen = GrowableBitSet::default();
-    for arg in args {
+    for arg in args.iter() {
         match arg.kind() {
             // Ignore regions, since we can't resolve those in a canonicalized
             // query in the trait solver.

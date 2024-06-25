@@ -2,11 +2,11 @@
 
 use std::ops::{Deref, DerefMut};
 
-// @has foo/struct.Vec.html
-// @count - '//h2[@id="deref-methods-Slice"]' 1
-// @count - '//div[@id="deref-methods-Slice-1"]' 1
-// @count - '//div[@id="deref-methods-Slice-1"][@class="impl-items"]' 1
-// @count - '//div[@id="deref-methods-Slice-1"]/div[@class="impl-items"]' 0
+//@ has foo/struct.Vec.html
+//@ count - '//h2[@id="deref-methods-Slice"]' 1
+//@ count - '//div[@id="deref-methods-Slice-1"]' 1
+//@ count - '//div[@id="deref-methods-Slice-1"][@class="impl-items"]' 1
+//@ count - '//div[@id="deref-methods-Slice-1"]/div[@class="impl-items"]' 0
 pub struct Vec;
 
 pub struct Slice;

@@ -232,7 +232,8 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
                 .filter(|item| item.kind == ty::AssocKind::Type)
                 .map(move |assoc_ty| {
                     super_poly_trait_ref.map_bound(|super_trait_ref| {
-                        let alias_ty = ty::AliasTy::new(tcx, assoc_ty.def_id, super_trait_ref.args);
+                        let alias_ty =
+                            ty::AliasTy::new_from_args(tcx, assoc_ty.def_id, super_trait_ref.args);
                         let resolved = tcx.normalize_erasing_regions(
                             ty::ParamEnv::reveal_all(),
                             alias_ty.to_ty(tcx),
@@ -351,7 +352,7 @@ pub fn transform_instance<'tcx>(
         // Adjust the type ids of VTableShims to the type id expected in the call sites for the
         // entry in the vtable (i.e., by using the signature of the closure passed as an argument
         // to the shim, or by just removing self).
-        let trait_ref = ty::TraitRef::new(tcx, trait_id, instance.args);
+        let trait_ref = ty::TraitRef::new_from_args(tcx, trait_id, instance.args);
         let invoke_ty = trait_object_ty(tcx, ty::Binder::dummy(trait_ref));
         instance.args = tcx.mk_args_trait(invoke_ty, trait_ref.args.into_iter().skip(1));
     }
@@ -432,7 +433,7 @@ pub fn transform_instance<'tcx>(
                 x => bug!("Unexpected type kind for closure-like: {x:?}"),
             };
             let concrete_args = tcx.mk_args_trait(closure_ty, inputs.map(Into::into));
-            let trait_ref = ty::TraitRef::new(tcx, trait_id, concrete_args);
+            let trait_ref = ty::TraitRef::new_from_args(tcx, trait_id, concrete_args);
             let invoke_ty = trait_object_ty(tcx, ty::Binder::dummy(trait_ref));
             let abstract_args = tcx.mk_args_trait(invoke_ty, trait_ref.args.into_iter().skip(1));
             // There should be exactly one method on this trait, and it should be the one we're
