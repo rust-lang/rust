@@ -95,6 +95,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 }
 
 impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
+    /// Recursively builds a `MatchPair` tree for the given pattern and its
+    /// subpatterns.
     pub(in crate::build) fn new(
         mut place_builder: PlaceBuilder<'tcx>,
         pattern: &'pat Pat<'tcx>,
