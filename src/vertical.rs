@@ -50,16 +50,15 @@ impl AlignedItem for ast::FieldDef {
             mk_sp(self.attrs.last().unwrap().span.hi(), self.span.lo())
         };
         let attrs_extendable = self.ident.is_none() && is_attributes_extendable(&attrs_str);
-        rewrite_struct_field_prefix(context, self).and_then(|field_str| {
-            combine_strs_with_missing_comments(
-                context,
-                &attrs_str,
-                &field_str,
-                missing_span,
-                shape,
-                attrs_extendable,
-            )
-        })
+        let field_str = rewrite_struct_field_prefix(context, self).ok()?;
+        combine_strs_with_missing_comments(
+            context,
+            &attrs_str,
+            &field_str,
+            missing_span,
+            shape,
+            attrs_extendable,
+        )
     }
 
     fn rewrite_aligned_item(
@@ -68,7 +67,7 @@ impl AlignedItem for ast::FieldDef {
         shape: Shape,
         prefix_max_width: usize,
     ) -> Option<String> {
-        rewrite_struct_field(context, self, shape, prefix_max_width)
+        rewrite_struct_field(context, self, shape, prefix_max_width).ok()
     }
 }
 

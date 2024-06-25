@@ -14,15 +14,13 @@ use crate::skip::SkipContext;
 use crate::visitor::SnippetProvider;
 use crate::FormatReport;
 
+pub(crate) type RewriteResult = Result<String, RewriteError>;
 pub(crate) trait Rewrite {
     /// Rewrite self into shape.
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String>;
-    fn rewrite_result(
-        &self,
-        context: &RewriteContext<'_>,
-        shape: Shape,
-    ) -> Result<String, RewriteError> {
-        self.rewrite(context, shape).ok_or(RewriteError::Unknown)
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        self.rewrite(context, shape).unknown_error()
     }
 }
 
@@ -45,6 +43,25 @@ pub(crate) enum RewriteError {
     Unknown,
 }
 
+/// Extension trait used to conveniently convert to RewriteError
+pub(crate) trait RewriteErrorExt<T> {
+    fn max_width_error(self, width: usize, span: Span) -> Result<T, RewriteError>;
+    fn unknown_error(self) -> Result<T, RewriteError>;
+}
+
+impl<T> RewriteErrorExt<T> for Option<T> {
+    fn max_width_error(self, width: usize, span: Span) -> Result<T, RewriteError> {
+        self.ok_or_else(|| RewriteError::ExceedsMaxWidth {
+            configured_width: width,
+            span: span,
+        })
+    }
+
+    fn unknown_error(self) -> Result<T, RewriteError> {
+        self.ok_or_else(|| RewriteError::Unknown)
+    }
+}
+
 #[derive(Clone)]
 pub(crate) struct RewriteContext<'a> {
     pub(crate) psess: &'a ParseSess,
@@ -65,6 +82,7 @@ pub(crate) struct RewriteContext<'a> {
     pub(crate) skip_context: SkipContext,
     pub(crate) skipped_range: Rc<RefCell<Vec<(usize, usize)>>>,
 }
+
 pub(crate) struct InsideMacroGuard {
     is_nested_macro_context: bool,
     inside_macro_ref: Rc<Cell<bool>>,
