@@ -14,7 +14,7 @@ use crate::{Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, Modul
 use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, ResolutionError};
 use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, Used, VisResolutionError};
 
-use rustc_ast::visit::{self, AssocCtxt, Visitor};
+use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use rustc_ast::{Block, ForeignItem, ForeignItemKind, Impl, Item, ItemKind, NodeId};
 use rustc_attr as attr;
@@ -1313,7 +1313,17 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             _ => {
                 let orig_macro_rules_scope = self.parent_scope.macro_rules;
                 self.build_reduced_graph_for_item(item);
-                visit::walk_item(self, item);
+                match item.kind {
+                    ItemKind::Mod(..) => {
+                        // Visit attributes after items for backward compatibility.
+                        // This way they can use `macro_rules` defined later.
+                        self.visit_vis(&item.vis);
+                        self.visit_ident(item.ident);
+                        item.kind.walk(item, AssocCtxt::Trait, self);
+                        visit::walk_list!(self, visit_attribute, &item.attrs);
+                    }
+                    _ => visit::walk_item(self, item),
+                }
                 match item.kind {
                     ItemKind::Mod(..) if self.contains_macro_use(&item.attrs) => {
                         self.parent_scope.macro_rules
@@ -1514,7 +1524,10 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         if krate.is_placeholder {
             self.visit_invoc_in_module(krate.id);
         } else {
-            visit::walk_crate(self, krate);
+            // Visit attributes after items for backward compatibility.
+            // This way they can use `macro_rules` defined later.
+            visit::walk_list!(self, visit_item, &krate.items);
+            visit::walk_list!(self, visit_attribute, &krate.attrs);
             self.contains_macro_use(&krate.attrs);
         }
     }

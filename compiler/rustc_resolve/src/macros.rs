@@ -5,7 +5,7 @@ use crate::errors::CannotDetermineMacroResolution;
 use crate::errors::{self, AddAsNonDerive, CannotFindIdentInThisScope};
 use crate::errors::{MacroExpectedFound, RemoveSurroundingDerive};
 use crate::Namespace::*;
-use crate::{BindingKey, BuiltinMacroState, Determinacy, MacroData, Used};
+use crate::{BindingKey, BuiltinMacroState, Determinacy, MacroData, NameBindingKind, Used};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc_ast::expand::StrippedCfgItem;
@@ -18,15 +18,18 @@ use rustc_errors::{Applicability, StashKey};
 use rustc_expand::base::{Annotatable, DeriveResolution, Indeterminate, ResolverExpand};
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
-use rustc_expand::expand::{AstFragment, Invocation, InvocationKind, SupportsMacroExpansion};
+use rustc_expand::expand::{
+    AstFragment, AstFragmentKind, Invocation, InvocationKind, SupportsMacroExpansion,
+};
 use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::RegisteredTools;
 use rustc_middle::ty::{TyCtxt, Visibility};
-use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
-use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE};
-use rustc_session::lint::builtin::{UNUSED_MACROS, UNUSED_MACRO_RULES};
+use rustc_session::lint::builtin::{
+    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, SOFT_UNSTABLE,
+    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_MACROS, UNUSED_MACRO_RULES,
+};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::edit_distance;
@@ -289,6 +292,16 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
         let parent_scope = &ParentScope { derives, ..parent_scope };
         let supports_macro_expansion = invoc.fragment_kind.supports_macro_expansion();
         let node_id = invoc.expansion_data.lint_node_id;
+        // This is a heuristic, but it's good enough for the lint.
+        let looks_like_invoc_in_mod_inert_attr = self
+            .invocation_parents
+            .get(&invoc_id)
+            .or_else(|| self.invocation_parents.get(&eager_expansion_root))
+            .map(|&(mod_def_id, _)| mod_def_id)
+            .filter(|&mod_def_id| {
+                invoc.fragment_kind == AstFragmentKind::Expr
+                    && self.tcx.def_kind(mod_def_id) == DefKind::Mod
+            });
         let (ext, res) = self.smart_resolve_macro_path(
             path,
             kind,
@@ -299,6 +312,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             force,
             soft_custom_inner_attributes_gate(path, invoc),
             deleg_impl,
+            looks_like_invoc_in_mod_inert_attr,
         )?;
 
         let span = invoc.span();
@@ -521,6 +535,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         force: bool,
         soft_custom_inner_attributes_gate: bool,
         deleg_impl: Option<LocalDefId>,
+        invoc_in_mod_inert_attr: Option<LocalDefId>,
     ) -> Result<(Lrc<SyntaxExtension>, Res), Indeterminate> {
         let (ext, res) = match self.resolve_macro_or_delegation_path(
             path,
@@ -529,6 +544,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             true,
             force,
             deleg_impl,
+            invoc_in_mod_inert_attr.map(|def_id| (def_id, node_id)),
         ) {
             Ok((Some(ext), res)) => (ext, res),
             Ok((None, res)) => (self.dummy_ext(kind), res),
@@ -683,20 +699,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         trace: bool,
         force: bool,
     ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
-        self.resolve_macro_or_delegation_path(path, kind, parent_scope, trace, force, None)
+        self.resolve_macro_or_delegation_path(path, kind, parent_scope, trace, force, None, None)
     }
 
     fn resolve_macro_or_delegation_path(
         &mut self,
-        path: &ast::Path,
+        ast_path: &ast::Path,
         kind: Option<MacroKind>,
         parent_scope: &ParentScope<'a>,
         trace: bool,
         force: bool,
         deleg_impl: Option<LocalDefId>,
+        invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
     ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
-        let path_span = path.span;
-        let mut path = Segment::from_path(path);
+        let path_span = ast_path.span;
+        let mut path = Segment::from_path(ast_path);
 
         // Possibly apply the macro helper hack
         if deleg_impl.is_none()
@@ -762,6 +779,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             let res = binding.map(|binding| binding.res());
             self.prohibit_imported_non_macro_attrs(binding.ok(), res.ok(), path_span);
+            self.report_out_of_scope_macro_calls(
+                ast_path,
+                parent_scope,
+                invoc_in_mod_inert_attr,
+                binding.ok(),
+            );
             res
         };
 
@@ -1010,6 +1033,45 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     descr: kind.descr(),
                     binding_span,
                 });
+            }
+        }
+    }
+
+    fn report_out_of_scope_macro_calls(
+        &mut self,
+        path: &ast::Path,
+        parent_scope: &ParentScope<'a>,
+        invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
+        binding: Option<NameBinding<'a>>,
+    ) {
+        if let Some((mod_def_id, node_id)) = invoc_in_mod_inert_attr
+            && let Some(binding) = binding
+            // This is a `macro_rules` itself, not some import.
+            && let NameBindingKind::Res(res) = binding.kind
+            && let Res::Def(DefKind::Macro(MacroKind::Bang), def_id) = res
+            // And the `macro_rules` is defined inside the attribute's module,
+            // so it cannot be in scope unless imported.
+            && self.tcx.is_descendant_of(def_id, mod_def_id.to_def_id())
+        {
+            // Try to resolve our ident ignoring `macro_rules` scopes.
+            // If such resolution is successful and gives the same result
+            // (e.g. if the macro is re-imported), then silence the lint.
+            let no_macro_rules = self.arenas.alloc_macro_rules_scope(MacroRulesScope::Empty);
+            let fallback_binding = self.early_resolve_ident_in_lexical_scope(
+                path.segments[0].ident,
+                ScopeSet::Macro(MacroKind::Bang),
+                &ParentScope { macro_rules: no_macro_rules, ..*parent_scope },
+                None,
+                false,
+                None,
+            );
+            if fallback_binding.ok().and_then(|b| b.res().opt_def_id()) != Some(def_id) {
+                self.tcx.sess.psess.buffer_lint(
+                    OUT_OF_SCOPE_MACRO_CALLS,
+                    path.span,
+                    node_id,
+                    BuiltinLintDiag::OutOfScopeMacroCalls { path: pprust::path_to_string(path) },
+                );
             }
         }
     }

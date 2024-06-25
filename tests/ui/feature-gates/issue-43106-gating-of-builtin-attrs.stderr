@@ -42,6 +42,20 @@ warning: unknown lint: `x5100`
 LL | #![deny(x5100)]
    |         ^^^^^
 
+warning: use of deprecated attribute `crate_id`: no longer used
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:84:1
+   |
+LL | #![crate_id = "10"]
+   | ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated attribute `no_start`: no longer used
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:94:1
+   |
+LL | #![no_start]
+   | ^^^^^^^^^^^^ help: remove this attribute
+
 warning: unknown lint: `x5400`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:105:8
    |
@@ -185,20 +199,6 @@ warning: unknown lint: `x5100`
    |
 LL |     #[deny(x5100)] impl S { }
    |            ^^^^^
-
-warning: use of deprecated attribute `crate_id`: no longer used
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:84:1
-   |
-LL | #![crate_id = "10"]
-   | ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-   = note: `#[warn(deprecated)]` on by default
-
-warning: use of deprecated attribute `no_start`: no longer used
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:94:1
-   |
-LL | #![no_start]
-   | ^^^^^^^^^^^^ help: remove this attribute
 
 warning: `#[macro_export]` only has an effect on macro definitions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:198:1
