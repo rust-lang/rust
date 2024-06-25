@@ -28,9 +28,8 @@ use crate::detect::{bit, cache, Feature};
 pub(crate) fn detect_features() -> cache::Initializer {
     let mut value = cache::Initializer::default();
 
-    // If the x86 CPU does not support the CPUID instruction then it is too
-    // old to support any of the currently-detectable features.
-    if !has_cpuid() {
+    if cfg!(target_env = "sgx") {
+        // doesn't support this because it is untrusted data
         return value;
     }
 

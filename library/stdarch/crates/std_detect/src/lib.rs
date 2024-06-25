@@ -20,10 +20,6 @@
 #![cfg_attr(test, allow(unused_imports))]
 #![no_std]
 #![allow(internal_features)]
-#![cfg_attr(
-    any(target_arch = "x86", target_arch = "x86_64"),
-    feature(stdarch_x86_has_cpuid)
-)]
 
 #[cfg(test)]
 #[macro_use]
