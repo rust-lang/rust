@@ -256,7 +256,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                             | GenericParamDefKind::Lifetime,
                             _,
                         ) => {
-                            // TODO: this should be removed
+                            // FIXME(effects): this should be removed
                             // SPECIAL CASE FOR DESUGARED EFFECT PARAMS
                             // This comes from the following example:
                             //

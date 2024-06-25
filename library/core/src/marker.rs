@@ -1028,6 +1028,9 @@ pub macro SmartPointer($item:item) {
     /* compiler built-in */
 }
 
+// Support traits and types for the desugaring of const traits and
+// `~const` bounds. Not supposed to be used by anything other than
+// the compiler.
 #[doc(hidden)]
 #[unstable(
     feature = "effect_types",
@@ -1036,7 +1039,6 @@ pub macro SmartPointer($item:item) {
 )]
 #[allow(missing_debug_implementations)] // these unit structs don't need `Debug` impls.
 #[cfg(not(bootstrap))]
-// TODO docs
 pub mod effects {
     #[lang = "EffectsNoRuntime"]
     pub struct NoRuntime;

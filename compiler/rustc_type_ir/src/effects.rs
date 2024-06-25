@@ -1,6 +1,6 @@
-use crate::lang_items::TraitSolverLangItem::{EffectsMaybe, EffectsRuntime, EffectsNoRuntime};
-use crate::Interner;
 use crate::inherent::{AdtDef, IntoKind, Ty};
+use crate::lang_items::TraitSolverLangItem::{EffectsMaybe, EffectsNoRuntime, EffectsRuntime};
+use crate::Interner;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum EffectKind {

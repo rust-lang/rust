@@ -323,12 +323,14 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         let Some(assoc_def_id) = tcx.associated_type_for_effects(parent) else {
             bug!("associated_type_for_effects returned None when there is host effect in generics");
         };
-        let effects = Ty::new_projection(tcx, assoc_def_id, ty::GenericArgs::identity_for_item(tcx, parent));
+        let effects =
+            Ty::new_projection(tcx, assoc_def_id, ty::GenericArgs::identity_for_item(tcx, parent));
         let param = generics.param_at(host_effect_index, tcx);
         let span = tcx.def_span(param.def_id);
         let host = ty::Const::new_param(tcx, ty::ParamConst::for_def(param));
         let compat = tcx.require_lang_item(LangItem::EffectsCompat, Some(span));
-        let trait_ref = ty::TraitRef::new(tcx, compat, [ty::GenericArg::from(effects), host.into()]);
+        let trait_ref =
+            ty::TraitRef::new(tcx, compat, [ty::GenericArg::from(effects), host.into()]);
         predicates.push((ty::Binder::dummy(trait_ref).upcast(tcx), span));
     }
 

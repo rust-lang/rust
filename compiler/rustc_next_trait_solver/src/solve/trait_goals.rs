@@ -731,11 +731,11 @@ where
                 let Some(kind) = ty::EffectKind::try_from_ty(ecx.cx(), ty) else {
                     return Err(NoSolution);
                 };
-    
+
                 let Some(result) = ty::EffectKind::min(min, kind) else {
                     return Err(NoSolution);
                 };
-    
+
                 min = result;
             }
         }

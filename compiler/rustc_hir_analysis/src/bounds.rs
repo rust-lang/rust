@@ -72,7 +72,7 @@ impl<'tcx> Bounds<'tcx> {
         // For `T: ~const Tr` or `T: const Tr`, we need to add an additional bound on the
         // associated type of `<T as Tr>` and make sure that the effect is compatible.
         if let Some(compat_val) = match (tcx.def_kind(defining_def_id), constness) {
-            // TODO: do we need `T: const Trait` anymore?
+            // FIXME(effects): revisit the correctness of this
             (_, ty::BoundConstness::Const) => Some(tcx.consts.false_),
             // body owners that can have trait bounds
             (DefKind::Const | DefKind::Fn | DefKind::AssocFn, ty::BoundConstness::ConstIfConst) => {
@@ -120,7 +120,7 @@ impl<'tcx> Bounds<'tcx> {
             // FIXME(effects) this is equality for now, which wouldn't be helpful for a non-const implementor
             // that uses a `Bar` that implements `Trait` with `Maybe` effects.
             (DefKind::AssocTy, ty::BoundConstness::ConstIfConst) => {
-                // TODO write the actual impl
+                // FIXME(effects): implement this
                 return;
             }
             // probably illegal in this position.
@@ -169,7 +169,7 @@ impl<'tcx> Bounds<'tcx> {
 
     pub fn clauses(
         &self,
-        // TODO remove tcx
+        // FIXME(effects): remove tcx
         _tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item = (ty::Clause<'tcx>, Span)> + '_ {
         self.clauses.iter().cloned()

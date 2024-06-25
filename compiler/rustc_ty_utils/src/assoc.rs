@@ -255,7 +255,7 @@ fn associated_type_for_effects(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<De
                 return None;
             };
 
-            // TODO span is bad
+            // FIXME(effects): span
             let span = tcx.def_ident_span(def_id).unwrap();
 
             let impl_assoc_ty = tcx.at(span).create_def(def_id, kw::Empty, DefKind::AssocTy);
@@ -291,7 +291,7 @@ fn associated_type_for_effects(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<De
             } else {
                 tcx.require_lang_item(hir::LangItem::EffectsRuntime, Some(span))
             };
-            // TODO this is wrong
+            // FIXME(effects): make impls use `Min` for their effect types
             impl_assoc_ty.type_of(ty::EarlyBinder::bind(Ty::new_adt(
                 tcx,
                 tcx.adt_def(type_def_id),
