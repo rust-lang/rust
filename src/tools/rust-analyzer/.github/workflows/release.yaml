@@ -132,7 +132,7 @@ jobs:
         run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats --with-deps $(rustc --print sysroot)/lib/rustlib/src/rust/library/std
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.target }}
           path: ./dist
@@ -177,7 +177,7 @@ jobs:
       - run: rm -rf editors/code/server
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: dist-x86_64-unknown-linux-musl
           path: ./dist
@@ -206,39 +206,39 @@ jobs:
       - run: echo "HEAD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
       - run: 'echo "HEAD_SHA: $HEAD_SHA"'
 
-      - uses: actions/download-artifact@v1
+      - uses: actions/download-artifact@v4
         with:
           name: dist-aarch64-apple-darwin
           path: dist
-      - uses: actions/download-artifact@v1
+      - uses: actions/download-artifact@v4
         with:
           name: dist-x86_64-apple-darwin
           path: dist
-      - uses: actions/download-artifact@v1
+      - uses: actions/download-artifact@v4
         with:
           name: dist-x86_64-unknown-linux-gnu
           path: dist
-      - uses: actions/download-artifact@v1
+      - uses: actions/download-artifact@v4
         with:
           name: dist-x86_64-unknown-linux-musl
           path: dist
-      - uses: actions/download-artifact@v1
+      - uses: actions/download-artifact@v4
         with:
           name: dist-aarch64-unknown-linux-gnu
           path: dist
-      - uses: actions/download-artifact@v1
+      - uses: actions/download-artifact@v4
         with:
           name: dist-arm-unknown-linux-gnueabihf
           path: dist
-      - uses: actions/download-artifact@v1
+      - uses: actions/download-artifact@v4
         with:
           name: dist-x86_64-pc-windows-msvc
           path: dist
-      - uses: actions/download-artifact@v1
+      - uses: actions/download-artifact@v4
         with:
           name: dist-i686-pc-windows-msvc
           path: dist
-      - uses: actions/download-artifact@v1
+      - uses: actions/download-artifact@v4
         with:
           name: dist-aarch64-pc-windows-msvc
           path: dist
