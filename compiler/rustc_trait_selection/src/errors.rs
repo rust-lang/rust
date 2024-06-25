@@ -66,7 +66,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for NegativePositiveConflict<'_> {
         diag.arg("trait_desc", self.trait_desc.print_only_trait_path().to_string());
         diag.arg(
             "self_desc",
-            self.self_ty.map_or_else(|| Cow::Borrowed("none"), |ty| ty.to_string().into()),
+            self.self_ty.map_or(Cow::Borrowed("none"), |ty| ty.to_string().into()),
         );
         diag.span(self.impl_span);
         diag.code(E0751);
