@@ -247,6 +247,34 @@ pub fn test_while_readonly<P: AsRef<Path>, F: FnOnce() + std::panic::UnwindSafe>
     success.unwrap();
 }
 
+/// Browse the directory `path` non-recursively and return the first file path which starts with `prefix` and has the
+/// file extension `extension`.
+#[track_caller]
+pub fn find_files_by_prefix_and_extension<P: AsRef<Path>>(
+    path: P,
+    prefix: &str,
+    extension: &str,
+) -> Vec<PathBuf> {
+    let mut matching_files = Vec::new();
+    for entry in fs_wrapper::read_dir(path) {
+        let entry = entry.expect("failed to read directory entry.");
+        let path = entry.path();
+
+        if path.is_file()
+            && path.file_name().unwrap().to_str().unwrap().starts_with(prefix)
+            && path.extension().unwrap().to_str().unwrap() == extension
+        {
+            matching_files.push(path);
+        }
+    }
+
+    if matching_files.is_empty() {
+        panic!("no files found with the given prefix and extension");
+    } else {
+        matching_files
+    }
+}
+
 /// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is
 /// available on the platform!
 #[track_caller]
