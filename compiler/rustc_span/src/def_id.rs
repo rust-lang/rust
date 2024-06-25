@@ -120,9 +120,11 @@ impl Default for DefPathHash {
     }
 }
 
-// Safety: `DefPathHash` sort order is not affected (de)serialization.
-unsafe impl StableOrd for DefPathHash {
+impl StableOrd for DefPathHash {
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // `DefPathHash` sort order is not affected by (de)serialization.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 /// A [`StableCrateId`] is a 64-bit hash of a crate name, together with all
