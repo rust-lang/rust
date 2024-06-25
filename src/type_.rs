@@ -206,7 +206,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 4 => TypeKind::Float,
                 8 => TypeKind::Double,
                 16 => TypeKind::FP128,
-                _ => TypeKind::Void,
+                size => unreachable!("Floating-point type of size {}", size),
             }
         } else if typ == self.type_void() {
             TypeKind::Void
