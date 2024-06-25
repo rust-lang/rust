@@ -19,16 +19,16 @@ fn main() {
     println!("{}" a);
     //~^ ERROR expected `,`, found `a`
     foo!(a b);
-    //~^ ERROR no rules expected the token `b`
+    //~^ ERROR no rules expected `b`
     foo!(a, b, c, d e);
-    //~^ ERROR no rules expected the token `e`
+    //~^ ERROR no rules expected `e`
     foo!(a, b, c d, e);
-    //~^ ERROR no rules expected the token `d`
+    //~^ ERROR no rules expected `d`
     foo!(a, b, c d e);
-    //~^ ERROR no rules expected the token `d`
+    //~^ ERROR no rules expected `d`
     bar!(Level::Error, );
     //~^ ERROR unexpected end of macro invocation
     check!(<str as Debug>::fmt, "fmt");
     check!(<str as Debug>::fmt, "fmt",);
-    //~^ ERROR no rules expected the token `,`
+    //~^ ERROR no rules expected `,`
 }

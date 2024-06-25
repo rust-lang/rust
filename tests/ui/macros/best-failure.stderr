@@ -1,4 +1,4 @@
-error: no rules expected the token `$`
+error: no rules expected `$`
   --> $DIR/best-failure.rs:4:30
    |
 LL | macro_rules! number {

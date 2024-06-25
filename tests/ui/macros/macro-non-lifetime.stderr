@@ -1,4 +1,4 @@
-error: no rules expected the token `a`
+error: no rules expected `a`
   --> $DIR/macro-non-lifetime.rs:6:8
    |
 LL | macro_rules! m { ($x:lifetime) => { } }

@@ -10,7 +10,7 @@ error: expected one of `,`, `.`, `?`, or an operator, found `some`
 LL |     assert!(true some extra junk);
    |                  ^^^^ expected one of `,`, `.`, `?`, or an operator
 
-error: no rules expected the token `blah`
+error: no rules expected `blah`
   --> $DIR/assert-trailing-junk.rs:15:30
    |
 LL |     assert!(true, "whatever" blah);
@@ -28,7 +28,7 @@ LL |     assert!(true "whatever" blah);
    |                 |
    |                 help: try adding a comma
 
-error: no rules expected the token `blah`
+error: no rules expected `blah`
   --> $DIR/assert-trailing-junk.rs:18:29
    |
 LL |     assert!(true "whatever" blah);

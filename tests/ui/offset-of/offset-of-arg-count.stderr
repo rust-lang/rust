@@ -16,7 +16,7 @@ LL |     offset_of!(NotEnoughArgumentsWithAComma, );
 note: while trying to match meta-variable `$fields:expr`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
-error: no rules expected the token `too`
+error: no rules expected `too`
   --> $DIR/offset-of-arg-count.rs:6:34
    |
 LL |     offset_of!(Container, field, too many arguments);
