@@ -65,6 +65,10 @@ impl<'tcx> Bounds<'tcx> {
         } else {
             self.clauses.push(clause);
         }
+
+        if !tcx.features().effects {
+            return;
+        }
         // For `T: ~const Tr` or `T: const Tr`, we need to add an additional bound on the
         // associated type of `<T as Tr>` and make sure that the effect is compatible.
         if let Some(compat_val) = match (tcx.def_kind(defining_def_id), constness) {

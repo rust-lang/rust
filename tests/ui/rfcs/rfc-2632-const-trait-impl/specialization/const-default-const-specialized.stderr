@@ -1,11 +1,36 @@
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/const-default-const-specialized.rs:6:30
+error[E0049]: method `value` has 1 const parameter but its trait declaration has 0 const parameters
+  --> $DIR/const-default-const-specialized.rs:10:1
    |
-LL | #![feature(const_trait_impl, effects)]
-   |                              ^^^^^^^
+LL | #[const_trait]
+   | ^^^^^^^^^^^^^^ found 1 const parameter
+LL | trait Value {
+LL |     fn value() -> u32;
+   |             - expected 0 const parameters
+
+error[E0049]: method `value` has 1 const parameter but its trait declaration has 0 const parameters
+  --> $DIR/const-default-const-specialized.rs:10:1
    |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
+LL | #[const_trait]
+   | ^^^^^^^^^^^^^^ found 1 const parameter
+LL | trait Value {
+LL |     fn value() -> u32;
+   |             - expected 0 const parameters
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-warning: 1 warning emitted
+error[E0015]: cannot call non-const fn `<T as Value>::value` in constant functions
+  --> $DIR/const-default-const-specialized.rs:16:5
+   |
+LL |     T::value()
+   |     ^^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0015, E0049.
+For more information about an error, try `rustc --explain E0015`.
