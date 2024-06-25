@@ -484,7 +484,7 @@ mod sealed_trait {
                   all supported platforms",
         issue = "44930"
     )]
-    pub trait VaArgSafe {}
+    pub unsafe trait VaArgSafe {}
 }
 
 macro_rules! impl_va_arg_safe {
@@ -494,7 +494,7 @@ macro_rules! impl_va_arg_safe {
                        reason = "the `c_variadic` feature has not been properly tested on \
                                  all supported platforms",
                        issue = "44930")]
-            impl sealed_trait::VaArgSafe for $t {}
+            unsafe impl sealed_trait::VaArgSafe for $t {}
         )+
     }
 }
@@ -509,14 +509,15 @@ impl_va_arg_safe! {f64}
               all supported platforms",
     issue = "44930"
 )]
-impl<T> sealed_trait::VaArgSafe for *mut T {}
+unsafe impl<T> sealed_trait::VaArgSafe for *mut T {}
+
 #[unstable(
     feature = "c_variadic",
     reason = "the `c_variadic` feature has not been properly tested on \
               all supported platforms",
     issue = "44930"
 )]
-impl<T> sealed_trait::VaArgSafe for *const T {}
+unsafe impl<T> sealed_trait::VaArgSafe for *const T {}
 
 #[unstable(
     feature = "c_variadic",
