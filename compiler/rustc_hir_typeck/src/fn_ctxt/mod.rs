@@ -144,7 +144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn dcx(&self) -> DiagCtxtHandle<'tcx> {
+    pub(crate) fn dcx(&self) -> DiagCtxtHandle<'a> {
         self.infcx.dcx()
     }
 

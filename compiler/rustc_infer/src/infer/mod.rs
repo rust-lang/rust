@@ -1607,7 +1607,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     // [Note-Type-error-reporting]
     // An invariant is that anytime the expected or actual type is Error (the special
     // error type, meaning that an error occurred when typechecking this expression),
@@ -1623,9 +1623,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         sp: Span,
         mk_diag: M,
         actual_ty: Ty<'tcx>,
-    ) -> Diag<'tcx>
+    ) -> Diag<'a>
     where
-        M: FnOnce(String) -> Diag<'tcx>,
+        M: FnOnce(String) -> Diag<'a>,
     {
         let actual_ty = self.resolve_vars_if_possible(actual_ty);
         debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);

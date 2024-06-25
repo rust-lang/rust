@@ -1881,7 +1881,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         let mut err = self
             .dcx()
             .struct_span_err(pat.span, "pattern requires `..` due to inaccessible fields");
@@ -1973,7 +1973,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
         have_inaccessible_fields: bool,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         let inaccessible = if have_inaccessible_fields { " and inaccessible fields" } else { "" };
         let field_names = if let [(_, field)] = unmentioned_fields {
             format!("field `{field}`{inaccessible}")
