@@ -57,7 +57,6 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
 #[instrument(level = "trace", skip(tcx), ret)]
 fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
-    use rustc_middle::ty::Ty; // to override hir::Ty
 
     match tcx.opt_rpitit_info(def_id.to_def_id()) {
         Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) => {
@@ -112,36 +111,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         }
 
         None => {}
-    }
-
-    if tcx.is_effects_desugared_assoc_ty(def_id.to_def_id()) {
-        let mut predicates = Vec::new();
-
-        // Inherit predicates of parent (impl or trait)
-        let parent = tcx.local_parent(def_id);
-
-        let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
-        let preds = tcx.explicit_predicates_of(parent);
-
-        if let ty::AssocItemContainer::TraitContainer = tcx.associated_item(def_id).container {
-            // for traits, emit `type Effects: TyCompat<<(T1::Effects, ..) as Min>::Output>`
-            // TODO do the same for impls
-            let tup = Ty::new(tcx, ty::Tuple(preds.effects_min_tys));
-            // TODO span
-            let span = tcx.def_span(def_id);
-            let assoc = tcx.require_lang_item(LangItem::EffectsMinOutput, Some(span));
-            let proj = Ty::new_projection(tcx, assoc, [tup]);
-            // TODO this is bad
-            let self_proj = Ty::new_projection(tcx, def_id.to_def_id(), identity_args);
-            let trait_ = tcx.require_lang_item(LangItem::EffectsTyCompat, Some(span));
-            let trait_ref = ty::TraitRef::new(tcx, trait_, [self_proj, proj]);
-            predicates.push((ty::Binder::dummy(trait_ref).upcast(tcx), span));
-        }
-        return ty::GenericPredicates {
-            parent: Some(parent.to_def_id()),
-            predicates: tcx.arena.alloc_from_iter(predicates),
-            effects_min_tys: ty::List::empty(),
-        };
     }
 
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
