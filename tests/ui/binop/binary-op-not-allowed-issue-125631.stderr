@@ -1,0 +1,75 @@
+error[E0369]: binary operation `==` cannot be applied to type `(std::io::Error, T1, {integer})`
+  --> $DIR/binary-op-not-allowed-issue-125631.rs:8:48
+   |
+LL |     (Error::new(ErrorKind::Other, "1"), T1, 1) == (Error::new(ErrorKind::Other, "1"), T1, 2);
+   |     ------------------------------------------ ^^ ------------------------------------------ (std::io::Error, T1, {integer})
+   |     |
+   |     (std::io::Error, T1, {integer})
+   |
+note: an implementation of `PartialEq` might be missing for `T1`
+  --> $DIR/binary-op-not-allowed-issue-125631.rs:4:1
+   |
+LL | struct T1;
+   | ^^^^^^^^^ must implement `PartialEq`
+note: the foreign item type `std::io::Error` doesn't implement `PartialEq`
+  --> $SRC_DIR/std/src/io/error.rs:LL:COL
+   |
+   = note: not implement `PartialEq`
+help: consider annotating `T1` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct T1;
+   |
+
+error[E0369]: binary operation `==` cannot be applied to type `(std::io::Error, Thread)`
+  --> $DIR/binary-op-not-allowed-issue-125631.rs:11:9
+   |
+LL |     (Error::new(ErrorKind::Other, "2"), thread::current())
+   |     ------------------------------------------------------ (std::io::Error, Thread)
+LL |         == (Error::new(ErrorKind::Other, "2"), thread::current());
+   |         ^^ ------------------------------------------------------ (std::io::Error, Thread)
+   |
+note: the foreign item types don't implement required traits for this operation to be valid
+  --> $SRC_DIR/std/src/io/error.rs:LL:COL
+   |
+   = note: not implement `PartialEq`
+  --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
+   |
+   = note: not implement `PartialEq`
+
+error[E0369]: binary operation `==` cannot be applied to type `(std::io::Error, Thread, T1, T2)`
+  --> $DIR/binary-op-not-allowed-issue-125631.rs:14:9
+   |
+LL |     (Error::new(ErrorKind::Other, "4"), thread::current(), T1, T2)
+   |     -------------------------------------------------------------- (std::io::Error, Thread, T1, T2)
+LL |         == (Error::new(ErrorKind::Other, "4"), thread::current(), T1, T2);
+   |         ^^ -------------------------------------------------------------- (std::io::Error, Thread, T1, T2)
+   |
+note: the following types would have to `impl` their required traits for this operation to be valid
+  --> $DIR/binary-op-not-allowed-issue-125631.rs:4:1
+   |
+LL | struct T1;
+   | ^^^^^^^^^ must implement `PartialEq`
+LL | struct T2;
+   | ^^^^^^^^^ must implement `PartialEq`
+note: the foreign item types don't implement required traits for this operation to be valid
+  --> $SRC_DIR/std/src/io/error.rs:LL:COL
+   |
+   = note: not implement `PartialEq`
+  --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
+   |
+   = note: not implement `PartialEq`
+help: consider annotating `T1` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct T1;
+   |
+help: consider annotating `T2` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct T2;
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0369`.
