@@ -32,7 +32,8 @@ trait Foo {
 }
 
 impl const Foo for NonConstAdd {
-    type Bar = NonConstAdd; // FIXME(effects) ERROR the trait bound `NonConstAdd: ~const Add` is not satisfied
+    type Bar = NonConstAdd;
+    // FIXME(effects) ERROR the trait bound `NonConstAdd: ~const Add` is not satisfied
 }
 
 #[const_trait]

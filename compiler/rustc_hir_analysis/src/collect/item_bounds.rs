@@ -134,13 +134,16 @@ pub(super) fn explicit_item_bounds_with_filter(
 
         if let ty::AssocItemContainer::TraitContainer = tcx.associated_item(def_id).container {
             // for traits, emit `type Effects: TyCompat<<(T1::Effects, ..) as Min>::Output>`
-            // TODO do the same for impls
             let tup = Ty::new(tcx, ty::Tuple(preds.effects_min_tys));
-            // TODO span
+            // FIXME(effects) span
             let span = tcx.def_span(def_id);
             let assoc = tcx.require_lang_item(hir::LangItem::EffectsMinOutput, Some(span));
             let proj = Ty::new_projection(tcx, assoc, [tup]);
-            let self_proj = Ty::new_projection(tcx, def_id.to_def_id(), ty::GenericArgs::identity_for_item(tcx, def_id));
+            let self_proj = Ty::new_projection(
+                tcx,
+                def_id.to_def_id(),
+                ty::GenericArgs::identity_for_item(tcx, def_id),
+            );
             let trait_ = tcx.require_lang_item(hir::LangItem::EffectsTyCompat, Some(span));
             let trait_ref = ty::TraitRef::new(tcx, trait_, [self_proj, proj]);
             predicates.push((ty::Binder::dummy(trait_ref).upcast(tcx), span));

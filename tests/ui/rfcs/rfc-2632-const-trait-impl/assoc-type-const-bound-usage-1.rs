@@ -1,6 +1,5 @@
-// FIXME(effects): Collapse the revisions into one once we support `<Ty as const Trait>::Proj`.
-//@ revisions: unqualified qualified
-//@known-bug: unknown
+//@ known-bug: unknown
+// FIXME(effects)
 
 #![feature(const_trait_impl, effects, generic_const_exprs)]
 #![allow(incomplete_features)]
