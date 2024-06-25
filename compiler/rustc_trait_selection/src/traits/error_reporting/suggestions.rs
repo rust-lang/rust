@@ -241,8 +241,8 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
     }
 }
 
-#[extension(pub trait TypeErrCtxtExt<'tcx>)]
-impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+#[extension(pub trait TypeErrCtxtExt<'a, 'tcx>)]
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn suggest_restricting_param_bound(
         &self,
         err: &mut Diag<'_>,
@@ -1845,7 +1845,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn point_at_returns_when_relevant(
         &self,
-        err: &mut Diag<'tcx>,
+        err: &mut Diag<'_>,
         obligation: &PredicateObligation<'tcx>,
     ) {
         match obligation.cause.code().peel_derives() {
@@ -1884,7 +1884,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         cause: &ObligationCauseCode<'tcx>,
         found_node: Option<Node<'_>>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         pub(crate) fn build_fn_sig_ty<'tcx>(
             infcx: &InferCtxt<'tcx>,
             trait_ref: ty::TraitRef<'tcx>,
@@ -2104,7 +2104,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn note_conflicting_closure_bounds(
         &self,
         cause: &ObligationCauseCode<'tcx>,
-        err: &mut Diag<'tcx>,
+        err: &mut Diag<'_>,
     ) {
         // First, look for an `WhereClauseInExpr`, which means we can get
         // the uninstantiated predicate list of the called function. And check

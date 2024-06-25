@@ -139,7 +139,7 @@ pub struct TypeErrCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
-    pub fn dcx(&self) -> DiagCtxtHandle<'tcx> {
+    pub fn dcx(&self) -> DiagCtxtHandle<'a> {
         self.infcx.dcx()
     }
 

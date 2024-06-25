@@ -436,7 +436,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, error_code))]
     pub fn emit_inference_failure_err(
         &self,
@@ -445,7 +445,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         arg: GenericArg<'tcx>,
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
 
