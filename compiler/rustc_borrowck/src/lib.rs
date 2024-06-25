@@ -596,7 +596,7 @@ struct MirBorrowckCtxt<'a, 'mir, 'cx, 'tcx> {
     /// Results of Polonius analysis.
     polonius_output: Option<Rc<PoloniusOutput>>,
 
-    diags: diags::BorrowckDiags<'tcx>,
+    diags: diags::BorrowckDiags<'cx, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
 }
 
@@ -2428,12 +2428,12 @@ mod diags {
 
     use super::*;
 
-    enum BufferedDiag<'tcx> {
-        Error(Diag<'tcx>),
-        NonError(Diag<'tcx, ()>),
+    enum BufferedDiag<'cx> {
+        Error(Diag<'cx>),
+        NonError(Diag<'cx, ()>),
     }
 
-    impl<'tcx> BufferedDiag<'tcx> {
+    impl<'cx> BufferedDiag<'cx> {
         fn sort_span(&self) -> Span {
             match self {
                 BufferedDiag::Error(diag) => diag.sort_span,
@@ -2442,7 +2442,7 @@ mod diags {
         }
     }
 
-    pub struct BorrowckDiags<'tcx> {
+    pub struct BorrowckDiags<'cx, 'tcx> {
         /// This field keeps track of move errors that are to be reported for given move indices.
         ///
         /// There are situations where many errors can be reported for a single move out (see
@@ -2457,15 +2457,15 @@ mod diags {
         /// `BTreeMap` is used to preserve the order of insertions when iterating. This is necessary
         /// when errors in the map are being re-added to the error buffer so that errors with the
         /// same primary span come out in a consistent order.
-        buffered_move_errors: BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, Diag<'tcx>)>,
+        buffered_move_errors: BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, Diag<'cx>)>,
 
-        buffered_mut_errors: FxIndexMap<Span, (Diag<'tcx>, usize)>,
+        buffered_mut_errors: FxIndexMap<Span, (Diag<'cx>, usize)>,
 
         /// Buffer of diagnostics to be reported. A mixture of error and non-error diagnostics.
-        buffered_diags: Vec<BufferedDiag<'tcx>>,
+        buffered_diags: Vec<BufferedDiag<'cx>>,
     }
 
-    impl<'tcx> BorrowckDiags<'tcx> {
+    impl<'cx, 'tcx> BorrowckDiags<'cx, 'tcx> {
         pub fn new() -> Self {
             BorrowckDiags {
                 buffered_move_errors: BTreeMap::new(),
@@ -2474,28 +2474,28 @@ mod diags {
             }
         }
 
-        pub fn buffer_error(&mut self, diag: Diag<'tcx>) {
+        pub fn buffer_error(&mut self, diag: Diag<'cx>) {
             self.buffered_diags.push(BufferedDiag::Error(diag));
         }
 
-        pub fn buffer_non_error(&mut self, diag: Diag<'tcx, ()>) {
+        pub fn buffer_non_error(&mut self, diag: Diag<'cx, ()>) {
             self.buffered_diags.push(BufferedDiag::NonError(diag));
         }
     }
 
-    impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
-        pub fn buffer_error(&mut self, diag: Diag<'tcx>) {
+    impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
+        pub fn buffer_error(&mut self, diag: Diag<'cx>) {
             self.diags.buffer_error(diag);
         }
 
-        pub fn buffer_non_error(&mut self, diag: Diag<'tcx, ()>) {
+        pub fn buffer_non_error(&mut self, diag: Diag<'cx, ()>) {
             self.diags.buffer_non_error(diag);
         }
 
         pub fn buffer_move_error(
             &mut self,
             move_out_indices: Vec<MoveOutIndex>,
-            place_and_err: (PlaceRef<'tcx>, Diag<'tcx>),
+            place_and_err: (PlaceRef<'tcx>, Diag<'cx>),
         ) -> bool {
             if let Some((_, diag)) =
                 self.diags.buffered_move_errors.insert(move_out_indices, place_and_err)
@@ -2508,12 +2508,12 @@ mod diags {
             }
         }
 
-        pub fn get_buffered_mut_error(&mut self, span: Span) -> Option<(Diag<'tcx>, usize)> {
+        pub fn get_buffered_mut_error(&mut self, span: Span) -> Option<(Diag<'cx>, usize)> {
             // FIXME(#120456) - is `swap_remove` correct?
             self.diags.buffered_mut_errors.swap_remove(&span)
         }
 
-        pub fn buffer_mut_error(&mut self, span: Span, diag: Diag<'tcx>, count: usize) {
+        pub fn buffer_mut_error(&mut self, span: Span, diag: Diag<'cx>, count: usize) {
             self.diags.buffered_mut_errors.insert(span, (diag, count));
         }
 
@@ -2554,7 +2554,7 @@ mod diags {
         pub fn has_move_error(
             &self,
             move_out_indices: &[MoveOutIndex],
-        ) -> Option<&(PlaceRef<'tcx>, Diag<'tcx>)> {
+        ) -> Option<&(PlaceRef<'tcx>, Diag<'cx>)> {
             self.diags.buffered_move_errors.get(move_out_indices)
         }
     }
