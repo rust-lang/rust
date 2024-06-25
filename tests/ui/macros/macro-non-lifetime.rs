@@ -4,5 +4,5 @@ macro_rules! m { ($x:lifetime) => { } }
 
 fn main() {
     m!(a);
-    //~^ ERROR no rules expected the token `a`
+    //~^ ERROR no rules expected `a`
 }

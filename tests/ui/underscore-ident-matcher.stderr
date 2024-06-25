@@ -1,4 +1,4 @@
-error: no rules expected the token `_`
+error: no rules expected reserved identifier `_`
   --> $DIR/underscore-ident-matcher.rs:8:19
    |
 LL | macro_rules! identity {

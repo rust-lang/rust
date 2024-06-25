@@ -22,21 +22,21 @@ macro_rules! barstar {
 pub fn main() {
     foo!();
     foo!(a);
-    foo!(a?); //~ ERROR no rules expected the token `?`
-    foo!(a?a); //~ ERROR no rules expected the token `?`
-    foo!(a?a?a); //~ ERROR no rules expected the token `?`
+    foo!(a?); //~ ERROR no rules expected `?`
+    foo!(a?a); //~ ERROR no rules expected `?`
+    foo!(a?a?a); //~ ERROR no rules expected `?`
 
     barplus!(); //~ERROR unexpected end of macro invocation
     barplus!(a); //~ERROR unexpected end of macro invocation
-    barplus!(a?); //~ ERROR no rules expected the token `?`
-    barplus!(a?a); //~ ERROR no rules expected the token `?`
+    barplus!(a?); //~ ERROR no rules expected `?`
+    barplus!(a?a); //~ ERROR no rules expected `?`
     barplus!(a+);
     barplus!(+);
 
     barstar!(); //~ERROR unexpected end of macro invocation
     barstar!(a); //~ERROR unexpected end of macro invocation
-    barstar!(a?); //~ ERROR no rules expected the token `?`
-    barstar!(a?a); //~ ERROR no rules expected the token `?`
+    barstar!(a?); //~ ERROR no rules expected `?`
+    barstar!(a?a); //~ ERROR no rules expected `?`
     barstar!(a*);
     barstar!(*);
 }
