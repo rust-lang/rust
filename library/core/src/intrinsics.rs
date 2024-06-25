@@ -2579,7 +2579,7 @@ extern "rust-intrinsic" {
 ///     fn runtime() -> i32 { 1 }
 ///     const fn compiletime() -> i32 { 2 }
 ///
-//      // ⚠ This code violates the required equivalence of `compiletime`
+///     // ⚠ This code violates the required equivalence of `compiletime`
 ///     // and `runtime`.
 ///     const_eval_select((), compiletime, runtime)
 /// }
