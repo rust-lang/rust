@@ -1647,6 +1647,34 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Given a pointer or reference type, returns the type of the *pointee*'s
+    /// metadata. If it can't be determined exactly (perhaps due to still
+    /// being generic) then a projection through `ptr::Pointee` will be returned.
+    ///
+    /// This is particularly useful for getting the type of the result of
+    /// [`UnOp::PtrMetadata`](crate::mir::UnOp::PtrMetadata).
+    ///
+    /// Panics if `self` is not dereferencable.
+    #[track_caller]
+    pub fn pointee_metadata_ty_or_projection(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        let Some(pointee_ty) = self.builtin_deref(true) else {
+            bug!("Type {self:?} is not a pointer or reference type")
+        };
+        if pointee_ty.is_trivially_sized(tcx) {
+            tcx.types.unit
+        } else {
+            match pointee_ty.ptr_metadata_ty_or_tail(tcx, |x| x) {
+                Ok(metadata_ty) => metadata_ty,
+                Err(tail_ty) => {
+                    let Some(metadata_def_id) = tcx.lang_items().metadata_type() else {
+                        bug!("No metadata_type lang item while looking at {self:?}")
+                    };
+                    Ty::new_projection(tcx, metadata_def_id, [tail_ty])
+                }
+            }
+        }
+    }
+
     /// When we create a closure, we record its kind (i.e., what trait
     /// it implements, constrained by how it uses its borrows) into its
     /// [`ty::ClosureArgs`] or [`ty::CoroutineClosureArgs`] using a type

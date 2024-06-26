@@ -15,10 +15,12 @@
       let mut _10: bool;
   
       bb0: {
-          StorageLive(_3);
+-         StorageLive(_3);
++         nop;
           StorageLive(_4);
           _4 = _1;
-          StorageLive(_5);
+-         StorageLive(_5);
++         nop;
           StorageLive(_6);
           StorageLive(_7);
           _7 = &(*_2);
@@ -32,12 +34,14 @@
       bb1: {
           StorageDead(_6);
 -         _3 = Lt(move _4, move _5);
-+         _3 = Lt(_1, move _5);
-          switchInt(move _3) -> [0: bb4, otherwise: bb2];
+-         switchInt(move _3) -> [0: bb4, otherwise: bb2];
++         _3 = Lt(_1, const N);
++         switchInt(_3) -> [0: bb4, otherwise: bb2];
       }
   
       bb2: {
-          StorageDead(_5);
+-         StorageDead(_5);
++         nop;
           StorageDead(_4);
           StorageLive(_8);
           _8 = _1;
@@ -45,8 +49,8 @@
 -         _10 = Lt(_8, _9);
 -         assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, _8) -> [success: bb3, unwind continue];
 +         _9 = const N;
-+         _10 = Lt(_1, const N);
-+         assert(move _10, "index out of bounds: the length is {} but the index is {}", const N, _1) -> [success: bb3, unwind continue];
++         _10 = _3;
++         assert(_3, "index out of bounds: the length is {} but the index is {}", const N, _1) -> [success: bb3, unwind continue];
       }
   
       bb3: {
@@ -57,14 +61,16 @@
       }
   
       bb4: {
-          StorageDead(_5);
+-         StorageDead(_5);
++         nop;
           StorageDead(_4);
           _0 = const 42_u8;
           goto -> bb5;
       }
   
       bb5: {
-          StorageDead(_3);
+-         StorageDead(_3);
++         nop;
           return;
       }
   }

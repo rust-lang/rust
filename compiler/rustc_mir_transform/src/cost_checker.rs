@@ -60,7 +60,15 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, _location: Location) {
         match rvalue {
-            Rvalue::NullaryOp(NullOp::UbChecks, ..) if !self.tcx.sess.ub_checks() => {
+            Rvalue::NullaryOp(NullOp::UbChecks, ..)
+                if !self
+                    .tcx
+                    .sess
+                    .opts
+                    .unstable_opts
+                    .inline_mir_preserve_debug
+                    .unwrap_or(self.tcx.sess.ub_checks()) =>
+            {
                 // If this is in optimized MIR it's because it's used later,
                 // so if we don't need UB checks this session, give a bonus
                 // here to offset the cost of the call later.
@@ -111,12 +119,19 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 }
             }
             TerminatorKind::Assert { unwind, msg, .. } => {
-                self.penalty +=
-                    if msg.is_optional_overflow_check() && !self.tcx.sess.overflow_checks() {
-                        INSTR_COST
-                    } else {
-                        CALL_PENALTY
-                    };
+                self.penalty += if msg.is_optional_overflow_check()
+                    && !self
+                        .tcx
+                        .sess
+                        .opts
+                        .unstable_opts
+                        .inline_mir_preserve_debug
+                        .unwrap_or(self.tcx.sess.overflow_checks())
+                {
+                    INSTR_COST
+                } else {
+                    CALL_PENALTY
+                };
                 if let UnwindAction::Cleanup(_) = unwind {
                     self.penalty += LANDINGPAD_PENALTY;
                 }

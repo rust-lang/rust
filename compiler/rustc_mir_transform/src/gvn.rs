@@ -823,18 +823,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 return self.simplify_cast(kind, value, to, location);
             }
             Rvalue::BinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
-                let ty = lhs.ty(self.local_decls, self.tcx);
-                let lhs = self.simplify_operand(lhs, location);
-                let rhs = self.simplify_operand(rhs, location);
-                // Only short-circuit options after we called `simplify_operand`
-                // on both operands for side effect.
-                let lhs = lhs?;
-                let rhs = rhs?;
-
-                if let Some(value) = self.simplify_binary(op, ty, lhs, rhs) {
-                    return Some(value);
-                }
-                Value::BinaryOp(op, lhs, rhs)
+                return self.simplify_binary(op, lhs, rhs, location);
             }
             Rvalue::UnaryOp(op, ref mut arg_op) => {
                 return self.simplify_unary(op, arg_op, location);
@@ -987,23 +976,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     // `*const [T]` -> `*const T` which remove metadata.
                     // We run on potentially-generic MIR, though, so unlike codegen
                     // we can't always know exactly what the metadata are.
-                    // Thankfully, equality on `ptr_metadata_ty_or_tail` gives us
-                    // what we need: `Ok(meta_ty)` if the metadata is known, or
-                    // `Err(tail_ty)` if not. Matching metadata is ok, but if
-                    // that's not known, then matching tail types is also ok,
-                    // allowing things like `*mut (?A, ?T)` <-> `*mut (?B, ?T)`.
-                    // FIXME: Would it be worth trying to normalize, rather than
-                    // passing the identity closure?  Or are the types in the
-                    // Cast realistically about as normalized as we can get anyway?
+                    // To allow things like `*mut (?A, ?T)` <-> `*mut (?B, ?T)`,
+                    // it's fine to get a projection as the type.
                     Value::Cast { kind: CastKind::PtrToPtr, value: inner, from, to }
-                        if from
-                            .builtin_deref(true)
-                            .unwrap()
-                            .ptr_metadata_ty_or_tail(self.tcx, |t| t)
-                            == to
-                                .builtin_deref(true)
-                                .unwrap()
-                                .ptr_metadata_ty_or_tail(self.tcx, |t| t) =>
+                        if self.pointers_have_same_metadata(*from, *to) =>
                     {
                         arg_index = *inner;
                         was_updated = true;
@@ -1068,6 +1044,52 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     #[instrument(level = "trace", skip(self), ret)]
     fn simplify_binary(
+        &mut self,
+        op: BinOp,
+        lhs_operand: &mut Operand<'tcx>,
+        rhs_operand: &mut Operand<'tcx>,
+        location: Location,
+    ) -> Option<VnIndex> {
+        let lhs = self.simplify_operand(lhs_operand, location);
+        let rhs = self.simplify_operand(rhs_operand, location);
+        // Only short-circuit options after we called `simplify_operand`
+        // on both operands for side effect.
+        let mut lhs = lhs?;
+        let mut rhs = rhs?;
+
+        let lhs_ty = lhs_operand.ty(self.local_decls, self.tcx);
+
+        // If we're comparing pointers, remove `PtrToPtr` casts if the from
+        // types of both casts and the metadata all match.
+        if let BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge = op
+            && lhs_ty.is_any_ptr()
+            && let Value::Cast {
+                kind: CastKind::PtrToPtr, value: lhs_value, from: lhs_from, ..
+            } = self.get(lhs)
+            && let Value::Cast {
+                kind: CastKind::PtrToPtr, value: rhs_value, from: rhs_from, ..
+            } = self.get(rhs)
+            && lhs_from == rhs_from
+            && self.pointers_have_same_metadata(*lhs_from, lhs_ty)
+        {
+            lhs = *lhs_value;
+            rhs = *rhs_value;
+            if let Some(op) = self.try_as_operand(lhs, location) {
+                *lhs_operand = op;
+            }
+            if let Some(op) = self.try_as_operand(rhs, location) {
+                *rhs_operand = op;
+            }
+        }
+
+        if let Some(value) = self.simplify_binary_inner(op, lhs_ty, lhs, rhs) {
+            return Some(value);
+        }
+        let value = Value::BinaryOp(op, lhs, rhs);
+        Some(self.insert(value))
+    }
+
+    fn simplify_binary_inner(
         &mut self,
         op: BinOp,
         lhs_ty: Ty<'tcx>,
@@ -1228,6 +1250,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
+        // PtrToPtr-then-PtrToPtr can skip the intermediate step
         if let PtrToPtr = kind
             && let Value::Cast { kind: inner_kind, value: inner_value, from: inner_from, to: _ } =
                 *self.get(value)
@@ -1235,7 +1258,25 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         {
             from = inner_from;
             value = inner_value;
-            *kind = PtrToPtr;
+            was_updated = true;
+            if inner_from == to {
+                return Some(inner_value);
+            }
+        }
+
+        // PtrToPtr-then-Transmute can just transmute the original, so long as the
+        // PtrToPtr didn't change metadata (and thus the size of the pointer)
+        if let Transmute = kind
+            && let Value::Cast {
+                kind: PtrToPtr,
+                value: inner_value,
+                from: inner_from,
+                to: inner_to,
+            } = *self.get(value)
+            && self.pointers_have_same_metadata(inner_from, inner_to)
+        {
+            from = inner_from;
+            value = inner_value;
             was_updated = true;
             if inner_from == to {
                 return Some(inner_value);
@@ -1288,6 +1329,21 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         // Fallback: a symbolic `Len`.
         Some(self.insert(Value::Len(inner)))
+    }
+
+    fn pointers_have_same_metadata(&self, left_ptr_ty: Ty<'tcx>, right_ptr_ty: Ty<'tcx>) -> bool {
+        let left_meta_ty = left_ptr_ty.pointee_metadata_ty_or_projection(self.tcx);
+        let right_meta_ty = right_ptr_ty.pointee_metadata_ty_or_projection(self.tcx);
+        if left_meta_ty == right_meta_ty {
+            true
+        } else if let Ok(left) =
+            self.tcx.try_normalize_erasing_regions(self.param_env, left_meta_ty)
+            && let Ok(right) = self.tcx.try_normalize_erasing_regions(self.param_env, right_meta_ty)
+        {
+            left == right
+        } else {
+            false
+        }
     }
 }
 
