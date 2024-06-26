@@ -98,7 +98,6 @@ run-make/lto-smoke-c/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/macos-fat-archive/Makefile
 run-make/manual-link/Makefile
-run-make/metadata-dep-info/Makefile
 run-make/min-global-align/Makefile
 run-make/mingw-export-call-convention/Makefile
 run-make/mismatching-target-triples/Makefile
