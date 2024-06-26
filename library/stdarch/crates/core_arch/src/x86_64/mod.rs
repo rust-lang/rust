@@ -42,10 +42,6 @@ mod bmi2;
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::bmi2::*;
 
-mod avx2;
-#[stable(feature = "simd_x86", since = "1.27.0")]
-pub use self::avx2::*;
-
 mod avx512f;
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512f::*;

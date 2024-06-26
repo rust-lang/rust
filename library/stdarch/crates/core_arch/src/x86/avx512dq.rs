@@ -68,7 +68,7 @@ pub unsafe fn _mm256_maskz_and_pd(k: __mmask8, a: __m256d, b: __m256d) -> __m256
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_and_pd&ig_expand=293)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vandps))] // FIXME: should be `vandpd` instruction.
+#[cfg_attr(test, assert_instr(vandp))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_and_pd(a: __m512d, b: __m512d) -> __m512d {
     transmute(simd_and(transmute::<_, u64x8>(a), transmute::<_, u64x8>(b)))
@@ -267,7 +267,7 @@ pub unsafe fn _mm256_maskz_andnot_pd(k: __mmask8, a: __m256d, b: __m256d) -> __m
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_andnot_pd&ig_expand=331)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vandnps))] // FIXME: should be `vandnpd` instruction.
+#[cfg_attr(test, assert_instr(vandnp))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_andnot_pd(a: __m512d, b: __m512d) -> __m512d {
     _mm512_and_pd(_mm512_xor_pd(a, transmute(_mm512_set1_epi64(-1))), b)
@@ -465,7 +465,7 @@ pub unsafe fn _mm256_maskz_or_pd(k: __mmask8, a: __m256d, b: __m256d) -> __m256d
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_or_pd&ig_expand=4829)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vorps))] // FIXME: should be `vorpd` instruction.
+#[cfg_attr(test, assert_instr(vorp))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_or_pd(a: __m512d, b: __m512d) -> __m512d {
     transmute(simd_or(transmute::<_, u64x8>(a), transmute::<_, u64x8>(b)))
@@ -662,7 +662,7 @@ pub unsafe fn _mm256_maskz_xor_pd(k: __mmask8, a: __m256d, b: __m256d) -> __m256
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_xor_pd&ig_expand=7102)
 #[inline]
 #[target_feature(enable = "avx512dq")]
-#[cfg_attr(test, assert_instr(vxorps))] // FIXME: should be `vxorpd` instruction.
+#[cfg_attr(test, assert_instr(vxorp))]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_xor_pd(a: __m512d, b: __m512d) -> __m512d {
     transmute(simd_xor(transmute::<_, u64x8>(a), transmute::<_, u64x8>(b)))
@@ -5211,7 +5211,7 @@ pub unsafe fn _mm512_maskz_range_ps<const IMM8: i32>(k: __mmask16, a: __m512, b:
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_range_round_sd&ig_expand=5216)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vrangesd, IMM8 = 5, SAE = 8))]
 #[rustc_legacy_const_generics(2, 3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -5236,7 +5236,7 @@ pub unsafe fn _mm_range_round_sd<const IMM8: i32, const SAE: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_range_round_sd&ig_expand=5214)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vrangesd, IMM8 = 5, SAE = 8))]
 #[rustc_legacy_const_generics(4, 5)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -5270,7 +5270,7 @@ pub unsafe fn _mm_mask_range_round_sd<const IMM8: i32, const SAE: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_range_round_sd&ig_expand=5215)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vrangesd, IMM8 = 5, SAE = 8))]
 #[rustc_legacy_const_generics(3, 4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -5295,7 +5295,7 @@ pub unsafe fn _mm_maskz_range_round_sd<const IMM8: i32, const SAE: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_range_sd&ig_expand=5220)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vrangesd, IMM8 = 5))]
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -5327,7 +5327,7 @@ pub unsafe fn _mm_mask_range_sd<const IMM8: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_range_sd&ig_expand=5221)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vrangesd, IMM8 = 5))]
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -5347,7 +5347,7 @@ pub unsafe fn _mm_maskz_range_sd<const IMM8: i32>(k: __mmask8, a: __m128d, b: __
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_range_round_ss&ig_expand=5219)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vrangess, IMM8 = 5, SAE = 8))]
 #[rustc_legacy_const_generics(2, 3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -5369,7 +5369,7 @@ pub unsafe fn _mm_range_round_ss<const IMM8: i32, const SAE: i32>(a: __m128, b: 
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_range_round_ss&ig_expand=5217)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vrangess, IMM8 = 5, SAE = 8))]
 #[rustc_legacy_const_generics(4, 5)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -5403,7 +5403,7 @@ pub unsafe fn _mm_mask_range_round_ss<const IMM8: i32, const SAE: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_range_round_ss&ig_expand=5218)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vrangess, IMM8 = 5, SAE = 8))]
 #[rustc_legacy_const_generics(3, 4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -5428,7 +5428,7 @@ pub unsafe fn _mm_maskz_range_round_ss<const IMM8: i32, const SAE: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_range_ss&ig_expand=5222)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vrangess, IMM8 = 5))]
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -5460,7 +5460,7 @@ pub unsafe fn _mm_mask_range_ss<const IMM8: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_range_ss&ig_expand=5223)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vrangess, IMM8 = 5))]
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6070,7 +6070,7 @@ pub unsafe fn _mm512_maskz_reduce_ps<const IMM8: i32>(k: __mmask16, a: __m512) -
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_round_sd&ig_expand=5447)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vreducesd, IMM8 = 0, SAE = 8))]
 #[rustc_legacy_const_generics(2, 3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6099,7 +6099,7 @@ pub unsafe fn _mm_reduce_round_sd<const IMM8: i32, const SAE: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_round_sd&ig_expand=5445)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vreducesd, IMM8 = 0, SAE = 8))]
 #[rustc_legacy_const_generics(4, 5)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6137,7 +6137,7 @@ pub unsafe fn _mm_mask_reduce_round_sd<const IMM8: i32, const SAE: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_reduce_round_sd&ig_expand=5446)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vreducesd, IMM8 = 0, SAE = 8))]
 #[rustc_legacy_const_generics(3, 4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6165,7 +6165,7 @@ pub unsafe fn _mm_maskz_reduce_round_sd<const IMM8: i32, const SAE: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_sd&ig_expand=5456)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vreducesd, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6188,7 +6188,7 @@ pub unsafe fn _mm_reduce_sd<const IMM8: i32>(a: __m128d, b: __m128d) -> __m128d 
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_sd&ig_expand=5454)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vreducesd, IMM8 = 0))]
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6223,7 +6223,7 @@ pub unsafe fn _mm_mask_reduce_sd<const IMM8: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_reduce_sd&ig_expand=5455)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vreducesd, IMM8 = 0))]
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6248,7 +6248,7 @@ pub unsafe fn _mm_maskz_reduce_sd<const IMM8: i32>(k: __mmask8, a: __m128d, b: _
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_round_ss&ig_expand=5453)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vreducess, IMM8 = 0, SAE = 8))]
 #[rustc_legacy_const_generics(2, 3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6274,7 +6274,7 @@ pub unsafe fn _mm_reduce_round_ss<const IMM8: i32, const SAE: i32>(a: __m128, b:
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_round_ss&ig_expand=5451)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vreducess, IMM8 = 0, SAE = 8))]
 #[rustc_legacy_const_generics(4, 5)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6312,7 +6312,7 @@ pub unsafe fn _mm_mask_reduce_round_ss<const IMM8: i32, const SAE: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_reduce_round_ss&ig_expand=5452)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vreducess, IMM8 = 0, SAE = 8))]
 #[rustc_legacy_const_generics(3, 4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6340,7 +6340,7 @@ pub unsafe fn _mm_maskz_reduce_round_ss<const IMM8: i32, const SAE: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_ss&ig_expand=5462)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vreducess, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6363,7 +6363,7 @@ pub unsafe fn _mm_reduce_ss<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_ss&ig_expand=5460)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vreducess, IMM8 = 0))]
 #[rustc_legacy_const_generics(4)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6398,7 +6398,7 @@ pub unsafe fn _mm_mask_reduce_ss<const IMM8: i32>(
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_reduce_ss&ig_expand=5461)
 #[inline]
-#[target_feature(enable = "avx512dq,avx512vl")]
+#[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vreducess, IMM8 = 0))]
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6745,7 +6745,7 @@ pub unsafe fn _mm512_mask_fpclass_ps_mask<const IMM8: i32>(k1: __mmask16, a: __m
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_fpclass_sd_mask&ig_expand=3511)
 #[inline]
-#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "sse,avx512f,avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclasssd, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6770,7 +6770,7 @@ pub unsafe fn _mm_fpclass_sd_mask<const IMM8: i32>(a: __m128d) -> __mmask8 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_sd_mask&ig_expand=3512)
 #[inline]
-#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "sse,avx512f,avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclasssd, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6794,7 +6794,7 @@ pub unsafe fn _mm_mask_fpclass_sd_mask<const IMM8: i32>(k1: __mmask8, a: __m128d
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_fpclass_ss_mask&ig_expand=3515)
 #[inline]
-#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "sse,avx512f,avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclassss, IMM8 = 0))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -6819,7 +6819,7 @@ pub unsafe fn _mm_fpclass_ss_mask<const IMM8: i32>(a: __m128) -> __mmask8 {
 ///
 /// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_fpclass_ss_mask&ig_expand=3516)
 #[inline]
-#[target_feature(enable = "sse,avx512f,avx512dq,avx512vl")]
+#[target_feature(enable = "sse,avx512f,avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclassss, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -10052,7 +10052,7 @@ mod tests {
         assert_eq_m512(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_range_round_sd() {
         let a = _mm_set_sd(1.);
         let b = _mm_set_sd(2.);
@@ -10061,7 +10061,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_mask_range_round_sd() {
         let a = _mm_set_sd(1.);
         let b = _mm_set_sd(2.);
@@ -10071,7 +10071,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_maskz_range_round_sd() {
         let a = _mm_set_sd(1.);
         let b = _mm_set_sd(2.);
@@ -10080,7 +10080,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_mask_range_sd() {
         let a = _mm_set_sd(1.);
         let b = _mm_set_sd(2.);
@@ -10090,7 +10090,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_maskz_range_sd() {
         let a = _mm_set_sd(1.);
         let b = _mm_set_sd(2.);
@@ -10099,7 +10099,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_range_round_ss() {
         let a = _mm_set_ss(1.);
         let b = _mm_set_ss(2.);
@@ -10108,7 +10108,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_mask_range_round_ss() {
         let a = _mm_set_ss(1.);
         let b = _mm_set_ss(2.);
@@ -10118,7 +10118,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_maskz_range_round_ss() {
         let a = _mm_set_ss(1.);
         let b = _mm_set_ss(2.);
@@ -10127,7 +10127,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_mask_range_ss() {
         let a = _mm_set_ss(1.);
         let b = _mm_set_ss(2.);
@@ -10137,7 +10137,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_maskz_range_ss() {
         let a = _mm_set_ss(1.);
         let b = _mm_set_ss(2.);
@@ -10391,7 +10391,7 @@ mod tests {
         assert_eq_m512(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_reduce_round_sd() {
         let a = _mm_set_pd(1., 2.);
         let b = _mm_set_sd(0.25);
@@ -10400,7 +10400,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_mask_reduce_round_sd() {
         let a = _mm_set_pd(1., 2.);
         let b = _mm_set_sd(0.25);
@@ -10412,7 +10412,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_maskz_reduce_round_sd() {
         let a = _mm_set_pd(1., 2.);
         let b = _mm_set_sd(0.25);
@@ -10422,7 +10422,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_reduce_sd() {
         let a = _mm_set_pd(1., 2.);
         let b = _mm_set_sd(0.25);
@@ -10431,7 +10431,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_mask_reduce_sd() {
         let a = _mm_set_pd(1., 2.);
         let b = _mm_set_sd(0.25);
@@ -10441,7 +10441,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_maskz_reduce_sd() {
         let a = _mm_set_pd(1., 2.);
         let b = _mm_set_sd(0.25);
@@ -10450,7 +10450,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_reduce_round_ss() {
         let a = _mm_set_ps(1., 2., 3., 4.);
         let b = _mm_set_ss(0.25);
@@ -10459,7 +10459,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_mask_reduce_round_ss() {
         let a = _mm_set_ps(1., 2., 3., 4.);
         let b = _mm_set_ss(0.25);
@@ -10471,7 +10471,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_maskz_reduce_round_ss() {
         let a = _mm_set_ps(1., 2., 3., 4.);
         let b = _mm_set_ss(0.25);
@@ -10481,7 +10481,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_reduce_ss() {
         let a = _mm_set_ps(1., 2., 3., 4.);
         let b = _mm_set_ss(0.25);
@@ -10490,7 +10490,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_mask_reduce_ss() {
         let a = _mm_set_ps(1., 2., 3., 4.);
         let b = _mm_set_ss(0.25);
@@ -10500,7 +10500,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_maskz_reduce_ss() {
         let a = _mm_set_ps(1., 2., 3., 4.);
         let b = _mm_set_ss(0.25);
@@ -10675,7 +10675,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_fpclass_sd_mask() {
         let a = _mm_set_pd(1., f64::INFINITY);
         let r = _mm_fpclass_sd_mask::<0x18>(a);
@@ -10683,7 +10683,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_mask_fpclass_sd_mask() {
         let a = _mm_set_sd(f64::INFINITY);
         let r = _mm_mask_fpclass_sd_mask::<0x18>(0b0, a);
@@ -10691,7 +10691,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_fpclass_ss_mask() {
         let a = _mm_set_ss(f32::INFINITY);
         let r = _mm_fpclass_ss_mask::<0x18>(a);
@@ -10699,7 +10699,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "avx512dq,avx512vl")]
+    #[simd_test(enable = "avx512dq")]
     unsafe fn test_mm_mask_fpclass_ss_mask() {
         let a = _mm_set_ss(f32::INFINITY);
         let r = _mm_mask_fpclass_ss_mask::<0x18>(0b0, a);

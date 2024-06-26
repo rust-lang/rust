@@ -3610,29 +3610,6 @@ pub unsafe fn _mm256_extract_epi16<const INDEX: i32>(a: __m256i) -> i32 {
     simd_extract!(a.as_u16x16(), INDEX as u32, u16) as i32
 }
 
-/// Extracts a 32-bit integer from `a`, selected with `INDEX`.
-///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_extract_epi32)
-#[inline]
-#[target_feature(enable = "avx2")]
-// This intrinsic has no corresponding instruction.
-#[rustc_legacy_const_generics(1)]
-#[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_extract_epi32<const INDEX: i32>(a: __m256i) -> i32 {
-    static_assert_uimm_bits!(INDEX, 3);
-    simd_extract!(a.as_i32x8(), INDEX as u32)
-}
-
-/// Returns the first element of the input vector of `[8 x i32]`.
-///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtsi256_si32)
-#[inline]
-#[target_feature(enable = "avx2")]
-#[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_cvtsi256_si32(a: __m256i) -> i32 {
-    simd_extract!(a.as_i32x8(), 0)
-}
-
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.avx2.phadd.w"]
@@ -5748,21 +5725,5 @@ mod tests {
         let r2 = _mm256_extract_epi16::<3>(a);
         assert_eq!(r1, 0xFFFF);
         assert_eq!(r2, 3);
-    }
-
-    #[simd_test(enable = "avx2")]
-    unsafe fn test_mm256_extract_epi32() {
-        let a = _mm256_setr_epi32(-1, 1, 2, 3, 4, 5, 6, 7);
-        let r1 = _mm256_extract_epi32::<0>(a);
-        let r2 = _mm256_extract_epi32::<3>(a);
-        assert_eq!(r1, -1);
-        assert_eq!(r2, 3);
-    }
-
-    #[simd_test(enable = "avx2")]
-    unsafe fn test_mm256_cvtsi256_si32() {
-        let a = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
-        let r = _mm256_cvtsi256_si32(a);
-        assert_eq!(r, 1);
     }
 }

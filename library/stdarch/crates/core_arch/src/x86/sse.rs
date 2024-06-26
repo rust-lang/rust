@@ -1866,6 +1866,7 @@ pub const _MM_HINT_ET1: i32 = 6;
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_prefetch<const STRATEGY: i32>(p: *const i8) {
+    static_assert_uimm_bits!(STRATEGY, 3);
     // We use the `llvm.prefetch` intrinsic with `cache type` = 1 (data cache).
     // `locality` and `rw` are based on our `STRATEGY`.
     prefetch(p, (STRATEGY >> 2) & 1, STRATEGY & 3, 1);

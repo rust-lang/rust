@@ -2444,7 +2444,7 @@ pub unsafe fn _mm_setr_pd(a: f64, b: f64) -> __m128d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_setzero_pd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(xorps))] // FIXME xorpd expected
+#[cfg_attr(test, assert_instr(xorp))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_setzero_pd() -> __m128d {
     _mm_set_pd(0.0, 0.0)

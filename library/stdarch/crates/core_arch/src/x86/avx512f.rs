@@ -25301,7 +25301,7 @@ pub unsafe fn _mm_maskz_unpacklo_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m1
 pub unsafe fn _mm512_castps128_ps512(a: __m128) -> __m512 {
     simd_shuffle!(
         a,
-        _mm_set1_ps(-1.),
+        _mm_undefined_ps(),
         [0, 1, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
     )
 }
@@ -25315,7 +25315,7 @@ pub unsafe fn _mm512_castps128_ps512(a: __m128) -> __m512 {
 pub unsafe fn _mm512_castps256_ps512(a: __m256) -> __m512 {
     simd_shuffle!(
         a,
-        _mm256_set1_ps(-1.),
+        _mm256_undefined_ps(),
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8],
     )
 }
@@ -25375,7 +25375,7 @@ pub unsafe fn _mm512_castps512_ps256(a: __m512) -> __m256 {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_castps_pd(a: __m512) -> __m512d {
-    transmute(a.as_m512())
+    transmute(a)
 }
 
 /// Cast vector of type __m512 to type __m512i. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -25385,7 +25385,7 @@ pub unsafe fn _mm512_castps_pd(a: __m512) -> __m512d {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_castps_si512(a: __m512) -> __m512i {
-    transmute(a.as_m512())
+    transmute(a)
 }
 
 /// Cast vector of type __m128d to type __m512d; the upper 384 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -25395,7 +25395,7 @@ pub unsafe fn _mm512_castps_si512(a: __m512) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_castpd128_pd512(a: __m128d) -> __m512d {
-    simd_shuffle!(a, _mm_set1_pd(-1.), [0, 1, 2, 2, 2, 2, 2, 2])
+    simd_shuffle!(a, _mm_undefined_pd(), [0, 1, 2, 2, 2, 2, 2, 2])
 }
 
 /// Cast vector of type __m256d to type __m512d; the upper 256 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -25405,7 +25405,7 @@ pub unsafe fn _mm512_castpd128_pd512(a: __m128d) -> __m512d {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_castpd256_pd512(a: __m256d) -> __m512d {
-    simd_shuffle!(a, _mm256_set1_pd(-1.), [0, 1, 2, 3, 4, 4, 4, 4])
+    simd_shuffle!(a, _mm256_undefined_pd(), [0, 1, 2, 3, 4, 4, 4, 4])
 }
 
 /// Cast vector of type __m128d to type __m512d; the upper 384 bits of the result are zeroed. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -25455,7 +25455,7 @@ pub unsafe fn _mm512_castpd512_pd256(a: __m512d) -> __m256d {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_castpd_ps(a: __m512d) -> __m512 {
-    transmute(a.as_m512d())
+    transmute(a)
 }
 
 /// Cast vector of type __m512d to type __m512i. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -25465,7 +25465,7 @@ pub unsafe fn _mm512_castpd_ps(a: __m512d) -> __m512 {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_castpd_si512(a: __m512d) -> __m512i {
-    transmute(a.as_m512d())
+    transmute(a)
 }
 
 /// Cast vector of type __m128i to type __m512i; the upper 384 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -25475,7 +25475,7 @@ pub unsafe fn _mm512_castpd_si512(a: __m512d) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_castsi128_si512(a: __m128i) -> __m512i {
-    simd_shuffle!(a, _mm_set1_epi64x(-1), [0, 1, 2, 2, 2, 2, 2, 2])
+    simd_shuffle!(a, _mm_undefined_si128(), [0, 1, 2, 2, 2, 2, 2, 2])
 }
 
 /// Cast vector of type __m256i to type __m512i; the upper 256 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -25485,7 +25485,7 @@ pub unsafe fn _mm512_castsi128_si512(a: __m128i) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_castsi256_si512(a: __m256i) -> __m512i {
-    simd_shuffle!(a, _mm256_set1_epi64x(-1), [0, 1, 2, 3, 4, 4, 4, 4])
+    simd_shuffle!(a, _mm256_undefined_si256(), [0, 1, 2, 3, 4, 4, 4, 4])
 }
 
 /// Cast vector of type __m128i to type __m512i; the upper 384 bits of the result are zeroed. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -25654,7 +25654,7 @@ pub unsafe fn _mm_maskz_broadcastd_epi32(k: __mmask8, a: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vbroadcas))] //should be vpbroadcastq
+#[cfg_attr(test, assert_instr(vbroadcast))] //should be vpbroadcastq
 pub unsafe fn _mm512_broadcastq_epi64(a: __m128i) -> __m512i {
     simd_shuffle!(a, a, [0, 0, 0, 0, 0, 0, 0, 0])
 }
@@ -39930,12 +39930,12 @@ pub unsafe fn _mm_cvti32_sd(a: __m128d, b: i32) -> __m128d {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vcvtss2si, SAE = 8))]
+#[cfg_attr(test, assert_instr(vcvttss2si, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm_cvtt_roundss_si32<const SAE: i32>(a: __m128) -> i32 {
     static_assert_sae!(SAE);
     let a = a.as_f32x4();
-    vcvtss2si(a, SAE)
+    vcvttss2si(a, SAE)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in a to a 32-bit integer with truncation, and store the result in dst.\
@@ -39945,12 +39945,12 @@ pub unsafe fn _mm_cvtt_roundss_si32<const SAE: i32>(a: __m128) -> i32 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vcvtss2si, SAE = 8))]
+#[cfg_attr(test, assert_instr(vcvttss2si, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm_cvtt_roundss_i32<const SAE: i32>(a: __m128) -> i32 {
     static_assert_sae!(SAE);
     let a = a.as_f32x4();
-    vcvtss2si(a, SAE)
+    vcvttss2si(a, SAE)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in a to an unsigned 32-bit integer with truncation, and store the result in dst.\
@@ -39960,12 +39960,12 @@ pub unsafe fn _mm_cvtt_roundss_i32<const SAE: i32>(a: __m128) -> i32 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vcvtss2usi, SAE = 8))]
+#[cfg_attr(test, assert_instr(vcvttss2usi, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm_cvtt_roundss_u32<const SAE: i32>(a: __m128) -> u32 {
     static_assert_sae!(SAE);
     let a = a.as_f32x4();
-    vcvtss2usi(a, SAE)
+    vcvttss2usi(a, SAE)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in a to a 32-bit integer with truncation, and store the result in dst.
@@ -39974,9 +39974,9 @@ pub unsafe fn _mm_cvtt_roundss_u32<const SAE: i32>(a: __m128) -> u32 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vcvtss2si))]
+#[cfg_attr(test, assert_instr(vcvttss2si))]
 pub unsafe fn _mm_cvttss_i32(a: __m128) -> i32 {
-    vcvtss2si(a.as_f32x4(), _MM_FROUND_CUR_DIRECTION)
+    vcvttss2si(a.as_f32x4(), _MM_FROUND_CUR_DIRECTION)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in a to an unsigned 32-bit integer with truncation, and store the result in dst.
@@ -39985,9 +39985,9 @@ pub unsafe fn _mm_cvttss_i32(a: __m128) -> i32 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vcvtss2usi))]
+#[cfg_attr(test, assert_instr(vcvttss2usi))]
 pub unsafe fn _mm_cvttss_u32(a: __m128) -> u32 {
-    vcvtss2usi(a.as_f32x4(), _MM_FROUND_CUR_DIRECTION)
+    vcvttss2usi(a.as_f32x4(), _MM_FROUND_CUR_DIRECTION)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to a 32-bit integer with truncation, and store the result in dst.\
@@ -39997,12 +39997,12 @@ pub unsafe fn _mm_cvttss_u32(a: __m128) -> u32 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vcvtsd2si, SAE = 8))]
+#[cfg_attr(test, assert_instr(vcvttsd2si, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm_cvtt_roundsd_si32<const SAE: i32>(a: __m128d) -> i32 {
     static_assert_sae!(SAE);
     let a = a.as_f64x2();
-    vcvtsd2si(a, SAE)
+    vcvttsd2si(a, SAE)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to a 32-bit integer with truncation, and store the result in dst.\
@@ -40012,12 +40012,12 @@ pub unsafe fn _mm_cvtt_roundsd_si32<const SAE: i32>(a: __m128d) -> i32 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vcvtsd2si, SAE = 8))]
+#[cfg_attr(test, assert_instr(vcvttsd2si, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm_cvtt_roundsd_i32<const SAE: i32>(a: __m128d) -> i32 {
     static_assert_sae!(SAE);
     let a = a.as_f64x2();
-    vcvtsd2si(a, SAE)
+    vcvttsd2si(a, SAE)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to an unsigned 32-bit integer with truncation, and store the result in dst.\
@@ -40027,12 +40027,12 @@ pub unsafe fn _mm_cvtt_roundsd_i32<const SAE: i32>(a: __m128d) -> i32 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vcvtsd2usi, SAE = 8))]
+#[cfg_attr(test, assert_instr(vcvttsd2usi, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm_cvtt_roundsd_u32<const SAE: i32>(a: __m128d) -> u32 {
     static_assert_sae!(SAE);
     let a = a.as_f64x2();
-    vcvtsd2usi(a, SAE)
+    vcvttsd2usi(a, SAE)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to a 32-bit integer with truncation, and store the result in dst.
@@ -40041,9 +40041,9 @@ pub unsafe fn _mm_cvtt_roundsd_u32<const SAE: i32>(a: __m128d) -> u32 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vcvtsd2si))]
+#[cfg_attr(test, assert_instr(vcvttsd2si))]
 pub unsafe fn _mm_cvttsd_i32(a: __m128d) -> i32 {
-    vcvtsd2si(a.as_f64x2(), _MM_FROUND_CUR_DIRECTION)
+    vcvttsd2si(a.as_f64x2(), _MM_FROUND_CUR_DIRECTION)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to an unsigned 32-bit integer with truncation, and store the result in dst.
@@ -40052,9 +40052,9 @@ pub unsafe fn _mm_cvttsd_i32(a: __m128d) -> i32 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vcvtsd2usi))]
+#[cfg_attr(test, assert_instr(vcvttsd2usi))]
 pub unsafe fn _mm_cvttsd_u32(a: __m128d) -> u32 {
-    vcvtsd2usi(a.as_f64x2(), _MM_FROUND_CUR_DIRECTION)
+    vcvttsd2usi(a.as_f64x2(), _MM_FROUND_CUR_DIRECTION)
 }
 
 /// Convert the unsigned 32-bit integer b to a single-precision (32-bit) floating-point element, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
@@ -41564,6 +41564,16 @@ extern "C" {
     fn vcvtusi2ss(a: f32x4, b: u32, rounding: i32) -> f32x4;
     #[link_name = "llvm.x86.avx512.cvtusi642sd"]
     fn vcvtusi2sd(a: f64x2, b: u64, rounding: i32) -> f64x2;
+
+    #[link_name = "llvm.x86.avx512.cvttss2si"]
+    fn vcvttss2si(a: f32x4, rounding: i32) -> i32;
+    #[link_name = "llvm.x86.avx512.cvttss2usi"]
+    fn vcvttss2usi(a: f32x4, rounding: i32) -> u32;
+
+    #[link_name = "llvm.x86.avx512.cvttsd2si"]
+    fn vcvttsd2si(a: f64x2, rounding: i32) -> i32;
+    #[link_name = "llvm.x86.avx512.cvttsd2usi"]
+    fn vcvttsd2usi(a: f64x2, rounding: i32) -> u32;
 
     #[link_name = "llvm.x86.avx512.vcomi.ss"]
     fn vcomiss(a: f32x4, b: f32x4, imm8: i32, sae: i32) -> i32;
@@ -52766,20 +52776,14 @@ mod tests {
     unsafe fn test_mm512_castps128_ps512() {
         let a = _mm_setr_ps(17., 18., 19., 20.);
         let r = _mm512_castps128_ps512(a);
-        let e = _mm512_setr_ps(
-            17., 18., 19., 20., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1.,
-        );
-        assert_eq_m512(r, e);
+        assert_eq_m128(_mm512_castps512_ps128(r), a);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_castps256_ps512() {
         let a = _mm256_setr_ps(17., 18., 19., 20., 21., 22., 23., 24.);
         let r = _mm512_castps256_ps512(a);
-        let e = _mm512_setr_ps(
-            17., 18., 19., 20., 21., 22., 23., 24., -1., -1., -1., -1., -1., -1., -1., -1.,
-        );
-        assert_eq_m512(r, e);
+        assert_eq_m256(_mm512_castps512_ps256(r), a);
     }
 
     #[simd_test(enable = "avx512f")]
@@ -58281,23 +58285,23 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm_cvtt_roundss_si32() {
         let a = _mm_set_ps(0., -0.5, 1., -1.5);
-        let r = _mm_cvtt_roundss_si32::<_MM_FROUND_CUR_DIRECTION>(a);
-        let e: i32 = -2;
+        let r = _mm_cvtt_roundss_si32::<_MM_FROUND_NO_EXC>(a);
+        let e: i32 = -1;
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm_cvtt_roundss_i32() {
         let a = _mm_set_ps(0., -0.5, 1., -1.5);
-        let r = _mm_cvtt_roundss_i32::<_MM_FROUND_CUR_DIRECTION>(a);
-        let e: i32 = -2;
+        let r = _mm_cvtt_roundss_i32::<_MM_FROUND_NO_EXC>(a);
+        let e: i32 = -1;
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm_cvtt_roundss_u32() {
         let a = _mm_set_ps(0., -0.5, 1., -1.5);
-        let r = _mm_cvtt_roundss_u32::<_MM_FROUND_CUR_DIRECTION>(a);
+        let r = _mm_cvtt_roundss_u32::<_MM_FROUND_NO_EXC>(a);
         let e: u32 = u32::MAX;
         assert_eq!(r, e);
     }
@@ -58306,7 +58310,7 @@ mod tests {
     unsafe fn test_mm_cvttss_i32() {
         let a = _mm_set_ps(0., -0.5, 1., -1.5);
         let r = _mm_cvttss_i32(a);
-        let e: i32 = -2;
+        let e: i32 = -1;
         assert_eq!(r, e);
     }
 
@@ -58321,23 +58325,23 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm_cvtt_roundsd_si32() {
         let a = _mm_set_pd(1., -1.5);
-        let r = _mm_cvtt_roundsd_si32::<_MM_FROUND_CUR_DIRECTION>(a);
-        let e: i32 = -2;
+        let r = _mm_cvtt_roundsd_si32::<_MM_FROUND_NO_EXC>(a);
+        let e: i32 = -1;
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm_cvtt_roundsd_i32() {
         let a = _mm_set_pd(1., -1.5);
-        let r = _mm_cvtt_roundsd_i32::<_MM_FROUND_CUR_DIRECTION>(a);
-        let e: i32 = -2;
+        let r = _mm_cvtt_roundsd_i32::<_MM_FROUND_NO_EXC>(a);
+        let e: i32 = -1;
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm_cvtt_roundsd_u32() {
         let a = _mm_set_pd(1., -1.5);
-        let r = _mm_cvtt_roundsd_u32::<_MM_FROUND_CUR_DIRECTION>(a);
+        let r = _mm_cvtt_roundsd_u32::<_MM_FROUND_NO_EXC>(a);
         let e: u32 = u32::MAX;
         assert_eq!(r, e);
     }
@@ -58346,7 +58350,7 @@ mod tests {
     unsafe fn test_mm_cvttsd_i32() {
         let a = _mm_set_pd(1., -1.5);
         let r = _mm_cvttsd_i32(a);
-        let e: i32 = -2;
+        let e: i32 = -1;
         assert_eq!(r, e);
     }
 

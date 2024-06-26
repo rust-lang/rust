@@ -11,7 +11,7 @@
     clippy::useless_format
 )]
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::io;
 use std::io::{BufWriter, Write};
@@ -46,7 +46,6 @@ static U64: Type = Type::PrimUnsigned(64);
 static U128: Type = Type::PrimUnsigned(128);
 static ORDERING: Type = Type::Ordering;
 
-static M64: Type = Type::M64;
 static M128: Type = Type::M128;
 static M128BH: Type = Type::M128BH;
 static M128I: Type = Type::M128I;
@@ -79,7 +78,6 @@ enum Type {
     PrimUnsigned(u8),
     MutPtr(&'static Type),
     ConstPtr(&'static Type),
-    M64,
     M128,
     M128BH,
     M128D,
@@ -182,17 +180,12 @@ fn verify_all_signatures() {
         if !rust.has_test {
             // FIXME: this list should be almost empty
             let skip = [
+                // EFLAGS
                 "__readeflags",
                 "__readeflags",
                 "__writeeflags",
                 "__writeeflags",
-                "_mm_comige_ss",
-                "_mm_cvt_ss2si",
-                "_mm_cvtt_ss2si",
-                "_mm_cvt_si2ss",
-                "_mm_set_ps1",
-                "_mm_load_ps1",
-                "_mm_store_ps1",
+                // MXCSR - deprecated
                 "_mm_getcsr",
                 "_mm_setcsr",
                 "_MM_GET_EXCEPTION_MASK",
@@ -203,26 +196,11 @@ fn verify_all_signatures() {
                 "_MM_SET_EXCEPTION_STATE",
                 "_MM_SET_FLUSH_ZERO_MODE",
                 "_MM_SET_ROUNDING_MODE",
-                "_mm_prefetch",
-                "_mm_undefined_ps",
-                "_m_pmaxsw",
-                "_m_pmaxub",
-                "_m_pminsw",
-                "_m_pminub",
-                "_m_pavgb",
-                "_m_pavgw",
-                "_m_psadbw",
-                "_mm_cvt_pi2ps",
-                "_m_maskmovq",
-                "_m_pextrw",
-                "_m_pinsrw",
-                "_m_pmovmskb",
-                "_m_pshufw",
-                "_mm_cvtt_ps2pi",
-                "_mm_cvt_ps2pi",
+                // CPUID
                 "__cpuid_count",
                 "__cpuid",
                 "__get_cpuid_max",
+                // Priviledged
                 "_xsave",
                 "_xrstor",
                 "_xsetbv",
@@ -231,59 +209,48 @@ fn verify_all_signatures() {
                 "_xsavec",
                 "_xsaves",
                 "_xrstors",
-                "_mm_bslli_si128",
-                "_mm_bsrli_si128",
-                "_mm_undefined_pd",
-                "_mm_undefined_si128",
-                "_mm_cvtps_ph",
-                "_mm256_cvtps_ph",
+                "_xsave64",
+                "_xrstor64",
+                "_xsaveopt64",
+                "_xsavec64",
+                "_xsaves64",
+                "_xrstors64",
+                "_fxsave",
+                "_fxrstor",
+                "_fxsave64",
+                "_fxrstor64",
+                // TSC
                 "_rdtsc",
                 "__rdtscp",
-                "_mm256_castps128_ps256",
-                "_mm256_castpd128_pd256",
-                "_mm256_castsi128_si256",
+                // TBM
+                "_t1mskc_u64",
+                // RTM
+                "_xbegin",
+                "_xend",
+                // RDRAND
+                "_rdrand16_step",
+                "_rdrand32_step",
+                "_rdrand64_step",
+                "_rdseed16_step",
+                "_rdseed32_step",
+                "_rdseed64_step",
+                // Prefetch
+                "_mm_prefetch",
+                // CMPXCHG
+                "cmpxchg16b",
+                // Undefined
+                "_mm_undefined_ps",
+                "_mm_undefined_pd",
+                "_mm_undefined_si128",
                 "_mm256_undefined_ps",
                 "_mm256_undefined_pd",
                 "_mm256_undefined_si256",
-                "_bextr2_u32",
-                "_mm_tzcnt_32",
-                "_m_paddb",
-                "_m_paddw",
-                "_m_paddd",
-                "_m_paddsb",
-                "_m_paddsw",
-                "_m_paddusb",
-                "_m_paddusw",
-                "_m_psubb",
-                "_m_psubw",
-                "_m_psubd",
-                "_m_psubsb",
-                "_m_psubsw",
-                "_m_psubusb",
-                "_m_psubusw",
-                "_mm_set_pi16",
-                "_mm_set_pi32",
-                "_mm_set_pi8",
-                "_mm_set1_pi16",
-                "_mm_set1_pi32",
-                "_mm_set1_pi8",
-                "_mm_setr_pi16",
-                "_mm_setr_pi32",
-                "_mm_setr_pi8",
-                "_mm_min_epi8",
-                "_mm_min_epi32",
-                "_xbegin",
-                "_xend",
-                "_rdrand16_step",
-                "_rdrand32_step",
-                "_rdseed16_step",
-                "_rdseed32_step",
-                "_fxsave",
-                "_fxrstor",
-                "_t1mskc_u64",
+                "_mm512_undefined_ps",
+                "_mm512_undefined_pd",
+                "_mm512_undefined_epi32",
+                "_mm512_undefined",
+                // Has doc-tests instead
                 "_mm256_shuffle_epi32",
-                "_mm256_bslli_epi128",
-                "_mm256_bsrli_epi128",
                 "_mm256_unpackhi_epi8",
                 "_mm256_unpacklo_epi8",
                 "_mm256_unpackhi_epi16",
@@ -292,26 +259,31 @@ fn verify_all_signatures() {
                 "_mm256_unpacklo_epi32",
                 "_mm256_unpackhi_epi64",
                 "_mm256_unpacklo_epi64",
-                "_xsave64",
-                "_xrstor64",
-                "_xsaveopt64",
-                "_xsavec64",
-                "_xsaves64",
-                "_xrstors64",
+                // Has tests with different name
+                "_mm_min_epi8",
+                "_mm_min_epi32",
+                // Needs `f16` to test
+                "_mm_cvtps_ph",
+                "_mm256_cvtps_ph",
+                // Aliases
+                "_mm_comige_ss",
+                "_mm_cvt_ss2si",
+                "_mm_cvtt_ss2si",
+                "_mm_cvt_si2ss",
+                "_mm_set_ps1",
+                "_mm_load_ps1",
+                "_mm_store_ps1",
+                "_mm_bslli_si128",
+                "_mm_bsrli_si128",
+                "_bextr2_u32",
+                "_mm_tzcnt_32",
+                "_mm256_bslli_epi128",
+                "_mm256_bsrli_epi128",
                 "_mm_cvtsi64x_si128",
                 "_mm_cvtsi128_si64x",
                 "_mm_cvtsi64x_sd",
-                "cmpxchg16b",
-                "_rdrand64_step",
-                "_rdseed64_step",
                 "_bextr2_u64",
                 "_mm_tzcnt_64",
-                "_fxsave64",
-                "_fxrstor64",
-                "_mm512_undefined_ps",
-                "_mm512_undefined_pd",
-                "_mm512_undefined_epi32",
-                "_mm512_undefined",
             ];
             if !skip.contains(&rust.name) {
                 println!(
@@ -465,6 +437,14 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         }
     }
 
+    let rust_features: HashSet<String> = match rust.target_feature {
+        Some(features) => features
+            .split(',')
+            .map(|feature| feature.to_string())
+            .collect(),
+        None => HashSet::new(),
+    };
+
     for cpuid in &intel.cpuid {
         // The pause intrinsic is in the SSE2 module, but it is backwards
         // compatible with CPUs without SSE2, and it therefore does not need the
@@ -539,15 +519,11 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         };
         let fixed_cpuid = fixup_cpuid(cpuid);
 
-        let rust_feature = rust
-            .target_feature
-            .unwrap_or_else(|| panic!("no target feature listed for {}", rust.name));
-
-        if !rust_feature.contains(&fixed_cpuid) {
+        if !rust_features.contains(&fixed_cpuid) {
             bail!(
-                "intel cpuid `{}` not in `{}` for {}",
+                "intel cpuid `{}` not in `{:?}` for {}",
                 fixed_cpuid,
-                rust_feature,
+                rust_features,
                 rust.name
             );
         }
@@ -750,7 +726,6 @@ fn equate(
         ) => {}
         (&Type::PrimUnsigned(64), "unsigned __int64") => {}
 
-        (&Type::M64, "__m64") => {}
         (&Type::M128, "__m128") => {}
         (&Type::M128BH, "__m128bh") => {}
         (&Type::M128I, "__m128i") => {}
@@ -784,7 +759,6 @@ fn equate(
         (&Type::MutPtr(&Type::MMASK64), "__mmask64*") => {}
         (&Type::MutPtr(&Type::MMASK16), "__mmask16*") => {}
 
-        (&Type::MutPtr(&Type::M64), "__m64*") => {}
         (&Type::MutPtr(&Type::M128), "__m128*") => {}
         (&Type::MutPtr(&Type::M128BH), "__m128bh*") => {}
         (&Type::MutPtr(&Type::M128I), "__m128i*") => {}
@@ -808,7 +782,6 @@ fn equate(
         (&Type::ConstPtr(&Type::PrimUnsigned(32)), "unsigned int const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(64)), "unsigned __int64 const*") => {}
 
-        (&Type::ConstPtr(&Type::M64), "__m64 const*") => {}
         (&Type::ConstPtr(&Type::M128), "__m128 const*") => {}
         (&Type::ConstPtr(&Type::M128BH), "__m128bh const*") => {}
         (&Type::ConstPtr(&Type::M128I), "__m128i const*") => {}

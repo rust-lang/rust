@@ -29,11 +29,24 @@ pub unsafe fn _mm256_insert_epi64<const INDEX: i32>(a: __m256i, i: i64) -> __m25
     transmute(simd_insert!(a.as_i64x4(), INDEX as u32, i))
 }
 
+/// Extracts a 64-bit integer from `a`, selected with `INDEX`.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_extract_epi64)
+#[inline]
+#[target_feature(enable = "avx")]
+#[rustc_legacy_const_generics(1)]
+// This intrinsic has no corresponding instruction.
+#[stable(feature = "simd_x86", since = "1.27.0")]
+pub unsafe fn _mm256_extract_epi64<const INDEX: i32>(a: __m256i) -> i64 {
+    static_assert_uimm_bits!(INDEX, 2);
+    simd_extract!(a.as_i64x4(), INDEX as u32)
+}
+
 #[cfg(test)]
 mod tests {
     use stdarch_test::simd_test;
 
-    use crate::core_arch::x86::*;
+    use crate::core_arch::arch::x86_64::*;
 
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_insert_epi64() {
@@ -41,5 +54,12 @@ mod tests {
         let r = _mm256_insert_epi64::<3>(a, 0);
         let e = _mm256_setr_epi64x(1, 2, 3, 0);
         assert_eq_m256i(r, e);
+    }
+
+    #[simd_test(enable = "avx")]
+    unsafe fn test_mm256_extract_epi64() {
+        let a = _mm256_setr_epi64x(0, 1, 2, 3);
+        let r = _mm256_extract_epi64::<3>(a);
+        assert_eq!(r, 3);
     }
 }
