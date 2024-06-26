@@ -211,6 +211,13 @@ pub fn prepare_tool_cargo(
     // See https://github.com/rust-lang/rust/issues/116538
     cargo.rustflag("-Zunstable-options");
 
+    // `-Zon-broken-pipe=kill` breaks cargo tests
+    if !path.ends_with("cargo") {
+        // If the output is piped to e.g. `head -n1` we want the process to be killed,
+        // rather than having an error bubble up and cause a panic.
+        cargo.rustflag("-Zon-broken-pipe=kill");
+    }
+
     cargo
 }
 
@@ -575,7 +582,8 @@ impl Step for Rustdoc {
             features.push("jemalloc".to_string());
         }
 
-        let mut cargo = prepare_tool_cargo(
+        // NOTE: Never modify the rustflags here, it breaks the build cache for other tools!
+        let cargo = prepare_tool_cargo(
             builder,
             build_compiler,
             Mode::ToolRustc,
@@ -585,11 +593,6 @@ impl Step for Rustdoc {
             SourceType::InTree,
             features.as_slice(),
         );
-
-        // If the rustdoc output is piped to e.g. `head -n1` we want the process
-        // to be killed, rather than having an error bubble up and cause a
-        // panic.
-        cargo.rustflag("-Zon-broken-pipe=kill");
 
         let _guard = builder.msg_tool(
             Kind::Build,
