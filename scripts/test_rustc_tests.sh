@@ -59,7 +59,6 @@ rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 
 # requires LTO
 rm -r tests/run-make/cdylib
-rm -r tests/run-make/issue-64153
 rm -r tests/run-make/codegen-options-parsing
 rm -r tests/run-make/lto-*
 rm -r tests/run-make/reproducible-build-2
@@ -71,6 +70,9 @@ rm -r tests/run-make/reachable-extern-fn-available-lto
 rm tests/ui/consts/precise-drop-with-coverage.rs
 rm tests/ui/issues/issue-85461.rs
 rm -r tests/ui/instrument-coverage/
+
+# missing f16/f128 support
+rm tests/ui/half-open-range-patterns/half-open-range-pats-semantics.rs
 
 # optimization tests
 # ==================
@@ -106,6 +108,7 @@ rm -r tests/run-make/compressed-debuginfo
 rm -r tests/run-make/symbols-include-type-name
 rm -r tests/run-make/notify-all-emit-artifacts
 rm -r tests/run-make/reset-codegen-1
+rm -r tests/run-make/inline-always-many-cgu
 
 # giving different but possibly correct results
 # =============================================
@@ -124,6 +127,7 @@ rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contain
 # ============
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
 rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
+rm tests/ui/deprecation/deprecated_inline_threshold.rs # missing deprecation warning for -Cinline-threshold
 
 # bugs in the test suite
 # ======================
