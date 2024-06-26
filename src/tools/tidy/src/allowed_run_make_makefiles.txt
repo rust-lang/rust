@@ -134,7 +134,6 @@ run-make/pgo-indirect-call-promotion/Makefile
 run-make/pgo-use/Makefile
 run-make/pointer-auth-link-with-c/Makefile
 run-make/pretty-print-to-file/Makefile
-run-make/pretty-print-with-dep-file/Makefile
 run-make/print-calling-conventions/Makefile
 run-make/print-target-list/Makefile
 run-make/profile/Makefile
