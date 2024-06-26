@@ -256,12 +256,9 @@ pub unsafe fn _mm_maskz_abs_epi64(k: __mmask8, a: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vpandq))]
+#[cfg_attr(test, assert_instr(vpandd))]
 pub unsafe fn _mm512_abs_ps(v2: __m512) -> __m512 {
-    let a = _mm512_set1_epi32(0x7FFFFFFF); // from LLVM code
-    let b = transmute::<f32x16, __m512i>(v2.as_f32x16());
-    let abs = _mm512_and_epi32(a, b);
-    transmute(abs)
+    simd_fabs(v2)
 }
 
 /// Finds the absolute value of each packed single-precision (32-bit) floating-point element in v2, storing the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -272,8 +269,7 @@ pub unsafe fn _mm512_abs_ps(v2: __m512) -> __m512 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpandd))]
 pub unsafe fn _mm512_mask_abs_ps(src: __m512, k: __mmask16, v2: __m512) -> __m512 {
-    let abs = _mm512_abs_ps(v2).as_f32x16();
-    transmute(simd_select_bitmask(k, abs, src.as_f32x16()))
+    simd_select_bitmask(k, simd_fabs(v2), src)
 }
 
 /// Finds the absolute value of each packed double-precision (64-bit) floating-point element in v2, storing the results in dst.
@@ -284,10 +280,7 @@ pub unsafe fn _mm512_mask_abs_ps(src: __m512, k: __mmask16, v2: __m512) -> __m51
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpandq))]
 pub unsafe fn _mm512_abs_pd(v2: __m512d) -> __m512d {
-    let a = _mm512_set1_epi64(0x7FFFFFFFFFFFFFFF); // from LLVM code
-    let b = transmute::<f64x8, __m512i>(v2.as_f64x8());
-    let abs = _mm512_and_epi64(a, b);
-    transmute(abs)
+    simd_fabs(v2)
 }
 
 /// Finds the absolute value of each packed double-precision (64-bit) floating-point element in v2, storing the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -298,8 +291,7 @@ pub unsafe fn _mm512_abs_pd(v2: __m512d) -> __m512d {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpandq))]
 pub unsafe fn _mm512_mask_abs_pd(src: __m512d, k: __mmask8, v2: __m512d) -> __m512d {
-    let abs = _mm512_abs_pd(v2).as_f64x8();
-    transmute(simd_select_bitmask(k, abs, src.as_f64x8()))
+    simd_select_bitmask(k, simd_fabs(v2), src)
 }
 
 /// Move packed 32-bit integers from a to dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
