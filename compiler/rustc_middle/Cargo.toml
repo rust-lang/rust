@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 bitflags = "2.4.1"
-derivative = "2.2.0"
+derive-where = "1.2.7"
 either = "1.5.0"
 field-offset = "0.3.5"
 gsgdt = "0.1.2"
