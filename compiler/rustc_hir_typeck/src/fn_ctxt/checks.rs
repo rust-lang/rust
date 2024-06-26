@@ -1424,7 +1424,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         provided_ty: Ty<'tcx>,
         arg: &hir::Expr<'tcx>,
-        err: &mut Diag<'tcx>,
+        err: &mut Diag<'_>,
     ) {
         if let ty::RawPtr(_, hir::Mutability::Mut) = expected_ty.kind()
             && let ty::RawPtr(_, hir::Mutability::Not) = provided_ty.kind()

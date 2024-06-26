@@ -89,7 +89,7 @@ struct PatInfo<'tcx, 'a> {
     current_depth: u32,
 }
 
-impl<'tcx> FnCtxt<'_, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn pattern_cause(&self, ti: &TopInfo<'tcx>, cause_span: Span) -> ObligationCause<'tcx> {
         let code = ObligationCauseCode::Pattern {
             span: ti.span,
@@ -100,12 +100,12 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     }
 
     fn demand_eqtype_pat_diag(
-        &self,
+        &'a self,
         cause_span: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         ti: &TopInfo<'tcx>,
-    ) -> Result<(), Diag<'tcx>> {
+    ) -> Result<(), Diag<'a>> {
         self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)
             .map_err(|mut diag| {
                 if let Some(expr) = ti.origin_expr {

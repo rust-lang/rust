@@ -3422,7 +3422,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         found_trait_ref: ty::TraitRef<'tcx>,
         expected_trait_ref: ty::TraitRef<'tcx>,
         terr: TypeError<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         let self_ty = found_trait_ref.self_ty();
         let (cause, terr) = if let ty::Closure(def_id, _) = self_ty.kind() {
             (
@@ -3553,7 +3553,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     })
                     .unwrap_or((found_span, None, found));
 
-                self.report_arg_count_mismatch(
+                self.infcx.report_arg_count_mismatch(
                     span,
                     closure_span,
                     expected,

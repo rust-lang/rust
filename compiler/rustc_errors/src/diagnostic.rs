@@ -582,6 +582,11 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         Self::new_diagnostic(dcx, DiagInner::new(level, message))
     }
 
+    /// Allow moving diagnostics between different error tainting contexts
+    pub fn with_dcx(mut self, dcx: DiagCtxtHandle<'_>) -> Diag<'_, G> {
+        Diag { dcx, diag: self.diag.take(), _marker: PhantomData }
+    }
+
     /// Creates a new `Diag` with an already constructed diagnostic.
     #[track_caller]
     pub(crate) fn new_diagnostic(dcx: DiagCtxtHandle<'a>, diag: DiagInner) -> Self {

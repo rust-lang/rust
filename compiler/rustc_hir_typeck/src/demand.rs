@@ -172,21 +172,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn demand_suptype_diag(
-        &self,
+        &'a self,
         sp: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Result<(), Diag<'tcx>> {
+    ) -> Result<(), Diag<'a>> {
         self.demand_suptype_with_origin(&self.misc(sp), expected, actual)
     }
 
     #[instrument(skip(self), level = "debug")]
     pub fn demand_suptype_with_origin(
-        &self,
+        &'a self,
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Result<(), Diag<'tcx>> {
+    ) -> Result<(), Diag<'a>> {
         self.at(cause, self.param_env)
             .sup(DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
@@ -200,20 +200,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn demand_eqtype_diag(
-        &self,
+        &'a self,
         sp: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Result<(), Diag<'tcx>> {
+    ) -> Result<(), Diag<'a>> {
         self.demand_eqtype_with_origin(&self.misc(sp), expected, actual)
     }
 
     pub fn demand_eqtype_with_origin(
-        &self,
+        &'a self,
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Result<(), Diag<'tcx>> {
+    ) -> Result<(), Diag<'a>> {
         self.at(cause, self.param_env)
             .eq(DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
@@ -247,13 +247,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// will be permitted if the diverges flag is currently "always".
     #[instrument(level = "debug", skip(self, expr, expected_ty_expr, allow_two_phase))]
     pub fn demand_coerce_diag(
-        &self,
+        &'a self,
         mut expr: &'tcx hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
         mut expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         allow_two_phase: AllowTwoPhase,
-    ) -> Result<Ty<'tcx>, Diag<'tcx>> {
+    ) -> Result<Ty<'tcx>, Diag<'a>> {
         let expected = self.resolve_vars_with_obligations(expected);
 
         let e = match self.coerce(expr, checked_ty, expected, allow_two_phase, None) {

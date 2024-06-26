@@ -684,7 +684,7 @@ impl<'tcx> InferOk<'tcx, ()> {
 }
 
 impl<'tcx> InferCtxt<'tcx> {
-    pub fn dcx(&self) -> DiagCtxtHandle<'tcx> {
+    pub fn dcx(&self) -> DiagCtxtHandle<'_> {
         self.tcx.dcx()
     }
 
@@ -1646,7 +1646,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         err: TypeError<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         self.report_and_explain_type_error(TypeTrace::types(cause, true, expected, actual), err)
     }
 
@@ -1656,7 +1656,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         expected: ty::Const<'tcx>,
         actual: ty::Const<'tcx>,
         err: TypeError<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         self.report_and_explain_type_error(TypeTrace::consts(cause, true, expected, actual), err)
     }
 }
