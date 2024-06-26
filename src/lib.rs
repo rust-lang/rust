@@ -4,7 +4,7 @@
  * TODO(antoyo): support LTO (gcc's equivalent to Full LTO is -flto -flto-partition=one — https://documentation.suse.com/sbp/all/html/SBP-GCC-10/index.html).
  * For Thin LTO, this might be helpful:
  * In gcc 4.6 -fwhopr was removed and became default with -flto. The non-whopr path can still be executed via -flto-partition=none.
- * Or the new incremental LTO?
+ * Or the new incremental LTO (https://www.phoronix.com/news/GCC-Incremental-LTO-Patches)?
  *
  * Maybe some missing optizations enabled by rustc's LTO is in there: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
  * Like -fipa-icf (should be already enabled) and maybe -fdevirtualize-at-ltrans.
@@ -80,6 +80,8 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use back::lto::ThinBuffer;
+use back::lto::ThinData;
 use errors::LTONotSupported;
 #[cfg(not(feature = "master"))]
 use gccjit::CType;
@@ -92,9 +94,7 @@ use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::codegen_crate;
-use rustc_codegen_ssa::traits::{
-    CodegenBackend, ExtraBackendMethods, ThinBufferMethods, WriteBackendMethods,
-};
+use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
@@ -188,6 +188,7 @@ impl CodegenBackend for GccCodegenBackend {
 
         #[cfg(feature = "master")]
         gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
+
         if sess.lto() == Lto::Thin {
             sess.dcx().emit_warn(LTONotSupported {});
         }
@@ -293,7 +294,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         alloc_error_handler_kind: AllocatorKind,
     ) -> Self::Module {
         let mut mods = GccContext {
-            context: new_context(tcx),
+            context: Arc::new(new_context(tcx)),
             should_combine_object_files: false,
             temp_dir: None,
         };
@@ -323,20 +324,8 @@ impl ExtraBackendMethods for GccCodegenBackend {
     }
 }
 
-pub struct ThinBuffer;
-
-impl ThinBufferMethods for ThinBuffer {
-    fn data(&self) -> &[u8] {
-        unimplemented!();
-    }
-
-    fn thin_link_data(&self) -> &[u8] {
-        unimplemented!();
-    }
-}
-
 pub struct GccContext {
-    context: Context<'static>,
+    context: Arc<Context<'static>>,
     should_combine_object_files: bool,
     // Temporary directory used by LTO. We keep it here so that it's not removed before linking.
     temp_dir: Option<TempDir>,
@@ -351,7 +340,7 @@ impl WriteBackendMethods for GccCodegenBackend {
     type TargetMachine = ();
     type TargetMachineError = ();
     type ModuleBuffer = ModuleBuffer;
-    type ThinData = ();
+    type ThinData = ThinData;
     type ThinBuffer = ThinBuffer;
 
     fn run_fat_lto(
@@ -363,11 +352,11 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
 
     fn run_thin_lto(
-        _cgcx: &CodegenContext<Self>,
-        _modules: Vec<(String, Self::ThinBuffer)>,
-        _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
+        cgcx: &CodegenContext<Self>,
+        modules: Vec<(String, Self::ThinBuffer)>,
+        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
-        unimplemented!();
+        back::lto::run_thin(cgcx, modules, cached_modules)
     }
 
     fn print_pass_timings(&self) {
@@ -397,10 +386,10 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
 
     unsafe fn optimize_thin(
-        _cgcx: &CodegenContext<Self>,
-        _thin: ThinModule<Self>,
+        cgcx: &CodegenContext<Self>,
+        thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        unimplemented!();
+        back::lto::optimize_thin_module(thin, cgcx)
     }
 
     unsafe fn codegen(
@@ -413,10 +402,10 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
 
     fn prepare_thin(
-        _module: ModuleCodegen<Self::Module>,
-        _emit_summary: bool,
+        module: ModuleCodegen<Self::Module>,
+        emit_summary: bool,
     ) -> (String, Self::ThinBuffer) {
-        unimplemented!();
+        back::lto::prepare_thin(module, emit_summary)
     }
 
     fn serialize_module(_module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {

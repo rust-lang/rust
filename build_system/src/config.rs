@@ -426,9 +426,10 @@ impl ConfigInfo {
 
         // Since we don't support ThinLTO, disable LTO completely when not trying to do LTO.
         // TODO(antoyo): remove when we can handle ThinLTO.
-        if !env.contains_key(&"FAT_LTO".to_string()) {
+        // TODO: remove:
+        /*if !env.contains_key(&"FAT_LTO".to_string()) {
             rustflags.push("-Clto=off".to_string());
-        }
+        }*/
         // FIXME(antoyo): remove once the atomic shim is gone
         if os_name == "Darwin" {
             rustflags.extend_from_slice(&[

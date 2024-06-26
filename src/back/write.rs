@@ -31,6 +31,7 @@ pub(crate) unsafe fn codegen(
 
         // NOTE: Only generate object files with GIMPLE when this environment variable is set for
         // now because this requires a particular setup (same gcc/lto1/lto-wrapper commit as libgccjit).
+        // TODO: remove this environment variable.
         let fat_lto = env::var("EMBED_LTO_BITCODE").as_deref() == Ok("1");
 
         let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
@@ -113,17 +114,20 @@ pub(crate) unsafe fn codegen(
                     context.set_debug_info(true);
                     context.dump_to_file(path, true);
                 }
-                if should_combine_object_files && fat_lto {
-                    context.add_command_line_option("-flto=auto");
-                    context.add_command_line_option("-flto-partition=one");
+                if should_combine_object_files {
+                    if fat_lto {
+                        context.add_command_line_option("-flto=auto");
+                        context.add_command_line_option("-flto-partition=one");
+
+                        // NOTE: without -fuse-linker-plugin, we get the following error:
+                        // lto1: internal compiler error: decompressed stream: Destination buffer is too small
+                        context.add_driver_option("-fuse-linker-plugin");
+                    }
 
                     context.add_driver_option("-Wl,-r");
                     // NOTE: we need -nostdlib, otherwise, we get the following error:
                     // /usr/bin/ld: cannot find -lgcc_s: No such file or directory
                     context.add_driver_option("-nostdlib");
-                    // NOTE: without -fuse-linker-plugin, we get the following error:
-                    // lto1: internal compiler error: decompressed stream: Destination buffer is too small
-                    context.add_driver_option("-fuse-linker-plugin");
 
                     // NOTE: this doesn't actually generate an executable. With the above flags, it combines the .o files together in another .o.
                     context.compile_to_file(
@@ -131,6 +135,7 @@ pub(crate) unsafe fn codegen(
                         obj_out.to_str().expect("path to str"),
                     );
                 } else {
+                    //println!("Combining to object file");
                     context.compile_to_file(
                         OutputKind::ObjectFile,
                         obj_out.to_str().expect("path to str"),

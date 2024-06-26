@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::env;
+use std::sync::Arc;
 use std::time::Instant;
 
 use gccjit::{FunctionType, GlobalKind};
@@ -205,7 +206,11 @@ pub fn compile_codegen_unit(
 
         ModuleCodegen {
             name: cgu_name.to_string(),
-            module_llvm: GccContext { context, should_combine_object_files: false, temp_dir: None },
+            module_llvm: GccContext {
+                context: Arc::new(context),
+                should_combine_object_files: false,
+                temp_dir: None,
+            },
             kind: ModuleKind::Regular,
         }
     }
