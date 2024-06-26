@@ -71,16 +71,19 @@ impl<'tcx> Bounds<'tcx> {
         }
         // For `T: ~const Tr` or `T: const Tr`, we need to add an additional bound on the
         // associated type of `<T as Tr>` and make sure that the effect is compatible.
-        if let Some(compat_val) = match (tcx.def_kind(defining_def_id), constness) {
+        let compat_val = match (tcx.def_kind(defining_def_id), constness) {
             // FIXME(effects): revisit the correctness of this
-            (_, ty::BoundConstness::Const) => Some(tcx.consts.false_),
+            (_, ty::BoundConstness::Const) => tcx.consts.false_,
             // body owners that can have trait bounds
             (DefKind::Const | DefKind::Fn | DefKind::AssocFn, ty::BoundConstness::ConstIfConst) => {
-                Some(tcx.expected_host_effect_param_for_body(defining_def_id))
+                tcx.expected_host_effect_param_for_body(defining_def_id)
             }
 
             (_, ty::BoundConstness::NotConst) => {
-                tcx.has_attr(bound_trait_ref.def_id(), sym::const_trait).then_some(tcx.consts.true_)
+                if !tcx.has_attr(bound_trait_ref.def_id(), sym::const_trait) {
+                    return;
+                }
+                tcx.consts.true_
             }
 
             (
@@ -97,8 +100,12 @@ impl<'tcx> Bounds<'tcx> {
                 let ty = bound_trait_ref
                     .map_bound(|trait_ref| Ty::new_projection(tcx, assoc, trait_ref.args));
 
-                // Replace the binder with dummy types/lifetimes. This should work for any
-                // binder as long as they don't have any bounds e.g. `for<T: Trait>`.
+                // When the user has written `for<'a, T> X<'a, T>: ~const Foo`, replace the
+                // binders to dummy ones i.e. `X<'static, ()>` so they can be referenced in
+                // the `Min` associated type properly (which doesn't allow using `for<>`)
+                // This should work for any bound variables as long as they don't have any
+                // bounds e.g. `for<T: Trait>`.
+                // FIXME(effects) reconsider this approach to allow compatibility with `for<T: Tr>`
                 let ty = tcx.replace_bound_vars_uncached(
                     ty,
                     FnMutDelegate {
@@ -128,24 +135,23 @@ impl<'tcx> Bounds<'tcx> {
                 tcx.dcx().span_delayed_bug(span, "invalid `~const` encountered");
                 return;
             }
-        } {
-            // create a new projection type `<T as Tr>::Effects`
-            let Some(assoc) = tcx.associated_type_for_effects(bound_trait_ref.def_id()) else {
-                tcx.dcx().span_delayed_bug(
-                    span,
-                    "`~const` trait bound has no effect assoc yet no errors encountered?",
-                );
-                return;
-            };
-            let self_ty = Ty::new_projection(tcx, assoc, bound_trait_ref.skip_binder().args);
-            // make `<T as Tr>::Effects: Compat<runtime>`
-            let new_trait_ref = ty::TraitRef::new(
-                tcx,
-                tcx.require_lang_item(LangItem::EffectsCompat, Some(span)),
-                [ty::GenericArg::from(self_ty), compat_val.into()],
+        };
+        // create a new projection type `<T as Tr>::Effects`
+        let Some(assoc) = tcx.associated_type_for_effects(bound_trait_ref.def_id()) else {
+            tcx.dcx().span_delayed_bug(
+                span,
+                "`~const` trait bound has no effect assoc yet no errors encountered?",
             );
-            self.clauses.push((bound_trait_ref.rebind(new_trait_ref).upcast(tcx), span));
-        }
+            return;
+        };
+        let self_ty = Ty::new_projection(tcx, assoc, bound_trait_ref.skip_binder().args);
+        // make `<T as Tr>::Effects: Compat<runtime>`
+        let new_trait_ref = ty::TraitRef::new(
+            tcx,
+            tcx.require_lang_item(LangItem::EffectsCompat, Some(span)),
+            [ty::GenericArg::from(self_ty), compat_val.into()],
+        );
+        self.clauses.push((bound_trait_ref.rebind(new_trait_ref).upcast(tcx), span));
     }
 
     pub fn push_projection_bound(

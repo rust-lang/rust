@@ -865,7 +865,7 @@ where
         panic!("`BikeshedIntrinsicFrom` does not have an associated type: {:?}", goal)
     }
 
-    fn consider_builtin_effects_min_candidate(
+    fn consider_builtin_effects_intersection_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
@@ -903,11 +903,15 @@ where
                 let mut min = ty::EffectKind::Maybe;
 
                 for ty in types.iter() {
+                    // We can't find the intersection if the types used are generic.
+                    //
+                    // FIXME(effects) do we want to look at where clauses to get some
+                    // clue for the case where generic types are being used?
                     let Some(kind) = ty::EffectKind::try_from_ty(cx, ty) else {
                         return Err(NoSolution);
                     };
 
-                    let Some(result) = ty::EffectKind::min(min, kind) else {
+                    let Some(result) = ty::EffectKind::intersection(min, kind) else {
                         return Err(NoSolution);
                     };
 

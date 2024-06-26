@@ -1062,9 +1062,14 @@ pub mod effects {
     impl<T: ?Sized> TyCompat<T> for Maybe {}
     impl<T: ?Sized> TyCompat<Maybe> for T {}
 
-    #[lang = "EffectsMin"]
-    pub trait Min {
-        #[lang = "EffectsMinOutput"]
+    #[lang = "EffectsIntersection"]
+    pub trait Intersection {
+        #[lang = "EffectsIntersectionOutput"]
         type Output: ?Sized;
+    }
+
+    // FIXME(effects): remove this after next trait solver lands
+    impl Intersection for () {
+        type Output = Maybe;
     }
 }

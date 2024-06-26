@@ -184,20 +184,16 @@ fn associated_type_for_effects(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<De
     if !tcx.features().effects {
         return None;
     }
-    match tcx.def_kind(def_id) {
+    let (feed, parent_did) = match tcx.def_kind(def_id) {
         DefKind::Trait => {
             let trait_def_id = def_id;
-            let Some(attr) = tcx.get_attr(def_id, sym::const_trait) else {
-                return None;
-            };
+            let attr = tcx.get_attr(def_id, sym::const_trait)?;
 
             let span = attr.span;
             let trait_assoc_ty = tcx.at(span).create_def(trait_def_id, kw::Empty, DefKind::AssocTy);
 
             let local_def_id = trait_assoc_ty.def_id();
             let def_id = local_def_id.to_def_id();
-
-            trait_assoc_ty.feed_hir();
 
             // Copy span of the attribute.
             trait_assoc_ty.def_ident_span(Some(span));
@@ -213,47 +209,20 @@ fn associated_type_for_effects(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<De
                 is_effects_desugaring: true,
             });
 
-            // visibility is public.
-            trait_assoc_ty.visibility(ty::Visibility::Public);
-
             // No default type
             trait_assoc_ty.defaultness(hir::Defaultness::Default { has_value: false });
 
             trait_assoc_ty.is_type_alias_impl_trait(false);
 
-            // Copy generics_of of the trait, making the trait as parent.
-            trait_assoc_ty.generics_of({
-                let parent_generics = tcx.generics_of(trait_def_id);
-                let parent_count = parent_generics.parent_count + parent_generics.own_params.len();
-
-                ty::Generics {
-                    parent: Some(trait_def_id.to_def_id()),
-                    parent_count,
-                    own_params: vec![],
-                    param_def_id_to_index: parent_generics.param_def_id_to_index.clone(),
-                    has_self: false,
-                    has_late_bound_regions: None,
-                    host_effect_index: parent_generics.host_effect_index,
-                }
-            });
-
-            trait_assoc_ty.explicit_item_bounds(ty::EarlyBinder::bind(&[]));
-            trait_assoc_ty.explicit_item_super_predicates(ty::EarlyBinder::bind(&[]));
-
-            // There are no inferred outlives for the synthesized associated type.
-            trait_assoc_ty.inferred_outlives_of(&[]);
-
-            Some(def_id)
+            (trait_assoc_ty, trait_def_id)
         }
         DefKind::Impl { .. } => {
             let impl_def_id = def_id;
-            let Some(trait_id) = tcx.trait_id_of_impl(def_id.to_def_id()) else { return None };
+            let trait_id = tcx.trait_id_of_impl(def_id.to_def_id())?;
 
             // first get the DefId of the assoc type on the trait, if there is not,
             // then we don't need to generate it on the impl.
-            let Some(trait_assoc_id) = tcx.associated_type_for_effects(trait_id) else {
-                return None;
-            };
+            let trait_assoc_id = tcx.associated_type_for_effects(trait_id)?;
 
             // FIXME(effects): span
             let span = tcx.def_ident_span(def_id).unwrap();
@@ -262,8 +231,6 @@ fn associated_type_for_effects(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<De
 
             let local_def_id = impl_assoc_ty.def_id();
             let def_id = local_def_id.to_def_id();
-
-            impl_assoc_ty.feed_hir();
 
             impl_assoc_ty.def_ident_span(Some(span));
 
@@ -277,9 +244,6 @@ fn associated_type_for_effects(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<De
                 opt_rpitit_info: None,
                 is_effects_desugaring: true,
             });
-
-            // visibility is public.
-            impl_assoc_ty.visibility(ty::Visibility::Public);
 
             // no default value.
             impl_assoc_ty.defaultness(hir::Defaultness::Final);
@@ -298,36 +262,41 @@ fn associated_type_for_effects(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<De
                 ty::GenericArgs::empty(),
             )));
 
-            // Copy generics_of of the impl, making the impl as parent.
-            impl_assoc_ty.generics_of({
-                let parent_generics = tcx.generics_of(impl_def_id);
-                let parent_count = parent_generics.parent_count + parent_generics.own_params.len();
-
-                ty::Generics {
-                    parent: Some(impl_def_id.to_def_id()),
-                    parent_count,
-                    own_params: vec![],
-                    param_def_id_to_index: parent_generics.param_def_id_to_index.clone(),
-                    has_self: false,
-                    has_late_bound_regions: None,
-                    host_effect_index: parent_generics.host_effect_index,
-                }
-            });
-
-            // impl_assoc_ty.explicit_item_bounds(ty::EarlyBinder::bind(&[]));
-            impl_assoc_ty.explicit_item_super_predicates(ty::EarlyBinder::bind(&[]));
-
-            // There are no inferred outlives for the synthesized associated type.
-            impl_assoc_ty.inferred_outlives_of(&[]);
-
-            Some(def_id)
+            (impl_assoc_ty, impl_def_id)
         }
         def_kind => bug!(
             "associated_type_for_effects: {:?} should be Trait or Impl but is {:?}",
             def_id,
             def_kind
         ),
-    }
+    };
+
+    feed.feed_hir();
+
+    // visibility is public.
+    feed.visibility(ty::Visibility::Public);
+
+    // Copy generics_of of the trait/impl, making the trait/impl as parent.
+    feed.generics_of({
+        let parent_generics = tcx.generics_of(parent_did);
+        let parent_count = parent_generics.parent_count + parent_generics.own_params.len();
+
+        ty::Generics {
+            parent: Some(parent_did.to_def_id()),
+            parent_count,
+            own_params: vec![],
+            param_def_id_to_index: parent_generics.param_def_id_to_index.clone(),
+            has_self: false,
+            has_late_bound_regions: None,
+            host_effect_index: parent_generics.host_effect_index,
+        }
+    });
+    feed.explicit_item_super_predicates(ty::EarlyBinder::bind(&[]));
+
+    // There are no inferred outlives for the synthesized associated type.
+    feed.inferred_outlives_of(&[]);
+
+    Some(feed.def_id().to_def_id())
 }
 
 /// Given an `fn_def_id` of a trait or a trait implementation:
