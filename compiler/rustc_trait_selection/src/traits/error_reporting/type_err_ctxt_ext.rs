@@ -1101,7 +1101,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 && let ty::FnPtr(sig) = by_ref_captures.kind()
                 && !sig.skip_binder().output().is_unit()
             {
-                let mut err = self.tcx.dcx().create_err(AsyncClosureNotFn {
+                let mut err = self.dcx().create_err(AsyncClosureNotFn {
                     span: self.tcx.def_span(closure_def_id),
                     kind: expected_kind.as_str(),
                 });
@@ -2884,7 +2884,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
                 && let Some(mut diag) =
-                    self.tcx.dcx().steal_non_err(span, StashKey::AssociatedTypeSuggestion)
+                    self.dcx().steal_non_err(span, StashKey::AssociatedTypeSuggestion)
                 && let Ok(ref mut s1) = err.suggestions
                 && let Ok(ref mut s2) = diag.suggestions
             {

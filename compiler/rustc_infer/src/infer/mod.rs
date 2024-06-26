@@ -685,7 +685,7 @@ impl<'tcx> InferOk<'tcx, ()> {
 
 impl<'tcx> InferCtxt<'tcx> {
     pub fn dcx(&self) -> DiagCtxtHandle<'_> {
-        self.tcx.dcx()
+        self.tcx.dcx().taintable_handle(&self.tainted_by_errors)
     }
 
     pub fn defining_opaque_types(&self) -> &'tcx ty::List<LocalDefId> {
@@ -1089,19 +1089,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// inference variables, regionck errors).
     #[must_use = "this method does not have any side effects"]
     pub fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
-        if let Some(guar) = self.tainted_by_errors.get() {
-            Some(guar)
-        } else if self.dcx().err_count_excluding_lint_errs() > self.err_count_on_creation {
-            // Errors reported since this infcx was made. Lint errors are
-            // excluded to avoid some being swallowed in the presence of
-            // non-lint errors. (It's arguable whether or not this exclusion is
-            // important.)
-            let guar = self.dcx().has_errors().unwrap();
-            self.set_tainted_by_errors(guar);
-            Some(guar)
-        } else {
-            None
-        }
+        self.tainted_by_errors.get()
     }
 
     /// Set the "tainted by errors" flag to true. We call this when we
@@ -1328,8 +1316,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     bug!("`{value:?}` is not fully resolved");
                 }
                 if value.has_infer_regions() {
-                    let guar =
-                        self.tcx.dcx().delayed_bug(format!("`{value:?}` is not fully resolved"));
+                    let guar = self.dcx().delayed_bug(format!("`{value:?}` is not fully resolved"));
                     Ok(self.tcx.fold_regions(value, |re, _| {
                         if re.is_var() { ty::Region::new_error(self.tcx, guar) } else { re }
                     }))

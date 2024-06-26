@@ -2,6 +2,7 @@
 #![allow(incomplete_features)]
 
 type Foo = impl Sized;
+//~^ ERROR: unconstrained opaque type
 
 fn with_bound<const N: usize>() -> Foo
 where

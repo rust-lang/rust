@@ -5,6 +5,7 @@
 use std::mem::transmute;
 fn foo() -> impl Sized {
     //~^ ERROR cycle detected when computing type of
+    //~| WARN function cannot return without recursing
     unsafe {
         transmute::<_, u8>(foo());
     }

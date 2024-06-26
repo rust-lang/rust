@@ -1,5 +1,5 @@
 error: expected type, found `{`
-  --> $DIR/macro-fail.rs:30:27
+  --> $DIR/macro-fail.rs:31:27
    |
 LL | fn make_marker() -> impl Marker<gimme_a_const!(marker)> {
    |                                 ----------------------
@@ -13,7 +13,7 @@ LL |       ($rusty: ident) => {{ let $rusty = 3; *&$rusty }}
    = note: this error originates in the macro `gimme_a_const` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected type, found `{`
-  --> $DIR/macro-fail.rs:30:27
+  --> $DIR/macro-fail.rs:31:27
    |
 LL |   Example::<gimme_a_const!(marker)>
    |             ----------------------
@@ -41,7 +41,7 @@ LL |   let _fail = Example::<external_macro!()>;
    = note: this error originates in the macro `external_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-fail.rs:40:25
+  --> $DIR/macro-fail.rs:42:25
    |
 LL |     macro_rules! gimme_a_const {
    |     -------------------------- when calling this macro
@@ -50,7 +50,7 @@ LL |   let _fail = Example::<gimme_a_const!()>;
    |                         ^^^^^^^^^^^^^^^^ missing tokens in macro arguments
    |
 note: while trying to match meta-variable `$rusty:ident`
-  --> $DIR/macro-fail.rs:30:8
+  --> $DIR/macro-fail.rs:31:8
    |
 LL |       ($rusty: ident) => {{ let $rusty = 3; *&$rusty }}
    |        ^^^^^^^^^^^^^
@@ -75,18 +75,63 @@ error[E0747]: type provided when a constant was expected
 LL |   Example::<gimme_a_const!(marker)>
    |             ^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0284]: type annotations needed
+  --> $DIR/macro-fail.rs:17:3
+   |
+LL |   Example::<gimme_a_const!(marker)>
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the struct `Example`
+   |
+note: required by a const generic parameter in `Example`
+  --> $DIR/macro-fail.rs:1:16
+   |
+LL | struct Example<const N: usize>;
+   |                ^^^^^^^^^^^^^^ required by this const generic parameter in `Example`
+
 error[E0747]: type provided when a constant was expected
-  --> $DIR/macro-fail.rs:37:25
+  --> $DIR/macro-fail.rs:38:25
    |
 LL |   let _fail = Example::<external_macro!()>;
    |                         ^^^^^^^^^^^^^^^^^
 
 error[E0747]: type provided when a constant was expected
-  --> $DIR/macro-fail.rs:40:25
+  --> $DIR/macro-fail.rs:42:25
    |
 LL |   let _fail = Example::<gimme_a_const!()>;
    |                         ^^^^^^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error[E0284]: type annotations needed for `Example<_>`
+  --> $DIR/macro-fail.rs:38:7
+   |
+LL |   let _fail = Example::<external_macro!()>;
+   |       ^^^^^   ---------------------------- type must be known at this point
+   |
+note: required by a const generic parameter in `Example`
+  --> $DIR/macro-fail.rs:1:16
+   |
+LL | struct Example<const N: usize>;
+   |                ^^^^^^^^^^^^^^ required by this const generic parameter in `Example`
+help: consider giving `_fail` an explicit type, where the value of const parameter `N` is specified
+   |
+LL |   let _fail: Example<N> = Example::<external_macro!()>;
+   |            ++++++++++++
 
-For more information about this error, try `rustc --explain E0747`.
+error[E0284]: type annotations needed for `Example<_>`
+  --> $DIR/macro-fail.rs:42:7
+   |
+LL |   let _fail = Example::<gimme_a_const!()>;
+   |       ^^^^^   --------------------------- type must be known at this point
+   |
+note: required by a const generic parameter in `Example`
+  --> $DIR/macro-fail.rs:1:16
+   |
+LL | struct Example<const N: usize>;
+   |                ^^^^^^^^^^^^^^ required by this const generic parameter in `Example`
+help: consider giving `_fail` an explicit type, where the value of const parameter `N` is specified
+   |
+LL |   let _fail: Example<N> = Example::<gimme_a_const!()>;
+   |            ++++++++++++
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0284, E0747.
+For more information about an error, try `rustc --explain E0284`.

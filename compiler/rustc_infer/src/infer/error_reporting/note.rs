@@ -245,7 +245,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
             }
             infer::CompareImplItemObligation { span, impl_item_def_id, trait_item_def_id } => {
-                let mut err = self.report_extra_impl_obligation(
+                let mut err = self.infcx.report_extra_impl_obligation(
                     span,
                     impl_item_def_id,
                     trait_item_def_id,

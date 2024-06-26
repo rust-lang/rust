@@ -360,7 +360,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
                     let named_key = self.regioncx.name_regions(self.infcx.tcx, key);
                     let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
                     let diag = unexpected_hidden_region_diagnostic(
-                        self.infcx.tcx,
+                        self.infcx,
                         self.mir_def_id(),
                         span,
                         named_ty,

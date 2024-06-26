@@ -10,7 +10,7 @@ LL |     foo::<{ BAR + 3 }>();
    |           +         +
 
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/const-expression-suggest-missing-braces.rs:17:11
+  --> $DIR/const-expression-suggest-missing-braces.rs:18:11
    |
 LL |     foo::<3 + 3>();
    |           ^^^^^
@@ -21,7 +21,7 @@ LL |     foo::<{ 3 + 3 }>();
    |           +       +
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-suggest-missing-braces.rs:20:15
+  --> $DIR/const-expression-suggest-missing-braces.rs:21:15
    |
 LL |     foo::<BAR - 3>();
    |               ^ expected one of `,` or `>`
@@ -32,7 +32,7 @@ LL |     foo::<{ BAR - 3 }>();
    |           +         +
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-suggest-missing-braces.rs:23:15
+  --> $DIR/const-expression-suggest-missing-braces.rs:24:15
    |
 LL |     foo::<BAR - BAR>();
    |               ^ expected one of `,` or `>`
@@ -43,7 +43,7 @@ LL |     foo::<{ BAR - BAR }>();
    |           +           +
 
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/const-expression-suggest-missing-braces.rs:26:11
+  --> $DIR/const-expression-suggest-missing-braces.rs:27:11
    |
 LL |     foo::<100 - BAR>();
    |           ^^^^^^^^^
@@ -54,7 +54,7 @@ LL |     foo::<{ 100 - BAR }>();
    |           +           +
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-suggest-missing-braces.rs:29:19
+  --> $DIR/const-expression-suggest-missing-braces.rs:30:19
    |
 LL |     foo::<bar<i32>()>();
    |                   ^ expected one of `,` or `>`
@@ -65,7 +65,7 @@ LL |     foo::<{ bar<i32>() }>();
    |           +            +
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-suggest-missing-braces.rs:32:21
+  --> $DIR/const-expression-suggest-missing-braces.rs:33:21
    |
 LL |     foo::<bar::<i32>()>();
    |                     ^ expected one of `,` or `>`
@@ -76,7 +76,7 @@ LL |     foo::<{ bar::<i32>() }>();
    |           +              +
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-suggest-missing-braces.rs:35:21
+  --> $DIR/const-expression-suggest-missing-braces.rs:36:21
    |
 LL |     foo::<bar::<i32>() + BAR>();
    |                     ^ expected one of `,` or `>`
@@ -87,7 +87,7 @@ LL |     foo::<{ bar::<i32>() + BAR }>();
    |           +                    +
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-suggest-missing-braces.rs:38:21
+  --> $DIR/const-expression-suggest-missing-braces.rs:39:21
    |
 LL |     foo::<bar::<i32>() - BAR>();
    |                     ^ expected one of `,` or `>`
@@ -98,7 +98,7 @@ LL |     foo::<{ bar::<i32>() - BAR }>();
    |           +                    +
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-suggest-missing-braces.rs:41:15
+  --> $DIR/const-expression-suggest-missing-braces.rs:42:15
    |
 LL |     foo::<BAR - bar::<i32>()>();
    |               ^ expected one of `,` or `>`
@@ -109,7 +109,7 @@ LL |     foo::<{ BAR - bar::<i32>() }>();
    |           +                    +
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-suggest-missing-braces.rs:44:15
+  --> $DIR/const-expression-suggest-missing-braces.rs:45:15
    |
 LL |     foo::<BAR - bar::<i32>()>();
    |               ^ expected one of `,` or `>`
@@ -137,7 +137,19 @@ error[E0747]: type provided when a constant was expected
 LL |     foo::<BAR + BAR>();
    |           ^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error[E0284]: type annotations needed
+  --> $DIR/const-expression-suggest-missing-braces.rs:11:5
+   |
+LL |     foo::<BAR + BAR>();
+   |     ^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the function `foo`
+   |
+note: required by a const generic parameter in `foo`
+  --> $DIR/const-expression-suggest-missing-braces.rs:1:8
+   |
+LL | fn foo<const C: usize>() {}
+   |        ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
 
-Some errors have detailed explanations: E0404, E0747.
-For more information about an error, try `rustc --explain E0404`.
+error: aborting due to 15 previous errors
+
+Some errors have detailed explanations: E0284, E0404, E0747.
+For more information about an error, try `rustc --explain E0284`.

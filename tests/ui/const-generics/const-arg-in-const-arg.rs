@@ -15,6 +15,7 @@ fn test<'a, 'b, T, const N: usize>() where &'b (): Sized {
     let _: [u8; foo::<T>()]; //[min]~ ERROR generic parameters may not
     let _: [u8; bar::<N>()]; //[min]~ ERROR generic parameters may not
                              //[min]~^ ERROR unresolved item provided when a constant was expected
+                             //[min]~| ERROR type annotations needed
     let _: [u8; faz::<'a>(&())]; //[min]~ ERROR generic parameters may not
                                  //[min]~^ ERROR cannot specify lifetime arguments
     let _: [u8; baz::<'a>(&())]; //[min]~ ERROR generic parameters may not
@@ -25,6 +26,7 @@ fn test<'a, 'b, T, const N: usize>() where &'b (): Sized {
     let _ = [0; foo::<T>()]; //[min]~ ERROR constant expression depends on a generic parameter
     let _ = [0; bar::<N>()]; //[min]~ ERROR generic parameters may not
                              //[min]~^ ERROR unresolved item provided when a constant was expected
+                             //[min]~| ERROR type annotations needed
     let _ = [0; faz::<'a>(&())]; //[min]~ ERROR generic parameters may not
                                  //[min]~^ ERROR cannot specify lifetime arguments
     let _ = [0; baz::<'a>(&())]; //[min]~ ERROR generic parameters may not
@@ -34,6 +36,7 @@ fn test<'a, 'b, T, const N: usize>() where &'b (): Sized {
     let _: Foo<{ foo::<T>() }>; //[min]~ ERROR generic parameters may not
     let _: Foo<{ bar::<N>() }>; //[min]~ ERROR generic parameters may not
                                 //[min]~^ ERROR unresolved item provided when a constant was expected
+                                //[min]~| ERROR type annotations needed
     let _: Foo<{ faz::<'a>(&()) }>; //[min]~ ERROR generic parameters may not
                                     //[min]~^ ERROR cannot specify lifetime arguments
     let _: Foo<{ baz::<'a>(&()) }>; //[min]~ ERROR generic parameters may not
@@ -43,6 +46,7 @@ fn test<'a, 'b, T, const N: usize>() where &'b (): Sized {
     let _ = Foo::<{ foo::<T>() }>; //[min]~ ERROR generic parameters may not
     let _ = Foo::<{ bar::<N>() }>; //[min]~ ERROR generic parameters may not
                                    //[min]~^ ERROR unresolved item provided when a constant was expected
+                                   //[min]~| ERROR type annotations needed
     let _ = Foo::<{ faz::<'a>(&()) }>; //[min]~ ERROR generic parameters may not
                                        //[min]~^ ERROR cannot specify lifetime arguments
     let _ = Foo::<{ baz::<'a>(&()) }>; //[min]~ ERROR generic parameters may not

@@ -13,4 +13,5 @@ impl Foo for isize {
 pub fn main() {
     let x: isize = Foo::<A = usize>::bar();
     //~^ ERROR associated item constraints are not allowed here
+    //~| ERROR cannot call
 }

@@ -319,7 +319,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 } else {
                     errors::CannotCastToBoolHelp::Unsupported(self.span)
                 };
-                fcx.tcx.dcx().emit_err(errors::CannotCastToBool { span: self.span, expr_ty, help });
+                fcx.dcx().emit_err(errors::CannotCastToBool { span: self.span, expr_ty, help });
             }
             CastError::CastToChar => {
                 let mut err = type_error_struct!(
