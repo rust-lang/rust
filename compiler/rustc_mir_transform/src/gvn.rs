@@ -1389,8 +1389,13 @@ fn op_to_prop_const<'tcx>(
     // If this constant has scalar ABI, return it as a `ConstValue::Scalar`.
     if let Abi::Scalar(abi::Scalar::Initialized { .. }) = op.layout.abi
         && let Ok(scalar) = ecx.read_scalar(op)
-        && scalar.try_to_scalar_int().is_ok()
     {
+        if !scalar.try_to_scalar_int().is_ok() {
+            // Check that we do not leak a pointer.
+            // Those pointers may lose part of their identity in codegen.
+            // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
+            return None;
+        }
         return Some(ConstValue::Scalar(scalar));
     }
 
