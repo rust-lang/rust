@@ -293,9 +293,15 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let (index, new) = self.values.insert_full(value);
         let index = VnIndex::from_usize(index);
         if new {
+            // Grow `evaluated` and `rev_locals` here to amortize the allocations.
             let evaluated = self.eval_to_const(index);
             let _index = self.evaluated.push(evaluated);
             debug_assert_eq!(index, _index);
+            // No need to push to `rev_locals` if we finished listing assignments.
+            if self.next_opaque.is_some() {
+                let _index = self.rev_locals.push(SmallVec::new());
+                debug_assert_eq!(index, _index);
+            }
         }
         index
     }
@@ -332,7 +338,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let is_sized = !self.feature_unsized_locals
             || self.local_decls[local].ty.is_sized(self.tcx, self.param_env);
         if is_sized {
-            self.rev_locals.ensure_contains_elem(value, SmallVec::new).push(local);
+            self.rev_locals[value].push(local);
         }
     }
 
