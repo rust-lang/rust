@@ -55,13 +55,11 @@ run-make/incr-foreign-head-span/Makefile
 run-make/interdependent-c-libraries/Makefile
 run-make/intrinsic-unreachable/Makefile
 run-make/invalid-library/Makefile
-run-make/invalid-so/Makefile
 run-make/issue-107094/Makefile
 run-make/issue-109934-lto-debuginfo/Makefile
 run-make/issue-14698/Makefile
 run-make/issue-15460/Makefile
 run-make/issue-18943/Makefile
-run-make/issue-20626/Makefile
 run-make/issue-22131/Makefile
 run-make/issue-25581/Makefile
 run-make/issue-26006/Makefile
@@ -97,7 +95,6 @@ run-make/long-linker-command-lines-cmd-exe/Makefile
 run-make/long-linker-command-lines/Makefile
 run-make/longjmp-across-rust/Makefile
 run-make/lto-dylib-dep/Makefile
-run-make/lto-empty/Makefile
 run-make/lto-linkage-used-attr/Makefile
 run-make/lto-no-link-whole-rlib/Makefile
 run-make/lto-smoke-c/Makefile
