@@ -651,8 +651,8 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
                 hash_kind,
                 hash_value.as_ptr().cast(),
                 hash_value.len(),
-                source.map(|x| x.as_ptr().cast()).unwrap_or(ptr::null()),
-                source.map(|x| x.len()).unwrap_or(0),
+                source.map_or(ptr::null(), |x| x.as_ptr().cast()),
+                source.map_or(0, |x| x.len()),
             )
         }
     }
