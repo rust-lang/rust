@@ -161,6 +161,11 @@ error: this could be a `const fn`
    |
 LL | fn d(this: D) {}
    | ^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL | const fn d(this: D) {}
+   | +++++
 
 error: this could be a `const fn`
   --> tests/ui/missing_const_for_fn/could_be_const.rs:125:9
