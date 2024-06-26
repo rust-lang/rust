@@ -62,8 +62,8 @@ struct WrongStructAttrStyle {}
 #[derive(Diagnostic)]
 #[nonsense(no_crate_example, code = E0123)]
 //~^ ERROR `#[nonsense(...)]` is not a valid attribute
-//~^^ ERROR diagnostic slug not specified
-//~^^^ ERROR cannot find attribute `nonsense` in this scope
+//~| ERROR diagnostic slug not specified
+//~| ERROR cannot find attribute `nonsense`
 struct InvalidStructAttr {}
 
 #[derive(Diagnostic)]
@@ -149,7 +149,7 @@ struct MessageWrongType {
 struct InvalidPathFieldAttr {
     #[nonsense]
     //~^ ERROR `#[nonsense]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `nonsense` in this scope
+    //~^^ ERROR cannot find attribute `nonsense`
     foo: String,
 }
 
@@ -583,28 +583,28 @@ struct ErrorWithWarn {
 #[error(no_crate_example, code = E0123)]
 //~^ ERROR `#[error(...)]` is not a valid attribute
 //~| ERROR diagnostic slug not specified
-//~| ERROR cannot find attribute `error` in this scope
+//~| ERROR cannot find attribute `error`
 struct ErrorAttribute {}
 
 #[derive(Diagnostic)]
 #[warn_(no_crate_example, code = E0123)]
 //~^ ERROR `#[warn_(...)]` is not a valid attribute
 //~| ERROR diagnostic slug not specified
-//~| ERROR cannot find attribute `warn_` in this scope
+//~| ERROR cannot find attribute `warn_`
 struct WarnAttribute {}
 
 #[derive(Diagnostic)]
 #[lint(no_crate_example, code = E0123)]
 //~^ ERROR `#[lint(...)]` is not a valid attribute
 //~| ERROR diagnostic slug not specified
-//~| ERROR cannot find attribute `lint` in this scope
+//~| ERROR cannot find attribute `lint`
 struct LintAttributeOnSessionDiag {}
 
 #[derive(LintDiagnostic)]
 #[lint(no_crate_example, code = E0123)]
 //~^ ERROR `#[lint(...)]` is not a valid attribute
 //~| ERROR diagnostic slug not specified
-//~| ERROR cannot find attribute `lint` in this scope
+//~| ERROR cannot find attribute `lint`
 struct LintAttributeOnLintDiag {}
 
 #[derive(Diagnostic)]
@@ -643,14 +643,14 @@ struct MissingCodeInSuggestion {
 #[diag(no_crate_example, code = E0123)]
 #[multipart_suggestion(no_crate_suggestion)]
 //~^ ERROR `#[multipart_suggestion(...)]` is not a valid attribute
-//~| ERROR cannot find attribute `multipart_suggestion` in this scope
+//~| ERROR cannot find attribute `multipart_suggestion`
 #[multipart_suggestion()]
-//~^ ERROR cannot find attribute `multipart_suggestion` in this scope
+//~^ ERROR cannot find attribute `multipart_suggestion`
 //~| ERROR `#[multipart_suggestion(...)]` is not a valid attribute
 struct MultipartSuggestion {
     #[multipart_suggestion(no_crate_suggestion)]
     //~^ ERROR `#[multipart_suggestion(...)]` is not a valid attribute
-    //~| ERROR cannot find attribute `multipart_suggestion` in this scope
+    //~| ERROR cannot find attribute `multipart_suggestion`
     suggestion: Span,
 }
 

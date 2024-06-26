@@ -1,16 +1,19 @@
-error: cannot find macro `bar` in this scope
+error: cannot find macro `bar`
   --> $DIR/issue-49074.rs:12:4
    |
 LL |    bar!();
-   |    ^^^
+   |    ^^^ not found in this scope
    |
    = help: have you added the `#[macro_use]` on the module/import?
 
-error: cannot find attribute `marco_use` in this scope
+error: cannot find attribute `marco_use`
   --> $DIR/issue-49074.rs:3:3
    |
 LL | #[marco_use] // typo
-   |   ^^^^^^^^^ help: a built-in attribute with a similar name exists: `macro_use`
+   |   ^^^^^^^^^
+   |   |
+   |   not found in this scope
+   |   help: a built-in attribute with a similar name exists: `macro_use`
 
 error: aborting due to 2 previous errors
 

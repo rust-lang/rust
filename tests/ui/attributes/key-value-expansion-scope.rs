@@ -18,10 +18,10 @@ fn before() {
 
 macro_rules! in_root { () => { "" } }
 
-#[doc = in_mod!()] //~ WARN cannot find macro `in_mod` in this scope
+#[doc = in_mod!()] //~ WARN cannot find macro `in_mod`
                    //~| WARN this was previously accepted by the compiler
 mod macros_stay {
-    #![doc = in_mod!()] //~ WARN cannot find macro `in_mod` in this scope
+    #![doc = in_mod!()] //~ WARN cannot find macro `in_mod`
                         //~| WARN this was previously accepted by the compiler
 
     macro_rules! in_mod { () => { "" } }
@@ -33,10 +33,10 @@ mod macros_stay {
 }
 
 #[macro_use]
-#[doc = in_mod_escape!()] //~ WARN cannot find macro `in_mod_escape` in this scope
+#[doc = in_mod_escape!()] //~ WARN cannot find macro `in_mod_escape`
                           //~| WARN this was previously accepted by the compiler
 mod macros_escape {
-    #![doc = in_mod_escape!()] //~ WARN cannot find macro `in_mod_escape` in this scope
+    #![doc = in_mod_escape!()] //~ WARN cannot find macro `in_mod_escape`
                                //~| WARN this was previously accepted by the compiler
 
     macro_rules! in_mod_escape { () => { "" } }
@@ -47,7 +47,7 @@ mod macros_escape {
     }
 }
 
-#[doc = in_block!()] //~ ERROR cannot find macro `in_block` in this scope
+#[doc = in_block!()] //~ ERROR cannot find macro `in_block`
 fn block() {
     #![doc = in_block!()] //~ ERROR cannot find macro `in_block`
 

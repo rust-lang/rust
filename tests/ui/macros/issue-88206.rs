@@ -21,46 +21,57 @@ use hey::{Serialize, Deserialize, X};
 
 #[derive(Serialize)]
 //~^ ERROR cannot find derive macro `Serialize`
+//~| NOTE not found in this scope
 struct A;
 
 #[derive(from_utf8_mut)]
 //~^ ERROR cannot find derive macro `from_utf8_mut`
+//~| NOTE not found in this scope
 struct B;
 
 #[derive(println)]
 //~^ ERROR cannot find derive macro `println`
 //~| NOTE `println` is in scope, but it is a function-like macro
+//~| NOTE not found in this scope
 struct C;
 
 #[Deserialize]
 //~^ ERROR cannot find attribute `Deserialize`
+//~| NOTE not found in this scope
 struct D;
 
 #[from_utf8_unchecked]
 //~^ ERROR cannot find attribute `from_utf8_unchecked`
+//~| NOTE not found in this scope
 struct E;
 
 #[println]
 //~^ ERROR cannot find attribute `println`
 //~| NOTE `println` is in scope, but it is a function-like macro
+//~| NOTE not found in this scope
 struct F;
 
 fn main() {
     from_utf8!();
     //~^ ERROR cannot find macro `from_utf8`
+    //~| NOTE not found in this scope
 
     Box!();
     //~^ ERROR cannot find macro `Box`
     //~| NOTE `Box` is in scope, but it is a struct
+    //~| NOTE not found in this scope
 
     Copy!();
     //~^ ERROR cannot find macro `Copy`
     //~| NOTE `Copy` is in scope, but it is a derive macro
+    //~| NOTE not found in this scope
 
     test!();
     //~^ ERROR cannot find macro `test`
     //~| NOTE `test` is in scope, but it is an attribute
+    //~| NOTE not found in this scope
 
     X!();
     //~^ ERROR cannot find macro `X`
+    //~| NOTE not found in this scope
 }

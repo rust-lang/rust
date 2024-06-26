@@ -1,20 +1,20 @@
-error: cannot find attribute `foo` in this scope
+error: cannot find attribute `foo`
   --> $DIR/custom_attribute.rs:3:3
    |
 LL | #[foo]
-   |   ^^^
+   |   ^^^ not found in this scope
 
-error: cannot find attribute `foo` in this scope
+error: cannot find attribute `foo`
   --> $DIR/custom_attribute.rs:5:7
    |
 LL |     #[foo]
-   |       ^^^
+   |       ^^^ not found in this scope
 
-error: cannot find attribute `foo` in this scope
+error: cannot find attribute `foo`
   --> $DIR/custom_attribute.rs:7:7
    |
 LL |     #[foo]
-   |       ^^^
+   |       ^^^ not found in this scope
 
 error: aborting due to 3 previous errors
 

@@ -38,7 +38,7 @@ LL | #[generate_mod::check_attr]
            OuterAttr
    = note: this error originates in the attribute macro `generate_mod::check_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: cannot find type `FromOutside` in this scope
+error: cannot find type `FromOutside`
   --> $DIR/generate-mod.rs:16:10
    |
 LL | #[derive(generate_mod::CheckDerive)]
@@ -49,7 +49,7 @@ LL | #[derive(generate_mod::CheckDerive)]
    = note: `#[deny(proc_macro_derive_resolution_fallback)]` on by default
    = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: cannot find type `OuterDerive` in this scope
+error: cannot find type `OuterDerive`
   --> $DIR/generate-mod.rs:16:10
    |
 LL | #[derive(generate_mod::CheckDerive)]
@@ -59,7 +59,7 @@ LL | #[derive(generate_mod::CheckDerive)]
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
    = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: cannot find type `FromOutside` in this scope
+error: cannot find type `FromOutside`
   --> $DIR/generate-mod.rs:23:14
    |
 LL |     #[derive(generate_mod::CheckDerive)]
@@ -69,7 +69,7 @@ LL |     #[derive(generate_mod::CheckDerive)]
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
    = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: cannot find type `OuterDerive` in this scope
+error: cannot find type `OuterDerive`
   --> $DIR/generate-mod.rs:23:14
    |
 LL |     #[derive(generate_mod::CheckDerive)]
@@ -83,7 +83,7 @@ error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0412`.
 Future incompatibility report: Future breakage diagnostic:
-error: cannot find type `FromOutside` in this scope
+error: cannot find type `FromOutside`
   --> $DIR/generate-mod.rs:16:10
    |
 LL | #[derive(generate_mod::CheckDerive)]
@@ -95,7 +95,7 @@ LL | #[derive(generate_mod::CheckDerive)]
    = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
-error: cannot find type `OuterDerive` in this scope
+error: cannot find type `OuterDerive`
   --> $DIR/generate-mod.rs:16:10
    |
 LL | #[derive(generate_mod::CheckDerive)]
@@ -107,7 +107,7 @@ LL | #[derive(generate_mod::CheckDerive)]
    = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
-error: cannot find type `FromOutside` in this scope
+error: cannot find type `FromOutside`
   --> $DIR/generate-mod.rs:23:14
    |
 LL |     #[derive(generate_mod::CheckDerive)]
@@ -119,7 +119,7 @@ LL |     #[derive(generate_mod::CheckDerive)]
    = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
-error: cannot find type `OuterDerive` in this scope
+error: cannot find type `OuterDerive`
   --> $DIR/generate-mod.rs:23:14
    |
 LL |     #[derive(generate_mod::CheckDerive)]
@@ -131,7 +131,7 @@ LL |     #[derive(generate_mod::CheckDerive)]
    = note: this error originates in the derive macro `generate_mod::CheckDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
-warning: cannot find type `FromOutside` in this scope
+warning: cannot find type `FromOutside`
   --> $DIR/generate-mod.rs:30:10
    |
 LL | #[derive(generate_mod::CheckDeriveLint)] // OK, lint is suppressed
@@ -142,7 +142,7 @@ LL | #[derive(generate_mod::CheckDeriveLint)] // OK, lint is suppressed
    = note: this warning originates in the derive macro `generate_mod::CheckDeriveLint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
-warning: cannot find type `OuterDeriveLint` in this scope
+warning: cannot find type `OuterDeriveLint`
   --> $DIR/generate-mod.rs:30:10
    |
 LL | #[derive(generate_mod::CheckDeriveLint)] // OK, lint is suppressed

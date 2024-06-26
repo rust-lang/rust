@@ -1,8 +1,8 @@
-error: cannot find macro `macro_two` in this scope
+error: cannot find macro `macro_two`
   --> $DIR/macro-use-wrong-name.rs:7:5
    |
 LL |     macro_two!();
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^ not found in this scope
    |
   ::: $DIR/auxiliary/two_macros.rs:2:1
    |

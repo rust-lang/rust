@@ -1,8 +1,8 @@
-error: cannot find attribute `derive_Empty` in this scope
+error: cannot find attribute `derive_Empty`
   --> $DIR/derive-still-gated.rs:6:3
    |
 LL | #[derive_Empty]
-   |   ^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^ not found in this scope
 
 error: aborting due to 1 previous error
 

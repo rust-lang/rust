@@ -161,7 +161,7 @@ struct O {
 
 #[derive(Subdiagnostic)]
 #[foo]
-//~^ ERROR cannot find attribute `foo` in this scope
+//~^ ERROR cannot find attribute `foo`
 //~^^ ERROR unsupported type attribute for subdiagnostic enum
 enum P {
     #[label(no_crate_example)]
@@ -176,7 +176,7 @@ enum P {
 enum Q {
     #[bar]
     //~^ ERROR `#[bar]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar` in this scope
+    //~^^ ERROR cannot find attribute `bar`
     A {
         #[primary_span]
         span: Span,
@@ -188,7 +188,7 @@ enum Q {
 enum R {
     #[bar = "..."]
     //~^ ERROR `#[bar = ...]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar` in this scope
+    //~^^ ERROR cannot find attribute `bar`
     A {
         #[primary_span]
         span: Span,
@@ -200,7 +200,7 @@ enum R {
 enum S {
     #[bar = 4]
     //~^ ERROR `#[bar = ...]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar` in this scope
+    //~^^ ERROR cannot find attribute `bar`
     A {
         #[primary_span]
         span: Span,
@@ -212,7 +212,7 @@ enum S {
 enum T {
     #[bar("...")]
     //~^ ERROR `#[bar(...)]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar` in this scope
+    //~^^ ERROR cannot find attribute `bar`
     A {
         #[primary_span]
         span: Span,
@@ -273,7 +273,7 @@ struct Y {
     span: Span,
     #[bar]
     //~^ ERROR `#[bar]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar` in this scope
+    //~^^ ERROR cannot find attribute `bar`
     bar: String,
 }
 
@@ -284,7 +284,7 @@ struct Z {
     span: Span,
     #[bar = "..."]
     //~^ ERROR `#[bar = ...]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar` in this scope
+    //~^^ ERROR cannot find attribute `bar`
     bar: String,
 }
 
@@ -295,7 +295,7 @@ struct AA {
     span: Span,
     #[bar("...")]
     //~^ ERROR `#[bar(...)]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar` in this scope
+    //~^^ ERROR cannot find attribute `bar`
     bar: String,
 }
 

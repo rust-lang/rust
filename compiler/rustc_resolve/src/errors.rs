@@ -635,6 +635,7 @@ pub(crate) struct ImportsCannotReferTo<'a> {
 #[diag(resolve_cannot_find_ident_in_this_scope)]
 pub(crate) struct CannotFindIdentInThisScope<'a> {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
     pub(crate) expected: &'a str,
     pub(crate) ident: Ident,
