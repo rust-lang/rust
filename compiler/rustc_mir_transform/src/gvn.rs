@@ -773,10 +773,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         location: Location,
     ) -> Option<VnIndex> {
         match *operand {
-            Operand::Constant(ref mut constant) => {
-                let const_ = constant.const_.normalize(self.tcx, self.param_env);
-                self.insert_constant(const_)
-            }
+            Operand::Constant(ref constant) => self.insert_constant(constant.const_),
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
                 let value = self.simplify_place_value(place, location)?;
                 if let Some(const_) = self.try_as_constant(value) {

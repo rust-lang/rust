@@ -22,12 +22,11 @@
           StorageLive(_3);
           StorageLive(_4);
           _9 = const main::promoted[0];
--         _4 = _9;
+          _4 = _9;
 -         _3 = _4;
 -         _2 = move _3 as &[u32] (PointerCoercion(Unsize));
-+         _4 = const {ALLOC0<imm>: &[u32; 3]};
-+         _3 = const {ALLOC0<imm>: &[u32; 3]};
-+         _2 = const {ALLOC0<imm>: &[u32; 3]} as &[u32] (PointerCoercion(Unsize));
++         _3 = _9;
++         _2 = _9 as &[u32] (PointerCoercion(Unsize));
           StorageDead(_3);
           StorageLive(_6);
           _6 = const 1_usize;
@@ -50,6 +49,4 @@
           return;
       }
   }
-+ 
-+ ALLOC0 (size: 12, align: 4) { .. }
   
