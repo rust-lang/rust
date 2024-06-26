@@ -18,7 +18,7 @@ where
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
     ) -> QueryResult<I> {
-        let tcx = self.cx();
+        let cx = self.cx();
         let opaque_ty = goal.predicate.alias;
         let expected = goal.predicate.term.as_type().expect("no such thing as an opaque const");
 
@@ -86,7 +86,7 @@ where
             }
             (Reveal::All, _) => {
                 // FIXME: Add an assertion that opaque type storage is empty.
-                let actual = tcx.type_of(opaque_ty.def_id).instantiate(tcx, opaque_ty.args);
+                let actual = cx.type_of(opaque_ty.def_id).instantiate(cx, opaque_ty.args);
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
@@ -98,7 +98,7 @@ where
 ///
 /// FIXME: Interner argument is needed to constrain the `I` parameter.
 pub fn uses_unique_placeholders_ignoring_regions<I: Interner>(
-    _interner: I,
+    _cx: I,
     args: I::GenericArgs,
 ) -> Result<(), NotUniqueParam<I>> {
     let mut seen = GrowableBitSet::default();

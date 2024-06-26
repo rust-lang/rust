@@ -110,12 +110,13 @@ fn check_impl(
         }
 
         let mut args = merge_args(&cfg_args_ruff, &file_args_ruff);
+        args.insert(0, "check".as_ref());
         let res = py_runner(py_path.as_ref().unwrap(), "ruff", &args);
 
         if res.is_err() && show_diff {
             eprintln!("\npython linting failed! Printing diff suggestions:");
 
-            args.insert(0, "--diff".as_ref());
+            args.insert(1, "--diff".as_ref());
             let _ = py_runner(py_path.as_ref().unwrap(), "ruff", &args);
         }
         // Rethrow error

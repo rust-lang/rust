@@ -239,14 +239,14 @@ where
     /// This function takes care of setting up the inference context, setting the anchor,
     /// and registering opaques from the canonicalized input.
     fn enter_canonical<R>(
-        tcx: I,
+        cx: I,
         search_graph: &'a mut search_graph::SearchGraph<I>,
         canonical_input: CanonicalInput<I>,
         canonical_goal_evaluation: &mut ProofTreeBuilder<D>,
         f: impl FnOnce(&mut EvalCtxt<'_, D>, Goal<I, I::Predicate>) -> R,
     ) -> R {
         let (ref delegate, input, var_values) =
-            SolverDelegate::build_with_canonical(tcx, search_graph.solver_mode(), &canonical_input);
+            SolverDelegate::build_with_canonical(cx, search_graph.solver_mode(), &canonical_input);
 
         let mut ecx = EvalCtxt {
             delegate,
@@ -292,9 +292,9 @@ where
     /// Instead of calling this function directly, use either [EvalCtxt::evaluate_goal]
     /// if you're inside of the solver or [SolverDelegateEvalExt::evaluate_root_goal] if you're
     /// outside of it.
-    #[instrument(level = "debug", skip(tcx, search_graph, goal_evaluation), ret)]
+    #[instrument(level = "debug", skip(cx, search_graph, goal_evaluation), ret)]
     fn evaluate_canonical_goal(
-        tcx: I,
+        cx: I,
         search_graph: &'a mut search_graph::SearchGraph<I>,
         canonical_input: CanonicalInput<I>,
         goal_evaluation: &mut ProofTreeBuilder<D>,
@@ -307,12 +307,12 @@ where
         // The actual solver logic happens in `ecx.compute_goal`.
         let result = ensure_sufficient_stack(|| {
             search_graph.with_new_goal(
-                tcx,
+                cx,
                 canonical_input,
                 &mut canonical_goal_evaluation,
                 |search_graph, canonical_goal_evaluation| {
                     EvalCtxt::enter_canonical(
-                        tcx,
+                        cx,
                         search_graph,
                         canonical_input,
                         canonical_goal_evaluation,
@@ -506,7 +506,7 @@ where
     ///
     /// Goals for the next step get directly added to the nested goals of the `EvalCtxt`.
     fn evaluate_added_goals_step(&mut self) -> Result<Option<Certainty>, NoSolution> {
-        let tcx = self.cx();
+        let cx = self.cx();
         let mut goals = core::mem::take(&mut self.nested_goals);
 
         // If this loop did not result in any progress, what's our final certainty.
@@ -516,7 +516,7 @@ where
             // RHS does not affect projection candidate assembly.
             let unconstrained_rhs = self.next_term_infer_of_kind(goal.predicate.term);
             let unconstrained_goal = goal.with(
-                tcx,
+                cx,
                 ty::NormalizesTo { alias: goal.predicate.alias, term: unconstrained_rhs },
             );
 
@@ -777,7 +777,7 @@ where
         // NOTE: this check is purely an optimization, the structural eq would
         // always fail if the term is not an inference variable.
         if term.is_infer() {
-            let tcx = self.cx();
+            let cx = self.cx();
             // We need to relate `alias` to `term` treating only the outermost
             // constructor as rigid, relating any contained generic arguments as
             // normal. We do this by first structurally equating the `term`
@@ -787,8 +787,8 @@ where
             // Alternatively we could modify `Equate` for this case by adding another
             // variant to `StructurallyRelateAliases`.
             let identity_args = self.fresh_args_for_item(alias.def_id);
-            let rigid_ctor = ty::AliasTerm::new_from_args(tcx, alias.def_id, identity_args);
-            let ctor_term = rigid_ctor.to_term(tcx);
+            let rigid_ctor = ty::AliasTerm::new_from_args(cx, alias.def_id, identity_args);
+            let ctor_term = rigid_ctor.to_term(cx);
             let obligations =
                 self.delegate.eq_structurally_relating_aliases(param_env, term, ctor_term)?;
             debug_assert!(obligations.is_empty());
