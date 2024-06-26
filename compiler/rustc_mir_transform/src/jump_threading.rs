@@ -47,6 +47,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, ScalarInt, TyCtxt};
+use rustc_mir_dataflow::lattice::HasBottom;
 use rustc_mir_dataflow::value_analysis::{Map, PlaceIndex, State, TrackElem};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{TagEncoding, Variants};
@@ -158,8 +159,16 @@ impl Condition {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 struct ConditionSet<'a>(&'a [Condition]);
+
+impl HasBottom for ConditionSet<'_> {
+    const BOTTOM: Self = ConditionSet(&[]);
+
+    fn is_bottom(&self) -> bool {
+        self.0.is_empty()
+    }
+}
 
 impl<'a> ConditionSet<'a> {
     fn iter(self) -> impl Iterator<Item = Condition> + 'a {
@@ -177,7 +186,7 @@ impl<'a> ConditionSet<'a> {
 
 impl<'tcx, 'a> TOFinder<'tcx, 'a> {
     fn is_empty(&self, state: &State<ConditionSet<'a>>) -> bool {
-        state.all(|cs| cs.0.is_empty())
+        state.all_bottom()
     }
 
     /// Recursion entry point to find threading opportunities.
@@ -198,7 +207,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         debug!(?discr);
 
         let cost = CostChecker::new(self.tcx, self.param_env, None, self.body);
-        let mut state = State::new(ConditionSet::default(), self.map);
+        let mut state = State::new_reachable();
 
         let conds = if let Some((value, then, else_)) = targets.as_static_if() {
             let value = ScalarInt::try_from_uint(value, discr_layout.size)?;
@@ -255,7 +264,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             //   _1 = 5 // Whatever happens here, it won't change the result of a `SwitchInt`.
             //   _1 = 6
             if let Some((lhs, tail)) = self.mutated_statement(stmt) {
-                state.flood_with_tail_elem(lhs.as_ref(), tail, self.map, ConditionSet::default());
+                state.flood_with_tail_elem(lhs.as_ref(), tail, self.map, ConditionSet::BOTTOM);
             }
         }
 
@@ -609,7 +618,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         // We can recurse through this terminator.
         let mut state = state();
         if let Some(place_to_flood) = place_to_flood {
-            state.flood_with(place_to_flood.as_ref(), self.map, ConditionSet::default());
+            state.flood_with(place_to_flood.as_ref(), self.map, ConditionSet::BOTTOM);
         }
         self.find_opportunity(bb, state, cost.clone(), depth + 1);
     }
