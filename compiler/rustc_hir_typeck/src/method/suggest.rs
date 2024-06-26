@@ -2831,32 +2831,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         errors: Vec<FulfillmentError<'tcx>>,
         suggest_derive: bool,
     ) {
-        let all_local_types_needing_impls =
-            errors.iter().all(|e| match e.obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
-                    match pred.self_ty().kind() {
-                        ty::Adt(def, _) => def.did().is_local(),
-                        _ => false,
-                    }
-                }
-                _ => false,
-            });
-        let mut preds: Vec<_> = errors
+        let preds: Vec<_> = errors
             .iter()
             .filter_map(|e| match e.obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => Some(pred),
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
+                    match pred.self_ty().kind() {
+                        ty::Adt(_, _) => Some(pred),
+                        _ => None,
+                    }
+                }
                 _ => None,
             })
             .collect();
-        preds.sort_by_key(|pred| pred.trait_ref.to_string());
-        let def_ids = preds
+
+        // Note for local items and foreign items respectively.
+        let (mut local_preds, mut foreign_preds): (Vec<_>, Vec<_>) =
+            preds.iter().partition(|&pred| {
+                if let ty::Adt(def, _) = pred.self_ty().kind() {
+                    def.did().is_local()
+                } else {
+                    false
+                }
+            });
+
+        local_preds.sort_by_key(|pred: &&ty::TraitPredicate<'_>| pred.trait_ref.to_string());
+        let local_def_ids = local_preds
             .iter()
             .filter_map(|pred| match pred.self_ty().kind() {
                 ty::Adt(def, _) => Some(def.did()),
                 _ => None,
             })
             .collect::<FxIndexSet<_>>();
-        let mut spans: MultiSpan = def_ids
+        let mut local_spans: MultiSpan = local_def_ids
             .iter()
             .filter_map(|def_id| {
                 let span = self.tcx.def_span(*def_id);
@@ -2864,11 +2870,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .collect::<Vec<_>>()
             .into();
-
-        for pred in &preds {
+        for pred in &local_preds {
             match pred.self_ty().kind() {
-                ty::Adt(def, _) if def.did().is_local() => {
-                    spans.push_span_label(
+                ty::Adt(def, _) => {
+                    local_spans.push_span_label(
                         self.tcx.def_span(def.did()),
                         format!("must implement `{}`", pred.trait_ref.print_trait_sugared()),
                     );
@@ -2876,24 +2881,69 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {}
             }
         }
-
-        if all_local_types_needing_impls && spans.primary_span().is_some() {
-            let msg = if preds.len() == 1 {
+        if local_spans.primary_span().is_some() {
+            let msg = if local_preds.len() == 1 {
                 format!(
                     "an implementation of `{}` might be missing for `{}`",
-                    preds[0].trait_ref.print_trait_sugared(),
-                    preds[0].self_ty()
+                    local_preds[0].trait_ref.print_trait_sugared(),
+                    local_preds[0].self_ty()
                 )
             } else {
                 format!(
                     "the following type{} would have to `impl` {} required trait{} for this \
                      operation to be valid",
-                    pluralize!(def_ids.len()),
-                    if def_ids.len() == 1 { "its" } else { "their" },
-                    pluralize!(preds.len()),
+                    pluralize!(local_def_ids.len()),
+                    if local_def_ids.len() == 1 { "its" } else { "their" },
+                    pluralize!(local_preds.len()),
                 )
             };
-            err.span_note(spans, msg);
+            err.span_note(local_spans, msg);
+        }
+
+        foreign_preds.sort_by_key(|pred: &&ty::TraitPredicate<'_>| pred.trait_ref.to_string());
+        let foreign_def_ids = foreign_preds
+            .iter()
+            .filter_map(|pred| match pred.self_ty().kind() {
+                ty::Adt(def, _) => Some(def.did()),
+                _ => None,
+            })
+            .collect::<FxIndexSet<_>>();
+        let mut foreign_spans: MultiSpan = foreign_def_ids
+            .iter()
+            .filter_map(|def_id| {
+                let span = self.tcx.def_span(*def_id);
+                if span.is_dummy() { None } else { Some(span) }
+            })
+            .collect::<Vec<_>>()
+            .into();
+        for pred in &foreign_preds {
+            match pred.self_ty().kind() {
+                ty::Adt(def, _) => {
+                    foreign_spans.push_span_label(
+                        self.tcx.def_span(def.did()),
+                        format!("not implement `{}`", pred.trait_ref.print_trait_sugared()),
+                    );
+                }
+                _ => {}
+            }
+        }
+        if foreign_spans.primary_span().is_some() {
+            let msg = if foreign_preds.len() == 1 {
+                format!(
+                    "the foreign item type `{}` doesn't implement `{}`",
+                    foreign_preds[0].self_ty(),
+                    foreign_preds[0].trait_ref.print_trait_sugared()
+                )
+            } else {
+                format!(
+                    "the foreign item type{} {} implement required trait{} for this \
+                     operation to be valid",
+                    pluralize!(foreign_def_ids.len()),
+                    if foreign_def_ids.len() > 1 { "don't" } else { "doesn't" },
+                    pluralize!(foreign_preds.len()),
+                )
+            };
+            err.span_note(foreign_spans, msg);
         }
 
         let preds: Vec<_> = errors
