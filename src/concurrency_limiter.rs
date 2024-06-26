@@ -1,6 +1,7 @@
 use std::sync::{Arc, Condvar, Mutex};
 
 use jobserver::HelperThread;
+use rustc_errors::DiagCtxtHandle;
 use rustc_session::Session;
 
 // FIXME don't panic when a worker thread panics
@@ -46,7 +47,7 @@ impl ConcurrencyLimiter {
         }
     }
 
-    pub(super) fn acquire(&self, dcx: &rustc_errors::DiagCtxt) -> ConcurrencyLimiterToken {
+    pub(super) fn acquire(&self, dcx: DiagCtxtHandle<'_>) -> ConcurrencyLimiterToken {
         let mut state = self.state.lock().unwrap();
         loop {
             state.assert_invariants();
