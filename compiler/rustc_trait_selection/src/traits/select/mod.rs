@@ -1752,7 +1752,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let is_match = self
             .infcx
             .at(&obligation.cause, obligation.param_env)
-            .eq(DefineOpaqueTypes::No, obligation.predicate, infer_projection)
+            .eq(DefineOpaqueTypes::Yes, obligation.predicate, infer_projection)
             .is_ok_and(|InferOk { obligations, value: () }| {
                 self.evaluate_predicates_recursively(
                     TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
