@@ -4488,7 +4488,7 @@ name = "rustc_next_trait_solver"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.5.0",
- "derivative",
+ "derive-where",
  "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_index",

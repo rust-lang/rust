@@ -1,5 +1,6 @@
 use std::ops::ControlFlow;
 
+use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir::data_structures::ensure_sufficient_stack;
@@ -87,8 +88,7 @@ where
     pub(super) inspect: ProofTreeBuilder<D>,
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Debug(bound = ""), Default(bound = ""))]
+#[derive_where(Clone, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 // FIXME: This can be made crate-private once `EvalCtxt` also lives in this crate.

@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::ops::ControlFlow;
 
+use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
@@ -108,15 +109,13 @@ impl From<bool> for IsFirstInputType {
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = "T: Debug"))]
+#[derive_where(Debug; I: Interner, T: Debug)]
 pub enum OrphanCheckErr<I: Interner, T> {
     NonLocalInputType(Vec<(I::Ty, IsFirstInputType)>),
     UncoveredTyParams(UncoveredTyParams<I, T>),
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = "T: Debug"))]
+#[derive_where(Debug; I: Interner, T: Debug)]
 pub struct UncoveredTyParams<I: Interner, T> {
     pub uncovered: T,
     pub local_ty: Option<I::Ty>,
