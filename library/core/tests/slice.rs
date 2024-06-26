@@ -69,13 +69,13 @@ fn test_binary_search() {
     assert_eq!(b.binary_search(&8), Err(5));
 
     let b = [(); usize::MAX];
-    assert_eq!(b.binary_search(&()), Ok(usize::MAX / 2));
+    assert_eq!(b.binary_search(&()), Ok(0));
 }
 
 #[test]
 fn test_binary_search_by_overflow() {
     let b = [(); usize::MAX];
-    assert_eq!(b.binary_search_by(|_| Ordering::Equal), Ok(usize::MAX / 2));
+    assert_eq!(b.binary_search_by(|_| Ordering::Equal), Ok(0));
     assert_eq!(b.binary_search_by(|_| Ordering::Greater), Err(0));
     assert_eq!(b.binary_search_by(|_| Ordering::Less), Err(usize::MAX));
 }
