@@ -18,11 +18,13 @@ LL |     const unsafe fn bar();
 error: items in unadorned `extern` blocks cannot have safety qualifiers
   --> $DIR/no-const-fn-in-extern-block.rs:4:5
    |
-LL | extern "C" {
-   | ---------- help: add unsafe to this `extern` block
-...
 LL |     const unsafe fn bar();
    |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add unsafe to this `extern` block
+   |
+LL | unsafe extern "C" {
+   | ++++++
 
 error: aborting due to 3 previous errors
 
