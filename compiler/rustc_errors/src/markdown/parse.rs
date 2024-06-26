@@ -10,15 +10,11 @@ const CBK: &[u8] = b"```";
 const CIL: &[u8] = b"`";
 const CMT_E: &[u8] = b"-->";
 const CMT_S: &[u8] = b"<!--";
-const EMP: &[u8] = b"_";
 const HDG: &[u8] = b"#";
 const LNK_CHARS: &str = "$-_.+!*'()/&?=:%";
 const LNK_E: &[u8] = b"]";
 const LNK_S: &[u8] = b"[";
-const STG: &[u8] = b"**";
 const STK: &[u8] = b"~~";
-const UL1: &[u8] = b"* ";
-const UL2: &[u8] = b"- ";
 
 /// Pattern replacements
 const REPLACEMENTS: &[(&str, &str)] = &[
@@ -100,25 +96,26 @@ fn parse_recursive<'a>(buf: &'a [u8], ctx: Context) -> MdStream<'_> {
         };
 
         let res: ParseResult<'_> = match (top_blk, prev) {
-            (_, Newline | Whitespace) if loop_buf.starts_with(CMT_S) => {
+            _ if loop_buf.starts_with(CMT_S) => {
                 parse_simple_pat(loop_buf, CMT_S, CMT_E, Po::TrimNoEsc, MdTree::Comment)
             }
             (true, Newline) if loop_buf.starts_with(CBK) => Some(parse_codeblock(loop_buf)),
-            (_, Newline | Whitespace) if loop_buf.starts_with(CIL) => parse_codeinline(loop_buf),
+            _ if loop_buf.starts_with(CIL) => parse_codeinline(loop_buf),
             (true, Newline | Whitespace) if loop_buf.starts_with(HDG) => parse_heading(loop_buf),
             (true, Newline) if loop_buf.starts_with(BRK) => {
                 Some((MdTree::HorizontalRule, parse_to_newline(loop_buf).1))
             }
-            (_, Newline | Whitespace) if loop_buf.starts_with(EMP) => {
-                parse_simple_pat(loop_buf, EMP, EMP, Po::None, MdTree::Emphasis)
+            (_, Newline) if unordered_list_start(loop_buf) => Some(parse_unordered_li(loop_buf)),
+            _ if let Some(strong @ (b"**" | b"__")) = loop_buf.get(..2) => {
+                parse_simple_pat(loop_buf, strong, strong, Po::None, MdTree::Strong)
             }
-            (_, Newline | Whitespace) if loop_buf.starts_with(STG) => {
-                parse_simple_pat(loop_buf, STG, STG, Po::None, MdTree::Strong)
+            _ if let Some(emph @ (b"*" | b"_")) = loop_buf.get(..1) => {
+                parse_simple_pat(loop_buf, emph, emph, Po::None, MdTree::Emphasis)
             }
-            (_, Newline | Whitespace) if loop_buf.starts_with(STK) => {
+            _ if loop_buf.starts_with(STK) => {
                 parse_simple_pat(loop_buf, STK, STK, Po::None, MdTree::Strikethrough)
             }
-            (_, Newline | Whitespace) if loop_buf.starts_with(ANC_S) => {
+            _ if loop_buf.starts_with(ANC_S) => {
                 let tt_fn = |link| MdTree::Link { disp: link, link };
                 let ret = parse_simple_pat(loop_buf, ANC_S, ANC_E, Po::None, tt_fn);
                 match ret {
@@ -130,11 +127,8 @@ fn parse_recursive<'a>(buf: &'a [u8], ctx: Context) -> MdStream<'_> {
                     _ => None,
                 }
             }
-            (_, Newline) if (loop_buf.starts_with(UL1) || loop_buf.starts_with(UL2)) => {
-                Some(parse_unordered_li(loop_buf))
-            }
             (_, Newline) if ord_list_start(loop_buf).is_some() => Some(parse_ordered_li(loop_buf)),
-            (_, Newline | Whitespace) if loop_buf.starts_with(LNK_S) => {
+            _ if loop_buf.starts_with(LNK_S) => {
                 parse_any_link(loop_buf, top_blk && prev == Prev::Newline)
             }
             (_, Escape | _) => None,
@@ -251,7 +245,6 @@ fn parse_heading(buf: &[u8]) -> ParseResult<'_> {
 
 /// Bulleted list
 fn parse_unordered_li(buf: &[u8]) -> Parsed<'_> {
-    debug_assert!(buf.starts_with(b"* ") || buf.starts_with(b"- "));
     let (txt, rest) = get_indented_section(&buf[2..]);
     let ctx = Context { top_block: false, prev: Prev::Whitespace };
     let stream = parse_recursive(trim_ascii_start(txt), ctx);
@@ -267,23 +260,26 @@ fn parse_ordered_li(buf: &[u8]) -> Parsed<'_> {
     (MdTree::OrderedListItem(num, stream), rest)
 }
 
-/// Find first line that isn't empty or doesn't start with whitespace, that will
-/// be our contents
 fn get_indented_section(buf: &[u8]) -> (&[u8], &[u8]) {
-    let mut end = buf.len();
-    for (idx, window) in buf.windows(2).enumerate() {
-        let &[ch, next_ch] = window else { unreachable!("always 2 elements") };
-        if idx >= buf.len().saturating_sub(2) && next_ch == b'\n' {
-            // End of stream
-            end = buf.len().saturating_sub(1);
-            break;
-        } else if ch == b'\n' && (!next_ch.is_ascii_whitespace() || next_ch == b'\n') {
-            end = idx;
-            break;
+    let mut lines = buf.split(|&byte| byte == b'\n');
+    let mut end = lines.next().map_or(0, |line| line.len());
+    for line in lines {
+        if let Some(first) = line.first() {
+            if unordered_list_start(line) || !first.is_ascii_whitespace() {
+                break;
+            }
         }
+        end += line.len() + 1;
     }
 
     (&buf[..end], &buf[end..])
+}
+
+fn unordered_list_start(mut buf: &[u8]) -> bool {
+    while let [b' ', rest @ ..] = buf {
+        buf = rest;
+    }
+    matches!(buf, [b'*' | b'-', b' ', ..])
 }
 
 /// Verify a valid ordered list start (e.g. `1.`) and parse it. Returns the
