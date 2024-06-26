@@ -43,7 +43,7 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::debug;
-use xxhash_rust::xxh3;
+use twox_hash::xxh3::{self, HasherExt};
 
 mod caching_source_map_view;
 pub mod source_map;
@@ -78,7 +78,7 @@ use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock, Lrc};
 use std::borrow::Cow;
 use std::cmp::{self, Ordering};
 use std::fmt::Display;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::io::{self, Read};
 use std::ops::{Add, Range, Sub};
 use std::path::{Path, PathBuf};
@@ -1531,7 +1531,7 @@ impl SourceFileHash {
                 value.copy_from_slice(&Sha256::digest(data));
             }
             SourceFileHashAlgorithm::XxHash => {
-                value.copy_from_slice(&xxh3::xxh3_128(data).to_be_bytes());
+                value.copy_from_slice(&xxh3::hash128(data).to_be_bytes());
             }
         };
         hash
@@ -1569,9 +1569,9 @@ impl SourceFileHash {
         match kind {
             SourceFileHashAlgorithm::XxHash => {
                 digest(
-                    xxh3::Xxh3::new(),
-                    |h, b| h.update(b),
-                    |h, out| out.copy_from_slice(&h.digest128().to_be_bytes()),
+                    xxh3::Hash128::default(),
+                    |h, b| h.write(b),
+                    |h, out| out.copy_from_slice(&h.finish_ext().to_be_bytes()),
                     src,
                     &mut buf,
                     value,

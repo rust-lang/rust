@@ -4775,8 +4775,8 @@ dependencies = [
  "sha1",
  "sha2",
  "tracing",
+ "twox-hash",
  "unicode-width",
- "xxhash-rust",
 ]
 
 [[package]]
@@ -6620,12 +6620,6 @@ name = "xmlparser"
 version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "66fee0b777b0f5ac1c69bb06d361268faafa61cd4682ae064a171c16c433e9e4"
-
-[[package]]
-name = "xxhash-rust"
-version = "0.8.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "927da81e25be1e1a2901d59b81b37dd2efd1fc9c9345a55007f09bf5a2d3ee03"
 
 [[package]]
 name = "xz2"
