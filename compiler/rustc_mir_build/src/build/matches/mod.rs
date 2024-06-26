@@ -39,9 +39,27 @@ struct ThenElseArgs {
     /// `self.local_scope()` is used.
     temp_scope_override: Option<region::Scope>,
     variable_source_info: SourceInfo,
+    /// Determines how bindings should be handled when lowering `let` expressions.
+    ///
     /// Forwarded to [`Builder::lower_let_expr`] when lowering [`ExprKind::Let`].
-    /// When false (for match guards), `let` bindings won't be declared.
-    declare_let_bindings: bool,
+    declare_let_bindings: DeclareLetBindings,
+}
+
+/// Should lowering a `let` expression also declare its bindings?
+///
+/// Used by [`Builder::lower_let_expr`] when lowering [`ExprKind::Let`].
+#[derive(Clone, Copy)]
+pub(crate) enum DeclareLetBindings {
+    /// Yes, declare `let` bindings as normal for `if` conditions.
+    Yes,
+    /// No, don't declare `let` bindings, because the caller declares them
+    /// separately due to special requirements.
+    ///
+    /// Used for match guards and let-else.
+    No,
+    /// Let expressions are not permitted in this context, so it is a bug to
+    /// try to lower one (e.g inside lazy-boolean-or or boolean-not).
+    LetNotPermitted,
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -57,7 +75,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr_id: ExprId,
         temp_scope_override: Option<region::Scope>,
         variable_source_info: SourceInfo,
-        declare_let_bindings: bool,
+        declare_let_bindings: DeclareLetBindings,
     ) -> BlockAnd<()> {
         self.then_else_break_inner(
             block,
@@ -91,13 +109,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.then_else_break_inner(
                             block,
                             lhs,
-                            ThenElseArgs { declare_let_bindings: true, ..args },
+                            ThenElseArgs {
+                                declare_let_bindings: DeclareLetBindings::LetNotPermitted,
+                                ..args
+                            },
                         )
                     });
                 let rhs_success_block = unpack!(this.then_else_break_inner(
                     failure_block,
                     rhs,
-                    ThenElseArgs { declare_let_bindings: true, ..args },
+                    ThenElseArgs {
+                        declare_let_bindings: DeclareLetBindings::LetNotPermitted,
+                        ..args
+                    },
                 ));
 
                 // Make the LHS and RHS success arms converge to a common block.
@@ -127,7 +151,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.then_else_break_inner(
                             block,
                             arg,
-                            ThenElseArgs { declare_let_bindings: true, ..args },
+                            ThenElseArgs {
+                                declare_let_bindings: DeclareLetBindings::LetNotPermitted,
+                                ..args
+                            },
                         )
                     });
                 this.break_for_else(success_block, args.variable_source_info);
@@ -1991,8 +2018,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 // Pat binding - used for `let` and function parameters as well.
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// If the bindings have already been declared, set `declare_bindings` to
-    /// `false` to avoid duplicated bindings declaration; used for if-let guards.
+    /// Lowers a `let` expression that appears in a suitable context
+    /// (e.g. an `if` condition or match guard).
+    ///
+    /// Also used for lowering let-else statements, since they have similar
+    /// needs despite not actually using `let` expressions.
+    ///
+    /// Use [`DeclareLetBindings`] to control whether the `let` bindings are
+    /// declared or not.
     pub(crate) fn lower_let_expr(
         &mut self,
         mut block: BasicBlock,
@@ -2000,7 +2033,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         pat: &Pat<'tcx>,
         source_scope: Option<SourceScope>,
         scope_span: Span,
-        declare_bindings: bool,
+        declare_let_bindings: DeclareLetBindings,
         storages_alive: bool,
     ) -> BlockAnd<()> {
         let expr_span = self.thir[expr_id].span;
@@ -2017,10 +2050,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         self.break_for_else(otherwise_block, self.source_info(expr_span));
 
-        if declare_bindings {
-            let expr_place = scrutinee.try_to_place(self);
-            let opt_expr_place = expr_place.as_ref().map(|place| (Some(place), expr_span));
-            self.declare_bindings(source_scope, pat.span.to(scope_span), pat, None, opt_expr_place);
+        match declare_let_bindings {
+            DeclareLetBindings::Yes => {
+                let expr_place = scrutinee.try_to_place(self);
+                let opt_expr_place = expr_place.as_ref().map(|place| (Some(place), expr_span));
+                self.declare_bindings(
+                    source_scope,
+                    pat.span.to(scope_span),
+                    pat,
+                    None,
+                    opt_expr_place,
+                );
+            }
+            DeclareLetBindings::No => {} // Caller is responsible for bindings.
+            DeclareLetBindings::LetNotPermitted => {
+                self.tcx.dcx().span_bug(expr_span, "let expression not expected in this context")
+            }
         }
 
         let success = self.bind_pattern(
@@ -2203,7 +2248,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         guard,
                         None, // Use `self.local_scope()` as the temp scope
                         this.source_info(arm.span),
-                        false, // For guards, `let` bindings are declared separately
+                        DeclareLetBindings::No, // For guards, `let` bindings are declared separately
                     )
                 });
 

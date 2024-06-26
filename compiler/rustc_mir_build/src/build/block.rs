@@ -1,3 +1,4 @@
+use crate::build::matches::DeclareLetBindings;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use rustc_middle::middle::region::Scope;
@@ -213,7 +214,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     pattern,
                                     None,
                                     initializer_span,
-                                    false,
+                                    DeclareLetBindings::No,
                                     true,
                                 )
                             });

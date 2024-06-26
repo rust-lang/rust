@@ -1,6 +1,7 @@
 //! See docs in build/expr/mod.rs
 
 use crate::build::expr::category::{Category, RvalueFunc};
+use crate::build::matches::DeclareLetBindings;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
@@ -86,7 +87,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     cond,
                                     Some(condition_scope), // Temp scope
                                     source_info,
-                                    true, // Declare `let` bindings normally
+                                    DeclareLetBindings::Yes, // Declare `let` bindings normally
                                 ));
 
                                 // Lower the `then` arm into its block.
@@ -163,7 +164,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             source_info,
                             // This flag controls how inner `let` expressions are lowered,
                             // but either way there shouldn't be any of those in here.
-                            true,
+                            DeclareLetBindings::LetNotPermitted,
                         )
                     });
                 let (short_circuit, continuation, constant) = match op {
