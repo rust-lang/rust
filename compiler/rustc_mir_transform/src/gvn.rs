@@ -671,7 +671,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     fn simplify_place_projection(&mut self, place: &mut Place<'tcx>, location: Location) {
         // If the projection is indirect, we treat the local as a value, so can replace it with
         // another local.
-        if place.is_indirect()
+        if place.is_indirect_first_projection()
             && let Some(base) = self.locals[place.local]
             && let Some(new_local) = self.try_as_local(base, location)
             && place.local != new_local
