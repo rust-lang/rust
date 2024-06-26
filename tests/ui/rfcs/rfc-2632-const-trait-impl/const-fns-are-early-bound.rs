@@ -126,10 +126,10 @@ pub mod effects {
     #[stable(feature = "minicore", since = "1.0.0")]
     impl<T: ?Sized> TyCompat<Maybe> for T {}
 
-    #[lang = "EffectsMin"]
+    #[lang = "EffectsIntersection"]
     #[stable(feature = "minicore", since = "1.0.0")]
-    pub trait Min {
-        #[lang = "EffectsMinOutput"]
+    pub trait Intersection {
+        #[lang = "EffectsIntersectionOutput"]
         #[stable(feature = "minicore", since = "1.0.0")]
         type Output: ?Sized;
     }

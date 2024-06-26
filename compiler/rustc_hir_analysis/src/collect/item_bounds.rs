@@ -137,7 +137,7 @@ pub(super) fn explicit_item_bounds_with_filter(
             let tup = Ty::new(tcx, ty::Tuple(preds.effects_min_tys));
             // FIXME(effects) span
             let span = tcx.def_span(def_id);
-            let assoc = tcx.require_lang_item(hir::LangItem::EffectsMinOutput, Some(span));
+            let assoc = tcx.require_lang_item(hir::LangItem::EffectsIntersectionOutput, Some(span));
             let proj = Ty::new_projection(tcx, assoc, [tup]);
             let self_proj = Ty::new_projection(
                 tcx,

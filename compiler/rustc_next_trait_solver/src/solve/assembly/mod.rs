@@ -270,7 +270,7 @@ where
         goal: Goal<I, Self>,
     ) -> Vec<Candidate<I>>;
 
-    fn consider_builtin_effects_min_candidate(
+    fn consider_builtin_effects_intersection_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
@@ -425,8 +425,8 @@ where
             G::consider_builtin_destruct_candidate(self, goal)
         } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::TransmuteTrait) {
             G::consider_builtin_transmute_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::EffectsMin) {
-            G::consider_builtin_effects_min_candidate(self, goal)
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::EffectsIntersection) {
+            G::consider_builtin_effects_intersection_candidate(self, goal)
         } else {
             Err(NoSolution)
         };

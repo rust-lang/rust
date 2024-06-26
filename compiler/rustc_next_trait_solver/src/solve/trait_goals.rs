@@ -703,7 +703,7 @@ where
         })
     }
 
-    fn consider_builtin_effects_min_candidate(
+    fn consider_builtin_effects_intersection_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
@@ -732,7 +732,7 @@ where
                     return Err(NoSolution);
                 };
 
-                let Some(result) = ty::EffectKind::min(min, kind) else {
+                let Some(result) = ty::EffectKind::intersection(min, kind) else {
                     return Err(NoSolution);
                 };
 

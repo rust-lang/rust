@@ -44,7 +44,10 @@ impl EffectKind {
         I::Ty::new_adt(tcx, tcx.adt_def(self.to_def_id(tcx)), Default::default())
     }
 
-    pub fn min(a: Self, b: Self) -> Option<Self> {
+    /// Returns an intersection between two effect kinds. If one effect kind
+    /// is more permissive than the other (e.g. `Maybe` vs `Runtime`), this
+    /// returns the less permissive effect kind (`Runtime`).
+    pub fn intersection(a: Self, b: Self) -> Option<Self> {
         use EffectKind::*;
         match (a, b) {
             (Maybe, x) | (x, Maybe) => Some(x),
