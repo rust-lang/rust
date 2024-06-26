@@ -474,13 +474,11 @@ impl Wtf8Buf {
         Wtf8Buf { bytes: bytes.into_vec(), is_known_utf8: false }
     }
 
-    /// Provides plumbing to core `Vec::extend_from_slice`.
-    /// More well behaving alternative to allowing outer types
-    /// full mutable access to the core `Vec`.
+    /// Push bytes into a Wtf8Buf, checking if the result is still UTF-8
     #[inline]
     pub(crate) fn extend_from_slice(&mut self, other: &[u8]) {
+        self.is_known_utf8 = self.is_known_utf8 && str::from_utf8(other).is_ok();
         self.bytes.extend_from_slice(other);
-        self.is_known_utf8 = false;
     }
 }
 
