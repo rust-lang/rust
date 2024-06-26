@@ -40,7 +40,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             hir_id: arg_hir_id,
             kind: ConstArgKind::Anon(&AnonConst { hir_id: anon_hir_id, .. }),
             ..
-        }) if anon_hir_id == hir_id => const_arg_anon_type_of(tcx, arg_hir_id, def_id, span),
+        }) if anon_hir_id == hir_id => const_arg_anon_type_of(tcx, arg_hir_id, span),
 
         // Anon consts outside the type system.
         Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
@@ -56,6 +56,21 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         Node::Variant(Variant { disr_expr: Some(ref e), .. }) if e.hir_id == hir_id => {
             tcx.adt_def(tcx.hir().get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
         }
+        // FIXME: should we use ConstArg for typeof too? the constant itself doesn't enter
+        // the type system, but it also sort of does
+        Node::Ty(&hir::Ty { kind: TyKind::Typeof(ref e), span, .. }) if e.hir_id == hir_id => {
+            let ty = tcx.typeck(def_id).node_type(tcx.local_def_id_to_hir_id(def_id));
+            let ty = tcx.fold_regions(ty, |r, _| {
+                if r.is_erased() { ty::Region::new_error_misc(tcx) } else { r }
+            });
+            let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false, None) {
+                (ty, Some((span, Applicability::MachineApplicable)))
+            } else {
+                (ty, None)
+            };
+            tcx.dcx().emit_err(TypeofReservedKeywordUsed { span, ty, opt_sugg });
+            return ty;
+        }
 
         _ => Ty::new_error_with_message(
             tcx,
@@ -65,12 +80,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
     }
 }
 
-fn const_arg_anon_type_of<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    arg_hir_id: HirId,
-    anon_def_id: LocalDefId,
-    span: Span,
-) -> Ty<'tcx> {
+fn const_arg_anon_type_of<'tcx>(tcx: TyCtxt<'tcx>, arg_hir_id: HirId, span: Span) -> Ty<'tcx> {
     use hir::*;
     use rustc_middle::ty::Ty;
 
@@ -84,19 +94,6 @@ fn const_arg_anon_type_of<'tcx>(
             if constant.hir_id() == arg_hir_id =>
         {
             return tcx.types.usize;
-        }
-        Node::Ty(&hir::Ty { kind: TyKind::Typeof(ref e), span, .. }) if e.hir_id == arg_hir_id => {
-            let ty = tcx.typeck(anon_def_id).node_type(tcx.local_def_id_to_hir_id(anon_def_id));
-            let ty = tcx.fold_regions(ty, |r, _| {
-                if r.is_erased() { ty::Region::new_error_misc(tcx) } else { r }
-            });
-            let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false, None) {
-                (ty, Some((span, Applicability::MachineApplicable)))
-            } else {
-                (ty, None)
-            };
-            tcx.dcx().emit_err(TypeofReservedKeywordUsed { span, ty, opt_sugg });
-            return ty;
         }
         Node::GenericParam(&GenericParam {
             def_id: param_def_id,
