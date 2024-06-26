@@ -12,7 +12,7 @@ LL | #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:17:5
+  --> $DIR/name-value.rs:16:5
    |
 LL |     #![coverage = "off"]
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |     #![coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:22:1
+  --> $DIR/name-value.rs:20:1
    |
 LL | #[coverage = "off"]
    | ^^^^^^^^^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL | #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:31:5
+  --> $DIR/name-value.rs:28:5
    |
 LL |     #[coverage = "off"]
    |     ^^^^^^^^^^^^^^^^^^^
@@ -51,7 +51,7 @@ LL |     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:27:1
+  --> $DIR/name-value.rs:25:1
    |
 LL | #[coverage = "off"]
    | ^^^^^^^^^^^^^^^^^^^
@@ -64,7 +64,7 @@ LL | #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:41:5
+  --> $DIR/name-value.rs:38:5
    |
 LL |     #[coverage = "off"]
    |     ^^^^^^^^^^^^^^^^^^^
@@ -77,7 +77,7 @@ LL |     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:46:5
+  --> $DIR/name-value.rs:43:5
    |
 LL |     #[coverage = "off"]
    |     ^^^^^^^^^^^^^^^^^^^
@@ -90,7 +90,7 @@ LL |     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:37:1
+  --> $DIR/name-value.rs:34:1
    |
 LL | #[coverage = "off"]
    | ^^^^^^^^^^^^^^^^^^^
@@ -103,7 +103,7 @@ LL | #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:56:5
+  --> $DIR/name-value.rs:52:5
    |
 LL |     #[coverage = "off"]
    |     ^^^^^^^^^^^^^^^^^^^
@@ -116,7 +116,7 @@ LL |     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:61:5
+  --> $DIR/name-value.rs:57:5
    |
 LL |     #[coverage = "off"]
    |     ^^^^^^^^^^^^^^^^^^^
@@ -129,7 +129,7 @@ LL |     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:52:1
+  --> $DIR/name-value.rs:49:1
    |
 LL | #[coverage = "off"]
    | ^^^^^^^^^^^^^^^^^^^
@@ -142,7 +142,7 @@ LL | #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:67:1
+  --> $DIR/name-value.rs:63:1
    |
 LL | #[coverage = "off"]
    | ^^^^^^^^^^^^^^^^^^^
@@ -155,27 +155,7 @@ LL | #[coverage(on)]
    |
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/name-value.rs:11:1
-   |
-LL | #[coverage = "off"]
-   | ^^^^^^^^^^^^^^^^^^^
-...
-LL | mod my_mod {}
-   | ------------- not a function or closure
-
-error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/name-value.rs:17:5
-   |
-LL | / mod my_mod_inner {
-LL | |     #![coverage = "off"]
-   | |     ^^^^^^^^^^^^^^^^^^^^
-LL | |
-LL | |
-LL | | }
-   | |_- not a function or closure
-
-error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/name-value.rs:22:1
+  --> $DIR/name-value.rs:20:1
    |
 LL | #[coverage = "off"]
    | ^^^^^^^^^^^^^^^^^^^
@@ -184,21 +164,7 @@ LL | struct MyStruct;
    | ---------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/name-value.rs:27:1
-   |
-LL |   #[coverage = "off"]
-   |   ^^^^^^^^^^^^^^^^^^^
-...
-LL | / impl MyStruct {
-LL | |     #[coverage = "off"]
-LL | |
-LL | |
-LL | |     const X: u32 = 7;
-LL | | }
-   | |_- not a function or closure
-
-error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/name-value.rs:37:1
+  --> $DIR/name-value.rs:34:1
    |
 LL |   #[coverage = "off"]
    |   ^^^^^^^^^^^^^^^^^^^
@@ -213,22 +179,7 @@ LL | | }
    | |_- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/name-value.rs:52:1
-   |
-LL |   #[coverage = "off"]
-   |   ^^^^^^^^^^^^^^^^^^^
-...
-LL | / impl MyTrait for MyStruct {
-LL | |     #[coverage = "off"]
-LL | |
-LL | |
-...  |
-LL | |     type T = ();
-LL | | }
-   | |_- not a function or closure
-
-error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/name-value.rs:41:5
+  --> $DIR/name-value.rs:38:5
    |
 LL |     #[coverage = "off"]
    |     ^^^^^^^^^^^^^^^^^^^
@@ -237,7 +188,7 @@ LL |     const X: u32;
    |     ------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/name-value.rs:46:5
+  --> $DIR/name-value.rs:43:5
    |
 LL |     #[coverage = "off"]
    |     ^^^^^^^^^^^^^^^^^^^
@@ -246,7 +197,7 @@ LL |     type T;
    |     ------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/name-value.rs:31:5
+  --> $DIR/name-value.rs:28:5
    |
 LL |     #[coverage = "off"]
    |     ^^^^^^^^^^^^^^^^^^^
@@ -255,7 +206,7 @@ LL |     const X: u32 = 7;
    |     ----------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/name-value.rs:56:5
+  --> $DIR/name-value.rs:52:5
    |
 LL |     #[coverage = "off"]
    |     ^^^^^^^^^^^^^^^^^^^
@@ -264,7 +215,7 @@ LL |     const X: u32 = 8;
    |     ----------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/name-value.rs:61:5
+  --> $DIR/name-value.rs:57:5
    |
 LL |     #[coverage = "off"]
    |     ^^^^^^^^^^^^^^^^^^^
@@ -272,6 +223,6 @@ LL |     #[coverage = "off"]
 LL |     type T = ();
    |     ------------ not a function or closure
 
-error: aborting due to 23 previous errors
+error: aborting due to 19 previous errors
 
 For more information about this error, try `rustc --explain E0788`.

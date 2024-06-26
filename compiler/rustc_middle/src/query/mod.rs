@@ -572,6 +572,15 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Checks for the nearest `#[coverage(off)]` or `#[coverage(on)]` on
+    /// this def and any enclosing defs, up to the crate root.
+    ///
+    /// Returns `false` if `#[coverage(off)]` was found, or `true` if
+    /// either `#[coverage(on)]` or no coverage attribute was found.
+    query coverage_attr_on(key: LocalDefId) -> bool {
+        desc { |tcx| "checking for `#[coverage(..)]` on `{}`", tcx.def_path_str(key) }
+    }
+
     /// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
     /// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
     /// have had a chance to potentially remove some of them.
