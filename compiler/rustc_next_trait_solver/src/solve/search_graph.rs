@@ -1,5 +1,6 @@
 use std::mem;
 
+use derive_where::derive_where;
 use rustc_index::{Idx, IndexVec};
 use rustc_type_ir::data_structures::{HashMap, HashSet};
 use rustc_type_ir::inherent::*;
@@ -32,8 +33,7 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derive_where(Debug; I: Interner)]
 struct StackEntry<I: Interner> {
     input: CanonicalInput<I>,
 
@@ -105,8 +105,7 @@ struct DetachedEntry<I: Interner> {
 ///
 /// The provisional cache can theoretically result in changes to the observable behavior,
 /// see tests/ui/traits/next-solver/cycles/provisional-cache-impacts-behavior.rs.
-#[derive(derivative::Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive_where(Default; I: Interner)]
 struct ProvisionalCacheEntry<I: Interner> {
     stack_depth: Option<StackDepth>,
     with_inductive_stack: Option<DetachedEntry<I>>,

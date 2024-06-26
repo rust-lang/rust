@@ -2,6 +2,7 @@
 
 pub(super) mod structural_traits;
 
+use derive_where::derive_where;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
@@ -20,8 +21,7 @@ use crate::solve::{
 ///
 /// It consists of both the `source`, which describes how that goal would be proven,
 /// and the `result` when using the given `source`.
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[derive_where(Clone, Debug; I: Interner)]
 pub(super) struct Candidate<I: Interner> {
     pub(super) source: CandidateSource<I>,
     pub(super) result: CanonicalResponse<I>,
