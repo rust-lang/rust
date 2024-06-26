@@ -238,6 +238,13 @@ pub struct ConstArg<'hir> {
 }
 
 impl<'hir> ConstArg<'hir> {
+    pub fn anon_const_hir_id(&self) -> Option<HirId> {
+        match self.kind {
+            ConstArgKind::Anon(ac) => Some(ac.hir_id),
+            _ => None,
+        }
+    }
+
     pub fn span(&self) -> Span {
         match self.kind {
             ConstArgKind::Path(path) => path.span(),

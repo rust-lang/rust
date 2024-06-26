@@ -945,7 +945,8 @@ impl<'hir> Map<'hir> {
     /// Returns the HirId of `N` in `struct Foo<const N: usize = { ... }>` when
     /// called with the HirId for the `{ ... }` anon const
     pub fn opt_const_param_default_param_def_id(self, anon_const: HirId) -> Option<LocalDefId> {
-        match self.tcx.parent_hir_node(anon_const) {
+        let const_arg = self.tcx.parent_hir_id(anon_const);
+        match self.tcx.parent_hir_node(const_arg) {
             Node::GenericParam(GenericParam {
                 def_id: param_id,
                 kind: GenericParamKind::Const { .. },
