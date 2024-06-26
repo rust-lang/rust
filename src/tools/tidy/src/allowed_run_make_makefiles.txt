@@ -100,7 +100,6 @@ run-make/lto-smoke-c/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/macos-fat-archive/Makefile
 run-make/manual-link/Makefile
-run-make/many-crates-but-no-match/Makefile
 run-make/metadata-dep-info/Makefile
 run-make/min-global-align/Makefile
 run-make/mingw-export-call-convention/Makefile
