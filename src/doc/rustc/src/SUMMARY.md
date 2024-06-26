@@ -40,6 +40,7 @@
       - [thumbv8m.base-none-eabi](./platform-support/thumbv8m.base-none-eabi.md)
       - [thumbv8m.main-none-eabi\*](./platform-support/thumbv8m.main-none-eabi.md)
     - [armv6k-nintendo-3ds](platform-support/armv6k-nintendo-3ds.md)
+    - [armv7-rtems-eabihf](platform-support/armv7-rtems-eabihf.md)
     - [armv7-sony-vita-newlibeabihf](platform-support/armv7-sony-vita-newlibeabihf.md)
     - [armv7-unknown-linux-uclibceabi](platform-support/armv7-unknown-linux-uclibceabi.md)
     - [armv7-unknown-linux-uclibceabihf](platform-support/armv7-unknown-linux-uclibceabihf.md)
