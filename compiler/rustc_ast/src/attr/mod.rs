@@ -327,7 +327,8 @@ impl MetaItem {
         I: Iterator<Item = &'a TokenTree>,
     {
         // FIXME: Share code with `parse_path`.
-        let path = match tokens.next().map(|tt| TokenTree::uninterpolate(tt)).as_deref() {
+        let tt = tokens.next().map(|tt| TokenTree::uninterpolate(tt));
+        let path = match tt.as_deref() {
             Some(&TokenTree::Token(
                 Token { kind: ref kind @ (token::Ident(..) | token::PathSep), span },
                 _,
@@ -368,6 +369,12 @@ impl MetaItem {
                 token::Nonterminal::NtPath(path) => (**path).clone(),
                 _ => return None,
             },
+            Some(TokenTree::Token(
+                Token { kind: token::OpenDelim(_) | token::CloseDelim(_), .. },
+                _,
+            )) => {
+                panic!("Should be `AttrTokenTree::Delimited`, not delim tokens: {:?}", tt);
+            }
             _ => return None,
         };
         let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi());
