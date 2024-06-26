@@ -2903,10 +2903,10 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
                             in_bracket = true;
                             label_kind = AsmLabelKind::FormatArg;
                         } else if matches!(start, '0' | '1') {
-                            // binary labels have only the characters 0 or 1
+                            // Binary labels have only the characters `0` or `1`.
                             label_kind = AsmLabelKind::Binary;
                         } else if !(start.is_ascii_alphabetic() || matches!(start, '.' | '_')) {
-                            // named labels start with ASCII letters or . or _
+                            // Named labels start with ASCII letters, `.` or `_`.
                             // anything else is not a label
                             break 'label_loop;
                         }
@@ -2934,7 +2934,7 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
                                 label_kind = AsmLabelKind::FormatArg;
                             } else {
                                 let can_continue = match label_kind {
-                                    // format arg labels are considered to be named labels for the purposes
+                                    // Format arg labels are considered to be named labels for the purposes
                                     // of continuing outside of their {} pair.
                                     AsmLabelKind::Named | AsmLabelKind::FormatArg => {
                                         c.is_ascii_alphanumeric() || matches!(c, '_' | '$')
