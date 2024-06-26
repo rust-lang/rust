@@ -1,4 +1,4 @@
-use crate::build::matches::DeclareLetBindings;
+use crate::build::matches::{DeclareLetBindings, EmitStorageLive};
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use rustc_middle::middle::region::Scope;
@@ -215,7 +215,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     None,
                                     initializer_span,
                                     DeclareLetBindings::No,
-                                    true,
+                                    EmitStorageLive::No,
                                 )
                             });
                         matching.and(failure)
