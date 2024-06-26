@@ -221,7 +221,7 @@ pub enum ExternBlockSuggestion {
 pub struct InvalidSafetyOnExtern {
     #[primary_span]
     pub item_span: Span,
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    #[suggestion(code = "unsafe ", applicability = "machine-applicable", style = "verbose")]
     pub block: Span,
 }
 

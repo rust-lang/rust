@@ -81,11 +81,13 @@ LL |         async fn fe1();
 error: items in unadorned `extern` blocks cannot have safety qualifiers
   --> $DIR/fn-header-semantic-fail.rs:47:9
    |
-LL |     extern "C" {
-   |     ---------- help: add unsafe to this `extern` block
-LL |         async fn fe1();
 LL |         unsafe fn fe2();
    |         ^^^^^^^^^^^^^^^^
+   |
+help: add unsafe to this `extern` block
+   |
+LL |     unsafe extern "C" {
+   |     ++++++
 
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:48:9
@@ -135,11 +137,13 @@ LL |         const async unsafe extern "C" fn fe5();
 error: items in unadorned `extern` blocks cannot have safety qualifiers
   --> $DIR/fn-header-semantic-fail.rs:50:9
    |
-LL |     extern "C" {
-   |     ---------- help: add unsafe to this `extern` block
-...
 LL |         const async unsafe extern "C" fn fe5();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add unsafe to this `extern` block
+   |
+LL |     unsafe extern "C" {
+   |     ++++++
 
 error: functions cannot be both `const` and `async`
   --> $DIR/fn-header-semantic-fail.rs:50:9

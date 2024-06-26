@@ -464,7 +464,7 @@ impl<'a> AstValidator<'a> {
                 {
                     self.dcx().emit_err(errors::InvalidSafetyOnExtern {
                         item_span: span,
-                        block: self.current_extern_span(),
+                        block: self.current_extern_span().shrink_to_lo(),
                     });
                 }
             }
