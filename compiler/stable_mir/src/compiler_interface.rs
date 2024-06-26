@@ -11,7 +11,7 @@ use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::{BinOp, Body, Place, UnOp};
 use crate::target::MachineInfo;
 use crate::ty::{
-    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, FieldDef, FnDef, ForeignDef,
+    AdtDef, AdtKind, Allocation, Attribute, ClosureDef, ClosureKind, FieldDef, FnDef, ForeignDef,
     ForeignItemKind, ForeignModule, ForeignModuleDef, GenericArgs, GenericPredicates, Generics,
     ImplDef, ImplTrait, IntrinsicDef, LineInfo, MirConst, PolyFnSig, RigidTy, Span, TraitDecl,
     TraitDef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef,
@@ -54,6 +54,9 @@ pub trait Context {
 
     /// Returns the name of given `DefId`
     fn def_name(&self, def_id: DefId, trimmed: bool) -> Symbol;
+
+    /// Get all attributes with the given attribute name.
+    fn get_attrs_by_path(&self, def_id: DefId, attr: &[Symbol]) -> Vec<Attribute>;
 
     /// Returns printable, human readable form of `Span`
     fn span_to_string(&self, span: Span) -> String;

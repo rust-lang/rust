@@ -228,6 +228,25 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         }
     }
 
+    fn get_attrs_by_path(
+        &self,
+        def_id: stable_mir::DefId,
+        attr: &[stable_mir::Symbol],
+    ) -> Vec<stable_mir::ty::Attribute> {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let did = tables[def_id];
+        let attr_name: Vec<_> =
+            attr.iter().map(|seg| rustc_span::symbol::Symbol::intern(&seg)).collect();
+        tcx.get_attrs_by_path(did, &attr_name)
+            .map(|attribute| {
+                let attr_str = rustc_ast_pretty::pprust::attribute_to_string(attribute);
+                let span = attribute.span;
+                stable_mir::ty::Attribute::new(attr_str, span.stable(&mut *tables))
+            })
+            .collect()
+    }
+
     fn span_to_string(&self, span: stable_mir::ty::Span) -> String {
         let tables = self.0.borrow();
         tables.tcx.sess.source_map().span_to_diagnostic_string(tables[span])

@@ -1,7 +1,7 @@
 //! Module that define a common trait for things that represent a crate definition,
 //! such as, a function, a trait, an enum, and any other definitions.
 
-use crate::ty::{GenericArgs, Span, Ty};
+use crate::ty::{Attribute, GenericArgs, Span, Ty};
 use crate::{with, Crate, Symbol};
 
 /// A unique identification number for each item accessible for the current compilation unit.
@@ -49,6 +49,12 @@ pub trait CrateDef {
     fn span(&self) -> Span {
         let def_id = self.def_id();
         with(|cx| cx.span_of_an_item(def_id))
+    }
+
+    /// Return attributes with the given attribute name.
+    fn attrs_by_path(&self, attr: &[Symbol]) -> Vec<Attribute> {
+        let def_id = self.def_id();
+        with(|cx| cx.get_attrs_by_path(def_id, attr))
     }
 }
 
