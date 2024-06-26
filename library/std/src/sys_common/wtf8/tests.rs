@@ -750,3 +750,11 @@ fn unwobbly_wtf8_plus_utf8_is_utf8() {
     string.push_str("some utf-8");
     assert!(string.is_known_utf8);
 }
+
+#[test]
+fn unwobbly_wtf8_plus_wobbled_bytes_isnt_utf8() {
+    let mut string: Wtf8Buf = Wtf8Buf::from_str("hello world");
+    assert!(string.is_known_utf8);
+    string.extend_from_slice(b"\xED\xa0\x80");
+    assert!(!string.is_known_utf8);
+}
