@@ -323,13 +323,13 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
 
     pub fn finalize_canonical_goal_evaluation(
         &mut self,
-        tcx: I,
+        cx: I,
     ) -> Option<I::CanonicalGoalEvaluationStepRef> {
         self.as_mut().map(|this| match this {
             DebugSolver::CanonicalGoalEvaluation(evaluation) => {
                 let final_revision = mem::take(&mut evaluation.final_revision).unwrap();
                 let final_revision =
-                    tcx.intern_canonical_goal_evaluation_step(final_revision.finalize());
+                    cx.intern_canonical_goal_evaluation_step(final_revision.finalize());
                 let kind = WipCanonicalGoalEvaluationKind::Interned { final_revision };
                 assert_eq!(evaluation.kind.replace(kind), None);
                 final_revision
