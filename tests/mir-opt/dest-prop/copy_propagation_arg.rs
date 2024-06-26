@@ -30,7 +30,7 @@ fn bar(mut x: u8) {
 fn baz(mut x: i32) -> i32 {
     // CHECK-LABEL: fn baz(
     // CHECK: debug x => [[x:_.*]];
-    // CHECK-NOT: [[x]] = {{_.*}}
+    // CHECK-NOT: [[x]] =
     // self-assignment to a function argument should be eliminated
     x = x;
     x
