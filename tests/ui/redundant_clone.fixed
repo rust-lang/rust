@@ -1,5 +1,4 @@
 // rustfix-only-machine-applicable
-#![feature(lint_reasons)]
 #![warn(clippy::redundant_clone)]
 #![allow(
     clippy::drop_non_drop,

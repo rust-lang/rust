@@ -1,6 +1,5 @@
 // FIXME: run-rustfix waiting on multi-span suggestions
 //@no-rustfix
-#![feature(lint_reasons)]
 #![warn(clippy::ref_binding_to_reference)]
 #![allow(clippy::needless_borrowed_reference, clippy::explicit_auto_deref)]
 

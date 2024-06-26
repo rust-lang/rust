@@ -17,6 +17,7 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
+    1,81,0  { LINT_REASONS_STABILIZATION }
     1,77,0 { C_STR_LITERALS }
     1,76,0 { PTR_FROM_REF }
     1,71,0 { TUPLE_ARRAY_CONVERSIONS, BUILD_HASHER_HASH_ONE }
