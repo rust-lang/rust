@@ -6,5 +6,5 @@
 # Note: this generation step should be run with the oldest supported python
 # version (currently 3.9) to ensure backward compatibility
 
-black==23.3.0
-ruff==0.0.272
+black==24.4.2
+ruff==0.4.9
