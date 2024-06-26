@@ -1,7 +1,6 @@
 use rustc_ast::{ast, attr, MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
-use rustc_data_structures::packed::Pu128;
-use rustc_errors::{codes::*, struct_span_code_err};
+use rustc_errors::{codes::*, struct_span_code_err, DiagMessage, SubdiagMessage};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
@@ -472,45 +471,66 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     let mut entry = None;
                     for item in l {
                         let Some(meta_item) = item.meta_item() else {
-                            tcx.dcx().span_err(item.span(), "Expected name value pair.");
+                            tcx.dcx().span_err(item.span(), "expected name value pair");
                             continue;
                         };
 
                         let Some(name_value_lit) = meta_item.name_value_literal() else {
-                            tcx.dcx().span_err(item.span(), "Expected name value pair.");
+                            tcx.dcx().span_err(item.span(), "expected name value pair");
                             continue;
                         };
+
+                        fn emit_error_with_label(
+                            tcx: TyCtxt<'_>,
+                            span: Span,
+                            error: impl Into<DiagMessage>,
+                            label: impl Into<SubdiagMessage>,
+                        ) {
+                            let mut err: rustc_errors::Diag<'_, _> =
+                                tcx.dcx().struct_span_err(span, error);
+                            err.span_label(span, label);
+                            err.emit();
+                        }
 
                         let attrib_to_write = match meta_item.name_or_empty() {
                             sym::prefix_nops => &mut prefix,
                             sym::entry_nops => &mut entry,
                             _ => {
-                                tcx.dcx().span_err(
+                                emit_error_with_label(
+                                    tcx,
                                     item.span(),
-                                    format!(
-                                        "Unexpected parameter name. Allowed names: {}, {}",
-                                        sym::prefix_nops,
-                                        sym::entry_nops
-                                    ),
+                                    "unexpected parameter name",
+                                    format!("expected {} or {}", sym::prefix_nops, sym::entry_nops),
                                 );
                                 continue;
                             }
                         };
 
-                        let rustc_ast::LitKind::Int(Pu128(val @ 0..=255), _) = name_value_lit.kind
-                        else {
-                            tcx.dcx().span_err(
+                        let rustc_ast::LitKind::Int(val, _) = name_value_lit.kind else {
+                            emit_error_with_label(
+                                tcx,
                                 name_value_lit.span,
-                                "Expected integer value between 0 and 255.",
+                                "invalid literal value",
+                                "value must be an integer between `0` and `255`",
                             );
                             continue;
                         };
 
-                        *attrib_to_write = Some(val.try_into().unwrap());
+                        let Ok(val) = val.get().try_into() else {
+                            emit_error_with_label(
+                                tcx,
+                                name_value_lit.span,
+                                "integer value out of range",
+                                "value must be between `0` and `255`",
+                            );
+                            continue;
+                        };
+
+                        *attrib_to_write = Some(val);
                     }
 
                     if let (None, None) = (prefix, entry) {
-                        tcx.dcx().span_err(attr.span, "Must specify at least one parameter.");
+                        tcx.dcx().span_err(attr.span, "must specify at least one parameter");
                     }
 
                     Some(PatchableFunctionEntry::from_prefix_and_entry(
