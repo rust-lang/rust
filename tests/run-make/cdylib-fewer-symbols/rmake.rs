@@ -4,10 +4,6 @@
 // four such symbols are successfully hidden.
 // See https://github.com/rust-lang/rust/pull/45710
 
-//FIXME(Oneirical): try it on windows, restore ignore
-// See https://github.com/rust-lang/rust/pull/46207#issuecomment-347561753
-//FIXME(Oneirical): I also removed cross-compile ignore since there is no binary execution
-
 use run_make_support::{dynamic_lib_name, llvm_readobj, rustc};
 
 fn main() {
@@ -19,5 +15,5 @@ fn main() {
     assert!(!&out.contains("__rdl_"));
     assert!(!&out.contains("__rde_"));
     assert!(!&out.contains("__rg_"));
-    assert!(!&out.contains("__ruse_"));
+    assert!(!&out.contains("__rust_"));
 }

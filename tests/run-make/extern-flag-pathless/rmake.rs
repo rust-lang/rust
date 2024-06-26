@@ -5,6 +5,9 @@
 // respected.
 // See https://github.com/rust-lang/rust/pull/64882
 
+//@ ignore-cross-compile
+// Reason: the compiled binary is executed
+
 use run_make_support::{dynamic_lib_name, fs_wrapper, run, run_fail, rust_lib_name, rustc};
 
 fn main() {

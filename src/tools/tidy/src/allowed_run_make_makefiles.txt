@@ -170,7 +170,6 @@ run-make/staticlib-dylib-linkage/Makefile
 run-make/std-core-cycle/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/symbol-visibility/Makefile
-run-make/symbols-include-type-name/Makefile
 run-make/sysroot-crates-are-unstable/Makefile
 run-make/target-cpu-native/Makefile
 run-make/target-specs/Makefile
