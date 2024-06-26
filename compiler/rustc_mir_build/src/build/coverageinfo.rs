@@ -129,10 +129,10 @@ impl BranchInfoBuilder {
         // Separate path for handling branches when MC/DC is enabled.
         if let Some(mcdc_info) = self.mcdc_info.as_mut() {
             let inject_block_marker =
-                |source_info, block| self.markers.inject_block_marker(cfg, source_info, block);
+                |block| self.markers.inject_block_marker(cfg, source_info, block);
             mcdc_info.visit_evaluated_condition(
                 tcx,
-                source_info,
+                source_info.span,
                 true_block,
                 false_block,
                 inject_block_marker,
@@ -162,14 +162,13 @@ impl BranchInfoBuilder {
             return None;
         }
 
-        let (mcdc_decision_spans, mcdc_branch_spans) =
+        let (mcdc_degraded_spans, mcdc_spans) =
             mcdc_info.map(MCDCInfoBuilder::into_done).unwrap_or_default();
-
         Some(Box::new(mir::coverage::BranchInfo {
             num_block_markers,
             branch_spans,
-            mcdc_branch_spans,
-            mcdc_decision_spans,
+            mcdc_degraded_spans,
+            mcdc_spans,
         }))
     }
 }

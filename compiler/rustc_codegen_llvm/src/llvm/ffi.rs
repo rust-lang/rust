@@ -1635,7 +1635,6 @@ extern "C" {
     pub fn LLVMRustGetInstrProfIncrementIntrinsic(M: &Module) -> &Value;
     pub fn LLVMRustGetInstrProfMCDCParametersIntrinsic(M: &Module) -> &Value;
     pub fn LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(M: &Module) -> &Value;
-    pub fn LLVMRustGetInstrProfMCDCCondBitmapIntrinsic(M: &Module) -> &Value;
 
     pub fn LLVMRustBuildCall<'a>(
         B: &Builder<'a>,

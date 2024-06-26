@@ -487,8 +487,7 @@ fn write_coverage_branch_info(
     branch_info: &coverage::BranchInfo,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::BranchInfo { branch_spans, mcdc_branch_spans, mcdc_decision_spans, .. } =
-        branch_info;
+    let coverage::BranchInfo { branch_spans, mcdc_degraded_spans, mcdc_spans, .. } = branch_info;
 
     for coverage::BranchSpan { span, true_marker, false_marker } in branch_spans {
         writeln!(
@@ -497,32 +496,34 @@ fn write_coverage_branch_info(
         )?;
     }
 
-    for coverage::MCDCBranchSpan {
-        span,
-        condition_info,
-        true_marker,
-        false_marker,
-        decision_depth,
-    } in mcdc_branch_spans
-    {
+    for coverage::MCDCBranchSpan { span, markers, .. } in mcdc_degraded_spans {
         writeln!(
             w,
-            "{INDENT}coverage mcdc branch {{ condition_id: {:?}, true: {true_marker:?}, false: {false_marker:?}, depth: {decision_depth:?} }} => {span:?}",
-            condition_info.map(|info| info.condition_id)
+            "{INDENT}coverage mcdc degraded branch {{ markers: {markers:?} }} => {span:?}",
         )?;
     }
 
-    for coverage::MCDCDecisionSpan { span, num_conditions, end_markers, decision_depth } in
-        mcdc_decision_spans
+    for (
+        coverage::MCDCDecisionSpan { span, end_markers, decision_depth, num_test_vectors },
+        conditions,
+    ) in mcdc_spans
     {
+        let num_conditions = conditions.len();
         writeln!(
             w,
-            "{INDENT}coverage mcdc decision {{ num_conditions: {num_conditions:?}, end: {end_markers:?}, depth: {decision_depth:?} }} => {span:?}"
+            "{INDENT}coverage mcdc decision {{ num_conditions: {num_conditions:?}, end: {end_markers:?}, depth: {decision_depth:?}, num_test_vectors: {num_test_vectors} }} => {span:?}"
         )?;
+        for coverage::MCDCBranchSpan { span, condition_info, markers, false_index, true_index } in
+            conditions
+        {
+            writeln!(
+                w,
+                "{INDENT}coverage mcdc branch {{ condition_info: {condition_info:?}, markers: {markers:?}, indices: {{ false: {false_index}, true: {true_index} }} }} => {span:?}",
+            )?;
+        }
     }
 
-    if !branch_spans.is_empty() || !mcdc_branch_spans.is_empty() || !mcdc_decision_spans.is_empty()
-    {
+    if !branch_spans.is_empty() || !mcdc_degraded_spans.is_empty() || !mcdc_spans.is_empty() {
         writeln!(w)?;
     }
 

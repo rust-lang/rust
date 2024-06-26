@@ -52,6 +52,14 @@ rustc_index::newtype_index! {
 }
 
 rustc_index::newtype_index! {
+    /// ID of a mcdc decision. Used to identify decision in a function.
+    #[derive(HashStable)]
+    #[encodable]
+    #[debug_format = "DecisionId({})"]
+    pub struct DecisionId {}
+}
+
+rustc_index::newtype_index! {
     /// ID of a mcdc condition. Used by llvm to check mcdc coverage.
     ///
     /// Note for future: the max limit of 0xFFFF is probably too loose. Actually llvm does not
@@ -67,7 +75,7 @@ rustc_index::newtype_index! {
 }
 
 impl ConditionId {
-    pub const NONE: Self = Self::from_u32(0);
+    pub const START: Self = Self::from_usize(0);
 }
 
 /// Enum that can hold a constant zero value, the ID of an physical coverage
@@ -128,8 +136,8 @@ pub enum CoverageKind {
 
     /// Marks the point in MIR control flow represented by a evaluated condition.
     ///
-    /// This is eventually lowered to `llvm.instrprof.mcdc.condbitmap.update` in LLVM IR.
-    CondBitmapUpdate { id: ConditionId, value: bool, decision_depth: u16 },
+    /// This is eventually lowered to instruments updating mcdc temp variables.
+    CondBitmapUpdate { index: u32, decision_depth: u16 },
 
     /// Marks the point in MIR control flow represented by a evaluated decision.
     ///
@@ -145,14 +153,8 @@ impl Debug for CoverageKind {
             BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
             CounterIncrement { id } => write!(fmt, "CounterIncrement({:?})", id.index()),
             ExpressionUsed { id } => write!(fmt, "ExpressionUsed({:?})", id.index()),
-            CondBitmapUpdate { id, value, decision_depth } => {
-                write!(
-                    fmt,
-                    "CondBitmapUpdate({:?}, {:?}, depth={:?})",
-                    id.index(),
-                    value,
-                    decision_depth
-                )
+            CondBitmapUpdate { index, decision_depth } => {
+                write!(fmt, "CondBitmapUpdate(index={:?}, depth={:?})", index, decision_depth)
             }
             TestVectorBitmapUpdate { bitmap_idx, decision_depth } => {
                 write!(fmt, "TestVectorUpdate({:?}, depth={:?})", bitmap_idx, decision_depth)
@@ -266,7 +268,7 @@ pub struct Mapping {
 pub struct FunctionCoverageInfo {
     pub function_source_hash: u64,
     pub num_counters: usize,
-    pub mcdc_bitmap_bytes: u32,
+    pub mcdc_bitmap_bits: usize,
     pub expressions: IndexVec<ExpressionId, Expression>,
     pub mappings: Vec<Mapping>,
     /// The depth of the deepest decision is used to know how many
@@ -283,8 +285,8 @@ pub struct BranchInfo {
     /// data structures without having to scan the entire body first.
     pub num_block_markers: usize,
     pub branch_spans: Vec<BranchSpan>,
-    pub mcdc_branch_spans: Vec<MCDCBranchSpan>,
-    pub mcdc_decision_spans: Vec<MCDCDecisionSpan>,
+    pub mcdc_degraded_spans: Vec<MCDCBranchSpan>,
+    pub mcdc_spans: Vec<(MCDCDecisionSpan, Vec<MCDCBranchSpan>)>,
 }
 
 #[derive(Clone, Debug)]
@@ -299,30 +301,32 @@ pub struct BranchSpan {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct ConditionInfo {
     pub condition_id: ConditionId,
-    pub true_next_id: ConditionId,
-    pub false_next_id: ConditionId,
-}
-
-impl Default for ConditionInfo {
-    fn default() -> Self {
-        Self {
-            condition_id: ConditionId::NONE,
-            true_next_id: ConditionId::NONE,
-            false_next_id: ConditionId::NONE,
-        }
-    }
+    pub true_next_id: Option<ConditionId>,
+    pub false_next_id: Option<ConditionId>,
 }
 
 #[derive(Clone, Debug)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct MCDCBranchSpan {
     pub span: Span,
-    /// If `None`, this actually represents a normal branch span inserted for
-    /// code that was too complex for MC/DC.
-    pub condition_info: Option<ConditionInfo>,
-    pub true_marker: BlockMarkerId,
-    pub false_marker: BlockMarkerId,
-    pub decision_depth: u16,
+    pub condition_info: ConditionInfo,
+    pub markers: MCDCBranchMarkers,
+    pub false_index: usize,
+    pub true_index: usize,
+}
+
+impl MCDCBranchSpan {
+    pub fn new(span: Span, condition_info: ConditionInfo, markers: MCDCBranchMarkers) -> Self {
+        Self { span, condition_info, markers, false_index: usize::MAX, true_index: usize::MAX }
+    }
+}
+
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub enum MCDCBranchMarkers {
+    /// The first indicates true branch, the second indicates the false branch.
+    Boolean(BlockMarkerId, BlockMarkerId),
+    PatternMatching,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -336,7 +340,7 @@ pub struct DecisionInfo {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct MCDCDecisionSpan {
     pub span: Span,
-    pub num_conditions: usize,
     pub end_markers: Vec<BlockMarkerId>,
     pub decision_depth: u16,
+    pub num_test_vectors: usize,
 }
