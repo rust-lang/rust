@@ -361,7 +361,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             let next_opaque = self.next_opaque.as_mut()?;
             let disambiguator = *next_opaque;
             *next_opaque += 1;
-            assert_ne!(disambiguator, 0);
+            // `disambiguator: 0` means deterministic.
+            debug_assert_ne!(disambiguator, 0);
             disambiguator
         };
         Some(self.insert(Value::Constant { value, disambiguator }))
@@ -369,12 +370,16 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn insert_bool(&mut self, flag: bool) -> VnIndex {
         // Booleans are deterministic.
-        self.insert(Value::Constant { value: Const::from_bool(self.tcx, flag), disambiguator: 0 })
+        let value = Const::from_bool(self.tcx, flag);
+        debug_assert!(value.is_deterministic());
+        self.insert(Value::Constant { value, disambiguator: 0 })
     }
 
     fn insert_scalar(&mut self, scalar: Scalar, ty: Ty<'tcx>) -> VnIndex {
-        self.insert_constant(Const::from_scalar(self.tcx, scalar, ty))
-            .expect("scalars are deterministic")
+        // Scalars are deterministic.
+        let value = Const::from_scalar(self.tcx, scalar, ty);
+        debug_assert!(value.is_deterministic());
+        self.insert(Value::Constant { value, disambiguator: 0 })
     }
 
     fn insert_tuple(&mut self, values: Vec<VnIndex>) -> VnIndex {
@@ -1453,7 +1458,7 @@ impl<'tcx> VnState<'_, 'tcx> {
         // deterministic, adding an additional mention of it in MIR will not give the same value as
         // the former mention.
         if let Value::Constant { value, disambiguator: 0 } = *self.get(index) {
-            assert!(value.is_deterministic());
+            debug_assert!(value.is_deterministic());
             return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
         }
 
