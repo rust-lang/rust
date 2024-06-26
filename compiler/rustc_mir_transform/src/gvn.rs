@@ -128,7 +128,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // Clone dominators as we need them while mutating the body.
     let dominators = body.basic_blocks.dominators().clone();
 
-    let mut state = VnState::new(tcx, param_env, &ssa, &dominators, &body.local_decls);
+    let mut state = VnState::new(tcx, body, param_env, &ssa, &dominators, &body.local_decls);
     ssa.for_each_assignment_mut(
         body.basic_blocks.as_mut_preserves_cfg(),
         |local, value, location| {
@@ -266,20 +266,28 @@ struct VnState<'body, 'tcx> {
 impl<'body, 'tcx> VnState<'body, 'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
+        body: &Body<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         ssa: &'body SsaLocals,
         dominators: &'body Dominators<BasicBlock>,
         local_decls: &'body LocalDecls<'tcx>,
     ) -> Self {
+        // Compute a rough estimate of the number of values in the body from the number of
+        // statements. This is meant to reduce the number of allocations, but it's all right if
+        // we miss the exact amount. We estimate based on 2 values per statement (one in LHS and
+        // one in RHS) and 4 values per terminator (for call operands).
+        let num_values =
+            2 * body.basic_blocks.iter().map(|bbdata| bbdata.statements.len()).sum::<usize>()
+                + 4 * body.basic_blocks.len();
         VnState {
             tcx,
             ecx: InterpCx::new(tcx, DUMMY_SP, param_env, DummyMachine),
             param_env,
             local_decls,
             locals: IndexVec::from_elem(None, local_decls),
-            rev_locals: IndexVec::default(),
-            values: FxIndexSet::default(),
-            evaluated: IndexVec::new(),
+            rev_locals: IndexVec::with_capacity(num_values),
+            values: FxIndexSet::with_capacity_and_hasher(num_values, Default::default()),
+            evaluated: IndexVec::with_capacity(num_values),
             next_opaque: Some(0),
             feature_unsized_locals: tcx.features().unsized_locals,
             ssa,
