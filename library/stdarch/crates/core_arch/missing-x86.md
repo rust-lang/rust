@@ -51,13 +51,6 @@
 </p></details>
 
 
-<details><summary>["AVX2"]</summary><p>
-
-  * [ ] [`_mm256_stream_load_si256`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_stream_load_si256)
-  * [ ] [`_mm_broadcastsi128_si256`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_broadcastsi128_si256)
-</p></details>
-
-
 <details><summary>["AVX512BW"]</summary><p>
 
   * [ ] [`_cvtmask32_u32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_cvtmask32_u32)
@@ -1334,12 +1327,6 @@
 </p></details>
 
 
-<details><summary>["BMI1"]</summary><p>
-
-  * [ ] [`_tzcnt_u16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tzcnt_u16)
-</p></details>
-
-
 <details><summary>["CET_SS"]</summary><p>
 
   * [ ] [`_clrssbsy`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_clrssbsy)
@@ -1543,22 +1530,6 @@
 
   * [ ] [`_mm_free`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_free)
   * [ ] [`_mm_malloc`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_malloc)
-</p></details>
-
-
-<details><summary>["SSE2"]</summary><p>
-
-  * [ ] [`_mm_loadu_si16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadu_si16)
-  * [ ] [`_mm_loadu_si32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadu_si32)
-  * [ ] [`_mm_storeu_si16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storeu_si16)
-  * [ ] [`_mm_storeu_si32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storeu_si32)
-  * [ ] [`_mm_storeu_si64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storeu_si64)
-</p></details>
-
-
-<details><summary>["SSE4.1"]</summary><p>
-
-  * [ ] [`_mm_stream_load_si128`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_stream_load_si128)
 </p></details>
 
 

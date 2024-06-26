@@ -89,6 +89,19 @@ pub unsafe fn _blsr_u32(x: u32) -> u32 {
 ///
 /// When the source operand is `0`, it returns its size in bits.
 ///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tzcnt_u16)
+#[inline]
+#[target_feature(enable = "bmi1")]
+#[cfg_attr(test, assert_instr(tzcnt))]
+#[unstable(feature = "simd_x86_updates", issue = "126936")]
+pub unsafe fn _tzcnt_u16(x: u16) -> u16 {
+    x.trailing_zeros() as u16
+}
+
+/// Counts the number of trailing least significant zero bits.
+///
+/// When the source operand is `0`, it returns its size in bits.
+///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tzcnt_u32)
 #[inline]
 #[target_feature(enable = "bmi1")]
@@ -167,6 +180,13 @@ mod tests {
         // TODO: test the behavior when the input is `0`.
         let r = _blsr_u32(0b0011_0000u32);
         assert_eq!(r, 0b0010_0000u32);
+    }
+
+    #[simd_test(enable = "bmi1")]
+    unsafe fn test_tzcnt_u16() {
+        assert_eq!(_tzcnt_u16(0b0000_0001u16), 0u16);
+        assert_eq!(_tzcnt_u16(0b0000_0000u16), 16u16);
+        assert_eq!(_tzcnt_u16(0b1001_0000u16), 4u16);
     }
 
     #[simd_test(enable = "bmi1")]

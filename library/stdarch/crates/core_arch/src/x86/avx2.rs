@@ -587,6 +587,19 @@ pub unsafe fn _mm256_broadcastsd_pd(a: __m128d) -> __m256d {
     simd_shuffle!(a, _mm_setzero_pd(), [0_u32; 4])
 }
 
+/// Broadcasts 128 bits of integer data from a to all 128-bit lanes in
+/// the 256-bit returned value.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_broadcastsi128_si256)
+#[inline]
+#[target_feature(enable = "avx2")]
+#[unstable(feature = "simd_x86_updates", issue = "126936")]
+pub unsafe fn _mm_broadcastsi128_si256(a: __m128i) -> __m256i {
+    let zero = _mm_setzero_si128();
+    let ret = simd_shuffle!(a.as_i64x2(), zero.as_i64x2(), [0, 1, 0, 1]);
+    transmute::<i64x4, _>(ret)
+}
+
 // N.B., `broadcastsi128_si256` is often compiled to `vinsertf128` or
 // `vbroadcastf128`.
 /// Broadcasts 128 bits of integer data from a to all 128-bit lanes in
@@ -3124,6 +3137,35 @@ pub unsafe fn _mm256_srlv_epi64(a: __m256i, count: __m256i) -> __m256i {
     transmute(psrlvq256(a.as_i64x4(), count.as_i64x4()))
 }
 
+/// Load 256-bits of integer data from memory into dst using a non-temporal memory hint. mem_addr
+/// must be aligned on a 32-byte boundary or a general-protection exception may be generated. To
+/// minimize caching, the data is flagged as non-temporal (unlikely to be used again soon)
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_stream_load_si256)
+///
+/// # Safety of non-temporal stores
+///
+/// After using this intrinsic, but before any other access to the memory that this intrinsic
+/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
+/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
+/// return.
+///
+/// See [`_mm_sfence`] for details.
+#[inline]
+#[target_feature(enable = "avx,avx2")]
+#[cfg_attr(test, assert_instr(vmovntdqa))]
+#[unstable(feature = "simd_x86_updates", issue = "126936")]
+pub unsafe fn _mm256_stream_load_si256(mem_addr: *const __m256i) -> __m256i {
+    let dst: __m256i;
+    crate::arch::asm!(
+        "vmovntdqa {a}, [{mem_addr}]",
+        a = out(ymm_reg) dst,
+        mem_addr = in(reg) mem_addr,
+        options(pure, readonly, nostack, preserves_flags),
+    );
+    dst
+}
+
 /// Subtract packed 16-bit integers in `b` from packed 16-bit integers in `a`
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sub_epi16)
@@ -5151,6 +5193,16 @@ mod tests {
         let r = _mm256_srlv_epi64(a, count);
         let e = _mm256_set1_epi64x(1);
         assert_eq_m256i(r, e);
+    }
+
+    #[simd_test(enable = "avx2")]
+    // Miri cannot support this until it is clear how it fits in the Rust memory model
+    // (non-temporal store)
+    #[cfg_attr(miri, ignore)]
+    unsafe fn test_mm256_stream_load_si256() {
+        let a = _mm256_set_epi64x(5, 6, 7, 8);
+        let r = _mm256_stream_load_si256(core::ptr::addr_of!(a) as *const _);
+        assert_eq_m256i(a, r);
     }
 
     #[simd_test(enable = "avx2")]

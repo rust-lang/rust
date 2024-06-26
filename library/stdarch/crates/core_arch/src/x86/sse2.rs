@@ -2588,6 +2588,42 @@ pub unsafe fn _mm_storeu_pd(mem_addr: *mut f64, a: __m128d) {
     mem_addr.cast::<__m128d>().write_unaligned(a);
 }
 
+/// Store 16-bit integer from the first element of a into memory.
+///
+/// `mem_addr` does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_storeu_si16)
+#[inline]
+#[target_feature(enable = "sse2")]
+#[unstable(feature = "simd_x86_updates", issue = "126936")]
+pub unsafe fn _mm_storeu_si16(mem_addr: *mut u8, a: __m128i) {
+    ptr::write_unaligned(mem_addr as *mut i16, simd_extract(a.as_i16x8(), 0))
+}
+
+/// Store 32-bit integer from the first element of a into memory.
+///
+/// `mem_addr` does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_storeu_si32)
+#[inline]
+#[target_feature(enable = "sse2")]
+#[unstable(feature = "simd_x86_updates", issue = "126936")]
+pub unsafe fn _mm_storeu_si32(mem_addr: *mut u8, a: __m128i) {
+    ptr::write_unaligned(mem_addr as *mut i32, simd_extract(a.as_i32x4(), 0))
+}
+
+/// Store 64-bit integer from the first element of a into memory.
+///
+/// `mem_addr` does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_storeu_si64)
+#[inline]
+#[target_feature(enable = "sse2")]
+#[unstable(feature = "simd_x86_updates", issue = "126936")]
+pub unsafe fn _mm_storeu_si64(mem_addr: *mut u8, a: __m128i) {
+    ptr::write_unaligned(mem_addr as *mut i64, simd_extract(a.as_i64x2(), 0))
+}
+
 /// Stores the lower double-precision (64-bit) floating-point element from `a`
 /// into 2 contiguous elements in memory. `mem_addr` must be aligned on a
 /// 16-byte boundary or a general-protection exception may be generated.
@@ -2713,11 +2749,49 @@ pub unsafe fn _mm_loadu_pd(mem_addr: *const f64) -> __m128d {
     dst
 }
 
-/// Loads unaligned 64-bits of integer data from memory into new vector.
+/// Loads unaligned 16-bits of integer data from memory into new vector.
 ///
 /// `mem_addr` does not need to be aligned on any particular boundary.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_loadu_si64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_loadu_si16)
+#[inline]
+#[target_feature(enable = "sse2")]
+#[unstable(feature = "simd_x86_updates", issue = "126936")]
+pub unsafe fn _mm_loadu_si16(mem_addr: *const u8) -> __m128i {
+    transmute(i16x8::new(
+        ptr::read_unaligned(mem_addr as *const i16),
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+    ))
+}
+
+/// Loads unaligned 32-bits of integer data from memory into new vector.
+///
+/// `mem_addr` does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_loadu_si32)
+#[inline]
+#[target_feature(enable = "sse2")]
+#[unstable(feature = "simd_x86_updates", issue = "126936")]
+pub unsafe fn _mm_loadu_si32(mem_addr: *const u8) -> __m128i {
+    transmute(i32x4::new(
+        ptr::read_unaligned(mem_addr as *const i32),
+        0,
+        0,
+        0,
+    ))
+}
+
+/// Loads unaligned 16-bits of integer data from memory into new vector.
+///
+/// `mem_addr` does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_loadu_si16)
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86_mm_loadu_si64", since = "1.46.0")]
@@ -4700,6 +4774,33 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
+    unsafe fn test_mm_storeu_si16() {
+        let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let mut r = _mm_setr_epi16(9, 10, 11, 12, 13, 14, 15, 16);
+        _mm_storeu_si16(ptr::addr_of_mut!(r).cast(), a);
+        let e = _mm_setr_epi16(1, 10, 11, 12, 13, 14, 15, 16);
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "sse2")]
+    unsafe fn test_mm_storeu_si32() {
+        let a = _mm_setr_epi32(1, 2, 3, 4);
+        let mut r = _mm_setr_epi32(5, 6, 7, 8);
+        _mm_storeu_si32(ptr::addr_of_mut!(r).cast(), a);
+        let e = _mm_setr_epi32(1, 6, 7, 8);
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "sse2")]
+    unsafe fn test_mm_storeu_si64() {
+        let a = _mm_setr_epi64x(1, 2);
+        let mut r = _mm_setr_epi64x(3, 4);
+        _mm_storeu_si64(ptr::addr_of_mut!(r).cast(), a);
+        let e = _mm_setr_epi64x(1, 4);
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "sse2")]
     unsafe fn test_mm_store1_pd() {
         let mut mem = Memory { data: [0.0f64; 4] };
         let vals = &mut mem.data;
@@ -4781,6 +4882,20 @@ mod tests {
         let r = _mm_loadu_pd(d);
         let e = _mm_add_pd(_mm_setr_pd(1.0, 2.0), _mm_set1_pd(offset as f64));
         assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "sse2")]
+    unsafe fn test_mm_loadu_si16() {
+        let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm_loadu_si16(ptr::addr_of!(a) as *const _);
+        assert_eq_m128i(r, _mm_setr_epi16(1, 0, 0, 0, 0, 0, 0, 0));
+    }
+
+    #[simd_test(enable = "sse2")]
+    unsafe fn test_mm_loadu_si32() {
+        let a = _mm_setr_epi32(1, 2, 3, 4);
+        let r = _mm_loadu_si32(ptr::addr_of!(a) as *const _);
+        assert_eq_m128i(r, _mm_setr_epi32(1, 0, 0, 0));
     }
 
     #[simd_test(enable = "sse2")]

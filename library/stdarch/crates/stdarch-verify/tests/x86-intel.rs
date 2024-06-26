@@ -1,15 +1,4 @@
-#![allow(bad_style)]
-#![allow(unused)]
-#![allow(
-    clippy::shadow_reuse,
-    clippy::cast_lossless,
-    clippy::match_same_arms,
-    clippy::nonminimal_bool,
-    clippy::print_stdout,
-    clippy::use_debug,
-    clippy::eq_op,
-    clippy::useless_format
-)]
+#![allow(unused, non_camel_case_types)]
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
@@ -284,6 +273,7 @@ fn verify_all_signatures() {
                 "_mm_cvtsi64x_sd",
                 "_bextr2_u64",
                 "_mm_tzcnt_64",
+                "_mm_broadcastsi128_si256",
             ];
             if !skip.contains(&rust.name) {
                 println!(
@@ -560,7 +550,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
     // Make sure we've got the right return type.
     if let Some(t) = rust.ret {
         equate(t, &intel.return_.type_, "", rust.name, false)?;
-    } else if intel.return_.type_ != "" && intel.return_.type_ != "void" {
+    } else if !intel.return_.type_.is_empty() && intel.return_.type_ != "void" {
         bail!(
             "{} returns `{}` with intel, void in rust",
             rust.name,
