@@ -28,6 +28,7 @@ mod simplify;
 mod test;
 mod util;
 
+use std::assert_matches::assert_matches;
 use std::borrow::Borrow;
 use std::mem;
 
@@ -71,6 +72,17 @@ pub(crate) enum EmitStorageLive {
     Yes,
     /// No, don't emit `StorageLive`. The caller has taken responsibility for
     /// emitting `StorageLive` as appropriate.
+    No,
+}
+
+/// Used by [`Builder::storage_live_binding`] and [`Builder::bind_matched_candidate_for_arm_body`]
+/// to decide whether to schedule drops.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum ScheduleDrops {
+    /// Yes, the relevant functions should also schedule drops as appropriate.
+    Yes,
+    /// No, don't schedule drops. The caller has taken responsibility for any
+    /// appropriate drops.
     No,
 }
 
@@ -535,7 +547,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 fake_borrow_temps,
                 scrutinee_span,
                 arm_match_scope,
-                true,
+                ScheduleDrops::Yes,
                 emit_storage_live,
             )
         } else {
@@ -554,7 +566,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // To handle this we instead unschedule it's drop after each time
             // we lower the guard.
             let target_block = self.cfg.start_new_block();
-            let mut schedule_drops = true;
+            let mut schedule_drops = ScheduleDrops::Yes;
             let arm = arm_match_scope.unzip().0;
             // We keep a stack of all of the bindings and type ascriptions
             // from the parent candidates that we visit, that also need to
@@ -576,7 +588,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         emit_storage_live,
                     );
                     if arm.is_none() {
-                        schedule_drops = false;
+                        schedule_drops = ScheduleDrops::No;
                     }
                     self.cfg.goto(binding_end, outer_source_info, target_block);
                 },
@@ -602,8 +614,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
             PatKind::Binding { mode: BindingMode(ByRef::No, _), var, subpattern: None, .. } => {
-                let place =
-                    self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
+                let place = self.storage_live_binding(
+                    block,
+                    var,
+                    irrefutable_pat.span,
+                    OutsideGuard,
+                    ScheduleDrops::Yes,
+                );
                 unpack!(block = self.expr_into_dest(place, block, initializer_id));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
@@ -636,8 +653,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 ascription: thir::Ascription { ref annotation, variance: _ },
             } => {
-                let place =
-                    self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
+                let place = self.storage_live_binding(
+                    block,
+                    var,
+                    irrefutable_pat.span,
+                    OutsideGuard,
+                    ScheduleDrops::Yes,
+                );
                 unpack!(block = self.expr_into_dest(place, block, initializer_id));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
@@ -827,7 +849,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         var: LocalVarId,
         span: Span,
         for_guard: ForGuard,
-        schedule_drop: bool,
+        schedule_drop: ScheduleDrops,
     ) -> Place<'tcx> {
         let local_id = self.var_local_id(var, for_guard);
         let source_info = self.source_info(span);
@@ -835,7 +857,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Although there is almost always scope for given variable in corner cases
         // like #92893 we might get variable with no scope.
         if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id)
-            && schedule_drop
+            && matches!(schedule_drop, ScheduleDrops::Yes)
         {
             self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
         }
@@ -2112,7 +2134,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         fake_borrows: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
-        schedule_drops: bool,
+        schedule_drops: ScheduleDrops,
         emit_storage_live: EmitStorageLive,
     ) -> BasicBlock {
         debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
@@ -2323,10 +2345,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let cause = FakeReadCause::ForGuardBinding;
                 self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(local_id));
             }
-            assert!(schedule_drops, "patterns with guards must schedule drops");
+            assert_matches!(
+                schedule_drops,
+                ScheduleDrops::Yes,
+                "patterns with guards must schedule drops"
+            );
             self.bind_matched_candidate_for_arm_body(
                 post_guard_block,
-                true,
+                ScheduleDrops::Yes,
                 by_value_bindings,
                 emit_storage_live,
             );
@@ -2376,7 +2402,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bind_matched_candidate_for_guard<'b>(
         &mut self,
         block: BasicBlock,
-        schedule_drops: bool,
+        schedule_drops: ScheduleDrops,
         bindings: impl IntoIterator<Item = &'b Binding<'tcx>>,
     ) where
         'tcx: 'b,
@@ -2429,7 +2455,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bind_matched_candidate_for_arm_body<'b>(
         &mut self,
         block: BasicBlock,
-        schedule_drops: bool,
+        schedule_drops: ScheduleDrops,
         bindings: impl IntoIterator<Item = &'b Binding<'tcx>>,
         emit_storage_live: EmitStorageLive,
     ) where
@@ -2454,7 +2480,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     schedule_drops,
                 ),
             };
-            if schedule_drops {
+            if matches!(schedule_drops, ScheduleDrops::Yes) {
                 self.schedule_drop_for_binding(binding.var_id, binding.span, OutsideGuard);
             }
             let rvalue = match binding.binding_mode.0 {
