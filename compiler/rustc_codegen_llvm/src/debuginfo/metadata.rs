@@ -639,7 +639,8 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
         };
         let hash_value = hex_encode(source_file.src_hash.hash_bytes());
 
-        let source = cx.sess().opts.cg.embed_source.then_some(()).and(source_file.src.as_ref());
+        let source =
+            cx.sess().opts.unstable_opts.embed_source.then_some(()).and(source_file.src.as_ref());
 
         unsafe {
             llvm::LLVMRustDIBuilderCreateFile(

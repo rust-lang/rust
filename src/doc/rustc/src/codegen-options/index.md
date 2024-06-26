@@ -146,17 +146,6 @@ at start-up, because the combination is invalid.
 > reason for that is that it's how it was for rustc 1.44 and prior. In 1.45 this
 > option was added to turn off what had always been the default.
 
-## embed-source
-
-This flag controls whether the compiler embeds the program source code text into
-object debug info section. It takes one of the following values:
-
-* `y`, `yes`, `on` or `true`: put source code in debug info.
-* `n`, `no`, `off`, `false` or no value: omit source code from debug info (the default).
-
-`-C embed-source` requires DWARFv5. Use `-Zdwarf-version` to control the
-compiler's DWARF target version.
-
 ## extra-filename
 
 This option allows you to put extra data in each output filename. It takes a

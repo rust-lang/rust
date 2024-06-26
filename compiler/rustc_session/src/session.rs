@@ -1304,7 +1304,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     let dwarf_version =
         sess.opts.unstable_opts.dwarf_version.unwrap_or(sess.target.default_dwarf_version);
-    if sess.opts.cg.embed_source && dwarf_version < 5 {
+    if sess.opts.unstable_opts.embed_source && dwarf_version < 5 {
         sess.dcx().emit_err(errors::EmbedSourceInsufficientDwarfVersion { dwarf_version });
     }
 
