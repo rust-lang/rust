@@ -742,7 +742,6 @@ fn wobbled_wtf8_plus_str_isnt_utf8() {
     assert!(!string.is_known_utf8);
 }
 
-
 #[test]
 fn unwobbly_wtf8_plus_str_is_utf8() {
     let mut string: Wtf8Buf = Wtf8Buf::from_str("hello world");
