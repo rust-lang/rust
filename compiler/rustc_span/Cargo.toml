@@ -19,4 +19,5 @@ sha1 = "0.10.0"
 sha2 = "0.10.1"
 tracing = "0.1"
 unicode-width = "0.1.4"
+xxhash-rust = { version = "0.8.10", features = ["xxh3"] }
 # tidy-alphabetical-end

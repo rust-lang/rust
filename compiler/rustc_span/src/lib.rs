@@ -43,6 +43,7 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::debug;
+use xxhash_rust::xxh3;
 
 mod caching_source_map_view;
 pub mod source_map;
@@ -1458,14 +1459,25 @@ pub enum SourceFileHashAlgorithm {
     Md5,
     Sha1,
     Sha256,
+    XxHash,
+}
+
+impl SourceFileHashAlgorithm {
+    pub fn supported_in_cargo(&self) -> bool {
+        match self {
+            Self::Md5 | Self::Sha1 => false,
+            Self::Sha256 | Self::XxHash => true,
+        }
+    }
 }
 
 impl Display for SourceFileHashAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            SourceFileHashAlgorithm::Md5 => "md5",
-            SourceFileHashAlgorithm::Sha1 => "sha1",
-            SourceFileHashAlgorithm::Sha256 => "sha256",
+            Self::Md5 => "md5",
+            Self::Sha1 => "sha1",
+            Self::Sha256 => "sha256",
+            Self::XxHash => "xxhash",
         })
     }
 }
@@ -1478,6 +1490,7 @@ impl FromStr for SourceFileHashAlgorithm {
             "md5" => Ok(SourceFileHashAlgorithm::Md5),
             "sha1" => Ok(SourceFileHashAlgorithm::Sha1),
             "sha256" => Ok(SourceFileHashAlgorithm::Sha256),
+            "xxhash" => Ok(SourceFileHashAlgorithm::XxHash),
             _ => Err(()),
         }
     }
@@ -1517,6 +1530,9 @@ impl SourceFileHash {
             SourceFileHashAlgorithm::Sha256 => {
                 value.copy_from_slice(&Sha256::digest(data));
             }
+            SourceFileHashAlgorithm::XxHash => {
+                value.copy_from_slice(&xxh3::xxh3_128(data).to_be_bytes());
+            }
         };
         hash
     }
@@ -1551,6 +1567,16 @@ impl SourceFileHash {
         }
 
         match kind {
+            SourceFileHashAlgorithm::XxHash => {
+                digest(
+                    xxh3::Xxh3::new(),
+                    |h, b| h.update(b),
+                    |h, out| out.copy_from_slice(&h.digest128().to_be_bytes()),
+                    src,
+                    &mut buf,
+                    value,
+                )?;
+            }
             SourceFileHashAlgorithm::Sha256 => {
                 digest(
                     Sha256::new(),
@@ -1607,6 +1633,7 @@ impl SourceFileHash {
             SourceFileHashAlgorithm::Md5 => 16,
             SourceFileHashAlgorithm::Sha1 => 20,
             SourceFileHashAlgorithm::Sha256 => 32,
+            SourceFileHashAlgorithm::XxHash => 16,
         }
     }
 }
