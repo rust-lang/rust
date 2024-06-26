@@ -43,7 +43,7 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::debug;
-use twox_hash::xxh3::{self, HasherExt};
+use twox_hash::XxHash64;
 
 mod caching_source_map_view;
 pub mod source_map;
@@ -1531,7 +1531,9 @@ impl SourceFileHash {
                 value.copy_from_slice(&Sha256::digest(data));
             }
             SourceFileHashAlgorithm::XxHash => {
-                value.copy_from_slice(&xxh3::hash128(data).to_be_bytes());
+                let mut hasher = XxHash64::with_seed(0);
+                hasher.write(data);
+                value.copy_from_slice(&hasher.finish().to_be_bytes());
             }
         };
         hash
@@ -1569,9 +1571,9 @@ impl SourceFileHash {
         match kind {
             SourceFileHashAlgorithm::XxHash => {
                 digest(
-                    xxh3::Hash128::default(),
+                    XxHash64::with_seed(0),
                     |h, b| h.write(b),
-                    |h, out| out.copy_from_slice(&h.finish_ext().to_be_bytes()),
+                    |h, out| out.copy_from_slice(&h.finish().to_be_bytes()),
                     src,
                     &mut buf,
                     value,
@@ -1633,7 +1635,7 @@ impl SourceFileHash {
             SourceFileHashAlgorithm::Md5 => 16,
             SourceFileHashAlgorithm::Sha1 => 20,
             SourceFileHashAlgorithm::Sha256 => 32,
-            SourceFileHashAlgorithm::XxHash => 16,
+            SourceFileHashAlgorithm::XxHash => 8,
         }
     }
 }
