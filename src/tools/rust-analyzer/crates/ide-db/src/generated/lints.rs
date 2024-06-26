@@ -306,10 +306,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
     Lint { label: "missing_abi", description: r##"No declared ABI for extern declaration"## },
     Lint {
-        label: "missing_copy_implementations",
-        description: r##"detects potentially-forgotten implementations of `Copy`"##,
-    },
-    Lint {
         label: "missing_debug_implementations",
         description: r##"detects missing implementations of Debug"##,
     },

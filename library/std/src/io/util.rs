@@ -1,5 +1,3 @@
-#![allow(missing_copy_implementations)]
-
 #[cfg(test)]
 mod tests;
 

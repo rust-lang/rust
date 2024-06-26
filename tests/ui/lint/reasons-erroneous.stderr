@@ -41,10 +41,10 @@ LL | #![warn(keyword_idents, reason = "root in rubble", macro_use_extern_crate)]
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ reason in lint attribute must come last
 
 warning: unknown lint: `reason`
-  --> $DIR/reasons-erroneous.rs:26:39
+  --> $DIR/reasons-erroneous.rs:26:40
    |
-LL | #![warn(missing_copy_implementations, reason)]
-   |                                       ^^^^^^
+LL | #![warn(missing_debug_implementations, reason)]
+   |                                        ^^^^^^
    |
    = note: `#[warn(unknown_lints)]` on by default
 

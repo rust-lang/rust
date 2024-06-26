@@ -29,11 +29,11 @@ use crate::{
         BuiltinDerefNullptr, BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
         BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
         BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
-        BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
-        BuiltinMutablesTransmutes, BuiltinNamedAsmLabel, BuiltinNoMangleGeneric,
-        BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds,
-        BuiltinTypeAliasGenericBounds, BuiltinTypeAliasGenericBoundsSuggestion,
-        BuiltinTypeAliasWhereClause, BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
+        BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinMutablesTransmutes,
+        BuiltinNamedAsmLabel, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
+        BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasGenericBounds,
+        BuiltinTypeAliasGenericBoundsSuggestion, BuiltinTypeAliasWhereClause,
+        BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
         BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe,
         BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
         BuiltinWhileTrue, SuggestChangingAssocTypes,
@@ -54,11 +54,9 @@ use rustc_hir::intravisit::FnKind as HirFnKind;
 use rustc_hir::{Body, FnDecl, GenericParamKind, PatKind, PredicateOrigin};
 use rustc_middle::bug;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::Upcast;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
@@ -67,9 +65,6 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
 use rustc_target::abi::Abi;
-use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, misc::type_allowed_to_implement_copy};
 use tracing::debug;
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
@@ -596,148 +591,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     fn check_variant(&mut self, cx: &LateContext<'_>, v: &hir::Variant<'_>) {
         self.check_missing_docs_attrs(cx, v.def_id, "a", "variant");
     }
-}
-
-declare_lint! {
-    /// The `missing_copy_implementations` lint detects potentially-forgotten
-    /// implementations of [`Copy`] for public types.
-    ///
-    /// [`Copy`]: https://doc.rust-lang.org/std/marker/trait.Copy.html
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(missing_copy_implementations)]
-    /// pub struct Foo {
-    ///     pub field: i32
-    /// }
-    /// # fn main() {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Historically (before 1.0), types were automatically marked as `Copy`
-    /// if possible. This was changed so that it required an explicit opt-in
-    /// by implementing the `Copy` trait. As part of this change, a lint was
-    /// added to alert if a copyable type was not marked `Copy`.
-    ///
-    /// This lint is "allow" by default because this code isn't bad; it is
-    /// common to write newtypes like this specifically so that a `Copy` type
-    /// is no longer `Copy`. `Copy` types can result in unintended copies of
-    /// large data which can impact performance.
-    pub MISSING_COPY_IMPLEMENTATIONS,
-    Allow,
-    "detects potentially-forgotten implementations of `Copy`"
-}
-
-declare_lint_pass!(MissingCopyImplementations => [MISSING_COPY_IMPLEMENTATIONS]);
-
-impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
-    fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.effective_visibilities.is_reachable(item.owner_id.def_id) {
-            return;
-        }
-        let (def, ty) = match item.kind {
-            hir::ItemKind::Struct(_, ast_generics) => {
-                if !ast_generics.params.is_empty() {
-                    return;
-                }
-                let def = cx.tcx.adt_def(item.owner_id);
-                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
-            }
-            hir::ItemKind::Union(_, ast_generics) => {
-                if !ast_generics.params.is_empty() {
-                    return;
-                }
-                let def = cx.tcx.adt_def(item.owner_id);
-                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
-            }
-            hir::ItemKind::Enum(_, ast_generics) => {
-                if !ast_generics.params.is_empty() {
-                    return;
-                }
-                let def = cx.tcx.adt_def(item.owner_id);
-                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
-            }
-            _ => return,
-        };
-        if def.has_dtor(cx.tcx) {
-            return;
-        }
-
-        // If the type contains a raw pointer, it may represent something like a handle,
-        // and recommending Copy might be a bad idea.
-        for field in def.all_fields() {
-            let did = field.did;
-            if cx.tcx.type_of(did).instantiate_identity().is_unsafe_ptr() {
-                return;
-            }
-        }
-        if ty.is_copy_modulo_regions(cx.tcx, cx.param_env) {
-            return;
-        }
-        if type_implements_negative_copy_modulo_regions(cx.tcx, ty, cx.param_env) {
-            return;
-        }
-        if def.is_variant_list_non_exhaustive()
-            || def.variants().iter().any(|variant| variant.is_field_list_non_exhaustive())
-        {
-            return;
-        }
-
-        // We shouldn't recommend implementing `Copy` on stateful things,
-        // such as iterators.
-        if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
-            && cx
-                .tcx
-                .infer_ctxt()
-                .build()
-                .type_implements_trait(iter_trait, [ty], cx.param_env)
-                .must_apply_modulo_regions()
-        {
-            return;
-        }
-
-        // Default value of clippy::trivially_copy_pass_by_ref
-        const MAX_SIZE: u64 = 256;
-
-        if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes()) {
-            if size > MAX_SIZE {
-                return;
-            }
-        }
-
-        if type_allowed_to_implement_copy(
-            cx.tcx,
-            cx.param_env,
-            ty,
-            traits::ObligationCause::misc(item.span, item.owner_id.def_id),
-        )
-        .is_ok()
-        {
-            cx.emit_span_lint(MISSING_COPY_IMPLEMENTATIONS, item.span, BuiltinMissingCopyImpl);
-        }
-    }
-}
-
-/// Check whether a `ty` has a negative `Copy` implementation, ignoring outlives constraints.
-fn type_implements_negative_copy_modulo_regions<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> bool {
-    let trait_ref = ty::TraitRef::new(tcx, tcx.require_lang_item(hir::LangItem::Copy, None), [ty]);
-    let pred = ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Negative };
-    let obligation = traits::Obligation {
-        cause: traits::ObligationCause::dummy(),
-        param_env,
-        recursion_depth: 0,
-        predicate: pred.upcast(tcx),
-    };
-
-    tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)
 }
 
 declare_lint! {
@@ -1644,7 +1497,6 @@ declare_lint_pass!(
         NON_SHORTHAND_FIELD_PATTERNS,
         UNSAFE_CODE,
         MISSING_DOCS,
-        MISSING_COPY_IMPLEMENTATIONS,
         MISSING_DEBUG_IMPLEMENTATIONS,
         ANONYMOUS_PARAMETERS,
         UNUSED_DOC_COMMENTS,

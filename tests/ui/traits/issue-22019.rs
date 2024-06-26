@@ -5,7 +5,6 @@
 
 //@ pretty-expanded FIXME #23616
 
-#![allow(missing_copy_implementations)]
 #![allow(unused_variables)]
 
 pub struct CFGNode;
