@@ -38,17 +38,17 @@ LL |     default do
 LL | }
    | - item list ends here
 
-error: cannot find macro `default` in this scope
+error: cannot find macro `default`
   --> $DIR/default-unmatched-assoc.rs:4:5
    |
 LL |     default!();
-   |     ^^^^^^^
+   |     ^^^^^^^ not found in this scope
 
-error: cannot find macro `default` in this scope
+error: cannot find macro `default`
   --> $DIR/default-unmatched-assoc.rs:12:5
    |
 LL |     default!();
-   |     ^^^^^^^
+   |     ^^^^^^^ not found in this scope
 
 error: aborting due to 6 previous errors
 

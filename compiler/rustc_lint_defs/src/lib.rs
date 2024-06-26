@@ -745,6 +745,7 @@ pub enum BuiltinLintDiag {
         is_macro: bool,
     },
     OutOfScopeMacroCalls {
+        span: Span,
         path: String,
     },
 }

@@ -1,8 +1,11 @@
-error: cannot find macro `something_later` in this scope
+error: cannot find macro `something_later`
   --> $DIR/defined-later-issue-121061.rs:2:5
    |
 LL |     something_later!();
-   |     ^^^^^^^^^^^^^^^ consider moving the definition of `something_later` before this call
+   |     ^^^^^^^^^^^^^^^
+   |     |
+   |     not found in this scope
+   |     consider moving the definition of `something_later` before this call
    |
 note: a macro with the same name exists, but it appears later at here
   --> $DIR/defined-later-issue-121061.rs:5:14

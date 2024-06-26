@@ -1,8 +1,8 @@
-error: cannot find macro `macro_two` in this scope
+error: cannot find macro `macro_two`
   --> $DIR/missing-macro-use.rs:6:5
    |
 LL |     macro_two!();
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^ not found in this scope
    |
 help: consider importing this macro
    |

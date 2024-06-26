@@ -2522,7 +2522,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 if let Some(generics) = kind.generics() {
                     if span.overlaps(generics.span) {
                         // Avoid the following:
-                        // error[E0405]: cannot find trait `A` in this scope
+                        // error[E0405]: cannot find trait `A`
                         //  --> $DIR/typo-suggestion-named-underscore.rs:CC:LL
                         //   |
                         // L | fn foo<T: A>(x: T) {} // Shouldn't suggest underscore

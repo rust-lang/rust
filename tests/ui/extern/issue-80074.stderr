@@ -4,17 +4,17 @@ error[E0469]: imported macro not found
 LL | #[macro_use(m)]
    |             ^
 
-error: cannot find macro `bar` in this scope
+error: cannot find macro `bar`
   --> $DIR/issue-80074.rs:16:5
    |
 LL |     bar!();
-   |     ^^^
+   |     ^^^ not found in this scope
 
-error: cannot find macro `m` in this scope
+error: cannot find macro `m`
   --> $DIR/issue-80074.rs:18:5
    |
 LL |     m!();
-   |     ^
+   |     ^ not found in this scope
 
 warning: macro `foo` is private
   --> $DIR/issue-80074.rs:13:5

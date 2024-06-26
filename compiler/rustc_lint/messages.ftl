@@ -609,7 +609,8 @@ lint_opaque_hidden_inferred_bound_sugg = add this bound
 lint_or_patterns_back_compat = the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
     .suggestion = use pat_param to preserve semantics
 
-lint_out_of_scope_macro_calls = cannot find macro `{$path}` in this scope
+lint_out_of_scope_macro_calls = cannot find macro `{$path}`
+    .label = not found in this scope
     .help = import `macro_rules` with `use` to make it callable above its definition
 
 lint_overflowing_bin_hex = literal out of range for `{$ty}`
@@ -650,7 +651,7 @@ lint_pattern_in_foreign = patterns aren't allowed in foreign function declaratio
 lint_private_extern_crate_reexport = extern crate `{$ident}` is private and cannot be re-exported
     .suggestion = consider making the `extern crate` item publicly accessible
 
-lint_proc_macro_derive_resolution_fallback = cannot find {$ns} `{$ident}` in this scope
+lint_proc_macro_derive_resolution_fallback = cannot find {$ns} `{$ident}`
     .label = names from parent modules are not accessible without an explicit import
 
 lint_ptr_null_checks_fn_ptr = function pointers are not nullable, so checking them for null will always return false

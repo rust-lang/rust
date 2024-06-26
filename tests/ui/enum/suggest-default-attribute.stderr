@@ -1,8 +1,8 @@
-error: cannot find attribute `default` in this scope
+error: cannot find attribute `default`
   --> $DIR/suggest-default-attribute.rs:2:7
    |
 LL |     #[default]
-   |       ^^^^^^^
+   |       ^^^^^^^ not found in this scope
    |
 help: consider adding a derive
    |

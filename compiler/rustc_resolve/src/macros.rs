@@ -1071,7 +1071,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     OUT_OF_SCOPE_MACRO_CALLS,
                     path.span,
                     node_id,
-                    BuiltinLintDiag::OutOfScopeMacroCalls { path: pprust::path_to_string(path) },
+                    BuiltinLintDiag::OutOfScopeMacroCalls {
+                        span: path.span,
+                        path: pprust::path_to_string(path),
+                    },
                 );
             }
         }

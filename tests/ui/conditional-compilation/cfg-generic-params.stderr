@@ -1,32 +1,32 @@
-error: cannot find attribute `unknown` in this scope
+error: cannot find attribute `unknown`
   --> $DIR/cfg-generic-params.rs:19:29
    |
 LL | fn f_lt_yes<#[cfg_attr(yes, unknown)] 'a>() {}
-   |                             ^^^^^^^
+   |                             ^^^^^^^ not found in this scope
 
-error: cannot find attribute `unknown` in this scope
+error: cannot find attribute `unknown`
   --> $DIR/cfg-generic-params.rs:22:29
    |
 LL | fn f_ty_yes<#[cfg_attr(yes, unknown)] T>() {}
-   |                             ^^^^^^^
+   |                             ^^^^^^^ not found in this scope
 
-error: cannot find attribute `unknown` in this scope
+error: cannot find attribute `unknown`
   --> $DIR/cfg-generic-params.rs:26:34
    |
 LL | type FnYes = for<#[cfg_attr(yes, unknown)] 'a> fn();
-   |                                  ^^^^^^^
+   |                                  ^^^^^^^ not found in this scope
 
-error: cannot find attribute `unknown` in this scope
+error: cannot find attribute `unknown`
   --> $DIR/cfg-generic-params.rs:30:40
    |
 LL | type PolyYes = dyn for<#[cfg_attr(yes, unknown)] 'a> Copy;
-   |                                        ^^^^^^^
+   |                                        ^^^^^^^ not found in this scope
 
-error: cannot find attribute `unknown` in this scope
+error: cannot find attribute `unknown`
   --> $DIR/cfg-generic-params.rs:34:43
    |
 LL | struct WhereYes where for<#[cfg_attr(yes, unknown)] 'a> u8: Copy;
-   |                                           ^^^^^^^
+   |                                           ^^^^^^^ not found in this scope
 
 error[E0658]: only lifetime parameters can be used in this context
   --> $DIR/cfg-generic-params.rs:7:48

@@ -6,11 +6,14 @@ LL | #![feature(macro_reexport)]
    |
    = note: subsumed by `pub use`
 
-error: cannot find attribute `macro_reexport` in this scope
+error: cannot find attribute `macro_reexport`
   --> $DIR/macro-reexport-removed.rs:5:3
    |
 LL | #[macro_reexport(macro_one)]
-   |   ^^^^^^^^^^^^^^ help: a built-in attribute with a similar name exists: `macro_export`
+   |   ^^^^^^^^^^^^^^
+   |   |
+   |   not found in this scope
+   |   help: a built-in attribute with a similar name exists: `macro_export`
 
 error: aborting due to 2 previous errors
 

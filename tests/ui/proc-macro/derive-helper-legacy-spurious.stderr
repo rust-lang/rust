@@ -1,14 +1,14 @@
-error: cannot find attribute `dummy` in this scope
+error: cannot find attribute `dummy`
   --> $DIR/derive-helper-legacy-spurious.rs:3:4
    |
 LL | #![dummy]
-   |    ^^^^^
+   |    ^^^^^ not found in this scope
 
-error: cannot find attribute `empty_helper` in this scope
+error: cannot find attribute `empty_helper`
   --> $DIR/derive-helper-legacy-spurious.rs:9:3
    |
 LL | #[empty_helper]
-   |   ^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^ not found in this scope
 
 error: aborting due to 2 previous errors
 
