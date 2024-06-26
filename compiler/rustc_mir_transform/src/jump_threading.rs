@@ -270,12 +270,13 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                     self.process_switch_int(discr, targets, bb, &mut state);
                     self.find_opportunity(pred, state, cost, depth + 1);
                 }
-                _ => self.recurse_through_terminator(pred, &state, &cost, depth),
+                _ => self.recurse_through_terminator(pred, || state, &cost, depth),
             }
-        } else {
+        } else if let &[ref predecessors @ .., last_pred] = &predecessors[..] {
             for &pred in predecessors {
-                self.recurse_through_terminator(pred, &state, &cost, depth);
+                self.recurse_through_terminator(pred, || state.clone(), &cost, depth);
             }
+            self.recurse_through_terminator(last_pred, || state, &cost, depth);
         }
 
         let new_tos = &mut self.opportunities[last_non_rec..];
@@ -566,11 +567,12 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         None
     }
 
-    #[instrument(level = "trace", skip(self, cost))]
+    #[instrument(level = "trace", skip(self, state, cost))]
     fn recurse_through_terminator(
         &mut self,
         bb: BasicBlock,
-        state: &State<ConditionSet<'a>>,
+        // Pass a closure that may clone the state, as we don't want to do it each time.
+        state: impl FnOnce() -> State<ConditionSet<'a>>,
         cost: &CostChecker<'_, 'tcx>,
         depth: usize,
     ) {
@@ -600,7 +602,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         };
 
         // We can recurse through this terminator.
-        let mut state = state.clone();
+        let mut state = state();
         if let Some(place_to_flood) = place_to_flood {
             state.flood_with(place_to_flood.as_ref(), self.map, ConditionSet::default());
         }
