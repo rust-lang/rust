@@ -204,6 +204,7 @@ enum Value<'tcx> {
         value: Const<'tcx>,
         /// Some constants do not have a deterministic value. To avoid merging two instances of the
         /// same `Const`, we assign them an additional integer index.
+        // `disambiguator` is 0 iff the constant is deterministic.
         disambiguator: usize,
     },
     /// An aggregate value, either tuple/closure/struct/enum.
@@ -288,7 +289,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             rev_locals: IndexVec::with_capacity(num_values),
             values: FxIndexSet::with_capacity_and_hasher(num_values, Default::default()),
             evaluated: IndexVec::with_capacity(num_values),
-            next_opaque: Some(0),
+            next_opaque: Some(1),
             feature_unsized_locals: tcx.features().unsized_locals,
             ssa,
             dominators,
@@ -360,6 +361,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             let next_opaque = self.next_opaque.as_mut()?;
             let disambiguator = *next_opaque;
             *next_opaque += 1;
+            assert_ne!(disambiguator, 0);
             disambiguator
         };
         Some(self.insert(Value::Constant { value, disambiguator }))
@@ -1447,12 +1449,11 @@ impl<'tcx> VnState<'_, 'tcx> {
 
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
-        // This was already constant in MIR, do not change it.
-        if let Value::Constant { value, disambiguator: _ } = *self.get(index)
-            // If the constant is not deterministic, adding an additional mention of it in MIR will
-            // not give the same value as the former mention.
-            && value.is_deterministic()
-        {
+        // This was already constant in MIR, do not change it. If the constant is not
+        // deterministic, adding an additional mention of it in MIR will not give the same value as
+        // the former mention.
+        if let Value::Constant { value, disambiguator: 0 } = *self.get(index) {
+            assert!(value.is_deterministic());
             return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
         }
 
