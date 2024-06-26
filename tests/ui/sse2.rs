@@ -2,7 +2,6 @@
 
 #![allow(stable_features)]
 #![feature(cfg_target_feature)]
-#![feature(lint_reasons)]
 
 use std::env;
 

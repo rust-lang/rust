@@ -5,7 +5,7 @@
 #![feature(f16)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(lint_reasons)]
+#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![feature(never_type)]
 #![feature(rustc_private)]
 #![feature(assert_matches)]

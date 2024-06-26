@@ -1,7 +1,6 @@
 //@ check-pass
 //@ incremental
 
-#![feature(lint_reasons)]
 #![warn(unused)]
 
 struct OneUnused;
