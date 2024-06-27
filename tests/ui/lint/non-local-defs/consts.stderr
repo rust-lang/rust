@@ -1,5 +1,5 @@
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/consts.rs:13:5
+  --> $DIR/consts.rs:15:5
    |
 LL | const Z: () = {
    | -----------
@@ -17,10 +17,14 @@ LL |     impl Uto for &Test {}
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: items in an anonymous const item (`const _: () = { ... }`) are treated as in the same scope as the anonymous const's declaration for the purpose of this lint
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
-   = note: `#[warn(non_local_definitions)]` on by default
+note: the lint level is defined here
+  --> $DIR/consts.rs:5:9
+   |
+LL | #![warn(non_local_definitions)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/consts.rs:24:5
+  --> $DIR/consts.rs:26:5
    |
 LL | static A: u32 = {
    | ------------- move the `impl` block outside of this static `A`
@@ -36,7 +40,7 @@ LL |     impl Uto2 for Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/consts.rs:32:5
+  --> $DIR/consts.rs:34:5
    |
 LL | const B: u32 = {
    | ------------ move the `impl` block outside of this constant `B`
@@ -52,7 +56,7 @@ LL |     impl Uto3 for Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/consts.rs:43:5
+  --> $DIR/consts.rs:45:5
    |
 LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
@@ -65,7 +69,7 @@ LL |     impl Test {
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/consts.rs:50:9
+  --> $DIR/consts.rs:52:9
    |
 LL |       const {
    |  ___________-
@@ -84,7 +88,7 @@ LL | |     };
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/consts.rs:59:9
+  --> $DIR/consts.rs:61:9
    |
 LL |     const _: u32 = {
    |     ------------ move the `impl` block outside of this constant `_` and up 2 bodies
@@ -98,7 +102,7 @@ LL |         impl Test {
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/consts.rs:72:9
+  --> $DIR/consts.rs:74:9
    |
 LL |     let _a = || {
    |              -- move the `impl` block outside of this closure `<unnameable>` and up 2 bodies
@@ -113,7 +117,7 @@ LL |         impl Uto9 for Test {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/consts.rs:79:9
+  --> $DIR/consts.rs:81:9
    |
 LL |       type A = [u32; {
    |  ____________________-
