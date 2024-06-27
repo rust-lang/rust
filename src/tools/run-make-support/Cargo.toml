@@ -8,4 +8,6 @@ object = "0.34.0"
 similar = "2.5.0"
 wasmparser = "0.118.2"
 regex = "1.8" # 1.8 to avoid memchr 2.6.0, as 2.5.0 is pinned in the workspace
-gimli = "0.28.1"
+# gimli = "0.28.1"
+# FIXME: replace with crates.io release once available
+gimli = { git = "https://github.com/gimli-rs/gimli.git", rev = "aca0c4275e073da77a0c6e506ba9f4fb3c3aa6ca" } # PR 728

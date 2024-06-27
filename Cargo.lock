@@ -1613,6 +1613,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gimli"
+version = "0.30.0"
+source = "git+https://github.com/gimli-rs/gimli.git?rev=aca0c4275e073da77a0c6e506ba9f4fb3c3aa6ca#aca0c4275e073da77a0c6e506ba9f4fb3c3aa6ca"
+dependencies = [
+ "fallible-iterator",
+ "indexmap",
+ "stable_deref_trait",
+]
+
+[[package]]
 name = "glob"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3394,7 +3404,7 @@ dependencies = [
 name = "run_make_support"
 version = "0.2.0"
 dependencies = [
- "gimli 0.28.1",
+ "gimli 0.30.0",
  "object 0.34.0",
  "regex",
  "similar",
