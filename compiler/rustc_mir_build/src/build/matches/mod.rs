@@ -21,6 +21,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Pos, Span};
 use rustc_target::abi::VariantIdx;
 use tracing::{debug, instrument};
+use util::visit_bindings;
 
 // helper functions, broken out by category:
 mod simplify;
@@ -146,6 +147,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Some(args.variable_source_info.scope),
                 args.variable_source_info.span,
                 args.declare_let_bindings,
+                false,
             ),
             _ => {
                 let mut block = block;
@@ -314,13 +316,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let match_start_span = span.shrink_to_lo().to(scrutinee_span);
 
-        let fake_borrow_temps = self.lower_match_tree(
+        // The set of places that we are creating fake borrows of. If there are no match guards then
+        // we don't need any fake borrows, so don't track them.
+        let fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)> = if match_has_guard {
+            util::collect_fake_borrows(self, &candidates, scrutinee_span, scrutinee_place.base())
+        } else {
+            Vec::new()
+        };
+
+        self.lower_match_tree(
             block,
             scrutinee_span,
             &scrutinee_place,
             match_start_span,
-            match_has_guard,
             &mut candidates,
+            false,
         );
 
         self.lower_match_arms(
@@ -373,89 +383,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 (arm, arm_candidate)
             })
             .collect()
-    }
-
-    /// Create the decision tree for the match expression, starting from `block`.
-    ///
-    /// Modifies `candidates` to store the bindings and type ascriptions for
-    /// that candidate.
-    ///
-    /// Returns the places that need fake borrows because we bind or test them.
-    fn lower_match_tree<'pat>(
-        &mut self,
-        block: BasicBlock,
-        scrutinee_span: Span,
-        scrutinee_place_builder: &PlaceBuilder<'tcx>,
-        match_start_span: Span,
-        match_has_guard: bool,
-        candidates: &mut [&mut Candidate<'pat, 'tcx>],
-    ) -> Vec<(Place<'tcx>, Local, FakeBorrowKind)> {
-        // The set of places that we are creating fake borrows of. If there are no match guards then
-        // we don't need any fake borrows, so don't track them.
-        let fake_borrows: Vec<(Place<'tcx>, Local, FakeBorrowKind)> = if match_has_guard {
-            util::collect_fake_borrows(
-                self,
-                candidates,
-                scrutinee_span,
-                scrutinee_place_builder.base(),
-            )
-        } else {
-            Vec::new()
-        };
-
-        // See the doc comment on `match_candidates` for why we have an
-        // otherwise block. Match checking will ensure this is actually
-        // unreachable.
-        let otherwise_block = self.cfg.start_new_block();
-
-        // This will generate code to test scrutinee_place and
-        // branch to the appropriate arm block
-        self.match_candidates(match_start_span, scrutinee_span, block, otherwise_block, candidates);
-
-        let source_info = self.source_info(scrutinee_span);
-
-        // Matching on a `scrutinee_place` with an uninhabited type doesn't
-        // generate any memory reads by itself, and so if the place "expression"
-        // contains unsafe operations like raw pointer dereferences or union
-        // field projections, we wouldn't know to require an `unsafe` block
-        // around a `match` equivalent to `std::intrinsics::unreachable()`.
-        // See issue #47412 for this hole being discovered in the wild.
-        //
-        // HACK(eddyb) Work around the above issue by adding a dummy inspection
-        // of `scrutinee_place`, specifically by applying `ReadForMatch`.
-        //
-        // NOTE: ReadForMatch also checks that the scrutinee is initialized.
-        // This is currently needed to not allow matching on an uninitialized,
-        // uninhabited value. If we get never patterns, those will check that
-        // the place is initialized, and so this read would only be used to
-        // check safety.
-        let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
-
-        if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
-            self.cfg.push_fake_read(
-                otherwise_block,
-                source_info,
-                cause_matched_place,
-                scrutinee_place,
-            );
-        }
-
-        self.cfg.terminate(otherwise_block, source_info, TerminatorKind::Unreachable);
-
-        // Link each leaf candidate to the `pre_binding_block` of the next one.
-        let mut previous_candidate: Option<&mut Candidate<'_, '_>> = None;
-
-        for candidate in candidates {
-            candidate.visit_leaves(|leaf_candidate| {
-                if let Some(ref mut prev) = previous_candidate {
-                    assert!(leaf_candidate.false_edge_start_block.is_some());
-                    prev.next_candidate_start_block = leaf_candidate.false_edge_start_block;
-                }
-                previous_candidate = Some(leaf_candidate);
-            });
-        }
-
-        fake_borrows
     }
 
     /// Lower the bindings, guards and arm bodies of a `match` expression.
@@ -728,59 +655,53 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         set_match_place: bool,
     ) -> BlockAnd<()> {
         let mut candidate = Candidate::new(initializer.clone(), irrefutable_pat, false, self);
-        let fake_borrow_temps = self.lower_match_tree(
-            block,
-            irrefutable_pat.span,
-            &initializer,
-            irrefutable_pat.span,
-            false,
-            &mut [&mut candidate],
-        );
 
         // For matches and function arguments, the place that is being matched
         // can be set when creating the variables. But the place for
         // let PATTERN = ... might not even exist until we do the assignment.
         // so we set it here instead.
         if set_match_place {
-            let mut next = Some(&candidate);
-            while let Some(candidate_ref) = next.take() {
-                for binding in &candidate_ref.extra_data.bindings {
+            // `try_to_place` may fail if it is unable to resolve the given `PlaceBuilder` inside a
+            // closure. In this case, we don't want to include a scrutinee place.
+            // `scrutinee_place_builder` will fail for destructured assignments. This is because a
+            // closure only captures the precise places that it will read and as a result a closure
+            // may not capture the entire tuple/struct and rather have individual places that will
+            // be read in the final MIR.
+            // Example:
+            // ```
+            // let foo = (0, 1);
+            // let c = || {
+            //    let (v1, v2) = foo;
+            // };
+            // ```
+            if let Some(place) = initializer.try_to_place(self) {
+                visit_bindings(&[&mut candidate], |binding: &Binding<'_>| {
                     let local = self.var_local_id(binding.var_id, OutsideGuard);
-                    // `try_to_place` may fail if it is unable to resolve the given
-                    // `PlaceBuilder` inside a closure. In this case, we don't want to include
-                    // a scrutinee place. `scrutinee_place_builder` will fail for destructured
-                    // assignments. This is because a closure only captures the precise places
-                    // that it will read and as a result a closure may not capture the entire
-                    // tuple/struct and rather have individual places that will be read in the
-                    // final MIR.
-                    // Example:
-                    // ```
-                    // let foo = (0, 1);
-                    // let c = || {
-                    //    let (v1, v2) = foo;
-                    // };
-                    // ```
-                    if let Some(place) = initializer.try_to_place(self) {
-                        let LocalInfo::User(BindingForm::Var(VarBindingForm {
-                            opt_match_place: Some((ref mut match_place, _)),
-                            ..
-                        })) = **self.local_decls[local].local_info.as_mut().assert_crate_local()
-                        else {
-                            bug!("Let binding to non-user variable.")
-                        };
+                    if let LocalInfo::User(BindingForm::Var(VarBindingForm {
+                        opt_match_place: Some((ref mut match_place, _)),
+                        ..
+                    })) = **self.local_decls[local].local_info.as_mut().assert_crate_local()
+                    {
                         *match_place = Some(place);
-                    }
-                }
-                // All of the subcandidates should bind the same locals, so we
-                // only visit the first one.
-                next = candidate_ref.subcandidates.get(0)
+                    } else {
+                        bug!("Let binding to non-user variable.")
+                    };
+                });
             }
         }
 
+        self.lower_match_tree(
+            block,
+            irrefutable_pat.span,
+            &initializer,
+            irrefutable_pat.span,
+            &mut [&mut candidate],
+            false,
+        );
         self.bind_pattern(
             self.source_info(irrefutable_pat.span),
             candidate,
-            fake_borrow_temps.as_slice(),
+            &[],
             irrefutable_pat.span,
             None,
             false,
@@ -1306,6 +1227,79 @@ pub(crate) struct ArmHasGuard(pub(crate) bool);
 // Main matching algorithm
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    /// The entrypoint of the matching algorithm. Create the decision tree for the match expression,
+    /// starting from `block`.
+    ///
+    /// Modifies `candidates` to store the bindings and type ascriptions for
+    /// that candidate.
+    ///
+    /// `refutable` indicates whether the candidate list is refutable (for `if let` and `let else`)
+    /// or not (for `let` and `match`). In the refutable case we return the block to which we branch
+    /// on failure.
+    fn lower_match_tree<'pat>(
+        &mut self,
+        block: BasicBlock,
+        scrutinee_span: Span,
+        scrutinee_place_builder: &PlaceBuilder<'tcx>,
+        match_start_span: Span,
+        candidates: &mut [&mut Candidate<'pat, 'tcx>],
+        refutable: bool,
+    ) -> BasicBlock {
+        // See the doc comment on `match_candidates` for why we have an otherwise block.
+        let otherwise_block = self.cfg.start_new_block();
+
+        // This will generate code to test scrutinee_place and branch to the appropriate arm block
+        self.match_candidates(match_start_span, scrutinee_span, block, otherwise_block, candidates);
+
+        // Link each leaf candidate to the `false_edge_start_block` of the next one.
+        let mut previous_candidate: Option<&mut Candidate<'_, '_>> = None;
+        for candidate in candidates {
+            candidate.visit_leaves(|leaf_candidate| {
+                if let Some(ref mut prev) = previous_candidate {
+                    assert!(leaf_candidate.false_edge_start_block.is_some());
+                    prev.next_candidate_start_block = leaf_candidate.false_edge_start_block;
+                }
+                previous_candidate = Some(leaf_candidate);
+            });
+        }
+
+        if refutable {
+            // In refutable cases there's always at least one candidate, and we want a false edge to
+            // the failure block.
+            previous_candidate.as_mut().unwrap().next_candidate_start_block = Some(otherwise_block)
+        } else {
+            // Match checking ensures `otherwise_block` is actually unreachable in irrefutable
+            // cases.
+            let source_info = self.source_info(scrutinee_span);
+
+            // Matching on a scrutinee place of an uninhabited type doesn't generate any memory
+            // reads by itself, and so if the place is uninitialized we wouldn't know. In order to
+            // disallow the following:
+            // ```rust
+            // let x: !;
+            // match x {}
+            // ```
+            // we add a dummy read on the place.
+            //
+            // NOTE: If we require never patterns for empty matches, those will check that the place
+            // is initialized, and so this read would no longer be needed.
+            let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
+
+            if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
+                self.cfg.push_fake_read(
+                    otherwise_block,
+                    source_info,
+                    cause_matched_place,
+                    scrutinee_place,
+                );
+            }
+
+            self.cfg.terminate(otherwise_block, source_info, TerminatorKind::Unreachable);
+        }
+
+        otherwise_block
+    }
+
     /// The main match algorithm. It begins with a set of candidates
     /// `candidates` and has the job of generating code to determine
     /// which of these candidates, if any, is the correct one. The
@@ -1998,52 +1992,50 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// If the bindings have already been declared, set `declare_bindings` to
-    /// `false` to avoid duplicated bindings declaration. Used for if-let guards.
+    /// `false` to avoid duplicated bindings declaration; used for if-let guards.
     pub(crate) fn lower_let_expr(
         &mut self,
         mut block: BasicBlock,
         expr_id: ExprId,
         pat: &Pat<'tcx>,
         source_scope: Option<SourceScope>,
-        span: Span,
+        scope_span: Span,
         declare_bindings: bool,
+        storages_alive: bool,
     ) -> BlockAnd<()> {
         let expr_span = self.thir[expr_id].span;
-        let expr_place_builder = unpack!(block = self.lower_scrutinee(block, expr_id, expr_span));
-        let wildcard = Pat::wildcard_from_ty(pat.ty);
-        let mut guard_candidate = Candidate::new(expr_place_builder.clone(), pat, false, self);
-        let mut otherwise_candidate =
-            Candidate::new(expr_place_builder.clone(), &wildcard, false, self);
-        let fake_borrow_temps = self.lower_match_tree(
+        let scrutinee = unpack!(block = self.lower_scrutinee(block, expr_id, expr_span));
+        let mut candidate = Candidate::new(scrutinee.clone(), pat, false, self);
+        let otherwise_block = self.lower_match_tree(
             block,
+            expr_span,
+            &scrutinee,
             pat.span,
-            &expr_place_builder,
-            pat.span,
-            false,
-            &mut [&mut guard_candidate, &mut otherwise_candidate],
+            &mut [&mut candidate],
+            true,
         );
-        let expr_place = expr_place_builder.try_to_place(self);
-        let opt_expr_place = expr_place.as_ref().map(|place| (Some(place), expr_span));
-        let otherwise_post_guard_block = otherwise_candidate.pre_binding_block.unwrap();
-        self.break_for_else(otherwise_post_guard_block, self.source_info(expr_span));
+
+        self.break_for_else(otherwise_block, self.source_info(expr_span));
 
         if declare_bindings {
-            self.declare_bindings(source_scope, pat.span.to(span), pat, None, opt_expr_place);
+            let expr_place = scrutinee.try_to_place(self);
+            let opt_expr_place = expr_place.as_ref().map(|place| (Some(place), expr_span));
+            self.declare_bindings(source_scope, pat.span.to(scope_span), pat, None, opt_expr_place);
         }
 
-        let post_guard_block = self.bind_pattern(
+        let success = self.bind_pattern(
             self.source_info(pat.span),
-            guard_candidate,
-            fake_borrow_temps.as_slice(),
+            candidate,
+            &[],
             expr_span,
             None,
-            false,
+            storages_alive,
         );
 
         // If branch coverage is enabled, record this branch.
-        self.visit_coverage_conditional_let(pat, post_guard_block, otherwise_post_guard_block);
+        self.visit_coverage_conditional_let(pat, success, otherwise_block);
 
-        post_guard_block.unit()
+        success.unit()
     }
 
     /// Initializes each of the bindings from the candidate by
@@ -2091,14 +2083,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return self.cfg.start_new_block();
         }
 
-        self.ascribe_types(
-            block,
-            parent_data
-                .iter()
-                .flat_map(|d| &d.ascriptions)
-                .cloned()
-                .chain(candidate.extra_data.ascriptions),
-        );
+        let ascriptions = parent_data
+            .iter()
+            .flat_map(|d| &d.ascriptions)
+            .cloned()
+            .chain(candidate.extra_data.ascriptions);
+        let bindings =
+            parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings);
+
+        self.ascribe_types(block, ascriptions);
 
         // rust-lang/rust#27282: The `autoref` business deserves some
         // explanation here.
@@ -2185,12 +2178,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             && let Some(guard) = arm.guard
         {
             let tcx = self.tcx;
-            let bindings =
-                parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings);
 
             self.bind_matched_candidate_for_guard(block, schedule_drops, bindings.clone());
-            let guard_frame =
-                GuardFrame { locals: bindings.map(|b| GuardFrameLocal::new(b.var_id)).collect() };
+            let guard_frame = GuardFrame {
+                locals: bindings.clone().map(|b| GuardFrameLocal::new(b.var_id)).collect(),
+            };
             debug!("entering guard building context: {:?}", guard_frame);
             self.guard_context.push(guard_frame);
 
@@ -2263,11 +2255,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // ```
             //
             // and that is clearly not correct.
-            let by_value_bindings = parent_data
-                .iter()
-                .flat_map(|d| &d.bindings)
-                .chain(&candidate.extra_data.bindings)
-                .filter(|binding| matches!(binding.binding_mode.0, ByRef::No));
+            let by_value_bindings =
+                bindings.filter(|binding| matches!(binding.binding_mode.0, ByRef::No));
             // Read all of the by reference bindings to ensure that the
             // place they refer to can't be modified by the guard.
             for binding in by_value_bindings.clone() {
@@ -2291,7 +2280,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.bind_matched_candidate_for_arm_body(
                 block,
                 schedule_drops,
-                parent_data.iter().flat_map(|d| &d.bindings).chain(&candidate.extra_data.bindings),
+                bindings,
                 storages_alive,
             );
             block
@@ -2492,56 +2481,5 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
         debug!(?locals);
         self.var_indices.insert(var_id, locals);
-    }
-
-    pub(crate) fn ast_let_else(
-        &mut self,
-        mut block: BasicBlock,
-        init_id: ExprId,
-        initializer_span: Span,
-        else_block: BlockId,
-        let_else_scope: &region::Scope,
-        pattern: &Pat<'tcx>,
-    ) -> BlockAnd<BasicBlock> {
-        let else_block_span = self.thir[else_block].span;
-        let (matching, failure) = self.in_if_then_scope(*let_else_scope, else_block_span, |this| {
-            let scrutinee = unpack!(block = this.lower_scrutinee(block, init_id, initializer_span));
-            let pat = Pat { ty: pattern.ty, span: else_block_span, kind: PatKind::Wild };
-            let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false, this);
-            let mut candidate = Candidate::new(scrutinee.clone(), pattern, false, this);
-            let fake_borrow_temps = this.lower_match_tree(
-                block,
-                initializer_span,
-                &scrutinee,
-                pattern.span,
-                false,
-                &mut [&mut candidate, &mut wildcard],
-            );
-            // This block is for the matching case
-            let matching = this.bind_pattern(
-                this.source_info(pattern.span),
-                candidate,
-                fake_borrow_temps.as_slice(),
-                initializer_span,
-                None,
-                true,
-            );
-            // This block is for the failure case
-            let failure = this.bind_pattern(
-                this.source_info(else_block_span),
-                wildcard,
-                fake_borrow_temps.as_slice(),
-                initializer_span,
-                None,
-                true,
-            );
-
-            // If branch coverage is enabled, record this branch.
-            this.visit_coverage_conditional_let(pattern, matching, failure);
-
-            this.break_for_else(failure, this.source_info(initializer_span));
-            matching.unit()
-        });
-        matching.and(failure)
     }
 }

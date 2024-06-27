@@ -189,38 +189,37 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let initializer_span = this.thir[*initializer].span;
                     let scope = (*init_scope, source_info);
-                    let failure = unpack!(
-                        block = this.in_scope(scope, *lint_level, |this| {
-                            this.declare_bindings(
-                                visibility_scope,
-                                remainder_span,
-                                pattern,
-                                None,
-                                Some((Some(&destination), initializer_span)),
-                            );
-                            this.visit_primary_bindings(
-                                pattern,
-                                UserTypeProjections::none(),
-                                &mut |this, _, _, node, span, _, _| {
-                                    this.storage_live_binding(
-                                        block,
-                                        node,
-                                        span,
-                                        OutsideGuard,
-                                        true,
-                                    );
-                                },
-                            );
-                            this.ast_let_else(
-                                block,
-                                *initializer,
-                                initializer_span,
-                                *else_block,
-                                &last_remainder_scope,
-                                pattern,
-                            )
-                        })
-                    );
+                    let failure_and_block = this.in_scope(scope, *lint_level, |this| {
+                        this.declare_bindings(
+                            visibility_scope,
+                            remainder_span,
+                            pattern,
+                            None,
+                            Some((Some(&destination), initializer_span)),
+                        );
+                        this.visit_primary_bindings(
+                            pattern,
+                            UserTypeProjections::none(),
+                            &mut |this, _, _, node, span, _, _| {
+                                this.storage_live_binding(block, node, span, OutsideGuard, true);
+                            },
+                        );
+                        let else_block_span = this.thir[*else_block].span;
+                        let (matching, failure) =
+                            this.in_if_then_scope(last_remainder_scope, else_block_span, |this| {
+                                this.lower_let_expr(
+                                    block,
+                                    *initializer,
+                                    pattern,
+                                    None,
+                                    initializer_span,
+                                    false,
+                                    true,
+                                )
+                            });
+                        matching.and(failure)
+                    });
+                    let failure = unpack!(block = failure_and_block);
                     this.cfg.goto(failure, source_info, failure_entry);
 
                     if let Some(source_scope) = visibility_scope {
