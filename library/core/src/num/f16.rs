@@ -12,6 +12,8 @@
 #![unstable(feature = "f16", issue = "116909")]
 
 use crate::convert::FloatToInt;
+#[cfg(not(test))]
+use crate::intrinsics;
 use crate::mem;
 use crate::num::FpCategory;
 
@@ -788,12 +790,52 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    pub fn to_bits(self) -> u16 {
-        // SAFETY: `u16` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        unsafe { mem::transmute(self) }
+    pub const fn to_bits(self) -> u16 {
+        // SAFETY: `u16` is a plain old datatype so we can always transmute to it.
+        // ...sorta.
+        //
+        // It turns out that at runtime, it is possible for a floating point number
+        // to be subject to a floating point mode that alters nonzero subnormal numbers
+        // to zero on reads and writes, aka "denormals are zero" and "flush to zero".
+        //
+        // And, of course evaluating to a NaN value is fairly nondeterministic.
+        // More precisely: when NaN should be returned is knowable, but which NaN?
+        // So far that's defined by a combination of LLVM and the CPU, not Rust.
+        // This function, however, allows observing the bitstring of a NaN,
+        // thus introspection on CTFE.
+        //
+        // In order to preserve, at least for the moment, const-to-runtime equivalence,
+        // we reject any of these possible situations from happening.
+        #[inline]
+        #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+        const fn ct_f16_to_u16(ct: f16) -> u16 {
+            // FIXME(f16_f128): we should use `.classify()` like `f32` and `f64`, but we don't yet
+            // want to rely on that on all platforms because it is nondeterministic (e.g. x86 has
+            // convention discrepancies calling intrinsics). So just classify the bits instead.
+
+            // SAFETY: this is a POD transmutation
+            let bits = unsafe { mem::transmute::<f16, u16>(ct) };
+            match f16::classify_bits(bits) {
+                FpCategory::Nan => {
+                    panic!("const-eval error: cannot use f16::to_bits on a NaN")
+                }
+                FpCategory::Subnormal => {
+                    panic!("const-eval error: cannot use f16::to_bits on a subnormal number")
+                }
+                FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => bits,
+            }
+        }
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_f16_to_u16(x: f16) -> u16 {
+            // SAFETY: `u16` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute(x) }
+        }
+        intrinsics::const_eval_select((self,), ct_f16_to_u16, rt_f16_to_u16)
     }
 
     /// Raw transmutation from `u16`.
@@ -837,11 +879,51 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    pub fn from_bits(v: u16) -> Self {
-        // SAFETY: `u16` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        unsafe { mem::transmute(v) }
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    pub const fn from_bits(v: u16) -> Self {
+        // It turns out the safety issues with sNaN were overblown! Hooray!
+        // SAFETY: `u16` is a plain old datatype so we can always transmute from it
+        // ...sorta.
+        //
+        // It turns out that at runtime, it is possible for a floating point number
+        // to be subject to floating point modes that alter nonzero subnormal numbers
+        // to zero on reads and writes, aka "denormals are zero" and "flush to zero".
+        // This is not a problem usually, but at least one tier2 platform for Rust
+        // actually exhibits this behavior by default: thumbv7neon
+        // aka "the Neon FPU in AArch32 state"
+        //
+        // And, of course evaluating to a NaN value is fairly nondeterministic.
+        // More precisely: when NaN should be returned is knowable, but which NaN?
+        // So far that's defined by a combination of LLVM and the CPU, not Rust.
+        // This function, however, allows observing the bitstring of a NaN,
+        // thus introspection on CTFE.
+        //
+        // In order to preserve, at least for the moment, const-to-runtime equivalence,
+        // reject any of these possible situations from happening.
+        #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+        const fn ct_u16_to_f16(ct: u16) -> f16 {
+            match f16::classify_bits(ct) {
+                FpCategory::Subnormal => {
+                    panic!("const-eval error: cannot use f16::from_bits on a subnormal number")
+                }
+                FpCategory::Nan => {
+                    panic!("const-eval error: cannot use f16::from_bits on NaN")
+                }
+                FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => {
+                    // SAFETY: It's not a frumious number
+                    unsafe { mem::transmute::<u16, f16>(ct) }
+                }
+            }
+        }
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_u16_to_f16(x: u16) -> f16 {
+            // SAFETY: `u16` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute(x) }
+        }
+        intrinsics::const_eval_select((v,), ct_u16_to_f16, rt_u16_to_f16)
     }
 
     /// Return the memory representation of this floating point number as a byte array in
@@ -860,8 +942,9 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    pub fn to_be_bytes(self) -> [u8; 2] {
+    pub const fn to_be_bytes(self) -> [u8; 2] {
         self.to_bits().to_be_bytes()
     }
 
@@ -881,8 +964,9 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    pub fn to_le_bytes(self) -> [u8; 2] {
+    pub const fn to_le_bytes(self) -> [u8; 2] {
         self.to_bits().to_le_bytes()
     }
 
@@ -915,8 +999,9 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
-    pub fn to_ne_bytes(self) -> [u8; 2] {
+    pub const fn to_ne_bytes(self) -> [u8; 2] {
         self.to_bits().to_ne_bytes()
     }
 
@@ -938,7 +1023,8 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    pub fn from_be_bytes(bytes: [u8; 2]) -> Self {
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    pub const fn from_be_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_be_bytes(bytes))
     }
 
@@ -960,7 +1046,8 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    pub fn from_le_bytes(bytes: [u8; 2]) -> Self {
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    pub const fn from_le_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_le_bytes(bytes))
     }
 
@@ -993,7 +1080,8 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    pub fn from_ne_bytes(bytes: [u8; 2]) -> Self {
+    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    pub const fn from_ne_bytes(bytes: [u8; 2]) -> Self {
         Self::from_bits(u16::from_ne_bytes(bytes))
     }
 
