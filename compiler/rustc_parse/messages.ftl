@@ -53,6 +53,9 @@ parse_bare_cr = {$double_quotes ->
 
 parse_bare_cr_in_raw_string = bare CR not allowed in raw string
 
+parse_binder_before_modifiers = `for<...>` binder should be placed before trait bound modifiers
+    .label = place the `for<...>` binder before any modifiers
+
 parse_bounds_not_allowed_on_trait_aliases = bounds are not allowed on trait aliases
 
 parse_box_not_pat = expected pattern, found {$descr}

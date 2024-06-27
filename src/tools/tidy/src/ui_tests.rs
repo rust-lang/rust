@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 const ENTRY_LIMIT: u32 = 901;
 // FIXME: The following limits should be reduced eventually.
 
-const ISSUES_ENTRY_LIMIT: u32 = 1672;
+const ISSUES_ENTRY_LIMIT: u32 = 1673;
 
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
     "rs",     // test source files
