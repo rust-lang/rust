@@ -10,13 +10,11 @@
 
 #[coverage]
 //~^ ERROR malformed `coverage` attribute input
-//~| ERROR attribute should be applied to a function definition or closure
 mod my_mod {}
 
 mod my_mod_inner {
     #![coverage]
     //~^ ERROR malformed `coverage` attribute input
-    //~| ERROR attribute should be applied to a function definition or closure
 }
 
 #[coverage]
@@ -26,7 +24,6 @@ struct MyStruct;
 
 #[coverage]
 //~^ ERROR malformed `coverage` attribute input
-//~| ERROR attribute should be applied to a function definition or closure
 impl MyStruct {
     #[coverage]
     //~^ ERROR malformed `coverage` attribute input
@@ -51,7 +48,6 @@ trait MyTrait {
 
 #[coverage]
 //~^ ERROR malformed `coverage` attribute input
-//~| ERROR attribute should be applied to a function definition or closure
 impl MyTrait for MyStruct {
     #[coverage]
     //~^ ERROR malformed `coverage` attribute input

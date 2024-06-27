@@ -369,13 +369,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks that `#[coverage(..)]` is applied to a function or closure.
+    /// Checks that `#[coverage(..)]` is applied to a function/closure/method,
+    /// or to an impl block or module.
     fn check_coverage(&self, attr: &Attribute, span: Span, target: Target) -> bool {
         match target {
-            // #[coverage(..)] on function is fine
             Target::Fn
             | Target::Closure
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
+            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
+            | Target::Impl
+            | Target::Mod => true,
+
             _ => {
                 self.dcx().emit_err(errors::CoverageNotFnOrClosure {
                     attr_span: attr.span,
