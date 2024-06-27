@@ -1382,7 +1382,7 @@ dependencies = [
  "fluent-syntax",
  "intl-memoizer",
  "intl_pluralrules",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "self_cell 0.10.3",
  "smallvec",
  "unic-langid",
@@ -2083,7 +2083,7 @@ dependencies = [
  "anyhow",
  "clap",
  "fs-err",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "rustdoc-json-types",
  "serde",
  "serde_json",
@@ -2415,7 +2415,7 @@ dependencies = [
  "memmap2",
  "parking_lot",
  "perf-event-open-sys",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "smallvec",
 ]
 
@@ -3025,7 +3025,7 @@ checksum = "c4e8e505342045d397d0b6674dcb82d6faf5cf40484d30eeb88fc82ef14e903f"
 dependencies = [
  "datafrog",
  "log",
- "rustc-hash",
+ "rustc-hash 1.1.0",
 ]
 
 [[package]]
@@ -3458,6 +3458,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
+name = "rustc-hash"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "583034fd73374156e66797ed8e5b0d5690409c9226b22d87cb7f19821c05d152"
+
+[[package]]
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
@@ -3834,6 +3840,7 @@ dependencies = [
  "memmap2",
  "parking_lot",
  "portable-atomic",
+ "rustc-hash 2.0.0",
  "rustc-rayon",
  "rustc_arena",
  "rustc_graphviz",
@@ -4521,7 +4528,7 @@ dependencies = [
 name = "rustc_pattern_analysis"
 version = "0.0.0"
 dependencies = [
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_data_structures",
@@ -4913,7 +4920,7 @@ name = "rustdoc-json-types"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "serde",
  "serde_json",
 ]
@@ -5641,7 +5648,7 @@ dependencies = [
  "ignore",
  "miropt-test-tools",
  "regex",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "semver",
  "similar",
  "termcolor",
@@ -5895,7 +5902,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "deb68604048ff8fa93347f02441e4487594adc20bb8a084f9e564d2b827a0a9f"
 dependencies = [
- "rustc-hash",
+ "rustc-hash 1.1.0",
 ]
 
 [[package]]

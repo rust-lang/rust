@@ -1,16 +1,17 @@
-use std::{
-    collections::{HashMap, HashSet},
-    hash::BuildHasherDefault,
-};
+use std::hash::BuildHasherDefault;
 
-// pub use rustc_hash::{GxHashMap, GxHashSet, GxHasher};
+#[cfg(not(all(target_feature = "sse2", target_feature = "aes")))]
+pub use rustc_hash::{FxHashMap as GxHashMap, FxHashSet as GxHashSet, FxHasher as GxHasher};
 
+#[cfg(all(target_feature = "sse2", target_feature = "aes"))]
 pub use gxhash::GxHasher;
 
 pub type StdEntry<'a, K, V> = std::collections::hash_map::Entry<'a, K, V>;
 
-pub type GxHashMap<K, V> = HashMap<K, V, BuildHasherDefault<GxHasher>>;
-pub type GxHashSet<T> = HashSet<T, BuildHasherDefault<GxHasher>>;
+#[cfg(all(target_feature = "sse2", target_feature = "aes"))]
+pub type GxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<GxHasher>>;
+#[cfg(all(target_feature = "sse2", target_feature = "aes"))]
+pub type GxHashSet<T> = std::collections::HashSet<T, BuildHasherDefault<GxHasher>>;
 
 pub type GxIndexMap<K, V> = indexmap::IndexMap<K, V, BuildHasherDefault<GxHasher>>;
 pub type GxIndexSet<V> = indexmap::IndexSet<V, BuildHasherDefault<GxHasher>>;

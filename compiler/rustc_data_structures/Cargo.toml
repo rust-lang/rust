@@ -10,7 +10,6 @@ bitflags = "2.4.1"
 either = "1.0"
 elsa = "=1.7.1"
 ena = "0.14.3"
-gxhash = "3.4.1"
 indexmap = { version = "2.0.0" }
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
 measureme = "11"
@@ -52,6 +51,12 @@ memmap2 = "0.2.1"
 
 [target.'cfg(any(target_arch = "mips", target_arch = "powerpc", target_arch = "sparc"))'.dependencies]
 portable-atomic = "1.5.1"
+
+[target.'cfg(not(all(target_feature = "sse2", target_feature = "aes")))'.dependencies] 
+rustc-hash = "2.0.0" 
+
+[target.'cfg(all(target_feature = "sse2", target_feature = "aes"))'.dependencies] 
+gxhash = "3.4.1"
 
 [features]
 # tidy-alphabetical-start

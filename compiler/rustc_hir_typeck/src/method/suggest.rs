@@ -2907,7 +2907,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Adt(def, _) => Some(def.did()),
                 _ => None,
             })
-            .collect::<FxIndexSet<_>>();
+            .collect::<GxIndexSet<_>>();
         let mut foreign_spans: MultiSpan = foreign_def_ids
             .iter()
             .filter_map(|def_id| {
