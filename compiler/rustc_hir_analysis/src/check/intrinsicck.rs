@@ -1,4 +1,4 @@
-use rustc_ast::InlineAsmTemplatePiece;
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
@@ -124,7 +124,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         idx: usize,
         reg: InlineAsmRegOrRegClass,
         expr: &'tcx hir::Expr<'tcx>,
-        template: &[InlineAsmTemplatePiece],
+        asm: &hir::InlineAsm<'tcx>,
         is_input: bool,
         tied_input: Option<(&'tcx hir::Expr<'tcx>, Option<InlineAsmType>)>,
         target_features: &FxIndexSet<Symbol>,
@@ -267,7 +267,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             // Search for any use of this operand without a modifier and emit
             // the suggestion for them.
             let mut spans = vec![];
-            for piece in template {
+            for piece in asm.template {
                 if let &InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span } = piece
                 {
                     if operand_idx == idx && modifier.is_none() {
@@ -296,6 +296,24 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         ));
                     },
                 );
+            }
+        }
+
+        if let ty::RawPtr(_, mutability) = *ty.kind() {
+            let is_mut = match mutability {
+                hir::Mutability::Not => false,
+                hir::Mutability::Mut => true,
+            };
+
+            if is_mut && asm.options.contains(InlineAsmOptions::READONLY) {
+                let msg = "Passing a mutable pointer to asm!() with 'readonly' option";
+                let note = "Mutable pointer suggest that this piece of assembly modifies the underlying object, consider using const pointer or checking the options";
+                self.tcx.dcx().struct_span_warn(expr.span, msg).with_note(note).emit();
+            }
+            if asm.options.contains(InlineAsmOptions::NOMEM) {
+                let msg = "Passing a pointer to asm!() with 'nomem' option";
+                let note = "Pointer suggest that this piece of assembly reads the underlying object, consider using usize or checking the options";
+                self.tcx.dcx().struct_span_warn(expr.span, msg).with_note(note).emit();
             }
         }
 
@@ -399,15 +417,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
 
             match *op {
                 hir::InlineAsmOperand::In { reg, expr } => {
-                    self.check_asm_operand_type(
-                        idx,
-                        reg,
-                        expr,
-                        asm.template,
-                        true,
-                        None,
-                        target_features,
-                    );
+                    self.check_asm_operand_type(idx, reg, expr, asm, true, None, target_features);
                 }
                 hir::InlineAsmOperand::Out { reg, late: _, expr } => {
                     if let Some(expr) = expr {
@@ -415,7 +425,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             idx,
                             reg,
                             expr,
-                            asm.template,
+                            asm,
                             false,
                             None,
                             target_features,
@@ -423,22 +433,14 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     }
                 }
                 hir::InlineAsmOperand::InOut { reg, late: _, expr } => {
-                    self.check_asm_operand_type(
-                        idx,
-                        reg,
-                        expr,
-                        asm.template,
-                        false,
-                        None,
-                        target_features,
-                    );
+                    self.check_asm_operand_type(idx, reg, expr, asm, false, None, target_features);
                 }
                 hir::InlineAsmOperand::SplitInOut { reg, late: _, in_expr, out_expr } => {
                     let in_ty = self.check_asm_operand_type(
                         idx,
                         reg,
                         in_expr,
-                        asm.template,
+                        asm,
                         true,
                         None,
                         target_features,
@@ -448,7 +450,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             idx,
                             reg,
                             out_expr,
-                            asm.template,
+                            asm,
                             false,
                             Some((in_expr, in_ty)),
                             target_features,
