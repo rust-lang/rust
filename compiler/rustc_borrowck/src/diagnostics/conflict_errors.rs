@@ -73,7 +73,7 @@ enum StorageDeadOrDrop<'tcx> {
     Destructor(Ty<'tcx>),
 }
 
-impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     pub(crate) fn report_use_of_moved_or_uninitialized(
         &mut self,
         location: Location,
@@ -341,7 +341,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
     fn suggest_ref_or_clone(
         &self,
         mpi: MovePathIndex,
-        err: &mut Diag<'cx>,
+        err: &mut Diag<'infcx>,
         in_pattern: &mut bool,
         move_spans: UseSpans<'tcx>,
     ) {
@@ -517,7 +517,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
         desired_action: InitializationRequiringAction,
         span: Span,
         use_spans: UseSpans<'tcx>,
-    ) -> Diag<'cx> {
+    ) -> Diag<'infcx> {
         // We need all statements in the body where the binding was assigned to later find all
         // the branching code paths where the binding *wasn't* assigned to.
         let inits = &self.move_data.init_path_map[mpi];
@@ -1441,7 +1441,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
         location: Location,
         (place, _span): (Place<'tcx>, Span),
         borrow: &BorrowData<'tcx>,
-    ) -> Diag<'cx> {
+    ) -> Diag<'infcx> {
         let borrow_spans = self.retrieve_borrow_spans(borrow);
         let borrow_span = borrow_spans.args_or_use();
 
@@ -1491,7 +1491,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
         (place, span): (Place<'tcx>, Span),
         gen_borrow_kind: BorrowKind,
         issued_borrow: &BorrowData<'tcx>,
-    ) -> Diag<'cx> {
+    ) -> Diag<'infcx> {
         let issued_spans = self.retrieve_borrow_spans(issued_borrow);
         let issued_span = issued_spans.args_or_use();
 
@@ -1782,7 +1782,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
         err
     }
 
-    fn suggest_copy_for_type_in_cloned_ref(&self, err: &mut Diag<'cx>, place: Place<'tcx>) {
+    fn suggest_copy_for_type_in_cloned_ref(&self, err: &mut Diag<'infcx>, place: Place<'tcx>) {
         let tcx = self.infcx.tcx;
         let hir = tcx.hir();
         let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
@@ -2841,7 +2841,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
         drop_span: Span,
         borrow_spans: UseSpans<'tcx>,
         explanation: BorrowExplanation<'tcx>,
-    ) -> Diag<'cx> {
+    ) -> Diag<'infcx> {
         debug!(
             "report_local_value_does_not_live_long_enough(\
              {:?}, {:?}, {:?}, {:?}, {:?}\
@@ -3016,7 +3016,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
         &self,
         drop_span: Span,
         borrow_span: Span,
-    ) -> Diag<'cx> {
+    ) -> Diag<'infcx> {
         debug!(
             "report_thread_local_value_does_not_live_long_enough(\
              {:?}, {:?}\
@@ -3041,7 +3041,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
         borrow_spans: UseSpans<'tcx>,
         proper_span: Span,
         explanation: BorrowExplanation<'tcx>,
-    ) -> Diag<'cx> {
+    ) -> Diag<'infcx> {
         if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
             explanation
         {
@@ -3206,7 +3206,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
         return_span: Span,
         category: ConstraintCategory<'tcx>,
         opt_place_desc: Option<&String>,
-    ) -> Result<(), Diag<'cx>> {
+    ) -> Result<(), Diag<'infcx>> {
         let return_kind = match category {
             ConstraintCategory::Return(_) => "return",
             ConstraintCategory::Yield => "yield",
@@ -3299,7 +3299,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
         constraint_span: Span,
         captured_var: &str,
         scope: &str,
-    ) -> Diag<'cx> {
+    ) -> Diag<'infcx> {
         let tcx = self.infcx.tcx;
         let args_span = use_span.args_or_use();
 
@@ -3411,7 +3411,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
         upvar_span: Span,
         upvar_name: Symbol,
         escape_span: Span,
-    ) -> Diag<'cx> {
+    ) -> Diag<'infcx> {
         let tcx = self.infcx.tcx;
 
         let escapes_from = tcx.def_descr(self.mir_def_id().to_def_id());

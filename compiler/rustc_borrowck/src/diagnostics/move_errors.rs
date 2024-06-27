@@ -93,7 +93,7 @@ enum GroupedMoveError<'tcx> {
     },
 }
 
-impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     pub(crate) fn report_move_errors(&mut self) {
         let grouped_errors = self.group_move_errors();
         for error in grouped_errors {
@@ -291,7 +291,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
         self.buffer_error(err);
     }
 
-    fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'cx> {
+    fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'infcx> {
         let description = if place.projection.len() == 1 {
             format!("static item {}", self.describe_any_place(place.as_ref()))
         } else {
@@ -428,7 +428,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
         deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
-    ) -> Diag<'cx> {
+    ) -> Diag<'infcx> {
         let tcx = self.infcx.tcx;
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this

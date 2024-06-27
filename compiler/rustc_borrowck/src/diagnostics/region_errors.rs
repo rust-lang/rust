@@ -160,7 +160,7 @@ pub struct ErrorConstraintInfo<'tcx> {
     pub(super) span: Span,
 }
 
-impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     /// Converts a region inference variable into a `ty::Region` that
     /// we can use for error reporting. If `r` is universally bound,
     /// then we use the name that we have on record for it. If `r` is
@@ -589,7 +589,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
         &self,
         errci: &ErrorConstraintInfo<'tcx>,
         kind: ReturnConstraint,
-    ) -> Diag<'cx> {
+    ) -> Diag<'infcx> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
@@ -658,7 +658,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
     ///    |     ^^^^^^^^^^ `x` escapes the function body here
     /// ```
     #[instrument(level = "debug", skip(self))]
-    fn report_escaping_data_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'cx> {
+    fn report_escaping_data_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'infcx> {
         let ErrorConstraintInfo { span, category, .. } = errci;
 
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
@@ -767,7 +767,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
     ///    |                    is returning data with lifetime `'b`
     /// ```
     #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
-    fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'cx> {
+    fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'infcx> {
         let ErrorConstraintInfo {
             fr,
             fr_is_local,

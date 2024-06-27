@@ -30,7 +30,7 @@ pub(crate) enum AccessKind {
     Mutate,
 }
 
-impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     pub(crate) fn report_mutability_error(
         &mut self,
         access_place: Place<'tcx>,
@@ -541,7 +541,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
     }
 
     /// Suggest `map[k] = v` => `map.insert(k, v)` and the like.
-    fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diag<'cx>, span: Span) {
+    fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diag<'infcx>, span: Span) {
         let Some(adt) = ty.ty_adt_def() else { return };
         let did = adt.did();
         if self.infcx.tcx.is_diagnostic_item(sym::HashMap, did)
@@ -550,9 +550,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'_, '_, 'cx, 'tcx> {
             /// Walks through the HIR, looking for the corresponding span for this error.
             /// When it finds it, see if it corresponds to assignment operator whose LHS
             /// is an index expr.
-            struct SuggestIndexOperatorAlternativeVisitor<'a, 'cx, 'tcx> {
+            struct SuggestIndexOperatorAlternativeVisitor<'a, 'infcx, 'tcx> {
                 assign_span: Span,
-                err: &'a mut Diag<'cx>,
+                err: &'a mut Diag<'infcx>,
                 ty: Ty<'tcx>,
                 suggested: bool,
             }
