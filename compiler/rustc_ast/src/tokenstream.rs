@@ -180,14 +180,13 @@ impl AttrTokenStream {
         AttrTokenStream(Lrc::new(tokens))
     }
 
-    /// Converts this `AttrTokenStream` to a plain `TokenStream`.
+    /// Converts this `AttrTokenStream` to a plain `Vec<TokenTree>`.
     /// During conversion, `AttrTokenTree::Attributes` get 'flattened'
     /// back to a `TokenStream` of the form `outer_attr attr_target`.
     /// If there are inner attributes, they are inserted into the proper
     /// place in the attribute target tokens.
-    pub fn to_tokenstream(&self) -> TokenStream {
-        let trees: Vec<_> = self
-            .0
+    pub fn to_token_trees(&self) -> Vec<TokenTree> {
+        self.0
             .iter()
             .flat_map(|tree| match &tree {
                 AttrTokenTree::Token(inner, spacing) => {
@@ -198,7 +197,7 @@ impl AttrTokenStream {
                         *span,
                         *spacing,
                         *delim,
-                        stream.to_tokenstream()
+                        TokenStream::new(stream.to_token_trees())
                     ),]
                     .into_iter()
                 }
@@ -208,14 +207,7 @@ impl AttrTokenStream {
                         .partition_point(|attr| matches!(attr.style, crate::AttrStyle::Outer));
                     let (outer_attrs, inner_attrs) = data.attrs.split_at(idx);
 
-                    let mut target_tokens: Vec<_> = data
-                        .tokens
-                        .to_attr_token_stream()
-                        .to_tokenstream()
-                        .0
-                        .iter()
-                        .cloned()
-                        .collect();
+                    let mut target_tokens = data.tokens.to_attr_token_stream().to_token_trees();
                     if !inner_attrs.is_empty() {
                         let mut found = false;
                         // Check the last two trees (to account for a trailing semi)
@@ -260,8 +252,7 @@ impl AttrTokenStream {
                     flat.into_iter()
                 }
             })
-            .collect();
-        TokenStream::new(trees)
+            .collect()
     }
 }
 
@@ -461,7 +452,7 @@ impl TokenStream {
                 AttributesData { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
             AttrTokenStream::new(vec![AttrTokenTree::Attributes(attr_data)])
         };
-        attr_stream.to_tokenstream()
+        TokenStream::new(attr_stream.to_token_trees())
     }
 
     pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {
