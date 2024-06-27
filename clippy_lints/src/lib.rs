@@ -6,7 +6,6 @@
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![feature(never_type)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
@@ -137,6 +136,7 @@ mod exit;
 mod explicit_write;
 mod extra_unused_type_parameters;
 mod fallible_impl_from;
+mod field_scoped_visibility_modifiers;
 mod float_literal;
 mod floating_point_arithmetic;
 mod format;
@@ -1168,7 +1168,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             ..Default::default()
         })
     });
-    store.register_late_pass(|_| Box::new(string_patterns::StringPatterns));
+    store.register_late_pass(move |_| Box::new(string_patterns::StringPatterns::new(msrv())));
+    store.register_early_pass(|| Box::new(field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

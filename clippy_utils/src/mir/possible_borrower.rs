@@ -69,7 +69,7 @@ impl<'a, 'b, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'b,
     fn visit_assign(&mut self, place: &mir::Place<'tcx>, rvalue: &mir::Rvalue<'_>, _location: mir::Location) {
         let lhs = place.local;
         match rvalue {
-            mir::Rvalue::Ref(_, _, borrowed) => {
+            mir::Rvalue::Ref(_, _, borrowed) | mir::Rvalue::CopyForDeref(borrowed) => {
                 self.possible_borrower.add(borrowed.local, lhs);
             },
             other => {

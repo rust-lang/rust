@@ -26,11 +26,11 @@ the repo root.
 The results will then be saved to `lintcheck-logs/custom_logs.toml`.
 
 The `custom.toml` file may be built using <https://crates.io> recently most
-downloaded crates by using the `popular-crates` binary from the `lintcheck`
-directory. For example, to retrieve the 100 recently most downloaded crates:
+downloaded crates by using `cargo lintcheck popular`. For example, to retrieve
+the 200 recently most downloaded crates:
 
 ```
-cargo run --release --bin popular-crates -- -n 100 custom.toml
+cargo lintcheck popular -n 200 custom.toml
 ```
 
 
