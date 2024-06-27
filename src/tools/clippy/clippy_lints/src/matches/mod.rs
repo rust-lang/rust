@@ -1069,7 +1069,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     redundant_guards::check(cx, arms, &self.msrv);
 
                     if !in_constant(cx, expr.hir_id) {
-                        manual_unwrap_or::check(cx, expr, ex, arms);
+                        manual_unwrap_or::check_match(cx, expr, ex, arms);
                         manual_map::check_match(cx, expr, ex, arms);
                         manual_filter::check_match(cx, ex, arms, expr);
                     }
@@ -1097,6 +1097,14 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                         );
                     }
                     if !in_constant(cx, expr.hir_id) {
+                        manual_unwrap_or::check_if_let(
+                            cx,
+                            expr,
+                            if_let.let_pat,
+                            if_let.let_expr,
+                            if_let.if_then,
+                            else_expr,
+                        );
                         manual_map::check_if_let(cx, expr, if_let.let_pat, if_let.let_expr, if_let.if_then, else_expr);
                         manual_filter::check_if_let(
                             cx,
