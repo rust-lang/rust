@@ -20,6 +20,8 @@ macro_rules! impl_general_format {
     }
 }
 
+#[cfg(not(bootstrap))]
+impl_general_format! { f16 }
 impl_general_format! { f32 f64 }
 
 // Don't inline this so callers don't use the stack space this function
@@ -227,16 +229,10 @@ macro_rules! floating {
     };
 }
 
+#[cfg(not(bootstrap))]
+floating! { f16 }
 floating! { f32 }
 floating! { f64 }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Debug for f16 {
-    #[inline]
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "{:#06x}", self.to_bits())
-    }
-}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for f128 {

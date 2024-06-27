@@ -13,14 +13,96 @@ macro_rules! test_literal {
         let x64: f64 = $x;
         let inputs = &[stringify!($x).into(), format!("{:?}", x64), format!("{:e}", x64)];
         for input in inputs {
-            assert_eq!(input.parse(), Ok(x64));
-            assert_eq!(input.parse(), Ok(x32));
+            assert_eq!(input.parse(), Ok(x64), "failed f64 {input}");
+            assert_eq!(input.parse(), Ok(x32), "failed f32 {input}");
             let neg_input = format!("-{input}");
-            assert_eq!(neg_input.parse(), Ok(-x64));
-            assert_eq!(neg_input.parse(), Ok(-x32));
+            assert_eq!(neg_input.parse(), Ok(-x64), "failed f64 {neg_input}");
+            assert_eq!(neg_input.parse(), Ok(-x32), "failed f32 {neg_input}");
         }
     }};
 }
+
+// macro_rules! test_literal2 {
+//     ($x: expr) => {{
+//         // let x32: f32 = $x;
+//         let x64: f64 = $x;
+//         x::<f32>(stringify!($x));
+//         x::<f64>(stringify!($x));
+
+//         let inputs = &[stringify!($x).into(), format!("{:?}", x64), format!("{:e}", x64)];
+//         for input in inputs {
+//             println!("{}", input.parse::<f32>().unwrap());
+//             // assert_eq!(input.parse(), Ok(x64), "failed f64 {input}");
+//             // assert_eq!(input.parse(), Ok(x32), "failed f32 {input}");
+//             // let neg_input = format!("-{input}");
+//             // assert_eq!(neg_input.parse(), Ok(-x64), "failed f64 {neg_input}");
+//             // assert_eq!(neg_input.parse(), Ok(-x32), "failed f32 {neg_input}");
+//         }
+//     }};
+// }
+
+// #[test]
+// fn foo() {
+//     use core::num::dec2flt::float::RawFloat;
+//     use core::num::dec2flt::parse::parse_number;
+
+//     fn x<F: RawFloat + std::fmt::Display>(r: &str) {
+//         let mut s = r.as_bytes();
+//         let c = s[0];
+//         let negative = c == b'-';
+//         if c == b'-' || c == b'+' {
+//             s = &s[1..];
+//         }
+//         let mut num = parse_number(s).unwrap();
+//         num.negative = negative;
+//         if let Some(value) = num.try_fast_path::<F>() {
+//             // return Ok(value);
+//             println!("fast path {value}");
+//             return;
+//         }
+
+//         let q = num.exponent;
+//         let w = num.mantissa;
+
+//         println!(
+//             "float {r} {q} {w} {q:#066b} {w:#066b} sm10 {} lg10 {} ty {} chk {}",
+//             F::SMALLEST_POWER_OF_TEN,
+//             F::LARGEST_POWER_OF_TEN,
+//             std::any::type_name::<F>(),
+//             if w == 0 || q < F::SMALLEST_POWER_OF_TEN as i64 {
+//                 "lt small 10"
+//             } else if q > F::LARGEST_POWER_OF_TEN as i64 {
+//                 "gt big 10"
+//             } else {
+//                 ""
+//             }
+//         );
+//     }
+
+//     test_literal2!(1e-20);
+//     test_literal2!(1e-30);
+//     test_literal2!(1e-40);
+//     test_literal2!(1e-50);
+//     test_literal2!(1e-60);
+//     test_literal2!(1e-63);
+//     test_literal2!(1e-64);
+//     test_literal2!(1e-65);
+//     test_literal2!(1e-66);
+//     test_literal2!(1e-70);
+//     panic!();
+// }
+
+// #[test]
+// fn foobar() {
+//     use core::num::dec2flt::float::RawFloat;
+//     panic!(
+//         "{} {} {} {}",
+//         <f32 as RawFloat>::LARGEST_POWER_OF_TEN,
+//         <f32 as RawFloat>::SMALLEST_POWER_OF_TEN,
+//         <f64 as RawFloat>::LARGEST_POWER_OF_TEN,
+//         <f64 as RawFloat>::SMALLEST_POWER_OF_TEN,
+//     )
+// }
 
 #[test]
 fn ordinary() {
