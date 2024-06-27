@@ -36,6 +36,7 @@
 #![feature(duration_constructors)]
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
+#![feature(f16)]
 #![feature(freeze)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
