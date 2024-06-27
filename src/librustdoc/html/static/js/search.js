@@ -15,15 +15,6 @@ if (!Array.prototype.toSpliced) {
     };
 }
 
-function takeFromArray(array, count) {
-    const result = [];
-    while (count > 0) {
-        result.push(array.shift());
-        count -= 1;
-    }
-    return result;
-}
-
 function onEachBtwn(arr, func, funcBtwn) {
     let skipped = true;
     for (const value of arr) {
@@ -1448,31 +1439,7 @@ function initSearch(rawSearchIndex) {
             let fnInputs = null;
             let fnOutput = null;
             let mgens = null;
-            if (typeInfo === "elems") {
-                fnInputs = unifyFunctionTypes(
-                    obj.type.inputs,
-                    parsedQuery.elems,
-                    obj.type.where_clause,
-                    null,
-                    mgensOut => {
-                        mgens = mgensOut;
-                        return true;
-                    },
-                    0,
-                );
-            } else if (typeInfo === "returned") {
-                fnOutput = unifyFunctionTypes(
-                    obj.type.output,
-                    parsedQuery.elems,
-                    obj.type.where_clause,
-                    null,
-                    mgensOut => {
-                        mgens = mgensOut;
-                        return true;
-                    },
-                    0,
-                );
-            } else {
+            if (typeInfo !== "elems" && typeInfo !== "returned") {
                 fnInputs = unifyFunctionTypes(
                     obj.type.inputs,
                     parsedQuery.elems,
@@ -1494,6 +1461,24 @@ function initSearch(rawSearchIndex) {
                     },
                     0,
                 );
+            } else {
+                const arr = typeInfo === "elems" ? obj.type.inputs : obj.type.output;
+                const highlighted = unifyFunctionTypes(
+                    arr,
+                    parsedQuery.elems,
+                    obj.type.where_clause,
+                    null,
+                    mgensOut => {
+                        mgens = mgensOut;
+                        return true;
+                    },
+                    0,
+                );
+                if (typeInfo === "elems") {
+                    fnInputs = highlighted;
+                } else {
+                    fnOutput = highlighted;
+                }
             }
             if (!fnInputs) {
                 fnInputs = obj.type.inputs;
@@ -2000,7 +1985,7 @@ function initSearch(rawSearchIndex) {
                             highlighted[i] = Object.assign({}, fnType, {
                                 generics: highlightedGenerics,
                                 bindings: new Map([...fnType.bindings.entries()].map(([k, v]) => {
-                                    return [k, takeFromArray(highlightedGenerics, v.length)];
+                                    return [k, highlightedGenerics.splice(0, v.length)];
                                 })),
                             });
                             return highlighted;
@@ -2116,7 +2101,7 @@ function initSearch(rawSearchIndex) {
                                 unifiedGenericsMgens,
                                 solutionCb,
                                 unboxingDepth,
-                            ) : takeFromArray(unifiedGenerics, v.length)];
+                            ) : unifiedGenerics.splice(0, v.length)];
                         })),
                     });
                     return passesUnification;
@@ -2169,7 +2154,7 @@ function initSearch(rawSearchIndex) {
                     const highlightedFnType = Object.assign({}, fnType, {
                         generics: highlightedGenerics,
                         bindings: new Map([...fnType.bindings.entries()].map(([k, v]) => {
-                            return [k, takeFromArray(highlightedGenerics, v.length)];
+                            return [k, highlightedGenerics.splice(0, v.length)];
                         })),
                     });
                     return passesUnification.toSpliced(
