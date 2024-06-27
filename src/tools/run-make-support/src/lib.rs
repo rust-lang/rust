@@ -247,32 +247,33 @@ pub fn test_while_readonly<P: AsRef<Path>, F: FnOnce() + std::panic::UnwindSafe>
     success.unwrap();
 }
 
-/// Browse the directory `path` non-recursively and return the first file path which starts with `prefix` and has the
-/// file extension `extension`.
+/// Browse the directory `path` non-recursively and return all files which respect the parameters
+/// outlined by `closure`.
 #[track_caller]
-pub fn find_files_by_prefix_and_extension<P: AsRef<Path>>(
+pub fn shallow_find_files<P: AsRef<Path>, F: Fn(&PathBuf) -> bool>(
     path: P,
-    prefix: &str,
-    extension: &str,
+    closure: F,
 ) -> Vec<PathBuf> {
     let mut matching_files = Vec::new();
     for entry in fs_wrapper::read_dir(path) {
         let entry = entry.expect("failed to read directory entry.");
         let path = entry.path();
 
-        if path.is_file()
-            && path.file_name().unwrap().to_str().unwrap().starts_with(prefix)
-            && path.extension().unwrap().to_str().unwrap() == extension
-        {
+        if path.is_file() && closure(&path) {
             matching_files.push(path);
         }
     }
+    matching_files
+}
 
-    if matching_files.is_empty() {
-        panic!("no files found with the given prefix and extension");
-    } else {
-        matching_files
-    }
+/// Returns true if the filename at `path` starts with `prefix`.
+pub fn has_prefix<P: AsRef<Path>>(path: P, prefix: &str) -> bool {
+    path.as_ref().file_name().is_some_and(|name| name.to_str().unwrap().starts_with(prefix))
+}
+
+/// Returns true if the filename at `path` has the extension `extension`.
+pub fn has_extension<P: AsRef<Path>>(path: P, extension: &str) -> bool {
+    path.as_ref().extension().is_some_and(|ext| ext == extension)
 }
 
 /// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is

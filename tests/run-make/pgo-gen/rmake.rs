@@ -6,13 +6,16 @@
 //@ needs-profiler-support
 //@ ignore-cross-compile
 
-use run_make_support::{cwd, find_files_by_prefix_and_extension, run, rustc};
+use run_make_support::{cwd, find_files, has_extension, has_prefix, run, rustc};
 
 fn main() {
-    rustc().arg("-g").profile_generate(cwd()).run();
+    rustc().arg("-g").profile_generate(cwd()).input("test.rs").run();
     run("test");
     assert!(
-        find_files_by_prefix_and_extension(cwd(), "default", "profraw").len() > 0,
+        !find_files(cwd(), |path| {
+            has_prefix(path, "default") && has_extension(path, "profraw")
+        })
+        .is_empty(),
         "no .profraw file generated"
     );
 }

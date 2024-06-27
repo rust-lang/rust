@@ -9,8 +9,8 @@
 //@ ignore-cross-compile
 
 use run_make_support::{
-    cwd, find_files_by_prefix_and_extension, fs_wrapper, llvm_filecheck, llvm_profdata,
-    run_with_args, rustc,
+    cwd, fs_wrapper, has_extension, has_prefix, llvm_filecheck, llvm_profdata, run_with_args,
+    rustc, shallow_find_files,
 };
 
 fn main() {
@@ -31,7 +31,13 @@ fn main() {
     llvm_profdata()
         .merge()
         .output("merged.profdata")
-        .input(find_files_by_prefix_and_extension(cwd(), "default", "profraw").get(0).unwrap())
+        .input(
+            shallow_find_files(cwd(), |path| {
+                has_prefix(path, "default") && has_extension(path, "profraw")
+            })
+            .get(0)
+            .unwrap(),
+        )
         .run();
     // Compile the test program again, making use of the profiling data
     rustc()
@@ -42,13 +48,15 @@ fn main() {
         .emit("llvm-ir")
         .input("main.rs")
         .run();
-    // Check that the generate IR contains some things that we expect
-    //
-    // We feed the file into LLVM FileCheck tool *in reverse* so that we see the
+    // Check that the generate IR contains some things that we expect.
+    // We feed the file into LLVM FileCheck tool *with its lines reversed* so that we see the
     // line with the function name before the line with the function attributes.
     // FileCheck only supports checking that something matches on the next line,
     // but not if something matches on the previous line.
-    let mut bytes = fs_wrapper::read("interesting.ll");
-    bytes.reverse();
+    let mut text = fs_wrapper::read_to_string("main.ll");
+    let mut lines: Vec<String> = text.lines().map(|line| line.to_string()).collect();
+    lines.reverse();
+    let rev_text = lines.join("\n");
+    let bytes = rev_text.as_bytes();
     llvm_filecheck().patterns("filecheck-patterns.txt").stdin(bytes).run();
 }
