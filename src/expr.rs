@@ -372,7 +372,7 @@ pub(crate) fn format_expr(
                 ))
             }
         }
-        ast::ExprKind::Gen(capture_by, ref block, ref kind) => {
+        ast::ExprKind::Gen(capture_by, ref block, ref kind, _) => {
             let mover = if matches!(capture_by, ast::CaptureBy::Value { .. }) {
                 "move "
             } else {
