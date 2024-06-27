@@ -73,6 +73,8 @@ fn check_impl(
     let python_fmt = lint_args.contains(&"py:fmt") || python_all;
     let shell_all = lint_args.contains(&"shell");
     let shell_lint = lint_args.contains(&"shell:lint") || shell_all;
+    let cpp_all = lint_args.contains(&"cpp");
+    let cpp_fmt = lint_args.contains(&"cpp:fmt") || cpp_all;
 
     let mut py_path = None;
 
@@ -81,7 +83,7 @@ fn check_impl(
         .map(OsStr::new)
         .partition(|arg| arg.to_str().is_some_and(|s| s.starts_with('-')));
 
-    if python_lint || python_fmt {
+    if python_lint || python_fmt || cpp_fmt {
         let venv_path = outdir.join("venv");
         let mut reqs_path = root_path.to_owned();
         reqs_path.extend(PIP_REQ_PATH);
@@ -111,13 +113,13 @@ fn check_impl(
 
         let mut args = merge_args(&cfg_args_ruff, &file_args_ruff);
         args.insert(0, "check".as_ref());
-        let res = py_runner(py_path.as_ref().unwrap(), "ruff", &args);
+        let res = py_runner(py_path.as_ref().unwrap(), true, None, "ruff", &args);
 
         if res.is_err() && show_diff {
             eprintln!("\npython linting failed! Printing diff suggestions:");
 
             args.insert(1, "--diff".as_ref());
-            let _ = py_runner(py_path.as_ref().unwrap(), "ruff", &args);
+            let _ = py_runner(py_path.as_ref().unwrap(), true, None, "ruff", &args);
         }
         // Rethrow error
         let _ = res?;
@@ -144,13 +146,84 @@ fn check_impl(
         }
 
         let mut args = merge_args(&cfg_args_black, &file_args_black);
-        let res = py_runner(py_path.as_ref().unwrap(), "black", &args);
+        let res = py_runner(py_path.as_ref().unwrap(), true, None, "black", &args);
 
         if res.is_err() && show_diff {
             eprintln!("\npython formatting does not match! Printing diff:");
 
             args.insert(0, "--diff".as_ref());
-            let _ = py_runner(py_path.as_ref().unwrap(), "black", &args);
+            let _ = py_runner(py_path.as_ref().unwrap(), true, None, "black", &args);
+        }
+        // Rethrow error
+        let _ = res?;
+    }
+
+    if cpp_fmt {
+        let mut cfg_args_clang_format = cfg_args.clone();
+        let mut file_args_clang_format = file_args.clone();
+        let config_path = root_path.join(".clang-format");
+        let config_file_arg = format!("file:{}", config_path.display());
+        cfg_args_clang_format.extend(&["--style".as_ref(), config_file_arg.as_ref()]);
+        if bless {
+            eprintln!("formatting C++ files");
+            cfg_args_clang_format.push("-i".as_ref());
+        } else {
+            eprintln!("checking C++ file formatting");
+            cfg_args_clang_format.extend(&["--dry-run".as_ref(), "--Werror".as_ref()]);
+        }
+        let files;
+        if file_args_clang_format.is_empty() {
+            let llvm_wrapper = root_path.join("compiler/rustc_llvm/llvm-wrapper");
+            files = find_with_extension(
+                root_path,
+                Some(llvm_wrapper.as_path()),
+                &[OsStr::new("h"), OsStr::new("cpp")],
+            )?;
+            file_args_clang_format.extend(files.iter().map(|p| p.as_os_str()));
+        }
+        let args = merge_args(&cfg_args_clang_format, &file_args_clang_format);
+        let res = py_runner(py_path.as_ref().unwrap(), false, None, "clang-format", &args);
+
+        if res.is_err() && show_diff {
+            eprintln!("\nclang-format linting failed! Printing diff suggestions:");
+
+            let mut cfg_args_clang_format_diff = cfg_args.clone();
+            cfg_args_clang_format_diff.extend(&["--style".as_ref(), config_file_arg.as_ref()]);
+            for file in file_args_clang_format {
+                let mut formatted = String::new();
+                let mut diff_args = cfg_args_clang_format_diff.clone();
+                diff_args.push(file);
+                let _ = py_runner(
+                    py_path.as_ref().unwrap(),
+                    false,
+                    Some(&mut formatted),
+                    "clang-format",
+                    &diff_args,
+                );
+                if formatted.is_empty() {
+                    eprintln!(
+                        "failed to obtain the formatted content for '{}'",
+                        file.to_string_lossy()
+                    );
+                    continue;
+                }
+                let actual = std::fs::read_to_string(file).unwrap_or_else(|e| {
+                    panic!(
+                        "failed to read the C++ file at '{}' due to '{e}'",
+                        file.to_string_lossy()
+                    )
+                });
+                if formatted != actual {
+                    let diff = similar::TextDiff::from_lines(&actual, &formatted);
+                    eprintln!(
+                        "{}",
+                        diff.unified_diff().context_radius(4).header(
+                            &format!("{} (actual)", file.to_string_lossy()),
+                            &format!("{} (formatted)", file.to_string_lossy())
+                        )
+                    );
+                }
+            }
         }
         // Rethrow error
         let _ = res?;
@@ -162,7 +235,7 @@ fn check_impl(
         let mut file_args_shc = file_args.clone();
         let files;
         if file_args_shc.is_empty() {
-            files = find_with_extension(root_path, "sh")?;
+            files = find_with_extension(root_path, None, &[OsStr::new("sh")])?;
             file_args_shc.extend(files.iter().map(|p| p.as_os_str()));
         }
 
@@ -181,8 +254,31 @@ fn merge_args<'a>(cfg_args: &[&'a OsStr], file_args: &[&'a OsStr]) -> Vec<&'a Os
 }
 
 /// Run a python command with given arguments. `py_path` should be a virtualenv.
-fn py_runner(py_path: &Path, bin: &'static str, args: &[&OsStr]) -> Result<(), Error> {
-    let status = Command::new(py_path).arg("-m").arg(bin).args(args).status()?;
+///
+/// Captures `stdout` to a string if provided, otherwise prints the output.
+fn py_runner(
+    py_path: &Path,
+    as_module: bool,
+    stdout: Option<&mut String>,
+    bin: &'static str,
+    args: &[&OsStr],
+) -> Result<(), Error> {
+    let mut cmd = Command::new(py_path);
+    if as_module {
+        cmd.arg("-m").arg(bin).args(args);
+    } else {
+        let bin_path = py_path.with_file_name(bin);
+        cmd.arg(bin_path).args(args);
+    }
+    let status = if let Some(stdout) = stdout {
+        let output = cmd.output()?;
+        if let Ok(s) = std::str::from_utf8(&output.stdout) {
+            stdout.push_str(s);
+        }
+        output.status
+    } else {
+        cmd.status()?
+    };
     if status.success() { Ok(()) } else { Err(Error::FailedCheck(bin)) }
 }
 
@@ -357,7 +453,11 @@ fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
 }
 
 /// Check git for tracked files matching an extension
-fn find_with_extension(root_path: &Path, extension: &str) -> Result<Vec<PathBuf>, Error> {
+fn find_with_extension(
+    root_path: &Path,
+    find_dir: Option<&Path>,
+    extensions: &[&OsStr],
+) -> Result<Vec<PathBuf>, Error> {
     // Untracked files show up for short status and are indicated with a leading `?`
     // -C changes git to be as if run from that directory
     let stat_output =
@@ -368,15 +468,25 @@ fn find_with_extension(root_path: &Path, extension: &str) -> Result<Vec<PathBuf>
     }
 
     let mut output = Vec::new();
-    let binding = Command::new("git").arg("-C").arg(root_path).args(["ls-files"]).output()?;
+    let binding = {
+        let mut command = Command::new("git");
+        command.arg("-C").arg(root_path).args(["ls-files"]);
+        if let Some(find_dir) = find_dir {
+            command.arg(find_dir);
+        }
+        command.output()?
+    };
     let tracked = String::from_utf8_lossy(&binding.stdout);
 
     for line in tracked.lines() {
         let line = line.trim();
         let path = Path::new(line);
 
-        if path.extension() == Some(OsStr::new(extension)) {
-            output.push(path.to_owned());
+        let Some(ref extension) = path.extension() else {
+            continue;
+        };
+        if extensions.contains(extension) {
+            output.push(root_path.join(path));
         }
     }
 
