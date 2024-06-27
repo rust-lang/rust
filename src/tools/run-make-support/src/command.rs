@@ -163,11 +163,13 @@ pub struct CompletedProcess {
 
 impl CompletedProcess {
     #[must_use]
+    #[track_caller]
     pub fn stdout_utf8(&self) -> String {
         String::from_utf8(self.output.stdout.clone()).expect("stdout is not valid UTF-8")
     }
 
     #[must_use]
+    #[track_caller]
     pub fn stderr_utf8(&self) -> String {
         String::from_utf8(self.output.stderr.clone()).expect("stderr is not valid UTF-8")
     }
