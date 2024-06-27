@@ -23,6 +23,7 @@ fn main() {
     // CHECK: [[c]] = const 11_i32;
     let c = a.0 + a.1 + b;
 
-    // CHECK: [[d]] = (const 6_i32, const (2_i32, 3_i32), const 11_i32);
+    // CHECK: [[a2:_.*]] = const (2_i32, 3_i32);
+    // CHECK: [[d]] = (const 6_i32, move [[a2]], const 11_i32);
     let d = (b, a, c);
 }
