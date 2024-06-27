@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_ast::ast::{Expr, ExprKind};
-use rustc_ast::token::{Lit, LitKind};
+use clippy_utils::source::SpanRangeExt;
+use rustc_ast::token::LitKind;
+use rustc_ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
-use rustc_span::Span;
-use std::fmt::Write;
+use rustc_span::{BytePos, Pos, SpanData};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -52,104 +52,66 @@ declare_lint_pass!(OctalEscapes => [OCTAL_ESCAPES]);
 
 impl EarlyLintPass for OctalEscapes {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if in_external_macro(cx.sess(), expr.span) {
-            return;
-        }
-
-        if let ExprKind::Lit(token_lit) = &expr.kind {
-            if matches!(token_lit.kind, LitKind::Str) {
-                check_lit(cx, token_lit, expr.span, true);
-            } else if matches!(token_lit.kind, LitKind::ByteStr) {
-                check_lit(cx, token_lit, expr.span, false);
-            }
-        }
-    }
-}
-
-fn check_lit(cx: &EarlyContext<'_>, lit: &Lit, span: Span, is_string: bool) {
-    let contents = lit.symbol.as_str();
-    let mut iter = contents.char_indices().peekable();
-    let mut found = vec![];
-
-    // go through the string, looking for \0[0-7][0-7]?
-    while let Some((from, ch)) = iter.next() {
-        if ch == '\\' {
-            if let Some((_, '0')) = iter.next() {
-                // collect up to two further octal digits
-                if let Some((mut to, _)) = iter.next_if(|(_, ch)| matches!(ch, '0'..='7')) {
-                    if iter.next_if(|(_, ch)| matches!(ch, '0'..='7')).is_some() {
-                        to += 1;
+        if let ExprKind::Lit(lit) = &expr.kind
+            // The number of bytes from the start of the token to the start of literal's text.
+            && let start_offset = BytePos::from_u32(match lit.kind {
+                LitKind::Str => 1,
+                LitKind::ByteStr | LitKind::CStr => 2,
+                _ => return,
+            })
+            && !in_external_macro(cx.sess(), expr.span)
+        {
+            let s = lit.symbol.as_str();
+            let mut iter = s.as_bytes().iter();
+            while let Some(&c) = iter.next() {
+                if c == b'\\'
+                    // Always move the iterator to read the escape char.
+                    && let Some(b'0') = iter.next()
+                {
+                    // C-style octal escapes read from one to three characters.
+                    // The first character (`0`) has already been read.
+                    let (tail, len, c_hi, c_lo) = match *iter.as_slice() {
+                        [c_hi @ b'0'..=b'7', c_lo @ b'0'..=b'7', ref tail @ ..] => (tail, 4, c_hi, c_lo),
+                        [c_lo @ b'0'..=b'7', ref tail @ ..] => (tail, 3, b'0', c_lo),
+                        _ => continue,
+                    };
+                    iter = tail.iter();
+                    let offset = start_offset + BytePos::from_usize(s.len() - tail.len());
+                    let data = expr.span.data();
+                    let span = SpanData {
+                        lo: data.lo + offset - BytePos::from_u32(len),
+                        hi: data.lo + offset,
+                        ..data
                     }
-                    found.push((from, to + 1));
+                    .span();
+
+                    // Last check to make sure the source text matches what we read from the string.
+                    // Macros are involved somehow if this doesn't match.
+                    if span.check_source_text(cx, |src| match *src.as_bytes() {
+                        [b'\\', b'0', lo] => lo == c_lo,
+                        [b'\\', b'0', hi, lo] => hi == c_hi && lo == c_lo,
+                        _ => false,
+                    }) {
+                        span_lint_and_then(cx, OCTAL_ESCAPES, span, "octal-looking escape in a literal", |diag| {
+                            diag.help_once("octal escapes are not supported, `\\0` is always null")
+                                .span_suggestion(
+                                    span,
+                                    "if an octal escape is intended, use a hex escape instead",
+                                    format!("\\x{:02x}", (((c_hi - b'0') << 3) | (c_lo - b'0'))),
+                                    Applicability::MaybeIncorrect,
+                                )
+                                .span_suggestion(
+                                    span,
+                                    "if a null escape is intended, disambiguate using",
+                                    format!("\\x00{}{}", c_hi as char, c_lo as char),
+                                    Applicability::MaybeIncorrect,
+                                );
+                        });
+                    } else {
+                        break;
+                    }
                 }
             }
         }
     }
-
-    if found.is_empty() {
-        return;
-    }
-
-    span_lint_and_then(
-        cx,
-        OCTAL_ESCAPES,
-        span,
-        format!(
-            "octal-looking escape in {} literal",
-            if is_string { "string" } else { "byte string" }
-        ),
-        |diag| {
-            diag.help(format!(
-                "octal escapes are not supported, `\\0` is always a null {}",
-                if is_string { "character" } else { "byte" }
-            ));
-
-            // Generate suggestions if the string is not too long (~ 5 lines)
-            if contents.len() < 400 {
-                // construct two suggestion strings, one with \x escapes with octal meaning
-                // as in C, and one with \x00 for null bytes.
-                let mut suggest_1 = if is_string { "\"" } else { "b\"" }.to_string();
-                let mut suggest_2 = suggest_1.clone();
-                let mut index = 0;
-                for (from, to) in found {
-                    suggest_1.push_str(&contents[index..from]);
-                    suggest_2.push_str(&contents[index..from]);
-
-                    // construct a replacement escape
-                    // the maximum value is \077, or \x3f, so u8 is sufficient here
-                    if let Ok(n) = u8::from_str_radix(&contents[from + 1..to], 8) {
-                        write!(suggest_1, "\\x{n:02x}").unwrap();
-                    }
-
-                    // append the null byte as \x00 and the following digits literally
-                    suggest_2.push_str("\\x00");
-                    suggest_2.push_str(&contents[from + 2..to]);
-
-                    index = to;
-                }
-                suggest_1.push_str(&contents[index..]);
-                suggest_2.push_str(&contents[index..]);
-
-                suggest_1.push('"');
-                suggest_2.push('"');
-                // suggestion 1: equivalent hex escape
-                diag.span_suggestion(
-                    span,
-                    "if an octal escape was intended, use the hexadecimal representation instead",
-                    suggest_1,
-                    Applicability::MaybeIncorrect,
-                );
-                // suggestion 2: unambiguous null byte
-                diag.span_suggestion(
-                    span,
-                    format!(
-                        "if the null {} is intended, disambiguate using",
-                        if is_string { "character" } else { "byte" }
-                    ),
-                    suggest_2,
-                    Applicability::MaybeIncorrect,
-                );
-            }
-        },
-    );
 }
