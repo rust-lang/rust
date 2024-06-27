@@ -1,5 +1,6 @@
 use std::ops::ControlFlow;
 
+use derive_where::derive_where;
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::fold::{shift_region, TypeFoldable, TypeFolder, TypeSuperFoldable};
@@ -100,15 +101,7 @@ use crate::{self as ty, Interner};
 /// * `GR`: The "return type", which is the type of value returned upon
 ///   completion of the coroutine.
 /// * `GW`: The "coroutine witness".
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct ClosureArgs<I: Interner> {
     /// Lifetime and type parameters from the enclosing function,
@@ -210,15 +203,7 @@ impl<I: Interner> ClosureArgs<I> {
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct CoroutineClosureArgs<I: Interner> {
     pub args: I::GenericArgs,
@@ -370,15 +355,7 @@ impl<I: Interner> TypeVisitor<I> for HasRegionsBoundAt {
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub struct CoroutineClosureSignature<I: Interner> {
     pub interior: I::Ty,
@@ -552,15 +529,7 @@ impl<I: Interner> TypeFolder<I> for FoldEscapingRegions<I> {
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub struct GenSig<I: Interner> {
     pub resume_ty: I::Ty,
@@ -569,15 +538,7 @@ pub struct GenSig<I: Interner> {
 }
 
 /// Similar to `ClosureArgs`; see the above documentation for more.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct CoroutineArgs<I: Interner> {
     pub args: I::GenericArgs,

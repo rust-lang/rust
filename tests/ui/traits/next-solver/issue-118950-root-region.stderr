@@ -25,10 +25,10 @@ help: this trait has no implementations, consider adding one
 LL | trait ToUnit<'a> {
    | ^^^^^^^^^^^^^^^^
 
- WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), "'a"), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc) }
- WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), "'a"), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc) }
- WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), "'a"), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc) }
- WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), "'a"), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc) }
+ WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), "'a"), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc), .. }
+ WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), "'a"), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc), .. }
+ WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), "'a"), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc), .. }
+ WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), "'a"), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc), .. }
 error[E0119]: conflicting implementations of trait `Overlap<fn(_)>` for type `fn(_)`
   --> $DIR/issue-118950-root-region.rs:19:1
    |
