@@ -34,7 +34,7 @@ use crate::delegate::SolverDelegate;
 /// How many fixpoint iterations we should attempt inside of the solver before bailing
 /// with overflow.
 ///
-/// We previously used  `tcx.recursion_limit().0.checked_ilog2().unwrap_or(0)` for this.
+/// We previously used  `cx.recursion_limit().0.checked_ilog2().unwrap_or(0)` for this.
 /// However, it feels unlikely that uncreasing the recursion limit by a power of two
 /// to get one more itereation is every useful or desirable. We now instead used a constant
 /// here. If there ever ends up some use-cases where a bigger number of fixpoint iterations
@@ -285,7 +285,7 @@ where
 }
 
 fn response_no_constraints_raw<I: Interner>(
-    tcx: I,
+    cx: I,
     max_universe: ty::UniverseIndex,
     variables: I::CanonicalVars,
     certainty: Certainty,
@@ -294,10 +294,10 @@ fn response_no_constraints_raw<I: Interner>(
         max_universe,
         variables,
         value: Response {
-            var_values: ty::CanonicalVarValues::make_identity(tcx, variables),
-            // FIXME: maybe we should store the "no response" version in tcx, like
-            // we do for tcx.types and stuff.
-            external_constraints: tcx.mk_external_constraints(ExternalConstraintsData::default()),
+            var_values: ty::CanonicalVarValues::make_identity(cx, variables),
+            // FIXME: maybe we should store the "no response" version in cx, like
+            // we do for cx.types and stuff.
+            external_constraints: cx.mk_external_constraints(ExternalConstraintsData::default()),
             certainty,
         },
         defining_opaque_types: Default::default(),

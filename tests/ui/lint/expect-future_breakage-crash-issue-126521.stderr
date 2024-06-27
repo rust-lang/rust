@@ -1,23 +1,52 @@
-error[E0658]: the `#[expect]` attribute is an experimental feature
-  --> $DIR/expect-future_breakage-crash-issue-126521.rs:16:5
+Future incompatibility report: Future breakage diagnostic:
+warning: trailing semicolon in macro used in expression position
+  --> $DIR/expect-future_breakage-crash-issue-126521.rs:7:13
    |
-LL |     #[expect(semicolon_in_expressions_from_macros)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         true;
+   |             ^
+...
+LL |     let _ = foo!(x);
+   |             ------- in this macro invocation
    |
-   = note: see issue #54503 <https://github.com/rust-lang/rust/issues/54503> for more information
-   = help: add `#![feature(lint_reasons)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0658]: the `#[expect]` attribute is an experimental feature
-  --> $DIR/expect-future_breakage-crash-issue-126521.rs:20:5
+Future breakage diagnostic:
+warning: trailing semicolon in macro used in expression position
+  --> $DIR/expect-future_breakage-crash-issue-126521.rs:13:35
    |
-LL |     #[expect(semicolon_in_expressions_from_macros)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         (5_i32.overflowing_sub(3));
+   |                                   ^
+...
+LL |     let _ = bar!(x);
+   |             ------- in this macro invocation
    |
-   = note: see issue #54503 <https://github.com/rust-lang/rust/issues/54503> for more information
-   = help: add `#![feature(lint_reasons)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+   = note: this warning originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors
+Future breakage diagnostic:
+warning: trailing semicolon in macro used in expression position
+  --> $DIR/expect-future_breakage-crash-issue-126521.rs:7:13
+   |
+LL |         true;
+   |             ^
+...
+LL |     let _ = foo!(x);
+   |             ------- in this macro invocation
+   |
+   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-For more information about this error, try `rustc --explain E0658`.
+Future breakage diagnostic:
+warning: trailing semicolon in macro used in expression position
+  --> $DIR/expect-future_breakage-crash-issue-126521.rs:13:35
+   |
+LL |         (5_i32.overflowing_sub(3));
+   |                                   ^
+...
+LL |     let _ = bar!(x);
+   |             ------- in this macro invocation
+   |
+   = note: this warning originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
+

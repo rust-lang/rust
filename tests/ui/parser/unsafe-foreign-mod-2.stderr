@@ -13,11 +13,13 @@ LL | extern "C" unsafe {
 error: items in unadorned `extern` blocks cannot have safety qualifiers
   --> $DIR/unsafe-foreign-mod-2.rs:4:5
    |
-LL | extern "C" unsafe {
-   | ----------------- help: add unsafe to this `extern` block
-...
 LL |     unsafe fn foo();
    |     ^^^^^^^^^^^^^^^^
+   |
+help: add unsafe to this `extern` block
+   |
+LL | unsafe extern "C" unsafe {
+   | ++++++
 
 error: aborting due to 3 previous errors
 

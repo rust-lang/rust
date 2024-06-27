@@ -1,0 +1,50 @@
+error: `use<...>` precise capturing syntax is currently not allowed in return-position `impl Trait` in traits
+  --> $DIR/rpitit.rs:11:36
+   |
+LL |     fn hello() -> impl PartialEq + use<Self>;
+   |                                    ^^^^^^^^^
+   |
+   = note: currently, return-position `impl Trait` in traits and trait implementations capture all lifetimes in scope
+
+error: `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
+  --> $DIR/rpitit.rs:11:19
+   |
+LL | trait Foo<'a> {
+   |           -- this lifetime parameter is captured
+LL |     fn hello() -> impl PartialEq + use<Self>;
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime captured due to being mentioned in the bounds of the `impl Trait`
+
+error: lifetime may not live long enough
+  --> $DIR/rpitit.rs:15:5
+   |
+LL |   fn test<'a, 'b, T: for<'r> Foo<'r>>() {
+   |           --  -- lifetime `'b` defined here
+   |           |
+   |           lifetime `'a` defined here
+LL | /     PartialEq::eq(
+LL | |         &<T as Foo<'a>>::hello(),
+LL | |         &<T as Foo<'b>>::hello(),
+LL | |     );
+   | |_____^ argument requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: lifetime may not live long enough
+  --> $DIR/rpitit.rs:15:5
+   |
+LL |   fn test<'a, 'b, T: for<'r> Foo<'r>>() {
+   |           --  -- lifetime `'b` defined here
+   |           |
+   |           lifetime `'a` defined here
+LL | /     PartialEq::eq(
+LL | |         &<T as Foo<'a>>::hello(),
+LL | |         &<T as Foo<'b>>::hello(),
+LL | |     );
+   | |_____^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+help: `'a` and `'b` must be the same: replace one with the other
+
+error: aborting due to 4 previous errors
+

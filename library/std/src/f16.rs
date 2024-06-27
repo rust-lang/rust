@@ -32,4 +32,33 @@ impl f16 {
     pub fn powi(self, n: i32) -> f16 {
         unsafe { intrinsics::powif16(self, n) }
     }
+
+    /// Computes the absolute value of `self`.
+    ///
+    /// This function always returns the precise result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(reliable_f16)] {
+    ///
+    /// let x = 3.5_f16;
+    /// let y = -3.5_f16;
+    ///
+    /// assert_eq!(x.abs(), x);
+    /// assert_eq!(y.abs(), -y);
+    ///
+    /// assert!(f16::NAN.abs().is_nan());
+    /// # }
+    /// ```
+    #[inline]
+    #[cfg(not(bootstrap))]
+    #[rustc_allow_incoherent_impl]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    pub fn abs(self) -> Self {
+        // FIXME(f16_f128): replace with `intrinsics::fabsf16` when available
+        Self::from_bits(self.to_bits() & !(1 << 15))
+    }
 }

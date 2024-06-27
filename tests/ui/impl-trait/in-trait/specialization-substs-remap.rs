@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![feature(specialization)]
-#![feature(lint_reasons)]
 #![allow(incomplete_features)]
 
 pub trait Foo {

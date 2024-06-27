@@ -369,9 +369,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         allow, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#),
         DuplicatesOk, EncodeCrossCrate::No,
     ),
-    gated!(
-        expect, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#), DuplicatesOk,
-        EncodeCrossCrate::No, lint_reasons, experimental!(expect)
+    ungated!(
+        expect, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#),
+        DuplicatesOk, EncodeCrossCrate::No,
     ),
     ungated!(
         forbid, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#),

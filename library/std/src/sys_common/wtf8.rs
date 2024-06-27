@@ -474,13 +474,13 @@ impl Wtf8Buf {
         Wtf8Buf { bytes: bytes.into_vec(), is_known_utf8: false }
     }
 
-    /// Part of a hack to make PathBuf::push/pop more efficient.
+    /// Provides plumbing to core `Vec::extend_from_slice`.
+    /// More well behaving alternative to allowing outer types
+    /// full mutable access to the core `Vec`.
     #[inline]
-    pub(crate) fn as_mut_vec_for_path_buf(&mut self) -> &mut Vec<u8> {
-        // FIXME: this function should not even exist, as it implies violating Wtf8Buf invariants
-        // For now, simply assume that is about to happen.
-        self.is_known_utf8 = false;
-        &mut self.bytes
+    pub(crate) fn extend_from_slice(&mut self, other: &[u8]) {
+        self.bytes.extend_from_slice(other);
+        self.is_known_utf8 = self.is_known_utf8 || self.next_surrogate(0).is_none();
     }
 }
 

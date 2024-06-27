@@ -26,7 +26,7 @@ error: function pointers cannot be declared with `safe` safety qualifier
   --> $DIR/safe-outside-extern.rs:24:14
    |
 LL | type FnPtr = safe fn(i32, i32) -> i32;
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0658]: `unsafe extern {}` blocks and `safe` keyword are experimental
   --> $DIR/safe-outside-extern.rs:4:1

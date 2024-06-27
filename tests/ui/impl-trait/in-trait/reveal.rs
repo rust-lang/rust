@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(lint_reasons)]
-
 pub trait Foo {
     fn f() -> Box<impl Sized>;
 }
