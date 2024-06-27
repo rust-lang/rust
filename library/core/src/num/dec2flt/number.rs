@@ -82,10 +82,6 @@ impl Number {
             F::from_u64(mantissa) * F::pow10_fast_path(F::MAX_EXPONENT_FAST_PATH as _)
         };
 
-        if self.negative {
-            value = -value;
-        }
-
-        Some(value)
+        if self.negative { Some(-value) } else { Some(value) }
     }
 }

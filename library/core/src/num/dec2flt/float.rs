@@ -2,9 +2,49 @@
 
 use crate::fmt::{Debug, LowerExp};
 use crate::num::FpCategory;
-use crate::ops::{Add, Div, Mul, Neg};
+use crate::ops::{self, Add, Div, Mul, Neg};
 
 use core::f64;
+
+pub trait CastInto<T: Copy>: Copy {
+    fn cast(self) -> T;
+}
+
+pub trait Integer:
+    Sized
+    + Clone
+    + Copy
+    + Debug
+    + ops::Shr<u32, Output = Self>
+    + ops::Shl<u32, Output = Self>
+    + ops::BitAnd<Output = Self>
+    + ops::BitOr<Output = Self>
+    + PartialEq
+    + CastInto<i16>
+{
+    const ZERO: Self;
+    const ONE: Self;
+}
+
+macro_rules! int {
+    ($($ty:ty),+) => {
+        $(
+            impl CastInto<i16> for $ty {
+                fn cast(self) -> i16 {
+                    self as i16
+                }
+            }
+
+
+            impl Integer for $ty {
+                const ZERO: Self = 0;
+                const ONE: Self = 1;
+            }
+        )+
+    }
+}
+
+int!(u16, u32, u64);
 
 /// A helper trait to avoid duplicating basically all the conversion code for IEEE floats.
 ///
@@ -26,6 +66,9 @@ pub trait RawFloat:
     + Copy
     + Debug
 {
+    /// The unsigned integer with the same size as the float
+    type Int: Integer + Into<u64>;
+
     /* general constants */
 
     const INFINITY: Self;
@@ -38,6 +81,9 @@ pub trait RawFloat:
 
     /// Mantissa digits including the hidden bit (provided by core)
     const MANTISSA_BITS: u32;
+
+    const EXPONENT_MASK: Self::Int;
+    const MANTISSA_MASK: Self::Int;
 
     /// The number of bits in the significand, *excluding* the hidden bit.
     const MANTISSA_EXPLICIT_BITS: u32 = Self::MANTISSA_BITS - 1;
@@ -91,13 +137,14 @@ pub trait RawFloat:
     /// This is the max exponent in binary converted to the max exponent in decimal. Allows fast
     /// pathing anything larger than `10^LARGEST_POWER_OF_TEN`, which will round to infinity.
     // const LARGEST_POWER_OF_TEN: i32;
-    const LARGEST_POWER_OF_TEN: i32 = (Self::EXPONENT_BIAS as f64 / f64::consts::LOG2_10) as i32;
+    const LARGEST_POWER_OF_TEN: i32 =
+        ((Self::EXPONENT_BIAS as f64 + 1.0) / f64::consts::LOG2_10) as i32;
 
     /// Smallest decimal exponent for a non-zero value. This allows for fast pathing anything
-    /// smaller than `10^SMALLEST_POWER_OF_TEN`.
-    const SMALLEST_POWER_OF_TEN: i32;
-    // const SMALLEST_POWER_OF_TEN: i32 =
-    // -(((Self::EXPONENT_BIAS + Self::MANTISSA_BITS) as f64) / f64::consts::LOG2_10) as i32 - 2;
+    // / smaller than `10^SMALLEST_POWER_OF_TEN`.
+    // const SMALLEST_POWER_OF_TEN: i32;
+    const SMALLEST_POWER_OF_TEN: i32 =
+        -(((Self::EXPONENT_BIAS + Self::MANTISSA_BITS + 64) as f64) / f64::consts::LOG2_10) as i32;
 
     /// Maximum exponent that can be represented for a disguised-fast path case.
     /// This is `MAX_EXPONENT_FAST_PATH + ⌊(MANTISSA_EXPLICIT_BITS+1)/log2(10)⌋`
@@ -122,65 +169,74 @@ pub trait RawFloat:
     /// Returns the category that this number falls into.
     fn classify(self) -> FpCategory;
 
+    /// Transmute to the integer representation
+    fn to_bits(self) -> Self::Int;
+
     /// Returns the mantissa, exponent and sign as integers.
-    fn integer_decode(self) -> (u64, i16, i8);
+    fn integer_decode(self) -> (u64, i16, i8) {
+        let bits = self.to_bits();
+        let sign: i8 = if bits >> (Self::BITS - 1) == Self::Int::ZERO { 1 } else { -1 };
+        let mut exponent: i16 =
+            ((bits & Self::EXPONENT_MASK) >> Self::MANTISSA_EXPLICIT_BITS).cast();
+        let mantissa = if exponent == 0 {
+            (bits & Self::MANTISSA_MASK) << 1
+        } else {
+            (bits & Self::MANTISSA_MASK) | (Self::Int::ONE << Self::MANTISSA_EXPLICIT_BITS)
+        };
+        // Exponent bias + mantissa shift
+        exponent -= (Self::EXPONENT_BIAS + Self::MANTISSA_EXPLICIT_BITS) as i16;
+        (mantissa.into(), exponent, sign)
+    }
 }
 
-// #[cfg(not(bootstrap))]
-// impl RawFloat for f16 {
-//     const INFINITY: Self = Self::INFINITY;
-//     const NEG_INFINITY: Self = Self::NEG_INFINITY;
-//     const NAN: Self = Self::NAN;
-//     const NEG_NAN: Self = -Self::NAN;
+#[cfg(not(bootstrap))]
+impl RawFloat for f16 {
+    type Int = u16;
 
-//     const BITS: u32 = 16;
-//     const MANTISSA_DIGITS: u32 = Self::MANTISSA_DIGITS;
+    const INFINITY: Self = Self::INFINITY;
+    const NEG_INFINITY: Self = Self::NEG_INFINITY;
+    const NAN: Self = Self::NAN;
+    const NEG_NAN: Self = -Self::NAN;
 
-//     const MIN_EXPONENT_FAST_PATH: i64 = -4; // assuming FLT_EVAL_METHOD = 0
-//     const MAX_EXPONENT_FAST_PATH: i64 = 4;
+    const BITS: u32 = 16;
+    const MANTISSA_BITS: u32 = Self::MANTISSA_DIGITS;
+    const EXPONENT_MASK: Self::Int = Self::EXP_MASK;
+    const MANTISSA_MASK: Self::Int = Self::MAN_MASK;
 
-//     const MIN_EXPONENT_ROUND_TO_EVEN: i32 = -17;
-//     const MAX_EXPONENT_ROUND_TO_EVEN: i32 = 10;
-//     const MAX_EXPONENT_DISGUISED_FAST_PATH: i64 = 17;
-//     const SMALLEST_POWER_OF_TEN: i32 = -65;
-//     const LARGEST_POWER_OF_TEN: i32 = Self::MAX_10_EXP;
+    const MIN_EXPONENT_ROUND_TO_EVEN: i32 = -17;
+    const MAX_EXPONENT_ROUND_TO_EVEN: i32 = 10;
+    // const SMALLEST_POWER_OF_TEN: i32 = -27;
+    // const LARGEST_POWER_OF_TEN: i32 = Self::MAX_10_EXP;
 
-//     #[inline]
-//     fn from_u64(v: u64) -> Self {
-//         debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
-//         v as _
-//     }
+    #[inline]
+    fn from_u64(v: u64) -> Self {
+        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
+        v as _
+    }
 
-//     #[inline]
-//     fn from_u64_bits(v: u64) -> Self {
-//         Self::from_bits((v & 0xFFFF) as u16)
-//     }
+    #[inline]
+    fn from_u64_bits(v: u64) -> Self {
+        Self::from_bits((v & 0xFF) as u16)
+    }
 
-//     fn pow10_fast_path(exponent: usize) -> Self {
-//         #[allow(clippy::use_self)]
-//         const TABLE: [f32; 16] =
-//             [1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 0., 0., 0., 0., 0.];
-//         TABLE[exponent & 15]
-//     }
+    fn pow10_fast_path(exponent: usize) -> Self {
+        #[allow(clippy::use_self)]
+        const TABLE: [f16; 8] = [1e0, 1e1, 1e2, 1e3, 1e4, 0.0, 0.0, 0.];
+        TABLE[exponent & 15]
+    }
 
-//     /// Returns the mantissa, exponent and sign as integers.
-//     fn integer_decode(self) -> (u64, i16, i8) {
-//         let bits = self.to_bits();
-//         let sign: i8 = if bits >> 31 == 0 { 1 } else { -1 };
-//         let mut exponent: i16 = ((bits >> 23) & 0xff) as i16;
-//         let mantissa =
-//             if exponent == 0 { (bits & 0x7fffff) << 1 } else { (bits & 0x7fffff) | 0x800000 };
-//         // Exponent bias + mantissa shift
-//         exponent -= 127 + 23;
-//         (mantissa as u64, exponent, sign)
-//     }
+    fn to_bits(self) -> Self::Int {
+        self.to_bits()
+    }
 
-//     fn classify(self) -> FpCategory {
-//         self.classify()
-//     }
-// }
+    fn classify(self) -> FpCategory {
+        todo!()
+    }
+}
 
 impl RawFloat for f32 {
+    type Int = u32;
+
     const INFINITY: Self = f32::INFINITY;
     const NEG_INFINITY: Self = f32::NEG_INFINITY;
     const NAN: Self = f32::NAN;
@@ -188,6 +244,8 @@ impl RawFloat for f32 {
 
     const BITS: u32 = 32;
     const MANTISSA_BITS: u32 = Self::MANTISSA_DIGITS;
+    const EXPONENT_MASK: Self::Int = Self::EXP_MASK;
+    const MANTISSA_MASK: Self::Int = Self::MAN_MASK;
 
     // const MANTISSA_EXPLICIT_BITS: u32 = 23;
     const MIN_EXPONENT_ROUND_TO_EVEN: i32 = -17;
@@ -198,7 +256,7 @@ impl RawFloat for f32 {
     // const MINIMUM_EXPONENT: i32 = -127;
     // const INFINITE_POWER: i32 = 0xFF;
     // const SIGN_INDEX: u32 = 31;
-    const SMALLEST_POWER_OF_TEN: i32 = -65;
+    // const SMALLEST_POWER_OF_TEN: i32 = -65;
     // const LARGEST_POWER_OF_TEN: i32 = 38;
 
     #[inline]
@@ -219,16 +277,8 @@ impl RawFloat for f32 {
         TABLE[exponent & 15]
     }
 
-    /// Returns the mantissa, exponent and sign as integers.
-    fn integer_decode(self) -> (u64, i16, i8) {
-        let bits = self.to_bits();
-        let sign: i8 = if bits >> 31 == 0 { 1 } else { -1 };
-        let mut exponent: i16 = ((bits >> 23) & 0xff) as i16;
-        let mantissa =
-            if exponent == 0 { (bits & 0x7fffff) << 1 } else { (bits & 0x7fffff) | 0x800000 };
-        // Exponent bias + mantissa shift
-        exponent -= 127 + 23;
-        (mantissa as u64, exponent, sign)
+    fn to_bits(self) -> Self::Int {
+        self.to_bits()
     }
 
     fn classify(self) -> FpCategory {
@@ -237,6 +287,8 @@ impl RawFloat for f32 {
 }
 
 impl RawFloat for f64 {
+    type Int = u64;
+
     const INFINITY: Self = Self::INFINITY;
     const NEG_INFINITY: Self = Self::NEG_INFINITY;
     const NAN: Self = Self::NAN;
@@ -244,6 +296,8 @@ impl RawFloat for f64 {
 
     const BITS: u32 = 64;
     const MANTISSA_BITS: u32 = Self::MANTISSA_DIGITS;
+    const EXPONENT_MASK: Self::Int = Self::EXP_MASK;
+    const MANTISSA_MASK: Self::Int = Self::MAN_MASK;
 
     // const MANTISSA_EXPLICIT_BITS: u32 = 52;
     const MIN_EXPONENT_ROUND_TO_EVEN: i32 = -4;
@@ -254,7 +308,7 @@ impl RawFloat for f64 {
     // const MINIMUM_EXPONENT: i32 = -1023;
     // const INFINITE_POWER: i32 = 0x7FF;
     // const SIGN_INDEX: u32 = 63;
-    const SMALLEST_POWER_OF_TEN: i32 = -342;
+    // const SMALLEST_POWER_OF_TEN: i32 = -342;
     // const LARGEST_POWER_OF_TEN: i32 = 308;
 
     #[inline]
@@ -276,19 +330,8 @@ impl RawFloat for f64 {
         TABLE[exponent & 31]
     }
 
-    /// Returns the mantissa, exponent and sign as integers.
-    fn integer_decode(self) -> (u64, i16, i8) {
-        let bits = self.to_bits();
-        let sign: i8 = if bits >> 63 == 0 { 1 } else { -1 };
-        let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
-        let mantissa = if exponent == 0 {
-            (bits & 0xfffffffffffff) << 1
-        } else {
-            (bits & 0xfffffffffffff) | 0x10000000000000
-        };
-        // Exponent bias + mantissa shift
-        exponent -= 1023 + 52;
-        (mantissa, exponent, sign)
+    fn to_bits(self) -> Self::Int {
+        self.to_bits()
     }
 
     fn classify(self) -> FpCategory {
