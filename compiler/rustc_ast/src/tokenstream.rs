@@ -400,8 +400,8 @@ impl PartialEq<TokenStream> for TokenStream {
 }
 
 impl TokenStream {
-    pub fn new(streams: Vec<TokenTree>) -> TokenStream {
-        TokenStream(Lrc::new(streams))
+    pub fn new(tts: Vec<TokenTree>) -> TokenStream {
+        TokenStream(Lrc::new(tts))
     }
 
     pub fn is_empty(&self) -> bool {
