@@ -28,6 +28,19 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         global
         // TODO(antoyo): set linkage.
     }
+
+    pub fn const_bitcast(&self, value: RValue<'gcc>, typ: Type<'gcc>) -> RValue<'gcc> {
+        if value.get_type() == self.bool_type.make_pointer() {
+            if let Some(pointee) = typ.get_pointee() {
+                if pointee.dyncast_vector().is_some() {
+                    panic!()
+                }
+            }
+        }
+        // NOTE: since bitcast makes a value non-constant, don't bitcast if not necessary as some
+        // SIMD builtins require a constant value.
+        self.bitcast_if_needed(value, typ)
+    }
 }
 
 pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) -> RValue<'gcc> {
@@ -237,19 +250,6 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
         const_alloc_to_gcc(self, alloc)
-    }
-
-    fn const_bitcast(&self, value: RValue<'gcc>, typ: Type<'gcc>) -> RValue<'gcc> {
-        if value.get_type() == self.bool_type.make_pointer() {
-            if let Some(pointee) = typ.get_pointee() {
-                if pointee.dyncast_vector().is_some() {
-                    panic!()
-                }
-            }
-        }
-        // NOTE: since bitcast makes a value non-constant, don't bitcast if not necessary as some
-        // SIMD builtins require a constant value.
-        self.bitcast_if_needed(value, typ)
     }
 
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {

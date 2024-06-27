@@ -37,6 +37,5 @@ pub trait ConstMethods<'tcx>: BackendTypes {
 
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: Self::Type) -> Self::Value;
 
-    fn const_bitcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
     fn const_ptr_byte_offset(&self, val: Self::Value, offset: abi::Size) -> Self::Value;
 }

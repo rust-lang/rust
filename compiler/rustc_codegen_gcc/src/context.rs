@@ -27,7 +27,6 @@ use crate::callee::get_fn;
 use crate::common::SignType;
 
 pub struct CodegenCx<'gcc, 'tcx> {
-    pub check_overflow: bool,
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
     pub context: &'gcc Context<'gcc>,
 
@@ -134,8 +133,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         tcx: TyCtxt<'tcx>,
         supports_128bit_integers: bool,
     ) -> Self {
-        let check_overflow = tcx.sess.overflow_checks();
-
         let create_type = |ctype, rust_type| {
             let layout = tcx.layout_of(ParamEnv::reveal_all().and(rust_type)).unwrap();
             let align = layout.align.abi.bytes();
@@ -271,7 +268,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
 
         let mut cx = Self {
-            check_overflow,
             codegen_unit,
             context,
             current_func: RefCell::new(None),
@@ -509,10 +505,6 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn sess(&self) -> &Session {
         &self.tcx.sess
-    }
-
-    fn check_overflow(&self) -> bool {
-        self.check_overflow
     }
 
     fn codegen_unit(&self) -> &'tcx CodegenUnit<'tcx> {
