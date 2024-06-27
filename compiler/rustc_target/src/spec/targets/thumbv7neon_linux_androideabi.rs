@@ -10,7 +10,8 @@ use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::android::opts();
-    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-march=armv7-a"]);
+    base.pre_link_args =
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-march=armv7-a"]);
     Target {
         llvm_target: "armv7-none-linux-android".into(),
         metadata: crate::spec::TargetMetadata {

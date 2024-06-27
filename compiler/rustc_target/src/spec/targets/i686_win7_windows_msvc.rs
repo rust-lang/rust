@@ -1,4 +1,4 @@
-use crate::spec::{base, LinkerFlavor, Lld, Target};
+use crate::spec::{base, LinkerFlavor, Lld, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::windows_msvc::opts();
@@ -6,7 +6,7 @@ pub fn target() -> Target {
     base.max_atomic_width = Some(64);
     base.vendor = "win7".into();
 
-    base.add_pre_link_args(
+    base.pre_link_args = TargetOptions::link_args(
         LinkerFlavor::Msvc(Lld::No),
         &[
             // Mark all dynamic libraries and executables as compatible with the larger 4GiB address

@@ -9,12 +9,13 @@
 // the timer-interrupt. Device-drivers are required to use polling-based models. Furthermore, all
 // code runs in the same environment, no process separation is supported.
 
-use crate::spec::{base, LinkerFlavor, Lld, PanicStrategy, StackProbeType, TargetOptions};
+use crate::spec::{base, LinkerFlavor, Lld};
+use crate::spec::{PanicStrategy, StackProbeType, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let mut base = base::msvc::opts();
 
-    base.add_pre_link_args(
+    base.pre_link_args = TargetOptions::link_args(
         LinkerFlavor::Msvc(Lld::No),
         &[
             // Non-standard subsystems have no default entry-point in PE+ files. We have to define

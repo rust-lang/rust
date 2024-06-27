@@ -38,7 +38,8 @@ use crate::abi::call::Conv;
 use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
 use crate::json::{Json, ToJson};
 use crate::spec::abi::Abi;
-use crate::spec::crt_objects::CrtObjects;
+use crate::spec::crt_objects::{CrtObjects, LazyCrtObjects};
+use crate::spec::link_args::{LazyLinkArgs, LinkArgs, LinkArgsCli};
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -55,12 +56,16 @@ use tracing::debug;
 
 pub mod abi;
 pub mod crt_objects;
+pub mod link_args;
+pub mod maybe_lazy;
 
 mod base;
 pub use base::apple::deployment_target as current_apple_deployment_target;
 pub use base::apple::platform as current_apple_platform;
 pub use base::apple::sdk_version as current_apple_sdk_version;
 pub use base::avr_gnu::ef_avr_arch;
+
+use maybe_lazy::MaybeLazy;
 
 /// Linker is called through a C/C++ compiler.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -1102,9 +1107,6 @@ impl fmt::Display for LinkOutputKind {
     }
 }
 
-pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<StaticCow<str>>>;
-pub type LinkArgsCli = BTreeMap<LinkerFlavorCli, Vec<StaticCow<str>>>;
-
 /// Which kind of debuginfo does the target use?
 ///
 /// Useful in determining whether a target supports Split DWARF (a target with
@@ -1896,7 +1898,7 @@ impl TargetWarnings {
 #[derive(PartialEq, Clone, Debug)]
 pub struct Target {
     /// Target triple to pass to LLVM.
-    pub llvm_target: StaticCow<str>,
+    pub llvm_target: MaybeLazy<str>,
     /// Metadata about a target, for example the description or tier.
     /// Used for generating target documentation.
     pub metadata: TargetMetadata,
@@ -2031,34 +2033,34 @@ pub struct TargetOptions {
     linker_is_gnu_json: bool,
 
     /// Objects to link before and after all other object code.
-    pub pre_link_objects: CrtObjects,
-    pub post_link_objects: CrtObjects,
+    pub pre_link_objects: LazyCrtObjects,
+    pub post_link_objects: LazyCrtObjects,
     /// Same as `(pre|post)_link_objects`, but when self-contained linking mode is enabled.
-    pub pre_link_objects_self_contained: CrtObjects,
-    pub post_link_objects_self_contained: CrtObjects,
+    pub pre_link_objects_self_contained: LazyCrtObjects,
+    pub post_link_objects_self_contained: LazyCrtObjects,
     /// Behavior for the self-contained linking mode: inferred for some targets, or explicitly
     /// enabled (in bulk, or with individual components).
     pub link_self_contained: LinkSelfContainedDefault,
 
     /// Linker arguments that are passed *before* any user-defined libraries.
-    pub pre_link_args: LinkArgs,
+    pub pre_link_args: LazyLinkArgs,
     pre_link_args_json: LinkArgsCli,
     /// Linker arguments that are unconditionally passed after any
     /// user-defined but before post-link objects. Standard platform
     /// libraries that should be always be linked to, usually go here.
-    pub late_link_args: LinkArgs,
+    pub late_link_args: LazyLinkArgs,
     late_link_args_json: LinkArgsCli,
     /// Linker arguments used in addition to `late_link_args` if at least one
     /// Rust dependency is dynamically linked.
-    pub late_link_args_dynamic: LinkArgs,
+    pub late_link_args_dynamic: LazyLinkArgs,
     late_link_args_dynamic_json: LinkArgsCli,
     /// Linker arguments used in addition to `late_link_args` if all Rust
     /// dependencies are statically linked.
-    pub late_link_args_static: LinkArgs,
+    pub late_link_args_static: LazyLinkArgs,
     late_link_args_static_json: LinkArgsCli,
     /// Linker arguments that are unconditionally passed *after* any
     /// user-defined libraries.
-    pub post_link_args: LinkArgs,
+    pub post_link_args: LazyLinkArgs,
     post_link_args_json: LinkArgsCli,
 
     /// Optional link script applied to `dylib` and `executable` crate types.
@@ -2405,14 +2407,14 @@ fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'stati
 }
 
 impl TargetOptions {
-    fn link_args(flavor: LinkerFlavor, args: &[&'static str]) -> LinkArgs {
-        let mut link_args = LinkArgs::new();
-        add_link_args(&mut link_args, flavor, args);
-        link_args
+    #[inline]
+    fn link_args(flavor: LinkerFlavor, args: &'static [&'static str]) -> LazyLinkArgs {
+        MaybeLazy::lazied(link_args::LazyLinkArgsState::Simple(flavor, args))
     }
 
-    fn add_pre_link_args(&mut self, flavor: LinkerFlavor, args: &[&'static str]) {
-        add_link_args(&mut self.pre_link_args, flavor, args);
+    #[inline]
+    fn link_args_list(list: &'static [(LinkerFlavor, &'static [&'static str])]) -> LazyLinkArgs {
+        MaybeLazy::lazied(link_args::LazyLinkArgsState::List(list))
     }
 
     fn update_from_cli(&mut self) {
@@ -2421,14 +2423,14 @@ impl TargetOptions {
             self.lld_flavor_json,
             self.linker_is_gnu_json,
         );
-        for (args, args_json) in [
+        for (real_args, args_json) in [
             (&mut self.pre_link_args, &self.pre_link_args_json),
             (&mut self.late_link_args, &self.late_link_args_json),
             (&mut self.late_link_args_dynamic, &self.late_link_args_dynamic_json),
             (&mut self.late_link_args_static, &self.late_link_args_static_json),
             (&mut self.post_link_args, &self.post_link_args_json),
         ] {
-            args.clear();
+            let mut args = LinkArgs::new();
             for (flavor, args_json) in args_json {
                 let linker_flavor = self.linker_flavor.with_cli_hints(*flavor);
                 // Normalize to no lld to avoid asserts.
@@ -2439,9 +2441,10 @@ impl TargetOptions {
                     _ => linker_flavor,
                 };
                 if !args.contains_key(&linker_flavor) {
-                    add_link_args_iter(args, linker_flavor, args_json.iter().cloned());
+                    add_link_args_iter(&mut args, linker_flavor, args_json.iter().cloned());
                 }
             }
+            *real_args = MaybeLazy::owned(args);
         }
     }
 
@@ -2523,15 +2526,15 @@ impl Default for TargetOptions {
             pre_link_objects_self_contained: Default::default(),
             post_link_objects_self_contained: Default::default(),
             link_self_contained: LinkSelfContainedDefault::False,
-            pre_link_args: LinkArgs::new(),
+            pre_link_args: Default::default(),
             pre_link_args_json: LinkArgsCli::new(),
-            late_link_args: LinkArgs::new(),
+            late_link_args: Default::default(),
             late_link_args_json: LinkArgsCli::new(),
-            late_link_args_dynamic: LinkArgs::new(),
+            late_link_args_dynamic: Default::default(),
             late_link_args_dynamic_json: LinkArgsCli::new(),
-            late_link_args_static: LinkArgs::new(),
+            late_link_args_static: Default::default(),
             late_link_args_static_json: LinkArgsCli::new(),
-            post_link_args: LinkArgs::new(),
+            post_link_args: Default::default(),
             post_link_args_json: LinkArgsCli::new(),
             link_env: cvs![],
             link_env_remove: cvs![],
@@ -2751,7 +2754,7 @@ impl Target {
         };
 
         let mut base = Target {
-            llvm_target: get_req_field("llvm-target")?.into(),
+            llvm_target: MaybeLazy::owned(get_req_field("llvm-target")?),
             metadata: Default::default(),
             pointer_width: get_req_field("target-pointer-width")?
                 .parse::<u32>()
@@ -3112,7 +3115,7 @@ impl Target {
 
                         args.insert(kind, v);
                     }
-                    base.$key_name = args;
+                    base.$key_name = MaybeLazy::owned(args);
                 }
             } );
             ($key_name:ident = $json_name:expr, link_args) => ( {

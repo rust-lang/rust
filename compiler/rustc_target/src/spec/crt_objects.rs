@@ -40,28 +40,42 @@
 //! but not gcc's. As a result rustc cannot link with C++ static libraries (#36710)
 //! when linking in self-contained mode.
 
-use crate::spec::LinkOutputKind;
+use crate::spec::{LinkOutputKind, MaybeLazy};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
+type LazyCrtObjectsArgs = &'static [(LinkOutputKind, &'static [&'static str])];
+pub struct LazyCrtObjectsState(LazyCrtObjectsArgs);
+
+impl FnOnce<()> for LazyCrtObjectsState {
+    type Output = CrtObjects;
+    extern "rust-call" fn call_once(self, _args: ()) -> Self::Output {
+        self.0.iter().map(|(z, k)| (*z, k.iter().map(|b| (*b).into()).collect())).collect()
+    }
+}
+
 pub type CrtObjects = BTreeMap<LinkOutputKind, Vec<Cow<'static, str>>>;
+pub type LazyCrtObjects = MaybeLazy<CrtObjects, LazyCrtObjectsState>;
 
-pub(super) fn new(obj_table: &[(LinkOutputKind, &[&'static str])]) -> CrtObjects {
-    obj_table.iter().map(|(z, k)| (*z, k.iter().map(|b| (*b).into()).collect())).collect()
+#[inline]
+pub(super) fn new(obj_table: LazyCrtObjectsArgs) -> LazyCrtObjects {
+    MaybeLazy::lazied(LazyCrtObjectsState(obj_table))
 }
 
-pub(super) fn all(obj: &'static str) -> CrtObjects {
-    new(&[
-        (LinkOutputKind::DynamicNoPicExe, &[obj]),
-        (LinkOutputKind::DynamicPicExe, &[obj]),
-        (LinkOutputKind::StaticNoPicExe, &[obj]),
-        (LinkOutputKind::StaticPicExe, &[obj]),
-        (LinkOutputKind::DynamicDylib, &[obj]),
-        (LinkOutputKind::StaticDylib, &[obj]),
-    ])
+macro_rules! all {
+    ($obj: literal) => {
+        new(&[
+            (LinkOutputKind::DynamicNoPicExe, &[$obj]),
+            (LinkOutputKind::DynamicPicExe, &[$obj]),
+            (LinkOutputKind::StaticNoPicExe, &[$obj]),
+            (LinkOutputKind::StaticPicExe, &[$obj]),
+            (LinkOutputKind::DynamicDylib, &[$obj]),
+            (LinkOutputKind::StaticDylib, &[$obj]),
+        ])
+    };
 }
 
-pub(super) fn pre_musl_self_contained() -> CrtObjects {
+pub(super) fn pre_musl_self_contained() -> LazyCrtObjects {
     new(&[
         (LinkOutputKind::DynamicNoPicExe, &["crt1.o", "crti.o", "crtbegin.o"]),
         (LinkOutputKind::DynamicPicExe, &["Scrt1.o", "crti.o", "crtbeginS.o"]),
@@ -72,7 +86,7 @@ pub(super) fn pre_musl_self_contained() -> CrtObjects {
     ])
 }
 
-pub(super) fn post_musl_self_contained() -> CrtObjects {
+pub(super) fn post_musl_self_contained() -> LazyCrtObjects {
     new(&[
         (LinkOutputKind::DynamicNoPicExe, &["crtend.o", "crtn.o"]),
         (LinkOutputKind::DynamicPicExe, &["crtendS.o", "crtn.o"]),
@@ -83,7 +97,7 @@ pub(super) fn post_musl_self_contained() -> CrtObjects {
     ])
 }
 
-pub(super) fn pre_mingw_self_contained() -> CrtObjects {
+pub(super) fn pre_mingw_self_contained() -> LazyCrtObjects {
     new(&[
         (LinkOutputKind::DynamicNoPicExe, &["crt2.o", "rsbegin.o"]),
         (LinkOutputKind::DynamicPicExe, &["crt2.o", "rsbegin.o"]),
@@ -94,19 +108,19 @@ pub(super) fn pre_mingw_self_contained() -> CrtObjects {
     ])
 }
 
-pub(super) fn post_mingw_self_contained() -> CrtObjects {
-    all("rsend.o")
+pub(super) fn post_mingw_self_contained() -> LazyCrtObjects {
+    all!("rsend.o")
 }
 
-pub(super) fn pre_mingw() -> CrtObjects {
-    all("rsbegin.o")
+pub(super) fn pre_mingw() -> LazyCrtObjects {
+    all!("rsbegin.o")
 }
 
-pub(super) fn post_mingw() -> CrtObjects {
-    all("rsend.o")
+pub(super) fn post_mingw() -> LazyCrtObjects {
+    all!("rsend.o")
 }
 
-pub(super) fn pre_wasi_self_contained() -> CrtObjects {
+pub(super) fn pre_wasi_self_contained() -> LazyCrtObjects {
     // Use crt1-command.o instead of crt1.o to enable support for new-style
     // commands. See https://reviews.llvm.org/D81689 for more info.
     new(&[
@@ -118,6 +132,6 @@ pub(super) fn pre_wasi_self_contained() -> CrtObjects {
     ])
 }
 
-pub(super) fn post_wasi_self_contained() -> CrtObjects {
+pub(super) fn post_wasi_self_contained() -> LazyCrtObjects {
     new(&[])
 }

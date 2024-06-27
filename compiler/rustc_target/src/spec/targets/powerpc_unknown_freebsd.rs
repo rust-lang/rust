@@ -4,7 +4,7 @@ use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOpt
 pub fn target() -> Target {
     let mut base = base::freebsd::opts();
     // Extra hint to linker that we are generating secure-PLT code.
-    base.add_pre_link_args(
+    base.pre_link_args = TargetOptions::link_args(
         LinkerFlavor::Gnu(Cc::Yes, Lld::No),
         &["-m32", "--target=powerpc-unknown-freebsd13.0"],
     );
