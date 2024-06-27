@@ -1,6 +1,8 @@
 #![allow(dead_code, clippy::double_parens, clippy::unnecessary_cast)]
 #![warn(clippy::suboptimal_flops, clippy::imprecise_flops)]
 
+// FIXME(f16_f128): add tests for these types once math functions are available
+
 const TWO: f32 = 2.0;
 const E: f32 = std::f32::consts::E;
 

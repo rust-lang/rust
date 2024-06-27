@@ -108,7 +108,7 @@ help: try
    |
 LL ~     let _ = Some(0).inspect(|&x| {
 LL |         if x == 0 {
- ...
+...
 LL |             panic!();
 LL ~         }
    |

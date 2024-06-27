@@ -669,6 +669,8 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 
 ---
 **Affected lints:**
+* [`allow_attributes`](https://rust-lang.github.io/rust-clippy/master/index.html#allow_attributes)
+* [`allow_attributes_without_reason`](https://rust-lang.github.io/rust-clippy/master/index.html#allow_attributes_without_reason)
 * [`almost_complete_range`](https://rust-lang.github.io/rust-clippy/master/index.html#almost_complete_range)
 * [`approx_constant`](https://rust-lang.github.io/rust-clippy/master/index.html#approx_constant)
 * [`assigning_clones`](https://rust-lang.github.io/rust-clippy/master/index.html#assigning_clones)

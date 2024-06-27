@@ -1,3 +1,5 @@
+// FIXME(f16_f128): const casting is not yet supported for these types. Add when available.
+
 #![warn(clippy::float_cmp)]
 #![allow(
     unused,

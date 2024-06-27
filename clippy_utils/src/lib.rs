@@ -1,10 +1,10 @@
 #![feature(array_chunks)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
-#![feature(exhaustive_patterns)]
+#![feature(f128)]
+#![feature(f16)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(lint_reasons)]
 #![feature(never_type)]
 #![feature(rustc_private)]
 #![feature(assert_matches)]
@@ -2881,6 +2881,7 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> ExprU
             moved_before_use,
             same_ctxt,
         },
+        Some(ControlFlow::Break(_)) => unreachable!("type of node is ControlFlow<!>"),
         None => ExprUseCtxt {
             node: Node::Crate(cx.tcx.hir().root_module()),
             child_id: HirId::INVALID,

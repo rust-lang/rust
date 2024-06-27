@@ -79,6 +79,7 @@ fn analyze_operand(operand: &Expr<'_>, cx: &LateContext<'_>, expr: &Expr<'_>) ->
             },
             _ => {},
         },
+        // FIXME(f16_f128): add when casting is available on all platforms
         Some(Constant::F32(f)) => {
             return Some(floating_point_operand_info(&f));
         },

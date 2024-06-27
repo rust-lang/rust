@@ -2,7 +2,6 @@
 #![allow(rustc::untranslatable_diagnostic)]
 #![feature(rustc_private)]
 #![feature(let_chains)]
-#![feature(lint_reasons)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
@@ -180,12 +179,12 @@ pub fn main() {
 
     rustc_driver::init_rustc_env_logger(&early_dcx);
 
-    let using_internal_features = rustc_driver::install_ice_hook(BUG_REPORT_URL, |handler| {
+    let using_internal_features = rustc_driver::install_ice_hook(BUG_REPORT_URL, |dcx| {
         // FIXME: this macro calls unwrap internally but is called in a panicking context!  It's not
         // as simple as moving the call from the hook to main, because `install_ice_hook` doesn't
         // accept a generic closure.
         let version_info = rustc_tools_util::get_version_info!();
-        handler.note(format!("Clippy version: {version_info}"));
+        dcx.handle().note(format!("Clippy version: {version_info}"));
     });
 
     exit(rustc_driver::catch_with_exit_code(move || {

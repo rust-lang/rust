@@ -4,9 +4,7 @@ error[E0412]: cannot find type `PhantomData` in this scope
 LL |     _n: PhantomData,
    |         ^^^^^^^^^^^ not found in this scope
    |
-help: consider importing one of these items
-   |
-LL + use core::marker::PhantomData;
+help: consider importing this struct
    |
 LL + use std::marker::PhantomData;
    |
