@@ -590,6 +590,38 @@ fn module_codegen(
     }))
 }
 
+fn emit_metadata_module(tcx: TyCtxt<'_>, metadata: &EncodedMetadata) -> CompiledModule {
+    use rustc_middle::mir::mono::CodegenUnitNameBuilder;
+
+    let _timer = tcx.sess.timer("write compressed metadata");
+
+    let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
+    let metadata_cgu_name = cgu_name_builder
+        .build_cgu_name(LOCAL_CRATE, ["crate"], Some("metadata"))
+        .as_str()
+        .to_string();
+
+    let tmp_file =
+        tcx.output_filenames(()).temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
+
+    let symbol_name = rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx);
+    let obj = create_compressed_metadata_file(tcx.sess, metadata, &symbol_name);
+
+    if let Err(err) = std::fs::write(&tmp_file, obj) {
+        tcx.dcx().fatal(format!("error writing metadata object file: {}", err));
+    }
+
+    CompiledModule {
+        name: metadata_cgu_name,
+        kind: ModuleKind::Metadata,
+        object: Some(tmp_file),
+        dwarf_object: None,
+        bytecode: None,
+        assembly: None,
+        llvm_ir: None,
+    }
+}
+
 pub(crate) fn run_aot(
     tcx: TyCtxt<'_>,
     metadata: EncodedMetadata,
@@ -689,41 +721,8 @@ pub(crate) fn run_aot(
         None
     };
 
-    let metadata_module = if need_metadata_module {
-        let (metadata_cgu_name, tmp_file) = tcx.sess.time("write compressed metadata", || {
-            use rustc_middle::mir::mono::CodegenUnitNameBuilder;
-
-            let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
-            let metadata_cgu_name = cgu_name_builder
-                .build_cgu_name(LOCAL_CRATE, ["crate"], Some("metadata"))
-                .as_str()
-                .to_string();
-
-            let tmp_file =
-                tcx.output_filenames(()).temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
-
-            let symbol_name = rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx);
-            let obj = create_compressed_metadata_file(tcx.sess, &metadata, &symbol_name);
-
-            if let Err(err) = std::fs::write(&tmp_file, obj) {
-                tcx.dcx().fatal(format!("error writing metadata object file: {}", err));
-            }
-
-            (metadata_cgu_name, tmp_file)
-        });
-
-        Some(CompiledModule {
-            name: metadata_cgu_name,
-            kind: ModuleKind::Metadata,
-            object: Some(tmp_file),
-            dwarf_object: None,
-            bytecode: None,
-            assembly: None,
-            llvm_ir: None,
-        })
-    } else {
-        None
-    };
+    let metadata_module =
+        if need_metadata_module { Some(emit_metadata_module(tcx, &metadata)) } else { None };
 
     Box::new(OngoingCodegen {
         modules,
