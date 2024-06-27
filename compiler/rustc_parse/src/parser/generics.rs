@@ -457,7 +457,7 @@ impl<'a> Parser<'a> {
         // * `for<'a> Trait1<'a>: Trait2<'a /* ok */>`
         // * `(for<'a> Trait1<'a>): Trait2<'a /* not ok */>`
         // * `for<'a> for<'b> Trait1<'a, 'b>: Trait2<'a /* ok */, 'b /* not ok */>`
-        let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
+        let (lifetime_defs, _) = self.parse_late_bound_lifetime_defs()?;
 
         // Parse type with mandatory colon and (possibly empty) bounds,
         // or with mandatory equality sign and the second type.
