@@ -85,6 +85,11 @@ fn main() {
     println!("cargo:rustc-check-cfg=cfg(reliable_f16)");
     println!("cargo:rustc-check-cfg=cfg(reliable_f128)");
 
+    // This is a step above just having the types and basic functions available. Math functions
+    // aren't consistently available or correct.
+    println!("cargo:rustc-check-cfg=cfg(reliable_f16_math)");
+    println!("cargo:rustc-check-cfg=cfg(reliable_f128_math)");
+
     let has_reliable_f16 = match (target_arch.as_str(), target_os.as_str()) {
         // Selection failure until recent LLVM <https://github.com/llvm/llvm-project/issues/93894>
         // FIXME(llvm19): can probably be removed at the version bump
@@ -126,10 +131,29 @@ fn main() {
         _ => false,
     };
 
+    // LLVM is currenlty adding missing routines, <https://github.com/llvm/llvm-project/issues/93566>
+    let has_reliable_f16_math = has_reliable_f16
+        && match (target_arch.as_str(), target_os.as_str()) {
+            ("aarch64", _) => true,
+            _ => false,
+        };
+
+    let has_reliable_f128_math = has_reliable_f128
+        && match (target_arch.as_str(), target_os.as_str()) {
+            ("aarch64", _) => true,
+            _ => false,
+        };
+
     if has_reliable_f16 {
         println!("cargo:rustc-cfg=reliable_f16");
     }
     if has_reliable_f128 {
         println!("cargo:rustc-cfg=reliable_f128");
+    }
+    if has_reliable_f16_math {
+        println!("cargo:rustc-cfg=reliable_f16_math");
+    }
+    if has_reliable_f128_math {
+        println!("cargo:rustc-cfg=reliable_f128_math");
     }
 }

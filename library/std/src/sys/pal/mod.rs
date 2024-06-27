@@ -79,9 +79,16 @@ cfg_if::cfg_if! {
 #[cfg(not(test))]
 cfg_if::cfg_if! {
     if #[cfg(target_os = "android")] {
+        pub use self::android::log2f16;
         pub use self::android::log2f32;
         pub use self::android::log2f64;
+        pub use self::android::log2f128;
     } else {
+        #[inline]
+        pub fn log2f16(n: f16) -> f16 {
+            unsafe { crate::intrinsics::log2f16(n) }
+        }
+
         #[inline]
         pub fn log2f32(n: f32) -> f32 {
             unsafe { crate::intrinsics::log2f32(n) }
@@ -90,6 +97,11 @@ cfg_if::cfg_if! {
         #[inline]
         pub fn log2f64(n: f64) -> f64 {
             unsafe { crate::intrinsics::log2f64(n) }
+        }
+
+        #[inline]
+        pub fn log2f128(n: f128) -> f128 {
+            unsafe { crate::intrinsics::log2f128(n) }
         }
     }
 }
