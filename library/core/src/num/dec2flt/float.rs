@@ -137,7 +137,8 @@ pub trait RawFloat:
     /// This is the max exponent in binary converted to the max exponent in decimal. Allows fast
     /// pathing anything larger than `10^LARGEST_POWER_OF_TEN`, which will round to infinity.
     // const LARGEST_POWER_OF_TEN: i32;
-    const LARGEST_POWER_OF_TEN: i32 = (Self::EXPONENT_BIAS as f64 / f64::consts::LOG2_10) as i32;
+    const LARGEST_POWER_OF_TEN: i32 =
+        ((Self::EXPONENT_BIAS as f64 + 1.0) / f64::consts::LOG2_10) as i32;
 
     /// Smallest decimal exponent for a non-zero value. This allows for fast pathing anything
     // / smaller than `10^SMALLEST_POWER_OF_TEN`.
