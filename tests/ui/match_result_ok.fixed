@@ -1,6 +1,11 @@
 #![warn(clippy::match_result_ok)]
 #![allow(dead_code)]
-#![allow(clippy::boxed_local, clippy::uninlined_format_args, clippy::manual_unwrap_or_default)]
+#![allow(
+    clippy::boxed_local,
+    clippy::uninlined_format_args,
+    clippy::manual_unwrap_or_default,
+    clippy::manual_unwrap_or
+)]
 
 // Checking `if` cases
 

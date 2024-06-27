@@ -1,5 +1,5 @@
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:10:5
+  --> tests/ui/implicit_return.rs:15:5
    |
 LL |     true
    |     ^^^^ help: add `return` as shown: `return true`
@@ -8,85 +8,85 @@ LL |     true
    = help: to override `-D warnings` add `#[allow(clippy::implicit_return)]`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:14:15
+  --> tests/ui/implicit_return.rs:19:15
    |
 LL |     if true { true } else { false }
    |               ^^^^ help: add `return` as shown: `return true`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:14:29
+  --> tests/ui/implicit_return.rs:19:29
    |
 LL |     if true { true } else { false }
    |                             ^^^^^ help: add `return` as shown: `return false`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:20:17
+  --> tests/ui/implicit_return.rs:25:17
    |
 LL |         true => false,
    |                 ^^^^^ help: add `return` as shown: `return false`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:21:20
+  --> tests/ui/implicit_return.rs:26:20
    |
 LL |         false => { true },
    |                    ^^^^ help: add `return` as shown: `return true`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:34:9
+  --> tests/ui/implicit_return.rs:39:9
    |
 LL |         break true;
    |         ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:41:13
+  --> tests/ui/implicit_return.rs:46:13
    |
 LL |             break true;
    |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:49:13
+  --> tests/ui/implicit_return.rs:54:13
    |
 LL |             break true;
    |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:67:18
+  --> tests/ui/implicit_return.rs:72:18
    |
 LL |     let _ = || { true };
    |                  ^^^^ help: add `return` as shown: `return true`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:68:16
+  --> tests/ui/implicit_return.rs:73:16
    |
 LL |     let _ = || true;
    |                ^^^^ help: add `return` as shown: `return true`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:76:5
+  --> tests/ui/implicit_return.rs:81:5
    |
 LL |     format!("test {}", "test")
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add `return` as shown: `return format!("test {}", "test")`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:85:5
+  --> tests/ui/implicit_return.rs:90:5
    |
 LL |     m!(true, false)
    |     ^^^^^^^^^^^^^^^ help: add `return` as shown: `return m!(true, false)`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:91:13
+  --> tests/ui/implicit_return.rs:96:13
    |
 LL |             break true;
    |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:96:17
+  --> tests/ui/implicit_return.rs:101:17
    |
 LL |                 break 'outer false;
    |                 ^^^^^^^^^^^^^^^^^^ help: change `break` to `return` as shown: `return false`
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:111:5
+  --> tests/ui/implicit_return.rs:116:5
    |
 LL | /     loop {
 LL | |         m!(true);
@@ -101,7 +101,7 @@ LL +     }
    |
 
 error: missing `return` statement
-  --> tests/ui/implicit_return.rs:125:5
+  --> tests/ui/implicit_return.rs:130:5
    |
 LL |     true
    |     ^^^^ help: add `return` as shown: `return true`

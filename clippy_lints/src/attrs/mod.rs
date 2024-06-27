@@ -1,7 +1,7 @@
 //! checks for attributes
 
-mod allow_attributes_without_reason;
 mod allow_attributes;
+mod allow_attributes_without_reason;
 mod blanket_clippy_restriction_lints;
 mod deprecated_cfg_attr;
 mod deprecated_semver;
@@ -505,6 +505,7 @@ pub struct Attributes {
 }
 
 impl_lint_pass!(Attributes => [
+    ALLOW_ATTRIBUTES,
     ALLOW_ATTRIBUTES_WITHOUT_REASON,
     INLINE_ALWAYS,
     DEPRECATED_SEMVER,
@@ -534,15 +535,12 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                 if is_lint_level(ident.name, attr.id) {
                     blanket_clippy_restriction_lints::check(cx, ident.name, items);
                 }
-                if matches!(ident.name, sym::allow) {
-                    if self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
-                        allow_attributes::check(cx, attr);
-                    }
+                if matches!(ident.name, sym::allow) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
+                    allow_attributes::check(cx, attr);
                 }
-                if matches!(ident.name, sym::allow | sym::expect) {
-                    if self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
-                        allow_attributes_without_reason::check(cx, ident.name, items, attr);
-                    }
+                if matches!(ident.name, sym::allow | sym::expect) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION)
+                {
+                    allow_attributes_without_reason::check(cx, ident.name, items, attr);
                 }
                 if items.is_empty() || !attr.has_name(sym::deprecated) {
                     return;

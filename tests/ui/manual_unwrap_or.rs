@@ -83,6 +83,36 @@ fn option_unwrap_or() {
         Some(s) => s,
         None => &format!("{} {}!", "hello", "world"),
     };
+
+    if let Some(x) = Some(1) {
+        x
+    } else {
+        42
+    };
+
+    //don't lint
+    if let Some(x) = Some(1) {
+        x + 1
+    } else {
+        42
+    };
+    if let Some(x) = Some(1) {
+        x
+    } else {
+        return;
+    };
+    for j in 0..4 {
+        if let Some(x) = Some(j) {
+            x
+        } else {
+            continue;
+        };
+        if let Some(x) = Some(j) {
+            x
+        } else {
+            break;
+        };
+    }
 }
 
 fn result_unwrap_or() {
@@ -177,6 +207,36 @@ fn result_unwrap_or() {
         Ok(s) => s,
         Err(s) => "Bob",
     };
+
+    if let Ok(x) = Ok::<i32, i32>(1) {
+        x
+    } else {
+        42
+    };
+
+    //don't lint
+    if let Ok(x) = Ok::<i32, i32>(1) {
+        x + 1
+    } else {
+        42
+    };
+    if let Ok(x) = Ok::<i32, i32>(1) {
+        x
+    } else {
+        return;
+    };
+    for j in 0..4 {
+        if let Ok(x) = Ok::<i32, i32>(j) {
+            x
+        } else {
+            continue;
+        };
+        if let Ok(x) = Ok::<i32, i32>(j) {
+            x
+        } else {
+            break;
+        };
+    }
 }
 
 // don't lint in const fn
