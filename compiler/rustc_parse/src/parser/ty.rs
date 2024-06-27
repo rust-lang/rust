@@ -978,7 +978,7 @@ impl<'a> Parser<'a> {
     /// Parses a type bound according to:
     /// ```ebnf
     /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
-    /// TY_BOUND_NOPAREN = [TRAIT_BOUND_MODIFIERS] [for<LT_PARAM_DEFS>] SIMPLE_PATH
+    /// TY_BOUND_NOPAREN = [for<LT_PARAM_DEFS>] [TRAIT_BOUND_MODIFIERS] SIMPLE_PATH
     /// ```
     ///
     /// For example, this grammar accepts `for<'a: 'b> ~const ?m::Trait<'a>`.
@@ -988,8 +988,8 @@ impl<'a> Parser<'a> {
         has_parens: bool,
         leading_token: &Token,
     ) -> PResult<'a, GenericBound> {
-        let modifiers = self.parse_trait_bound_modifiers()?;
         let (mut lifetime_defs, binder_span) = self.parse_late_bound_lifetime_defs()?;
+        let modifiers = self.parse_trait_bound_modifiers()?;
 
         // Recover erroneous lifetime bound with modifiers or binder.
         // e.g. `T: for<'a> 'a` or `T: ~const 'a`.
