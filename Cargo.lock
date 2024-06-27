@@ -5627,6 +5627,7 @@ dependencies = [
  "regex",
  "rustc-hash",
  "semver",
+ "similar",
  "termcolor",
  "walkdir",
 ]

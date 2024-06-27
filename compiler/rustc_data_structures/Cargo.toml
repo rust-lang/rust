@@ -50,7 +50,7 @@ libc = "0.2"
 memmap2 = "0.2.1"
 # tidy-alphabetical-end
 
-[target.'cfg(any(target_arch = "powerpc", target_arch = "mips"))'.dependencies]
+[target.'cfg(any(target_arch = "mips", target_arch = "powerpc", target_arch = "sparc"))'.dependencies]
 portable-atomic = "1.5.1"
 
 [features]

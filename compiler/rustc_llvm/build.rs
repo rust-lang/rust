@@ -235,6 +235,7 @@ fn main() {
         || target.starts_with("mips-")
         || target.starts_with("mipsel-")
         || target.starts_with("powerpc-")
+        || target.starts_with("sparc-")
     {
         // 32-bit targets need to link libatomic.
         println!("cargo:rustc-link-lib=atomic");

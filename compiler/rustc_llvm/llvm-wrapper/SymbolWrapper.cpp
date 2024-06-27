@@ -34,14 +34,15 @@ static bool isArchiveSymbol(const object::BasicSymbolRef &S) {
 typedef void *(*LLVMRustGetSymbolsCallback)(void *, const char *);
 typedef void *(*LLVMRustGetSymbolsErrorCallback)(const char *);
 
-// Note: This is implemented in C++ instead of using the C api from Rust as IRObjectFile doesn't
-// implement getSymbolName, only printSymbolName, which is inaccessible from the C api.
-extern "C" void *LLVMRustGetSymbols(
-  char *BufPtr, size_t BufLen, void *State, LLVMRustGetSymbolsCallback Callback,
-  LLVMRustGetSymbolsErrorCallback ErrorCallback) {
-  std::unique_ptr<MemoryBuffer> Buf =
-    MemoryBuffer::getMemBuffer(StringRef(BufPtr, BufLen), StringRef("LLVMRustGetSymbolsObject"),
-                               false);
+// Note: This is implemented in C++ instead of using the C api from Rust as
+// IRObjectFile doesn't implement getSymbolName, only printSymbolName, which is
+// inaccessible from the C api.
+extern "C" void *
+LLVMRustGetSymbols(char *BufPtr, size_t BufLen, void *State,
+                   LLVMRustGetSymbolsCallback Callback,
+                   LLVMRustGetSymbolsErrorCallback ErrorCallback) {
+  std::unique_ptr<MemoryBuffer> Buf = MemoryBuffer::getMemBuffer(
+      StringRef(BufPtr, BufLen), StringRef("LLVMRustGetSymbolsObject"), false);
   SmallString<0> SymNameBuf;
   auto SymName = raw_svector_ostream(SymNameBuf);
 
@@ -57,7 +58,7 @@ extern "C" void *LLVMRustGetSymbols(
 
   if (Type == file_magic::bitcode) {
     auto ObjOrErr = object::SymbolicFile::createSymbolicFile(
-      Buf->getMemBufferRef(), file_magic::bitcode, &Context);
+        Buf->getMemBufferRef(), file_magic::bitcode, &Context);
     if (!ObjOrErr) {
       Error E = ObjOrErr.takeError();
       SmallString<0> ErrorBuf;
@@ -67,7 +68,8 @@ extern "C" void *LLVMRustGetSymbols(
     }
     Obj = std::move(*ObjOrErr);
   } else {
-    auto ObjOrErr = object::SymbolicFile::createSymbolicFile(Buf->getMemBufferRef());
+    auto ObjOrErr =
+        object::SymbolicFile::createSymbolicFile(Buf->getMemBufferRef());
     if (!ObjOrErr) {
       Error E = ObjOrErr.takeError();
       SmallString<0> ErrorBuf;
@@ -77,7 +79,6 @@ extern "C" void *LLVMRustGetSymbols(
     }
     Obj = std::move(*ObjOrErr);
   }
-
 
   for (const object::BasicSymbolRef &S : Obj->symbols()) {
     if (!isArchiveSymbol(S))

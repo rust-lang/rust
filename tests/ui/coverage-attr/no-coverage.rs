@@ -2,7 +2,7 @@
 #![feature(coverage_attribute)]
 #![feature(impl_trait_in_assoc_type)]
 #![warn(unused_attributes)]
-#![coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+#![coverage(off)]
 
 #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
 trait Trait {
@@ -15,7 +15,7 @@ trait Trait {
     type U;
 }
 
-#[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+#[coverage(off)]
 impl Trait for () {
     const X: u32 = 0;
 

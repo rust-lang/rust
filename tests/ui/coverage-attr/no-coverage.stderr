@@ -12,20 +12,6 @@ LL | | }
    | |_- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:18:1
-   |
-LL |   #[coverage(off)]
-   |   ^^^^^^^^^^^^^^^^
-LL | / impl Trait for () {
-LL | |     const X: u32 = 0;
-LL | |
-LL | |     #[coverage(off)]
-...  |
-LL | |     type U = impl Trait;
-LL | | }
-   | |_- not a function or closure
-
-error[E0788]: attribute should be applied to a function definition or closure
   --> $DIR/no-coverage.rs:39:5
    |
 LL |     #[coverage(off)]
@@ -97,12 +83,6 @@ LL |     #[coverage(off)]
 LL |     type T;
    |     ------- not a function or closure
 
-error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:5:1
-   |
-LL | #![coverage(off)]
-   | ^^^^^^^^^^^^^^^^^ not a function or closure
-
 error: unconstrained opaque type
   --> $DIR/no-coverage.rs:26:14
    |
@@ -111,6 +91,6 @@ LL |     type U = impl Trait;
    |
    = note: `U` must be used in combination with a concrete type within the same impl
 
-error: aborting due to 13 previous errors
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0788`.
