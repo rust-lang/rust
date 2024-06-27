@@ -8,8 +8,8 @@ LL |     fun(async {}, async {});
    |     |   expected all arguments to be this `async` block type because they need to match the type of this parameter
    |     arguments to this function are incorrect
    |
-   = note: expected `async` block `{async block@$DIR/coroutine-desc.rs:10:9: 10:17}`
-              found `async` block `{async block@$DIR/coroutine-desc.rs:10:19: 10:27}`
+   = note: expected `async` block `{async block@$DIR/coroutine-desc.rs:10:9: 10:14}`
+              found `async` block `{async block@$DIR/coroutine-desc.rs:10:19: 10:24}`
    = note: no two async blocks, even if identical, have the same type
    = help: consider pinning your async block and casting it to a trait object
 note: function defined here
