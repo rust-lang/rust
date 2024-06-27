@@ -622,6 +622,29 @@ fn emit_metadata_module(tcx: TyCtxt<'_>, metadata: &EncodedMetadata) -> Compiled
     }
 }
 
+fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
+    let mut allocator_module = make_module(tcx.sess, "allocator_shim".to_string());
+    let created_alloc_shim = crate::allocator::codegen(tcx, &mut allocator_module);
+
+    if created_alloc_shim {
+        let product = allocator_module.finish();
+
+        match emit_module(
+            tcx.output_filenames(()),
+            &tcx.sess.prof,
+            product.object,
+            ModuleKind::Allocator,
+            "allocator_shim".to_owned(),
+            &crate::debuginfo::producer(tcx.sess),
+        ) {
+            Ok(allocator_module) => Some(allocator_module),
+            Err(err) => tcx.dcx().fatal(err),
+        }
+    } else {
+        None
+    }
+}
+
 pub(crate) fn run_aot(
     tcx: TyCtxt<'_>,
     metadata: EncodedMetadata,
@@ -700,26 +723,7 @@ pub(crate) fn run_aot(
         modules
     });
 
-    let mut allocator_module = make_module(tcx.sess, "allocator_shim".to_string());
-    let created_alloc_shim = crate::allocator::codegen(tcx, &mut allocator_module);
-
-    let allocator_module = if created_alloc_shim {
-        let product = allocator_module.finish();
-
-        match emit_module(
-            tcx.output_filenames(()),
-            &tcx.sess.prof,
-            product.object,
-            ModuleKind::Allocator,
-            "allocator_shim".to_owned(),
-            &crate::debuginfo::producer(tcx.sess),
-        ) {
-            Ok(allocator_module) => Some(allocator_module),
-            Err(err) => tcx.dcx().fatal(err),
-        }
-    } else {
-        None
-    };
+    let allocator_module = emit_allocator_module(tcx);
 
     let metadata_module =
         if need_metadata_module { Some(emit_metadata_module(tcx, &metadata)) } else { None };
