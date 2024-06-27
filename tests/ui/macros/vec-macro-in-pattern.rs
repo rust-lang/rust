@@ -4,7 +4,7 @@
 
 fn main() {
     match Some(vec![42]) {
-        Some(vec![43]) => {} //~ ERROR arbitrary expressions aren't allowed in patterns
+        Some(vec![43]) => {} //~ ERROR expected pattern, found `#`
         _ => {}
     }
 }

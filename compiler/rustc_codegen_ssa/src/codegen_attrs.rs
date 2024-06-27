@@ -124,22 +124,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         .emit();
                 }
             }
-            sym::coverage => {
-                let inner = attr.meta_item_list();
-                match inner.as_deref() {
-                    Some([item]) if item.has_name(sym::off) => {
-                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE;
-                    }
-                    Some([item]) if item.has_name(sym::on) => {
-                        // Allow #[coverage(on)] for being explicit, maybe also in future to enable
-                        // coverage on a smaller scope within an excluded larger scope.
-                    }
-                    Some(_) | None => {
-                        tcx.dcx()
-                            .span_delayed_bug(attr.span, "unexpected value of coverage attribute");
-                    }
-                }
-            }
             sym::rustc_std_internal_symbol => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
             }
@@ -584,7 +568,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     }
 
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
-        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE;
         codegen_fn_attrs.inline = InlineAttr::Never;
     }
 

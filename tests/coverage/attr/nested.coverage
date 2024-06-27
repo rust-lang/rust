@@ -14,12 +14,12 @@
    LL|       |
    LL|       |#[coverage(off)]
    LL|       |fn outer_fn() {
-   LL|      0|    fn middle_fn() {
-   LL|      0|        fn inner_fn() {
-   LL|      0|            do_stuff();
-   LL|      0|        }
-   LL|      0|        do_stuff();
-   LL|      0|    }
+   LL|       |    fn middle_fn() {
+   LL|       |        fn inner_fn() {
+   LL|       |            do_stuff();
+   LL|       |        }
+   LL|       |        do_stuff();
+   LL|       |    }
    LL|       |    do_stuff();
    LL|       |}
    LL|       |
@@ -29,15 +29,15 @@
    LL|       |    fn outer_method(&self) {
    LL|       |        struct MyMiddle;
    LL|       |        impl MyMiddle {
-   LL|      0|            fn middle_method(&self) {
-   LL|      0|                struct MyInner;
-   LL|      0|                impl MyInner {
-   LL|      0|                    fn inner_method(&self) {
-   LL|      0|                        do_stuff();
-   LL|      0|                    }
-   LL|      0|                }
-   LL|      0|                do_stuff();
-   LL|      0|            }
+   LL|       |            fn middle_method(&self) {
+   LL|       |                struct MyInner;
+   LL|       |                impl MyInner {
+   LL|       |                    fn inner_method(&self) {
+   LL|       |                        do_stuff();
+   LL|       |                    }
+   LL|       |                }
+   LL|       |                do_stuff();
+   LL|       |            }
    LL|       |        }
    LL|       |        do_stuff();
    LL|       |    }
@@ -51,15 +51,15 @@
    LL|       |    fn trait_method(&self) {
    LL|       |        struct MyMiddle;
    LL|       |        impl MyTrait for MyMiddle {
-   LL|      0|            fn trait_method(&self) {
-   LL|      0|                struct MyInner;
-   LL|      0|                impl MyTrait for MyInner {
-   LL|      0|                    fn trait_method(&self) {
-   LL|      0|                        do_stuff();
-   LL|      0|                    }
-   LL|      0|                }
-   LL|      0|                do_stuff();
-   LL|      0|            }
+   LL|       |            fn trait_method(&self) {
+   LL|       |                struct MyInner;
+   LL|       |                impl MyTrait for MyInner {
+   LL|       |                    fn trait_method(&self) {
+   LL|       |                        do_stuff();
+   LL|       |                    }
+   LL|       |                }
+   LL|       |                do_stuff();
+   LL|       |            }
    LL|       |        }
    LL|       |        do_stuff();
    LL|       |    }
@@ -68,12 +68,12 @@
    LL|      1|fn closure_expr() {
    LL|      1|    let _outer = #[coverage(off)]
    LL|       |    || {
-   LL|      0|        let _middle = || {
-   LL|      0|            let _inner = || {
-   LL|      0|                do_stuff();
-   LL|      0|            };
-   LL|      0|            do_stuff();
-   LL|      0|        };
+   LL|       |        let _middle = || {
+   LL|       |            let _inner = || {
+   LL|       |                do_stuff();
+   LL|       |            };
+   LL|       |            do_stuff();
+   LL|       |        };
    LL|       |        do_stuff();
    LL|       |    };
    LL|      1|    do_stuff();
@@ -85,14 +85,14 @@
    LL|       |        #[coverage(off)]
    LL|       |        || {
    LL|       |            let _middle = {
-   LL|      0|                || {
-   LL|      0|                    let _inner = {
-   LL|      0|                        || {
-   LL|      0|                            do_stuff();
-   LL|      0|                        }
+   LL|       |                || {
+   LL|       |                    let _inner = {
+   LL|       |                        || {
+   LL|       |                            do_stuff();
+   LL|       |                        }
    LL|       |                    };
-   LL|      0|                    do_stuff();
-   LL|      0|                }
+   LL|       |                    do_stuff();
+   LL|       |                }
    LL|       |            };
    LL|       |            do_stuff();
    LL|       |        }
