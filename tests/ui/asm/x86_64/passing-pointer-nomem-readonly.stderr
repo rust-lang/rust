@@ -1,0 +1,32 @@
+warning: passing a pointer to asm! block with 'nomem' option.
+  --> $DIR/passing-pointer-nomem-readonly.rs:9:50
+   |
+LL |     core::arch::asm!("mov {p}, {p}", p = in(reg) p, options(nomem, nostack, preserves_flags));
+   |                                                  ^
+   |
+   = note: `nomem` means that no memory write or read happens inside the asm! block.
+   = note: This is not limited to global variables, it also includes passed pointers.
+   = note: If passing this pointer is intentional, replace the `nomem` attribute with `readonly` or remove it completely.
+
+warning: passing a mutable pointer to asm! block with 'readonly' option.
+  --> $DIR/passing-pointer-nomem-readonly.rs:14:50
+   |
+LL |     core::arch::asm!("mov {p}, {p}", p = in(reg) p, options(readonly, nostack, preserves_flags));
+   |                                                  ^
+   |
+   = note: `readonly` means that no memory write happens inside the asm! block.
+   = note: This is not limited to global variables, it also includes passed pointers.
+   = note: If passing this mutable pointer is intentional, remove the `readonly` attribute.
+
+warning: passing a pointer to asm! block with 'nomem' option.
+  --> $DIR/passing-pointer-nomem-readonly.rs:32:50
+   |
+LL |     core::arch::asm!("mov {p}, {p}", p = in(reg) p, options(nomem, nostack, preserves_flags));
+   |                                                  ^
+   |
+   = note: `nomem` means that no memory write or read happens inside the asm! block.
+   = note: This is not limited to global variables, it also includes passed pointers.
+   = note: If passing this pointer is intentional, replace the `nomem` attribute with `readonly` or remove it completely.
+
+warning: 3 warnings emitted
+

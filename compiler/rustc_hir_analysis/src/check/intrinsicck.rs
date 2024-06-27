@@ -1,4 +1,4 @@
-use rustc_ast::InlineAsmTemplatePiece;
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
@@ -124,7 +124,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         idx: usize,
         reg: InlineAsmRegOrRegClass,
         expr: &'tcx hir::Expr<'tcx>,
-        template: &[InlineAsmTemplatePiece],
+        asm: &hir::InlineAsm<'tcx>,
         is_input: bool,
         tied_input: Option<(&'tcx hir::Expr<'tcx>, Option<InlineAsmType>)>,
         target_features: &FxIndexSet<Symbol>,
@@ -267,7 +267,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             // Search for any use of this operand without a modifier and emit
             // the suggestion for them.
             let mut spans = vec![];
-            for piece in template {
+            for piece in asm.template {
                 if let &InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span } = piece
                 {
                     if operand_idx == idx && modifier.is_none() {
@@ -297,6 +297,28 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     },
                 );
             }
+        }
+
+        match *ty.kind() {
+            ty::RawPtr(_, hir::Mutability::Mut) if asm.options.contains(InlineAsmOptions::READONLY) =>
+                self
+                    .tcx
+                    .dcx()
+                    .struct_span_warn(expr.span, "passing a mutable pointer to asm! block with 'readonly' option.")
+                    .with_note("`readonly` means that no memory write happens inside the asm! block.")
+                    .with_note("This is not limited to global variables, it also includes passed pointers.")
+                    .with_note("If passing this mutable pointer is intentional, remove the `readonly` attribute.")
+                    .emit(),
+            ty::RawPtr(_, _) if asm.options.contains(InlineAsmOptions::NOMEM) =>
+                self
+                    .tcx
+                    .dcx()
+                    .struct_span_warn(expr.span, "passing a pointer to asm! block with 'nomem' option.")
+                    .with_note("`nomem` means that no memory write or read happens inside the asm! block.")
+                    .with_note("This is not limited to global variables, it also includes passed pointers.")
+                    .with_note("If passing this pointer is intentional, replace the `nomem` attribute with `readonly` or remove it completely.")
+                    .emit(),
+            _ => {} // we're only interested in pointers when asm! has `nomem` or `readonly`
         }
 
         Some(asm_ty)
@@ -399,15 +421,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
 
             match *op {
                 hir::InlineAsmOperand::In { reg, expr } => {
-                    self.check_asm_operand_type(
-                        idx,
-                        reg,
-                        expr,
-                        asm.template,
-                        true,
-                        None,
-                        target_features,
-                    );
+                    self.check_asm_operand_type(idx, reg, expr, asm, true, None, target_features);
                 }
                 hir::InlineAsmOperand::Out { reg, late: _, expr } => {
                     if let Some(expr) = expr {
@@ -415,7 +429,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             idx,
                             reg,
                             expr,
-                            asm.template,
+                            asm,
                             false,
                             None,
                             target_features,
@@ -423,22 +437,14 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     }
                 }
                 hir::InlineAsmOperand::InOut { reg, late: _, expr } => {
-                    self.check_asm_operand_type(
-                        idx,
-                        reg,
-                        expr,
-                        asm.template,
-                        false,
-                        None,
-                        target_features,
-                    );
+                    self.check_asm_operand_type(idx, reg, expr, asm, false, None, target_features);
                 }
                 hir::InlineAsmOperand::SplitInOut { reg, late: _, in_expr, out_expr } => {
                     let in_ty = self.check_asm_operand_type(
                         idx,
                         reg,
                         in_expr,
-                        asm.template,
+                        asm,
                         true,
                         None,
                         target_features,
@@ -448,7 +454,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             idx,
                             reg,
                             out_expr,
-                            asm.template,
+                            asm,
                             false,
                             Some((in_expr, in_ty)),
                             target_features,
