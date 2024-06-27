@@ -1943,7 +1943,7 @@ Released 2022-05-19
   [#8218](https://github.com/rust-lang/rust-clippy/pull/8218)
 * [`needless_match`]
   [#8471](https://github.com/rust-lang/rust-clippy/pull/8471)
-* [`allow_attributes_without_reason`] (Requires `#![feature(lint_reasons)]`)
+* [`allow_attributes_without_reason`]
   [#8504](https://github.com/rust-lang/rust-clippy/pull/8504)
 * [`print_in_format_impl`]
   [#8253](https://github.com/rust-lang/rust-clippy/pull/8253)

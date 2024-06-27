@@ -694,10 +694,12 @@ impl<'a> fmt::Debug for Module<'a> {
 }
 
 /// Records a possibly-private value, type, or module definition.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 struct NameBindingData<'a> {
     kind: NameBindingKind<'a>,
     ambiguity: Option<(NameBinding<'a>, AmbiguityKind)>,
+    /// Produce a warning instead of an error when reporting ambiguities inside this binding.
+    /// May apply to indirect ambiguities under imports, so `ambiguity.is_some()` is not required.
     warn_ambiguity: bool,
     expansion: LocalExpnId,
     span: Span,
@@ -718,7 +720,7 @@ impl<'a> ToNameBinding<'a> for NameBinding<'a> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 enum NameBindingKind<'a> {
     Res(Res),
     Module(Module<'a>),
@@ -830,18 +832,18 @@ impl<'a> NameBindingData<'a> {
         }
     }
 
-    fn is_ambiguity(&self) -> bool {
+    fn is_ambiguity_recursive(&self) -> bool {
         self.ambiguity.is_some()
             || match self.kind {
-                NameBindingKind::Import { binding, .. } => binding.is_ambiguity(),
+                NameBindingKind::Import { binding, .. } => binding.is_ambiguity_recursive(),
                 _ => false,
             }
     }
 
-    fn is_warn_ambiguity(&self) -> bool {
+    fn warn_ambiguity_recursive(&self) -> bool {
         self.warn_ambiguity
             || match self.kind {
-                NameBindingKind::Import { binding, .. } => binding.is_warn_ambiguity(),
+                NameBindingKind::Import { binding, .. } => binding.warn_ambiguity_recursive(),
                 _ => false,
             }
     }

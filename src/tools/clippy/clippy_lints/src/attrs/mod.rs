@@ -1,6 +1,7 @@
 //! checks for attributes
 
 mod allow_attributes_without_reason;
+mod allow_attributes;
 mod blanket_clippy_restriction_lints;
 mod deprecated_cfg_attr;
 mod deprecated_semver;
@@ -14,11 +15,11 @@ mod unnecessary_clippy_cfg;
 mod useless_attribute;
 mod utils;
 
-use clippy_config::msrvs::Msrv;
+use clippy_config::msrvs::{self, Msrv};
 use rustc_ast::{Attribute, MetaItemKind, NestedMetaItem};
 use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 use utils::{is_lint_level, is_relevant_impl, is_relevant_item, is_relevant_trait};
 
@@ -272,29 +273,58 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for attributes that allow lints without a reason.
     ///
-    /// (This requires the `lint_reasons` feature)
-    ///
     /// ### Why restrict this?
     /// Justifying each `allow` helps readers understand the reasoning,
     /// and may allow removing `allow` attributes if their purpose is obsolete.
     ///
     /// ### Example
     /// ```no_run
-    /// #![feature(lint_reasons)]
-    ///
     /// #![allow(clippy::some_lint)]
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// #![feature(lint_reasons)]
-    ///
     /// #![allow(clippy::some_lint, reason = "False positive rust-lang/rust-clippy#1002020")]
     /// ```
     #[clippy::version = "1.61.0"]
     pub ALLOW_ATTRIBUTES_WITHOUT_REASON,
     restriction,
     "ensures that all `allow` and `expect` attributes have a reason"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of the `#[allow]` attribute and suggests replacing it with
+    /// the `#[expect]` (See [RFC 2383](https://rust-lang.github.io/rfcs/2383-lint-reasons.html))
+    ///
+    /// This lint only warns outer attributes (`#[allow]`), as inner attributes
+    /// (`#![allow]`) are usually used to enable or disable lints on a global scale.
+    ///
+    /// ### Why is this bad?
+    /// `#[expect]` attributes suppress the lint emission, but emit a warning, if
+    /// the expectation is unfulfilled. This can be useful to be notified when the
+    /// lint is no longer triggered.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// #[allow(unused_mut)]
+    /// fn foo() -> usize {
+    ///    let mut a = Vec::new();
+    ///    a.len()
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// #[expect(unused_mut)]
+    /// fn foo() -> usize {
+    ///     let mut a = Vec::new();
+    ///     a.len()
+    /// }
+    /// ```
+    #[clippy::version = "1.70.0"]
+    pub ALLOW_ATTRIBUTES,
+    restriction,
+    "`#[allow]` will not trigger if a warning isn't found. `#[expect]` triggers if there are no warnings."
 }
 
 declare_clippy_lint! {
@@ -469,7 +499,12 @@ declare_clippy_lint! {
     "duplicated attribute"
 }
 
-declare_lint_pass!(Attributes => [
+#[derive(Clone)]
+pub struct Attributes {
+    msrv: Msrv,
+}
+
+impl_lint_pass!(Attributes => [
     ALLOW_ATTRIBUTES_WITHOUT_REASON,
     INLINE_ALWAYS,
     DEPRECATED_SEMVER,
@@ -479,6 +514,13 @@ declare_lint_pass!(Attributes => [
     MIXED_ATTRIBUTES_STYLE,
     DUPLICATED_ATTRIBUTES,
 ]);
+
+impl Attributes {
+    #[must_use]
+    pub fn new(msrv: Msrv) -> Self {
+        Self { msrv }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
@@ -492,8 +534,15 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                 if is_lint_level(ident.name, attr.id) {
                     blanket_clippy_restriction_lints::check(cx, ident.name, items);
                 }
+                if matches!(ident.name, sym::allow) {
+                    if self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
+                        allow_attributes::check(cx, attr);
+                    }
+                }
                 if matches!(ident.name, sym::allow | sym::expect) {
-                    allow_attributes_without_reason::check(cx, ident.name, items, attr);
+                    if self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
+                        allow_attributes_without_reason::check(cx, ident.name, items, attr);
+                    }
                 }
                 if items.is_empty() || !attr.has_name(sym::deprecated) {
                     return;
@@ -537,6 +586,8 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
             inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir().attrs(item.hir_id()));
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 pub struct EarlyAttributes {

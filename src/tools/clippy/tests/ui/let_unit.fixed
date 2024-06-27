@@ -1,4 +1,3 @@
-#![feature(lint_reasons)]
 #![warn(clippy::let_unit_value)]
 #![allow(unused, clippy::no_effect, clippy::needless_late_init, path_statements)]
 

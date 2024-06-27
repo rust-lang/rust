@@ -14,10 +14,10 @@ where
         &mut self,
         goal: Goal<I, ProjectionPredicate<I>>,
     ) -> QueryResult<I> {
-        let tcx = self.cx();
-        let projection_term = goal.predicate.projection_term.to_term(tcx);
+        let cx = self.cx();
+        let projection_term = goal.predicate.projection_term.to_term(cx);
         let goal = goal.with(
-            tcx,
+            cx,
             ty::PredicateKind::AliasRelate(
                 projection_term,
                 goal.predicate.term,

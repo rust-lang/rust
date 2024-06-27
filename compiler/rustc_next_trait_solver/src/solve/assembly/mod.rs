@@ -36,11 +36,11 @@ where
 {
     fn self_ty(self) -> I::Ty;
 
-    fn trait_ref(self, tcx: I) -> ty::TraitRef<I>;
+    fn trait_ref(self, cx: I) -> ty::TraitRef<I>;
 
-    fn with_self_ty(self, tcx: I, self_ty: I::Ty) -> Self;
+    fn with_self_ty(self, cx: I, self_ty: I::Ty) -> Self;
 
-    fn trait_def_id(self, tcx: I) -> I::DefId;
+    fn trait_def_id(self, cx: I) -> I::DefId;
 
     /// Try equating an assumption predicate against a goal's predicate. If it
     /// holds, then execute the `then` callback, which should do any additional
@@ -82,7 +82,7 @@ where
         assumption: I::Clause,
     ) -> Result<Candidate<I>, NoSolution> {
         Self::probe_and_match_goal_against_assumption(ecx, source, goal, assumption, |ecx| {
-            let tcx = ecx.cx();
+            let cx = ecx.cx();
             let ty::Dynamic(bounds, _, _) = goal.predicate.self_ty().kind() else {
                 panic!("expected object type in `probe_and_consider_object_bound_candidate`");
             };
@@ -91,7 +91,7 @@ where
                 structural_traits::predicates_for_object_candidate(
                     ecx,
                     goal.param_env,
-                    goal.predicate.trait_ref(tcx),
+                    goal.predicate.trait_ref(cx),
                     bounds,
                 ),
             );
@@ -340,15 +340,15 @@ where
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
     ) {
-        let tcx = self.cx();
-        tcx.for_each_relevant_impl(
-            goal.predicate.trait_def_id(tcx),
+        let cx = self.cx();
+        cx.for_each_relevant_impl(
+            goal.predicate.trait_def_id(cx),
             goal.predicate.self_ty(),
             |impl_def_id| {
                 // For every `default impl`, there's always a non-default `impl`
                 // that will *also* apply. There's no reason to register a candidate
                 // for this impl, since it is *not* proof that the trait goal holds.
-                if tcx.impl_is_default(impl_def_id) {
+                if cx.impl_is_default(impl_def_id) {
                     return;
                 }
 
@@ -366,8 +366,8 @@ where
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
     ) {
-        let tcx = self.cx();
-        let trait_def_id = goal.predicate.trait_def_id(tcx);
+        let cx = self.cx();
+        let trait_def_id = goal.predicate.trait_def_id(cx);
 
         // N.B. When assembling built-in candidates for lang items that are also
         // `auto` traits, then the auto trait candidate that is assembled in
@@ -378,47 +378,47 @@ where
         // `solve::trait_goals` instead.
         let result = if let Err(guar) = goal.predicate.error_reported() {
             G::consider_error_guaranteed_candidate(self, guar)
-        } else if tcx.trait_is_auto(trait_def_id) {
+        } else if cx.trait_is_auto(trait_def_id) {
             G::consider_auto_trait_candidate(self, goal)
-        } else if tcx.trait_is_alias(trait_def_id) {
+        } else if cx.trait_is_alias(trait_def_id) {
             G::consider_trait_alias_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::Sized) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Sized) {
             G::consider_builtin_sized_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::Copy)
-            || tcx.is_lang_item(trait_def_id, TraitSolverLangItem::Clone)
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Copy)
+            || cx.is_lang_item(trait_def_id, TraitSolverLangItem::Clone)
         {
             G::consider_builtin_copy_clone_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::PointerLike) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::PointerLike) {
             G::consider_builtin_pointer_like_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::FnPtrTrait) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::FnPtrTrait) {
             G::consider_builtin_fn_ptr_trait_candidate(self, goal)
         } else if let Some(kind) = self.cx().fn_trait_kind_from_def_id(trait_def_id) {
             G::consider_builtin_fn_trait_candidates(self, goal, kind)
         } else if let Some(kind) = self.cx().async_fn_trait_kind_from_def_id(trait_def_id) {
             G::consider_builtin_async_fn_trait_candidates(self, goal, kind)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::AsyncFnKindHelper) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::AsyncFnKindHelper) {
             G::consider_builtin_async_fn_kind_helper_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::Tuple) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Tuple) {
             G::consider_builtin_tuple_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::PointeeTrait) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::PointeeTrait) {
             G::consider_builtin_pointee_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::Future) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Future) {
             G::consider_builtin_future_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::Iterator) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Iterator) {
             G::consider_builtin_iterator_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::FusedIterator) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::FusedIterator) {
             G::consider_builtin_fused_iterator_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::AsyncIterator) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::AsyncIterator) {
             G::consider_builtin_async_iterator_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::Coroutine) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Coroutine) {
             G::consider_builtin_coroutine_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::DiscriminantKind) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::DiscriminantKind) {
             G::consider_builtin_discriminant_kind_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::AsyncDestruct) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::AsyncDestruct) {
             G::consider_builtin_async_destruct_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::Destruct) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Destruct) {
             G::consider_builtin_destruct_candidate(self, goal)
-        } else if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::TransmuteTrait) {
+        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::TransmuteTrait) {
             G::consider_builtin_transmute_candidate(self, goal)
         } else {
             Err(NoSolution)
@@ -428,7 +428,7 @@ where
 
         // There may be multiple unsize candidates for a trait with several supertraits:
         // `trait Foo: Bar<A> + Bar<B>` and `dyn Foo: Unsize<dyn Bar<_>>`
-        if tcx.is_lang_item(trait_def_id, TraitSolverLangItem::Unsize) {
+        if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Unsize) {
             candidates.extend(G::consider_structural_builtin_unsize_candidates(self, goal));
         }
     }
@@ -557,8 +557,8 @@ where
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
     ) {
-        let tcx = self.cx();
-        if !tcx.trait_may_be_implemented_via_object(goal.predicate.trait_def_id(tcx)) {
+        let cx = self.cx();
+        if !cx.trait_may_be_implemented_via_object(goal.predicate.trait_def_id(cx)) {
             return;
         }
 
@@ -596,7 +596,7 @@ where
         };
 
         // Do not consider built-in object impls for non-object-safe types.
-        if bounds.principal_def_id().is_some_and(|def_id| !tcx.trait_is_object_safe(def_id)) {
+        if bounds.principal_def_id().is_some_and(|def_id| !cx.trait_is_object_safe(def_id)) {
             return;
         }
 
@@ -614,7 +614,7 @@ where
                         self,
                         CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
                         goal,
-                        bound.with_self_ty(tcx, self_ty),
+                        bound.with_self_ty(cx, self_ty),
                     ));
                 }
             }
@@ -624,14 +624,13 @@ where
         // since we don't need to look at any supertrait or anything if we are doing
         // a projection goal.
         if let Some(principal) = bounds.principal() {
-            let principal_trait_ref = principal.with_self_ty(tcx, self_ty);
-            for (idx, assumption) in D::elaborate_supertraits(tcx, principal_trait_ref).enumerate()
-            {
+            let principal_trait_ref = principal.with_self_ty(cx, self_ty);
+            for (idx, assumption) in D::elaborate_supertraits(cx, principal_trait_ref).enumerate() {
                 candidates.extend(G::probe_and_consider_object_bound_candidate(
                     self,
                     CandidateSource::BuiltinImpl(BuiltinImplSource::Object(idx)),
                     goal,
-                    assumption.upcast(tcx),
+                    assumption.upcast(cx),
                 ));
             }
         }
@@ -649,11 +648,11 @@ where
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
     ) {
-        let tcx = self.cx();
+        let cx = self.cx();
 
         candidates.extend(self.probe_trait_candidate(CandidateSource::CoherenceUnknowable).enter(
             |ecx| {
-                let trait_ref = goal.predicate.trait_ref(tcx);
+                let trait_ref = goal.predicate.trait_ref(cx);
                 if ecx.trait_ref_is_knowable(goal.param_env, trait_ref)? {
                     Err(NoSolution)
                 } else {
@@ -678,9 +677,9 @@ where
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
     ) {
-        let tcx = self.cx();
+        let cx = self.cx();
         let trait_goal: Goal<I, ty::TraitPredicate<I>> =
-            goal.with(tcx, goal.predicate.trait_ref(tcx));
+            goal.with(cx, goal.predicate.trait_ref(cx));
 
         let mut trait_candidates_from_env = vec![];
         self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {

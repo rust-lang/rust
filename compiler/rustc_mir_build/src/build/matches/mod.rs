@@ -358,8 +358,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     where
         'a: 'pat,
     {
-        // Assemble a list of candidates: there is one candidate per pattern,
-        // which means there may be more than one candidate *per arm*.
+        // Assemble the initial list of candidates. These top-level candidates
+        // are 1:1 with the original match arms, but other parts of match
+        // lowering also introduce subcandidates (for subpatterns), and will
+        // also flatten candidates in some cases. So in general a list of
+        // candidates does _not_ necessarily correspond to a list of arms.
         arms.iter()
             .copied()
             .map(|arm| {
@@ -1031,6 +1034,12 @@ impl<'tcx> PatternExtraData<'tcx> {
 }
 
 /// A pattern in a form suitable for generating code.
+///
+/// Here, "flat" indicates that the pattern's match pairs have been recursively
+/// simplified by [`Builder::simplify_match_pairs`]. They are not necessarily
+/// flat in an absolute sense.
+///
+/// Will typically be incorporated into a [`Candidate`].
 #[derive(Debug, Clone)]
 struct FlatPat<'pat, 'tcx> {
     /// To match the pattern, all of these must be satisfied...
@@ -1042,23 +1051,25 @@ struct FlatPat<'pat, 'tcx> {
 }
 
 impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
+    /// Creates a `FlatPat` containing a simplified [`MatchPair`] list/forest
+    /// for the given pattern.
     fn new(
         place: PlaceBuilder<'tcx>,
         pattern: &'pat Pat<'tcx>,
         cx: &mut Builder<'_, 'tcx>,
     ) -> Self {
-        let is_never = pattern.is_never_pattern();
-        let mut flat_pat = FlatPat {
-            match_pairs: vec![MatchPair::new(place, pattern, cx)],
-            extra_data: PatternExtraData {
-                span: pattern.span,
-                bindings: Vec::new(),
-                ascriptions: Vec::new(),
-                is_never,
-            },
+        // First, recursively build a tree of match pairs for the given pattern.
+        let mut match_pairs = vec![MatchPair::new(place, pattern, cx)];
+        let mut extra_data = PatternExtraData {
+            span: pattern.span,
+            bindings: Vec::new(),
+            ascriptions: Vec::new(),
+            is_never: pattern.is_never_pattern(),
         };
-        cx.simplify_match_pairs(&mut flat_pat.match_pairs, &mut flat_pat.extra_data);
-        flat_pat
+        // Partly-flatten and sort the match pairs, while recording extra data.
+        cx.simplify_match_pairs(&mut match_pairs, &mut extra_data);
+
+        Self { match_pairs, extra_data }
     }
 }
 
@@ -1104,9 +1115,12 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
         has_guard: bool,
         cx: &mut Builder<'_, 'tcx>,
     ) -> Self {
+        // Use `FlatPat` to build simplified match pairs, then immediately
+        // incorporate them into a new candidate.
         Self::from_flat_pat(FlatPat::new(place, pattern, cx), has_guard)
     }
 
+    /// Incorporates an already-simplified [`FlatPat`] into a new candidate.
     fn from_flat_pat(flat_pat: FlatPat<'pat, 'tcx>, has_guard: bool) -> Self {
         Candidate {
             match_pairs: flat_pat.match_pairs,

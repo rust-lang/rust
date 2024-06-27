@@ -373,10 +373,17 @@ macro_rules! dbg {
     };
 }
 
+/// Verify that floats are within a tolerance of each other, 1.0e-6 by default.
 #[cfg(test)]
 macro_rules! assert_approx_eq {
-    ($a:expr, $b:expr) => {{
+    ($a:expr, $b:expr) => {{ assert_approx_eq!($a, $b, 1.0e-6) }};
+    ($a:expr, $b:expr, $lim:expr) => {{
         let (a, b) = (&$a, &$b);
-        assert!((*a - *b).abs() < 1.0e-6, "{} is not approximately equal to {}", *a, *b);
+        let diff = (*a - *b).abs();
+        assert!(
+            diff < $lim,
+            "{a:?} is not approximately equal to {b:?} (threshold {lim:?}, actual {diff:?})",
+            lim = $lim
+        );
     }};
 }

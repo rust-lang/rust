@@ -1,5 +1,5 @@
 //@aux-build:proc_macro_derive.rs
-#![feature(rustc_private, lint_reasons)]
+#![feature(rustc_private)]
 #![warn(clippy::used_underscore_binding)]
 #![allow(clippy::disallowed_names, clippy::eq_op, clippy::uninlined_format_args)]
 

@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(lint_reasons)]
-
 pub struct Wrapper<T>(T);
 
 pub trait Foo {

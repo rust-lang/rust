@@ -1,5 +1,5 @@
-#include "SuppressLLVMWarnings.h"
 #include "llvm/Linker/Linker.h"
+#include "SuppressLLVMWarnings.h"
 
 #include "LLVMWrapper.h"
 
@@ -9,26 +9,18 @@ struct RustLinker {
   Linker L;
   LLVMContext &Ctx;
 
-  RustLinker(Module &M) :
-    L(M),
-    Ctx(M.getContext())
-  {}
+  RustLinker(Module &M) : L(M), Ctx(M.getContext()) {}
 };
 
-extern "C" RustLinker*
-LLVMRustLinkerNew(LLVMModuleRef DstRef) {
+extern "C" RustLinker *LLVMRustLinkerNew(LLVMModuleRef DstRef) {
   Module *Dst = unwrap(DstRef);
 
   return new RustLinker(*Dst);
 }
 
-extern "C" void
-LLVMRustLinkerFree(RustLinker *L) {
-  delete L;
-}
+extern "C" void LLVMRustLinkerFree(RustLinker *L) { delete L; }
 
-extern "C" bool
-LLVMRustLinkerAdd(RustLinker *L, char *BC, size_t Len) {
+extern "C" bool LLVMRustLinkerAdd(RustLinker *L, char *BC, size_t Len) {
   std::unique_ptr<MemoryBuffer> Buf =
       MemoryBuffer::getMemBufferCopy(StringRef(BC, Len));
 

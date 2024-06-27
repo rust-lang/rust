@@ -1,7 +1,5 @@
 //@ compile-flags: -Zdeduplicate-diagnostics=yes
 
-#![feature(lint_reasons)]
-
 #[forbid(unused_variables)]
 //~^ NOTE `forbid` level set here
 #[expect(unused_variables)]

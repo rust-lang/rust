@@ -232,6 +232,8 @@ declare_features! (
     (accepted, label_break_value, "1.65.0", Some(48594)),
     /// Allows `let...else` statements.
     (accepted, let_else, "1.65.0", Some(87335)),
+    /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
+    (accepted, lint_reasons, "CURRENT_RUSTC_VERSION", Some(54503)),
     /// Allows `break {expr}` with a value inside `loop`s.
     (accepted, loop_break_value, "1.19.0", Some(37339)),
     /// Allows use of `?` as the Kleene "at most one" operator in macros.
