@@ -141,9 +141,9 @@ pub trait RawFloat:
 
     /// Smallest decimal exponent for a non-zero value. This allows for fast pathing anything
     // / smaller than `10^SMALLEST_POWER_OF_TEN`.
-    const SMALLEST_POWER_OF_TEN: i32;
-    // const SMALLEST_POWER_OF_TEN: i32 =
-    //     -(((Self::EXPONENT_BIAS + Self::MANTISSA_BITS) as f64) / f64::consts::LOG2_10) as i32 - 2;
+    // const SMALLEST_POWER_OF_TEN: i32;
+    const SMALLEST_POWER_OF_TEN: i32 =
+        -(((Self::EXPONENT_BIAS + Self::MANTISSA_BITS + 64) as f64) / f64::consts::LOG2_10) as i32;
 
     /// Maximum exponent that can be represented for a disguised-fast path case.
     /// This is `MAX_EXPONENT_FAST_PATH + ⌊(MANTISSA_EXPLICIT_BITS+1)/log2(10)⌋`
@@ -204,7 +204,7 @@ impl RawFloat for f16 {
 
     const MIN_EXPONENT_ROUND_TO_EVEN: i32 = -17;
     const MAX_EXPONENT_ROUND_TO_EVEN: i32 = 10;
-    const SMALLEST_POWER_OF_TEN: i32 = -27;
+    // const SMALLEST_POWER_OF_TEN: i32 = -27;
     // const LARGEST_POWER_OF_TEN: i32 = Self::MAX_10_EXP;
 
     #[inline]
@@ -255,7 +255,7 @@ impl RawFloat for f32 {
     // const MINIMUM_EXPONENT: i32 = -127;
     // const INFINITE_POWER: i32 = 0xFF;
     // const SIGN_INDEX: u32 = 31;
-    const SMALLEST_POWER_OF_TEN: i32 = -65;
+    // const SMALLEST_POWER_OF_TEN: i32 = -65;
     // const LARGEST_POWER_OF_TEN: i32 = 38;
 
     #[inline]
@@ -307,7 +307,7 @@ impl RawFloat for f64 {
     // const MINIMUM_EXPONENT: i32 = -1023;
     // const INFINITE_POWER: i32 = 0x7FF;
     // const SIGN_INDEX: u32 = 63;
-    const SMALLEST_POWER_OF_TEN: i32 = -342;
+    // const SMALLEST_POWER_OF_TEN: i32 = -342;
     // const LARGEST_POWER_OF_TEN: i32 = 308;
 
     #[inline]
