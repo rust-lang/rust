@@ -1,10 +1,20 @@
-// Validate AST before lowering it to HIR.
-//
-// This pass is supposed to catch things that fit into AST data structures,
-// but not permitted by the language. It runs after expansion when AST is frozen,
-// so it can check for erroneous constructions produced by syntax extensions.
-// This pass is supposed to perform only simple checks not requiring name resolution
-// or type checking or some other kind of complex analysis.
+//! Validate AST before lowering it to HIR.
+//!
+//! This pass intends to check that the constructed AST is *syntactically valid* to allow the rest
+//! of the compiler to assume that the AST is valid. These checks cannot be performed during parsing
+//! because attribute macros are allowed to accept certain pieces of invalid syntax such as a
+//! function without body outside of a trait definition:
+//!
+//! ```ignore (illustrative)
+//! #[my_attribute]
+//! mod foo {
+//!     fn missing_body();
+//! }
+//! ```
+//!
+//! These checks are run post-expansion, after AST is frozen, to be able to check for erroneous
+//! constructions produced by proc macros. This pass is only intended for simple checks that do not
+//! require name resolution or type checking, or other kinds of complex analysis.
 
 use itertools::{Either, Itertools};
 use rustc_ast::ptr::P;
