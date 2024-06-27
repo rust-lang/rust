@@ -68,8 +68,8 @@ pub(super) enum Flag {
 #[derive(Copy, Clone)]
 enum ArgumentType<'a> {
     Placeholder {
-        // INVARIANT: if `formatter` had type `fn(&T, _) -> _` then `value`
-        // was derived from a `&T` with lifetime `'a`.
+        // INVARIANT: `formatter` has type `fn(&T, _) -> _` for some `T`, and `value`
+        // was derived from a `&'a T`.
         value: NonNull<()>,
         formatter: unsafe fn(NonNull<()>, &mut Formatter<'_>) -> Result,
         _lifetime: PhantomData<&'a ()>,
