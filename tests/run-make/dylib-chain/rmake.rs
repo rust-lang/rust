@@ -1,7 +1,8 @@
 // In this test, m4 depends on m3, which depends on m2, which depends on m1.
 // Even though dependencies are chained like this and there is no direct mention
-// of m1 or m2 in m4.rs, compilation and execution should still succeed. Naturally,
-// removing those dependencies should cause execution to fail.
+// of m1 or m2 in m4.rs, compilation and execution should still succeed. Unlike the
+// rlib-chain test, dynamic libraries contain upstream dependencies, and breaking
+// the chain by removing the dylibs causes execution to fail.
 // See https://github.com/rust-lang/rust/issues/10434
 
 //@ ignore-cross-compile
