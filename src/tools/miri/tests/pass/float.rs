@@ -62,8 +62,10 @@ macro_rules! impl_float {
     };
 }
 
+impl_float!(f16, u16);
 impl_float!(f32, u32);
 impl_float!(f64, u64);
+impl_float!(f128, u128);
 
 trait FloatToInt<Int>: Copy {
     fn cast(self) -> Int;
@@ -85,8 +87,10 @@ macro_rules! float_to_int {
     };
 }
 
+float_to_int!(f16 => i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
 float_to_int!(f32 => i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
 float_to_int!(f64 => i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
+float_to_int!(f128 => i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
 
 /// Test this cast both via `as` and via `approx_unchecked` (i.e., it must not saturate).
 #[track_caller]
@@ -469,6 +473,32 @@ macro_rules! test_ftof {
 fn casts() {
     /* int <-> float generic tests */
 
+    test_ftoi_itof! { f: f16, i: i8, imin_f: -128.0, imax_f: 127.0 };
+    test_ftoi_itof! { f: f16, i: u8, imin_f: 0.0, imax_f: 255.0 };
+    test_ftoi_itof! { f: f16, i: i16, imin_f: -32_768.0, imax_f: 32_767.0 };
+    test_ftoi_itof! { f: f16, i: u16, imin_f: 0.0, imax_f: 65_535.0 };
+    test_ftoi_itof! { f: f16, i: i32, imin_f: -2_147_483_648.0, imax_f: 2_147_483_647.0 };
+    test_ftoi_itof! { f: f16, i: u32, imin_f: 0.0, imax_f: 4_294_967_295.0 };
+    test_ftoi_itof! {
+        f: f16,
+        i: i64,
+        imin_f: -9_223_372_036_854_775_808.0,
+        imax_f: 9_223_372_036_854_775_807.0
+    };
+    test_ftoi_itof! { f: f16, i: u64, imin_f: 0.0, imax_f: 18_446_744_073_709_551_615.0 };
+    test_ftoi_itof! {
+        f: f16,
+        i: i128,
+        imin_f: -170_141_183_460_469_231_731_687_303_715_884_105_728.0,
+        imax_f: 170_141_183_460_469_231_731_687_303_715_884_105_727.0,
+    };
+    test_ftoi_itof! {
+        f: f16,
+        i: u128,
+        imin_f: 0.0,
+        imax_f: 340_282_366_920_938_463_463_374_607_431_768_211_455.0
+    };
+
     test_ftoi_itof! { f: f32, i: i8, imin_f: -128.0, imax_f: 127.0 };
     test_ftoi_itof! { f: f32, i: u8, imin_f: 0.0, imax_f: 255.0 };
     test_ftoi_itof! { f: f32, i: i16, imin_f: -32_768.0, imax_f: 32_767.0 };
@@ -521,6 +551,32 @@ fn casts() {
         imax_f: 340_282_366_920_938_463_463_374_607_431_768_211_455.0
     };
 
+    test_ftoi_itof! { f: f128, i: i8, imin_f: -128.0, imax_f: 127.0 };
+    test_ftoi_itof! { f: f128, i: u8, imin_f: 0.0, imax_f: 255.0 };
+    test_ftoi_itof! { f: f128, i: i16, imin_f: -32_768.0, imax_f: 32_767.0 };
+    test_ftoi_itof! { f: f128, i: u16, imin_f: 0.0, imax_f: 65_535.0 };
+    test_ftoi_itof! { f: f128, i: i32, imin_f: -2_147_483_648.0, imax_f: 2_147_483_647.0 };
+    test_ftoi_itof! { f: f128, i: u32, imin_f: 0.0, imax_f: 4_294_967_295.0 };
+    test_ftoi_itof! {
+        f: f128,
+        i: i64,
+        imin_f: -9_223_372_036_854_775_808.0,
+        imax_f: 9_223_372_036_854_775_807.0
+    };
+    test_ftoi_itof! { f: f128, i: u64, imin_f: 0.0, imax_f: 18_446_744_073_709_551_615.0 };
+    test_ftoi_itof! {
+        f: f128,
+        i: i128,
+        imin_f: -170_141_183_460_469_231_731_687_303_715_884_105_728.0,
+        imax_f: 170_141_183_460_469_231_731_687_303_715_884_105_727.0,
+    };
+    test_ftoi_itof! {
+        f: f128,
+        i: u128,
+        imin_f: 0.0,
+        imax_f: 340_282_366_920_938_463_463_374_607_431_768_211_455.0
+    };
+
     /* int <-> float spot checks */
 
     // int -> f32
@@ -552,8 +608,18 @@ fn casts() {
 
     /* float -> float generic tests */
 
+    test_ftof! { f1: f16, f2: f32 };
+    test_ftof! { f1: f16, f2: f64 };
+    test_ftof! { f1: f16, f2: f128 };
+    test_ftof! { f1: f32, f2: f16 };
     test_ftof! { f1: f32, f2: f64 };
+    test_ftof! { f1: f32, f2: f128 };
+    test_ftof! { f1: f64, f2: f16 };
     test_ftof! { f1: f64, f2: f32 };
+    test_ftof! { f1: f64, f2: f128 };
+    test_ftof! { f1: f128, f2: f16 };
+    test_ftof! { f1: f128, f2: f32 };
+    test_ftof! { f1: f128, f2: f64 };
 
     /* float -> float spot checks */
 
