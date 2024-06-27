@@ -7,7 +7,9 @@
 // See https://github.com/rust-lang/rust/pull/95604
 // See https://github.com/rust-lang/rust/issues/47384
 
-//FIXME(Oneirical): ignore flags: only linux and cross compile
+//@ only-linux
+// Reason: differences in object file formats on OSX and Windows
+// causes errors in the llvm_objdump step
 
 use run_make_support::{dynamic_lib_name, llvm_objdump, llvm_readobj, rustc};
 

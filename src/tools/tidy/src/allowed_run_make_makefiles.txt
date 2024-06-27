@@ -96,7 +96,6 @@ run-make/metadata-dep-info/Makefile
 run-make/min-global-align/Makefile
 run-make/missing-crate-dependency/Makefile
 run-make/mixing-libs/Makefile
-run-make/msvc-opt-minsize/Makefile
 run-make/native-link-modifier-bundle/Makefile
 run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
@@ -163,7 +162,6 @@ run-make/target-cpu-native/Makefile
 run-make/target-specs/Makefile
 run-make/target-without-atomic-cas/Makefile
 run-make/test-benches/Makefile
-run-make/test-harness/Makefile
 run-make/thumb-none-cortex-m/Makefile
 run-make/thumb-none-qemu/Makefile
 run-make/track-path-dep-info/Makefile
