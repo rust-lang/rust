@@ -89,7 +89,7 @@ pub fn compute_float<F: RawFloat>(q: i64, mut w: u64) -> BiasedFp {
     if lo <= 1
         && q >= F::MIN_EXPONENT_ROUND_TO_EVEN as i64
         && q <= F::MAX_EXPONENT_ROUND_TO_EVEN as i64
-        && mantissa & 3 == 1
+        && mantissa & 0b11 == 1
         && (mantissa << (upperbit + 64 - F::MANTISSA_EXPLICIT_BITS as i32 - 3)) == hi
     {
         // Zero the lowest bit, so we don't round up.
