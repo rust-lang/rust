@@ -1,3 +1,4 @@
+use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
@@ -5,15 +6,7 @@ use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use crate::inherent::*;
 use crate::{self as ty, Interner};
 
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Debug(bound = ""),
-    Copy(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub struct OpaqueTypeKey<I: Interner> {

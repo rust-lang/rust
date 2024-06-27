@@ -1,3 +1,4 @@
+use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
@@ -10,8 +11,7 @@ use crate::{self as ty, DebruijnIndex, Interner};
 use self::ConstKind::*;
 
 /// Represents a constant in Rust.
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Eq(bound = ""))]
+#[derive_where(Clone, Copy, Hash, Eq; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
@@ -79,14 +79,7 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
 }
 
 /// An unevaluated (potentially generic) constant used in the type-system.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub struct UnevaluatedConst<I: Interner> {

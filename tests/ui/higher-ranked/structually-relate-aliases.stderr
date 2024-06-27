@@ -1,5 +1,5 @@
- WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [?1t, '^0.Named(DefId(0:15 ~ structually_relate_aliases[de75]::{impl#1}::'a), "'a")], def_id: DefId(0:5 ~ structually_relate_aliases[de75]::ToUnit::Unit) }
- WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [?1t, !2_0.Named(DefId(0:15 ~ structually_relate_aliases[de75]::{impl#1}::'a), "'a")], def_id: DefId(0:5 ~ structually_relate_aliases[de75]::ToUnit::Unit) }
+ WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [?1t, '^0.Named(DefId(0:15 ~ structually_relate_aliases[de75]::{impl#1}::'a), "'a")], def_id: DefId(0:5 ~ structually_relate_aliases[de75]::ToUnit::Unit), .. }
+ WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [?1t, !2_0.Named(DefId(0:15 ~ structually_relate_aliases[de75]::{impl#1}::'a), "'a")], def_id: DefId(0:5 ~ structually_relate_aliases[de75]::ToUnit::Unit), .. }
 error[E0277]: the trait bound `for<'a> T: ToUnit<'a>` is not satisfied
   --> $DIR/structually-relate-aliases.rs:13:36
    |
