@@ -1,5 +1,10 @@
 //@ assembly-output: emit-asm
 //@ only-x86
+// FIXME(#114479): LLVM miscompiles loading and storing `f32` and `f64` when SSE is disabled.
+// There's no compiletest directive to ignore a test on i586 only, so just always explicitly enable
+// SSE2.
+// Use the same target CPU as `i686` so that LLVM orders the instructions in the same order.
+//@ compile-flags: -Ctarget-feature=+sse2 -Ctarget-cpu=pentium4
 // Force frame pointers to make ASM more consistent between targets
 //@ compile-flags: -O -C force-frame-pointers
 //@ filecheck-flags: --implicit-check-not fld --implicit-check-not fst
