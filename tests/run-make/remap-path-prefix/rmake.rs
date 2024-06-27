@@ -3,9 +3,8 @@
 // successfully remapped to "/the/aux" in the rmeta files.
 // See https://github.com/rust-lang/rust/pull/85344
 
-// FIXME(Oneirical): check if works without ignore-windows
-
-use run_make_support::{invalid_utf8_contains, invalid_utf8_not_contains, is_darwin, rustc};
+use run_make_support::bstr::ByteSlice;
+use run_make_support::{bstr, fs_wrapper, is_darwin, rustc};
 
 fn main() {
     let mut out_simple = rustc();
@@ -34,8 +33,8 @@ fn main() {
         .input("auxiliary/lib.rs");
 
     out_simple.run();
-    invalid_utf8_contains("liblib.rmeta", "/the/aux/lib.rs");
-    invalid_utf8_not_contains("liblib.rmeta", "auxiliary");
+    rmeta_contains("/the/aux/lib.rs");
+    rmeta_not_contains("auxiliary");
 
     out_object.arg("-Zremap-path-scope=object");
     out_macro.arg("-Zremap-path-scope=macro");
@@ -47,12 +46,42 @@ fn main() {
     }
 
     out_object.run();
-    invalid_utf8_contains("liblib.rmeta", "/the/aux/lib.rs");
-    invalid_utf8_not_contains("liblib.rmeta", "auxiliary");
+    rmeta_contains("/the/aux/lib.rs");
+    rmeta_not_contains("auxiliary");
     out_macro.run();
-    invalid_utf8_contains("liblib.rmeta", "/the/aux/lib.rs");
-    invalid_utf8_not_contains("liblib.rmeta", "auxiliary");
+    rmeta_contains("/the/aux/lib.rs");
+    rmeta_not_contains("auxiliary");
     out_diagobj.run();
-    invalid_utf8_contains("liblib.rmeta", "/the/aux/lib.rs");
-    invalid_utf8_not_contains("liblib.rmeta", "auxiliary");
+    rmeta_contains("/the/aux/lib.rs");
+    rmeta_not_contains("auxiliary");
+}
+
+//FIXME(Oneirical): These could be generalized into run_make_support
+// helper functions.
+fn rmeta_contains(expected: &str) {
+    // Normalize to account for path differences in Windows.
+    if !bstr::BString::from(fs_wrapper::read("liblib.rmeta"))
+        .replace(b"\\", b"/")
+        .contains_str(expected)
+    {
+        eprintln!("=== FILE CONTENTS (LOSSY) ===");
+        eprintln!("{}", String::from_utf8_lossy(&fs_wrapper::read("liblib.rmeta")));
+        eprintln!("=== SPECIFIED TEXT ===");
+        eprintln!("{}", expected);
+        panic!("specified text was not found in file");
+    }
+}
+
+fn rmeta_not_contains(expected: &str) {
+    // Normalize to account for path differences in Windows.
+    if bstr::BString::from(fs_wrapper::read("liblib.rmeta"))
+        .replace(b"\\", b"/")
+        .contains_str(expected)
+    {
+        eprintln!("=== FILE CONTENTS (LOSSY) ===");
+        eprintln!("{}", String::from_utf8_lossy(&fs_wrapper::read("liblib.rmeta")));
+        eprintln!("=== SPECIFIED TEXT ===");
+        eprintln!("{}", expected);
+        panic!("specified text was not found in file");
+    }
 }
