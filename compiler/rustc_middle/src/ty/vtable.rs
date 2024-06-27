@@ -67,7 +67,7 @@ impl Iterator for SupertraitDefIds<'_> {
 
     fn next(&mut self) -> Option<DefId> {
         let def_id = self.stack.pop()?;
-        let predicates = self.tcx.super_predicates_of(def_id);
+        let predicates = self.tcx.explicit_super_predicates_of(def_id);
         let visited = &mut self.visited;
         self.stack.extend(
             predicates

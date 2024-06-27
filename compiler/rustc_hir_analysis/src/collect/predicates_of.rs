@@ -519,21 +519,21 @@ pub(super) fn explicit_predicates_of<'tcx>(
 /// Ensures that the super-predicates of the trait with a `DefId`
 /// of `trait_def_id` are lowered and stored. This also ensures that
 /// the transitive super-predicates are lowered.
-pub(super) fn super_predicates_of(
+pub(super) fn explicit_super_predicates_of(
     tcx: TyCtxt<'_>,
     trait_def_id: LocalDefId,
 ) -> ty::GenericPredicates<'_> {
     implied_predicates_with_filter(tcx, trait_def_id.to_def_id(), PredicateFilter::SelfOnly)
 }
 
-pub(super) fn super_predicates_that_define_assoc_item(
+pub(super) fn explicit_supertraits_containing_assoc_item(
     tcx: TyCtxt<'_>,
     (trait_def_id, assoc_name): (DefId, Ident),
 ) -> ty::GenericPredicates<'_> {
     implied_predicates_with_filter(tcx, trait_def_id, PredicateFilter::SelfThatDefines(assoc_name))
 }
 
-pub(super) fn implied_predicates_of(
+pub(super) fn explicit_implied_predicates_of(
     tcx: TyCtxt<'_>,
     trait_def_id: LocalDefId,
 ) -> ty::GenericPredicates<'_> {
@@ -560,7 +560,7 @@ pub(super) fn implied_predicates_with_filter(
         // if `assoc_name` is None, then the query should've been redirected to an
         // external provider
         assert!(matches!(filter, PredicateFilter::SelfThatDefines(_)));
-        return tcx.super_predicates_of(trait_def_id);
+        return tcx.explicit_super_predicates_of(trait_def_id);
     };
 
     let Node::Item(item) = tcx.hir_node_by_def_id(trait_def_id) else {
@@ -601,7 +601,7 @@ pub(super) fn implied_predicates_with_filter(
                 if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
                     && bound.polarity == ty::PredicatePolarity::Positive
                 {
-                    tcx.at(span).super_predicates_of(bound.def_id());
+                    tcx.at(span).explicit_super_predicates_of(bound.def_id());
                 }
             }
         }
@@ -611,7 +611,7 @@ pub(super) fn implied_predicates_with_filter(
                 if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
                     && bound.polarity == ty::PredicatePolarity::Positive
                 {
-                    tcx.at(span).implied_predicates_of(bound.def_id());
+                    tcx.at(span).explicit_implied_predicates_of(bound.def_id());
                 }
             }
         }

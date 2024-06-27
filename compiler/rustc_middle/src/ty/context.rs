@@ -342,12 +342,15 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         )
     }
 
-    fn super_predicates_of(
+    fn explicit_super_predicates_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
         ty::EarlyBinder::bind(
-            self.super_predicates_of(def_id).instantiate_identity(self).predicates.into_iter(),
+            self.explicit_super_predicates_of(def_id)
+                .instantiate_identity(self)
+                .predicates
+                .into_iter(),
         )
     }
 
@@ -2473,7 +2476,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         iter::from_fn(move || -> Option<DefId> {
             let trait_did = stack.pop()?;
-            let generic_predicates = self.super_predicates_of(trait_did);
+            let generic_predicates = self.explicit_super_predicates_of(trait_did);
 
             for (predicate, _) in generic_predicates.predicates {
                 if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder() {

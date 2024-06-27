@@ -35,7 +35,7 @@ struct Elaborator<'tcx> {
 impl<'tcx> Elaborator<'tcx> {
     fn elaborate(&mut self, trait_ref: PolyTraitRef<'tcx>) {
         let super_predicates =
-            self.tcx.super_predicates_of(trait_ref.def_id()).predicates.iter().filter_map(
+            self.tcx.explicit_super_predicates_of(trait_ref.def_id()).predicates.iter().filter_map(
                 |&(pred, _)| {
                     let clause = pred.instantiate_supertrait(self.tcx, trait_ref);
                     self.visited.insert(clause).then_some(clause)
