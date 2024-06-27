@@ -94,7 +94,7 @@ jobs:
         - thumbv7em-none-eabihf
 
         # macOS targets
-        #- x86_64-apple-darwin
+        - x86_64-apple-darwin
         - aarch64-apple-darwin
         # FIXME: gh-actions build environment doesn't have linker support
         # - i686-apple-darwin
@@ -103,8 +103,7 @@ jobs:
         - x86_64-pc-windows-msvc
         - i686-pc-windows-msvc
         - aarch64-pc-windows-msvc
-        # FIXME: Disassembly not implemented for the # following targets:
-        # - x86_64-pc-windows-gnu:
+        - x86_64-pc-windows-gnu
         # - i686-pc-windows-gnu:
 
         include:
@@ -155,6 +154,8 @@ jobs:
         - target: aarch64-pc-windows-msvc
           os: windows-latest
           norun: true
+        - target: x86_64-pc-windows-gnu
+          os: windows-latest
         - target: i586-unknown-linux-gnu
           os: ubuntu-latest
         - target: nvptx64-nvidia-cuda
