@@ -161,7 +161,7 @@ impl ClippyWarning {
 
         // --recursive bypasses cargo so we have to strip the rendered output ourselves
         let rendered = diag.rendered.as_mut().unwrap();
-        *rendered = String::from_utf8(strip_ansi_escapes::strip(&rendered).unwrap()).unwrap();
+        *rendered = strip_ansi_escapes::strip_str(&rendered);
 
         Some(Self {
             crate_name: crate_name.to_owned(),
