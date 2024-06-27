@@ -1,12 +1,12 @@
 use crate::ErrCode;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 
 #[derive(Debug)]
 pub struct InvalidErrorCode;
 
 #[derive(Clone)]
 pub struct Registry {
-    long_descriptions: FxHashMap<ErrCode, &'static str>,
+    long_descriptions: GxHashMap<ErrCode, &'static str>,
 }
 
 impl Registry {

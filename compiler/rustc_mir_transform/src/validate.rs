@@ -1,6 +1,6 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_hir::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
@@ -83,7 +83,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
             mir_phase,
             unwind_edge_count: 0,
             reachable_blocks: traversal::reachable_as_bitset(body),
-            value_cache: FxHashSet::default(),
+            value_cache: GxHashSet::default(),
             can_unwind,
         };
         cfg_checker.visit_body(body);
@@ -133,7 +133,7 @@ struct CfgChecker<'a, 'tcx> {
     mir_phase: MirPhase,
     unwind_edge_count: usize,
     reachable_blocks: BitSet<BasicBlock>,
-    value_cache: FxHashSet<u128>,
+    value_cache: GxHashSet<u128>,
     // If `false`, then the MIR must not contain `UnwindAction::Continue` or
     // `TerminatorKind::Resume`.
     can_unwind: bool,
@@ -192,7 +192,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
             return;
         }
         let doms = self.body.basic_blocks.dominators();
-        let mut post_contract_node = FxHashMap::default();
+        let mut post_contract_node = GxHashMap::default();
         // Reusing the allocation across invocations of the closure
         let mut dom_path = vec![];
         let mut get_post_contract_node = |mut bb| {
@@ -244,7 +244,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
         }
 
         // Check for cycles
-        let mut stack = FxHashSet::default();
+        let mut stack = GxHashSet::default();
         for i in 0..parent.len() {
             let mut bb = BasicBlock::from_usize(i);
             stack.clear();

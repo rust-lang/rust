@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
     Local, Location, Place, Statement, StatementKind, Terminator, TerminatorKind,
@@ -24,8 +24,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
     ///  See #55344 for context.
     pub(crate) fn gather_used_muts(
         &mut self,
-        temporary_used_locals: FxIndexSet<Local>,
-        mut never_initialized_mut_locals: FxIndexSet<Local>,
+        temporary_used_locals: GxIndexSet<Local>,
+        mut never_initialized_mut_locals: GxIndexSet<Local>,
     ) {
         {
             let mut visitor = GatherUsedMutsVisitor {
@@ -46,8 +46,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
 /// MIR visitor for collecting used mutable variables.
 /// The 'visit lifetime represents the duration of the MIR walk.
 struct GatherUsedMutsVisitor<'visit, 'a, 'mir, 'cx, 'tcx> {
-    temporary_used_locals: FxIndexSet<Local>,
-    never_initialized_mut_locals: &'visit mut FxIndexSet<Local>,
+    temporary_used_locals: GxIndexSet<Local>,
+    never_initialized_mut_locals: &'visit mut GxIndexSet<Local>,
     mbcx: &'visit mut MirBorrowckCtxt<'a, 'mir, 'cx, 'tcx>,
 }
 

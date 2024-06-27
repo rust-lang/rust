@@ -1,5 +1,5 @@
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxHashSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::IntervalSet;
 use rustc_index::interval::SparseIntervalMatrix;
@@ -42,7 +42,7 @@ pub(crate) struct LivenessValues {
 
     /// Which regions are live. This is exclusive with the fine-grained tracking in `points`, and
     /// currently only used for validating promoteds (which don't care about more precise tracking).
-    live_regions: Option<FxHashSet<RegionVid>>,
+    live_regions: Option<GxHashSet<RegionVid>>,
 
     /// For each region: the points where it is live.
     ///
@@ -218,7 +218,7 @@ impl LivenessValues {
 /// NLL.
 #[derive(Debug, Default)]
 pub(crate) struct PlaceholderIndices {
-    indices: FxIndexSet<ty::PlaceholderRegion>,
+    indices: GxIndexSet<ty::PlaceholderRegion>,
 }
 
 impl PlaceholderIndices {

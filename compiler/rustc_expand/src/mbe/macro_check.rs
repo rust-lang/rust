@@ -110,7 +110,7 @@ use crate::mbe::{KleeneToken, TokenTree};
 
 use rustc_ast::token::{Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_errors::MultiSpan;
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_session::lint::builtin::{META_VARIABLE_MISUSE, MISSING_FRAGMENT_SPECIFIER};
@@ -182,7 +182,7 @@ struct BinderInfo {
 }
 
 /// An environment of meta-variables to their binder information.
-type Binders = FxHashMap<MacroRulesNormalizedIdent, BinderInfo>;
+type Binders = GxHashMap<MacroRulesNormalizedIdent, BinderInfo>;
 
 /// The state at which we entered a macro definition in the RHS of another macro definition.
 struct MacroState<'a> {

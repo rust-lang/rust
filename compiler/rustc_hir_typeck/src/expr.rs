@@ -21,7 +21,7 @@ use crate::{
     TupleArgumentsFlag::DontTupleArguments,
 };
 use rustc_ast as ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{
@@ -1684,7 +1684,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .map(|(i, field)| (field.ident(tcx).normalize_to_macros_2_0(), (i, field)))
             .collect::<UnordMap<_, _>>();
 
-        let mut seen_fields = FxHashMap::default();
+        let mut seen_fields = GxHashMap::default();
 
         let mut error_happened = false;
 
@@ -3140,7 +3140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn point_at_index(&self, errors: &mut Vec<traits::FulfillmentError<'tcx>>, span: Span) {
-        let mut seen_preds = FxHashSet::default();
+        let mut seen_preds = GxHashSet::default();
         // We re-sort here so that the outer most root obligations comes first, as we have the
         // subsequent weird logic to identify *every* relevant obligation for proper deduplication
         // of diagnostics.

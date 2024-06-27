@@ -11,7 +11,7 @@ use crate::traits::fulfill::OldSolverError;
 use crate::traits::NormalizeExt;
 use crate::traits::StructurallyNormalizeExt;
 use crate::traits::{FulfillmentError, Obligation, ObligationCause, PredicateObligation};
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::at::ToTrace;
@@ -236,7 +236,7 @@ impl<'tcx> ObligationCtxt<'_, 'tcx, FulfillmentError<'tcx>> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         def_id: LocalDefId,
-    ) -> Result<FxIndexSet<Ty<'tcx>>, ErrorGuaranteed> {
+    ) -> Result<GxIndexSet<Ty<'tcx>>, ErrorGuaranteed> {
         self.assumed_wf_types(param_env, def_id)
             .map_err(|errors| self.infcx.err_ctxt().report_fulfillment_errors(errors))
     }
@@ -268,9 +268,9 @@ where
         &self,
         param_env: ty::ParamEnv<'tcx>,
         def_id: LocalDefId,
-    ) -> Result<FxIndexSet<Ty<'tcx>>, Vec<E>> {
+    ) -> Result<GxIndexSet<Ty<'tcx>>, Vec<E>> {
         let tcx = self.infcx.tcx;
-        let mut implied_bounds = FxIndexSet::default();
+        let mut implied_bounds = GxIndexSet::default();
         let mut errors = Vec::new();
         for &(ty, span) in tcx.assumed_wf_types(def_id) {
             // FIXME(@lcnr): rustc currently does not check wf for types

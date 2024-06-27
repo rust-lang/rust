@@ -1,6 +1,6 @@
 use rustc_ast::{NestedMetaItem, CRATE_NODE_ID};
 use rustc_attr as attr;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{List, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_session::config::CrateType;
@@ -386,7 +386,7 @@ impl<'tcx> Collector<'tcx> {
     // Process libs passed on the command line
     fn process_command_line(&mut self) {
         // First, check for errors
-        let mut renames = FxHashSet::default();
+        let mut renames = GxHashSet::default();
         for lib in &self.tcx.sess.opts.libs {
             if let NativeLibKind::Framework { .. } = lib.kind
                 && !self.tcx.sess.target.is_like_osx

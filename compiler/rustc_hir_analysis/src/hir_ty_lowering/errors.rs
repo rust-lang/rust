@@ -5,7 +5,7 @@ use crate::errors::{
 use crate::fluent_generated as fluent;
 use crate::hir_ty_lowering::HirTyLowerer;
 use crate::traits::error_reporting::report_object_safety_error;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::MultiSpan;
@@ -701,7 +701,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// emit a generic note suggesting using a `where` clause to constraint instead.
     pub(crate) fn complain_about_missing_assoc_tys(
         &self,
-        associated_types: FxIndexMap<Span, FxIndexSet<DefId>>,
+        associated_types: GxIndexMap<Span, GxIndexSet<DefId>>,
         potential_assoc_types: Vec<usize>,
         trait_bounds: &[hir::PolyTraitRef<'_>],
     ) {
@@ -712,13 +712,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
         // FIXME: Marked `mut` so that we can replace the spans further below with a more
         // appropriate one, but this should be handled earlier in the span assignment.
-        let mut associated_types: FxIndexMap<Span, Vec<_>> = associated_types
+        let mut associated_types: GxIndexMap<Span, Vec<_>> = associated_types
             .into_iter()
             .map(|(span, def_ids)| {
                 (span, def_ids.into_iter().map(|did| tcx.associated_item(did)).collect())
             })
             .collect();
-        let mut names: FxIndexMap<String, Vec<Symbol>> = Default::default();
+        let mut names: GxIndexMap<String, Vec<Symbol>> = Default::default();
         let mut names_len = 0;
 
         // Account for things like `dyn Foo + 'a`, like in tests `issue-22434.rs` and
@@ -922,7 +922,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if suggestions.len() != 1 || already_has_generics_args_suggestion {
             // We don't need this label if there's an inline suggestion, show otherwise.
             for (span, assoc_items) in &associated_types {
-                let mut names: FxIndexMap<_, usize> = FxIndexMap::default();
+                let mut names: GxIndexMap<_, usize> = GxIndexMap::default();
                 for item in assoc_items {
                     types_count += 1;
                     *names.entry(item.name).or_insert(0) += 1;
@@ -1041,7 +1041,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Infer,
         }
 
-        let mut prohibit_args = FxIndexSet::default();
+        let mut prohibit_args = GxIndexSet::default();
         args_visitors.for_each(|arg| {
             match arg {
                 hir::GenericArg::Lifetime(_) => prohibit_args.insert(ProhibitGenericsArg::Lifetime),

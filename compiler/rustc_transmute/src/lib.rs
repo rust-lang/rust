@@ -4,7 +4,7 @@
 #![feature(never_type)]
 // tidy-alphabetical-end
 
-pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};
+pub(crate) use rustc_data_structures::gx::{GxIndexMap as Map, GxIndexSet as Set};
 
 pub mod layout;
 mod maybe_transmutable;

@@ -7,7 +7,7 @@
 use crate::{errors, fluent_generated as fluent};
 use rustc_ast::{ast, AttrKind, AttrStyle, Attribute, LitKind};
 use rustc_ast::{MetaItemKind, MetaItemLit, NestedMetaItem};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_errors::{Applicability, IntoDiagArg, MultiSpan};
 use rustc_errors::{DiagCtxtHandle, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
@@ -109,9 +109,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         target: Target,
         item: Option<ItemLike<'_>>,
     ) {
-        let mut doc_aliases = FxHashMap::default();
+        let mut doc_aliases = GxHashMap::default();
         let mut specified_inline = None;
-        let mut seen = FxHashMap::default();
+        let mut seen = GxHashMap::default();
         let attrs = self.tcx.hir().attrs(hir_id);
         for attr in attrs {
             match attr.path().as_slice() {
@@ -679,7 +679,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         hir_id: HirId,
         target: Target,
         is_list: bool,
-        aliases: &mut FxHashMap<String, Span>,
+        aliases: &mut GxHashMap<String, Span>,
     ) -> bool {
         let tcx = self.tcx;
         let span = meta.name_value_literal_span().unwrap_or_else(|| meta.span());
@@ -781,7 +781,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         meta: &NestedMetaItem,
         hir_id: HirId,
         target: Target,
-        aliases: &mut FxHashMap<String, Span>,
+        aliases: &mut GxHashMap<String, Span>,
     ) -> bool {
         if let Some(values) = meta.meta_item_list() {
             let mut errors = 0;
@@ -1077,7 +1077,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         hir_id: HirId,
         target: Target,
         specified_inline: &mut Option<(bool, Span)>,
-        aliases: &mut FxHashMap<String, Span>,
+        aliases: &mut GxHashMap<String, Span>,
     ) -> bool {
         let mut is_valid = true;
 
@@ -2590,7 +2590,7 @@ fn check_duplicates(
     attr: &Attribute,
     hir_id: HirId,
     duplicates: AttributeDuplicates,
-    seen: &mut FxHashMap<Symbol, Span>,
+    seen: &mut GxHashMap<Symbol, Span>,
 ) {
     use AttributeDuplicates::*;
     if matches!(duplicates, WarnFollowingWordOnly) && !attr.is_word() {

@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -250,7 +250,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_ref: ty::PolyTraitRef<'tcx>,
         constraint: &hir::AssocItemConstraint<'tcx>,
         bounds: &mut Bounds<'tcx>,
-        duplicates: &mut FxIndexMap<DefId, Span>,
+        duplicates: &mut GxIndexMap<DefId, Span>,
         path_span: Span,
         only_self_bounds: OnlySelfBounds,
     ) -> Result<(), ErrorGuaranteed> {
@@ -592,8 +592,8 @@ fn check_assoc_const_binding_type<'tcx>(
 
 struct GenericParamAndBoundVarCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
-    params: FxIndexSet<u32>,
-    vars: FxIndexSet<(DefId, Symbol)>,
+    params: GxIndexSet<u32>,
+    vars: GxIndexSet<(DefId, Symbol)>,
     depth: ty::DebruijnIndex,
 }
 

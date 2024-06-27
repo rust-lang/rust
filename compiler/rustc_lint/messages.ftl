@@ -208,7 +208,7 @@ lint_cstring_ptr = getting the inner pointer of a temporary `CString`
 lint_custom_inner_attribute_unstable = custom inner attributes are unstable
 
 lint_default_hash_types = prefer `{$preferred}` over `{$used}`, it has better performance
-    .note = a `use rustc_data_structures::fx::{$preferred}` may be necessary
+    .note = a `use rustc_data_structures::gx::{$preferred}` may be necessary
 
 lint_default_source = `forbid` lint level is the default for {$id}
 

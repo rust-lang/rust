@@ -53,7 +53,7 @@ pub use termcolor::{Color, ColorSpec, WriteColor};
 
 use emitter::{is_case_difference, DynEmitter, Emitter};
 use registry::Registry;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxHashSet, GxIndexMap, GxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::AtomicRef;
@@ -463,22 +463,22 @@ struct DiagCtxtInner {
     /// This set contains the code of all emitted diagnostics to avoid
     /// emitting the same diagnostic with extended help (`--teach`) twice, which
     /// would be unnecessary repetition.
-    taught_diagnostics: FxHashSet<ErrCode>,
+    taught_diagnostics: GxHashSet<ErrCode>,
 
     /// Used to suggest rustc --explain `<error code>`
-    emitted_diagnostic_codes: FxIndexSet<ErrCode>,
+    emitted_diagnostic_codes: GxIndexSet<ErrCode>,
 
     /// This set contains a hash of every diagnostic that has been emitted by
     /// this `DiagCtxt`. These hashes is used to avoid emitting the same error
     /// twice.
-    emitted_diagnostics: FxHashSet<Hash128>,
+    emitted_diagnostics: GxHashSet<Hash128>,
 
     /// Stashed diagnostics emitted in one stage of the compiler that may be
     /// stolen and emitted/cancelled by other stages (e.g. to improve them and
     /// add more information). All stashed diagnostics must be emitted with
     /// `emit_stashed_diagnostics` by the time the `DiagCtxtInner` is dropped,
     /// otherwise an assertion failure will occur.
-    stashed_diagnostics: FxIndexMap<(Span, StashKey), (DiagInner, Option<ErrorGuaranteed>)>,
+    stashed_diagnostics: GxIndexMap<(Span, StashKey), (DiagInner, Option<ErrorGuaranteed>)>,
 
     future_breakage_diagnostics: Vec<DiagInner>,
 
@@ -503,7 +503,7 @@ struct DiagCtxtInner {
     /// that have been marked as fulfilled this way.
     ///
     /// [RFC-2383]: https://rust-lang.github.io/rfcs/2383-lint-reasons.html
-    fulfilled_expectations: FxHashSet<LintExpectationId>,
+    fulfilled_expectations: GxHashSet<LintExpectationId>,
 
     /// The file where the ICE information is stored. This allows delayed_span_bug backtraces to be
     /// stored along side the main panic backtrace.
@@ -1066,7 +1066,7 @@ impl<'a> DiagCtxtHandle<'a> {
 
     pub fn update_unstable_expectation_id(
         &self,
-        unstable_to_stable: &FxIndexMap<LintExpectationId, LintExpectationId>,
+        unstable_to_stable: &GxIndexMap<LintExpectationId, LintExpectationId>,
     ) {
         let mut inner = self.inner.borrow_mut();
         let diags = std::mem::take(&mut inner.unstable_expect_diagnostics);
@@ -1097,7 +1097,7 @@ impl<'a> DiagCtxtHandle<'a> {
     /// This methods steals all [`LintExpectationId`]s that are stored inside
     /// [`DiagCtxtInner`] and indicate that the linked expectation has been fulfilled.
     #[must_use]
-    pub fn steal_fulfilled_expectation_ids(&self) -> FxHashSet<LintExpectationId> {
+    pub fn steal_fulfilled_expectation_ids(&self) -> GxHashSet<LintExpectationId> {
         assert!(
             self.inner.borrow().unstable_expect_diagnostics.is_empty(),
             "`DiagCtxtInner::unstable_expect_diagnostics` should be empty at this point",

@@ -16,7 +16,7 @@ use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, ModuleCodegen, Modul
 
 use rustc_ast::expand::allocator::{global_fn_name, AllocatorKind, ALLOCATOR_METHODS};
 use rustc_attr as attr;
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::gx::{GxHashMap, GxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::par_map;
 use rustc_data_structures::unord::UnordMap;
@@ -730,7 +730,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             pre_compiled_cgus
         })
     } else {
-        FxHashMap::default()
+        GxHashMap::default()
     };
 
     for (i, cgu) in codegen_units.iter().enumerate() {
@@ -898,7 +898,7 @@ impl CrateInfo {
         // by the compiler, but that's ok because all this stuff is unstable anyway.
         let target = &tcx.sess.target;
         if !are_upstream_rust_objects_already_included(tcx.sess) {
-            let missing_weak_lang_items: FxIndexSet<Symbol> = info
+            let missing_weak_lang_items: GxIndexSet<Symbol> = info
                 .used_crates
                 .iter()
                 .flat_map(|&cnum| tcx.missing_lang_items(cnum))

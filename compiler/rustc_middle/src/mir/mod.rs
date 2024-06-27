@@ -27,9 +27,9 @@ use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use polonius_engine::Atom;
 pub use rustc_ast::Mutability;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::gx::GxHashMap;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
@@ -110,8 +110,8 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 }
 
 thread_local! {
-    static PASS_NAMES: RefCell<FxHashMap<&'static str, &'static str>> = {
-        RefCell::new(FxHashMap::default())
+    static PASS_NAMES: RefCell<GxHashMap<&'static str, &'static str>> = {
+        RefCell::new(GxHashMap::default())
     };
 }
 
@@ -1748,7 +1748,7 @@ impl Location {
 
         // If we're in another block, then we want to check that block is a predecessor of `other`.
         let mut queue: Vec<BasicBlock> = predecessors[other.block].to_vec();
-        let mut visited = FxHashSet::default();
+        let mut visited = GxHashSet::default();
 
         while let Some(block) = queue.pop() {
             // If we haven't visited this block before, then make sure we visit its predecessors.

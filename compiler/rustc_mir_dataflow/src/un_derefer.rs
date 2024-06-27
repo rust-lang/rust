@@ -1,10 +1,10 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_middle::mir::*;
 
 /// Used for reverting changes made by `DerefSeparator`
 #[derive(Default, Debug)]
 pub(crate) struct UnDerefer<'tcx> {
-    deref_chains: FxHashMap<Local, Vec<PlaceRef<'tcx>>>,
+    deref_chains: GxHashMap<Local, Vec<PlaceRef<'tcx>>>,
 }
 
 impl<'tcx> UnDerefer<'tcx> {

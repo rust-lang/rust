@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 
 use crate::ty::{Clause, PolyTraitRef, ToPolyTraitRef, TyCtxt, Upcast};
 
@@ -12,7 +12,7 @@ pub fn super_predicates_for_pretty_printing<'tcx>(
     trait_ref: PolyTraitRef<'tcx>,
 ) -> impl Iterator<Item = Clause<'tcx>> {
     let clause = trait_ref.upcast(tcx);
-    Elaborator { tcx, visited: FxHashSet::from_iter([clause]), stack: vec![clause] }
+    Elaborator { tcx, visited: GxHashSet::from_iter([clause]), stack: vec![clause] }
 }
 
 /// Like [`super_predicates_for_pretty_printing`], except it only returns traits and filters out
@@ -28,7 +28,7 @@ pub fn supertraits_for_pretty_printing<'tcx>(
 
 struct Elaborator<'tcx> {
     tcx: TyCtxt<'tcx>,
-    visited: FxHashSet<Clause<'tcx>>,
+    visited: GxHashSet<Clause<'tcx>>,
     stack: Vec<Clause<'tcx>>,
 }
 

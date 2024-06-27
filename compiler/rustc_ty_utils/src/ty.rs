@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::LangItem;
@@ -143,7 +143,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
             fn_def_id: def_id,
             bound_vars: sig.bound_vars(),
             predicates: &mut predicates,
-            seen: FxHashSet::default(),
+            seen: GxHashSet::default(),
             depth: ty::INNERMOST,
         });
     }
@@ -167,7 +167,7 @@ struct ImplTraitInTraitFinder<'a, 'tcx> {
     predicates: &'a mut Vec<ty::Clause<'tcx>>,
     fn_def_id: DefId,
     bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
-    seen: FxHashSet<DefId>,
+    seen: GxHashSet<DefId>,
     depth: ty::DebruijnIndex,
 }
 

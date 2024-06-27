@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet, IndexEntry};
 use rustc_hir as hir;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::bug;
@@ -144,7 +144,7 @@ fn clean_param_env<'tcx>(
     item_def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
     region_data: RegionConstraintData<'tcx>,
-    vid_to_region: FxIndexMap<ty::RegionVid, ty::Region<'tcx>>,
+    vid_to_region: GxIndexMap<ty::RegionVid, ty::Region<'tcx>>,
 ) -> clean::Generics {
     let tcx = cx.tcx;
     let generics = tcx.generics_of(item_def_id);
@@ -167,7 +167,7 @@ fn clean_param_env<'tcx>(
         .collect();
 
     // FIXME(#111101): Incorporate the explicit predicates of the item here...
-    let item_predicates: FxIndexSet<_> =
+    let item_predicates: GxIndexSet<_> =
         tcx.param_env(item_def_id).caller_bounds().iter().collect();
     let where_predicates = param_env
         .caller_bounds()
@@ -224,8 +224,8 @@ fn clean_region_outlives_constraints<'tcx>(
     // between `Region`s. This gives us the information we need to create the where-predicates.
     // This flattening is done in two parts.
 
-    let mut outlives_predicates = FxIndexMap::<_, Vec<_>>::default();
-    let mut map = FxIndexMap::<RegionTarget<'_>, auto_trait::RegionDeps<'_>>::default();
+    let mut outlives_predicates = GxIndexMap::<_, Vec<_>>::default();
+    let mut map = GxIndexMap::<RegionTarget<'_>, auto_trait::RegionDeps<'_>>::default();
 
     // (1)  We insert all of the constraints into a map.
     // Each `RegionTarget` (a `RegionVid` or a `Region`) maps to its smaller and larger regions.
@@ -325,7 +325,7 @@ fn clean_region_outlives_constraints<'tcx>(
         }
     }
 
-    let region_params: FxIndexSet<_> = generics
+    let region_params: GxIndexSet<_> = generics
         .own_params
         .iter()
         .filter_map(|param| match param.kind {
@@ -337,7 +337,7 @@ fn clean_region_outlives_constraints<'tcx>(
     region_params
         .iter()
         .filter_map(|&name| {
-            let bounds: FxIndexSet<_> = outlives_predicates
+            let bounds: GxIndexSet<_> = outlives_predicates
                 .get(&name)?
                 .iter()
                 .map(|&region| {

@@ -7,7 +7,7 @@
 
 use crate::build::matches::{Candidate, MatchPair, Test, TestBranch, TestCase, TestKind};
 use crate::build::Builder;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
@@ -69,7 +69,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         otherwise_block: BasicBlock,
         place: Place<'tcx>,
         test: &Test<'tcx>,
-        target_blocks: FxIndexMap<TestBranch<'tcx>, BasicBlock>,
+        target_blocks: GxIndexMap<TestBranch<'tcx>, BasicBlock>,
     ) {
         let place_ty = place.ty(&self.local_decls, self.tcx);
         debug!(?place, ?place_ty);
@@ -538,7 +538,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test_place: Place<'tcx>,
         test: &Test<'tcx>,
         candidate: &mut Candidate<'_, 'tcx>,
-        sorted_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'_, 'tcx>>>,
+        sorted_candidates: &GxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'_, 'tcx>>>,
     ) -> Option<TestBranch<'tcx>> {
         // Find the match_pair for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we

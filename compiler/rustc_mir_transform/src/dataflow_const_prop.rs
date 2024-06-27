@@ -4,7 +4,7 @@
 
 use rustc_const_eval::const_eval::{throw_machine_stop_str, DummyMachine};
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, PlaceTy, Projectable};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
@@ -539,15 +539,15 @@ pub(crate) struct Patch<'tcx> {
     /// For a given MIR location, this stores the values of the operands used by that location. In
     /// particular, this is before the effect, such that the operands of `_1 = _1 + _2` are
     /// properly captured. (This may become UB soon, but it is currently emitted even by safe code.)
-    pub(crate) before_effect: FxHashMap<(Location, Place<'tcx>), Const<'tcx>>,
+    pub(crate) before_effect: GxHashMap<(Location, Place<'tcx>), Const<'tcx>>,
 
     /// Stores the assigned values for assignments where the Rvalue is constant.
-    pub(crate) assignments: FxHashMap<Location, Const<'tcx>>,
+    pub(crate) assignments: GxHashMap<Location, Const<'tcx>>,
 }
 
 impl<'tcx> Patch<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>) -> Self {
-        Self { tcx, before_effect: FxHashMap::default(), assignments: FxHashMap::default() }
+        Self { tcx, before_effect: GxHashMap::default(), assignments: GxHashMap::default() }
     }
 
     fn make_operand(&self, const_: Const<'tcx>) -> Operand<'tcx> {

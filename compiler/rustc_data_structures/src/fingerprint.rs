@@ -149,7 +149,7 @@ impl FingerprintHasher for crate::unhash::Unhasher {
         // cheaper than the more robust Fingerprint::to_smaller_hash()). For
         // HashMaps we don't really care if Fingerprint(x,y) and
         // Fingerprint(y, x) result in the same hash value. Collision
-        // probability will still be much better than with FxHash.
+        // probability will still be much better than with GxHash.
         self.write_u64(fingerprint.0.wrapping_add(fingerprint.1));
     }
 }

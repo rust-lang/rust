@@ -14,7 +14,7 @@ use crate::{ResolutionError, Resolver, Segment, TyCtxt, UseError};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{visit_opt, walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet, GxIndexMap};
 use rustc_errors::{codes::*, Applicability, DiagArgValue, IntoDiagArg, StashKey};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
@@ -41,7 +41,7 @@ mod diagnostics;
 
 type Res = def::Res<NodeId>;
 
-type IdentMap<T> = FxHashMap<Ident, T>;
+type IdentMap<T> = GxHashMap<Ident, T>;
 
 use diagnostics::{ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime};
 
@@ -366,7 +366,7 @@ impl LifetimeBinderKind {
 struct LifetimeRib {
     kind: LifetimeRibKind,
     // We need to preserve insertion order for async fns.
-    bindings: FxIndexMap<Ident, (NodeId, LifetimeRes)>,
+    bindings: GxIndexMap<Ident, (NodeId, LifetimeRes)>,
 }
 
 impl LifetimeRib {
@@ -611,7 +611,7 @@ struct DiagMetadata<'ast> {
 
     /// A list of labels as of yet unused. Labels will be removed from this map when
     /// they are used (in a `break` or `continue` statement)
-    unused_labels: FxHashMap<NodeId, Span>,
+    unused_labels: GxHashMap<NodeId, Span>,
 
     /// Only used for better errors on `let x = { foo: bar };`.
     /// In the case of a parse error with `let x = { foo: bar, };`, this isn't needed, it's only
@@ -695,7 +695,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     in_func_body: bool,
 
     /// Count the number of places a lifetime is used.
-    lifetime_uses: FxHashMap<LocalDefId, LifetimeUseSet>,
+    lifetime_uses: GxHashMap<LocalDefId, LifetimeUseSet>,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -2126,7 +2126,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             let local_candidates = self.lifetime_elision_candidates.take();
 
             if let Some(candidates) = local_candidates {
-                let distinct: FxHashSet<_> = candidates.iter().map(|(res, _)| *res).collect();
+                let distinct: GxHashSet<_> = candidates.iter().map(|(res, _)| *res).collect();
                 let lifetime_count = distinct.len();
                 if lifetime_count != 0 {
                     parameter_info.push(ElisionFnParameter {
@@ -2629,9 +2629,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         let mut function_type_rib = Rib::new(kind);
         let mut function_value_rib = Rib::new(kind);
         let mut function_lifetime_rib = LifetimeRib::new(lifetime_kind);
-        let mut seen_bindings = FxHashMap::default();
+        let mut seen_bindings = GxHashMap::default();
         // Store all seen lifetimes names from outer scopes.
-        let mut seen_lifetimes = FxHashSet::default();
+        let mut seen_lifetimes = GxHashSet::default();
 
         // We also can't shadow bindings from the parent item
         if let RibKind::AssocItem = kind {
@@ -3042,7 +3042,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn resolve_impl_item(
         &mut self,
         item: &'ast AssocItem,
-        seen_trait_items: &mut FxHashMap<DefId, Span>,
+        seen_trait_items: &mut GxHashMap<DefId, Span>,
         trait_id: Option<DefId>,
     ) {
         use crate::ResolutionError::*;
@@ -3191,7 +3191,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         kind: &AssocItemKind,
         ns: Namespace,
         span: Span,
-        seen_trait_items: &mut FxHashMap<DefId, Span>,
+        seen_trait_items: &mut GxHashMap<DefId, Span>,
         err: F,
     ) where
         F: FnOnce(Ident, String, Option<Symbol>) -> ResolutionError<'a>,
@@ -3386,8 +3386,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn compute_and_check_binding_map(
         &mut self,
         pat: &Pat,
-    ) -> Result<FxIndexMap<Ident, BindingInfo>, IsNeverPattern> {
-        let mut binding_map = FxIndexMap::default();
+    ) -> Result<GxIndexMap<Ident, BindingInfo>, IsNeverPattern> {
+        let mut binding_map = GxIndexMap::default();
         let mut is_never_pat = false;
 
         pat.walk(&mut |pat| {
@@ -3452,9 +3452,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn compute_and_check_or_pat_binding_map(
         &mut self,
         pats: &[P<Pat>],
-    ) -> Result<FxIndexMap<Ident, BindingInfo>, IsNeverPattern> {
-        let mut missing_vars = FxIndexMap::default();
-        let mut inconsistent_vars = FxIndexMap::default();
+    ) -> Result<GxIndexMap<Ident, BindingInfo>, IsNeverPattern> {
+        let mut missing_vars = GxIndexMap::default();
+        let mut inconsistent_vars = GxIndexMap::default();
 
         // 1) Compute the binding maps of all arms; we must ignore never patterns here.
         let not_never_pats = pats
@@ -3521,7 +3521,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // All the patterns are never patterns, so the whole or-pattern is one too.
             Err(IsNeverPattern)
         } else {
-            let mut binding_map = FxIndexMap::default();
+            let mut binding_map = GxIndexMap::default();
             for (bm, _) in not_never_pats {
                 binding_map.extend(bm);
             }
@@ -3562,7 +3562,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         &mut self,
         pat: &'ast Pat,
         pat_src: PatternSource,
-        bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
+        bindings: &mut SmallVec<[(PatBoundCtx, GxHashSet<Ident>); 1]>,
     ) {
         // We walk the pattern before declaring the pattern's inner bindings,
         // so that we avoid resolving a literal expression to a binding defined
@@ -3596,7 +3596,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         &mut self,
         pat: &Pat,
         pat_src: PatternSource,
-        bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
+        bindings: &mut SmallVec<[(PatBoundCtx, GxHashSet<Ident>); 1]>,
     ) {
         // Visit all direct subpatterns of this pattern.
         pat.walk(&mut |pat| {
@@ -3665,7 +3665,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         ident: Ident,
         pat_id: NodeId,
         pat_src: PatternSource,
-        bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
+        bindings: &mut SmallVec<[(PatBoundCtx, GxHashSet<Ident>); 1]>,
     ) -> Res {
         // Add the binding to the local ribs, if it doesn't already exist in the bindings map.
         // (We must not add it if it's in the bindings map because that breaks the assumptions

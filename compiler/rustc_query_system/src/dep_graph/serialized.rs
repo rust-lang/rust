@@ -40,7 +40,7 @@ use super::{DepKind, DepNode, DepNodeIndex, Deps};
 use crate::dep_graph::edges::EdgesVec;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fingerprint::PackedFingerprint;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::outline;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
@@ -471,7 +471,7 @@ struct EncoderState<D: Deps> {
     encoder: FileEncoder,
     total_node_count: usize,
     total_edge_count: usize,
-    stats: Option<FxHashMap<DepKind, Stat>>,
+    stats: Option<GxHashMap<DepKind, Stat>>,
 
     /// Stores the number of times we've encoded each dep kind.
     kind_stats: Vec<u32>,
@@ -485,7 +485,7 @@ impl<D: Deps> EncoderState<D> {
             encoder,
             total_edge_count: 0,
             total_node_count: 0,
-            stats: record_stats.then(FxHashMap::default),
+            stats: record_stats.then(GxHashMap::default),
             kind_stats: iter::repeat(0).take(D::DEP_KIND_MAX as usize + 1).collect(),
             marker: PhantomData,
         }

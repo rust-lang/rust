@@ -1,7 +1,7 @@
 use std::{borrow::Cow, rc::Rc};
 
 use askama::Template;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir::{def::CtorKind, def_id::DefIdSet};
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -304,7 +304,7 @@ fn sidebar_assoc_items<'a>(
     let mut assoc_consts = Vec::new();
     let mut methods = Vec::new();
     if let Some(v) = cache.impls.get(&did) {
-        let mut used_links = FxHashSet::default();
+        let mut used_links = GxHashSet::default();
         let mut id_map = IdMap::new();
 
         {
@@ -375,7 +375,7 @@ fn sidebar_deref_methods<'a>(
     impl_: &Impl,
     v: &[Impl],
     derefs: &mut DefIdSet,
-    used_links: &mut FxHashSet<String>,
+    used_links: &mut GxHashSet<String>,
 ) {
     let c = cx.cache();
 
@@ -468,7 +468,7 @@ fn sidebar_enum<'a>(
 }
 
 pub(crate) fn sidebar_module_like(
-    item_sections_in_use: FxHashSet<ItemSection>,
+    item_sections_in_use: GxHashSet<ItemSection>,
 ) -> LinkBlock<'static> {
     let item_sections = ItemSection::ALL
         .iter()
@@ -480,7 +480,7 @@ pub(crate) fn sidebar_module_like(
 }
 
 fn sidebar_module(items: &[clean::Item]) -> LinkBlock<'static> {
-    let item_sections_in_use: FxHashSet<_> = items
+    let item_sections_in_use: GxHashSet<_> = items
         .iter()
         .filter(|it| {
             !it.is_stripped()
@@ -518,7 +518,7 @@ fn sidebar_render_assoc_items(
     blanket_impl: Vec<&Impl>,
 ) -> [LinkBlock<'static>; 3] {
     let format_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
-        let mut links = FxHashSet::default();
+        let mut links = GxHashSet::default();
 
         let mut ret = impls
             .iter()
@@ -560,7 +560,7 @@ fn sidebar_render_assoc_items(
     ]
 }
 
-fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
+fn get_next_url(used_links: &mut GxHashSet<String>, url: String) -> String {
     if used_links.insert(url.clone()) {
         return url;
     }
@@ -574,7 +574,7 @@ fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
 fn get_methods<'a>(
     i: &'a clean::Impl,
     for_deref: bool,
-    used_links: &mut FxHashSet<String>,
+    used_links: &mut GxHashSet<String>,
     deref_mut: bool,
     tcx: TyCtxt<'_>,
 ) -> Vec<Link<'a>> {
@@ -598,7 +598,7 @@ fn get_methods<'a>(
 
 fn get_associated_constants<'a>(
     i: &'a clean::Impl,
-    used_links: &mut FxHashSet<String>,
+    used_links: &mut GxHashSet<String>,
 ) -> Vec<Link<'a>> {
     i.items
         .iter()

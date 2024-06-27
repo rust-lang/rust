@@ -98,7 +98,7 @@ use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::def::DefKind;
@@ -262,7 +262,7 @@ where
         // going via another root item. This includes drop-glue, functions from
         // external crates, and local functions the definition of which is
         // marked with `#[inline]`.
-        let mut reachable_inlined_items = FxIndexSet::default();
+        let mut reachable_inlined_items = GxIndexSet::default();
         get_reachable_inlined_items(cx.tcx, mono_item, cx.usage_map, &mut reachable_inlined_items);
 
         // Add those inlined items. It's possible an inlined item is reachable
@@ -300,7 +300,7 @@ where
         tcx: TyCtxt<'tcx>,
         item: MonoItem<'tcx>,
         usage_map: &UsageMap<'tcx>,
-        visited: &mut FxIndexSet<MonoItem<'tcx>>,
+        visited: &mut GxIndexSet<MonoItem<'tcx>>,
     ) {
         usage_map.for_each_inlined_used_item(tcx, item, |inlined_item| {
             let is_new = visited.insert(inlined_item);
@@ -1245,7 +1245,7 @@ fn dump_mono_items_stats<'tcx>(
     let mut file = BufWriter::new(file);
 
     // Gather instantiated mono items grouped by def_id
-    let mut items_per_def_id: FxIndexMap<_, Vec<_>> = Default::default();
+    let mut items_per_def_id: GxIndexMap<_, Vec<_>> = Default::default();
     for cgu in codegen_units {
         cgu.items()
             .keys()

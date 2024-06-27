@@ -1,5 +1,5 @@
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::infer::MemberConstraint;
 use rustc_middle::ty::{self, Ty};
@@ -16,7 +16,7 @@ where
 {
     /// Stores the first "member" constraint for a given `R0`. This is an
     /// index into the `constraints` vector below.
-    first_constraints: FxIndexMap<R, NllMemberConstraintIndex>,
+    first_constraints: GxIndexMap<R, NllMemberConstraintIndex>,
 
     /// Stores the data about each `R0 member of [R1..Rn]` constraint.
     /// These are organized into a linked list, so each constraint
@@ -130,7 +130,7 @@ where
 
         let MemberConstraintSet { first_constraints, mut constraints, choice_regions } = self;
 
-        let mut first_constraints2 = FxIndexMap::default();
+        let mut first_constraints2 = GxIndexMap::default();
         first_constraints2.reserve(first_constraints.len());
 
         for (r1, start1) in first_constraints {

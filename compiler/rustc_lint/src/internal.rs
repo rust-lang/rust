@@ -19,13 +19,13 @@ use tracing::debug;
 
 declare_tool_lint! {
     /// The `default_hash_type` lint detects use of [`std::collections::HashMap`] and
-    /// [`std::collections::HashSet`], suggesting the use of `FxHashMap`/`FxHashSet`.
+    /// [`std::collections::HashSet`], suggesting the use of `GxHashMap`/`GxHashSet`.
     ///
-    /// This can help as `FxHasher` can perform better than the default hasher. DOS protection is
+    /// This can help as `GxHasher` can perform better than the default hasher. DOS protection is
     /// not required as input is assumed to be trusted.
     pub rustc::DEFAULT_HASH_TYPES,
     Allow,
-    "forbid HashMap and HashSet and suggest the FxHash* variants",
+    "forbid HashMap and HashSet and suggest the GxHash* variants",
     report_in_external_macro: true
 }
 
@@ -39,8 +39,8 @@ impl LateLintPass<'_> for DefaultHashTypes {
             return;
         }
         let preferred = match cx.tcx.get_diagnostic_name(def_id) {
-            Some(sym::HashMap) => "FxHashMap",
-            Some(sym::HashSet) => "FxHashSet",
+            Some(sym::HashMap) => "GxHashMap",
+            Some(sym::HashSet) => "GxHashSet",
             _ => return,
         };
         cx.emit_span_lint(

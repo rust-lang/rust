@@ -6,7 +6,7 @@ use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob
 
 use rustc_ast::expand::allocator::{alloc_error_handler_name, global_fn_name, AllocatorKind};
 use rustc_ast::{self as ast, *};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
@@ -79,7 +79,7 @@ pub struct CrateLoader<'a, 'tcx: 'a> {
     tcx: TyCtxt<'tcx>,
     // Mutable output.
     cstore: &'a mut CStore,
-    used_extern_options: &'a mut FxHashSet<Symbol>,
+    used_extern_options: &'a mut GxHashSet<Symbol>,
 }
 
 impl<'a, 'tcx> std::ops::Deref for CrateLoader<'a, 'tcx> {
@@ -312,7 +312,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         cstore: &'a mut CStore,
-        used_extern_options: &'a mut FxHashSet<Symbol>,
+        used_extern_options: &'a mut GxHashSet<Symbol>,
     ) -> Self {
         CrateLoader { tcx, cstore, used_extern_options }
     }

@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{def::DefKind, def_id::LocalDefId};
 use rustc_hir::{intravisit, CRATE_HIR_ID};
@@ -19,7 +19,7 @@ struct OpaqueTypeCollector<'tcx> {
     item: LocalDefId,
 
     /// Avoid infinite recursion due to recursive declarations.
-    seen: FxHashSet<LocalDefId>,
+    seen: GxHashSet<LocalDefId>,
 
     span: Option<Span>,
 

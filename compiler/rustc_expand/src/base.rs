@@ -10,7 +10,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
@@ -1139,7 +1139,7 @@ pub struct ExtCtxt<'a> {
     /// Error recovery mode entered when expansion is stuck
     /// (or during eager expansion, but that's a hack).
     pub force_mode: bool,
-    pub expansions: FxIndexMap<Span, Vec<String>>,
+    pub expansions: GxIndexMap<Span, Vec<String>>,
     /// Used for running pre-expansion lints on freshly loaded modules.
     pub(super) lint_store: LintStoreExpandDyn<'a>,
     /// Used for storing lints generated during expansion, like `NAMED_ARGUMENTS_USED_POSITIONALLY`
@@ -1174,7 +1174,7 @@ impl<'a> ExtCtxt<'a> {
                 is_trailing_mac: false,
             },
             force_mode: false,
-            expansions: FxIndexMap::default(),
+            expansions: GxIndexMap::default(),
             expanded_inert_attrs: MarkedAttrs::new(),
             buffered_early_lint: vec![],
         }

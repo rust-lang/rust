@@ -10,7 +10,7 @@ use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
     format_interp_error, ImmTy, InterpCx, InterpResult, Projectable, Scalar,
 };
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::{bit_set::BitSet, IndexVec};
@@ -71,7 +71,7 @@ struct ConstPropagator<'mir, 'tcx> {
     visited_blocks: BitSet<BasicBlock>,
     locals: IndexVec<Local, Value<'tcx>>,
     body: &'mir Body<'tcx>,
-    written_only_inside_own_block_locals: FxHashSet<Local>,
+    written_only_inside_own_block_locals: GxHashSet<Local>,
     can_const_prop: IndexVec<Local, ConstPropMode>,
 }
 

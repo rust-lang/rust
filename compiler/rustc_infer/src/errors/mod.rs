@@ -1,5 +1,5 @@
 use hir::GenericParamKind;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_errors::{
     codes::*, Applicability, Diag, DiagMessage, DiagStyledString, EmissionGuarantee, IntoDiagArg,
     MultiSpan, SubdiagMessageOp, Subdiagnostic,
@@ -400,7 +400,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
 
             let mut default = "'a".to_string();
             if let Some(parent_generics) = parent_generics {
-                let used: FxHashSet<_> = parent_generics
+                let used: GxHashSet<_> = parent_generics
                     .params
                     .iter()
                     .filter(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))

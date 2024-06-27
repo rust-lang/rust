@@ -712,7 +712,7 @@ use self::PlaceValidity::*;
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatId, PatOrWild, WitnessPat};
 use crate::{Captures, MatchArm, PatCx, PrivateUninhabitedField};
-use rustc_hash::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_index::bit_set::BitSet;
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
@@ -731,7 +731,7 @@ struct UsefulnessCtxt<'a, Cx: PatCx> {
     tycx: &'a Cx,
     /// Collect the patterns found useful during usefulness checking. This is used to lint
     /// unreachable (sub)patterns.
-    useful_subpatterns: FxHashSet<PatId>,
+    useful_subpatterns: GxHashSet<PatId>,
     complexity_limit: Option<usize>,
     complexity_level: usize,
 }
@@ -1717,11 +1717,11 @@ pub enum Usefulness<'p, Cx: PatCx> {
 
 /// Report whether this pattern was found useful, and its subpatterns that were not useful if any.
 fn collect_pattern_usefulness<'p, Cx: PatCx>(
-    useful_subpatterns: &FxHashSet<PatId>,
+    useful_subpatterns: &GxHashSet<PatId>,
     pat: &'p DeconstructedPat<Cx>,
 ) -> Usefulness<'p, Cx> {
     fn pat_is_useful<'p, Cx: PatCx>(
-        useful_subpatterns: &FxHashSet<PatId>,
+        useful_subpatterns: &GxHashSet<PatId>,
         pat: &'p DeconstructedPat<Cx>,
     ) -> bool {
         if useful_subpatterns.contains(&pat.uid) {
@@ -1780,7 +1780,7 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
     let mut cx = UsefulnessCtxt {
         tycx,
-        useful_subpatterns: FxHashSet::default(),
+        useful_subpatterns: GxHashSet::default(),
         complexity_limit,
         complexity_level: 0,
     };

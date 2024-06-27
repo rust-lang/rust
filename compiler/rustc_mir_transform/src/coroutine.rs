@@ -58,7 +58,7 @@ use crate::deref_separator::deref_finder;
 use crate::errors;
 use crate::pass_manager as pm;
 use crate::simplify;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
@@ -237,7 +237,7 @@ struct TransformVisitor<'tcx> {
 
     // Mapping from Local to (type of local, coroutine struct index)
     // FIXME(eddyb) This should use `IndexVec<Local, Option<_>>`.
-    remap: FxHashMap<Local, (Ty<'tcx>, VariantIdx, FieldIdx)>,
+    remap: GxHashMap<Local, (Ty<'tcx>, VariantIdx, FieldIdx)>,
 
     // A map from a suspension point in a block to the locals which have live storage at that point
     storage_liveness: IndexVec<BasicBlock, Option<BitSet<Local>>>,
@@ -1037,7 +1037,7 @@ fn compute_layout<'tcx>(
     liveness: LivenessInfo,
     body: &Body<'tcx>,
 ) -> (
-    FxHashMap<Local, (Ty<'tcx>, VariantIdx, FieldIdx)>,
+    GxHashMap<Local, (Ty<'tcx>, VariantIdx, FieldIdx)>,
     CoroutineLayout<'tcx>,
     IndexVec<BasicBlock, Option<BitSet<Local>>>,
 ) {
@@ -1098,7 +1098,7 @@ fn compute_layout<'tcx>(
     // Create a map from local indices to coroutine struct indices.
     let mut variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, CoroutineSavedLocal>> =
         iter::repeat(IndexVec::new()).take(RESERVED_VARIANTS).collect();
-    let mut remap = FxHashMap::default();
+    let mut remap = GxHashMap::default();
     for (suspension_point_idx, live_locals) in live_locals_at_suspension_points.iter().enumerate() {
         let variant_index = VariantIdx::from(RESERVED_VARIANTS + suspension_point_idx);
         let mut fields = IndexVec::new();
@@ -1933,7 +1933,7 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
 }
 
 fn check_suspend_tys<'tcx>(tcx: TyCtxt<'tcx>, layout: &CoroutineLayout<'tcx>, body: &Body<'tcx>) {
-    let mut linted_tys = FxHashSet::default();
+    let mut linted_tys = GxHashSet::default();
 
     // We want a user-facing param-env.
     let param_env = tcx.param_env(body.source.def_id());

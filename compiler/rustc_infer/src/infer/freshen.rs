@@ -32,7 +32,7 @@
 //! inferencer knows "so far".
 
 use super::InferCtxt;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_middle::bug;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitableExt};
@@ -42,8 +42,8 @@ pub struct TypeFreshener<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     ty_freshen_count: u32,
     const_freshen_count: u32,
-    ty_freshen_map: FxHashMap<ty::InferTy, Ty<'tcx>>,
-    const_freshen_map: FxHashMap<ty::InferConst, ty::Const<'tcx>>,
+    ty_freshen_map: GxHashMap<ty::InferTy, Ty<'tcx>>,
+    const_freshen_map: GxHashMap<ty::InferConst, ty::Const<'tcx>>,
 }
 
 impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {

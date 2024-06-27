@@ -1,7 +1,7 @@
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, DirectedGraph, StartNode};
+use rustc_data_structures::gx::GxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
@@ -34,7 +34,7 @@ impl CoverageGraph {
 
         let successors = IndexVec::from_fn_n(
             |bcb| {
-                let mut seen_bcbs = FxHashSet::default();
+                let mut seen_bcbs = GxHashSet::default();
                 let terminator = mir_body[bcbs[bcb].last_bb()].terminator();
                 bcb_filtered_successors(terminator)
                     .into_iter()

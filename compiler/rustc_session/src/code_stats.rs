@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_data_structures::sync::Lock;
 use rustc_span::def_id::DefId;
 use rustc_span::Symbol;
@@ -91,8 +91,8 @@ pub struct VTableSizeInfo {
 
 #[derive(Default)]
 pub struct CodeStats {
-    type_sizes: Lock<FxHashSet<TypeSizeInfo>>,
-    vtable_sizes: Lock<FxHashMap<DefId, VTableSizeInfo>>,
+    type_sizes: Lock<GxHashSet<TypeSizeInfo>>,
+    vtable_sizes: Lock<GxHashMap<DefId, VTableSizeInfo>>,
 }
 
 impl CodeStats {

@@ -1647,6 +1647,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "gxhash"
+version = "3.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a197c9b654827513cf53842c5c6d3da2b4b35a785f8e0eff78bdf8e445aba1bb"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "handlebars"
 version = "5.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3817,6 +3826,7 @@ dependencies = [
  "either",
  "elsa",
  "ena",
+ "gxhash",
  "indexmap",
  "jobserver",
  "libc",
@@ -3824,7 +3834,6 @@ dependencies = [
  "memmap2",
  "parking_lot",
  "portable-atomic",
- "rustc-hash",
  "rustc-rayon",
  "rustc_arena",
  "rustc_graphviz",

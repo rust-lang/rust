@@ -2,7 +2,7 @@
 //! ordering. This is a useful property for deterministic computations, such
 //! as required by the query system.
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use crate::gx::{GxHashMap, GxHashSet};
 use rustc_macros::{Decodable_Generic, Encodable_Generic};
 use std::collections::hash_map::OccupiedError;
 use std::{
@@ -230,7 +230,7 @@ trait UnordCollection {}
 /// for more information.
 #[derive(Debug, Eq, PartialEq, Clone, Encodable_Generic, Decodable_Generic)]
 pub struct UnordSet<V: Eq + Hash> {
-    inner: FxHashSet<V>,
+    inner: GxHashSet<V>,
 }
 
 impl<V: Eq + Hash> UnordCollection for UnordSet<V> {}
@@ -238,7 +238,7 @@ impl<V: Eq + Hash> UnordCollection for UnordSet<V> {}
 impl<V: Eq + Hash> Default for UnordSet<V> {
     #[inline]
     fn default() -> Self {
-        Self { inner: FxHashSet::default() }
+        Self { inner: GxHashSet::default() }
     }
 }
 
@@ -250,7 +250,7 @@ impl<V: Eq + Hash> UnordSet<V> {
 
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
-        Self { inner: FxHashSet::with_capacity_and_hasher(capacity, Default::default()) }
+        Self { inner: GxHashSet::with_capacity_and_hasher(capacity, Default::default()) }
     }
 
     #[inline]
@@ -387,19 +387,19 @@ impl<V: Hash + Eq> Extend<V> for UnordSet<V> {
 impl<V: Hash + Eq> FromIterator<V> for UnordSet<V> {
     #[inline]
     fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
-        UnordSet { inner: FxHashSet::from_iter(iter) }
+        UnordSet { inner: GxHashSet::from_iter(iter) }
     }
 }
 
-impl<V: Hash + Eq> From<FxHashSet<V>> for UnordSet<V> {
-    fn from(value: FxHashSet<V>) -> Self {
+impl<V: Hash + Eq> From<GxHashSet<V>> for UnordSet<V> {
+    fn from(value: GxHashSet<V>) -> Self {
         UnordSet { inner: value }
     }
 }
 
 impl<V: Hash + Eq, I: Iterator<Item = V>> From<UnordItems<V, I>> for UnordSet<V> {
     fn from(value: UnordItems<V, I>) -> Self {
-        UnordSet { inner: FxHashSet::from_iter(value.0) }
+        UnordSet { inner: GxHashSet::from_iter(value.0) }
     }
 }
 
@@ -421,7 +421,7 @@ impl<HCX, V: Hash + Eq + HashStable<HCX>> HashStable<HCX> for UnordSet<V> {
 /// for more information.
 #[derive(Debug, Eq, PartialEq, Clone, Encodable_Generic, Decodable_Generic)]
 pub struct UnordMap<K: Eq + Hash, V> {
-    inner: FxHashMap<K, V>,
+    inner: GxHashMap<K, V>,
 }
 
 impl<K: Eq + Hash, V> UnordCollection for UnordMap<K, V> {}
@@ -429,7 +429,7 @@ impl<K: Eq + Hash, V> UnordCollection for UnordMap<K, V> {}
 impl<K: Eq + Hash, V> Default for UnordMap<K, V> {
     #[inline]
     fn default() -> Self {
-        Self { inner: FxHashMap::default() }
+        Self { inner: GxHashMap::default() }
     }
 }
 
@@ -443,21 +443,21 @@ impl<K: Hash + Eq, V> Extend<(K, V)> for UnordMap<K, V> {
 impl<K: Hash + Eq, V> FromIterator<(K, V)> for UnordMap<K, V> {
     #[inline]
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
-        UnordMap { inner: FxHashMap::from_iter(iter) }
+        UnordMap { inner: GxHashMap::from_iter(iter) }
     }
 }
 
 impl<K: Hash + Eq, V, I: Iterator<Item = (K, V)>> From<UnordItems<(K, V), I>> for UnordMap<K, V> {
     #[inline]
     fn from(items: UnordItems<(K, V), I>) -> Self {
-        UnordMap { inner: FxHashMap::from_iter(items.0) }
+        UnordMap { inner: GxHashMap::from_iter(items.0) }
     }
 }
 
 impl<K: Eq + Hash, V> UnordMap<K, V> {
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
-        Self { inner: FxHashMap::with_capacity_and_hasher(capacity, Default::default()) }
+        Self { inner: GxHashMap::with_capacity_and_hasher(capacity, Default::default()) }
     }
 
     #[inline]

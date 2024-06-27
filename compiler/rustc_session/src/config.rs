@@ -10,7 +10,7 @@ use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{filesearch, lint, HashStableContext};
 use crate::{EarlyDiagCtxt, Session};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::gx::{GxHashSet, GxIndexMap};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagArgValue, DiagCtxtFlags, IntoDiagArg};
@@ -1158,7 +1158,7 @@ impl Default for Options {
             pretty: None,
             working_dir: RealFileName::LocalPath(std::env::current_dir().unwrap()),
             color: ColorConfig::Auto,
-            logical_env: FxIndexMap::default(),
+            logical_env: GxIndexMap::default(),
             verbose: false,
         }
     }
@@ -1923,7 +1923,7 @@ fn collect_print_requests(
     // cfg=output.txt --print link-args=output.txt`, because outputs are printed
     // by disparate pieces of the compiler, and keeping track of which files
     // need to be overwritten vs appended to is annoying.
-    let mut printed_paths = FxHashSet::default();
+    let mut printed_paths = GxHashSet::default();
 
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
         let (req, out) = split_out_file_name(&req);
@@ -2363,8 +2363,8 @@ fn parse_remap_path_prefix(
 fn parse_logical_env(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
-) -> FxIndexMap<String, String> {
-    let mut vars = FxIndexMap::default();
+) -> GxIndexMap<String, String> {
+    let mut vars = GxIndexMap::default();
 
     for arg in matches.opt_strs("env-set") {
         if let Some((name, val)) = arg.split_once('=') {
@@ -2970,7 +2970,7 @@ pub(crate) mod dep_tracking {
     };
     use crate::lint;
     use crate::utils::NativeLib;
-    use rustc_data_structures::fx::FxIndexMap;
+    use rustc_data_structures::gx::GxIndexMap;
     use rustc_data_structures::stable_hasher::Hash64;
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
@@ -3133,7 +3133,7 @@ pub(crate) mod dep_tracking {
         }
     }
 
-    impl<T: DepTrackingHash, V: DepTrackingHash> DepTrackingHash for FxIndexMap<T, V> {
+    impl<T: DepTrackingHash, V: DepTrackingHash> DepTrackingHash for GxIndexMap<T, V> {
         fn hash(
             &self,
             hasher: &mut DefaultHasher,

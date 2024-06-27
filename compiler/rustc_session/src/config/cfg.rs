@@ -19,7 +19,7 @@
 //!    so that the compiler can know the cfg is expected
 //!  - Add the feature gating in `compiler/rustc_feature/src/builtin_attrs.rs`
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet, GxIndexSet};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::Align;
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet};
@@ -34,9 +34,9 @@ use std::iter;
 /// The parsed `--cfg` options that define the compilation environment of the
 /// crate, used to drive conditional compilation.
 ///
-/// An `FxIndexSet` is used to ensure deterministic ordering of error messages
+/// An `GxIndexSet` is used to ensure deterministic ordering of error messages
 /// relating to `--cfg`.
-pub type Cfg = FxIndexSet<(Symbol, Option<Symbol>)>;
+pub type Cfg = GxIndexSet<(Symbol, Option<Symbol>)>;
 
 /// The parsed `--check-cfg` options.
 #[derive(Default)]
@@ -46,13 +46,13 @@ pub struct CheckCfg {
     /// Is well known values activated
     pub exhaustive_values: bool,
     /// All the expected values for a config name
-    pub expecteds: FxHashMap<Symbol, ExpectedValues<Symbol>>,
+    pub expecteds: GxHashMap<Symbol, ExpectedValues<Symbol>>,
     /// Well known names (only used for diagnostics purposes)
-    pub well_known_names: FxHashSet<Symbol>,
+    pub well_known_names: GxHashSet<Symbol>,
 }
 
 pub enum ExpectedValues<T> {
-    Some(FxHashSet<Option<T>>),
+    Some(GxHashSet<Option<T>>),
     Any,
 }
 
@@ -228,14 +228,14 @@ impl CheckCfg {
 
         // for `#[cfg(foo)]` (ie. cfg value is none)
         let no_values = || {
-            let mut values = FxHashSet::default();
+            let mut values = GxHashSet::default();
             values.insert(None);
             ExpectedValues::Some(values)
         };
 
         // preparation for inserting some values
         let empty_values = || {
-            let values = FxHashSet::default();
+            let values = GxHashSet::default();
             ExpectedValues::Some(values)
         };
 

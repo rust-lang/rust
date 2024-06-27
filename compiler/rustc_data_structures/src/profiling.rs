@@ -81,7 +81,7 @@
 //!
 //! [mm]: https://github.com/rust-lang/measureme/
 
-use crate::fx::FxHashMap;
+use crate::gx::GxHashMap;
 use crate::outline;
 
 use std::borrow::Borrow;
@@ -536,7 +536,7 @@ pub struct SelfProfiler {
     profiler: Profiler,
     event_filter_mask: EventFilter,
 
-    string_cache: RwLock<FxHashMap<String, StringId>>,
+    string_cache: RwLock<GxHashMap<String, StringId>>,
 
     query_event_kind: StringId,
     generic_activity_event_kind: StringId,
@@ -611,7 +611,7 @@ impl SelfProfiler {
         Ok(SelfProfiler {
             profiler,
             event_filter_mask,
-            string_cache: RwLock::new(FxHashMap::default()),
+            string_cache: RwLock::new(GxHashMap::default()),
             query_event_kind,
             generic_activity_event_kind,
             incremental_load_result_event_kind,

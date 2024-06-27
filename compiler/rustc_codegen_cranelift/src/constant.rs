@@ -3,7 +3,7 @@
 use std::cmp::Ordering;
 
 use cranelift_module::*;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{read_target_uint, AllocId, GlobalAlloc, Scalar};
 use rustc_middle::ty::{Binder, ExistentialTraitRef, ScalarInt};
@@ -12,7 +12,7 @@ use crate::prelude::*;
 
 pub(crate) struct ConstantCx {
     todo: Vec<TodoItem>,
-    anon_allocs: FxHashMap<AllocId, DataId>,
+    anon_allocs: GxHashMap<AllocId, DataId>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -23,7 +23,7 @@ enum TodoItem {
 
 impl ConstantCx {
     pub(crate) fn new() -> Self {
-        ConstantCx { todo: vec![], anon_allocs: FxHashMap::default() }
+        ConstantCx { todo: vec![], anon_allocs: GxHashMap::default() }
     }
 
     pub(crate) fn finalize(mut self, tcx: TyCtxt<'_>, module: &mut dyn Module) {
@@ -341,7 +341,7 @@ fn data_id_for_static(
 }
 
 fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut ConstantCx) {
-    let mut done = FxHashSet::default();
+    let mut done = GxHashSet::default();
     while let Some(todo_item) = cx.todo.pop() {
         if !done.insert(todo_item) {
             continue;

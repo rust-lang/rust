@@ -3,7 +3,7 @@
 
 use std::{collections::hash_map::Entry, hash::Hash, hash::Hasher, iter};
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -32,7 +32,7 @@ impl<'tcx> MirPass<'tcx> for DeduplicateBlocks {
 
 struct OptApplier<'tcx> {
     tcx: TyCtxt<'tcx>,
-    duplicates: FxHashMap<BasicBlock, BasicBlock>,
+    duplicates: GxHashMap<BasicBlock, BasicBlock>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for OptApplier<'tcx> {
@@ -52,14 +52,14 @@ impl<'tcx> MutVisitor<'tcx> for OptApplier<'tcx> {
     }
 }
 
-fn find_duplicates(body: &Body<'_>) -> FxHashMap<BasicBlock, BasicBlock> {
-    let mut duplicates = FxHashMap::default();
+fn find_duplicates(body: &Body<'_>) -> GxHashMap<BasicBlock, BasicBlock> {
+    let mut duplicates = GxHashMap::default();
 
     let bbs_to_go_through =
         body.basic_blocks.iter_enumerated().filter(|(_, bbd)| !bbd.is_cleanup).count();
 
     let mut same_hashes =
-        FxHashMap::with_capacity_and_hasher(bbs_to_go_through, Default::default());
+        GxHashMap::with_capacity_and_hasher(bbs_to_go_through, Default::default());
 
     // Go through the basic blocks backwards. This means that in case of duplicates,
     // we can use the basic block with the highest index as the replacement for all lower ones.

@@ -1,8 +1,8 @@
 use std::fmt::{self, Debug};
 
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::DirectedGraph;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::{CounterId, CovTerm, Expression, ExpressionId, Op};
@@ -61,15 +61,15 @@ pub(super) struct CoverageCounters {
     /// edge between two BCBs.
     ///
     /// We currently don't iterate over this map, but if we do in the future,
-    /// switch it back to `FxIndexMap` to avoid query stability hazards.
-    bcb_edge_counters: FxHashMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
+    /// switch it back to `GxIndexMap` to avoid query stability hazards.
+    bcb_edge_counters: GxHashMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
 
     /// Table of expression data, associating each expression ID with its
     /// corresponding operator (+ or -) and its LHS/RHS operands.
     expressions: IndexVec<ExpressionId, BcbExpression>,
     /// Remember expressions that have already been created (or simplified),
     /// so that we don't create unnecessary duplicates.
-    expressions_memo: FxHashMap<BcbExpression, BcbCounter>,
+    expressions_memo: GxHashMap<BcbExpression, BcbCounter>,
 }
 
 impl CoverageCounters {
@@ -85,9 +85,9 @@ impl CoverageCounters {
         let mut this = Self {
             counter_increment_sites: IndexVec::new(),
             bcb_counters: IndexVec::from_elem_n(None, num_bcbs),
-            bcb_edge_counters: FxHashMap::default(),
+            bcb_edge_counters: GxHashMap::default(),
             expressions: IndexVec::new(),
-            expressions_memo: FxHashMap::default(),
+            expressions_memo: GxHashMap::default(),
         };
 
         MakeBcbCounters::new(&mut this, basic_coverage_blocks)

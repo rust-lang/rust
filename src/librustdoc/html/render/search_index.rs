@@ -3,7 +3,7 @@ pub(crate) mod encode;
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, VecDeque};
 
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::gx::{GxHashMap, GxIndexMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
@@ -60,9 +60,9 @@ pub(crate) fn build_index<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> SerializedSearchIndex {
     // Maps from ID to position in the `crate_paths` array.
-    let mut itemid_to_pathid = FxHashMap::default();
-    let mut primitives = FxHashMap::default();
-    let mut associated_types = FxHashMap::default();
+    let mut itemid_to_pathid = GxHashMap::default();
+    let mut primitives = GxHashMap::default();
+    let mut associated_types = GxHashMap::default();
 
     // item type, display path, re-exported internal path
     let mut crate_paths: Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)> = vec![];
@@ -128,7 +128,7 @@ pub(crate) fn build_index<'tcx>(
     let mut search_index = std::mem::replace(&mut cache.search_index, Vec::new());
     for item in search_index.iter_mut() {
         fn insert_into_map<F: std::hash::Hash + Eq>(
-            map: &mut FxHashMap<F, isize>,
+            map: &mut GxHashMap<F, isize>,
             itemid: F,
             lastpathid: &mut isize,
             crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)>,
@@ -155,9 +155,9 @@ pub(crate) fn build_index<'tcx>(
         fn convert_render_type_id(
             id: RenderTypeId,
             cache: &mut Cache,
-            itemid_to_pathid: &mut FxHashMap<ItemId, isize>,
-            primitives: &mut FxHashMap<Symbol, isize>,
-            associated_types: &mut FxHashMap<Symbol, isize>,
+            itemid_to_pathid: &mut GxHashMap<ItemId, isize>,
+            primitives: &mut GxHashMap<Symbol, isize>,
+            associated_types: &mut GxHashMap<Symbol, isize>,
             lastpathid: &mut isize,
             crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)>,
         ) -> Option<RenderTypeId> {
@@ -227,9 +227,9 @@ pub(crate) fn build_index<'tcx>(
         fn convert_render_type(
             ty: &mut RenderType,
             cache: &mut Cache,
-            itemid_to_pathid: &mut FxHashMap<ItemId, isize>,
-            primitives: &mut FxHashMap<Symbol, isize>,
-            associated_types: &mut FxHashMap<Symbol, isize>,
+            itemid_to_pathid: &mut GxHashMap<ItemId, isize>,
+            primitives: &mut GxHashMap<Symbol, isize>,
+            associated_types: &mut GxHashMap<Symbol, isize>,
             lastpathid: &mut isize,
             crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>)>,
         ) {
@@ -405,7 +405,7 @@ pub(crate) fn build_index<'tcx>(
         .collect();
 
     // Find associated items that need disambiguators
-    let mut associated_item_duplicates = FxHashMap::<(isize, ItemType, Symbol), usize>::default();
+    let mut associated_item_duplicates = GxHashMap::<(isize, ItemType, Symbol), usize>::default();
 
     for &item in &crate_items {
         if item.impl_id.is_some()
@@ -475,12 +475,12 @@ pub(crate) fn build_index<'tcx>(
         where
             S: Serializer,
         {
-            let mut extra_paths = FxHashMap::default();
+            let mut extra_paths = GxHashMap::default();
             // We need to keep the order of insertion, hence why we use an `IndexMap`. Then we will
             // insert these "extra paths" (which are paths of items from external crates) into the
             // `full_paths` list at the end.
-            let mut revert_extra_paths = FxIndexMap::default();
-            let mut mod_paths = FxHashMap::default();
+            let mut revert_extra_paths = GxIndexMap::default();
+            let mut mod_paths = GxHashMap::default();
             for (index, item) in self.items.iter().enumerate() {
                 if item.path.is_empty() {
                     continue;
@@ -754,7 +754,7 @@ pub(crate) fn get_function_type_for_search<'tcx>(
 fn get_index_type(
     clean_type: &clean::Type,
     generics: Vec<RenderType>,
-    rgen: &mut FxHashMap<SimplifiedParam, (isize, Vec<RenderType>)>,
+    rgen: &mut GxHashMap<SimplifiedParam, (isize, Vec<RenderType>)>,
 ) -> RenderType {
     RenderType {
         id: get_index_type_id(clean_type, rgen),
@@ -765,7 +765,7 @@ fn get_index_type(
 
 fn get_index_type_id(
     clean_type: &clean::Type,
-    rgen: &mut FxHashMap<SimplifiedParam, (isize, Vec<RenderType>)>,
+    rgen: &mut GxHashMap<SimplifiedParam, (isize, Vec<RenderType>)>,
 ) -> Option<RenderTypeId> {
     use rustc_hir::def::{DefKind, Res};
     match *clean_type {
@@ -830,7 +830,7 @@ fn simplify_fn_type<'tcx, 'a>(
     tcx: TyCtxt<'tcx>,
     recurse: usize,
     res: &mut Vec<RenderType>,
-    rgen: &mut FxHashMap<SimplifiedParam, (isize, Vec<RenderType>)>,
+    rgen: &mut GxHashMap<SimplifiedParam, (isize, Vec<RenderType>)>,
     is_return: bool,
     cache: &Cache,
 ) {
@@ -1166,7 +1166,7 @@ fn simplify_fn_constraint<'tcx, 'a>(
     tcx: TyCtxt<'tcx>,
     recurse: usize,
     res: &mut Vec<(RenderTypeId, Vec<RenderType>)>,
-    rgen: &mut FxHashMap<SimplifiedParam, (isize, Vec<RenderType>)>,
+    rgen: &mut GxHashMap<SimplifiedParam, (isize, Vec<RenderType>)>,
     is_return: bool,
     cache: &Cache,
 ) {
@@ -1253,7 +1253,7 @@ fn get_fn_inputs_and_outputs<'tcx>(
 ) -> (Vec<RenderType>, Vec<RenderType>, Vec<Vec<RenderType>>) {
     let decl = &func.decl;
 
-    let mut rgen: FxHashMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
+    let mut rgen: GxHashMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
 
     let combined_generics;
     let (self_, generics) = if let Some((impl_self, impl_generics)) = impl_or_trait_generics {

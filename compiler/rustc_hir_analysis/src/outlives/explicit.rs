@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, OutlivesPredicate, TyCtxt};
 
@@ -6,12 +6,12 @@ use super::utils::*;
 
 #[derive(Debug)]
 pub struct ExplicitPredicatesMap<'tcx> {
-    map: FxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredPredicates<'tcx>>>,
+    map: GxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredPredicates<'tcx>>>,
 }
 
 impl<'tcx> ExplicitPredicatesMap<'tcx> {
     pub fn new() -> ExplicitPredicatesMap<'tcx> {
-        ExplicitPredicatesMap { map: FxIndexMap::default() }
+        ExplicitPredicatesMap { map: GxIndexMap::default() }
     }
 
     pub(crate) fn explicit_predicates_of(

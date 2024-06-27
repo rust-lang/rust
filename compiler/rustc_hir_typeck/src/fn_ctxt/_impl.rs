@@ -3,7 +3,7 @@ use crate::errors::{self, CtorIsPrivate};
 use crate::method::{self, MethodCallee};
 use crate::rvalue_scopes;
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -1099,7 +1099,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // provided (if any) into their appropriate spaces. We'll also report
         // errors if type parameters are provided in an inappropriate place.
 
-        let indices: FxHashSet<_> =
+        let indices: GxHashSet<_> =
             generic_segments.iter().map(|GenericPathSegment(_, index)| index).collect();
         let generics_err = self.lowerer().prohibit_generic_args(
             segments.iter().enumerate().filter_map(|(index, seg)| {
@@ -1147,7 +1147,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if let Err(GenericArgCountMismatch { reported, .. }) = arg_count.correct {
                 infer_args_for_err
-                    .get_or_insert_with(|| (reported, FxHashSet::default()))
+                    .get_or_insert_with(|| (reported, GxHashSet::default()))
                     .1
                     .insert(index);
                 self.set_tainted_by_errors(reported); // See issue #53251.
@@ -1257,7 +1257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fcx: &'a FnCtxt<'a, 'tcx>,
             span: Span,
             generic_segments: &'a [GenericPathSegment],
-            infer_args_for_err: &'a FxHashSet<usize>,
+            infer_args_for_err: &'a GxHashSet<usize>,
             segments: &'tcx [hir::PathSegment<'tcx>],
         }
         impl<'tcx, 'a> GenericArgsLowerer<'a, 'tcx> for CtorGenericArgsCtxt<'a, 'tcx> {

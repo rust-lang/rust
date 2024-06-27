@@ -4,7 +4,7 @@ use rustc_ast::token;
 use rustc_ast::{LitKind, MetaItemKind};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::defer;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_data_structures::jobserver;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
@@ -192,7 +192,7 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
         }
 
         let mut names = Vec::new();
-        let mut values: FxHashSet<_> = Default::default();
+        let mut values: GxHashSet<_> = Default::default();
 
         let mut any_specified = false;
         let mut values_specified = false;
@@ -313,7 +313,7 @@ pub struct Config {
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     pub locale_resources: &'static [&'static str],
 
-    pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    pub lint_caps: GxHashMap<lint::LintId, lint::Level>,
 
     /// This is a callback from the driver that is called when [`ParseSess`] is created.
     pub psess_created: Option<Box<dyn FnOnce(&mut ParseSess) + Send>>,

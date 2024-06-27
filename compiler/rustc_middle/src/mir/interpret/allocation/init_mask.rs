@@ -219,7 +219,7 @@ impl<D: TyDecoder> Decodable<D> for InitMaskMaterialized {
 }
 
 // Const allocations are only hashed for interning. However, they can be large, making the hashing
-// expensive especially since it uses `FxHash`: it's better suited to short keys, not potentially
+// expensive especially since it uses `GxHash`: it's better suited to short keys, not potentially
 // big buffers like the allocation's init mask. We can partially hash some fields when they're
 // large.
 impl hash::Hash for InitMaskMaterialized {

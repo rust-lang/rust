@@ -6,7 +6,7 @@ use AttributeType::*;
 
 use crate::{Features, Stability};
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_span::symbol::{sym, Symbol};
 
 use std::sync::LazyLock;
@@ -1155,9 +1155,9 @@ pub fn is_valid_for_get_attr(name: Symbol) -> bool {
     })
 }
 
-pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>> =
+pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<GxHashMap<Symbol, &BuiltinAttribute>> =
     LazyLock::new(|| {
-        let mut map = FxHashMap::default();
+        let mut map = GxHashMap::default();
         for attr in BUILTIN_ATTRIBUTES.iter() {
             if map.insert(attr.name, attr).is_some() {
                 panic!("duplicate builtin attribute `{}`", attr.name);

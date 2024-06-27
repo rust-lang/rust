@@ -15,7 +15,7 @@ use std::iter::{self, once};
 use rustc_ast as ast;
 use rustc_attr::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -169,7 +169,7 @@ pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
     cx: &'a Context<'tcx>,
 ) -> impl Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
-        let mut bounds_dup = FxHashSet::default();
+        let mut bounds_dup = GxHashSet::default();
 
         for (i, bound) in bounds.iter().filter(|b| bounds_dup.insert(*b)).enumerate() {
             if i > 0 {

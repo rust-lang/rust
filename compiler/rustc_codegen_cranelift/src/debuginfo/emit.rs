@@ -4,7 +4,7 @@ use cranelift_module::{DataId, FuncId};
 use cranelift_object::ObjectProduct;
 use gimli::write::{Address, AttributeValue, EndianVec, Result, Sections, Writer};
 use gimli::{RunTimeEndian, SectionId};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 
 use super::object::WriteDebugInfo;
 use super::DebugContext;
@@ -31,7 +31,7 @@ impl DebugContext {
         let mut sections = Sections::new(WriterRelocate::new(self.endian));
         self.dwarf.write(&mut sections).unwrap();
 
-        let mut section_map = FxHashMap::default();
+        let mut section_map = GxHashMap::default();
         let _: Result<()> = sections.for_each_mut(|id, section| {
             if !section.writer.slice().is_empty() {
                 let section_id = product.add_debug_section(id, section.writer.take());

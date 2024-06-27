@@ -1,6 +1,6 @@
 use crate::{Interner, PredicateKind};
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_span::{SpanDecoder, SpanEncoder};
 
 /// The shorthand encoding uses an enum's variant index `usize`
@@ -11,7 +11,7 @@ pub const SHORTHAND_OFFSET: usize = 0x80;
 /// Trait for decoding to a reference.
 ///
 /// This is a separate trait from `Decodable` so that we can implement it for
-/// upstream types, such as `FxHashSet`.
+/// upstream types, such as `GxHashSet`.
 ///
 /// The `TyDecodable` derive macro will use this trait for fields that are
 /// references (and don't use a type alias to hide that).
@@ -28,9 +28,9 @@ pub trait TyEncoder: SpanEncoder {
 
     fn position(&self) -> usize;
 
-    fn type_shorthands(&mut self) -> &mut FxHashMap<<Self::I as Interner>::Ty, usize>;
+    fn type_shorthands(&mut self) -> &mut GxHashMap<<Self::I as Interner>::Ty, usize>;
 
-    fn predicate_shorthands(&mut self) -> &mut FxHashMap<PredicateKind<Self::I>, usize>;
+    fn predicate_shorthands(&mut self) -> &mut GxHashMap<PredicateKind<Self::I>, usize>;
 
     fn encode_alloc_id(&mut self, alloc_id: &<Self::I as Interner>::AllocId);
 }

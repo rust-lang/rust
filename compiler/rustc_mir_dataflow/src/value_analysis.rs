@@ -36,7 +36,7 @@ use std::collections::VecDeque;
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
@@ -707,7 +707,7 @@ impl<V: JoinSemiLattice + Clone> JoinSemiLattice for State<V> {
 #[derive(Debug)]
 pub struct Map {
     locals: IndexVec<Local, Option<PlaceIndex>>,
-    projections: FxHashMap<(PlaceIndex, TrackElem), PlaceIndex>,
+    projections: GxHashMap<(PlaceIndex, TrackElem), PlaceIndex>,
     places: IndexVec<PlaceIndex, PlaceInfo>,
     value_count: usize,
     // The Range corresponds to a slice into `inner_values_buffer`.
@@ -724,7 +724,7 @@ impl Map {
     pub fn new<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, value_limit: Option<usize>) -> Self {
         let mut map = Self {
             locals: IndexVec::new(),
-            projections: FxHashMap::default(),
+            projections: GxHashMap::default(),
             places: IndexVec::new(),
             value_count: 0,
             inner_values: IndexVec::new(),

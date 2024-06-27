@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -72,14 +72,14 @@ pub(crate) struct Context<'tcx> {
     /// `true`.
     pub(crate) include_sources: bool,
     /// Collection of all types with notable traits referenced in the current module.
-    pub(crate) types_with_notable_traits: FxHashSet<clean::Type>,
+    pub(crate) types_with_notable_traits: GxHashSet<clean::Type>,
     /// Field used during rendering, to know if we're inside an inlined item.
     pub(crate) is_inside_inlined_module: bool,
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(all(not(windows), target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 160);
+rustc_data_structures::static_assert_size!(Context<'_>, 208);
 #[cfg(all(windows, target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Context<'_>, 168);
 
@@ -93,7 +93,7 @@ pub(crate) struct SharedContext<'tcx> {
     /// creation of the context (contains info like the favicon and added html).
     pub(crate) layout: layout::Layout,
     /// The local file sources we've emitted and their respective url-paths.
-    pub(crate) local_sources: FxHashMap<PathBuf, String>,
+    pub(crate) local_sources: GxHashMap<PathBuf, String>,
     /// Show the memory layout of types in the docs.
     pub(super) show_type_layout: bool,
     /// The base-URL of the issue tracker for when an item has been tagged with
@@ -101,7 +101,7 @@ pub(crate) struct SharedContext<'tcx> {
     pub(super) issue_tracker_base_url: Option<String>,
     /// The directories that have already been created in this doc run. Used to reduce the number
     /// of spurious `create_dir_all` calls.
-    created_dirs: RefCell<FxHashSet<PathBuf>>,
+    created_dirs: RefCell<GxHashSet<PathBuf>>,
     /// This flag indicates whether listings of modules (in the side bar and documentation itself)
     /// should be ordered alphabetically or in order of appearance (in the source code).
     pub(super) module_sorting: ModuleSorting,
@@ -124,11 +124,11 @@ pub(crate) struct SharedContext<'tcx> {
     /// `None` by default, depends on the `generate-redirect-map` option flag. If this field is set
     /// to `Some(...)`, it'll store redirections and then generate a JSON file at the top level of
     /// the crate.
-    redirections: Option<RefCell<FxHashMap<String, String>>>,
+    redirections: Option<RefCell<GxHashMap<String, String>>>,
 
     /// Correspondence map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
-    pub(crate) span_correspondence_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
+    pub(crate) span_correspondence_map: GxHashMap<rustc_span::Span, LinkFromSrc>,
     /// The [`Cache`] used during rendering.
     pub(crate) cache: Cache,
 
@@ -283,7 +283,7 @@ impl<'tcx> Context<'tcx> {
     fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<String>> {
         // BTreeMap instead of HashMap to get a sorted output
         let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
-        let mut inserted: FxHashMap<ItemType, FxHashSet<Symbol>> = FxHashMap::default();
+        let mut inserted: GxHashMap<ItemType, GxHashSet<Symbol>> = GxHashMap::default();
 
         for item in &m.items {
             if item.is_stripped() {
@@ -567,7 +567,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             deref_id_map: Default::default(),
             shared: Rc::new(scx),
             include_sources,
-            types_with_notable_traits: FxHashSet::default(),
+            types_with_notable_traits: GxHashSet::default(),
             is_inside_inlined_module: false,
         };
 
@@ -597,7 +597,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             id_map: IdMap::new(),
             shared: Rc::clone(&self.shared),
             include_sources: self.include_sources,
-            types_with_notable_traits: FxHashSet::default(),
+            types_with_notable_traits: GxHashSet::default(),
             is_inside_inlined_module: self.is_inside_inlined_module,
         }
     }

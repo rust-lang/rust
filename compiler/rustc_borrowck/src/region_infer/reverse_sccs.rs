@@ -1,8 +1,8 @@
 use crate::constraints::ConstraintSccIndex;
 use crate::RegionInferenceContext;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::vec_graph::VecGraph;
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_middle::ty::RegionVid;
 use std::ops::Range;
 
@@ -10,7 +10,7 @@ pub(crate) struct ReverseSccGraph {
     graph: VecGraph<ConstraintSccIndex>,
     /// For each SCC, the range of `universal_regions` that use that SCC as
     /// their value.
-    scc_regions: FxIndexMap<ConstraintSccIndex, Range<usize>>,
+    scc_regions: GxIndexMap<ConstraintSccIndex, Range<usize>>,
     /// All of the universal regions, in grouped so that `scc_regions` can
     /// index into here.
     universal_regions: Vec<RegionVid>,
@@ -22,7 +22,7 @@ impl ReverseSccGraph {
         &'a self,
         scc0: ConstraintSccIndex,
     ) -> impl Iterator<Item = RegionVid> + 'a {
-        let mut duplicates = FxIndexSet::default();
+        let mut duplicates = GxIndexSet::default();
         graph::depth_first_search(&self.graph, scc0)
             .flat_map(move |scc1| {
                 self.scc_regions
@@ -50,7 +50,7 @@ impl RegionInferenceContext<'_> {
         paired_scc_regions.sort();
         let universal_regions = paired_scc_regions.iter().map(|&(_, region)| region).collect();
 
-        let mut scc_regions = FxIndexMap::default();
+        let mut scc_regions = GxIndexMap::default();
         let mut start = 0;
         for chunk in paired_scc_regions.chunk_by(|&(scc1, _), &(scc2, _)| scc1 == scc2) {
             let (scc, _) = chunk[0];

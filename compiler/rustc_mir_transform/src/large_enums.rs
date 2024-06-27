@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
@@ -47,7 +47,7 @@ impl EnumSizeOpt {
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
         ty: Ty<'tcx>,
-        alloc_cache: &mut FxHashMap<Ty<'tcx>, AllocId>,
+        alloc_cache: &mut GxHashMap<Ty<'tcx>, AllocId>,
     ) -> Option<(AdtDef<'tcx>, usize, AllocId)> {
         let adt_def = match ty.kind() {
             ty::Adt(adt_def, _args) if adt_def.is_enum() => adt_def,
@@ -117,7 +117,7 @@ impl EnumSizeOpt {
         Some((*adt_def, num_discrs, *alloc_cache.entry(ty).or_insert(alloc)))
     }
     fn optim<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let mut alloc_cache = FxHashMap::default();
+        let mut alloc_cache = GxHashMap::default();
         let body_did = body.source.def_id();
         let param_env = tcx.param_env_reveal_all_normalized(body_did);
 

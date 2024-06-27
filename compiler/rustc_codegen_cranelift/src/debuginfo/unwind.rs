@@ -73,7 +73,7 @@ impl UnwindContext {
         if !eh_frame.0.writer.slice().is_empty() {
             let id = eh_frame.id();
             let section_id = product.add_debug_section(id, eh_frame.0.writer.into_vec());
-            let mut section_map = FxHashMap::default();
+            let mut section_map = GxHashMap::default();
             section_map.insert(id, section_id);
 
             for reloc in &eh_frame.0.relocs {

@@ -16,7 +16,7 @@ use crate::mir::{
 use crate::traits;
 use crate::ty::GenericArgsRef;
 use crate::ty::{self, AdtDef, Ty};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{Decodable, Encodable};
@@ -59,7 +59,7 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> EncodableWithShorthand<E> for ty::Pre
 /// Trait for decoding to a reference.
 ///
 /// This is a separate trait from `Decodable` so that we can implement it for
-/// upstream types, such as `FxHashSet`.
+/// upstream types, such as `GxHashSet`.
 ///
 /// The `TyDecodable` derive macro will use this trait for fields that are
 /// references (and don't use a type alias to hide that).
@@ -74,7 +74,7 @@ pub trait RefDecodable<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> {
 pub fn encode_with_shorthand<'tcx, E, T, M>(encoder: &mut E, value: &T, cache: M)
 where
     E: TyEncoder<I = TyCtxt<'tcx>>,
-    M: for<'b> Fn(&'b mut E) -> &'b mut FxHashMap<T, usize>,
+    M: for<'b> Fn(&'b mut E) -> &'b mut GxHashMap<T, usize>,
     T: EncodableWithShorthand<E>,
     // The discriminant and shorthand must have the same size.
     T::Variant: DiscriminantKind<Discriminant = isize>,

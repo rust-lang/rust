@@ -7,7 +7,7 @@ pub use encoder::{encode_metadata, rendered_const, EncodedMetadata};
 use rustc_ast as ast;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_attr as attr;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap};

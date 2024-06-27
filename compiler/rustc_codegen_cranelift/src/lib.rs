@@ -92,7 +92,7 @@ mod prelude {
     };
     pub(crate) use cranelift_codegen::Context;
     pub(crate) use cranelift_module::{self, DataDescription, FuncId, Linkage, Module};
-    pub(crate) use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+    pub(crate) use rustc_data_structures::gx::{GxHashMap, GxIndexMap};
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
     pub(crate) use rustc_index::Idx;
     pub(crate) use rustc_middle::mir::{self, *};
@@ -233,7 +233,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         outputs: &OutputFilenames,
-    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+    ) -> (CodegenResults, GxIndexMap<WorkProductId, WorkProduct>) {
         ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(
             sess,
             outputs,

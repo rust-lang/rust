@@ -1,7 +1,7 @@
 use crate::clean::{self, rustc_span, PrimitiveType};
 use crate::html::sources;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
@@ -44,8 +44,8 @@ pub(crate) fn collect_spans_and_sources(
     src_root: &Path,
     include_sources: bool,
     generate_link_to_definition: bool,
-) -> (FxHashMap<PathBuf, String>, FxHashMap<Span, LinkFromSrc>) {
-    let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
+) -> (GxHashMap<PathBuf, String>, GxHashMap<Span, LinkFromSrc>) {
+    let mut visitor = SpanMapVisitor { tcx, matches: GxHashMap::default() };
 
     if include_sources {
         if generate_link_to_definition {
@@ -60,7 +60,7 @@ pub(crate) fn collect_spans_and_sources(
 
 struct SpanMapVisitor<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
-    pub(crate) matches: FxHashMap<Span, LinkFromSrc>,
+    pub(crate) matches: GxHashMap<Span, LinkFromSrc>,
 }
 
 impl<'tcx> SpanMapVisitor<'tcx> {

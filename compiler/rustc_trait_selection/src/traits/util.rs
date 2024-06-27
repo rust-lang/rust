@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use super::NormalizeExt;
 use super::{ObligationCause, PredicateObligation, SelectionContext};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_errors::Diag;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{InferCtxt, InferOk};
@@ -336,8 +336,8 @@ pub struct BoundVarReplacer<'me, 'tcx> {
     // These three maps track the bound variable that were replaced by placeholders. It might be
     // nice to remove these since we already have the `kind` in the placeholder; we really just need
     // the `var` (but we *could* bring that into scope if we were to track them as we pass them).
-    mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
-    mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
+    mapped_regions: GxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
+    mapped_types: GxIndexMap<ty::PlaceholderType, ty::BoundTy>,
     mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
     // The current depth relative to *this* folding, *not* the entire normalization. In other words,
     // the depth of binders we've passed here.
@@ -356,13 +356,13 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
         value: T,
     ) -> (
         T,
-        FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
-        FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
+        GxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
+        GxIndexMap<ty::PlaceholderType, ty::BoundTy>,
         BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
     ) {
-        let mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion> =
-            FxIndexMap::default();
-        let mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy> = FxIndexMap::default();
+        let mapped_regions: GxIndexMap<ty::PlaceholderRegion, ty::BoundRegion> =
+            GxIndexMap::default();
+        let mapped_types: GxIndexMap<ty::PlaceholderType, ty::BoundTy> = GxIndexMap::default();
         let mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar> = BTreeMap::new();
 
         let mut replacer = BoundVarReplacer {
@@ -480,8 +480,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
 /// The inverse of [`BoundVarReplacer`]: replaces placeholders with the bound vars from which they came.
 pub struct PlaceholderReplacer<'me, 'tcx> {
     infcx: &'me InferCtxt<'tcx>,
-    mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
-    mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
+    mapped_regions: GxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
+    mapped_types: GxIndexMap<ty::PlaceholderType, ty::BoundTy>,
     mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
     universe_indices: &'me [Option<ty::UniverseIndex>],
     current_index: ty::DebruijnIndex,
@@ -490,8 +490,8 @@ pub struct PlaceholderReplacer<'me, 'tcx> {
 impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
     pub fn replace_placeholders<T: TypeFoldable<TyCtxt<'tcx>>>(
         infcx: &'me InferCtxt<'tcx>,
-        mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
-        mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
+        mapped_regions: GxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
+        mapped_types: GxIndexMap<ty::PlaceholderType, ty::BoundTy>,
         mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
         universe_indices: &'me [Option<ty::UniverseIndex>],
         value: T,

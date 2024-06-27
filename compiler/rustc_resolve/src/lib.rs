@@ -28,7 +28,7 @@ use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, attr, NodeId, CRATE_NODE_ID};
 use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet, GxIndexMap, GxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
@@ -511,7 +511,7 @@ impl BindingKey {
     }
 }
 
-type Resolutions<'a> = RefCell<FxIndexMap<BindingKey, &'a RefCell<NameResolution<'a>>>>;
+type Resolutions<'a> = RefCell<GxIndexMap<BindingKey, &'a RefCell<NameResolution<'a>>>>;
 
 /// One node in the tree of modules.
 ///
@@ -537,7 +537,7 @@ struct ModuleData<'a> {
     populate_on_access: Cell<bool>,
 
     /// Macro invocations that can expand into items in this module.
-    unexpanded_invocations: RefCell<FxHashSet<LocalExpnId>>,
+    unexpanded_invocations: RefCell<GxHashSet<LocalExpnId>>,
 
     /// Whether `#[no_implicit_prelude]` is active.
     no_implicit_prelude: bool,
@@ -982,19 +982,19 @@ pub struct Resolver<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
 
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
-    expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
+    expn_that_defined: GxHashMap<LocalDefId, ExpnId>,
 
     graph_root: Module<'a>,
 
     prelude: Option<Module<'a>>,
-    extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
+    extern_prelude: GxHashMap<Ident, ExternPreludeEntry<'a>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
     field_def_ids: LocalDefIdMap<&'tcx [DefId]>,
 
     /// Span of the privacy modifier in fields of an item `DefId` accessible with dot syntax.
     /// Used for hints during error reporting.
-    field_visibility_spans: FxHashMap<DefId, Vec<Span>>,
+    field_visibility_spans: GxHashMap<DefId, Vec<Span>>,
 
     /// All imports known to succeed or fail.
     determined_imports: Vec<Import<'a>>,
@@ -1018,7 +1018,7 @@ pub struct Resolver<'a, 'tcx> {
     extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>>,
 
     /// `CrateNum` resolutions of `extern crate` items.
-    extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
+    extern_crate_map: GxHashMap<LocalDefId, CrateNum>,
     module_children: LocalDefIdMap<Vec<ModChild>>,
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
@@ -1041,19 +1041,19 @@ pub struct Resolver<'a, 'tcx> {
     /// some AST passes can generate identifiers that only resolve to local or
     /// lang items.
     empty_module: Module<'a>,
-    module_map: FxHashMap<DefId, Module<'a>>,
-    binding_parent_modules: FxHashMap<NameBinding<'a>, Module<'a>>,
+    module_map: GxHashMap<DefId, Module<'a>>,
+    binding_parent_modules: GxHashMap<NameBinding<'a>, Module<'a>>,
 
     underscore_disambiguator: u32,
     /// Disambiguator for anonymous adts.
     empty_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
-    glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
+    glob_map: GxHashMap<LocalDefId, GxHashSet<Symbol>>,
     glob_error: Option<ErrorGuaranteed>,
     visibilities_for_hashing: Vec<(LocalDefId, ty::Visibility)>,
-    used_imports: FxHashSet<NodeId>,
-    maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
+    used_imports: GxHashSet<NodeId>,
+    maybe_unused_trait_imports: GxIndexSet<LocalDefId>,
 
     /// Privacy errors are delayed until the end in order to deduplicate them.
     privacy_errors: Vec<PrivacyError<'a>>,
@@ -1066,27 +1066,27 @@ pub struct Resolver<'a, 'tcx> {
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: NameBinding<'a>,
-    builtin_types_bindings: FxHashMap<Symbol, NameBinding<'a>>,
-    builtin_attrs_bindings: FxHashMap<Symbol, NameBinding<'a>>,
-    registered_tool_bindings: FxHashMap<Ident, NameBinding<'a>>,
+    builtin_types_bindings: GxHashMap<Symbol, NameBinding<'a>>,
+    builtin_attrs_bindings: GxHashMap<Symbol, NameBinding<'a>>,
+    registered_tool_bindings: GxHashMap<Ident, NameBinding<'a>>,
     /// Binding for implicitly declared names that come with a module,
     /// like `self` (not yet used), or `crate`/`$crate` (for root modules).
-    module_self_bindings: FxHashMap<Module<'a>, NameBinding<'a>>,
+    module_self_bindings: GxHashMap<Module<'a>, NameBinding<'a>>,
 
-    used_extern_options: FxHashSet<Symbol>,
-    macro_names: FxHashSet<Ident>,
-    builtin_macros: FxHashMap<Symbol, BuiltinMacroState>,
+    used_extern_options: GxHashSet<Symbol>,
+    macro_names: GxHashSet<Ident>,
+    builtin_macros: GxHashMap<Symbol, BuiltinMacroState>,
     registered_tools: &'tcx RegisteredTools,
-    macro_use_prelude: FxHashMap<Symbol, NameBinding<'a>>,
-    macro_map: FxHashMap<DefId, MacroData>,
+    macro_use_prelude: GxHashMap<Symbol, NameBinding<'a>>,
+    macro_map: GxHashMap<DefId, MacroData>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
     non_macro_attr: MacroData,
-    local_macro_def_scopes: FxHashMap<LocalDefId, Module<'a>>,
-    ast_transform_scopes: FxHashMap<LocalExpnId, Module<'a>>,
-    unused_macros: FxHashMap<LocalDefId, (NodeId, Ident)>,
-    unused_macro_rules: FxHashMap<(LocalDefId, usize), (Ident, Span)>,
-    proc_macro_stubs: FxHashSet<LocalDefId>,
+    local_macro_def_scopes: GxHashMap<LocalDefId, Module<'a>>,
+    ast_transform_scopes: GxHashMap<LocalExpnId, Module<'a>>,
+    unused_macros: GxHashMap<LocalDefId, (NodeId, Ident)>,
+    unused_macro_rules: GxHashMap<(LocalDefId, usize), (Ident, Span)>,
+    proc_macro_stubs: GxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
         Vec<(Ident, MacroKind, ParentScope<'a>, Option<NameBinding<'a>>)>,
@@ -1096,23 +1096,23 @@ pub struct Resolver<'a, 'tcx> {
     /// `derive(Copy)` marks items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
-    containers_deriving_copy: FxHashSet<LocalExpnId>,
+    containers_deriving_copy: GxHashSet<LocalExpnId>,
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.
-    invocation_parent_scopes: FxHashMap<LocalExpnId, ParentScope<'a>>,
+    invocation_parent_scopes: GxHashMap<LocalExpnId, ParentScope<'a>>,
     /// `macro_rules` scopes *produced* by expanding the macro invocations,
     /// include all the `macro_rules` items and other invocations generated by them.
-    output_macro_rules_scopes: FxHashMap<LocalExpnId, MacroRulesScopeRef<'a>>,
+    output_macro_rules_scopes: GxHashMap<LocalExpnId, MacroRulesScopeRef<'a>>,
     /// `macro_rules` scopes produced by `macro_rules` item definitions.
-    macro_rules_scopes: FxHashMap<LocalDefId, MacroRulesScopeRef<'a>>,
+    macro_rules_scopes: GxHashMap<LocalDefId, MacroRulesScopeRef<'a>>,
     /// Helper attributes that are in scope for the given expansion.
-    helper_attrs: FxHashMap<LocalExpnId, Vec<(Ident, NameBinding<'a>)>>,
+    helper_attrs: GxHashMap<LocalExpnId, Vec<(Ident, NameBinding<'a>)>>,
     /// Ready or in-progress results of resolving paths inside the `#[derive(...)]` attribute
     /// with the given `ExpnId`.
-    derive_data: FxHashMap<LocalExpnId, DeriveData>,
+    derive_data: GxHashMap<LocalExpnId, DeriveData>,
 
     /// Avoid duplicated errors for "name already defined".
-    name_already_seen: FxHashMap<Symbol, Span>,
+    name_already_seen: GxHashMap<Symbol, Span>,
 
     potentially_unused_imports: Vec<Import<'a>>,
 
@@ -1124,7 +1124,7 @@ pub struct Resolver<'a, 'tcx> {
     struct_constructors: LocalDefIdMap<(Res, ty::Visibility<DefId>, Vec<ty::Visibility<DefId>>)>,
 
     /// Features declared for this crate.
-    declared_features: FxHashSet<Symbol>,
+    declared_features: GxHashSet<Symbol>,
 
     lint_buffer: LintBuffer,
 
@@ -1134,46 +1134,46 @@ pub struct Resolver<'a, 'tcx> {
     def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
     /// Indices of unnamed struct or variant fields with unresolved attributes.
-    placeholder_field_indices: FxHashMap<NodeId, usize>,
+    placeholder_field_indices: GxHashMap<NodeId, usize>,
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
     /// we know what parent node that fragment should be attached to thanks to this table,
     /// and how the `impl Trait` fragments were introduced.
-    invocation_parents: FxHashMap<LocalExpnId, (LocalDefId, ImplTraitContext)>,
+    invocation_parents: GxHashMap<LocalExpnId, (LocalDefId, ImplTraitContext)>,
 
     /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
     /// FIXME: Replace with a more general AST map (together with some other fields).
-    trait_impl_items: FxHashSet<LocalDefId>,
+    trait_impl_items: GxHashSet<LocalDefId>,
 
-    legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
+    legacy_const_generic_args: GxHashMap<DefId, Option<Vec<usize>>>,
     /// Amount of lifetime parameters for each item in the crate.
-    item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
+    item_generics_num_lifetimes: GxHashMap<LocalDefId, usize>,
     delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
 
     main_def: Option<MainDefinition>,
-    trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
+    trait_impls: GxIndexMap<DefId, Vec<LocalDefId>>,
     /// A list of proc macro LocalDefIds, written out in the order in which
     /// they are declared in the static array generated by proc_macro_harness.
     proc_macros: Vec<NodeId>,
-    confused_type_with_std_module: FxHashMap<Span, Span>,
+    confused_type_with_std_module: GxHashMap<Span, Span>,
     /// Whether lifetime elision was successful.
-    lifetime_elision_allowed: FxHashSet<NodeId>,
+    lifetime_elision_allowed: GxHashSet<NodeId>,
 
     /// Names of items that were stripped out via cfg with their corresponding cfg meta item.
     stripped_cfg_items: Vec<StrippedCfgItem<NodeId>>,
 
     effective_visibilities: EffectiveVisibilities,
-    doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
-    doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
-    all_macro_rules: FxHashMap<Symbol, Res>,
+    doc_link_resolutions: GxHashMap<LocalDefId, DocLinkResMap>,
+    doc_link_traits_in_scope: GxHashMap<LocalDefId, Vec<DefId>>,
+    all_macro_rules: GxHashMap<Symbol, Res>,
 
     /// Invocation ids of all glob delegations.
-    glob_delegation_invoc_ids: FxHashSet<LocalExpnId>,
+    glob_delegation_invoc_ids: GxHashSet<LocalExpnId>,
     /// Analogue of module `unexpanded_invocations` but in trait impls, excluding glob delegations.
     /// Needed because glob delegations wait for all other neighboring macros to expand.
-    impl_unexpanded_invocations: FxHashMap<LocalDefId, FxHashSet<LocalExpnId>>,
+    impl_unexpanded_invocations: GxHashMap<LocalDefId, GxHashSet<LocalExpnId>>,
     /// Simplified analogue of module `resolutions` but in trait impls, excluding glob delegations.
     /// Needed because glob delegations exclude explicitly defined names.
-    impl_binding_keys: FxHashMap<LocalDefId, FxHashSet<BindingKey>>,
+    impl_binding_keys: GxHashMap<LocalDefId, GxHashSet<BindingKey>>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1195,8 +1195,8 @@ impl<'a> ResolverArenas<'a> {
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
-        module_map: &mut FxHashMap<DefId, Module<'a>>,
-        module_self_bindings: &mut FxHashMap<Module<'a>, NameBinding<'a>>,
+        module_map: &mut GxHashMap<DefId, Module<'a>>,
+        module_self_bindings: &mut GxHashMap<Module<'a>, NameBinding<'a>>,
     ) -> Module<'a> {
         let module = Module(Interned::new_unchecked(self.modules.alloc(ModuleData::new(
             parent,
@@ -1339,8 +1339,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
-        let mut module_map = FxHashMap::default();
-        let mut module_self_bindings = FxHashMap::default();
+        let mut module_map = GxHashMap::default();
+        let mut module_self_bindings = GxHashMap::default();
         let graph_root = arenas.new_module(
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
@@ -1356,8 +1356,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ExpnId::root(),
             DUMMY_SP,
             true,
-            &mut FxHashMap::default(),
-            &mut FxHashMap::default(),
+            &mut GxHashMap::default(),
+            &mut GxHashMap::default(),
         );
 
         let mut def_id_to_node_id = IndexVec::default();
@@ -1369,10 +1369,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let crate_feed = crate_feed.downgrade();
         node_id_to_def_id.insert(CRATE_NODE_ID, crate_feed);
 
-        let mut invocation_parents = FxHashMap::default();
+        let mut invocation_parents = GxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, (CRATE_DEF_ID, ImplTraitContext::Existential));
 
-        let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = tcx
+        let mut extern_prelude: GxHashMap<Ident, ExternPreludeEntry<'_>> = tcx
             .sess
             .opts
             .externs
@@ -1406,7 +1406,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             extern_prelude,
 
             field_def_ids: Default::default(),
-            field_visibility_spans: FxHashMap::default(),
+            field_visibility_spans: GxHashMap::default(),
 
             determined_imports: Vec::new(),
             indeterminate_imports: Vec::new(),
@@ -1425,13 +1425,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             empty_module,
             module_map,
             block_map: Default::default(),
-            binding_parent_modules: FxHashMap::default(),
-            ast_transform_scopes: FxHashMap::default(),
+            binding_parent_modules: GxHashMap::default(),
+            ast_transform_scopes: GxHashMap::default(),
 
             glob_map: Default::default(),
             glob_error: None,
             visibilities_for_hashing: Default::default(),
-            used_imports: FxHashSet::default(),
+            used_imports: GxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
 
             privacy_errors: Vec::new(),
@@ -1469,11 +1469,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             module_self_bindings,
 
             used_extern_options: Default::default(),
-            macro_names: FxHashSet::default(),
+            macro_names: GxHashSet::default(),
             builtin_macros: Default::default(),
             registered_tools,
-            macro_use_prelude: FxHashMap::default(),
-            macro_map: FxHashMap::default(),
+            macro_use_prelude: GxHashMap::default(),
+            macro_map: GxHashMap::default(),
             dummy_ext_bang: Lrc::new(SyntaxExtension::dummy_bang(edition)),
             dummy_ext_derive: Lrc::new(SyntaxExtension::dummy_derive(edition)),
             non_macro_attr: MacroData::new(Lrc::new(SyntaxExtension::non_macro_attr(edition))),
@@ -1482,8 +1482,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             macro_rules_scopes: Default::default(),
             helper_attrs: Default::default(),
             derive_data: Default::default(),
-            local_macro_def_scopes: FxHashMap::default(),
-            name_already_seen: FxHashMap::default(),
+            local_macro_def_scopes: GxHashMap::default(),
+            name_already_seen: GxHashMap::default(),
             potentially_unused_imports: Vec::new(),
             potentially_unnecessary_qualifications: Default::default(),
             struct_constructors: Default::default(),

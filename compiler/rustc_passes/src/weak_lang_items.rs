@@ -2,7 +2,7 @@
 
 use rustc_ast as ast;
 use rustc_ast::visit;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir::lang_items::{self, LangItem};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_middle::middle::lang_items::required;
@@ -67,7 +67,7 @@ fn verify(tcx: TyCtxt<'_>, items: &lang_items::LanguageItems) {
         return;
     }
 
-    let mut missing = FxHashSet::default();
+    let mut missing = GxHashSet::default();
     for &cnum in tcx.crates(()).iter() {
         for &item in tcx.missing_lang_items(cnum).iter() {
             missing.insert(item);

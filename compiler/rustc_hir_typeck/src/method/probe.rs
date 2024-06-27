@@ -4,7 +4,7 @@ use super::MethodError;
 use super::NoMatchData;
 
 use crate::FnCtxt;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -71,7 +71,7 @@ pub(crate) struct ProbeContext<'a, 'tcx> {
 
     inherent_candidates: Vec<Candidate<'tcx>>,
     extension_candidates: Vec<Candidate<'tcx>>,
-    impl_dups: FxHashSet<DefId>,
+    impl_dups: GxHashSet<DefId>,
 
     /// When probing for names, include names that are close to the
     /// requested name (by edit distance)
@@ -581,7 +581,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             return_type,
             inherent_candidates: Vec::new(),
             extension_candidates: Vec::new(),
-            impl_dups: FxHashSet::default(),
+            impl_dups: GxHashSet::default(),
             orig_steps_var_values,
             steps,
             allow_similar_names: false,
@@ -826,7 +826,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn assemble_extension_candidates_for_traits_in_scope(&mut self) {
-        let mut duplicates = FxHashSet::default();
+        let mut duplicates = GxHashSet::default();
         let opt_applicable_traits = self.tcx.in_scope_traits(self.scope_expr_id);
         if let Some(applicable_traits) = opt_applicable_traits {
             for trait_candidate in applicable_traits.iter() {
@@ -843,7 +843,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn assemble_extension_candidates_for_all_traits(&mut self) {
-        let mut duplicates = FxHashSet::default();
+        let mut duplicates = GxHashSet::default();
         for trait_info in suggest::all_traits(self.tcx) {
             if duplicates.insert(trait_info.def_id) {
                 self.assemble_extension_candidates_for_trait(&smallvec![], trait_info.def_id);
@@ -924,7 +924,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         candidate_filter: impl Fn(&ty::AssocItem) -> bool,
     ) -> Vec<Ident> {
-        let mut set = FxHashSet::default();
+        let mut set = GxHashSet::default();
         let mut names: Vec<_> = self
             .inherent_candidates
             .iter()

@@ -1,4 +1,4 @@
-use crate::fx::FxHashMap;
+use crate::gx::GxHashMap;
 use arrayvec::ArrayVec;
 use either::Either;
 use std::fmt;
@@ -67,7 +67,7 @@ const SSO_ARRAY_SIZE: usize = 8;
 #[derive(Clone)]
 pub enum SsoHashMap<K, V> {
     Array(ArrayVec<(K, V), SSO_ARRAY_SIZE>),
-    Map(FxHashMap<K, V>),
+    Map(GxHashMap<K, V>),
 }
 
 impl<K, V> SsoHashMap<K, V> {
@@ -82,7 +82,7 @@ impl<K, V> SsoHashMap<K, V> {
         if cap <= SSO_ARRAY_SIZE {
             Self::new()
         } else {
-            SsoHashMap::Map(FxHashMap::with_capacity_and_hasher(cap, Default::default()))
+            SsoHashMap::Map(GxHashMap::with_capacity_and_hasher(cap, Default::default()))
         }
     }
 
@@ -189,7 +189,7 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
         match self {
             SsoHashMap::Array(array) => {
                 if SSO_ARRAY_SIZE < (array.len() + additional) {
-                    let mut map: FxHashMap<K, V> = array.drain(..).collect();
+                    let mut map: GxHashMap<K, V> = array.drain(..).collect();
                     map.reserve(additional);
                     *self = SsoHashMap::Map(map);
                 }
@@ -240,7 +240,7 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
                     }
                 }
                 if let Err(error) = array.try_push((key, value)) {
-                    let mut map: FxHashMap<K, V> = array.drain(..).collect();
+                    let mut map: GxHashMap<K, V> = array.drain(..).collect();
                     let (key, value) = error.element();
                     map.insert(key, value);
                     *self = SsoHashMap::Map(map);
@@ -368,7 +368,7 @@ impl<K: Eq + Hash, V> Extend<(K, V)> for SsoHashMap<K, V> {
         match self {
             SsoHashMap::Array(array) => {
                 if SSO_ARRAY_SIZE < (array.len() + additional) {
-                    let mut map: FxHashMap<K, V> = array.drain(..).collect();
+                    let mut map: GxHashMap<K, V> = array.drain(..).collect();
                     map.extend_reserve(additional);
                     *self = SsoHashMap::Map(map);
                 }
@@ -401,7 +401,7 @@ where
 impl<K, V> IntoIterator for SsoHashMap<K, V> {
     type IntoIter = Either<
         <ArrayVec<(K, V), SSO_ARRAY_SIZE> as IntoIterator>::IntoIter,
-        <FxHashMap<K, V> as IntoIterator>::IntoIter,
+        <GxHashMap<K, V> as IntoIterator>::IntoIter,
     >;
     type Item = <Self::IntoIter as Iterator>::Item;
 
@@ -433,7 +433,7 @@ impl<'a, K, V> IntoIterator for &'a SsoHashMap<K, V> {
             <&'a ArrayVec<(K, V), SSO_ARRAY_SIZE> as IntoIterator>::IntoIter,
             fn(&'a (K, V)) -> (&'a K, &'a V),
         >,
-        <&'a FxHashMap<K, V> as IntoIterator>::IntoIter,
+        <&'a GxHashMap<K, V> as IntoIterator>::IntoIter,
     >;
     type Item = <Self::IntoIter as Iterator>::Item;
 
@@ -451,7 +451,7 @@ impl<'a, K, V> IntoIterator for &'a mut SsoHashMap<K, V> {
             <&'a mut ArrayVec<(K, V), SSO_ARRAY_SIZE> as IntoIterator>::IntoIter,
             fn(&'a mut (K, V)) -> (&'a K, &'a mut V),
         >,
-        <&'a mut FxHashMap<K, V> as IntoIterator>::IntoIter,
+        <&'a mut GxHashMap<K, V> as IntoIterator>::IntoIter,
     >;
     type Item = <Self::IntoIter as Iterator>::Item;
 

@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::relate::{PredicateEmittingRelation, StructurallyRelateAliases};
 use rustc_infer::infer::relate::{Relate, RelateResult, TypeRelation};
@@ -208,7 +208,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
         }
 
         let infcx = self.type_checker.infcx;
-        let mut reg_map = FxHashMap::default();
+        let mut reg_map = GxHashMap::default();
         let delegate = FnMutDelegate {
             regions: &mut |br: ty::BoundRegion| {
                 if let Some(ex_reg_var) = reg_map.get(&br) {

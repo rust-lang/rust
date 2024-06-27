@@ -8,7 +8,7 @@
 
 use core::ops::ControlFlow;
 use rustc_ast::visit::walk_list;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxHashSet, GxIndexMap, GxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
@@ -99,7 +99,7 @@ enum Scope<'a> {
     Binder {
         /// We use an IndexMap here because we want these lifetimes in order
         /// for diagnostics.
-        bound_vars: FxIndexMap<LocalDefId, ResolvedArg>,
+        bound_vars: GxIndexMap<LocalDefId, ResolvedArg>,
 
         scope_type: BinderScopeType,
 
@@ -356,7 +356,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         let (mut binders, scope_type) = self.poly_trait_ref_binder_info();
 
         let initial_bound_vars = binders.len() as u32;
-        let mut bound_vars: FxIndexMap<LocalDefId, ResolvedArg> = FxIndexMap::default();
+        let mut bound_vars: GxIndexMap<LocalDefId, ResolvedArg> = GxIndexMap::default();
         let binders_iter =
             trait_ref.bound_generic_params.iter().enumerate().map(|(late_bound_idx, param)| {
                 let pair = ResolvedArg::late(initial_bound_vars + late_bound_idx as u32, param);
@@ -452,7 +452,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 }
             }
 
-            let (mut bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) =
+            let (mut bound_vars, binders): (GxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) =
                 bound_generic_params
                     .iter()
                     .enumerate()
@@ -521,7 +521,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }) => {
                 // We want to start our early-bound indices at the end of the parent scope,
                 // not including any parent `impl Trait`s.
-                let mut bound_vars = FxIndexMap::default();
+                let mut bound_vars = GxIndexMap::default();
                 debug!(?generics.params);
                 for param in generics.params {
                     let (def_id, reg) = ResolvedArg::early(param);
@@ -621,7 +621,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
         match ty.kind {
             hir::TyKind::BareFn(c) => {
-                let (mut bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = c
+                let (mut bound_vars, binders): (GxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = c
                     .generic_params
                     .iter()
                     .enumerate()
@@ -880,7 +880,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 origin,
                 ..
             }) => {
-                let (bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) =
+                let (bound_vars, binders): (GxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) =
                     bound_generic_params
                         .iter()
                         .enumerate()
@@ -1059,7 +1059,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         F: for<'b, 'c> FnOnce(&'b mut BoundVarContext<'c, 'tcx>),
     {
         let mut named_late_bound_vars = 0;
-        let bound_vars: FxIndexMap<LocalDefId, ResolvedArg> = generics
+        let bound_vars: GxIndexMap<LocalDefId, ResolvedArg> = generics
             .params
             .iter()
             .map(|param| match param.kind {
@@ -1745,7 +1745,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         use smallvec::{smallvec, SmallVec};
         let mut stack: SmallVec<[(DefId, SmallVec<[ty::BoundVariableKind; 8]>); 8]> =
             smallvec![(def_id, smallvec![])];
-        let mut visited: FxHashSet<DefId> = FxHashSet::default();
+        let mut visited: GxHashSet<DefId> = GxHashSet::default();
         loop {
             let Some((def_id, bound_vars)) = stack.pop() else {
                 break None;
@@ -1871,11 +1871,11 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 fn is_late_bound_map(
     tcx: TyCtxt<'_>,
     owner_id: hir::OwnerId,
-) -> Option<&FxIndexSet<hir::ItemLocalId>> {
+) -> Option<&GxIndexSet<hir::ItemLocalId>> {
     let decl = tcx.hir().fn_decl_by_hir_id(owner_id.into())?;
     let generics = tcx.hir().get_generics(owner_id.def_id)?;
 
-    let mut late_bound = FxIndexSet::default();
+    let mut late_bound = GxIndexSet::default();
 
     let mut constrained_by_input = ConstrainedCollector { regions: Default::default(), tcx };
     for arg_ty in decl.inputs {
@@ -1978,7 +1978,7 @@ fn is_late_bound_map(
 
     struct ConstrainedCollector<'tcx> {
         tcx: TyCtxt<'tcx>,
-        regions: FxHashSet<LocalDefId>,
+        regions: GxHashSet<LocalDefId>,
     }
 
     impl<'v> Visitor<'v> for ConstrainedCollector<'_> {
@@ -2059,7 +2059,7 @@ fn is_late_bound_map(
 
     #[derive(Default)]
     struct AllCollector {
-        regions: FxHashSet<LocalDefId>,
+        regions: GxHashSet<LocalDefId>,
     }
 
     impl<'v> Visitor<'v> for AllCollector {
@@ -2073,7 +2073,7 @@ fn is_late_bound_map(
 
 pub fn deny_non_region_late_bound(
     tcx: TyCtxt<'_>,
-    bound_vars: &mut FxIndexMap<LocalDefId, ResolvedArg>,
+    bound_vars: &mut GxIndexMap<LocalDefId, ResolvedArg>,
     where_: &str,
 ) {
     let mut first = true;

@@ -243,7 +243,7 @@ impl !Ord for DefId {}
 impl !PartialOrd for DefId {}
 
 // On 64-bit systems, we can hash the whole `DefId` as one `u64` instead of two `u32`s. This
-// improves performance without impairing `FxHash` quality. So the below code gets compiled to a
+// improves performance without impairing `GxHash` quality. So the below code gets compiled to a
 // noop on little endian systems because the memory layout of `DefId` is as follows:
 //
 // ```
@@ -252,14 +252,14 @@ impl !PartialOrd for DefId {}
 //     +-------------------+-------------------+
 // ```
 //
-// The order here has direct impact on `FxHash` quality because we have far more `DefIndex` per
+// The order here has direct impact on `GxHash` quality because we have far more `DefIndex` per
 // crate than we have `Crate`s within one compilation. Or in other words, this arrangement puts
-// more entropy in the low bits than the high bits. The reason this matters is that `FxHash`, which
+// more entropy in the low bits than the high bits. The reason this matters is that `GxHash`, which
 // is used throughout rustc, has problems distributing the entropy from the high bits, so reversing
 // the order would lead to a large number of collisions and thus far worse performance.
 //
 // On 64-bit big-endian systems, this compiles to a 64-bit rotation by 32 bits, which is still
-// faster than another `FxHash` round.
+// faster than another `GxHash` round.
 #[cfg(target_pointer_width = "64")]
 impl Hash for DefId {
     fn hash<H: Hasher>(&self, h: &mut H) {

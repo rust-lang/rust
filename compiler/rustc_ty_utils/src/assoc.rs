@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
@@ -183,7 +183,7 @@ fn associated_types_for_impl_traits_in_associated_fn(
     match tcx.def_kind(parent_def_id) {
         DefKind::Trait => {
             struct RPITVisitor<'tcx> {
-                rpits: FxIndexSet<LocalDefId>,
+                rpits: GxIndexSet<LocalDefId>,
                 tcx: TyCtxt<'tcx>,
             }
 
@@ -202,7 +202,7 @@ fn associated_types_for_impl_traits_in_associated_fn(
                 }
             }
 
-            let mut visitor = RPITVisitor { tcx, rpits: FxIndexSet::default() };
+            let mut visitor = RPITVisitor { tcx, rpits: GxIndexSet::default() };
 
             if let Some(output) = tcx.hir().get_fn_output(fn_def_id) {
                 visitor.visit_fn_ret_ty(output);

@@ -69,7 +69,7 @@
 //! step, we compress the vector to remove completed and error nodes, which
 //! aren't needed anymore.
 
-use crate::fx::{FxHashMap, FxHashSet};
+use crate::gx::{GxHashMap, GxHashSet};
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
@@ -157,12 +157,12 @@ pub struct ObligationForest<O: ForestObligation> {
     nodes: Vec<Node<O>>,
 
     /// A cache of predicates that have been successfully completed.
-    done_cache: FxHashSet<O::CacheKey>,
+    done_cache: GxHashSet<O::CacheKey>,
 
     /// A cache of the nodes in `nodes`, indexed by predicate. Unfortunately,
     /// its contents are not guaranteed to match those of `nodes`. See the
     /// comments in `Self::process_obligation` for details.
-    active_cache: FxHashMap<O::CacheKey, usize>,
+    active_cache: GxHashMap<O::CacheKey, usize>,
 
     /// A vector reused in [Self::compress()] and [Self::find_cycles_from_node()],
     /// to avoid allocating new vectors.
@@ -177,7 +177,7 @@ pub struct ObligationForest<O: ForestObligation> {
     /// See [this][details] for details.
     ///
     /// [details]: https://github.com/rust-lang/rust/pull/53255#issuecomment-421184780
-    error_cache: FxHashMap<ObligationTreeId, FxHashSet<O::CacheKey>>,
+    error_cache: GxHashMap<ObligationTreeId, GxHashSet<O::CacheKey>>,
 }
 
 #[derive(Debug)]

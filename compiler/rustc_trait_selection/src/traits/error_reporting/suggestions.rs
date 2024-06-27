@@ -10,7 +10,7 @@ use crate::infer::InferCtxt;
 use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt};
 
 use hir::def::CtorOf;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, EmissionGuarantee, MultiSpan,
@@ -2698,7 +2698,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         cause_code: &ObligationCauseCode<'tcx>,
         obligated_types: &mut Vec<Ty<'tcx>>,
-        seen_requirements: &mut FxHashSet<DefId>,
+        seen_requirements: &mut GxHashSet<DefId>,
     ) where
         T: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
     {

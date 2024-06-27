@@ -2,7 +2,7 @@
 
 use std::env;
 
-use rustc_data_structures::{fx::FxHashSet, sync::Lrc};
+use rustc_data_structures::{gx::GxHashSet, sync::Lrc};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::{self as hir, intravisit, CRATE_HIR_ID};
 use rustc_middle::hir::map::Map;
@@ -105,7 +105,7 @@ impl<'a, 'tcx> HirCollector<'a, 'tcx> {
         nested: F,
     ) {
         let ast_attrs = self.tcx.hir().attrs(self.tcx.local_def_id_to_hir_id(def_id));
-        if let Some(ref cfg) = ast_attrs.cfg(self.tcx, &FxHashSet::default()) {
+        if let Some(ref cfg) = ast_attrs.cfg(self.tcx, &GxHashSet::default()) {
             if !cfg.matches(&self.sess.psess, Some(self.tcx.features())) {
                 return;
             }

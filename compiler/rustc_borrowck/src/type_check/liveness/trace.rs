@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_index::bit_set::BitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
@@ -88,7 +88,7 @@ pub(super) fn trace<'mir, 'tcx>(
         elements,
         local_use_map,
         move_data,
-        drop_data: FxIndexMap::default(),
+        drop_data: GxIndexMap::default(),
     };
 
     let mut results = LivenessResults::new(cx);
@@ -115,7 +115,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
     move_data: &'me MoveData<'tcx>,
 
     /// Cache for the results of `dropck_outlives` query.
-    drop_data: FxIndexMap<Ty<'tcx>, DropData<'tcx>>,
+    drop_data: GxIndexMap<Ty<'tcx>, DropData<'tcx>>,
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
@@ -229,7 +229,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         let facts_to_add: Vec<_> = {
             let drop_used = &self.cx.typeck.borrowck_context.all_facts.as_ref()?.var_dropped_at;
 
-            let relevant_live_locals: FxIndexSet<_> =
+            let relevant_live_locals: GxIndexSet<_> =
                 relevant_live_locals.iter().copied().collect();
 
             drop_used

@@ -13,7 +13,7 @@ use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -36,7 +36,7 @@ pub(crate) struct JsonRenderer<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
     /// level field of the JSON blob.
-    index: Rc<RefCell<FxHashMap<types::Id, types::Item>>>,
+    index: Rc<RefCell<GxHashMap<types::Id, types::Item>>>,
     /// The directory where the blob will be written to.
     out_path: PathBuf,
     cache: Rc<Cache>,
@@ -120,7 +120,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         Ok((
             JsonRenderer {
                 tcx,
-                index: Rc::new(RefCell::new(FxHashMap::default())),
+                index: Rc::new(RefCell::new(GxHashMap::default())),
                 out_path: options.output,
                 cache: Rc::new(cache),
                 imported_items,

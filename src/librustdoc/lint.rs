@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_lint::LintStore;
 use rustc_lint_defs::{declare_tool_lint, Lint, LintId};
 use rustc_session::{lint, Session};
@@ -21,7 +21,7 @@ pub(crate) fn init_lints<F>(
     mut allowed_lints: Vec<String>,
     lint_opts: Vec<(String, lint::Level)>,
     filter_call: F,
-) -> (Vec<(String, lint::Level)>, FxHashMap<lint::LintId, lint::Level>)
+) -> (Vec<(String, lint::Level)>, GxHashMap<lint::LintId, lint::Level>)
 where
     F: Fn(&lint::Lint) -> Option<(String, lint::Level)>,
 {

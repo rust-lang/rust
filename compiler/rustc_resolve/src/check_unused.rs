@@ -30,7 +30,7 @@ use crate::Resolver;
 use crate::{LexicalScopeBinding, NameBindingKind};
 use rustc_ast as ast;
 use rustc_ast::visit::{self, Visitor};
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxHashMap, GxIndexMap, GxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir::def::{DefKind, Res};
@@ -56,7 +56,7 @@ impl UnusedImport {
 struct UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     r: &'a mut Resolver<'b, 'tcx>,
     /// All the (so far) unused imports, grouped path list
-    unused_imports: FxIndexMap<ast::NodeId, UnusedImport>,
+    unused_imports: GxIndexMap<ast::NodeId, UnusedImport>,
     extern_crate_items: Vec<ExternCrateToLint>,
     base_use_tree: Option<&'a ast::UseTree>,
     base_id: ast::NodeId,
@@ -141,7 +141,7 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
 
     fn report_unused_extern_crate_items(
         &mut self,
-        maybe_unused_extern_crates: FxHashMap<ast::NodeId, Span>,
+        maybe_unused_extern_crates: GxHashMap<ast::NodeId, Span>,
     ) {
         let tcx = self.r.tcx();
         for extern_crate in &self.extern_crate_items {
@@ -378,7 +378,7 @@ fn calc_unused_spans(
 impl Resolver<'_, '_> {
     pub(crate) fn check_unused(&mut self, krate: &ast::Crate) {
         let tcx = self.tcx;
-        let mut maybe_unused_extern_crates = FxHashMap::default();
+        let mut maybe_unused_extern_crates = GxHashMap::default();
 
         for import in self.potentially_unused_imports.iter() {
             match import.kind {
@@ -492,7 +492,7 @@ impl Resolver<'_, '_> {
         }
 
         let unused_imports = visitor.unused_imports;
-        let mut check_redundant_imports = FxIndexSet::default();
+        let mut check_redundant_imports = GxIndexSet::default();
         for module in self.arenas.local_modules().iter() {
             for (_key, resolution) in self.resolutions(*module).borrow().iter() {
                 let resolution = resolution.borrow();
@@ -555,7 +555,7 @@ impl Resolver<'_, '_> {
 
         fn is_unused_import(
             import: Import<'_>,
-            unused_imports: &FxIndexMap<ast::NodeId, UnusedImport>,
+            unused_imports: &GxIndexMap<ast::NodeId, UnusedImport>,
         ) -> bool {
             if let Some(unused_import) = unused_imports.get(&import.root_id)
                 && let Some(id) = import.id()

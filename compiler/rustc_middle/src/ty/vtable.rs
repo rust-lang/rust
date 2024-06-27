@@ -3,7 +3,7 @@ use std::fmt;
 use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar};
 use crate::ty::{self, Instance, PolyTraitRef, Ty, TyCtxt};
 use rustc_ast::Mutability;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 
@@ -59,7 +59,7 @@ pub const COMMON_VTABLE_ENTRIES_ALIGN: usize = 2;
 pub struct SupertraitDefIds<'tcx> {
     tcx: TyCtxt<'tcx>,
     stack: Vec<DefId>,
-    visited: FxHashSet<DefId>,
+    visited: GxHashSet<DefId>,
 }
 
 impl Iterator for SupertraitDefIds<'_> {

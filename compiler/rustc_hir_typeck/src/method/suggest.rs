@@ -10,7 +10,7 @@ use core::ops::ControlFlow;
 use hir::Expr;
 use rustc_ast::ast::Mutability;
 use rustc_attr::parse_confusables;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
@@ -939,11 +939,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `self.suggest_traits_to_import`, so we ignore the `unsatisfied_predicates`
             // suggestions.
         } else if !unsatisfied_predicates.is_empty() {
-            let mut type_params = FxIndexMap::default();
+            let mut type_params = GxIndexMap::default();
 
             // Pick out the list of unimplemented traits on the receiver.
             // This is used for custom error messages with the `#[rustc_on_unimplemented]` attribute.
-            let mut unimplemented_traits = FxIndexMap::default();
+            let mut unimplemented_traits = GxIndexMap::default();
             let mut unimplemented_traits_only = true;
             for (predicate, _parent_pred, cause) in unsatisfied_predicates {
                 if let (ty::PredicateKind::Clause(ty::ClauseKind::Trait(p)), Some(cause)) =
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Find all the requirements that come from a local `impl` block.
             let mut skip_list: UnordSet<_> = Default::default();
-            let mut spanned_predicates = FxIndexMap::default();
+            let mut spanned_predicates = GxIndexMap::default();
             for (p, parent_p, cause) in unsatisfied_predicates {
                 // Extract the predicate span and parent def id of the cause,
                 // if we have one.
@@ -1124,7 +1124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let span = self_ty.span.ctxt().outer_expn_data().call_site;
                         let entry = spanned_predicates.entry(span);
                         let entry = entry.or_insert_with(|| {
-                            (FxIndexSet::default(), FxIndexSet::default(), Vec::new())
+                            (GxIndexSet::default(), GxIndexSet::default(), Vec::new())
                         });
                         entry.0.insert(span);
                         entry.1.insert((
@@ -1172,7 +1172,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(self_ty.span);
                         let entry = entry.or_insert_with(|| {
-                            (FxIndexSet::default(), FxIndexSet::default(), Vec::new())
+                            (GxIndexSet::default(), GxIndexSet::default(), Vec::new())
                         });
                         entry.2.push(p);
                         if cause_span != *item_span {
@@ -1212,7 +1212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(ident.span);
                         let entry = entry.or_insert_with(|| {
-                            (FxIndexSet::default(), FxIndexSet::default(), Vec::new())
+                            (GxIndexSet::default(), GxIndexSet::default(), Vec::new())
                         });
                         entry.0.insert(cause_span);
                         entry.1.insert((ident.span, ""));
@@ -2861,7 +2861,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Adt(def, _) => Some(def.did()),
                 _ => None,
             })
-            .collect::<FxIndexSet<_>>();
+            .collect::<GxIndexSet<_>>();
         let mut local_spans: MultiSpan = local_def_ids
             .iter()
             .filter_map(|def_id| {

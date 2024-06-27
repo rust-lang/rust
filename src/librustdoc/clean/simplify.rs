@@ -11,7 +11,7 @@
 //! This module attempts to reconstruct the original where and/or parameter
 //! bounds by special casing scenarios such as these. Fun!
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
@@ -25,9 +25,9 @@ use crate::core::DocContext;
 pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: ThinVec<WP>) -> ThinVec<WP> {
     // First, partition the where clause into its separate components.
     //
-    // We use `FxIndexMap` so that the insertion order is preserved to prevent messing up to
+    // We use `GxIndexMap` so that the insertion order is preserved to prevent messing up to
     // the order of the generated bounds.
-    let mut tybounds = FxIndexMap::default();
+    let mut tybounds = GxIndexMap::default();
     let mut lifetimes = Vec::new();
     let mut equalities = Vec::new();
 

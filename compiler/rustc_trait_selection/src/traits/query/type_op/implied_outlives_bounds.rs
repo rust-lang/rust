@@ -87,7 +87,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
     // process it next. Because the resulting predicates aren't always
     // guaranteed to be a subset of the original type, so we need to store the
     // WF args we've computed in a set.
-    let mut checked_wf_args = rustc_data_structures::fx::FxHashSet::default();
+    let mut checked_wf_args = rustc_data_structures::gx::GxHashSet::default();
     let mut wf_args = vec![ty.into(), normalize_op(ty)?.into()];
 
     let mut outlives_bounds: Vec<OutlivesBound<'tcx>> = vec![];
@@ -158,7 +158,7 @@ pub fn compute_implied_outlives_bounds_compat_inner<'tcx>(
     // process it next. Because the resulting predicates aren't always
     // guaranteed to be a subset of the original type, so we need to store the
     // WF args we've computed in a set.
-    let mut checked_wf_args = rustc_data_structures::fx::FxHashSet::default();
+    let mut checked_wf_args = rustc_data_structures::gx::GxHashSet::default();
     let mut wf_args = vec![ty.into()];
 
     let mut outlives_bounds: Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>> = vec![];

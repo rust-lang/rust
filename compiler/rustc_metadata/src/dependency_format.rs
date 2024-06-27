@@ -57,7 +57,7 @@ use crate::errors::{
     NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
 };
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::{Dependencies, DependencyList, Linkage};
@@ -160,7 +160,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         Linkage::Dynamic | Linkage::IncludedFromDylib => {}
     }
 
-    let mut formats = FxHashMap::default();
+    let mut formats = GxHashMap::default();
 
     // Sweep all crates for found dylibs. Add all dylibs, as well as their
     // dependencies, ensuring there are no conflicts. The only valid case for a
@@ -255,7 +255,7 @@ fn add_library(
     tcx: TyCtxt<'_>,
     cnum: CrateNum,
     link: LinkagePreference,
-    m: &mut FxHashMap<CrateNum, LinkagePreference>,
+    m: &mut GxHashMap<CrateNum, LinkagePreference>,
     unavailable_as_static: &mut Vec<CrateNum>,
 ) {
     match m.get(&cnum) {

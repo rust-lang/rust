@@ -1,8 +1,8 @@
 use super::*;
 use crate::infer::relate::RelateResult;
 use crate::infer::snapshot::CombinedSnapshot;
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph::{scc::Sccs, vec_graph::VecGraph};
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_index::Idx;
 use rustc_middle::span_bug;
 use rustc_middle::ty::error::TypeError;
@@ -355,7 +355,7 @@ rustc_index::newtype_index! {
 /// an edge `R1 -> R2` in the graph.
 struct MiniGraph<'tcx> {
     /// Map from a region to the index of the node in the graph.
-    nodes: FxIndexMap<ty::Region<'tcx>, LeakCheckNode>,
+    nodes: GxIndexMap<ty::Region<'tcx>, LeakCheckNode>,
 
     /// Map from node index to SCC, and stores the successors of each SCC. All
     /// the regions in the same SCC are equal to one another, and if `S1 -> S2`,
@@ -369,7 +369,7 @@ impl<'tcx> MiniGraph<'tcx> {
         region_constraints: &RegionConstraintCollector<'_, 'tcx>,
         only_consider_snapshot: Option<&CombinedSnapshot<'tcx>>,
     ) -> Self {
-        let mut nodes = FxIndexMap::default();
+        let mut nodes = GxIndexMap::default();
         let mut edges = Vec::new();
 
         // Note that if `R2: R1`, we get a callback `r1, r2`, so `target` is first parameter.
@@ -435,7 +435,7 @@ impl<'tcx> MiniGraph<'tcx> {
     }
 
     fn add_node(
-        nodes: &mut FxIndexMap<ty::Region<'tcx>, LeakCheckNode>,
+        nodes: &mut GxIndexMap<ty::Region<'tcx>, LeakCheckNode>,
         r: ty::Region<'tcx>,
     ) -> LeakCheckNode {
         let l = nodes.len();

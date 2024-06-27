@@ -3,7 +3,7 @@
 //! type, and vice versa.
 
 use rustc_arena::DroplessArena;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
@@ -2366,7 +2366,7 @@ pub(crate) struct Interner(Lock<InternerInner>);
 // between `Interner`s.
 struct InternerInner {
     arena: DroplessArena,
-    strings: FxIndexSet<&'static str>,
+    strings: GxIndexSet<&'static str>,
 }
 
 impl Interner {

@@ -28,7 +28,7 @@ fn test_timestamp_serialization() {
 
 #[test]
 fn test_find_source_directory_in_iter() {
-    let already_visited = FxHashSet::default();
+    let already_visited = GxHashSet::default();
 
     // Find newest
     assert_eq!(

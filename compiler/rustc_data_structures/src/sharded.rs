@@ -1,4 +1,4 @@
-use crate::fx::{FxHashMap, FxHasher};
+use crate::gx::{GxHashMap, GxHasher};
 #[cfg(parallel_compiler)]
 use crate::sync::{is_dyn_thread_safe, CacheAligned};
 use crate::sync::{Lock, LockGuard, Mode};
@@ -46,7 +46,7 @@ impl<T> Sharded<T> {
         Sharded::Single(Lock::new(value()))
     }
 
-    /// The shard is selected by hashing `val` with `FxHasher`.
+    /// The shard is selected by hashing `val` with `GxHasher`.
     #[inline]
     pub fn get_shard_by_value<K: Hash + ?Sized>(&self, _val: &K) -> &Lock<T> {
         match self {
@@ -73,7 +73,7 @@ impl<T> Sharded<T> {
         }
     }
 
-    /// The shard is selected by hashing `val` with `FxHasher`.
+    /// The shard is selected by hashing `val` with `GxHasher`.
     #[inline]
     #[track_caller]
     pub fn lock_shard_by_value<K: Hash + ?Sized>(&self, _val: &K) -> LockGuard<'_, T> {
@@ -158,7 +158,7 @@ pub fn shards() -> usize {
     1
 }
 
-pub type ShardedHashMap<K, V> = Sharded<FxHashMap<K, V>>;
+pub type ShardedHashMap<K, V> = Sharded<GxHashMap<K, V>>;
 
 impl<K: Eq, V> ShardedHashMap<K, V> {
     pub fn len(&self) -> usize {
@@ -224,14 +224,14 @@ impl<K: Eq + Hash + Copy + IntoPointer> ShardedHashMap<K, ()> {
 
 #[inline]
 pub fn make_hash<K: Hash + ?Sized>(val: &K) -> u64 {
-    let mut state = FxHasher::default();
+    let mut state = GxHasher::default();
     val.hash(&mut state);
     state.finish()
 }
 
 /// Get a shard with a pre-computed hash value. If `get_shard_by_value` is
 /// ever used in combination with `get_shard_by_hash` on a single `Sharded`
-/// instance, then `hash` must be computed with `FxHasher`. Otherwise,
+/// instance, then `hash` must be computed with `GxHasher`. Otherwise,
 /// `hash` can be computed with any hasher, so long as that hasher is used
 /// consistently for each `Sharded` instance.
 #[inline]

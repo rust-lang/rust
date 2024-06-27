@@ -1,7 +1,7 @@
 use crate::ty;
 use crate::ty::{EarlyBinder, GenericArgsRef};
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::symbol::{kw, Symbol};
@@ -129,7 +129,7 @@ pub struct Generics {
 
     /// Reverse map to the `index` field of each `GenericParamDef`.
     #[stable_hasher(ignore)]
-    pub param_def_id_to_index: FxHashMap<DefId, u32>,
+    pub param_def_id_to_index: GxHashMap<DefId, u32>,
 
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use rustc_data_structures::{
     fingerprint::Fingerprint,
-    fx::FxHashMap,
+    gx::GxHashMap,
     stable_hasher::{HashStable, StableHasher},
 };
 use rustc_macros::HashStable;
@@ -125,7 +125,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
 /// created so far. The debuginfo nodes are identified by `UniqueTypeId`.
 #[derive(Default)]
 pub(crate) struct TypeMap<'ll, 'tcx> {
-    pub(super) unique_id_to_di_node: RefCell<FxHashMap<UniqueTypeId<'tcx>, &'ll DIType>>,
+    pub(super) unique_id_to_di_node: RefCell<GxHashMap<UniqueTypeId<'tcx>, &'ll DIType>>,
 }
 
 impl<'ll, 'tcx> TypeMap<'ll, 'tcx> {

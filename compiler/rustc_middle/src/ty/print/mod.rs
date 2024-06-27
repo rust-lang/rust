@@ -2,7 +2,7 @@ use crate::ty::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
 
 use hir::def::Namespace;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};

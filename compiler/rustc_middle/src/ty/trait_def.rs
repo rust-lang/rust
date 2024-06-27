@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use std::iter;
 use tracing::debug;
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_macros::{Decodable, Encodable, HashStable};
 
@@ -91,7 +91,7 @@ pub enum TraitSpecializationKind {
 pub struct TraitImpls {
     blanket_impls: Vec<DefId>,
     /// Impls indexed by their simplified self type, for fast lookup.
-    non_blanket_impls: FxIndexMap<SimplifiedType, Vec<DefId>>,
+    non_blanket_impls: GxIndexMap<SimplifiedType, Vec<DefId>>,
 }
 
 impl TraitImpls {
@@ -103,7 +103,7 @@ impl TraitImpls {
         self.blanket_impls.as_slice()
     }
 
-    pub fn non_blanket_impls(&self) -> &FxIndexMap<SimplifiedType, Vec<DefId>> {
+    pub fn non_blanket_impls(&self) -> &GxIndexMap<SimplifiedType, Vec<DefId>> {
         &self.non_blanket_impls
     }
 }

@@ -8,7 +8,7 @@
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::base_n::ALPHANUMERIC_ONLY;
 use rustc_data_structures::base_n::CASE_INSENSITIVE;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
@@ -49,7 +49,7 @@ pub enum TyQ {
 /// Substitutes a component if found in the substitution dictionary (see
 /// <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-compression>).
 fn compress<'tcx>(
-    dict: &mut FxHashMap<DictKey<'tcx>, usize>,
+    dict: &mut GxHashMap<DictKey<'tcx>, usize>,
     key: DictKey<'tcx>,
     comp: &mut String,
 ) {
@@ -71,7 +71,7 @@ fn encode_args<'tcx>(
     args: GenericArgsRef<'tcx>,
     for_def: DefId,
     has_erased_self: bool,
-    dict: &mut FxHashMap<DictKey<'tcx>, usize>,
+    dict: &mut GxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
     // [I<subst1..substN>E] as part of vendor extended type
@@ -107,7 +107,7 @@ fn encode_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     c: Const<'tcx>,
     ct_ty: Ty<'tcx>,
-    dict: &mut FxHashMap<DictKey<'tcx>, usize>,
+    dict: &mut GxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
     // L<element-type>[n][<element-value>]E as literal argument
@@ -173,7 +173,7 @@ fn encode_const<'tcx>(
 fn encode_fnsig<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_sig: &FnSig<'tcx>,
-    dict: &mut FxHashMap<DictKey<'tcx>, usize>,
+    dict: &mut GxHashMap<DictKey<'tcx>, usize>,
     options: TypeIdOptions,
 ) -> String {
     // Function types are delimited by an "F..E" pair
@@ -229,7 +229,7 @@ fn encode_fnsig<'tcx>(
 fn encode_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicate: ty::PolyExistentialPredicate<'tcx>,
-    dict: &mut FxHashMap<DictKey<'tcx>, usize>,
+    dict: &mut GxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
     // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>, as vendor
@@ -270,7 +270,7 @@ fn encode_predicate<'tcx>(
 fn encode_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
-    dict: &mut FxHashMap<DictKey<'tcx>, usize>,
+    dict: &mut GxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
     // <predicate1[..predicateN]>E as part of vendor extended type
@@ -283,7 +283,7 @@ fn encode_predicates<'tcx>(
 }
 
 /// Encodes a region using the Itanium C++ ABI as a vendor extended type.
-fn encode_region<'tcx>(region: Region<'tcx>, dict: &mut FxHashMap<DictKey<'tcx>, usize>) -> String {
+fn encode_region<'tcx>(region: Region<'tcx>, dict: &mut GxHashMap<DictKey<'tcx>, usize>) -> String {
     // u6region[I[<region-disambiguator>][<region-index>]E] as vendor extended type
     let mut s = String::new();
     match region.kind() {
@@ -321,7 +321,7 @@ fn encode_region<'tcx>(region: Region<'tcx>, dict: &mut FxHashMap<DictKey<'tcx>,
 pub fn encode_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    dict: &mut FxHashMap<DictKey<'tcx>, usize>,
+    dict: &mut GxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
     let mut typeid = String::new();

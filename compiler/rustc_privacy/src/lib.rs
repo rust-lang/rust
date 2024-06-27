@@ -13,7 +13,7 @@ mod errors;
 use rustc_ast::visit::{try_visit, VisitorResult};
 use rustc_ast::MacroDef;
 use rustc_attr as attr;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -101,7 +101,7 @@ pub trait DefIdVisitor<'tcx> {
 
 pub struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
     def_id_visitor: &'v mut V,
-    visited_opaque_tys: FxHashSet<DefId>,
+    visited_opaque_tys: GxHashSet<DefId>,
     dummy: PhantomData<TyCtxt<'tcx>>,
 }
 
@@ -401,7 +401,7 @@ struct EmbargoVisitor<'tcx> {
     /// pub macro m() {
     ///     n::p::f()
     /// }
-    macro_reachable: FxHashSet<(LocalModDefId, LocalModDefId)>,
+    macro_reachable: GxHashSet<(LocalModDefId, LocalModDefId)>,
     /// Preliminary pass for marking all underlying types of `impl Trait`s as reachable.
     impl_trait_pass: bool,
     /// Has something changed in the level map?

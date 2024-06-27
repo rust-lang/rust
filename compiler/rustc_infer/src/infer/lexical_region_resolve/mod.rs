@@ -8,10 +8,10 @@ use crate::infer::region_constraints::VerifyBound;
 use crate::infer::RegionRelations;
 use crate::infer::RegionVariableOrigin;
 use crate::infer::SubregionOrigin;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
 };
+use rustc_data_structures::gx::GxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::unord::UnordSet;
 use rustc_index::{IndexSlice, IndexVec};
@@ -830,9 +830,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         orig_node_idx: RegionVid,
         dir: Direction,
         mut dup_vec: Option<&mut IndexSlice<RegionVid, Option<RegionVid>>>,
-    ) -> (Vec<RegionAndOrigin<'tcx>>, FxHashSet<RegionVid>, bool) {
+    ) -> (Vec<RegionAndOrigin<'tcx>>, GxHashSet<RegionVid>, bool) {
         struct WalkState<'tcx> {
-            set: FxHashSet<RegionVid>,
+            set: GxHashSet<RegionVid>,
             stack: Vec<RegionVid>,
             result: Vec<RegionAndOrigin<'tcx>>,
             dup_found: bool,

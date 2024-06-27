@@ -3,7 +3,7 @@
 
 use crate::errors;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -517,7 +517,7 @@ fn infringing_fields_error(
     let mut errors: BTreeMap<_, Vec<_>> = Default::default();
     let mut bounds = vec![];
 
-    let mut seen_tys = FxHashSet::default();
+    let mut seen_tys = GxHashSet::default();
 
     let mut label_spans = Vec::new();
 

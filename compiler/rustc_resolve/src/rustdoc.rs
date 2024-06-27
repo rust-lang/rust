@@ -1,7 +1,7 @@
 use pulldown_cmark::{BrokenLink, CowStr, Event, LinkType, Options, Parser, Tag};
 use rustc_ast as ast;
 use rustc_ast::util::comments::beautify_doc_string;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -232,8 +232,8 @@ fn span_for_value(attr: &ast::Attribute) -> Span {
 /// early and late doc link resolution regardless of their position.
 pub fn prepare_to_doc_link_resolution(
     doc_fragments: &[DocFragment],
-) -> FxHashMap<Option<DefId>, String> {
-    let mut res = FxHashMap::default();
+) -> GxHashMap<Option<DefId>, String> {
+    let mut res = GxHashMap::default();
     for fragment in doc_fragments {
         let out_str = res.entry(fragment.item_id).or_default();
         add_doc_fragment(out_str, fragment);

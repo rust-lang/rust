@@ -3,7 +3,7 @@ use crate::{
     CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
     MultiSpan, StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
 use rustc_error_messages::FluentValue;
 use rustc_lint_defs::{Applicability, LintExpectationId};
@@ -45,7 +45,7 @@ pub enum DiagArgValue {
     StrListSepByAnd(Vec<Cow<'static, str>>),
 }
 
-pub type DiagArgMap = FxIndexMap<DiagArgName, DiagArgValue>;
+pub type DiagArgMap = GxIndexMap<DiagArgName, DiagArgValue>;
 
 /// Trait for types that `Diag::emit` can return as a "guarantee" (or "proof")
 /// token that the emission happened.
@@ -355,7 +355,7 @@ impl DiagInner {
 
     pub(crate) fn update_unstable_expectation_id(
         &mut self,
-        unstable_to_stable: &FxIndexMap<LintExpectationId, LintExpectationId>,
+        unstable_to_stable: &GxIndexMap<LintExpectationId, LintExpectationId>,
     ) {
         if let Level::Expect(expectation_id) | Level::ForceWarning(Some(expectation_id)) =
             &mut self.level

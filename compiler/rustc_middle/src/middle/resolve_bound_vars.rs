@@ -2,7 +2,7 @@
 
 use crate::ty;
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{ItemLocalId, OwnerId};
@@ -51,7 +51,7 @@ pub enum ObjectLifetimeDefault {
 pub struct ResolveBoundVars {
     /// Maps from every use of a named (not anonymous) lifetime to a
     /// `Region` describing how that region is bound
-    pub defs: FxIndexMap<OwnerId, FxIndexMap<ItemLocalId, ResolvedArg>>,
+    pub defs: GxIndexMap<OwnerId, GxIndexMap<ItemLocalId, ResolvedArg>>,
 
-    pub late_bound_vars: FxIndexMap<OwnerId, FxIndexMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
+    pub late_bound_vars: GxIndexMap<OwnerId, GxIndexMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
 }

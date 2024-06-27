@@ -8,7 +8,7 @@ use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::visit::DocVisitor;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
 use rustc_middle::ty;
 use rustc_span::symbol::sym;
@@ -34,7 +34,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     });
 
     let local_crate = ExternalCrate { crate_num: LOCAL_CRATE };
-    let prims: FxHashSet<PrimitiveType> = local_crate.primitives(tcx).iter().map(|p| p.1).collect();
+    let prims: GxHashSet<PrimitiveType> = local_crate.primitives(tcx).iter().map(|p| p.1).collect();
 
     let crate_items = {
         let mut coll = ItemAndAliasCollector::new(&cx.cache);
@@ -243,13 +243,13 @@ impl<'a, 'tcx> DocVisitor for SyntheticImplCollector<'a, 'tcx> {
 }
 
 struct ItemAndAliasCollector<'cache> {
-    items: FxHashSet<ItemId>,
+    items: GxHashSet<ItemId>,
     cache: &'cache Cache,
 }
 
 impl<'cache> ItemAndAliasCollector<'cache> {
     fn new(cache: &'cache Cache) -> Self {
-        ItemAndAliasCollector { items: FxHashSet::default(), cache }
+        ItemAndAliasCollector { items: GxHashSet::default(), cache }
     }
 }
 
@@ -268,8 +268,8 @@ impl<'cache> DocVisitor for ItemAndAliasCollector<'cache> {
 }
 
 struct BadImplStripper<'a> {
-    prims: FxHashSet<PrimitiveType>,
-    items: FxHashSet<ItemId>,
+    prims: GxHashSet<PrimitiveType>,
+    items: GxHashSet<ItemId>,
     cache: &'a Cache,
 }
 

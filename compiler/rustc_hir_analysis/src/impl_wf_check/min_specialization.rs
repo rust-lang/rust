@@ -68,7 +68,7 @@
 use crate::errors::GenericArgsOnOverriddenImpl;
 use crate::{constrained_generic_params as cgp, errors};
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
@@ -248,8 +248,8 @@ fn unconstrained_parent_impl_args<'tcx>(
     impl_args: GenericArgsRef<'tcx>,
 ) -> Vec<GenericArg<'tcx>> {
     let impl_generic_predicates = tcx.predicates_of(impl_def_id);
-    let mut unconstrained_parameters = FxHashSet::default();
-    let mut constrained_params = FxHashSet::default();
+    let mut unconstrained_parameters = GxHashSet::default();
+    let mut constrained_params = GxHashSet::default();
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
 
     // Unfortunately the functions in `constrained_generic_parameters` don't do

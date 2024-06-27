@@ -2,7 +2,7 @@
 //! when all of their successors are unreachable. This is achieved through a
 //! post-order traversal of the blocks.
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::patch::MirPatch;
@@ -20,7 +20,7 @@ impl MirPass<'_> for UnreachablePropagation {
 
     fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut patch = MirPatch::new(body);
-        let mut unreachable_blocks = FxHashSet::default();
+        let mut unreachable_blocks = GxHashSet::default();
 
         for (bb, bb_data) in traversal::postorder(body) {
             let terminator = bb_data.terminator();
@@ -63,7 +63,7 @@ impl MirPass<'_> for UnreachablePropagation {
 fn remove_successors_from_switch<'tcx>(
     tcx: TyCtxt<'tcx>,
     bb: BasicBlock,
-    unreachable_blocks: &FxHashSet<BasicBlock>,
+    unreachable_blocks: &GxHashSet<BasicBlock>,
     body: &Body<'tcx>,
     patch: &mut MirPatch<'tcx>,
 ) -> bool {

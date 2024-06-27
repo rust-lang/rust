@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -69,8 +69,8 @@ pub(crate) fn adt_dtorck_constraint(
 }
 
 fn dedup_dtorck_constraint(c: &mut DropckConstraint<'_>) {
-    let mut outlives = FxHashSet::default();
-    let mut dtorck_types = FxHashSet::default();
+    let mut outlives = GxHashSet::default();
+    let mut dtorck_types = GxHashSet::default();
 
     c.outlives.retain(|&val| outlives.replace(val).is_none());
     c.dtorck_types.retain(|&val| dtorck_types.replace(val).is_none());

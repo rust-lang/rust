@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use std::collections::hash_map::Entry;
 use std::fs;
 use std::iter::Peekable;
@@ -12,8 +12,8 @@ mod tests;
 
 #[derive(Debug)]
 pub(crate) struct CssPath {
-    pub(crate) rules: FxHashMap<String, String>,
-    pub(crate) children: FxHashMap<String, CssPath>,
+    pub(crate) rules: GxHashMap<String, String>,
+    pub(crate) children: GxHashMap<String, CssPath>,
 }
 
 /// When encountering a `"` or a `'`, returns the whole string, including the quote characters.
@@ -120,10 +120,10 @@ fn parse_rules(
     content: &str,
     selector: String,
     iter: &mut Peekable<Chars<'_>>,
-    paths: &mut FxHashMap<String, CssPath>,
+    paths: &mut GxHashMap<String, CssPath>,
 ) -> Result<(), String> {
-    let mut rules = FxHashMap::default();
-    let mut children = FxHashMap::default();
+    let mut rules = GxHashMap::default();
+    let mut children = GxHashMap::default();
 
     loop {
         // If the parent isn't a "normal" CSS selector, we only expect sub-selectors and not CSS
@@ -178,7 +178,7 @@ fn parse_rules(
 pub(crate) fn parse_selectors(
     content: &str,
     iter: &mut Peekable<Chars<'_>>,
-    paths: &mut FxHashMap<String, CssPath>,
+    paths: &mut GxHashMap<String, CssPath>,
 ) -> Result<(), String> {
     let mut selector = String::new();
 
@@ -202,17 +202,17 @@ pub(crate) fn parse_selectors(
 
 /// The entry point to parse the CSS rules. Every time we encounter a `{`, we then parse the rules
 /// inside it.
-pub(crate) fn load_css_paths(content: &str) -> Result<FxHashMap<String, CssPath>, String> {
+pub(crate) fn load_css_paths(content: &str) -> Result<GxHashMap<String, CssPath>, String> {
     let mut iter = content.chars().peekable();
-    let mut paths = FxHashMap::default();
+    let mut paths = GxHashMap::default();
 
     parse_selectors(content, &mut iter, &mut paths)?;
     Ok(paths)
 }
 
 pub(crate) fn get_differences(
-    origin: &FxHashMap<String, CssPath>,
-    against: &FxHashMap<String, CssPath>,
+    origin: &GxHashMap<String, CssPath>,
+    against: &GxHashMap<String, CssPath>,
     v: &mut Vec<String>,
 ) {
     for (selector, entry) in origin.iter() {
@@ -235,7 +235,7 @@ pub(crate) fn get_differences(
 
 pub(crate) fn test_theme_against<P: AsRef<Path>>(
     f: &P,
-    origin: &FxHashMap<String, CssPath>,
+    origin: &GxHashMap<String, CssPath>,
     dcx: DiagCtxtHandle<'_>,
 ) -> (bool, Vec<String>) {
     let against = match fs::read_to_string(f)

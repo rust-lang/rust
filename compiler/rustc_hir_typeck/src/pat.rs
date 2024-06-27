@@ -1,7 +1,7 @@
 use crate::gather_locals::DeclOrigin;
 use crate::{errors, FnCtxt, LoweredTy};
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
 };
@@ -1480,10 +1480,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .fields
             .iter_enumerated()
             .map(|(i, field)| (field.ident(self.tcx).normalize_to_macros_2_0(), (i, field)))
-            .collect::<FxHashMap<_, _>>();
+            .collect::<GxHashMap<_, _>>();
 
         // Keep track of which fields have already appeared in the pattern.
-        let mut used_fields = FxHashMap::default();
+        let mut used_fields = GxHashMap::default();
         let mut result = Ok(());
 
         let mut inexistent_fields = vec![];

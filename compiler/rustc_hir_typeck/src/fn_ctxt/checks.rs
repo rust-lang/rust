@@ -15,7 +15,7 @@ use crate::{
 };
 use itertools::Itertools;
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_errors::{
     a_or_an, codes::*, display_list_with_comma_and, pluralize, Applicability, Diag,
     ErrorGuaranteed, MultiSpan, StashKey,
@@ -2068,7 +2068,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // even if their `ObligationCauseCode` isn't an `Expr*Obligation` kind.
         // This is important since if we adjust one span but not the other, then
         // we will have "duplicated" the error on the UI side.
-        let mut remap_cause = FxIndexSet::default();
+        let mut remap_cause = GxIndexSet::default();
         let mut not_adjusted = vec![];
 
         for error in errors {

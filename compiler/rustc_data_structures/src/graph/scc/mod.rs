@@ -8,9 +8,9 @@
 //! Typical examples would include: minimum element in SCC, maximum element
 //! reachable from it, etc.
 
-use crate::fx::FxHashSet;
 use crate::graph::vec_graph::VecGraph;
 use crate::graph::{DirectedGraph, NumEdges, Successors};
+use crate::gx::GxHashSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use std::fmt::Debug;
 use std::ops::Range;
@@ -242,7 +242,7 @@ where
     /// into the successors_stack, we sometimes get duplicate entries.
     /// We use this set to remove those -- we also keep its storage
     /// around between successors to amortize memory allocation costs.
-    duplicate_set: FxHashSet<S>,
+    duplicate_set: GxHashSet<S>,
 
     scc_data: SccData<S, A>,
 
@@ -326,7 +326,7 @@ where
             node_stack: Vec::with_capacity(num_nodes),
             successors_stack: Vec::new(),
             scc_data: SccData { scc_details: IndexVec::new(), all_successors: Vec::new() },
-            duplicate_set: FxHashSet::default(),
+            duplicate_set: GxHashSet::default(),
             to_annotation,
         };
 

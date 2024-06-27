@@ -15,7 +15,7 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_errors::Diag;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -183,7 +183,7 @@ struct UniversalRegionIndices<'tcx> {
     /// basically equivalent to an `GenericArgs`, except that it also
     /// contains an entry for `ReStatic` -- it might be nice to just
     /// use an args, and then handle `ReStatic` another way.
-    indices: FxIndexMap<ty::Region<'tcx>, RegionVid>,
+    indices: GxIndexMap<ty::Region<'tcx>, RegionVid>,
 
     /// The vid assigned to `'static`. Used only for diagnostics.
     pub fr_static: RegionVid,

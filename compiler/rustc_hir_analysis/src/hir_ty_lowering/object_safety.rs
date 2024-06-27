@@ -2,7 +2,7 @@ use crate::bounds::Bounds;
 use crate::hir_ty_lowering::{
     GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds, RegionInferReason,
 };
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxHashSet, GxIndexMap, GxIndexSet};
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -114,7 +114,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        let mut associated_types: FxIndexMap<Span, FxIndexSet<DefId>> = FxIndexMap::default();
+        let mut associated_types: GxIndexMap<Span, GxIndexSet<DefId>> = GxIndexMap::default();
 
         let regular_traits_refs_spans = trait_bounds
             .into_iter()
@@ -205,9 +205,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as
         // `dyn Trait + Send`.
-        // We remove duplicates by inserting into a `FxHashSet` to avoid re-ordering
+        // We remove duplicates by inserting into a `GxHashSet` to avoid re-ordering
         // the bounds
-        let mut duplicates = FxHashSet::default();
+        let mut duplicates = GxHashSet::default();
         auto_traits.retain(|i| duplicates.insert(i.trait_ref().def_id()));
         debug!(?regular_traits);
         debug!(?auto_traits);

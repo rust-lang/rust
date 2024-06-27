@@ -5,7 +5,7 @@
 use pulldown_cmark::LinkType;
 use rustc_ast::util::comments::may_have_doc_links;
 use rustc_data_structures::{
-    fx::{FxHashMap, FxHashSet},
+    gx::{GxHashMap, GxHashSet},
     intern::Interned,
 };
 use rustc_errors::{Applicability, Diag, DiagMessage};
@@ -45,7 +45,7 @@ pub(crate) const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
 };
 
 fn collect_intra_doc_links(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    let mut collector = LinkCollector { cx, visited_links: FxHashMap::default() };
+    let mut collector = LinkCollector { cx, visited_links: GxHashMap::default() };
     collector.visit_crate(&krate);
     krate
 }
@@ -254,7 +254,7 @@ struct LinkCollector<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
     /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link.
     /// The link will be `None` if it could not be resolved (i.e. the error was cached).
-    visited_links: FxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
+    visited_links: GxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
@@ -768,9 +768,9 @@ fn trait_impls_for<'a>(
     cx: &mut DocContext<'a>,
     ty: Ty<'a>,
     module: DefId,
-) -> FxHashSet<(DefId, DefId)> {
+) -> GxHashSet<(DefId, DefId)> {
     let tcx = cx.tcx;
-    let mut impls = FxHashSet::default();
+    let mut impls = GxHashSet::default();
 
     for &trait_ in tcx.doc_link_traits_in_scope(module) {
         tcx.for_each_relevant_impl(trait_, ty, |impl_| {
@@ -2076,7 +2076,7 @@ fn ambiguity_error(
     path_str: &str,
     candidates: &[(Res, Option<DefId>)],
 ) -> bool {
-    let mut descrs = FxHashSet::default();
+    let mut descrs = GxHashSet::default();
     let kinds = candidates
         .iter()
         .map(

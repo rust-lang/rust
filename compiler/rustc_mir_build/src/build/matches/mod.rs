@@ -10,7 +10,7 @@ use crate::build::scope::DropKind;
 use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
-use rustc_data_structures::{fx::FxIndexMap, stack::ensure_sufficient_stack};
+use rustc_data_structures::{gx::GxIndexMap, stack::ensure_sufficient_stack};
 use rustc_hir::{BindingMode, ByRef};
 use rustc_middle::bug;
 use rustc_middle::middle::region;
@@ -1805,11 +1805,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
     ) -> (
         &'b mut [&'c mut Candidate<'pat, 'tcx>],
-        FxIndexMap<TestBranch<'tcx>, Vec<&'b mut Candidate<'pat, 'tcx>>>,
+        GxIndexMap<TestBranch<'tcx>, Vec<&'b mut Candidate<'pat, 'tcx>>>,
     ) {
         // For each of the possible outcomes, collect vector of candidates that apply if the test
         // has that particular outcome.
-        let mut target_candidates: FxIndexMap<_, Vec<&mut Candidate<'_, '_>>> = Default::default();
+        let mut target_candidates: GxIndexMap<_, Vec<&mut Candidate<'_, '_>>> = Default::default();
 
         let total_candidate_count = candidates.len();
 
@@ -1965,7 +1965,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         // For each outcome of test, process the candidates that still apply.
-        let target_blocks: FxIndexMap<_, _> = target_candidates
+        let target_blocks: GxIndexMap<_, _> = target_candidates
             .into_iter()
             .map(|(branch, mut candidates)| {
                 let candidate_start = self.cfg.start_new_block();

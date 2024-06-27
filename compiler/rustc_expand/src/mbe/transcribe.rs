@@ -9,7 +9,7 @@ use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::IdentIsRaw;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_errors::{pluralize, Diag, DiagCtxtHandle, PResult};
 use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::ParseSess;
@@ -20,7 +20,7 @@ use smallvec::{smallvec, SmallVec};
 use std::mem;
 
 // A Marker adds the given mark to the syntax context.
-struct Marker(LocalExpnId, Transparency, FxHashMap<SyntaxContext, SyntaxContext>);
+struct Marker(LocalExpnId, Transparency, GxHashMap<SyntaxContext, SyntaxContext>);
 
 impl MutVisitor for Marker {
     const VISIT_TOKENS: bool = true;
@@ -101,7 +101,7 @@ impl<'a> Iterator for Frame<'a> {
 /// Along the way, we do some additional error checking.
 pub(super) fn transcribe<'a>(
     psess: &'a ParseSess,
-    interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    interp: &GxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     src: &mbe::Delimited,
     src_span: DelimSpan,
     transparency: Transparency,
@@ -395,7 +395,7 @@ fn maybe_use_metavar_location(
         return orig_tt.clone();
     }
 
-    let insert = |mspans: &mut FxHashMap<_, _>, s, ms| match mspans.try_insert(s, ms) {
+    let insert = |mspans: &mut GxHashMap<_, _>, s, ms| match mspans.try_insert(s, ms) {
         Ok(_) => true,
         Err(err) => *err.entry.get() == ms, // Tried to insert the same span, still success
     };
@@ -442,7 +442,7 @@ fn maybe_use_metavar_location(
 /// made a mistake, and we return `None`.
 fn lookup_cur_matched<'a>(
     ident: MacroRulesNormalizedIdent,
-    interpolations: &'a FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    interpolations: &'a GxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     repeats: &[(usize, usize)],
 ) -> Option<&'a NamedMatch> {
     interpolations.get(&ident).map(|mut matched| {
@@ -519,7 +519,7 @@ impl LockstepIterSize {
 /// `y`; otherwise, we can't transcribe them both at the given depth.
 fn lockstep_iter_size(
     tree: &mbe::TokenTree,
-    interpolations: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    interpolations: &GxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     repeats: &[(usize, usize)],
 ) -> LockstepIterSize {
     use mbe::TokenTree;
@@ -634,7 +634,7 @@ fn count_repetitions<'a>(
 fn matched_from_ident<'ctx, 'interp, 'rslt>(
     dcx: DiagCtxtHandle<'ctx>,
     ident: Ident,
-    interp: &'interp FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    interp: &'interp GxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
 ) -> PResult<'ctx, &'rslt NamedMatch>
 where
     'interp: 'rslt,
@@ -664,7 +664,7 @@ fn out_of_bounds_err<'a>(dcx: DiagCtxtHandle<'a>, max: usize, span: Span, ty: &s
 fn transcribe_metavar_expr<'a>(
     dcx: DiagCtxtHandle<'a>,
     expr: &MetaVarExpr,
-    interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    interp: &GxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     marker: &mut Marker,
     repeats: &[(usize, usize)],
     result: &mut Vec<TokenTree>,
@@ -732,7 +732,7 @@ fn transcribe_metavar_expr<'a>(
 fn extract_ident<'a>(
     dcx: DiagCtxtHandle<'a>,
     ident: Ident,
-    interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    interp: &GxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
 ) -> PResult<'a, String> {
     if let NamedMatch::MatchedSingle(pnr) = matched_from_ident(dcx, ident, interp)? {
         if let ParseNtResult::Ident(nt_ident, is_raw) = pnr {

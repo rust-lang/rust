@@ -6,7 +6,7 @@ use rustc_ast::{
     Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{
     symbol::{sym, Ident, Symbol},
@@ -36,7 +36,7 @@ pub(super) struct Context<'cx, 'a> {
     // let a = 1i32;
     // assert!(add(a, a) == 3);
     // ```
-    paths: FxHashSet<Ident>,
+    paths: GxHashSet<Ident>,
     span: Span,
 }
 

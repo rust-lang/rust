@@ -2,7 +2,7 @@
 //
 // We don't do any drop checking during hir typeck.
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
@@ -154,7 +154,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
         let mut guar = None;
-        let mut root_predicates = FxHashSet::default();
+        let mut root_predicates = GxHashSet::default();
         for error in errors {
             let root_predicate = error.root_obligation.predicate;
             if root_predicates.insert(root_predicate) {

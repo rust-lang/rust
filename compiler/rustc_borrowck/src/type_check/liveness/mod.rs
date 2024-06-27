@@ -1,5 +1,5 @@
 use itertools::{Either, Itertools};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location, SourceInfo};
 use rustc_middle::span_bug;
@@ -75,7 +75,7 @@ pub(super) fn generate<'mir, 'tcx>(
 // region (i.e., where `R` may be valid for just a subset of the fn body).
 fn compute_relevant_live_locals<'tcx>(
     tcx: TyCtxt<'tcx>,
-    free_regions: &FxHashSet<RegionVid>,
+    free_regions: &GxHashSet<RegionVid>,
     body: &Body<'tcx>,
 ) -> (Vec<Local>, Vec<Local>) {
     let (boring_locals, relevant_live_locals): (Vec<_>, Vec<_>) =
@@ -102,7 +102,7 @@ fn regions_that_outlive_free_regions<'tcx>(
     num_region_vars: usize,
     universal_regions: &UniversalRegions<'tcx>,
     constraint_set: &OutlivesConstraintSet<'tcx>,
-) -> FxHashSet<RegionVid> {
+) -> GxHashSet<RegionVid> {
     // Build a graph of the outlives constraints thus far. This is
     // a reverse graph, so for each constraint `R1: R2` we have an
     // edge `R2 -> R1`. Therefore, if we find all regions
@@ -117,7 +117,7 @@ fn regions_that_outlive_free_regions<'tcx>(
 
     // Set of all free regions, plus anything that outlives them. Initially
     // just contains the free regions.
-    let mut outlives_free_region: FxHashSet<_> = stack.iter().cloned().collect();
+    let mut outlives_free_region: GxHashSet<_> = stack.iter().cloned().collect();
 
     // Do the DFS -- for each thing in the stack, find all things
     // that outlive it and add them to the set. If they are not,

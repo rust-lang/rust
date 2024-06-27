@@ -20,7 +20,7 @@ use crate::type_::Type;
 use crate::value::Value;
 use itertools::Itertools;
 use rustc_codegen_ssa::traits::TypeMembershipMethods;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
 use smallvec::SmallVec;
@@ -141,7 +141,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             if let Some(instance) = instance {
-                let mut typeids = FxIndexSet::default();
+                let mut typeids = GxIndexSet::default();
                 for options in [
                     cfi::TypeIdOptions::GENERALIZE_POINTERS,
                     cfi::TypeIdOptions::NORMALIZE_INTEGERS,

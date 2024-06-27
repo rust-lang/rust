@@ -19,7 +19,7 @@ use crate::traits::{
     SelectionError, SignatureMismatch, TraitNotObjectSafe,
 };
 use core::ops::ControlFlow;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::gx::{GxHashMap, GxIndexMap};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{pluralize, struct_span_code_err, Applicability, MultiSpan, StringPart};
@@ -98,7 +98,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             index: Option<usize>, // None if this is an old error
         }
 
-        let mut error_map: FxIndexMap<_, Vec<_>> = self
+        let mut error_map: GxIndexMap<_, Vec<_>> = self
             .reported_trait_errors
             .borrow()
             .iter()
@@ -2836,7 +2836,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) -> bool {
         struct ParamToVarFolder<'a, 'tcx> {
             infcx: &'a InferCtxt<'tcx>,
-            var_map: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
+            var_map: GxHashMap<Ty<'tcx>, Ty<'tcx>>,
         }
 
         impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ParamToVarFolder<'a, 'tcx> {

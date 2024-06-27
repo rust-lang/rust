@@ -72,7 +72,7 @@ use crate::prelude::*;
 pub(crate) struct CommentWriter {
     enabled: bool,
     global_comments: Vec<String>,
-    entity_comments: FxHashMap<AnyEntity, String>,
+    entity_comments: GxHashMap<AnyEntity, String>,
 }
 
 impl CommentWriter {
@@ -94,7 +94,7 @@ impl CommentWriter {
             vec![]
         };
 
-        CommentWriter { enabled, global_comments, entity_comments: FxHashMap::default() }
+        CommentWriter { enabled, global_comments, entity_comments: GxHashMap::default() }
     }
 }
 

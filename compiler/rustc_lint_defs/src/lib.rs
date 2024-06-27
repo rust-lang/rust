@@ -1,7 +1,7 @@
 pub use self::Level::*;
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
@@ -769,7 +769,7 @@ pub struct BufferedEarlyLint {
 
 #[derive(Default, Debug)]
 pub struct LintBuffer {
-    pub map: FxIndexMap<NodeId, Vec<BufferedEarlyLint>>,
+    pub map: GxIndexMap<NodeId, Vec<BufferedEarlyLint>>,
 }
 
 impl LintBuffer {
@@ -798,7 +798,7 @@ impl LintBuffer {
     }
 }
 
-pub type RegisteredTools = FxIndexSet<Ident>;
+pub type RegisteredTools = GxIndexSet<Ident>;
 
 /// Declares a static item of type `&'static Lint`.
 ///

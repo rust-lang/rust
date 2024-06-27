@@ -6,7 +6,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -67,7 +67,7 @@ struct RegionResolutionVisitor<'tcx> {
     /// arbitrary amounts of stack space. Terminating scopes end
     /// up being contained in a DestructionScope that contains the
     /// destructor's execution.
-    terminating_scopes: FxHashSet<hir::ItemLocalId>,
+    terminating_scopes: GxHashSet<hir::ItemLocalId>,
 }
 
 /// Records the lifetime of a local variable as `cx.var_parent`

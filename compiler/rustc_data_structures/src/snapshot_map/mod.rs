@@ -1,4 +1,4 @@
-use crate::fx::FxHashMap;
+use crate::gx::GxHashMap;
 use crate::undo_log::{Rollback, Snapshots, UndoLogs, VecLog};
 use std::borrow::{Borrow, BorrowMut};
 use std::hash::Hash;
@@ -10,11 +10,11 @@ pub use crate::undo_log::Snapshot;
 #[cfg(test)]
 mod tests;
 
-pub type SnapshotMapStorage<K, V> = SnapshotMap<K, V, FxHashMap<K, V>, ()>;
-pub type SnapshotMapRef<'a, K, V, L> = SnapshotMap<K, V, &'a mut FxHashMap<K, V>, &'a mut L>;
+pub type SnapshotMapStorage<K, V> = SnapshotMap<K, V, GxHashMap<K, V>, ()>;
+pub type SnapshotMapRef<'a, K, V, L> = SnapshotMap<K, V, &'a mut GxHashMap<K, V>, &'a mut L>;
 
 #[derive(Clone)]
-pub struct SnapshotMap<K, V, M = FxHashMap<K, V>, L = VecLog<UndoLog<K, V>>> {
+pub struct SnapshotMap<K, V, M = GxHashMap<K, V>, L = VecLog<UndoLog<K, V>>> {
     map: M,
     undo_log: L,
     _marker: PhantomData<(K, V)>,
@@ -48,7 +48,7 @@ impl<K, V, M, L> SnapshotMap<K, V, M, L> {
 impl<K, V, M, L> SnapshotMap<K, V, M, L>
 where
     K: Hash + Clone + Eq,
-    M: BorrowMut<FxHashMap<K, V>> + Borrow<FxHashMap<K, V>>,
+    M: BorrowMut<GxHashMap<K, V>> + Borrow<GxHashMap<K, V>>,
     L: UndoLogs<UndoLog<K, V>>,
 {
     pub fn clear(&mut self) {
@@ -105,7 +105,7 @@ where
 impl<'k, K, V, M, L> ops::Index<&'k K> for SnapshotMap<K, V, M, L>
 where
     K: Hash + Clone + Eq,
-    M: Borrow<FxHashMap<K, V>>,
+    M: Borrow<GxHashMap<K, V>>,
 {
     type Output = V;
     fn index(&self, key: &'k K) -> &V {
@@ -123,7 +123,7 @@ where
     }
 }
 
-impl<K, V> Rollback<UndoLog<K, V>> for FxHashMap<K, V>
+impl<K, V> Rollback<UndoLog<K, V>> for GxHashMap<K, V>
 where
     K: Eq + Hash,
 {

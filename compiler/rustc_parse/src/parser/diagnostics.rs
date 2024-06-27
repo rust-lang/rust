@@ -32,7 +32,7 @@ use rustc_ast::{
     PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_errors::{
     pluralize, Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, PErr, PResult,
     Subdiagnostic,
@@ -2412,7 +2412,7 @@ impl<'a> Parser<'a> {
     fn consume_tts(
         &mut self,
         mut acc: i64, // `i64` because malformed code can have more closing delims than opening.
-        // Not using `FxHashMap` due to `token::TokenKind: !Eq + !Hash`.
+        // Not using `GxHashMap` due to `token::TokenKind: !Eq + !Hash`.
         modifier: &[(token::TokenKind, i64)],
     ) {
         while acc > 0 {
@@ -2435,7 +2435,7 @@ impl<'a> Parser<'a> {
     /// the local scope), but if we find the same name multiple times, like in `fn foo(i8, i8)`,
     /// we deduplicate them to not complain about duplicated parameter names.
     pub(super) fn deduplicate_recovered_params_names(&self, fn_inputs: &mut ThinVec<Param>) {
-        let mut seen_inputs = FxHashSet::default();
+        let mut seen_inputs = GxHashSet::default();
         for input in fn_inputs.iter_mut() {
             let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err(_)) =
                 (&input.pat.kind, &input.ty.kind)

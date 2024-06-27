@@ -3,8 +3,8 @@ use std::rc::Rc;
 
 use rustc_data_structures::binary_search_util;
 use rustc_data_structures::frozen::Frozen;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::scc::{self, Sccs};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_errors::Diag;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_index::IndexVec;
@@ -180,7 +180,7 @@ pub struct RegionInferenceContext<'tcx> {
     member_constraints_applied: Vec<AppliedMemberConstraint>,
 
     /// Map universe indexes to information on why we created it.
-    universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
+    universe_causes: GxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     /// The final inferred values of the region variables; we compute
     /// one value per SCC. To get the value for any given *region*,
@@ -340,7 +340,7 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
     debug!("{}", reg_vars_to_origins_str);
 
     let num_components = sccs.num_sccs();
-    let mut components = vec![FxIndexSet::default(); num_components];
+    let mut components = vec![GxIndexSet::default(); num_components];
 
     for (reg_var_idx, scc_idx) in sccs.scc_indices().iter().enumerate() {
         let reg_var = ty::RegionVid::from_usize(reg_var_idx);
@@ -372,9 +372,9 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
 
             (ConstraintSccIndex::from_usize(scc_idx), repr)
         })
-        .collect::<FxIndexMap<_, _>>();
+        .collect::<GxIndexMap<_, _>>();
 
-    let mut scc_node_to_edges = FxIndexMap::default();
+    let mut scc_node_to_edges = GxIndexMap::default();
     for (scc_idx, repr) in components_representatives.iter() {
         let edge_representatives = sccs
             .successors(*scc_idx)
@@ -403,7 +403,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
         outlives_constraints: OutlivesConstraintSet<'tcx>,
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
-        universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
+        universe_causes: GxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
         type_tests: Vec<TypeTest<'tcx>>,
         liveness_constraints: LivenessValues,
         elements: &Rc<DenseLocationMap>,
@@ -932,7 +932,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Sometimes we register equivalent type-tests that would
         // result in basically the exact same error being reported to
         // the user. Avoid that.
-        let mut deduplicate_errors = FxIndexSet::default();
+        let mut deduplicate_errors = GxIndexSet::default();
 
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);

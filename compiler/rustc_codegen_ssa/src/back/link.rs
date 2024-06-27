@@ -1,6 +1,6 @@
 use rustc_arena::TypedArena;
 use rustc_ast::CRATE_NODE_ID;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, FatalError};
@@ -455,7 +455,7 @@ fn collate_raw_dylibs<'a>(
     used_libraries: impl IntoIterator<Item = &'a NativeLib>,
 ) -> Result<Vec<(String, Vec<DllImport>)>, ErrorGuaranteed> {
     // Use index maps to preserve original order of imports and libraries.
-    let mut dylib_table = FxIndexMap::<String, FxIndexMap<Symbol, &DllImport>>::default();
+    let mut dylib_table = GxIndexMap::<String, GxIndexMap<Symbol, &DllImport>>::default();
 
     for lib in used_libraries {
         if lib.kind == NativeLibKind::RawDylib {
@@ -525,9 +525,9 @@ fn link_staticlib(
 
             let native_libs = codegen_results.crate_info.native_libraries[&cnum].iter();
             let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, lib));
-            let relevant_libs: FxIndexSet<_> = relevant.filter_map(|lib| lib.filename).collect();
+            let relevant_libs: GxIndexSet<_> = relevant.filter_map(|lib| lib.filename).collect();
 
-            let bundled_libs: FxIndexSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
+            let bundled_libs: GxIndexSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
             ab.add_archive(
                 path,
                 Box::new(move |fname: &str| {
@@ -2523,7 +2523,7 @@ fn add_native_libs_from_crate(
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
     tmpdir: &Path,
-    bundled_libs: &FxIndexSet<Symbol>,
+    bundled_libs: &GxIndexSet<Symbol>,
     cnum: CrateNum,
     link_static: bool,
     link_dynamic: bool,
@@ -2838,7 +2838,7 @@ fn add_static_crate(
     codegen_results: &CodegenResults,
     tmpdir: &Path,
     cnum: CrateNum,
-    bundled_lib_file_names: &FxIndexSet<Symbol>,
+    bundled_lib_file_names: &GxIndexSet<Symbol>,
 ) {
     let src = &codegen_results.crate_info.used_crate_source[&cnum];
     let cratepath = &src.rlib.as_ref().unwrap().0;

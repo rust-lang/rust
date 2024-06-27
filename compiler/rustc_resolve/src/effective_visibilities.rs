@@ -4,7 +4,7 @@ use rustc_ast::visit;
 use rustc_ast::visit::Visitor;
 use rustc_ast::Crate;
 use rustc_ast::EnumDef;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::middle::privacy::Level;
@@ -73,7 +73,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
     pub(crate) fn compute_effective_visibilities<'c>(
         r: &'r mut Resolver<'a, 'tcx>,
         krate: &'c Crate,
-    ) -> FxHashSet<NameBinding<'a>> {
+    ) -> GxHashSet<NameBinding<'a>> {
         let mut visitor = EffectiveVisibilitiesVisitor {
             r,
             def_effective_visibilities: Default::default(),
@@ -91,7 +91,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
         }
         visitor.r.effective_visibilities = visitor.def_effective_visibilities;
 
-        let mut exported_ambiguities = FxHashSet::default();
+        let mut exported_ambiguities = GxHashSet::default();
 
         // Update visibilities for import def ids. These are not used during the
         // `EffectiveVisibilitiesVisitor` pass, because we have more detailed binding-based

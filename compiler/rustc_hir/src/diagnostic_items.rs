@@ -1,5 +1,5 @@
 use crate::def_id::DefId;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_span::def_id::DefIdMap;
 use rustc_span::Symbol;
@@ -7,7 +7,7 @@ use rustc_span::Symbol;
 #[derive(Debug, Default)]
 pub struct DiagnosticItems {
     pub id_to_name: DefIdMap<Symbol>,
-    pub name_to_id: FxIndexMap<Symbol, DefId>,
+    pub name_to_id: GxIndexMap<Symbol, DefId>,
 }
 
 impl<CTX: crate::HashStableContext> HashStable<CTX> for DiagnosticItems {

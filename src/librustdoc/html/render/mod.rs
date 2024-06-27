@@ -49,7 +49,7 @@ use std::str;
 use askama::Template;
 use rustc_attr::{ConstStability, DeprecatedSince, Deprecation, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
 use rustc_middle::ty::print::PrintTraitRefExt;
@@ -330,25 +330,25 @@ impl Ord for ItemEntry {
 
 #[derive(Debug)]
 struct AllTypes {
-    structs: FxHashSet<ItemEntry>,
-    enums: FxHashSet<ItemEntry>,
-    unions: FxHashSet<ItemEntry>,
-    primitives: FxHashSet<ItemEntry>,
-    traits: FxHashSet<ItemEntry>,
-    macros: FxHashSet<ItemEntry>,
-    functions: FxHashSet<ItemEntry>,
-    type_aliases: FxHashSet<ItemEntry>,
-    opaque_tys: FxHashSet<ItemEntry>,
-    statics: FxHashSet<ItemEntry>,
-    constants: FxHashSet<ItemEntry>,
-    attribute_macros: FxHashSet<ItemEntry>,
-    derive_macros: FxHashSet<ItemEntry>,
-    trait_aliases: FxHashSet<ItemEntry>,
+    structs: GxHashSet<ItemEntry>,
+    enums: GxHashSet<ItemEntry>,
+    unions: GxHashSet<ItemEntry>,
+    primitives: GxHashSet<ItemEntry>,
+    traits: GxHashSet<ItemEntry>,
+    macros: GxHashSet<ItemEntry>,
+    functions: GxHashSet<ItemEntry>,
+    type_aliases: GxHashSet<ItemEntry>,
+    opaque_tys: GxHashSet<ItemEntry>,
+    statics: GxHashSet<ItemEntry>,
+    constants: GxHashSet<ItemEntry>,
+    attribute_macros: GxHashSet<ItemEntry>,
+    derive_macros: GxHashSet<ItemEntry>,
+    trait_aliases: GxHashSet<ItemEntry>,
 }
 
 impl AllTypes {
     fn new() -> AllTypes {
-        let new_set = |cap| FxHashSet::with_capacity_and_hasher(cap, Default::default());
+        let new_set = |cap| GxHashSet::with_capacity_and_hasher(cap, Default::default());
         AllTypes {
             structs: new_set(100),
             enums: new_set(100),
@@ -395,8 +395,8 @@ impl AllTypes {
         }
     }
 
-    fn item_sections(&self) -> FxHashSet<ItemSection> {
-        let mut sections = FxHashSet::default();
+    fn item_sections(&self) -> GxHashSet<ItemSection> {
+        let mut sections = GxHashSet::default();
 
         if !self.structs.is_empty() {
             sections.insert(ItemSection::Structs);
@@ -445,7 +445,7 @@ impl AllTypes {
     }
 
     fn print(self, f: &mut Buffer) {
-        fn print_entries(f: &mut Buffer, e: &FxHashSet<ItemEntry>, kind: ItemSection) {
+        fn print_entries(f: &mut Buffer, e: &GxHashSet<ItemEntry>, kind: ItemSection) {
             if !e.is_empty() {
                 let mut e: Vec<&ItemEntry> = e.iter().collect();
                 e.sort();
@@ -1156,7 +1156,7 @@ fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, cx: &Con
 #[derive(Copy, Clone)]
 enum AssocItemLink<'a> {
     Anchor(Option<&'a str>),
-    GotoSource(ItemId, &'a FxHashSet<Symbol>),
+    GotoSource(ItemId, &'a GxHashSet<Symbol>),
 }
 
 impl<'a> AssocItemLink<'a> {
@@ -1493,7 +1493,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                 for it in &impl_.items {
                     if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
                         out.push_str("<div class=\"where\">    ");
-                        let empty_set = FxHashSet::default();
+                        let empty_set = GxHashSet::default();
                         let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
                         assoc_type(
                             &mut out,
@@ -2299,7 +2299,7 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
 /// picked up the impl
 fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
     let mut out = Vec::new();
-    let mut visited = FxHashSet::default();
+    let mut visited = GxHashSet::default();
     let mut work = VecDeque::new();
 
     let mut process_path = |did: DefId| {
@@ -2475,7 +2475,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
         })()
         .unwrap_or(DUMMY_SP);
 
-        let mut decoration_info = FxHashMap::default();
+        let mut decoration_info = GxHashMap::default();
         decoration_info.insert("highlight focus", vec![byte_ranges.remove(0)]);
         decoration_info.insert("highlight", byte_ranges);
 

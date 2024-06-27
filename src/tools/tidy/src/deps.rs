@@ -281,6 +281,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "getrandom",
     "gimli",
     "gsgdt",
+    "gxhash",
     "hashbrown",
     "hermit-abi",
     "icu_list",
@@ -355,7 +356,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustc_apfloat",
     "rustc_version",
     "rustix",
-    "ruzstd", // via object in thorin-dwp
+    "rustversion", // Dependency of gxhash
+    "ruzstd",      // via object in thorin-dwp
     "ryu",
     "scoped-tls",
     "scopeguard",

@@ -13,7 +13,7 @@ use tracing::trace;
 
 use hir::def::DefKind;
 use rustc_ast::Mutability;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{
@@ -154,17 +154,17 @@ impl CtfeValidationMode {
 
 /// State for tracking recursive validation of references
 pub struct RefTracking<T, PATH = ()> {
-    pub seen: FxHashSet<T>,
+    pub seen: GxHashSet<T>,
     pub todo: Vec<(T, PATH)>,
 }
 
 impl<T: Clone + Eq + Hash + std::fmt::Debug, PATH: Default> RefTracking<T, PATH> {
     pub fn empty() -> Self {
-        RefTracking { seen: FxHashSet::default(), todo: vec![] }
+        RefTracking { seen: GxHashSet::default(), todo: vec![] }
     }
     pub fn new(op: T) -> Self {
         let mut ref_tracking_for_consts =
-            RefTracking { seen: FxHashSet::default(), todo: vec![(op.clone(), PATH::default())] };
+            RefTracking { seen: GxHashSet::default(), todo: vec![(op.clone(), PATH::default())] };
         ref_tracking_for_consts.seen.insert(op);
         ref_tracking_for_consts
     }

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 
 use crate::externalfiles::ExternalHtml;
 use crate::html::format::{Buffer, Print};
@@ -15,7 +15,7 @@ pub(crate) struct Layout {
     pub(crate) logo: String,
     pub(crate) favicon: String,
     pub(crate) external_html: ExternalHtml,
-    pub(crate) default_settings: FxHashMap<String, String>,
+    pub(crate) default_settings: GxHashMap<String, String>,
     pub(crate) krate: String,
     pub(crate) krate_version: String,
     /// The given user css file which allow to customize the generated

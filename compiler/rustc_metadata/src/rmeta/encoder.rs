@@ -2,7 +2,7 @@ use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::*;
 
 use rustc_ast::Attribute;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{join, par_for_each_in, Lrc};
 use rustc_data_structures::temp_dir::MaybeTempDir;
@@ -42,11 +42,11 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     tables: TableBuilders,
 
     lazy_state: LazyState,
-    span_shorthands: FxHashMap<Span, usize>,
-    type_shorthands: FxHashMap<Ty<'tcx>, usize>,
-    predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
+    span_shorthands: GxHashMap<Span, usize>,
+    type_shorthands: GxHashMap<Ty<'tcx>, usize>,
+    predicate_shorthands: GxHashMap<ty::PredicateKind<'tcx>, usize>,
 
-    interpret_allocs: FxIndexSet<interpret::AllocId>,
+    interpret_allocs: GxIndexSet<interpret::AllocId>,
 
     // This is used to speed up Span encoding.
     // The `usize` is an index into the `MonotonicVec`
@@ -55,13 +55,13 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     // The indices (into the `SourceMap`'s `MonotonicVec`)
     // of all of the `SourceFiles` that we need to serialize.
     // When we serialize a `Span`, we insert the index of its
-    // `SourceFile` into the `FxIndexSet`.
-    // The order inside the `FxIndexSet` is used as on-disk
+    // `SourceFile` into the `GxIndexSet`.
+    // The order inside the `GxIndexSet` is used as on-disk
     // order of `SourceFiles`, and encoded inside `Span`s.
-    required_source_files: Option<FxIndexSet<usize>>,
+    required_source_files: Option<GxIndexSet<usize>>,
     is_proc_macro: bool,
     hygiene_ctxt: &'a HygieneEncodeContext,
-    symbol_table: FxHashMap<Symbol, usize>,
+    symbol_table: GxHashMap<Symbol, usize>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -385,11 +385,11 @@ impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
         self.opaque.position()
     }
 
-    fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize> {
+    fn type_shorthands(&mut self) -> &mut GxHashMap<Ty<'tcx>, usize> {
         &mut self.type_shorthands
     }
 
-    fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize> {
+    fn predicate_shorthands(&mut self) -> &mut GxHashMap<ty::PredicateKind<'tcx>, usize> {
         &mut self.predicate_shorthands
     }
 
@@ -1986,8 +1986,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_impls(&mut self) -> LazyArray<TraitImpls> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let mut fx_hash_map: FxHashMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
-            FxHashMap::default();
+        let mut fx_hash_map: GxHashMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
+            GxHashMap::default();
 
         for id in tcx.hir().items() {
             let DefKind::Impl { of_trait } = tcx.def_kind(id.owner_id) else {
@@ -2239,7 +2239,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
 
     let source_map_files = tcx.sess.source_map().files();
     let source_file_cache = (source_map_files[0].clone(), 0);
-    let required_source_files = Some(FxIndexSet::default());
+    let required_source_files = Some(GxIndexSet::default());
     drop(source_map_files);
 
     let hygiene_ctxt = HygieneEncodeContext::default();

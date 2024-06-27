@@ -13,7 +13,7 @@ use crate::query::SerializedDepNodeIndex;
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 use crate::HandleCycleError;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
@@ -32,7 +32,7 @@ use tracing::instrument;
 use super::QueryConfig;
 
 pub struct QueryState<K> {
-    active: Sharded<FxHashMap<K, QueryResult>>,
+    active: Sharded<GxHashMap<K, QueryResult>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.

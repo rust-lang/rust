@@ -25,7 +25,7 @@
 //! // ... something using html
 //! ```
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_errors::{Diag, DiagMessage};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
@@ -647,12 +647,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
 /// references.
 struct Footnotes<'a, I> {
     inner: I,
-    footnotes: FxHashMap<String, (Vec<Event<'a>>, u16)>,
+    footnotes: GxHashMap<String, (Vec<Event<'a>>, u16)>,
 }
 
 impl<'a, I> Footnotes<'a, I> {
     fn new(iter: I) -> Self {
-        Footnotes { inner: iter, footnotes: FxHashMap::default() }
+        Footnotes { inner: iter, footnotes: GxHashMap::default() }
     }
 
     fn get_entry(&mut self, key: &str) -> &mut (Vec<Event<'a>>, u16) {
@@ -1934,14 +1934,14 @@ pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<Rust
 
 #[derive(Clone, Default, Debug)]
 pub struct IdMap {
-    map: FxHashMap<Cow<'static, str>, usize>,
+    map: GxHashMap<Cow<'static, str>, usize>,
 }
 
 // The map is pre-initialized and cloned each time to avoid reinitializing it repeatedly.
-static DEFAULT_ID_MAP: OnceLock<FxHashMap<Cow<'static, str>, usize>> = OnceLock::new();
+static DEFAULT_ID_MAP: OnceLock<GxHashMap<Cow<'static, str>, usize>> = OnceLock::new();
 
-fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
-    let mut map = FxHashMap::default();
+fn init_id_map() -> GxHashMap<Cow<'static, str>, usize> {
+    let mut map = GxHashMap::default();
     // This is the list of IDs used in JavaScript.
     map.insert("help".into(), 1);
     map.insert("settings".into(), 1);

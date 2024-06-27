@@ -1,7 +1,7 @@
 use crate::path_utils::allow_two_phase_borrow;
 use crate::place_ext::PlaceExt;
 use crate::BorrowIndex;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
@@ -18,16 +18,16 @@ pub struct BorrowSet<'tcx> {
     /// by the `Location` of the assignment statement in which it
     /// appears on the right hand side. Thus the location is the map
     /// key, and its position in the map corresponds to `BorrowIndex`.
-    pub location_map: FxIndexMap<Location, BorrowData<'tcx>>,
+    pub location_map: GxIndexMap<Location, BorrowData<'tcx>>,
 
     /// Locations which activate borrows.
     /// NOTE: a given location may activate more than one borrow in the future
     /// when more general two-phase borrow support is introduced, but for now we
     /// only need to store one borrow index.
-    pub activation_map: FxIndexMap<Location, Vec<BorrowIndex>>,
+    pub activation_map: GxIndexMap<Location, Vec<BorrowIndex>>,
 
     /// Map from local to all the borrows on that local.
-    pub local_map: FxIndexMap<mir::Local, FxIndexSet<BorrowIndex>>,
+    pub local_map: GxIndexMap<mir::Local, GxIndexSet<BorrowIndex>>,
 
     pub locals_state_at_exit: LocalsStateAtExit,
 }
@@ -174,9 +174,9 @@ impl<'tcx> BorrowSet<'tcx> {
 struct GatherBorrows<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
-    location_map: FxIndexMap<Location, BorrowData<'tcx>>,
-    activation_map: FxIndexMap<Location, Vec<BorrowIndex>>,
-    local_map: FxIndexMap<mir::Local, FxIndexSet<BorrowIndex>>,
+    location_map: GxIndexMap<Location, BorrowData<'tcx>>,
+    activation_map: GxIndexMap<Location, Vec<BorrowIndex>>,
+    local_map: GxIndexMap<mir::Local, GxIndexSet<BorrowIndex>>,
 
     /// When we encounter a 2-phase borrow statement, it will always
     /// be assigning into a temporary TEMP:
@@ -186,7 +186,7 @@ struct GatherBorrows<'a, 'tcx> {
     /// We add TEMP into this map with `b`, where `b` is the index of
     /// the borrow. When we find a later use of this activation, we
     /// remove from the map (and add to the "tombstone" set below).
-    pending_activations: FxIndexMap<mir::Local, BorrowIndex>,
+    pending_activations: GxIndexMap<mir::Local, BorrowIndex>,
 
     locals_state_at_exit: LocalsStateAtExit,
 }

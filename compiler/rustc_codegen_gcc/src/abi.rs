@@ -2,7 +2,7 @@
 use gccjit::FnAttribute;
 use gccjit::{ToLValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeMethods};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 #[cfg(feature = "master")]
@@ -98,7 +98,7 @@ pub struct FnAbiGcc<'gcc> {
     pub return_type: Type<'gcc>,
     pub arguments_type: Vec<Type<'gcc>>,
     pub is_c_variadic: bool,
-    pub on_stack_param_indices: FxHashSet<usize>,
+    pub on_stack_param_indices: GxHashSet<usize>,
     #[cfg(feature = "master")]
     pub fn_attributes: Vec<FnAttribute<'gcc>>,
 }
@@ -111,7 +111,7 @@ pub trait FnAbiGccExt<'gcc, 'tcx> {
 
 impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> FnAbiGcc<'gcc> {
-        let mut on_stack_param_indices = FxHashSet::default();
+        let mut on_stack_param_indices = GxHashSet::default();
 
         // This capacity calculation is approximate.
         let mut argument_tys = Vec::with_capacity(

@@ -8,7 +8,7 @@ use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeMethods, MiscMethods};
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::base_n::ALPHANUMERIC_ONLY;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{
@@ -33,11 +33,11 @@ pub struct CodegenCx<'gcc, 'tcx> {
 
     // TODO(bjorn3): Can this field be removed?
     pub current_func: RefCell<Option<Function<'gcc>>>,
-    pub normal_function_addresses: RefCell<FxHashSet<RValue<'gcc>>>,
-    pub function_address_names: RefCell<FxHashMap<RValue<'gcc>, String>>,
+    pub normal_function_addresses: RefCell<GxHashSet<RValue<'gcc>>>,
+    pub function_address_names: RefCell<GxHashMap<RValue<'gcc>, String>>,
 
-    pub functions: RefCell<FxHashMap<String, Function<'gcc>>>,
-    pub intrinsics: RefCell<FxHashMap<String, Function<'gcc>>>,
+    pub functions: RefCell<GxHashMap<String, Function<'gcc>>>,
+    pub intrinsics: RefCell<GxHashMap<String, Function<'gcc>>>,
 
     pub tls_model: gccjit::TlsModel,
 
@@ -74,38 +74,38 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub double_type: Type<'gcc>,
 
     pub linkage: Cell<FunctionType>,
-    pub scalar_types: RefCell<FxHashMap<Ty<'tcx>, Type<'gcc>>>,
-    pub types: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), Type<'gcc>>>,
+    pub scalar_types: RefCell<GxHashMap<Ty<'tcx>, Type<'gcc>>>,
+    pub types: RefCell<GxHashMap<(Ty<'tcx>, Option<VariantIdx>), Type<'gcc>>>,
     pub tcx: TyCtxt<'tcx>,
 
-    pub struct_types: RefCell<FxHashMap<Vec<Type<'gcc>>, Type<'gcc>>>,
+    pub struct_types: RefCell<GxHashMap<Vec<Type<'gcc>>, Type<'gcc>>>,
 
     /// Cache instances of monomorphic and polymorphic items
-    pub instances: RefCell<FxHashMap<Instance<'tcx>, LValue<'gcc>>>,
+    pub instances: RefCell<GxHashMap<Instance<'tcx>, LValue<'gcc>>>,
     /// Cache function instances of monomorphic and polymorphic items
-    pub function_instances: RefCell<FxHashMap<Instance<'tcx>, Function<'gcc>>>,
+    pub function_instances: RefCell<GxHashMap<Instance<'tcx>, Function<'gcc>>>,
     /// Cache generated vtables
     pub vtables:
-        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
+        RefCell<GxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
     // TODO(antoyo): improve the SSA API to not require those.
     /// Mapping from function pointer type to indexes of on stack parameters.
-    pub on_stack_params: RefCell<FxHashMap<FunctionPtrType<'gcc>, FxHashSet<usize>>>,
+    pub on_stack_params: RefCell<GxHashMap<FunctionPtrType<'gcc>, GxHashSet<usize>>>,
     /// Mapping from function to indexes of on stack parameters.
-    pub on_stack_function_params: RefCell<FxHashMap<Function<'gcc>, FxHashSet<usize>>>,
+    pub on_stack_function_params: RefCell<GxHashMap<Function<'gcc>, GxHashSet<usize>>>,
 
     /// Cache of emitted const globals (value -> global)
-    pub const_globals: RefCell<FxHashMap<RValue<'gcc>, RValue<'gcc>>>,
+    pub const_globals: RefCell<GxHashMap<RValue<'gcc>, RValue<'gcc>>>,
 
     /// Map from the address of a global variable (rvalue) to the global variable itself (lvalue).
     /// TODO(antoyo): remove when the rustc API is fixed.
-    pub global_lvalues: RefCell<FxHashMap<RValue<'gcc>, LValue<'gcc>>>,
+    pub global_lvalues: RefCell<GxHashMap<RValue<'gcc>, LValue<'gcc>>>,
 
     /// Cache of constant strings,
-    pub const_str_cache: RefCell<FxHashMap<String, LValue<'gcc>>>,
+    pub const_str_cache: RefCell<GxHashMap<String, LValue<'gcc>>>,
 
     /// Cache of globals.
-    pub globals: RefCell<FxHashMap<String, RValue<'gcc>>>,
+    pub globals: RefCell<GxHashMap<String, RValue<'gcc>>>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
@@ -114,17 +114,17 @@ pub struct CodegenCx<'gcc, 'tcx> {
     #[cfg(feature="master")]
     pub rust_try_fn: Cell<Option<(Type<'gcc>, Function<'gcc>)>>,
 
-    pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
+    pub pointee_infos: RefCell<GxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
 
     /// NOTE: a hack is used because the rustc API is not suitable to libgccjit and as such,
     /// `const_undef()` returns struct as pointer so that they can later be assigned a value.
     /// As such, this set remembers which of these pointers were returned by this function so that
     /// they can be dereferenced later.
     /// FIXME(antoyo): fix the rustc API to avoid having this hack.
-    pub structs_as_pointer: RefCell<FxHashSet<RValue<'gcc>>>,
+    pub structs_as_pointer: RefCell<GxHashSet<RValue<'gcc>>>,
 
     #[cfg(feature="master")]
-    pub cleanup_blocks: RefCell<FxHashSet<Block<'gcc>>>,
+    pub cleanup_blocks: RefCell<GxHashSet<Block<'gcc>>>,
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -203,7 +203,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let isize_type = usize_type;
         let bool_type = context.new_type::<bool>();
 
-        let mut functions = FxHashMap::default();
+        let mut functions = GxHashMap::default();
         let builtins = [
             "__builtin_unreachable",
             "abort",
@@ -278,7 +278,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             normal_function_addresses: Default::default(),
             function_address_names: Default::default(),
             functions: RefCell::new(functions),
-            intrinsics: RefCell::new(FxHashMap::default()),
+            intrinsics: RefCell::new(GxHashMap::default()),
 
             tls_model,
 
@@ -421,7 +421,7 @@ impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn vtables(
         &self,
-    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>> {
+    ) -> &RefCell<GxHashMap<(Ty<'tcx>, Option<PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>> {
         &self.vtables
     }
 

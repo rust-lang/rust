@@ -20,7 +20,7 @@ use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{
     self, coherence, FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt,
 };
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_errors::{codes::*, Diag, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
@@ -40,7 +40,7 @@ pub struct OverlapError<'tcx> {
     pub with_impl: DefId,
     pub trait_ref: ty::TraitRef<'tcx>,
     pub self_ty: Option<Ty<'tcx>>,
-    pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
+    pub intercrate_ambiguity_causes: GxIndexSet<IntercrateAmbiguityCause<'tcx>>,
     pub involves_placeholder: bool,
     pub overflowing_predicates: Vec<ty::Predicate<'tcx>>,
 }
@@ -498,7 +498,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
 
     // FIXME: Currently only handles ?Sized.
     //        Needs to support ?Move and ?DynSized when they are implemented.
-    let mut types_without_default_bounds = FxIndexSet::default();
+    let mut types_without_default_bounds = GxIndexSet::default();
     let sized_trait = tcx.lang_items().sized_trait();
 
     let arg_names = args.iter().map(|k| k.to_string()).filter(|k| k != "'_").collect::<Vec<_>>();

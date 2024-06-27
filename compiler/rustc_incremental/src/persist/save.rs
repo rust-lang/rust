@@ -1,6 +1,6 @@
 use crate::assert_dep_graph::assert_dep_graph;
 use crate::errors;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::sync::join;
 use rustc_middle::dep_graph::{
     DepGraph, SerializedDepGraph, WorkProduct, WorkProductId, WorkProductMap,
@@ -83,7 +83,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
 pub fn save_work_product_index(
     sess: &Session,
     dep_graph: &DepGraph,
-    new_work_products: FxIndexMap<WorkProductId, WorkProduct>,
+    new_work_products: GxIndexMap<WorkProductId, WorkProduct>,
 ) {
     if sess.opts.incremental.is_none() {
         return;
@@ -123,7 +123,7 @@ pub fn save_work_product_index(
 }
 
 fn encode_work_product_index(
-    work_products: &FxIndexMap<WorkProductId, WorkProduct>,
+    work_products: &GxIndexMap<WorkProductId, WorkProduct>,
     encoder: &mut FileEncoder,
 ) {
     let serialized_products: Vec<_> = work_products

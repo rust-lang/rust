@@ -4,7 +4,7 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_errors::Diag;
 use rustc_middle::ty::RegionVid;
 use smallvec::SmallVec;
@@ -90,7 +90,7 @@ impl OutlivesSuggestionBuilder {
 
         // Keep track of variables that we have already suggested unifying so that we don't print
         // out silly duplicate messages.
-        let mut unified_already = FxIndexSet::default();
+        let mut unified_already = GxIndexSet::default();
 
         for (fr, outlived) in &self.constraints_to_add {
             let Some(fr_name) = self.region_vid_to_name(mbcx, *fr) else {

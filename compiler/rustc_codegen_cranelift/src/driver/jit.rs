@@ -108,7 +108,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         .iter()
         .map(|cgu| cgu.items_in_deterministic_order(tcx).into_iter())
         .flatten()
-        .collect::<FxHashMap<_, _>>()
+        .collect::<GxHashMap<_, _>>()
         .into_iter()
         .collect::<Vec<(_, _)>>();
 

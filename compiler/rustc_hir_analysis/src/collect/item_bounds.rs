@@ -1,6 +1,6 @@
 use super::ItemCtxt;
 use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter};
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::GenericArgs;
@@ -187,8 +187,8 @@ pub(super) fn item_non_self_assumptions(
     tcx: TyCtxt<'_>,
     def_id: DefId,
 ) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {
-    let all_bounds: FxIndexSet<_> = tcx.item_bounds(def_id).skip_binder().iter().collect();
-    let own_bounds: FxIndexSet<_> =
+    let all_bounds: GxIndexSet<_> = tcx.item_bounds(def_id).skip_binder().iter().collect();
+    let own_bounds: GxIndexSet<_> =
         tcx.item_super_predicates(def_id).skip_binder().iter().collect();
     if all_bounds.len() == own_bounds.len() {
         ty::EarlyBinder::bind(ty::ListWithCachedTypeInfo::empty())

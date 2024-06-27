@@ -27,7 +27,7 @@ use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
 use crate::traits::Unimplemented;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxHashSet, GxIndexMap, GxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir as hir;
@@ -138,7 +138,7 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// We don't do his until we detect a coherence error because it can
     /// lead to false overflow results (#47139) and because always
     /// computing it may negatively impact performance.
-    intercrate_ambiguity_causes: Option<FxIndexSet<IntercrateAmbiguityCause<'tcx>>>,
+    intercrate_ambiguity_causes: Option<GxIndexSet<IntercrateAmbiguityCause<'tcx>>>,
 
     /// The mode that trait queries run in, which informs our error handling
     /// policy. In essence, canonicalized queries need their errors propagated
@@ -247,7 +247,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn enable_tracking_intercrate_ambiguity_causes(&mut self) {
         assert!(self.is_intercrate());
         assert!(self.intercrate_ambiguity_causes.is_none());
-        self.intercrate_ambiguity_causes = Some(FxIndexSet::default());
+        self.intercrate_ambiguity_causes = Some(GxIndexSet::default());
         debug!("selcx: enable_tracking_intercrate_ambiguity_causes");
     }
 
@@ -256,7 +256,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// tracking is not enabled, just returns an empty vector.
     pub fn take_intercrate_ambiguity_causes(
         &mut self,
-    ) -> FxIndexSet<IntercrateAmbiguityCause<'tcx>> {
+    ) -> GxIndexSet<IntercrateAmbiguityCause<'tcx>> {
         assert!(self.is_intercrate());
         self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
@@ -2593,7 +2593,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // We may upcast to auto traits that are either explicitly listed in
         // the object type's bounds, or implied by the principal trait ref's
         // supertraits.
-        let a_auto_traits: FxIndexSet<DefId> = a_data
+        let a_auto_traits: GxIndexSet<DefId> = a_data
             .auto_traits()
             .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
                 tcx.supertrait_def_ids(principal_def_id).filter(|def_id| tcx.trait_is_auto(*def_id))
@@ -2938,7 +2938,7 @@ struct ProvisionalEvaluationCache<'tcx> {
     /// - then we determine that `E` is in error -- we will then clear
     ///   all cache values whose DFN is >= 4 -- in this case, that
     ///   means the cached value for `F`.
-    map: RefCell<FxIndexMap<ty::PolyTraitPredicate<'tcx>, ProvisionalEvaluation>>,
+    map: RefCell<GxIndexMap<ty::PolyTraitPredicate<'tcx>, ProvisionalEvaluation>>,
 
     /// The stack of args that we assume to be true because a `WF(arg)` predicate
     /// is on the stack above (and because of wellformedness is coinductive).
@@ -3154,7 +3154,7 @@ fn bind_coroutine_hidden_types_above<'tcx>(
     bound_vars: &ty::List<ty::BoundVariableKind>,
 ) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
     let tcx = infcx.tcx;
-    let mut seen_tys = FxHashSet::default();
+    let mut seen_tys = GxHashSet::default();
 
     let considering_regions = infcx.considering_regions;
 

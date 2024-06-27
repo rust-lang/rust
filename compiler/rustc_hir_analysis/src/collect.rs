@@ -16,7 +16,7 @@
 
 use rustc_ast::Recovered;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::gx::{GxHashSet, GxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{struct_span_code_err, Applicability, Diag, ErrorGuaranteed, StashKey, E0228};
 use rustc_hir::def::DefKind;
@@ -620,7 +620,7 @@ fn get_new_lifetime_name<'tcx>(
                 None
             }
         }))
-        .collect::<FxHashSet<String>>();
+        .collect::<GxHashSet<String>>();
 
     let a_to_z_repeat_n = |n| {
         (b'a'..=b'z').map(move |c| {
@@ -929,12 +929,12 @@ impl From<NestedSpan> for FieldDeclSpan {
 
 struct FieldUniquenessCheckContext<'tcx> {
     tcx: TyCtxt<'tcx>,
-    seen_fields: FxIndexMap<Ident, FieldDeclSpan>,
+    seen_fields: GxIndexMap<Ident, FieldDeclSpan>,
 }
 
 impl<'tcx> FieldUniquenessCheckContext<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> Self {
-        Self { tcx, seen_fields: FxIndexMap::default() }
+        Self { tcx, seen_fields: GxIndexMap::default() }
     }
 
     /// Check if a given field `ident` declared at `field_decl` has been declared elsewhere before.

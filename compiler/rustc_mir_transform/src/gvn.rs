@@ -85,8 +85,8 @@
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{intern_const_alloc_for_constprop, MemPlaceMeta, MemoryKind};
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable, Scalar};
-use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_index::newtype_index;
@@ -248,7 +248,7 @@ struct VnState<'body, 'tcx> {
     // This vector does not hold all the values of `VnIndex` that we create.
     // It stops at the largest value created in the first phase of collecting assignments.
     rev_locals: IndexVec<VnIndex, SmallVec<[Local; 1]>>,
-    values: FxIndexSet<Value<'tcx>>,
+    values: GxIndexSet<Value<'tcx>>,
     /// Values evaluated as constants if possible.
     evaluated: IndexVec<VnIndex, Option<OpTy<'tcx>>>,
     /// Counter to generate different values.
@@ -276,7 +276,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             local_decls,
             locals: IndexVec::from_elem(None, local_decls),
             rev_locals: IndexVec::default(),
-            values: FxIndexSet::default(),
+            values: GxIndexSet::default(),
             evaluated: IndexVec::new(),
             next_opaque: Some(0),
             feature_unsized_locals: tcx.features().unsized_locals,

@@ -96,7 +96,7 @@ use rustc_codegen_ssa::traits::{
     CodegenBackend, ExtraBackendMethods, ThinBufferMethods, WriteBackendMethods,
 };
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_metadata::EncodedMetadata;
@@ -240,7 +240,7 @@ impl CodegenBackend for GccCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         _outputs: &OutputFilenames,
-    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+    ) -> (CodegenResults, GxIndexMap<WorkProductId, WorkProduct>) {
         ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")

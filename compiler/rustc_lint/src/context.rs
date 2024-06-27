@@ -18,7 +18,7 @@ use self::TargetLint::*;
 
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
@@ -74,7 +74,7 @@ pub struct LintStore {
     by_name: UnordMap<String, TargetLint>,
 
     /// Map of registered lint groups to what lints they expand to.
-    lint_groups: FxIndexMap<&'static str, LintGroup>,
+    lint_groups: GxIndexMap<&'static str, LintGroup>,
 }
 
 impl LintStoreMarker for LintStore {}

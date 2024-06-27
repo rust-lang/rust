@@ -1,6 +1,6 @@
 //! Check whether a type has (potentially) non-trivial drop glue.
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
@@ -87,7 +87,7 @@ struct NeedsDropTypes<'tcx, F> {
     // to `false` unless we compute `needs_drop` for a coroutine witness.
     reveal_coroutine_witnesses: bool,
     query_ty: Ty<'tcx>,
-    seen_tys: FxHashSet<Ty<'tcx>>,
+    seen_tys: GxHashSet<Ty<'tcx>>,
     /// A stack of types left to process, and the recursion depth when we
     /// pushed that type. Each round, we pop something from the stack and check
     /// if it needs drop. If the result depends on whether some other types
@@ -104,7 +104,7 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
         ty: Ty<'tcx>,
         adt_components: F,
     ) -> Self {
-        let mut seen_tys = FxHashSet::default();
+        let mut seen_tys = GxHashSet::default();
         seen_tys.insert(ty);
         Self {
             tcx,
