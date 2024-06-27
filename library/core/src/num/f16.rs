@@ -13,6 +13,7 @@
 
 use crate::convert::FloatToInt;
 use crate::mem;
+use crate::num::FpCategory;
 
 /// Basic mathematical constants.
 #[unstable(feature = "f16", issue = "116909")]
@@ -244,7 +245,13 @@ impl f16 {
 
     /// Sign bit
     #[cfg(not(bootstrap))]
-    const SIGN_MASK: u16 = 0x8000;
+    pub(crate) const SIGN_MASK: u16 = 0x8000;
+
+    /// Exponent mask
+    pub(crate) const EXP_MASK: u16 = 0x7c00;
+
+    /// Mantissa mask
+    pub(crate) const MAN_MASK: u16 = 0x03ff;
 
     /// Minimum representable positive value (min subnormal)
     #[cfg(not(bootstrap))]
@@ -342,6 +349,159 @@ impl f16 {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
         self.abs_private() < Self::INFINITY
+    }
+
+    /// Returns `true` if the number is [subnormal].
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// let min = f16::MIN_POSITIVE; // 6.1035e-5
+    /// let max = f16::MAX;
+    /// let lower_than_min = 1.0e-7_f16;
+    /// let zero = 0.0_f16;
+    ///
+    /// assert!(!min.is_subnormal());
+    /// assert!(!max.is_subnormal());
+    ///
+    /// assert!(!zero.is_subnormal());
+    /// assert!(!f16::NAN.is_subnormal());
+    /// assert!(!f16::INFINITY.is_subnormal());
+    /// // Values between `0` and `min` are Subnormal.
+    /// assert!(lower_than_min.is_subnormal());
+    /// # }
+    /// ```
+    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    #[inline]
+    #[must_use]
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    pub const fn is_subnormal(self) -> bool {
+        matches!(self.classify(), FpCategory::Subnormal)
+    }
+
+    /// Returns `true` if the number is neither zero, infinite, [subnormal], or NaN.
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// let min = f16::MIN_POSITIVE; // 6.1035e-5
+    /// let max = f16::MAX;
+    /// let lower_than_min = 1.0e-7_f16;
+    /// let zero = 0.0_f16;
+    ///
+    /// assert!(min.is_normal());
+    /// assert!(max.is_normal());
+    ///
+    /// assert!(!zero.is_normal());
+    /// assert!(!f16::NAN.is_normal());
+    /// assert!(!f16::INFINITY.is_normal());
+    /// // Values between `0` and `min` are Subnormal.
+    /// assert!(!lower_than_min.is_normal());
+    /// # }
+    /// ```
+    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    #[inline]
+    #[must_use]
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    pub const fn is_normal(self) -> bool {
+        matches!(self.classify(), FpCategory::Normal)
+    }
+
+    /// Returns the floating point category of the number. If only one property
+    /// is going to be tested, it is generally faster to use the specific
+    /// predicate instead.
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// use std::num::FpCategory;
+    ///
+    /// let num = 12.4_f16;
+    /// let inf = f16::INFINITY;
+    ///
+    /// assert_eq!(num.classify(), FpCategory::Normal);
+    /// assert_eq!(inf.classify(), FpCategory::Infinite);
+    /// # }
+    /// ```
+    #[inline]
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    pub const fn classify(self) -> FpCategory {
+        // A previous implementation for f32/f64 tried to only use bitmask-based checks,
+        // using `to_bits` to transmute the float to its bit repr and match on that.
+        // Unfortunately, floating point numbers can be much worse than that.
+        // This also needs to not result in recursive evaluations of `to_bits`.
+        //
+
+        // Platforms without native support generally convert to `f32` to perform operations,
+        // and most of these platforms correctly round back to `f16` after each operation.
+        // However, some platforms have bugs where they keep the excess `f32` precision (e.g.
+        // WASM, see llvm/llvm-project#96437). This implementation makes a best-effort attempt
+        // to account for that excess precision.
+        if self.is_infinite() {
+            // Thus, a value may compare unequal to infinity, despite having a "full" exponent mask.
+            FpCategory::Infinite
+        } else if self.is_nan() {
+            // And it may not be NaN, as it can simply be an "overextended" finite value.
+            FpCategory::Nan
+        } else {
+            // However, std can't simply compare to zero to check for zero, either,
+            // as correctness requires avoiding equality tests that may be Subnormal == -0.0
+            // because it may be wrong under "denormals are zero" and "flush to zero" modes.
+            // Most of std's targets don't use those, but they are used for thumbv7neon.
+            // So, this does use bitpattern matching for the rest.
+
+            // SAFETY: f16 to u16 is fine. Usually.
+            // If classify has gotten this far, the value is definitely in one of these categories.
+            unsafe { f16::partial_classify(self) }
+        }
+    }
+
+    /// This doesn't actually return a right answer for NaN on purpose,
+    /// seeing as how it cannot correctly discern between a floating point NaN,
+    /// and some normal floating point numbers truncated from an x87 FPU.
+    ///
+    /// # Safety
+    ///
+    /// This requires making sure you call this function for values it answers correctly on,
+    /// otherwise it returns a wrong answer. This is not important for memory safety per se,
+    /// but getting floats correct is important for not accidentally leaking const eval
+    /// runtime-deviating logic which may or may not be acceptable.
+    #[inline]
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    const unsafe fn partial_classify(self) -> FpCategory {
+        // SAFETY: The caller is not asking questions for which this will tell lies.
+        let b = unsafe { mem::transmute::<f16, u16>(self) };
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
+            (0, 0) => FpCategory::Zero,
+            (_, 0) => FpCategory::Subnormal,
+            _ => FpCategory::Normal,
+        }
+    }
+
+    /// This operates on bits, and only bits, so it can ignore concerns about weird FPUs.
+    /// FIXME(jubilee): In a just world, this would be the entire impl for classify,
+    /// plus a transmute. We do not live in a just world, but we can make it more so.
+    #[inline]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    const fn classify_bits(b: u16) -> FpCategory {
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
+            (_, Self::EXP_MASK) => FpCategory::Nan,
+            (0, 0) => FpCategory::Zero,
+            (_, 0) => FpCategory::Subnormal,
+            _ => FpCategory::Normal,
+        }
     }
 
     /// Returns `true` if `self` has a positive sign, including `+0.0`, NaNs with
