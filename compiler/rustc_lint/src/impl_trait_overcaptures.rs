@@ -11,7 +11,7 @@ use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 
 use crate::fluent_generated as fluent;
 use crate::{LateContext, LateLintPass};
@@ -57,7 +57,7 @@ declare_lint! {
     pub IMPL_TRAIT_OVERCAPTURES,
     Allow,
     "`impl Trait` will capture more lifetimes than possibly intended in edition 2024",
-    @feature_gate = sym::precise_capturing;
+    @feature_gate = precise_capturing;
     //@future_incompatible = FutureIncompatibleInfo {
     //    reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
     //    reference: "<FIXME>",
@@ -91,7 +91,7 @@ declare_lint! {
     pub IMPL_TRAIT_REDUNDANT_CAPTURES,
     Warn,
     "redundant precise-capturing `use<...>` syntax on an `impl Trait`",
-    @feature_gate = sym::precise_capturing;
+    @feature_gate = precise_capturing;
 }
 
 declare_lint_pass!(
