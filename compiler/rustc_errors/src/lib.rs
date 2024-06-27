@@ -418,6 +418,8 @@ pub struct DiagCtxt {
 #[derive(Copy, Clone)]
 pub struct DiagCtxtHandle<'a> {
     dcx: &'a DiagCtxt,
+    /// Some contexts create `DiagCtxtHandle` with this field set, and thus all
+    /// errors emitted with it will automatically taint when emitting errors.
     tainted_with_errors: Option<&'a Cell<Option<ErrorGuaranteed>>>,
 }
 
@@ -757,6 +759,9 @@ impl DiagCtxt {
         DiagCtxtHandle { dcx: self, tainted_with_errors: None }
     }
 
+    /// Link this to a taintable context so that emitting errors will automatically set
+    /// the `Option<ErrorGuaranteed>` instead of having to do that manually at every error
+    /// emission site.
     pub fn taintable_handle<'a>(
         &'a self,
         tainted_with_errors: &'a Cell<Option<ErrorGuaranteed>>,
