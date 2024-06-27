@@ -23,7 +23,6 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{sym, Span, SpanDecoder, SpanEncoder, Symbol, DUMMY_SP};
-use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
 use std::{cmp, fmt, iter};
@@ -186,20 +185,19 @@ impl AttrTokenStream {
     /// If there are inner attributes, they are inserted into the proper
     /// place in the attribute target tokens.
     pub fn to_token_trees(&self) -> Vec<TokenTree> {
-        self.0
-            .iter()
-            .flat_map(|tree| match &tree {
+        let mut res = Vec::with_capacity(self.0.len());
+        for tree in self.0.iter() {
+            match tree {
                 AttrTokenTree::Token(inner, spacing) => {
-                    smallvec![TokenTree::Token(inner.clone(), *spacing)].into_iter()
+                    res.push(TokenTree::Token(inner.clone(), *spacing));
                 }
                 AttrTokenTree::Delimited(span, spacing, delim, stream) => {
-                    smallvec![TokenTree::Delimited(
+                    res.push(TokenTree::Delimited(
                         *span,
                         *spacing,
                         *delim,
-                        TokenStream::new(stream.to_token_trees())
-                    ),]
-                    .into_iter()
+                        TokenStream::new(stream.to_token_trees()),
+                    ))
                 }
                 AttrTokenTree::Attributes(data) => {
                     let idx = data
@@ -243,16 +241,14 @@ impl AttrTokenStream {
                             "Failed to find trailing delimited group in: {target_tokens:?}"
                         );
                     }
-                    let mut flat: SmallVec<[_; 1]> =
-                        SmallVec::with_capacity(target_tokens.len() + outer_attrs.len());
                     for attr in outer_attrs {
-                        flat.extend(attr.tokens().0.iter().cloned());
+                        res.extend(attr.tokens().0.iter().cloned());
                     }
-                    flat.extend(target_tokens);
-                    flat.into_iter()
+                    res.extend(target_tokens);
                 }
-            })
-            .collect()
+            }
+        }
+        res
     }
 }
 
