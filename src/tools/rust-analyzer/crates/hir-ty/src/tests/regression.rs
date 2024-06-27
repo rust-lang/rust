@@ -1999,3 +1999,22 @@ where
 "#,
     );
 }
+
+#[test]
+fn tait_async_stack_overflow_17199() {
+    check_types(
+        r#"
+    //- minicore: fmt, future
+    type Foo = impl core::fmt::Debug;
+
+    async fn foo() -> Foo {
+        ()
+    }
+
+    async fn test() {
+        let t = foo().await;
+         // ^ impl Debug
+    }
+"#,
+    );
+}
