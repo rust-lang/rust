@@ -3028,3 +3028,12 @@ pub struct UnsafeAttrOutsideUnsafeSuggestion {
     #[suggestion_part(code = ")")]
     pub right: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_binder_before_modifiers)]
+pub struct BinderBeforeModifiers {
+    #[primary_span]
+    pub binder_span: Span,
+    #[label]
+    pub modifiers_span: Span,
+}

@@ -1,4 +1,4 @@
 fn f<T: ?for<'a> Sized>() {}
-//~^ ERROR expected a trait, found type
+//~^ ERROR `for<...>` binder should be placed before trait bound modifiers
 
 fn main() {}

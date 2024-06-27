@@ -989,13 +989,21 @@ impl<'a> Parser<'a> {
         leading_token: &Token,
     ) -> PResult<'a, GenericBound> {
         let (mut lifetime_defs, binder_span) = self.parse_late_bound_lifetime_defs()?;
+
+        let modifiers_lo = self.token.span;
         let modifiers = self.parse_trait_bound_modifiers()?;
+        let modifiers_span = modifiers_lo.to(self.prev_token.span);
 
         // Recover erroneous lifetime bound with modifiers or binder.
         // e.g. `T: for<'a> 'a` or `T: ~const 'a`.
         if self.token.is_lifetime() {
             let _: ErrorGuaranteed = self.error_lt_bound_with_modifiers(modifiers, binder_span);
             return self.parse_generic_lt_bound(lo, has_parens);
+        }
+
+        if let (more_lifetime_defs, Some(binder_span)) = self.parse_late_bound_lifetime_defs()? {
+            lifetime_defs.extend(more_lifetime_defs);
+            self.dcx().emit_err(errors::BinderBeforeModifiers { binder_span, modifiers_span });
         }
 
         let mut path = if self.token.is_keyword(kw::Fn)
