@@ -189,6 +189,7 @@ lint_check_name_unknown_tool = unknown lint tool: `{$tool_name}`
 
 lint_closure_returning_async_block = closure returning async block can be made into an async closure
     .label = this async block can be removed, and the closure can be turned into an async closure
+    .suggestion = turn this into an async closure
 
 lint_command_line_source = `forbid` lint level was set on command line
 

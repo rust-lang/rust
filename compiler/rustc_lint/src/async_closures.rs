@@ -1,5 +1,5 @@
 use rustc_hir as hir;
-use rustc_macros::LintDiagnostic;
+use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
 
@@ -93,11 +93,19 @@ impl<'tcx> LateLintPass<'tcx> for AsyncClosureUsage {
             return;
         };
 
+        let deletion_span = cx.tcx.sess.source_map().span_extend_while_whitespace(async_decl_span);
+
         cx.tcx.emit_node_span_lint(
             CLOSURE_RETURNING_ASYNC_BLOCK,
             expr.hir_id,
             fn_decl_span,
-            ClosureReturningAsyncBlock { async_decl_span },
+            ClosureReturningAsyncBlock {
+                async_decl_span,
+                sugg: AsyncClosureSugg {
+                    deletion_span,
+                    insertion_span: fn_decl_span.shrink_to_lo(),
+                },
+            },
         );
     }
 }
@@ -107,4 +115,15 @@ impl<'tcx> LateLintPass<'tcx> for AsyncClosureUsage {
 struct ClosureReturningAsyncBlock {
     #[label]
     async_decl_span: Span,
+    #[subdiagnostic]
+    sugg: AsyncClosureSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_suggestion, applicability = "maybe-incorrect")]
+struct AsyncClosureSugg {
+    #[suggestion_part(code = "")]
+    deletion_span: Span,
+    #[suggestion_part(code = "async ")]
+    insertion_span: Span,
 }
