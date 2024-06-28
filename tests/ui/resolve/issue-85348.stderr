@@ -7,7 +7,7 @@ LL | impl<const N: usize> ArrayWindowsExample {
 LL |         let mut N;
    |                 ^ cannot be named the same as a const parameter
 
-error[E0412]: cannot find type `ArrayWindowsExample`
+error[E0412]: cannot find type `ArrayWindowsExample` in this scope
   --> $DIR/issue-85348.rs:3:22
    |
 LL | impl<const N: usize> ArrayWindowsExample {

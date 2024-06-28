@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `transmute`
+error[E0425]: cannot find function `transmute` in this scope
   --> $DIR/filter-intrinsics.rs:3:13
    |
 LL |     let _ = transmute::<usize>();
@@ -9,7 +9,7 @@ help: consider importing this function
 LL + use std::mem::transmute;
    |
 
-error[E0425]: cannot find function `fabsf64`
+error[E0425]: cannot find function `fabsf64` in this scope
   --> $DIR/filter-intrinsics.rs:8:13
    |
 LL |     let _ = fabsf64(1.0);

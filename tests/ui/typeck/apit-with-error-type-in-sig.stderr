@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Bar`
+error[E0412]: cannot find type `Bar` in this scope
   --> $DIR/apit-with-error-type-in-sig.rs:1:12
    |
 LL | type Foo = Bar;

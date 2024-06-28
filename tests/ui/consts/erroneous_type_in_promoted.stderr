@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Sum`
+error[E0412]: cannot find type `Sum` in this scope
   --> $DIR/erroneous_type_in_promoted.rs:6:22
    |
 LL |     UnusedByTheConst(Sum),

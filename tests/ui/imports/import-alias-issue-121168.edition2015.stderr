@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Foo`
+error[E0412]: cannot find type `Foo` in this scope
   --> $DIR/import-alias-issue-121168.rs:11:12
    |
 LL |     let _: Foo<i32> = todo!();

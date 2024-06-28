@@ -6,13 +6,13 @@ LL |         fn bar() { log(debug, x); }
    |
    = help: use the `|| { ... }` closure form instead
 
-error[E0425]: cannot find value `debug`
+error[E0425]: cannot find value `debug` in this scope
   --> $DIR/bad-env-capture3.rs:4:24
    |
 LL |         fn bar() { log(debug, x); }
    |                        ^^^^^ not found in this scope
 
-error[E0425]: cannot find function `log`
+error[E0425]: cannot find function `log` in this scope
   --> $DIR/bad-env-capture3.rs:4:20
    |
 LL |         fn bar() { log(debug, x); }

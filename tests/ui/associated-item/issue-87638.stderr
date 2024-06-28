@@ -1,4 +1,4 @@
-error[E0576]: cannot find associated type `Output`
+error[E0576]: cannot find associated type `Output` in trait `Trait`
   --> $DIR/issue-87638.rs:17:26
    |
 LL |     type Target;
@@ -10,7 +10,7 @@ LL |     let _: <S as Trait>::Output;
    |                          not found in trait `Trait`
    |                          help: maybe you meant this associated type: `Target`
 
-error[E0576]: cannot find method or associated constant `BAR`
+error[E0576]: cannot find method or associated constant `BAR` in trait `Trait`
   --> $DIR/issue-87638.rs:20:27
    |
 LL |     const FOO: usize;

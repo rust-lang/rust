@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `bar`
+error[E0425]: cannot find function `bar` in module `a`
   --> $DIR/macro-outer-attributes.rs:18:8
    |
 LL |     a::bar();

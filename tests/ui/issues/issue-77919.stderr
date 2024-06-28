@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `PhantomData`
+error[E0412]: cannot find type `PhantomData` in this scope
   --> $DIR/issue-77919.rs:9:9
    |
 LL |     _n: PhantomData,
@@ -9,7 +9,7 @@ help: consider importing this struct
 LL + use std::marker::PhantomData;
    |
 
-error[E0412]: cannot find type `VAL`
+error[E0412]: cannot find type `VAL` in this scope
   --> $DIR/issue-77919.rs:11:63
    |
 LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}

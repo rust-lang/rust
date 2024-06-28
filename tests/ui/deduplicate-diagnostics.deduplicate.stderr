@@ -4,7 +4,7 @@ error[E0452]: malformed lint attribute input
 LL | #[deny("literal")]
    |        ^^^^^^^^^ bad attribute argument
 
-error: cannot find derive macro `Unresolved`
+error: cannot find derive macro `Unresolved` in this scope
   --> $DIR/deduplicate-diagnostics.rs:4:10
    |
 LL | #[derive(Unresolved)]

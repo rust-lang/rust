@@ -5,7 +5,7 @@ struct Wrapper<T>(T);
 
 trait Foo {
     fn bar() -> Wrapper<Missing<impl Sized>>;
-    //~^ ERROR: cannot find type `Missing` [E0412]
+    //~^ ERROR: cannot find type `Missing`
 }
 
 impl Foo for () {

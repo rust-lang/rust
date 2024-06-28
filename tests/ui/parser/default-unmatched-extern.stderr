@@ -18,7 +18,7 @@ LL |     default do
 LL | }
    | - item list ends here
 
-error: cannot find macro `default`
+error: cannot find macro `default` in this scope
   --> $DIR/default-unmatched-extern.rs:4:5
    |
 LL |     default!();

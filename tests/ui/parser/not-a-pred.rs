@@ -10,6 +10,6 @@ fn main() {
     let a: isize = 10;
     let b: isize = 23;
     check (lt(a, b));
-    //~^ ERROR cannot find function `check` [E0425]
+    //~^ ERROR cannot find function `check`
     f(a, b);
 }

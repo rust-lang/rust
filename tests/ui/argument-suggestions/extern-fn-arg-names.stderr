@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `err`
+error[E0412]: cannot find type `err` in this scope
   --> $DIR/extern-fn-arg-names.rs:2:29
    |
 LL |     fn dstfn(src: i32, dst: err);

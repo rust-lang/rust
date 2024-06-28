@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `B`
+error[E0412]: cannot find type `B` in this scope
   --> $DIR/issue-8767.rs:1:6
    |
 LL | impl B {

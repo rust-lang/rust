@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `bar`
+error[E0425]: cannot find function `bar` in module `mod_file_aux`
   --> $DIR/mod_file_correct_spans.rs:6:27
    |
 LL |     assert!(mod_file_aux::bar() == 10);

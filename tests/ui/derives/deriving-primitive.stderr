@@ -1,10 +1,10 @@
-error: cannot find derive macro `FromPrimitive`
+error: cannot find derive macro `FromPrimitive` in this scope
   --> $DIR/deriving-primitive.rs:1:10
    |
 LL | #[derive(FromPrimitive)]
    |          ^^^^^^^^^^^^^ not found in this scope
 
-error: cannot find derive macro `FromPrimitive`
+error: cannot find derive macro `FromPrimitive` in this scope
   --> $DIR/deriving-primitive.rs:1:10
    |
 LL | #[derive(FromPrimitive)]

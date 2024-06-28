@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `S`
+error[E0412]: cannot find type `S` in this scope
   --> $DIR/arguments.rs:14:8
    |
 LL |     m!(S, S);

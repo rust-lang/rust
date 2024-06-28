@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `f`
+error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:22:9
    |
 LL |     pub fn g() {}
@@ -16,7 +16,7 @@ help: consider importing this function
 LL + use foo::f;
    |
 
-error[E0425]: cannot find function `g`
+error[E0425]: cannot find function `g` in this scope
   --> $DIR/globs.rs:15:5
    |
 LL |       pub fn f() {}
@@ -42,7 +42,7 @@ help: consider importing this function
 LL + use bar::g;
    |
 
-error[E0425]: cannot find function `f`
+error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:61:12
    |
 LL | n!(f);
@@ -55,7 +55,7 @@ LL |         n!(f);
            foo::f
    = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find function `f`
+error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:65:17
    |
 LL | n!(f);

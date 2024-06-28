@@ -17,7 +17,7 @@ LL | #[unsafe(unsafe(no_mangle))]
    |
    = note: extraneous unsafe is not allowed in attributes
 
-error: cannot find attribute `r#unsafe`
+error: cannot find attribute `r#unsafe` in this scope
   --> $DIR/double-unsafe-attributes.rs:3:10
    |
 LL | #[unsafe(unsafe(no_mangle))]

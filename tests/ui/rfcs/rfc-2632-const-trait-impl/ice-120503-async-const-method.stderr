@@ -55,7 +55,7 @@ LL | #![feature(effects)]
    = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0425]: cannot find function `main8`
+error[E0425]: cannot find function `main8` in this scope
   --> $DIR/ice-120503-async-const-method.rs:13:9
    |
 LL |         main8().await;

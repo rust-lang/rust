@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `DoesNotExist`
+error[E0412]: cannot find type `DoesNotExist` in this scope
   --> $DIR/coherence-error-suppression.rs:9:14
    |
 LL | impl Foo for DoesNotExist {}

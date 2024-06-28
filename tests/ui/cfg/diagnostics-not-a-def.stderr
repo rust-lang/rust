@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `i_am_not`
+error[E0425]: cannot find function `i_am_not` in module `inner`
   --> $DIR/diagnostics-not-a-def.rs:12:12
    |
 LL |     inner::i_am_not();

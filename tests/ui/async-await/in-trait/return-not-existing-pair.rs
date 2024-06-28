@@ -3,7 +3,7 @@
 
 trait MyTrait<'a, 'b, T> {
     async fn foo(&'a self, key: &'b T) -> (&'a ConnImpl, &'b T);
-    //~^ ERROR: cannot find type `ConnImpl` [E0412]
+    //~^ ERROR: cannot find type `ConnImpl`
 }
 
 impl<'a, 'b, T, U> MyTrait<T> for U {

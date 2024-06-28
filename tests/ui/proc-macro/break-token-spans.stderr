@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `f`
+error[E0425]: cannot find function `f` in this scope
   --> $DIR/break-token-spans.rs:13:5
    |
 LL |     f :: < Vec < _ > > ( ) ;

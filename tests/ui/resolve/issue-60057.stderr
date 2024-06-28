@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `banana`
+error[E0425]: cannot find value `banana` in this scope
   --> $DIR/issue-60057.rs:8:21
    |
 LL |     banana: u8,
@@ -7,7 +7,7 @@ LL |     banana: u8,
 LL |             banana: banana
    |                     ^^^^^^
 
-error[E0425]: cannot find value `banana`
+error[E0425]: cannot find value `banana` in this scope
   --> $DIR/issue-60057.rs:14:21
    |
 LL |             banana: banana

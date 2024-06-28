@@ -134,7 +134,7 @@ LL + use std::f32::consts::E;
 LL + use std::f64::consts::E;
    |
 
-error[E0412]: cannot find type `Z`
+error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:57:12
    |
 LL |     pub enum E {
@@ -175,7 +175,7 @@ help: alternatively, the following enum variant is available
 LL |     let _: Z = (m::Z::Fn(/* fields */));
    |                ~~~~~~~~~~~~~~~~~~~~~~~~
 
-error[E0412]: cannot find type `Z`
+error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:61:12
    |
 LL |     pub enum E {
@@ -190,7 +190,7 @@ note: enum `m::Z` exists but is inaccessible
 LL |         pub(in m) enum Z {
    |         ^^^^^^^^^^^^^^^^ not accessible
 
-error[E0412]: cannot find type `Z`
+error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:64:12
    |
 LL |     pub enum E {
@@ -205,7 +205,7 @@ note: enum `m::Z` exists but is inaccessible
 LL |         pub(in m) enum Z {
    |         ^^^^^^^^^^^^^^^^ not accessible
 
-error[E0412]: cannot find type `Z`
+error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:68:12
    |
 LL |     pub enum E {

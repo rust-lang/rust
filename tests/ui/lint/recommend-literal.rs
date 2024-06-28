@@ -8,10 +8,10 @@ fn main() {
     //~^ ERROR cannot find type `long`
     //~| HELP perhaps you intended to use this type
     let v1: Boolean = true;
-    //~^ ERROR: cannot find type `Boolean` [E0412]
+    //~^ ERROR: cannot find type `Boolean`
     //~| HELP perhaps you intended to use this type
     let v2: Bool = true;
-    //~^ ERROR: cannot find type `Bool` [E0412]
+    //~^ ERROR: cannot find type `Bool`
     //~| HELP a builtin type with a similar name exists
     //~| HELP perhaps you intended to use this type
 }

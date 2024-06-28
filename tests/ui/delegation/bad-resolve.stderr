@@ -39,7 +39,7 @@ LL |     reuse <F as Trait>::Type;
    |
    = note: can't use a type alias as a constructor
 
-error[E0576]: cannot find method or associated constant `baz`
+error[E0576]: cannot find method or associated constant `baz` in trait `Trait`
   --> $DIR/bad-resolve.rs:30:25
    |
 LL |     fn bar() {}
@@ -48,7 +48,7 @@ LL |     fn bar() {}
 LL |     reuse <F as Trait>::baz;
    |                         ^^^ help: an associated function with a similar name exists: `bar`
 
-error[E0425]: cannot find function `foo`
+error[E0425]: cannot find function `foo` in this scope
   --> $DIR/bad-resolve.rs:35:11
    |
 LL |     reuse foo { &self.0 }

@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `while_loop`
+error[E0425]: cannot find value `while_loop` in this scope
   --> $DIR/label_misspelled.rs:6:9
    |
 LL |     'while_loop: while true {
@@ -7,7 +7,7 @@ LL |
 LL |         while_loop;
    |         ^^^^^^^^^^ not found in this scope
 
-error[E0425]: cannot find value `while_let`
+error[E0425]: cannot find value `while_let` in this scope
   --> $DIR/label_misspelled.rs:11:9
    |
 LL |     'while_let: while let Some(_) = Some(()) {
@@ -16,7 +16,7 @@ LL |
 LL |         while_let;
    |         ^^^^^^^^^ not found in this scope
 
-error[E0425]: cannot find value `for_loop`
+error[E0425]: cannot find value `for_loop` in this scope
   --> $DIR/label_misspelled.rs:16:9
    |
 LL |     'for_loop: for _ in 0..3 {
@@ -25,7 +25,7 @@ LL |
 LL |         for_loop;
    |         ^^^^^^^^ not found in this scope
 
-error[E0425]: cannot find value `LOOP`
+error[E0425]: cannot find value `LOOP` in this scope
   --> $DIR/label_misspelled.rs:21:9
    |
 LL |     'LOOP: loop {
@@ -34,7 +34,7 @@ LL |
 LL |         LOOP;
    |         ^^^^ not found in this scope
 
-error[E0425]: cannot find value `LOOP`
+error[E0425]: cannot find value `LOOP` in this scope
   --> $DIR/label_misspelled.rs:28:15
    |
 LL |     'LOOP: loop {
@@ -45,7 +45,7 @@ LL |         break LOOP;
    |               not found in this scope
    |               help: use the similarly named label: `'LOOP`
 
-error[E0425]: cannot find value `while_loop`
+error[E0425]: cannot find value `while_loop` in this scope
   --> $DIR/label_misspelled.rs:32:15
    |
 LL |     'while_loop: while true {
@@ -56,7 +56,7 @@ LL |         break while_loop;
    |               not found in this scope
    |               help: use the similarly named label: `'while_loop`
 
-error[E0425]: cannot find value `while_let`
+error[E0425]: cannot find value `while_let` in this scope
   --> $DIR/label_misspelled.rs:36:15
    |
 LL |     'while_let: while let Some(_) = Some(()) {
@@ -67,7 +67,7 @@ LL |         break while_let;
    |               not found in this scope
    |               help: use the similarly named label: `'while_let`
 
-error[E0425]: cannot find value `for_loop`
+error[E0425]: cannot find value `for_loop` in this scope
   --> $DIR/label_misspelled.rs:40:15
    |
 LL |     'for_loop: for _ in 0..3 {

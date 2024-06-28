@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Missing`
+error[E0412]: cannot find type `Missing` in this scope
   --> $DIR/return-not-existing-type-wrapping-rpitit.rs:7:25
    |
 LL |     fn bar() -> Wrapper<Missing<impl Sized>>;

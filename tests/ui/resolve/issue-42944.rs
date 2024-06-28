@@ -14,7 +14,7 @@ mod bar {
 mod baz {
     fn foo() {
         Bx(());
-        //~^ ERROR cannot find function, tuple struct or tuple variant `Bx` [E0425]
+        //~^ ERROR cannot find function, tuple struct or tuple variant `Bx`
     }
 }
 

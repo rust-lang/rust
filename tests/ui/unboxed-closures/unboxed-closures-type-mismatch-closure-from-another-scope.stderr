@@ -1,10 +1,10 @@
-error[E0425]: cannot find value `x`
+error[E0425]: cannot find value `x` in this scope
   --> $DIR/unboxed-closures-type-mismatch-closure-from-another-scope.rs:2:21
    |
 LL |     let x = match **x {
    |                     ^ not found in this scope
 
-error[E0425]: cannot find value `y`
+error[E0425]: cannot find value `y` in this scope
   --> $DIR/unboxed-closures-type-mismatch-closure-from-another-scope.rs:9:26
    |
 LL |         closure(&mut p, &y);

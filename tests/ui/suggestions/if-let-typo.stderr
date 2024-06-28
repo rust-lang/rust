@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `x`
+error[E0425]: cannot find value `x` in this scope
   --> $DIR/if-let-typo.rs:4:13
    |
 LL |     if Some(x) = foo {}
@@ -9,7 +9,7 @@ help: you might have meant to use pattern matching
 LL |     if let Some(x) = foo {}
    |        +++
 
-error[E0425]: cannot find value `x`
+error[E0425]: cannot find value `x` in this scope
   --> $DIR/if-let-typo.rs:10:8
    |
 LL |     if x = 5 {}

@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `MissingType`
+error[E0412]: cannot find type `MissingType` in this scope
   --> $DIR/auxiliary/span-from-proc-macro.rs:37:20
    |
 LL | pub fn error_from_attribute(_args: TokenStream, _input: TokenStream) -> TokenStream {
@@ -12,7 +12,7 @@ LL |             field: MissingType
 LL | #[error_from_attribute]
    | ----------------------- in this procedural macro expansion
 
-error[E0412]: cannot find type `OtherMissingType`
+error[E0412]: cannot find type `OtherMissingType` in this scope
   --> $DIR/auxiliary/span-from-proc-macro.rs:46:21
    |
 LL | pub fn error_from_derive(_input: TokenStream) -> TokenStream {
@@ -26,7 +26,7 @@ LL |             Variant(OtherMissingType)
 LL | #[derive(ErrorFromDerive)]
    |          --------------- in this derive macro expansion
 
-error[E0425]: cannot find value `my_ident`
+error[E0425]: cannot find value `my_ident` in this scope
   --> $DIR/auxiliary/span-from-proc-macro.rs:29:9
    |
 LL | pub fn other_error_from_bang(_input: TokenStream) -> TokenStream {

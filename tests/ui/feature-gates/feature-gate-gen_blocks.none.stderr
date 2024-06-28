@@ -10,7 +10,7 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 LL |     async gen {};
    |           ^^^ expected one of 8 possible tokens
 
-error[E0422]: cannot find struct, variant or union type `gen`
+error[E0422]: cannot find struct, variant or union type `gen` in this scope
   --> $DIR/feature-gate-gen_blocks.rs:5:5
    |
 LL |     gen {};

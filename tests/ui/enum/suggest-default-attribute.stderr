@@ -1,4 +1,4 @@
-error: cannot find attribute `default`
+error: cannot find attribute `default` in this scope
   --> $DIR/suggest-default-attribute.rs:2:7
    |
 LL |     #[default]

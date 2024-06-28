@@ -3,6 +3,6 @@ struct Struct<P1> {
 }
 
 type Alias<'a> = Struct<&'a Self>;
-//~^ ERROR cannot find type `Self` [E0411]
+//~^ ERROR cannot find type `Self`
 
 fn main() {}

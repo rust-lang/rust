@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Missing`
+error[E0412]: cannot find type `Missing` in this scope
   --> $DIR/malformed-unsized-type-in-union.rs:3:34
    |
 LL | union W { s: dyn Iterator<Item = Missing> }

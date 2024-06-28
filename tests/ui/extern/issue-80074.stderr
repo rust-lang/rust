@@ -4,13 +4,13 @@ error[E0469]: imported macro not found
 LL | #[macro_use(m)]
    |             ^
 
-error: cannot find macro `bar`
+error: cannot find macro `bar` in this scope
   --> $DIR/issue-80074.rs:16:5
    |
 LL |     bar!();
    |     ^^^ not found in this scope
 
-error: cannot find macro `m`
+error: cannot find macro `m` in this scope
   --> $DIR/issue-80074.rs:18:5
    |
 LL |     m!();

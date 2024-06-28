@@ -1,4 +1,4 @@
-error: cannot find attribute `some_nonexistent_attribute`
+error: cannot find attribute `some_nonexistent_attribute` in this scope
   --> $DIR/issue-118455-skip-err-builtin.rs:1:4
    |
 LL | #![some_nonexistent_attribute]

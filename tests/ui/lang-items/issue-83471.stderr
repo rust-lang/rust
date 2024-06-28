@@ -41,7 +41,7 @@ LL | #[lang = "fn"]
 LL | trait Fn {
    |         - this trait has 0 generic arguments
 
-error[E0425]: cannot find function `a`
+error[E0425]: cannot find function `a` in this scope
   --> $DIR/issue-83471.rs:21:5
    |
 LL |     a()

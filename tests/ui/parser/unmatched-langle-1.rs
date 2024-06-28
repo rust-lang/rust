@@ -4,6 +4,6 @@
 fn main() {
     foo::<<<<Ty<i32>>();
     //~^ ERROR: unmatched angle brackets
-    //~| ERROR: cannot find function `foo` [E0425]
-    //~| ERROR: cannot find type `Ty` [E0412]
+    //~| ERROR: cannot find function `foo`
+    //~| ERROR: cannot find type `Ty`
 }

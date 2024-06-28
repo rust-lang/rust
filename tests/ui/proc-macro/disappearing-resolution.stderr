@@ -1,4 +1,4 @@
-error: cannot find attribute `empty_helper`
+error: cannot find attribute `empty_helper` in this scope
   --> $DIR/disappearing-resolution.rs:18:3
    |
 LL | #[empty_helper]

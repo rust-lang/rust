@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `err`
+error[E0425]: cannot find value `err` in this scope
   --> $DIR/issue-103909.rs:5:12
    |
 LL |     if Err(err) = File::open("hello.txt") {

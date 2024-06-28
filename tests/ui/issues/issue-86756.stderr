@@ -6,7 +6,7 @@ LL | trait Foo<T, T = T> {}
    |           |
    |           first use of `T`
 
-error[E0412]: cannot find type `dyn`
+error[E0412]: cannot find type `dyn` in this scope
   --> $DIR/issue-86756.rs:5:10
    |
 LL |     eq::<dyn, Foo>

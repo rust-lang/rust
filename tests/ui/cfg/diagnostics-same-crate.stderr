@@ -34,7 +34,7 @@ note: found an item that was configured out
 LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
 
-error[E0425]: cannot find function `uwu`
+error[E0425]: cannot find function `uwu` in module `inner`
   --> $DIR/diagnostics-same-crate.rs:47:12
    |
 LL |     inner::uwu();
@@ -46,7 +46,7 @@ note: found an item that was configured out
 LL |     pub fn uwu() {}
    |            ^^^
 
-error[E0425]: cannot find function `meow`
+error[E0425]: cannot find function `meow` in module `inner::right`
   --> $DIR/diagnostics-same-crate.rs:56:19
    |
 LL |     inner::right::meow();
@@ -59,13 +59,13 @@ LL |         pub fn meow() {}
    |                ^^^^
    = note: the item is gated behind the `what-a-cool-feature` feature
 
-error[E0425]: cannot find function `uwu`
+error[E0425]: cannot find function `uwu` in this scope
   --> $DIR/diagnostics-same-crate.rs:43:5
    |
 LL |     uwu();
    |     ^^^ not found in this scope
 
-error[E0425]: cannot find function `vanished`
+error[E0425]: cannot find function `vanished` in this scope
   --> $DIR/diagnostics-same-crate.rs:63:5
    |
 LL |     vanished();

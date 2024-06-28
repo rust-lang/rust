@@ -1,4 +1,4 @@
-error[E0576]: cannot find associated type `X`
+error[E0576]: cannot find associated type `X` in trait `A`
   --> $DIR/issue-22037.rs:3:33
    |
 LL |     type Output;

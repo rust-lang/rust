@@ -1,4 +1,4 @@
-error: cannot find macro `something_later`
+error: cannot find macro `something_later` in this scope
   --> $DIR/defined-later-issue-121061-2.rs:3:9
    |
 LL |         something_later!();

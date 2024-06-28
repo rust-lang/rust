@@ -17,7 +17,7 @@ LL | struct Apple((Apple, Option(Banana ? Citron)));
    |                                     |
    |                                     help: missing `,`
 
-error[E0412]: cannot find type `Citron`
+error[E0412]: cannot find type `Citron` in this scope
   --> $DIR/issue-103748-ICE-wrong-braces.rs:3:38
    |
 LL | struct Apple((Apple, Option(Banana ? Citron)));

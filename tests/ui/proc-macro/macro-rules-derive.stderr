@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `MissingType`
+error[E0412]: cannot find type `MissingType` in this scope
   --> $DIR/macro-rules-derive.rs:10:20
    |
 LL |             field: MissingType

@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `z`
+error[E0425]: cannot find function `z` in this scope
   --> $DIR/suggest-import-without-clobbering-attrs.rs:13:5
    |
 LL |     z();

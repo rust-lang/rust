@@ -86,7 +86,7 @@ help: escape `struct` to use it as an identifier
 LL |     B: r#struct,
    |        ++
 
-error[E0405]: cannot find trait `r#struct`
+error[E0405]: cannot find trait `r#struct` in this scope
   --> $DIR/kw-in-trait-bounds.rs:16:10
    |
 LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
@@ -95,7 +95,7 @@ LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
 LL | trait Struct {}
    | ------------ similarly named trait `Struct` defined here
 
-error[E0405]: cannot find trait `r#struct`
+error[E0405]: cannot find trait `r#struct` in this scope
   --> $DIR/kw-in-trait-bounds.rs:30:8
    |
 LL |     B: struct,
@@ -104,7 +104,7 @@ LL |     B: struct,
 LL | trait Struct {}
    | ------------ similarly named trait `Struct` defined here
 
-error[E0405]: cannot find trait `r#struct`
+error[E0405]: cannot find trait `r#struct` in this scope
   --> $DIR/kw-in-trait-bounds.rs:16:29
    |
 LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
@@ -113,7 +113,7 @@ LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
 LL | trait Struct {}
    | ------------ similarly named trait `Struct` defined here
 
-error[E0405]: cannot find trait `r#struct`
+error[E0405]: cannot find trait `r#struct` in this scope
   --> $DIR/kw-in-trait-bounds.rs:16:45
    |
 LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)

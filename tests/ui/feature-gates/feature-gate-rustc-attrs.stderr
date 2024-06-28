@@ -28,7 +28,7 @@ error: attributes starting with `rustc` are reserved for use by the `rustc` comp
 LL | #[rustc_unknown]
    |   ^^^^^^^^^^^^^
 
-error: cannot find attribute `rustc_unknown`
+error: cannot find attribute `rustc_unknown` in this scope
   --> $DIR/feature-gate-rustc-attrs.rs:20:3
    |
 LL | #[rustc_unknown]

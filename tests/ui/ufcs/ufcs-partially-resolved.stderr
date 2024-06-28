@@ -1,4 +1,4 @@
-error[E0576]: cannot find associated type `N`
+error[E0576]: cannot find associated type `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:19:24
    |
 LL |     type Y = u16;
@@ -27,7 +27,7 @@ help: you might have meant to use `#![feature(trait_alias)]` instead of a `type`
 LL | trait A = u32;
    |
 
-error[E0576]: cannot find method or associated constant `N`
+error[E0576]: cannot find method or associated constant `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:22:17
    |
 LL |     fn Y() {}
@@ -74,7 +74,7 @@ LL |     <u8 as E>::Y;
    |
    = note: similarly named trait `Eq` defined here
 
-error[E0576]: cannot find associated type `N`
+error[E0576]: cannot find associated type `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:30:24
    |
 LL |     type Y = u16;
@@ -103,7 +103,7 @@ help: you might have meant to use `#![feature(trait_alias)]` instead of a `type`
 LL | trait A = u32;
    |
 
-error[E0576]: cannot find associated type `N`
+error[E0576]: cannot find associated type `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:33:17
    |
 LL |     type Y = u16;
@@ -150,37 +150,37 @@ LL |     <u8 as E>::Y::NN;
    |
    = note: similarly named trait `Eq` defined here
 
-error[E0405]: cannot find trait `N`
+error[E0405]: cannot find trait `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:41:23
    |
 LL |     let _: <u8 as Tr::N>::NN;
    |                       ^ not found in trait `Tr`
 
-error[E0405]: cannot find trait `N`
+error[E0405]: cannot find trait `N` in enum `E`
   --> $DIR/ufcs-partially-resolved.rs:42:22
    |
 LL |     let _: <u8 as E::N>::NN;
    |                      ^ not found in enum `E`
 
-error[E0405]: cannot find trait `N`
+error[E0405]: cannot find trait `N` in `A`
   --> $DIR/ufcs-partially-resolved.rs:43:22
    |
 LL |     let _: <u8 as A::N>::NN;
    |                      ^ not found in `A`
 
-error[E0405]: cannot find trait `N`
+error[E0405]: cannot find trait `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:44:16
    |
 LL |     <u8 as Tr::N>::NN;
    |                ^ not found in trait `Tr`
 
-error[E0405]: cannot find trait `N`
+error[E0405]: cannot find trait `N` in enum `E`
   --> $DIR/ufcs-partially-resolved.rs:45:15
    |
 LL |     <u8 as E::N>::NN;
    |               ^ not found in enum `E`
 
-error[E0405]: cannot find trait `N`
+error[E0405]: cannot find trait `N` in `A`
   --> $DIR/ufcs-partially-resolved.rs:46:15
    |
 LL |     <u8 as A::N>::NN;

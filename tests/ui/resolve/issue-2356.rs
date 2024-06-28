@@ -29,7 +29,7 @@ impl Clone for Cat {
 impl Default for Cat {
   fn default() -> Self {
     default();
-    //~^ ERROR cannot find function `default` [E0425]
+    //~^ ERROR cannot find function `default`
     loop {}
   }
 }

@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `DecoderError`
+error[E0412]: cannot find type `DecoderError` in this scope
   --> $DIR/issue-30589.rs:3:23
    |
 LL | impl fmt::Display for DecoderError {
