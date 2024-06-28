@@ -1,5 +1,5 @@
-// Ensure that rust-lld is used as the default linker on `x86_64-unknown-linux-gnu`, and that it can
-// also be turned off with a CLI flag.
+// Ensure that rust-lld is used as the default linker on `x86_64-unknown-linux-gnu` on the nightly
+// channel, and that it can also be turned off with a CLI flag.
 
 //@ needs-rust-lld
 //@ ignore-beta
