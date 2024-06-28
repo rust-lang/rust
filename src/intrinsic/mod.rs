@@ -220,12 +220,12 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             let after_block = func.new_block("after");
 
                             let arg = args[0].immediate();
-                            let result = func.new_local(None, arg.get_type(), "zeros");
+                            let result = func.new_local(None, self.u32_type, "zeros");
                             let zero = self.cx.gcc_zero(arg.get_type());
                             let cond = self.gcc_icmp(IntPredicate::IntEQ, arg, zero);
                             self.llbb().end_with_conditional(None, cond, then_block, else_block);
 
-                            let zero_result = self.cx.gcc_uint(arg.get_type(), width);
+                            let zero_result = self.cx.gcc_uint(self.u32_type, width);
                             then_block.add_assignment(None, result, zero_result);
                             then_block.end_with_jump(None, after_block);
 
@@ -709,6 +709,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     fn count_leading_zeroes(&mut self, width: u64, arg: RValue<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): use width?
         let arg_type = arg.get_type();
+        let result_type = self.u32_type;
         let count_leading_zeroes =
             // TODO(antoyo): write a new function Type::is_compatible_with(&Type) and use it here
             // instead of using is_uint().
@@ -766,7 +767,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
                 let res = self.context.new_array_access(self.location, result, index);
 
-                return self.gcc_int_cast(res.to_rvalue(), arg_type);
+                return self.gcc_int_cast(res.to_rvalue(), result_type);
             }
             else {
                 let count_leading_zeroes = self.context.get_builtin_function("__builtin_clzll");
@@ -774,22 +775,22 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let diff = self.ulonglong_type.get_size() as i64 - arg_type.get_size() as i64;
                 let diff = self.context.new_rvalue_from_long(self.int_type, diff * 8);
                 let res = self.context.new_call(self.location, count_leading_zeroes, &[arg]) - diff;
-                return self.context.new_cast(self.location, res, arg_type);
+                return self.context.new_cast(self.location, res, result_type);
             };
         let count_leading_zeroes = self.context.get_builtin_function(count_leading_zeroes);
         let res = self.context.new_call(self.location, count_leading_zeroes, &[arg]);
-        self.context.new_cast(self.location, res, arg_type)
+        self.context.new_cast(self.location, res, result_type)
     }
 
     fn count_trailing_zeroes(&mut self, _width: u64, arg: RValue<'gcc>) -> RValue<'gcc> {
-        let result_type = arg.get_type();
-        let arg = if result_type.is_signed(self.cx) {
-            let new_type = result_type.to_unsigned(self.cx);
+        let arg_type = arg.get_type();
+        let result_type = self.u32_type;
+        let arg = if arg_type.is_signed(self.cx) {
+            let new_type = arg_type.to_unsigned(self.cx);
             self.gcc_int_cast(arg, new_type)
         } else {
             arg
         };
-        let arg_type = arg.get_type();
         let (count_trailing_zeroes, expected_type) =
             // TODO(antoyo): write a new function Type::is_compatible_with(&Type) and use it here
             // instead of using is_uint().
@@ -874,14 +875,12 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
     fn pop_count(&mut self, value: RValue<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): use the optimized version with fewer operations.
-        let result_type = value.get_type();
-        let value_type = result_type.to_unsigned(self.cx);
+        let result_type = self.u32_type;
+        let arg_type = value.get_type();
+        let value_type = arg_type.to_unsigned(self.cx);
 
-        let value = if result_type.is_signed(self.cx) {
-            self.gcc_int_cast(value, value_type)
-        } else {
-            value
-        };
+        let value =
+            if arg_type.is_signed(self.cx) { self.gcc_int_cast(value, value_type) } else { value };
 
         // only break apart 128-bit ints if they're not natively supported
         // TODO(antoyo): remove this if/when native 128-bit integers land in libgccjit

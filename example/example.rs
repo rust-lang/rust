@@ -154,9 +154,9 @@ fn array_as_slice(arr: &[u8; 3]) -> &[u8] {
 }
 
 // FIXME: fix the intrinsic implementation to work with the new ->u32 signature
-// unsafe fn use_ctlz_nonzero(a: u16) -> u32 {
-//     intrinsics::ctlz_nonzero(a)
-// }
+unsafe fn use_ctlz_nonzero(a: u16) -> u32 {
+    intrinsics::ctlz_nonzero(a)
+}
 
 fn ptr_as_usize(ptr: *const u8) -> usize {
     ptr as usize
