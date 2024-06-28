@@ -216,7 +216,6 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     cargo_update: cargo_update(),
                     const_anon,
                     doctest,
-                    has_trait: impl_.of_trait.is_some(),
                     macro_to_change,
                 })
             }

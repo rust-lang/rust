@@ -1376,7 +1376,6 @@ pub(crate) enum NonLocalDefinitionsDiag {
         cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
         const_anon: Option<Option<Span>>,
         doctest: bool,
-        has_trait: bool,
         macro_to_change: Option<(String, &'static str)>,
     },
     MacroRules {
@@ -1398,7 +1397,6 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 cargo_update,
                 const_anon,
                 doctest,
-                has_trait,
                 macro_to_change,
             } => {
                 diag.primary_message(fluent::lint_non_local_definitions_impl);
@@ -1415,12 +1413,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                     diag.subdiagnostic(cargo_update);
                 }
 
-                if has_trait {
-                    diag.note(fluent::lint_bounds);
-                    diag.note(fluent::lint_with_trait);
-                } else {
-                    diag.note(fluent::lint_without_trait);
-                }
+                diag.note(fluent::lint_non_local);
 
                 if doctest {
                     diag.help(fluent::lint_doctest);
