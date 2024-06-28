@@ -67,9 +67,9 @@ pub fn build(build: &mut Build) {
 
 /// Invokes `cargo metadata` to get package metadata of each workspace member.
 ///
-/// Note that `src/tools/cargo` is no longer a workspace member but we still
-/// treat it as one here, by invoking an additional `cargo metadata` command.
-fn workspace_members(build: &Build) -> impl Iterator<Item = Package> {
+/// This is used to resolve specific crate paths in `fn should_run` to compile
+/// particular crate (e.g., `x build sysroot` to build library/sysroot).
+fn workspace_members(build: &Build) -> Vec<Package> {
     let collect_metadata = |manifest_path| {
         let mut cargo = Command::new(&build.initial_cargo);
         cargo
@@ -88,13 +88,5 @@ fn workspace_members(build: &Build) -> impl Iterator<Item = Package> {
     };
 
     // Collects `metadata.packages` from all workspaces.
-    let packages = collect_metadata("Cargo.toml");
-    let cargo_packages = collect_metadata("src/tools/cargo/Cargo.toml");
-    let ra_packages = collect_metadata("src/tools/rust-analyzer/Cargo.toml");
-    let bootstrap_packages = collect_metadata("src/bootstrap/Cargo.toml");
-
-    // We only care about the root package from `src/tool/cargo` workspace.
-    let cargo_package = cargo_packages.into_iter().find(|pkg| pkg.name == "cargo").into_iter();
-
-    packages.into_iter().chain(cargo_package).chain(ra_packages).chain(bootstrap_packages)
+    collect_metadata("Cargo.toml")
 }

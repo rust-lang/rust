@@ -1,5 +1,5 @@
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -33,6 +33,9 @@ impl Step for Vendor {
         if self.versioned_dirs {
             cmd.arg("--versioned-dirs");
         }
+
+        // cargo submodule must be present for `x vendor` to work.
+        builder.build.update_submodule(Path::new("src/tools/cargo"));
 
         // Sync these paths by default.
         for p in [
