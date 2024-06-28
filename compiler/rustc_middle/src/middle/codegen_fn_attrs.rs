@@ -45,6 +45,32 @@ pub struct CodegenFnAttrs {
     /// The `#[repr(align(...))]` attribute. Indicates the value of which the function should be
     /// aligned to.
     pub alignment: Option<Align>,
+    /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
+    /// the function entry.
+    pub patchable_function_entry: Option<PatchableFunctionEntry>,
+}
+
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+pub struct PatchableFunctionEntry {
+    /// Nops to prepend to the function
+    prefix: u8,
+    /// Nops after entry, but before body
+    entry: u8,
+}
+
+impl PatchableFunctionEntry {
+    pub fn from_config(config: rustc_session::config::PatchableFunctionEntry) -> Self {
+        Self { prefix: config.prefix(), entry: config.entry() }
+    }
+    pub fn from_prefix_and_entry(prefix: u8, entry: u8) -> Self {
+        Self { prefix, entry }
+    }
+    pub fn prefix(&self) -> u8 {
+        self.prefix
+    }
+    pub fn entry(&self) -> u8 {
+        self.entry
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
@@ -121,6 +147,7 @@ impl CodegenFnAttrs {
             no_sanitize: SanitizerSet::empty(),
             instruction_set: None,
             alignment: None,
+            patchable_function_entry: None,
         }
     }
 

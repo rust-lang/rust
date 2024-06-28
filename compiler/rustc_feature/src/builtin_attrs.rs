@@ -585,6 +585,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, derive_smart_pointer, experimental!(pointee)
     ),
 
+    // RFC 3543
+    // `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
+    gated!(
+        patchable_function_entry, Normal, template!(List: "prefix_nops = m, entry_nops = n"), ErrorPreceding,
+        EncodeCrossCrate::Yes, experimental!(patchable_function_entry)
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
