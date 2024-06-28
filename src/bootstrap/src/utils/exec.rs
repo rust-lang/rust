@@ -34,7 +34,8 @@ pub enum OutputMode {
 /// By default, the command will print its stdout/stderr to stdout/stderr of bootstrap
 /// ([OutputMode::OnlyOutput]). If bootstrap uses verbose mode, then it will also print the
 /// command itself in case of failure ([OutputMode::All]).
-/// If you want to handle the output programmatically, use `output_mode(OutputMode::OnlyOnFailure)`.
+/// If you want to handle the output programmatically, use `output_mode(OutputMode::OnlyOnFailure)`,
+/// which will print the output only if the command fails.
 ///
 /// [allow_failure]: BootstrapCommand::allow_failure
 /// [delay_failure]: BootstrapCommand::delay_failure
@@ -113,7 +114,7 @@ impl BootstrapCommand {
     }
 }
 
-/// This implementation is temporary, until all `Command` invocations are migrated to
+/// FIXME: This implementation is temporary, until all `Command` invocations are migrated to
 /// `BootstrapCommand`.
 impl<'a> From<&'a mut Command> for BootstrapCommand {
     fn from(command: &'a mut Command) -> Self {
@@ -138,7 +139,7 @@ impl<'a> From<&'a mut Command> for BootstrapCommand {
     }
 }
 
-/// This implementation is temporary, until all `Command` invocations are migrated to
+/// FIXME: This implementation is temporary, until all `Command` invocations are migrated to
 /// `BootstrapCommand`.
 impl<'a> From<&'a mut BootstrapCommand> for BootstrapCommand {
     fn from(command: &'a mut BootstrapCommand) -> Self {
