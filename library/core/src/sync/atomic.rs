@@ -3770,14 +3770,14 @@ impl<T> fmt::Pointer for AtomicPtr<T> {
     }
 }
 
-/// Signals the processor that it is inside a busy-wait spin-loop ("spin lock").
-///
-/// This function is deprecated in favor of [`hint::spin_loop`].
-///
-/// [`hint::spin_loop`]: crate::hint::spin_loop
 #[inline]
 #[stable(feature = "spin_loop_hint", since = "1.24.0")]
-#[deprecated(since = "1.51.0", note = "use hint::spin_loop instead")]
+#[deprecated(
+    since = "1.51.0",
+    note = "use hint::spin_loop instead",
+    suggestion = "hint::spin_loop"
+)]
+#[doc(hidden)]
 pub fn spin_loop_hint() {
-    spin_loop()
+    spin_loop();
 }
