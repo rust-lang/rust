@@ -3766,7 +3766,7 @@ impl<T> fmt::Debug for AtomicPtr<T> {
 #[stable(feature = "atomic_pointer", since = "1.24.0")]
 impl<T> fmt::Pointer for AtomicPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Pointer::fmt(&self.load(Ordering::SeqCst), f)
+        fmt::Pointer::fmt(&self.load(Ordering::Relaxed), f)
     }
 }
 
