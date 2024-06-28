@@ -206,15 +206,16 @@ impl BorrowMut<str> for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToOwned for str {
     type Owned = String;
+
     #[inline]
     fn to_owned(&self) -> String {
         unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
     }
 
+    #[inline]
     fn clone_into(&self, target: &mut String) {
-        let mut b = mem::take(target).into_bytes();
-        self.as_bytes().clone_into(&mut b);
-        *target = unsafe { String::from_utf8_unchecked(b) }
+        target.clear();
+        target.push_str(self);
     }
 }
 
