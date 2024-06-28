@@ -4,9 +4,9 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL |   type A = [u32; {
    |  ________________-
 LL | |     impl Uto for *mut Test {}
-   | |     ^^^^^---^^^^^---------
-   | |          |       |
-   | |          |       `*mut Test` is not local
+   | |     ^^^^^---^^^^^^^^^^----
+   | |          |            |
+   | |          |            `Test` is not local
    | |          `Uto` is not local
 LL | |
 ...  |
@@ -62,9 +62,9 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL |       type A = [u32; {
    |  ____________________-
 LL | |         impl Uto for &Test {}
-   | |         ^^^^^---^^^^^-----
-   | |              |       |
-   | |              |       `&'_ Test` is not local
+   | |         ^^^^^---^^^^^^----
+   | |              |        |
+   | |              |        `Test` is not local
    | |              `Uto` is not local
 LL | |
 ...  |
@@ -81,9 +81,9 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL |       fn a(_: [u32; {
    |  ___________________-
 LL | |         impl Uto for &(Test,) {}
-   | |         ^^^^^---^^^^^--------
-   | |              |       |
-   | |              |       `&'_ (Test,)` is not local
+   | |         ^^^^^---^^^^^^^----^^
+   | |              |         |
+   | |              |         `Test` is not local
    | |              `Uto` is not local
 LL | |
 ...  |
@@ -100,9 +100,10 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
 LL |       fn b() -> [u32; {
    |  _____________________-
 LL | |         impl Uto for &(Test,Test) {}
-   | |         ^^^^^---^^^^^------------
-   | |              |       |
-   | |              |       `&'_ (Test, Test)` is not local
+   | |         ^^^^^---^^^^^^^----^----^
+   | |              |         |    |
+   | |              |         |    `Test` is not local
+   | |              |         `Test` is not local
    | |              `Uto` is not local
 LL | |
 ...  |

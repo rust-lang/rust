@@ -8,9 +8,9 @@ LL | const Z: () = {
    | move the `impl` block outside of this constant `Z`
 ...
 LL |     impl Uto for &Test {}
-   |     ^^^^^---^^^^^-----
-   |          |       |
-   |          |       `&'_ Test` is not local
+   |     ^^^^^---^^^^^^----
+   |          |        |
+   |          |        `Test` is not local
    |          `Uto` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type

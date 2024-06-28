@@ -38,9 +38,8 @@ LL | fn bad() {
    | -------- move the `impl` block outside of this function `bad`
 ...
 LL |     impl<T> Uto8 for T {}
-   |     ^^^^^^^^----^^^^^-
-   |             |        |
-   |             |        `T` is not local
+   |     ^^^^^^^^----^^^^^^
+   |             |
    |             `Uto8` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type

@@ -1,13 +1,13 @@
 use rustc_errors::MultiSpan;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
-use rustc_hir::{def::DefKind, Body, Item, ItemKind, Node, TyKind};
-use rustc_hir::{Path, QPath};
+use rustc_hir::{Body, Item, ItemKind, Node, Path, TyKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::Span;
-use rustc_span::{sym, symbol::kw, ExpnKind, MacroKind, Symbol};
+use rustc_span::{sym, symbol::kw, ExpnKind, MacroKind};
 
 use crate::fluent_generated as fluent;
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
@@ -144,6 +144,12 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     collector.visit_trait_ref(of_trait);
                 }
 
+                // 1.5. Remove any path that doesn't resolve to a `DefId` or if it resolve to a
+                // type-param (e.g. `T`).
+                collector.paths.retain(
+                    |p| matches!(p.res, Res::Def(def_kind, _) if def_kind != DefKind::TyParam),
+                );
+
                 // 2. We check if any of path reference a "local" parent and if that the case
                 // we bail out as asked by T-lang, even though this isn't correct from a
                 // type-system point of view, as inference exists and could still leak the impl.
@@ -176,23 +182,16 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 let impl_span = item.span.shrink_to_lo().to(impl_.self_ty.span);
                 let mut ms = MultiSpan::from_span(impl_span);
 
-                let (self_ty_span, self_ty_str) =
-                    self_ty_kind_for_diagnostic(&impl_.self_ty, cx.tcx);
-
-                ms.push_span_label(
-                    self_ty_span,
-                    fluent::lint_non_local_definitions_self_ty_not_local,
-                );
-
-                let of_trait_str = if let Some(of_trait) = &impl_.of_trait {
+                for path in &collector.paths {
+                    // FIXME: While a translatable diagnostic message can have an argument
+                    // we (currently) have no way to set different args per diag msg with
+                    // `MultiSpan::push_span_label`.
+                    #[allow(rustc::untranslatable_diagnostic)]
                     ms.push_span_label(
-                        path_span_without_args(&of_trait.path),
-                        fluent::lint_non_local_definitions_of_trait_not_local,
+                        path_span_without_args(path),
+                        format!("`{}` is not local", path_name_to_string(path)),
                     );
-                    Some(path_name_to_string(&of_trait.path))
-                } else {
-                    None
-                };
+                }
 
                 let doctest = is_at_toplevel_doctest();
 
@@ -221,8 +220,6 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                             .unwrap_or_else(|| "<unnameable>".to_string()),
                         cargo_update: cargo_update(),
                         const_anon,
-                        self_ty_str,
-                        of_trait_str,
                         doctest,
                         has_trait: impl_.of_trait.is_some(),
                         macro_to_change,
@@ -317,39 +314,4 @@ fn path_span_without_args(path: &Path<'_>) -> Span {
 /// Return a "error message-able" ident for the last segment of the `Path`
 fn path_name_to_string(path: &Path<'_>) -> String {
     path.segments.last().unwrap().ident.name.to_ident_string()
-}
-
-/// Compute the `Span` and visual representation for the `Self` we want to point at;
-/// It follows part of the actual logic of non-local, and if possible return the least
-/// amount possible for the span and representation.
-fn self_ty_kind_for_diagnostic(ty: &rustc_hir::Ty<'_>, tcx: TyCtxt<'_>) -> (Span, String) {
-    match ty.kind {
-        TyKind::Path(QPath::Resolved(_, ty_path)) => (
-            path_span_without_args(ty_path),
-            ty_path
-                .res
-                .opt_def_id()
-                .map(|did| tcx.opt_item_name(did))
-                .flatten()
-                .as_ref()
-                .map(|s| Symbol::as_str(s))
-                .unwrap_or("<unnameable>")
-                .to_string(),
-        ),
-        TyKind::TraitObject([principle_poly_trait_ref, ..], _, _) => {
-            let path = &principle_poly_trait_ref.trait_ref.path;
-            (
-                path_span_without_args(path),
-                path.res
-                    .opt_def_id()
-                    .map(|did| tcx.opt_item_name(did))
-                    .flatten()
-                    .as_ref()
-                    .map(|s| Symbol::as_str(s))
-                    .unwrap_or("<unnameable>")
-                    .to_string(),
-            )
-        }
-        _ => (ty.span, rustc_hir_pretty::ty_to_string(&tcx, ty)),
-    }
 }
