@@ -2983,6 +2983,9 @@ impl Step for Bootstrap {
         let compiler = builder.compiler(0, host);
         let _guard = builder.msg(Kind::Test, 0, "bootstrap", host, host);
 
+        // Some tests require cargo submodule to be present.
+        builder.build.update_submodule(Path::new("src/tools/cargo"));
+
         let mut check_bootstrap = Command::new(builder.python());
         check_bootstrap
             .args(["-m", "unittest", "bootstrap_test.py"])
