@@ -72,11 +72,13 @@ Further caveats that Miri users should be aware of:
   when `SeqCst` fences are used that are not actually permitted by the Rust memory model, and it
   cannot produce all behaviors possibly observable on real hardware.
 
-Moreover, Miri fundamentally cannot tell you whether your code is *sound*. [Soundness] is the property
-of never causing undefined behavior when invoked from arbitrary safe code, even in combination with
+Moreover, Miri fundamentally cannot ensure that your code is *sound*. [Soundness] is the property of
+never causing undefined behavior when invoked from arbitrary safe code, even in combination with
 other sound code. In contrast, Miri can just tell you if *a particular way of interacting with your
-code* (e.g., a test suite) causes any undefined behavior. It is up to you to ensure sufficient
-coverage.
+code* (e.g., a test suite) causes any undefined behavior *in a particular execution* (of which there
+may be many, e.g. when concurrency or other forms of non-determinism are involved). When Miri finds
+UB, your code is definitely unsound, but when Miri does not find UB, then you may just have to test
+more inputs or more possible non-deterministic choices.
 
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
