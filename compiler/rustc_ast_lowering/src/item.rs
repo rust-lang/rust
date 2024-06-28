@@ -212,6 +212,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // declaration (decl), not the return types.
                     let coroutine_kind = header.coroutine_kind;
                     let body_id = this.lower_maybe_coroutine_body(
+                        *fn_sig_span,
                         span,
                         hir_id,
                         decl,
@@ -819,6 +820,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::Fn(box Fn { sig, generics, body: Some(body), .. }) => {
                 let body_id = self.lower_maybe_coroutine_body(
+                    sig.span,
                     i.span,
                     hir_id,
                     &sig.decl,
@@ -942,6 +944,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ),
             AssocItemKind::Fn(box Fn { sig, generics, body, .. }) => {
                 let body_id = self.lower_maybe_coroutine_body(
+                    sig.span,
                     i.span,
                     hir_id,
                     &sig.decl,
@@ -1140,6 +1143,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// `gen {}` block as appropriate.
     fn lower_maybe_coroutine_body(
         &mut self,
+        fn_decl_span: Span,
         span: Span,
         fn_id: hir::HirId,
         decl: &FnDecl,
@@ -1153,6 +1157,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
                 decl,
                 |this| this.lower_block_expr(body),
+                fn_decl_span,
                 body.span,
                 coroutine_kind,
                 hir::CoroutineSource::Fn,
@@ -1174,6 +1179,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         decl: &FnDecl,
         lower_body: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::Expr<'hir>,
+        fn_decl_span: Span,
         body_span: Span,
         coroutine_kind: CoroutineKind,
         coroutine_source: hir::CoroutineSource,
@@ -1344,13 +1350,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let closure_id = coroutine_kind.closure_id();
 
-        let span = if let FnRetTy::Default(span) = decl.output
-            && matches!(coroutine_source, rustc_hir::CoroutineSource::Closure)
-        {
-            body_span.with_lo(span.lo())
-        } else {
-            body_span
-        };
         let coroutine_expr = self.make_desugared_coroutine_expr(
             // The default capture mode here is by-ref. Later on during upvar analysis,
             // we will force the captured arguments to by-move, but for async closures,
@@ -1359,7 +1358,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             CaptureBy::Ref,
             closure_id,
             None,
-            span,
+            fn_decl_span,
+            body_span,
             desugaring_kind,
             coroutine_source,
             mkbody,
