@@ -459,6 +459,12 @@ impl<'a> Arguments<'a> {
     }
 }
 
+// Manually implementing these results in better error messages.
+#[stable(feature = "rust1", since = "1.0.0")]
+impl !Send for Arguments<'_> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl !Sync for Arguments<'_> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for Arguments<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
