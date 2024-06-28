@@ -466,14 +466,6 @@ impl Layout {
     }
 }
 
-#[stable(feature = "alloc_layout", since = "1.28.0")]
-#[deprecated(
-    since = "1.52.0",
-    note = "Name does not follow std convention, use LayoutError",
-    suggestion = "LayoutError"
-)]
-pub type LayoutErr = LayoutError;
-
 /// The parameters given to `Layout::from_size_align`
 /// or some other `Layout` constructor
 /// do not satisfy its documented constraints.
@@ -485,7 +477,6 @@ pub struct LayoutError;
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 impl Error for LayoutError {}
 
-// (we need this for downstream impl of trait Error)
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 impl fmt::Display for LayoutError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

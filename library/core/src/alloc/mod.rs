@@ -9,17 +9,17 @@ mod layout;
 pub use self::global::GlobalAlloc;
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 pub use self::layout::Layout;
+#[stable(feature = "alloc_layout_error", since = "1.50.0")]
+pub use self::layout::LayoutError;
+
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 #[deprecated(
     since = "1.52.0",
     note = "Name does not follow std convention, use LayoutError",
     suggestion = "LayoutError"
 )]
-#[allow(deprecated, deprecated_in_future)]
-pub use self::layout::LayoutErr;
-
-#[stable(feature = "alloc_layout_error", since = "1.50.0")]
-pub use self::layout::LayoutError;
+#[doc(hidden)]
+pub type LayoutErr = LayoutError;
 
 use crate::error::Error;
 use crate::fmt;
