@@ -36,7 +36,7 @@ use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, StdEntry};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
@@ -799,7 +799,52 @@ impl<'tcx> Map<'tcx> {
             self.locals[local] = Some(place);
         }
 
-        PlaceCollector { tcx, body, map: self }.visit_body(body);
+        // Collect syntactic places and assignments between them.
+        let mut collector =
+            PlaceCollector { tcx, body, map: self, assignments: Default::default() };
+        collector.visit_body(body);
+        let PlaceCollector { mut assignments, .. } = collector;
+
+        // Just collecting syntactic places is not enough. We may need to propagate this pattern:
+        //      _1 = (const 5u32, const 13i64);
+        //      _2 = _1;
+        //      _3 = (_2.0 as u32);
+        //
+        // `_1.0` does not appear, but we still need to track it. This is achieved by propagating
+        // projections from assignments. We recorded an assignment between `_2` and `_1`, so we
+        // want `_1` and `_2` to have the same sub-places.
+        //
+        // This is what this fixpoint loop does. While we are still creating places, run through
+        // all the assignments, and register places for children.
+        let mut num_places = 0;
+        while num_places < self.places.len() {
+            num_places = self.places.len();
+
+            for assign in 0.. {
+                let Some(&(lhs, rhs)) = assignments.get_index(assign) else { break };
+
+                // Mirror children from `lhs` in `rhs`.
+                let mut child = self.places[lhs].first_child;
+                while let Some(lhs_child) = child {
+                    let PlaceInfo { ty, proj_elem, next_sibling, .. } = self.places[lhs_child];
+                    let rhs_child =
+                        self.register_place(ty, rhs, proj_elem.expect("child is not a projection"));
+                    assignments.insert((lhs_child, rhs_child));
+                    child = next_sibling;
+                }
+
+                // Conversely, mirror children from `rhs` in `lhs`.
+                let mut child = self.places[rhs].first_child;
+                while let Some(rhs_child) = child {
+                    let PlaceInfo { ty, proj_elem, next_sibling, .. } = self.places[rhs_child];
+                    let lhs_child =
+                        self.register_place(ty, lhs, proj_elem.expect("child is not a projection"));
+                    assignments.insert((lhs_child, rhs_child));
+                    child = next_sibling;
+                }
+            }
+        }
+        drop(assignments);
 
         // Create values for places whose type have scalar layout.
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
@@ -882,17 +927,14 @@ struct PlaceCollector<'a, 'b, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'b Body<'tcx>,
     map: &'a mut Map<'tcx>,
+    assignments: FxIndexSet<(PlaceIndex, PlaceIndex)>,
 }
 
-impl<'tcx> Visitor<'tcx> for PlaceCollector<'_, '_, 'tcx> {
+impl<'tcx> PlaceCollector<'_, '_, 'tcx> {
     #[tracing::instrument(level = "trace", skip(self))]
-    fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, _: Location) {
-        if !ctxt.is_use() {
-            return;
-        }
-
+    fn register_place(&mut self, place: Place<'tcx>) -> Option<PlaceIndex> {
         // Create a place for this projection.
-        let Some(mut place_index) = self.map.locals[place.local] else { return };
+        let mut place_index = self.map.locals[place.local]?;
         let mut ty = PlaceTy::from_ty(self.body.local_decls[place.local].ty);
         tracing::trace!(?place_index, ?ty);
 
@@ -906,7 +948,7 @@ impl<'tcx> Visitor<'tcx> for PlaceCollector<'_, '_, 'tcx> {
         }
 
         for proj in place.projection {
-            let Ok(track_elem) = proj.try_into() else { return };
+            let track_elem = proj.try_into().ok()?;
             ty = ty.projection_ty(self.tcx, proj);
             place_index = self.map.register_place(ty.ty, place_index, track_elem);
             tracing::trace!(?proj, ?place_index, ?ty);
@@ -919,6 +961,63 @@ impl<'tcx> Visitor<'tcx> for PlaceCollector<'_, '_, 'tcx> {
                 let discriminant_ty = ty.ty.discriminant_ty(self.tcx);
                 self.map.register_place(discriminant_ty, place_index, TrackElem::Discriminant);
             }
+        }
+
+        Some(place_index)
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for PlaceCollector<'_, '_, 'tcx> {
+    #[tracing::instrument(level = "trace", skip(self))]
+    fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, _: Location) {
+        if !ctxt.is_use() {
+            return;
+        }
+
+        self.register_place(*place);
+    }
+
+    fn visit_assign(&mut self, lhs: &Place<'tcx>, rhs: &Rvalue<'tcx>, location: Location) {
+        self.super_assign(lhs, rhs, location);
+
+        match rhs {
+            Rvalue::Use(Operand::Move(rhs) | Operand::Copy(rhs)) | Rvalue::CopyForDeref(rhs) => {
+                let Some(lhs) = self.register_place(*lhs) else { return };
+                let Some(rhs) = self.register_place(*rhs) else { return };
+                self.assignments.insert((lhs, rhs));
+            }
+            Rvalue::Aggregate(kind, fields) => {
+                let Some(mut lhs) = self.register_place(*lhs) else { return };
+                match **kind {
+                    // Do not propagate unions.
+                    AggregateKind::Adt(_, _, _, _, Some(_)) => return,
+                    AggregateKind::Adt(_, variant, _, _, None) => {
+                        let ty = self.map.places[lhs].ty;
+                        if ty.is_enum() {
+                            lhs = self.map.register_place(ty, lhs, TrackElem::Variant(variant));
+                        }
+                    }
+                    AggregateKind::RawPtr(..)
+                    | AggregateKind::Array(_)
+                    | AggregateKind::Tuple
+                    | AggregateKind::Closure(..)
+                    | AggregateKind::Coroutine(..)
+                    | AggregateKind::CoroutineClosure(..) => {}
+                }
+                for (index, field) in fields.iter_enumerated() {
+                    if let Some(rhs) = field.place()
+                        && let Some(rhs) = self.register_place(rhs)
+                    {
+                        let lhs = self.map.register_place(
+                            self.map.places[rhs].ty,
+                            lhs,
+                            TrackElem::Field(index),
+                        );
+                        self.assignments.insert((lhs, rhs));
+                    }
+                }
+            }
+            _ => {}
         }
     }
 }

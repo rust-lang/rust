@@ -509,7 +509,7 @@ fn assume(a: u8, b: bool) -> u8 {
 /// Verify that jump threading succeeds seeing through copies of aggregates.
 fn aggregate_copy() -> u32 {
     // CHECK-LABEL: fn aggregate_copy(
-    // CHECK: switchInt(
+    // CHECK-NOT: switchInt(
 
     const Foo: (u32, u32) = (5, 3);
 
