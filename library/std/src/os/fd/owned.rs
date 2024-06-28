@@ -29,6 +29,9 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// it on `&BorrowedFd` and use `Clone::clone()` like `ToOwned` does for all
 /// types implementing `Clone`. The result will be descriptor borrowed under
 /// the same lifetime.
+///
+/// To obtain an [`OwnedFd`], you can use [`BorrowedFd::try_clone_to_owned`]
+/// instead, but this is not supported on all platforms.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(0)]
@@ -52,6 +55,8 @@ pub struct BorrowedFd<'fd> {
 /// descriptor, so it can be used in FFI in places where a file descriptor is
 /// passed as a consumed argument or returned as an owned value, and it never
 /// has the value `-1`.
+///
+/// You can use [`AsFd::as_fd`] to obtain a [`BorrowedFd`].
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(0)]
 // libstd/os/raw/mod.rs assures me that every libstd-supported platform has a
