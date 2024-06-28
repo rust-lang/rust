@@ -39,36 +39,6 @@ use rustc_span::{BytePos, ErrorGuaranteed, Pos, Span};
 use thin_vec::{thin_vec, ThinVec};
 use tracing::instrument;
 
-/// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
-/// dropped into the token stream, which happens while parsing the result of
-/// macro expansion). Placement of these is not as complex as I feared it would
-/// be. The important thing is to make sure that lookahead doesn't balk at
-/// `token::Interpolated` tokens.
-macro_rules! maybe_whole_expr {
-    ($p:expr) => {
-        if let token::Interpolated(nt) = &$p.token.kind {
-            match &**nt {
-                token::NtExpr(e) | token::NtLiteral(e) => {
-                    let e = e.clone();
-                    $p.bump();
-                    return Ok(e);
-                }
-                token::NtPath(path) => {
-                    let path = (**path).clone();
-                    $p.bump();
-                    return Ok($p.mk_expr($p.prev_token.span, ExprKind::Path(None, path)));
-                }
-                token::NtBlock(block) => {
-                    let block = block.clone();
-                    $p.bump();
-                    return Ok($p.mk_expr($p.prev_token.span, ExprKind::Block(block, None)));
-                }
-                _ => {}
-            };
-        }
-    };
-}
-
 #[derive(Debug)]
 pub(super) enum LhsExpr {
     // Already parsed just the outer attributes.
@@ -1421,7 +1391,27 @@ impl<'a> Parser<'a> {
     /// correctly if called from `parse_dot_or_call_expr()`.
     fn parse_expr_bottom(&mut self) -> PResult<'a, P<Expr>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
-        maybe_whole_expr!(self);
+
+        if let token::Interpolated(nt) = &self.token.kind {
+            match &**nt {
+                token::NtExpr(e) | token::NtLiteral(e) => {
+                    let e = e.clone();
+                    self.bump();
+                    return Ok(e);
+                }
+                token::NtPath(path) => {
+                    let path = (**path).clone();
+                    self.bump();
+                    return Ok(self.mk_expr(self.prev_token.span, ExprKind::Path(None, path)));
+                }
+                token::NtBlock(block) => {
+                    let block = block.clone();
+                    self.bump();
+                    return Ok(self.mk_expr(self.prev_token.span, ExprKind::Block(block, None)));
+                }
+                _ => {}
+            };
+        }
 
         // Outer attributes are already parsed and will be
         // added to the return value after the fact.
@@ -2190,7 +2180,26 @@ impl<'a> Parser<'a> {
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
     /// Keep this in sync with `Token::can_begin_literal_maybe_minus`.
     pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
-        maybe_whole_expr!(self);
+        if let token::Interpolated(nt) = &self.token.kind {
+            match &**nt {
+                // FIXME(nnethercote) The `NtExpr` case should only match if
+                // `e` is an `ExprKind::Lit` or an `ExprKind::Unary` containing
+                // an `UnOp::Neg` and an `ExprKind::Lit`, like how
+                // `can_begin_literal_maybe_minus` works. But this method has
+                // been over-accepting for a long time, and to make that change
+                // here requires also changing some `parse_literal_maybe_minus`
+                // call sites to accept additional expression kinds. E.g.
+                // `ExprKind::Path` must be accepted when parsing range
+                // patterns. That requires some care. So for now, we continue
+                // being less strict here than we should be.
+                token::NtExpr(e) | token::NtLiteral(e) => {
+                    let e = e.clone();
+                    self.bump();
+                    return Ok(e);
+                }
+                _ => {}
+            };
+        }
 
         let lo = self.token.span;
         let minus_present = self.eat(&token::BinOp(token::Minus));
@@ -3423,8 +3432,9 @@ impl<'a> Parser<'a> {
             }
         }
         let capture_clause = self.parse_capture_clause()?;
+        let decl_span = lo.to(self.prev_token.span);
         let (attrs, body) = self.parse_inner_attrs_and_block()?;
-        let kind = ExprKind::Gen(capture_clause, body, kind);
+        let kind = ExprKind::Gen(capture_clause, body, kind, decl_span);
         Ok(self.mk_expr_with_attrs(lo.to(self.prev_token.span), kind, attrs))
     }
 
@@ -4013,7 +4023,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Match(_, _, _)
             | ExprKind::Closure(_)
             | ExprKind::Block(_, _)
-            | ExprKind::Gen(_, _, _)
+            | ExprKind::Gen(_, _, _, _)
             | ExprKind::TryBlock(_)
             | ExprKind::Underscore
             | ExprKind::Path(_, _)

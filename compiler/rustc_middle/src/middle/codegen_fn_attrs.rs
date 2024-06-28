@@ -87,10 +87,7 @@ bitflags::bitflags! {
         /// #[cmse_nonsecure_entry]: with a TrustZone-M extension, declare a
         /// function as an entry function from Non-Secure code.
         const CMSE_NONSECURE_ENTRY      = 1 << 13;
-        /// `#[coverage(off)]`: indicates that the function should be ignored by
-        /// the MIR `InstrumentCoverage` pass and not added to the coverage map
-        /// during codegen.
-        const NO_COVERAGE               = 1 << 14;
+        // (Bit 14 was used for `#[coverage(off)]`, but is now unused.)
         /// `#[used(linker)]`:
         /// indicates that neither LLVM nor the linker will eliminate this function.
         const USED_LINKER               = 1 << 15;

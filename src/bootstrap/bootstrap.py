@@ -617,6 +617,9 @@ class RustBuild(object):
                 self.fix_bin_or_dylib("{}/bin/rustdoc".format(bin_root))
                 self.fix_bin_or_dylib("{}/libexec/rust-analyzer-proc-macro-srv".format(bin_root))
                 lib_dir = "{}/lib".format(bin_root)
+                rustlib_bin_dir = "{}/rustlib/{}/bin".format(lib_dir, self.build)
+                self.fix_bin_or_dylib("{}/rust-lld".format(rustlib_bin_dir))
+                self.fix_bin_or_dylib("{}/gcc-ld/ld.lld".format(rustlib_bin_dir))
                 for lib in os.listdir(lib_dir):
                     # .so is not necessarily the suffix, there can be version numbers afterwards.
                     if ".so" in lib:
@@ -731,12 +734,9 @@ class RustBuild(object):
 
         patchelf = "{}/bin/patchelf".format(nix_deps_dir)
         rpath_entries = [
-            # Relative default, all binary and dynamic libraries we ship
-            # appear to have this (even when `../lib` is redundant).
-            "$ORIGIN/../lib",
             os.path.join(os.path.realpath(nix_deps_dir), "lib")
         ]
-        patchelf_args = ["--set-rpath", ":".join(rpath_entries)]
+        patchelf_args = ["--add-rpath", ":".join(rpath_entries)]
         if ".so" not in fname:
             # Finally, set the correct .interp for binaries
             with open("{}/nix-support/dynamic-linker".format(nix_deps_dir)) as dynamic_linker:
