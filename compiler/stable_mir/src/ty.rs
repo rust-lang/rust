@@ -248,28 +248,6 @@ pub struct Placeholder<T> {
     pub bound: T,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Attribute {
-    value: String,
-    span: Span,
-}
-
-impl Attribute {
-    pub fn new(value: String, span: Span) -> Attribute {
-        Attribute { value, span }
-    }
-
-    /// Get the span of this attribute.
-    pub fn span(&self) -> Span {
-        self.span
-    }
-
-    /// Get the string representation of this attribute.
-    pub fn as_str(&self) -> &str {
-        &self.value
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Span(usize);
 

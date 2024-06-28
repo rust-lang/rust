@@ -31,6 +31,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     test_builtins(&items);
     test_derive(&items);
     test_tool(&items);
+    test_all_attrs(&items);
 
     ControlFlow::Continue(())
 }
@@ -73,14 +74,21 @@ fn test_tool(items: &CrateItems) {
     assert_eq!(clippy_attrs[0].as_str(), "#[clippy::cyclomatic_complexity = \"100\"]");
 }
 
+fn test_all_attrs(items: &CrateItems) {
+    let target_fn = *get_item(&items, "many_attrs").unwrap();
+    let all_attrs = target_fn.all_attrs();
+    assert_eq!(all_attrs[0].as_str(), "#[inline]");
+    assert_eq!(all_attrs[1].as_str(), "#[allow(unused_variables)]");
+    assert_eq!(all_attrs[2].as_str(), "#[allow(dead_code)]");
+    assert_eq!(all_attrs[3].as_str(), "#[allow(unused_imports)]");
+    assert_eq!(all_attrs[4].as_str(), "#![allow(clippy::filter_map)]");
+}
+
 
 fn get_item<'a>(
     items: &'a CrateItems,
     name: &str,
 ) -> Option<&'a stable_mir::CrateItem> {
-    for item in items {
-        println!("{:?}", item);
-    }
     items.iter().find(|crate_item| crate_item.name() == name)
 }
 
@@ -131,6 +139,16 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         // A clippy tool attribute.
         #[clippy::cyclomatic_complexity = "100"]
         pub fn complex_fn() {{}}
+
+        // A function with many attributes.
+        #[inline]
+        #[allow(unused_variables)]
+        #[allow(dead_code)]
+        #[allow(unused_imports)]
+        fn many_attrs() {{
+            #![allow(clippy::filter_map)]
+            todo!()
+        }}
         "#
     )?;
     Ok(())

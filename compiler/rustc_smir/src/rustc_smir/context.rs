@@ -232,7 +232,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         &self,
         def_id: stable_mir::DefId,
         attr: &[stable_mir::Symbol],
-    ) -> Vec<stable_mir::ty::Attribute> {
+    ) -> Vec<stable_mir::crate_def::Attribute> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         let did = tables[def_id];
@@ -242,7 +242,28 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
             .map(|attribute| {
                 let attr_str = rustc_ast_pretty::pprust::attribute_to_string(attribute);
                 let span = attribute.span;
-                stable_mir::ty::Attribute::new(attr_str, span.stable(&mut *tables))
+                stable_mir::crate_def::Attribute::new(attr_str, span.stable(&mut *tables))
+            })
+            .collect()
+    }
+
+    fn get_all_attrs(&self, def_id: stable_mir::DefId) -> Vec<stable_mir::crate_def::Attribute> {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        let did = tables[def_id];
+        let filter_fn = move |a: &&rustc_ast::ast::Attribute| {
+            matches!(a.kind, rustc_ast::ast::AttrKind::Normal(_))
+        };
+        let attrs_iter = if let Some(did) = did.as_local() {
+            tcx.hir().attrs(tcx.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+        } else {
+            tcx.item_attrs(did).iter().filter(filter_fn)
+        };
+        attrs_iter
+            .map(|attribute| {
+                let attr_str = rustc_ast_pretty::pprust::attribute_to_string(attribute);
+                let span = attribute.span;
+                stable_mir::crate_def::Attribute::new(attr_str, span.stable(&mut *tables))
             })
             .collect()
     }

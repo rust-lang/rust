@@ -1,7 +1,7 @@
 //! Module that define a common trait for things that represent a crate definition,
 //! such as, a function, a trait, an enum, and any other definitions.
 
-use crate::ty::{Attribute, GenericArgs, Span, Ty};
+use crate::ty::{GenericArgs, Span, Ty};
 use crate::{with, Crate, Symbol};
 
 /// A unique identification number for each item accessible for the current compilation unit.
@@ -52,9 +52,18 @@ pub trait CrateDef {
     }
 
     /// Return attributes with the given attribute name.
+    ///
+    /// Single segmented name like `#[inline]` is specified as `&["inline".to_string()]`.
+    /// Multi-segmented name like `#[rustfmt::skip]` is specified as `&["rustfmt".to_string(), "skip".to_string()]`.
     fn attrs_by_path(&self, attr: &[Symbol]) -> Vec<Attribute> {
         let def_id = self.def_id();
         with(|cx| cx.get_attrs_by_path(def_id, attr))
+    }
+
+    /// Return all attributes of this definition.
+    fn all_attrs(&self) -> Vec<Attribute> {
+        let def_id = self.def_id();
+        with(|cx| cx.get_all_attrs(def_id))
     }
 }
 
@@ -72,6 +81,28 @@ pub trait CrateDefType: CrateDef {
     /// This will panic if instantiation fails.
     fn ty_with_args(&self, args: &GenericArgs) -> Ty {
         with(|cx| cx.def_ty_with_args(self.def_id(), args))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Attribute {
+    value: String,
+    span: Span,
+}
+
+impl Attribute {
+    pub fn new(value: String, span: Span) -> Attribute {
+        Attribute { value, span }
+    }
+
+    /// Get the span of this attribute.
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
+    /// Get the string representation of this attribute.
+    pub fn as_str(&self) -> &str {
+        &self.value
     }
 }
 

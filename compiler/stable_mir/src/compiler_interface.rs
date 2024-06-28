@@ -6,12 +6,13 @@
 use std::cell::Cell;
 
 use crate::abi::{FnAbi, Layout, LayoutShape};
+use crate::crate_def::Attribute;
 use crate::mir::alloc::{AllocId, GlobalAlloc};
 use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::{BinOp, Body, Place, UnOp};
 use crate::target::MachineInfo;
 use crate::ty::{
-    AdtDef, AdtKind, Allocation, Attribute, ClosureDef, ClosureKind, FieldDef, FnDef, ForeignDef,
+    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, FieldDef, FnDef, ForeignDef,
     ForeignItemKind, ForeignModule, ForeignModuleDef, GenericArgs, GenericPredicates, Generics,
     ImplDef, ImplTrait, IntrinsicDef, LineInfo, MirConst, PolyFnSig, RigidTy, Span, TraitDecl,
     TraitDef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef,
@@ -55,8 +56,14 @@ pub trait Context {
     /// Returns the name of given `DefId`
     fn def_name(&self, def_id: DefId, trimmed: bool) -> Symbol;
 
-    /// Get all attributes with the given attribute name.
+    /// Return attributes with the given attribute name.
+    ///
+    /// Single segmented name like `#[inline]` is specified as `&["inline".to_string()]`.
+    /// Multi-segmented name like `#[rustfmt::skip]` is specified as `&["rustfmt".to_string(), "skip".to_string()]`.
     fn get_attrs_by_path(&self, def_id: DefId, attr: &[Symbol]) -> Vec<Attribute>;
+
+    /// Get all attributes of a definition.
+    fn get_all_attrs(&self, def_id: DefId) -> Vec<Attribute>;
 
     /// Returns printable, human readable form of `Span`
     fn span_to_string(&self, span: Span) -> String;
