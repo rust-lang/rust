@@ -11,7 +11,7 @@ use crate::prelude::*;
 /// users main function.
 pub(crate) fn maybe_create_entry_wrapper(
     tcx: TyCtxt<'_>,
-    module: &mut impl Module,
+    module: &mut dyn Module,
     is_jit: bool,
     is_primary_cgu: bool,
 ) {
@@ -39,7 +39,7 @@ pub(crate) fn maybe_create_entry_wrapper(
 
     fn create_entry_fn(
         tcx: TyCtxt<'_>,
-        m: &mut impl Module,
+        m: &mut dyn Module,
         rust_main_def_id: DefId,
         ignore_lang_start_wrapper: bool,
         is_main_fn: bool,

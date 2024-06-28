@@ -11,7 +11,7 @@ use rustc_session::config::OomStrategy;
 use crate::prelude::*;
 
 /// Returns whether an allocator shim was created
-pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut impl Module) -> bool {
+pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut dyn Module) -> bool {
     let Some(kind) = allocator_kind_for_codegen(tcx) else { return false };
     codegen_inner(
         module,
@@ -23,7 +23,7 @@ pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut impl Module) -> bool {
 }
 
 fn codegen_inner(
-    module: &mut impl Module,
+    module: &mut dyn Module,
     kind: AllocatorKind,
     alloc_error_handler_kind: AllocatorKind,
     oom_strategy: OomStrategy,
