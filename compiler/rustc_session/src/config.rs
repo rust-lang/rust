@@ -2965,8 +2965,9 @@ pub(crate) mod dep_tracking {
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FunctionReturn,
         InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
         LtoCli, NextSolverConfig, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
-        Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm,
-        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+        PatchableFunctionEntry, Polonius, RemapPathScopeComponents, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3073,6 +3074,7 @@ pub(crate) mod dep_tracking {
         OomStrategy,
         LanguageIdentifier,
         NextSolverConfig,
+        PatchableFunctionEntry,
         Polonius,
         InliningThreshold,
         FunctionReturn,
@@ -3247,6 +3249,35 @@ impl DumpMonoStatsFormat {
             Self::Markdown => "md",
             Self::Json => "json",
         }
+    }
+}
+
+/// `-Z patchable-function-entry` representation - how many nops to put before and after function
+/// entry.
+#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+pub struct PatchableFunctionEntry {
+    /// Nops before the entry
+    prefix: u8,
+    /// Nops after the entry
+    entry: u8,
+}
+
+impl PatchableFunctionEntry {
+    pub fn from_total_and_prefix_nops(
+        total_nops: u8,
+        prefix_nops: u8,
+    ) -> Option<PatchableFunctionEntry> {
+        if total_nops < prefix_nops {
+            None
+        } else {
+            Some(Self { prefix: prefix_nops, entry: total_nops - prefix_nops })
+        }
+    }
+    pub fn prefix(&self) -> u8 {
+        self.prefix
+    }
+    pub fn entry(&self) -> u8 {
+        self.entry
     }
 }
 
