@@ -24,9 +24,11 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// passed as an argument, it is not captured or consumed, and it never has the
 /// value `-1`.
 ///
-/// This type's `.to_owned()` implementation returns another `BorrowedFd`
-/// rather than an `OwnedFd`. It just makes a trivial copy of the raw file
-/// descriptor, which is then borrowed under the same lifetime.
+/// This type does not have a [`ToOwned`][crate::borrow::ToOwned]
+/// implementation. Calling `.to_owned()` on a variable of this type will call
+/// it on `&BorrowedFd` and use `Clone::clone()` like `ToOwned` does for all
+/// types implementing `Clone`. The result will be descriptor borrowed under
+/// the same lifetime.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(0)]
