@@ -151,7 +151,6 @@ run-make/share-generics-dylib/Makefile
 run-make/silly-file-names/Makefile
 run-make/simd-ffi/Makefile
 run-make/split-debuginfo/Makefile
-run-make/stable-symbol-names/Makefile
 run-make/static-dylib-by-default/Makefile
 run-make/static-extern-type/Makefile
 run-make/staticlib-blank-lib/Makefile

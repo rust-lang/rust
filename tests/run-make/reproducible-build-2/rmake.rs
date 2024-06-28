@@ -8,14 +8,14 @@
 
 //FIXME(Oneirical): excluded ignore-musl ignore-windows ignore-cross-compile
 
-use run_make_support::{fs_wrapper, rust_lib_name, rustc};
+use run_make_support::{bin_name, fs_wrapper, rust_lib_name, rustc};
 
 fn main() {
     // test 1: fat lto
     rustc().input("reproducible-build-aux.rs").run();
-    rustc().input("reproducible-build.rs").arg("-Clto=fat").run();
+    rustc().input("reproducible-build.rs").arg("-Clto=fat").output("reproducible-build").run();
     fs_wrapper::rename("reproducible-build", "reproducible-build-a");
-    rustc().input("reproducible-build.rs").arg("-Clto=fat").run();
+    rustc().input("reproducible-build.rs").arg("-Clto=fat").output("reproducible-build").run();
     assert_eq!(fs_wrapper::read("reproducible-build"), fs_wrapper::read("reproducible-build-a"));
 
     // test 2: sysroot
