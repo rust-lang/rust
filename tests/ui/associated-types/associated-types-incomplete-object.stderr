@@ -25,7 +25,7 @@ LL |     type B;
    |     ------ `B` defined here
 ...
 LL |     let d = &42isize as &dyn Foo;
-   |                              ^^^ help: specify the associated types: `Foo<A = Type, B = Type>`
+   |                              ^^^ help: specify the associated types: `Foo::<A = Type, B = Type>`
 
 error: aborting due to 3 previous errors
 
