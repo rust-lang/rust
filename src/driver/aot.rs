@@ -26,6 +26,8 @@ use rustc_middle::mir::mono::{CodegenUnit, MonoItem};
 use rustc_session::Session;
 use rustc_session::config::{DebugInfo, OutFileName, OutputFilenames, OutputType};
 
+use crate::CodegenCx;
+use crate::base::CodegenedFunction;
 use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
 use crate::debuginfo::TypeDebugContext;
 use crate::global_asm::GlobalAsmConfig;
@@ -486,6 +488,55 @@ fn reuse_workproduct_for_cgu(
     })
 }
 
+fn codegen_cgu_content(
+    tcx: TyCtxt<'_>,
+    module: &mut dyn Module,
+    cgu_name: rustc_span::Symbol,
+) -> (CodegenCx, Vec<CodegenedFunction>) {
+    let _timer = tcx.prof.generic_activity_with_arg("codegen cgu", cgu_name.as_str());
+
+    let cgu = tcx.codegen_unit(cgu_name);
+    let mono_items = cgu.items_in_deterministic_order(tcx);
+
+    let mut cx = crate::CodegenCx::new(
+        tcx,
+        module.isa(),
+        tcx.sess.opts.debuginfo != DebugInfo::None,
+        cgu_name,
+    );
+    let mut type_dbg = TypeDebugContext::default();
+    super::predefine_mono_items(tcx, module, &mono_items);
+    let mut codegened_functions = vec![];
+    for (mono_item, _) in mono_items {
+        match mono_item {
+            MonoItem::Fn(inst) => {
+                if let Some(codegened_function) = crate::base::codegen_fn(
+                    tcx,
+                    &mut cx,
+                    &mut type_dbg,
+                    Function::new(),
+                    module,
+                    inst,
+                ) {
+                    codegened_functions.push(codegened_function);
+                }
+            }
+            MonoItem::Static(def_id) => {
+                let data_id = crate::constant::codegen_static(tcx, module, def_id);
+                if let Some(debug_context) = &mut cx.debug_context {
+                    debug_context.define_static(tcx, &mut type_dbg, def_id, data_id);
+                }
+            }
+            MonoItem::GlobalAsm(item_id) => {
+                crate::global_asm::codegen_global_asm_item(tcx, &mut cx.global_asm, item_id);
+            }
+        }
+    }
+    crate::main_shim::maybe_create_entry_wrapper(tcx, module, false, cgu.is_primary());
+
+    (cx, codegened_functions)
+}
+
 fn module_codegen(
     tcx: TyCtxt<'_>,
     (global_asm_config, cgu_name, token): (
@@ -494,57 +545,11 @@ fn module_codegen(
         ConcurrencyLimiterToken,
     ),
 ) -> OngoingModuleCodegen {
-    let (cgu_name, mut cx, mut module, codegened_functions) =
-        tcx.prof.generic_activity_with_arg("codegen cgu", cgu_name.as_str()).run(|| {
-            let cgu = tcx.codegen_unit(cgu_name);
-            let mono_items = cgu.items_in_deterministic_order(tcx);
+    let mut module = make_module(tcx.sess, cgu_name.as_str().to_string());
 
-            let mut module = make_module(tcx.sess, cgu_name.as_str().to_string());
+    let (mut cx, codegened_functions) = codegen_cgu_content(tcx, &mut module, cgu_name);
 
-            let mut cx = crate::CodegenCx::new(
-                tcx,
-                module.isa(),
-                tcx.sess.opts.debuginfo != DebugInfo::None,
-                cgu_name,
-            );
-            let mut type_dbg = TypeDebugContext::default();
-            super::predefine_mono_items(tcx, &mut module, &mono_items);
-            let mut codegened_functions = vec![];
-            for (mono_item, _) in mono_items {
-                match mono_item {
-                    MonoItem::Fn(inst) => {
-                        if let Some(codegened_function) = crate::base::codegen_fn(
-                            tcx,
-                            &mut cx,
-                            &mut type_dbg,
-                            Function::new(),
-                            &mut module,
-                            inst,
-                        ) {
-                            codegened_functions.push(codegened_function);
-                        }
-                    }
-                    MonoItem::Static(def_id) => {
-                        let data_id = crate::constant::codegen_static(tcx, &mut module, def_id);
-                        if let Some(debug_context) = &mut cx.debug_context {
-                            debug_context.define_static(tcx, &mut type_dbg, def_id, data_id);
-                        }
-                    }
-                    MonoItem::GlobalAsm(item_id) => {
-                        crate::global_asm::codegen_global_asm_item(
-                            tcx,
-                            &mut cx.global_asm,
-                            item_id,
-                        );
-                    }
-                }
-            }
-            crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, false, cgu.is_primary());
-
-            let cgu_name = cgu.name().as_str().to_owned();
-
-            (cgu_name, cx, module, codegened_functions)
-        });
+    let cgu_name = cgu_name.as_str().to_owned();
 
     let producer = crate::debuginfo::producer(tcx.sess);
 
