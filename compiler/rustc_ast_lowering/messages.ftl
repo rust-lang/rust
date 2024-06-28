@@ -43,6 +43,8 @@ ast_lowering_bad_return_type_notation_output =
     return type not allowed with return type notation
     .suggestion = remove the return type
 
+ast_lowering_bad_return_type_notation_position = return type notation not allowed in this position yet
+
 ast_lowering_base_expression_double_dot =
     base expression required after `..`
     .suggestion = add a base expression here

@@ -399,6 +399,11 @@ pub enum BadReturnTypeNotation {
         #[suggestion(code = "(..)", applicability = "maybe-incorrect")]
         span: Span,
     },
+    #[diag(ast_lowering_bad_return_type_notation_position)]
+    Position {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(Diagnostic)]
