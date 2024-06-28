@@ -30,7 +30,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
 use rustc_middle::bug;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::middle::privacy::{self, Level};
 use rustc_middle::mir::interpret::{ConstAllocation, ErrorHandled, GlobalAlloc};
 use rustc_middle::query::Providers;
@@ -178,7 +178,15 @@ impl<'tcx> ReachableContext<'tcx> {
         if !self.any_library {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
-            if has_custom_linkage(self.tcx, search_item) {
+            let codegen_attrs = if self.tcx.def_kind(search_item).has_codegen_attrs() {
+                self.tcx.codegen_fn_attrs(search_item)
+            } else {
+                CodegenFnAttrs::EMPTY
+            };
+            let is_extern = codegen_attrs.contains_extern_indicator();
+            let std_internal =
+                codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
+            if is_extern || std_internal {
                 self.reachable_symbols.insert(search_item);
             }
         } else {
