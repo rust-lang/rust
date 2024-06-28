@@ -1,8 +1,5 @@
 //@ compile-flags: -Zinline-mir=yes --crate-type=lib
-
-//@ known-bug: unknown
-//@ build-fail
-//@ failure-status: 101
+//@ build-pass
 
 use std::mem::ManuallyDrop;
 
