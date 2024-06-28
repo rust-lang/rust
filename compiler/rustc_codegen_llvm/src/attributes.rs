@@ -2,7 +2,7 @@
 
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, PatchableFunctionEntry};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{FunctionReturn, OptLevel};
 use rustc_span::symbol::sym;
@@ -51,6 +51,34 @@ fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll 
         }
         InlineAttr::None => None,
     }
+}
+
+#[inline]
+fn patchable_function_entry_attrs<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    attr: Option<PatchableFunctionEntry>,
+) -> SmallVec<[&'ll Attribute; 2]> {
+    let mut attrs = SmallVec::new();
+    let patchable_spec = attr.unwrap_or_else(|| {
+        PatchableFunctionEntry::from_config(cx.tcx.sess.opts.unstable_opts.patchable_function_entry)
+    });
+    let entry = patchable_spec.entry();
+    let prefix = patchable_spec.prefix();
+    if entry > 0 {
+        attrs.push(llvm::CreateAttrStringValue(
+            cx.llcx,
+            "patchable-function-entry",
+            &format!("{}", entry),
+        ));
+    }
+    if prefix > 0 {
+        attrs.push(llvm::CreateAttrStringValue(
+            cx.llcx,
+            "patchable-function-prefix",
+            &format!("{}", prefix),
+        ));
+    }
+    attrs
 }
 
 /// Get LLVM sanitize attributes.
@@ -421,6 +449,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         llvm::set_alignment(llfn, align);
     }
     to_add.extend(sanitize_attrs(cx, codegen_fn_attrs.no_sanitize));
+    to_add.extend(patchable_function_entry_attrs(cx, codegen_fn_attrs.patchable_function_entry));
 
     // Always annotate functions with the target-cpu they are compiled for.
     // Without this, ThinLTO won't inline Rust functions into Clang generated
