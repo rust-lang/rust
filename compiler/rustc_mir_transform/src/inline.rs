@@ -11,7 +11,7 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs}
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt, TypeFlags};
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
@@ -306,6 +306,16 @@ impl<'tcx> Inliner<'tcx> {
             InstanceKind::Intrinsic(_) | InstanceKind::Virtual(..) => {
                 return Err("instance without MIR (intrinsic / virtual)");
             }
+
+            // FIXME(#127030): `ConstParamHasTy` has bad interactions with
+            // the drop shim builder, which does not evaluate predicates in
+            // the correct param-env for types being dropped. Stall resolving
+            // the MIR for this instance until all of its const params are
+            // substituted.
+            InstanceKind::DropGlue(_, Some(ty)) if ty.has_type_flags(TypeFlags::HAS_CT_PARAM) => {
+                return Err("still needs substitution");
+            }
+
             // This cannot result in an immediate cycle since the callee MIR is a shim, which does
             // not get any optimizations run on it. Any subsequent inlining may cause cycles, but we
             // do not need to catch this here, we can wait until the inliner decides to continue
