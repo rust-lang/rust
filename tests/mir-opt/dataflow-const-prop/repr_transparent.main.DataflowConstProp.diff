@@ -32,7 +32,7 @@
           StorageDead(_5);
           StorageDead(_4);
 -         _2 = I32(move _3);
-+         _2 = I32(const 0_i32);
++         _2 = const I32(0_i32);
           StorageDead(_3);
           _0 = const ();
           StorageDead(_2);
@@ -42,6 +42,10 @@
 + }
 + 
 + ALLOC0 (size: 4, align: 4) {
++     00 00 00 00                                     │ ....
++ }
++ 
++ ALLOC1 (size: 4, align: 4) {
 +     00 00 00 00                                     │ ....
   }
   

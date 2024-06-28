@@ -12,12 +12,14 @@ fn foo() -> u32 {
 
     // CHECK:bb0: {
     // CHECK:    [[a]] = const Foo;
-    // CHECK:    [[b]] = [[a]];
-    // CHECK:    [[c]] = ([[b]].1: u32);
-    // CHECK:    switchInt(move {{_.*}}) -> [0: bb2, otherwise: bb1];
+    // CHECK:    [[b]] = const (5_u32, 3_u32);
+    // CHECK:    [[c]] = const 3_u32;
+    // CHECK:    {{_.*}} = const 3_u32;
+    // CHECK:    {{_.*}} = const true;
+    // CHECK:    switchInt(const true) -> [0: bb2, otherwise: bb1];
 
     // CHECK:bb1: {
-    // CHECK:    _0 = ([[b]].0: u32);
+    // CHECK:    _0 = const 5_u32;
     // CHECK:    goto -> bb3;
 
     // CHECK:bb2: {
