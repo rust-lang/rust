@@ -45,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
         {
             let direct_super_traits_iter = cx
                 .tcx
-                .super_predicates_of(def_id)
+                .explicit_super_predicates_of(def_id)
                 .predicates
                 .into_iter()
                 .filter_map(|(pred, _)| pred.as_trait_clause());

@@ -70,10 +70,10 @@ pub fn provide(providers: &mut Providers) {
         predicates_of: predicates_of::predicates_of,
         predicates_defined_on,
         explicit_predicates_of: predicates_of::explicit_predicates_of,
-        super_predicates_of: predicates_of::super_predicates_of,
-        implied_predicates_of: predicates_of::implied_predicates_of,
-        super_predicates_that_define_assoc_item:
-            predicates_of::super_predicates_that_define_assoc_item,
+        explicit_super_predicates_of: predicates_of::explicit_super_predicates_of,
+        explicit_implied_predicates_of: predicates_of::explicit_implied_predicates_of,
+        explicit_supertraits_containing_assoc_item:
+            predicates_of::explicit_supertraits_containing_assoc_item,
         trait_explicit_predicates_and_bounds: predicates_of::trait_explicit_predicates_and_bounds,
         type_param_predicates: predicates_of::type_param_predicates,
         trait_def,
@@ -691,14 +691,14 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         hir::ItemKind::Trait(..) => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().trait_def(def_id);
-            tcx.at(it.span).super_predicates_of(def_id);
+            tcx.at(it.span).explicit_super_predicates_of(def_id);
             tcx.ensure().predicates_of(def_id);
             tcx.ensure().associated_items(def_id);
         }
         hir::ItemKind::TraitAlias(..) => {
             tcx.ensure().generics_of(def_id);
-            tcx.at(it.span).implied_predicates_of(def_id);
-            tcx.at(it.span).super_predicates_of(def_id);
+            tcx.at(it.span).explicit_implied_predicates_of(def_id);
+            tcx.at(it.span).explicit_super_predicates_of(def_id);
             tcx.ensure().predicates_of(def_id);
         }
         hir::ItemKind::Struct(struct_def, _) | hir::ItemKind::Union(struct_def, _) => {
