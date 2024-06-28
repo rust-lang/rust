@@ -5,14 +5,14 @@
 #
 # You may run this script locally using Docker with the following command:
 #
-# $ src/ci/docker/run.sh x86_64-gnu-integration
+# $ src/ci/docker/run.sh x86_64-fuchsia
 #
 # Alternatively, from within the container with --dev, assuming you have made it
 # as far as building the toolchain with the above command:
 #
-# $ src/ci/docker/run.sh --dev x86_64-gnu-integration
+# $ src/ci/docker/run.sh --dev x86_64-fuchsia
 # docker# git config --global --add safe.directory /checkout/obj/fuchsia
-# docker# ../src/ci/docker/host-x86_64/x86_64-gnu-integration/build-fuchsia.sh
+# docker# ../src/ci/docker/host-x86_64/x86_64-fuchsia/build-fuchsia.sh
 #
 # Also see the docs in the rustc-dev-guide for more info:
 # https://github.com/rust-lang/rustc-dev-guide/pull/1989
@@ -21,7 +21,7 @@ set -euf -o pipefail
 
 # Set this variable to 1 to disable updating the Fuchsia checkout. This is
 # useful for making local changes. You can find the Fuchsia checkout in
-# `obj/x86_64-gnu-integration/fuchsia` in your local checkout after running this
+# `obj/x86_64-fuchsia/fuchsia` in your local checkout after running this
 # job for the first time.
 KEEP_CHECKOUT=
 
