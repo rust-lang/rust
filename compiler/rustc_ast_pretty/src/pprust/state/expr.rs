@@ -540,7 +540,7 @@ impl<'a> State<'a> {
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Gen(capture_clause, blk, kind) => {
+            ast::ExprKind::Gen(capture_clause, blk, kind, _decl_span) => {
                 self.word_nbsp(kind.modifier());
                 self.print_capture_clause(*capture_clause);
                 // cbox/ibox in analogy to the `ExprKind::Block` arm above

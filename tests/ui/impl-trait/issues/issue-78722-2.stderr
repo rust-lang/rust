@@ -1,4 +1,4 @@
-error[E0271]: expected `{async block@$DIR/issue-78722-2.rs:13:13: 13:21}` to be a future that resolves to `u8`, but it resolves to `()`
+error[E0271]: expected `{async block@$DIR/issue-78722-2.rs:13:13: 13:18}` to be a future that resolves to `u8`, but it resolves to `()`
   --> $DIR/issue-78722-2.rs:11:30
    |
 LL |         fn concrete_use() -> F {
@@ -16,7 +16,7 @@ LL |         let f: F = async { 1 };
    |                expected due to this
    |
    = note: expected opaque type `F`
-            found `async` block `{async block@$DIR/issue-78722-2.rs:16:20: 16:31}`
+            found `async` block `{async block@$DIR/issue-78722-2.rs:16:20: 16:25}`
 
 error: aborting due to 2 previous errors
 

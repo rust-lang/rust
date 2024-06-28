@@ -656,6 +656,8 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
+        builder.build.update_submodule(Path::new("src/tools/cargo"));
+
         builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
