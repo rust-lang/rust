@@ -1,6 +1,6 @@
 use std::assert_matches::assert_matches;
 
-use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::CastKind;
@@ -187,10 +187,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             bug!("FloatToFloat/FloatToInt cast: source type {} is not a float type", src.layout.ty)
         };
         let val = match fty {
-            FloatTy::F16 => unimplemented!("f16_f128"),
+            FloatTy::F16 => self.cast_from_float(src.to_scalar().to_f16()?, cast_to.ty),
             FloatTy::F32 => self.cast_from_float(src.to_scalar().to_f32()?, cast_to.ty),
             FloatTy::F64 => self.cast_from_float(src.to_scalar().to_f64()?, cast_to.ty),
-            FloatTy::F128 => unimplemented!("f16_f128"),
+            FloatTy::F128 => self.cast_from_float(src.to_scalar().to_f128()?, cast_to.ty),
         };
         Ok(ImmTy::from_scalar(val, cast_to))
     }
@@ -296,18 +296,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Float(fty) if signed => {
                 let v = v as i128;
                 match fty {
-                    FloatTy::F16 => unimplemented!("f16_f128"),
+                    FloatTy::F16 => Scalar::from_f16(Half::from_i128(v).value),
                     FloatTy::F32 => Scalar::from_f32(Single::from_i128(v).value),
                     FloatTy::F64 => Scalar::from_f64(Double::from_i128(v).value),
-                    FloatTy::F128 => unimplemented!("f16_f128"),
+                    FloatTy::F128 => Scalar::from_f128(Quad::from_i128(v).value),
                 }
             }
             // unsigned int -> float
             Float(fty) => match fty {
-                FloatTy::F16 => unimplemented!("f16_f128"),
+                FloatTy::F16 => Scalar::from_f16(Half::from_u128(v).value),
                 FloatTy::F32 => Scalar::from_f32(Single::from_u128(v).value),
                 FloatTy::F64 => Scalar::from_f64(Double::from_u128(v).value),
-                FloatTy::F128 => unimplemented!("f16_f128"),
+                FloatTy::F128 => Scalar::from_f128(Quad::from_u128(v).value),
             },
 
             // u8 -> char
@@ -321,7 +321,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Low-level cast helper function. Converts an apfloat `f` into int or float types.
     fn cast_from_float<F>(&self, f: F, dest_ty: Ty<'tcx>) -> Scalar<M::Provenance>
     where
-        F: Float + Into<Scalar<M::Provenance>> + FloatConvert<Single> + FloatConvert<Double>,
+        F: Float
+            + Into<Scalar<M::Provenance>>
+            + FloatConvert<Half>
+            + FloatConvert<Single>
+            + FloatConvert<Double>
+            + FloatConvert<Quad>,
     {
         use rustc_type_ir::TyKind::*;
 
@@ -358,10 +363,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             // float -> float
             Float(fty) => match fty {
-                FloatTy::F16 => unimplemented!("f16_f128"),
+                FloatTy::F16 => Scalar::from_f16(adjust_nan(self, f, f.convert(&mut false).value)),
                 FloatTy::F32 => Scalar::from_f32(adjust_nan(self, f, f.convert(&mut false).value)),
                 FloatTy::F64 => Scalar::from_f64(adjust_nan(self, f, f.convert(&mut false).value)),
-                FloatTy::F128 => unimplemented!("f16_f128"),
+                FloatTy::F128 => {
+                    Scalar::from_f128(adjust_nan(self, f, f.convert(&mut false).value))
+                }
             },
             // That's it.
             _ => span_bug!(self.cur_span(), "invalid float to {} cast", dest_ty),
