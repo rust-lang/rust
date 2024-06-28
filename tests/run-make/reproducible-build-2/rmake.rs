@@ -6,17 +6,22 @@
 // Outputs should be identical.
 // See https://github.com/rust-lang/rust/issues/34902
 
-//FIXME(Oneirical): excluded ignore-musl ignore-windows ignore-cross-compile
+//@ ignore-windows
+// Reasons:
+// 1. The object files are reproducible, but their paths are not, which causes
+// the first assertion in the test to fail.
+// 2. When the sysroot gets copied, some symlinks must be re-created,
+// which is a privileged action on Windows.
 
-use run_make_support::{fs_wrapper, rust_lib_name, rustc};
+use run_make_support::{bin_name, rfs, rust_lib_name, rustc};
 
 fn main() {
     // test 1: fat lto
     rustc().input("reproducible-build-aux.rs").run();
-    rustc().input("reproducible-build.rs").arg("-Clto=fat").run();
-    fs_wrapper::rename("reproducible-build", "reproducible-build-a");
-    rustc().input("reproducible-build.rs").arg("-Clto=fat").run();
-    assert_eq!(fs_wrapper::read("reproducible-build"), fs_wrapper::read("reproducible-build-a"));
+    rustc().input("reproducible-build.rs").arg("-Clto=fat").output("reproducible-build").run();
+    rfs::rename("reproducible-build", "reproducible-build-a");
+    rustc().input("reproducible-build.rs").arg("-Clto=fat").output("reproducible-build").run();
+    assert_eq!(rfs::read("reproducible-build"), rfs::read("reproducible-build-a"));
 
     // test 2: sysroot
     let sysroot = rustc().print("sysroot").run().stdout_utf8();
@@ -29,8 +34,8 @@ fn main() {
         .sysroot(&sysroot)
         .arg(format!("--remap-path-prefix={sysroot}=/sysroot"))
         .run();
-    fs_wrapper::copy_dir_all(&sysroot, "sysroot");
-    fs_wrapper::rename(rust_lib_name("reproducible_build"), rust_lib_name("foo"));
+    rfs::copy_dir_all(&sysroot, "sysroot");
+    rfs::rename(rust_lib_name("reproducible_build"), rust_lib_name("foo"));
     rustc()
         .input("reproducible-build.rs")
         .crate_type("rlib")
@@ -38,8 +43,5 @@ fn main() {
         .arg("--remap-path-prefix=/sysroot=/sysroot")
         .run();
 
-    assert_eq!(
-        fs_wrapper::read(rust_lib_name("reproducible_build")),
-        fs_wrapper::read(rust_lib_name("foo"))
-    );
+    assert_eq!(rfs::read(rust_lib_name("reproducible_build")), rfs::read(rust_lib_name("foo")));
 }
