@@ -996,14 +996,11 @@ marker_impls! {
         bool,
         char,
         str /* Technically requires `[u8]: ConstParamTy` */,
+        (),
         {T: ConstParamTy, const N: usize} [T; N],
         {T: ConstParamTy} [T],
         {T: ?Sized + ConstParamTy} &T,
 }
-
-// FIXME(adt_const_params): Add to marker_impls call above once not in bootstrap
-#[unstable(feature = "adt_const_params", issue = "95174")]
-impl ConstParamTy for () {}
 
 /// A common trait implemented by all function pointers.
 #[unstable(
