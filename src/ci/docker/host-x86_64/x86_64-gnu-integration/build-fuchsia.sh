@@ -35,7 +35,7 @@ PICK_REFS=()
 # commit hash of fuchsia.git and some other repos in the "monorepo" checkout, in
 # addition to versions of prebuilts. It should be bumped regularly by the
 # Fuchsia team – we aim for every 1-2 months.
-INTEGRATION_SHA=737ebdd83afa47b742ca8325fad0176952fcefbd
+INTEGRATION_SHA=d1d2f20efe46e22be179953dd6726c96eced54ab
 
 checkout=fuchsia
 jiri=.jiri_root/bin/jiri
