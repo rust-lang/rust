@@ -2,6 +2,8 @@
 // also be turned off with a CLI flag.
 
 //@ needs-rust-lld
+//@ ignore-beta
+//@ ignore-stable
 //@ only-x86_64-unknown-linux-gnu
 
 use run_make_support::regex::Regex;
