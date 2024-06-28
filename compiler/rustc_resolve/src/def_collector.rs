@@ -334,7 +334,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                     None => closure_def,
                 }
             }
-            ExprKind::Gen(_, _, _) => {
+            ExprKind::Gen(_, _, _, _) => {
                 self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span)
             }
             ExprKind::ConstBlock(ref constant) => {
