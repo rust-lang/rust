@@ -173,15 +173,10 @@ impl Config {
         }
 
         let mut patchelf = Command::new(nix_deps_dir.join("bin/patchelf"));
-        let rpath_entries = {
-            // ORIGIN is a relative default, all binary and dynamic libraries we ship
-            // appear to have this (even when `../lib` is redundant).
-            // NOTE: there are only two paths here, delimited by a `:`
-            let mut entries = OsString::from("$ORIGIN/../lib:");
-            entries.push(t!(fs::canonicalize(nix_deps_dir)).join("lib"));
-            entries
-        };
-        patchelf.args(&[OsString::from("--set-rpath"), rpath_entries]);
+        patchelf.args(&[
+            OsString::from("--add-rpath"),
+            OsString::from(t!(fs::canonicalize(nix_deps_dir)).join("lib")),
+        ]);
         if !path_is_dylib(fname) {
             // Finally, set the correct .interp for binaries
             let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");

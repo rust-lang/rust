@@ -480,7 +480,7 @@ impl Wtf8Buf {
     #[inline]
     pub(crate) fn extend_from_slice(&mut self, other: &[u8]) {
         self.bytes.extend_from_slice(other);
-        self.is_known_utf8 = self.is_known_utf8 || self.next_surrogate(0).is_none();
+        self.is_known_utf8 = false;
     }
 }
 

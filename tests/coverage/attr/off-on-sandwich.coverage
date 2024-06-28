@@ -31,10 +31,10 @@
    LL|       |fn sparse_a() {
    LL|       |    sparse_b();
    LL|       |    sparse_b();
-   LL|      2|    fn sparse_b() {
-   LL|      2|        sparse_c();
-   LL|      2|        sparse_c();
-   LL|      2|        #[coverage(on)]
+   LL|       |    fn sparse_b() {
+   LL|       |        sparse_c();
+   LL|       |        sparse_c();
+   LL|       |        #[coverage(on)]
    LL|      4|        fn sparse_c() {
    LL|      4|            sparse_d();
    LL|      4|            sparse_d();
@@ -47,7 +47,7 @@
    LL|      8|                }
    LL|      8|            }
    LL|      4|        }
-   LL|      2|    }
+   LL|       |    }
    LL|       |}
    LL|       |
    LL|       |#[coverage(off)]

@@ -35,13 +35,13 @@
    LL|       |mod nested_fns {
    LL|       |    #[coverage(off)]
    LL|       |    pub fn outer_not_covered(is_true: bool) {
-   LL|      1|        fn inner(is_true: bool) {
-   LL|      1|            if is_true {
-   LL|      1|                println!("called and covered");
-   LL|      1|            } else {
-   LL|      0|                println!("absolutely not covered");
-   LL|      0|            }
-   LL|      1|        }
+   LL|       |        fn inner(is_true: bool) {
+   LL|       |            if is_true {
+   LL|       |                println!("called and covered");
+   LL|       |            } else {
+   LL|       |                println!("absolutely not covered");
+   LL|       |            }
+   LL|       |        }
    LL|       |        println!("called but not covered");
    LL|       |        inner(is_true);
    LL|       |    }

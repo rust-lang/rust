@@ -1,35 +1,3 @@
-Function name: <<<nested::MyOuter as nested::MyTrait>::trait_method::MyMiddle as nested::MyTrait>::trait_method::MyInner as nested::MyTrait>::trait_method (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 39, 15, 02, 16]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Zero) at (prev + 57, 21) to (start + 2, 22)
-
-Function name: <<<nested::MyOuter>::outer_method::MyMiddle>::middle_method::MyInner>::inner_method (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 23, 15, 02, 16]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Zero) at (prev + 35, 21) to (start + 2, 22)
-
-Function name: <<nested::MyOuter as nested::MyTrait>::trait_method::MyMiddle as nested::MyTrait>::trait_method (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 36, 0d, 08, 0e]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Zero) at (prev + 54, 13) to (start + 8, 14)
-
-Function name: <<nested::MyOuter>::outer_method::MyMiddle>::middle_method (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 20, 0d, 08, 0e]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Zero) at (prev + 32, 13) to (start + 8, 14)
-
 Function name: nested::closure_expr
 Raw bytes (14): 0x[01, 01, 00, 02, 01, 44, 01, 01, 0f, 01, 0b, 05, 01, 02]
 Number of files: 1
@@ -39,23 +7,6 @@ Number of file 0 mappings: 2
 - Code(Counter(0)) at (prev + 68, 1) to (start + 1, 15)
 - Code(Counter(0)) at (prev + 11, 5) to (start + 1, 2)
 
-Function name: nested::closure_expr::{closure#0}::{closure#0} (unused)
-Raw bytes (14): 0x[01, 01, 00, 02, 00, 47, 1a, 01, 17, 00, 04, 0d, 01, 0a]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 2
-- Code(Zero) at (prev + 71, 26) to (start + 1, 23)
-- Code(Zero) at (prev + 4, 13) to (start + 1, 10)
-
-Function name: nested::closure_expr::{closure#0}::{closure#0}::{closure#0} (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 48, 1d, 02, 0e]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Zero) at (prev + 72, 29) to (start + 2, 14)
-
 Function name: nested::closure_tail
 Raw bytes (14): 0x[01, 01, 00, 02, 01, 53, 01, 01, 0f, 01, 11, 05, 01, 02]
 Number of files: 1
@@ -64,37 +15,4 @@ Number of expressions: 0
 Number of file 0 mappings: 2
 - Code(Counter(0)) at (prev + 83, 1) to (start + 1, 15)
 - Code(Counter(0)) at (prev + 17, 5) to (start + 1, 2)
-
-Function name: nested::closure_tail::{closure#0}::{closure#0} (unused)
-Raw bytes (14): 0x[01, 01, 00, 02, 00, 58, 14, 01, 1f, 00, 06, 15, 01, 12]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 2
-- Code(Zero) at (prev + 88, 20) to (start + 1, 31)
-- Code(Zero) at (prev + 6, 21) to (start + 1, 18)
-
-Function name: nested::closure_tail::{closure#0}::{closure#0}::{closure#0} (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 5a, 1c, 02, 1a]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Zero) at (prev + 90, 28) to (start + 2, 26)
-
-Function name: nested::outer_fn::middle_fn (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 11, 05, 05, 06]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Zero) at (prev + 17, 5) to (start + 5, 6)
-
-Function name: nested::outer_fn::middle_fn::inner_fn (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 12, 09, 02, 0a]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Zero) at (prev + 18, 9) to (start + 2, 10)
 

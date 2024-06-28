@@ -6,11 +6,13 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::sym;
 
 /// Registers query/hook implementations related to coverage.
 pub(crate) fn provide(providers: &mut Providers) {
     providers.hooks.is_eligible_for_coverage =
         |TyCtxtAt { tcx, .. }, def_id| is_eligible_for_coverage(tcx, def_id);
+    providers.queries.coverage_attr_on = coverage_attr_on;
     providers.queries.coverage_ids_info = coverage_ids_info;
 }
 
@@ -38,12 +40,41 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return false;
     }
 
-    if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
+    if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
+        trace!("InstrumentCoverage skipped for {def_id:?} (`#[naked]`)");
+        return false;
+    }
+
+    if !tcx.coverage_attr_on(def_id) {
         trace!("InstrumentCoverage skipped for {def_id:?} (`#[coverage(off)]`)");
         return false;
     }
 
     true
+}
+
+/// Query implementation for `coverage_attr_on`.
+fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    // Check for annotations directly on this def.
+    if let Some(attr) = tcx.get_attr(def_id, sym::coverage) {
+        match attr.meta_item_list().as_deref() {
+            Some([item]) if item.has_name(sym::off) => return false,
+            Some([item]) if item.has_name(sym::on) => return true,
+            Some(_) | None => {
+                // Other possibilities should have been rejected by `rustc_parse::validate_attr`.
+                tcx.dcx().span_bug(attr.span, "unexpected value of coverage attribute");
+            }
+        }
+    }
+
+    match tcx.opt_local_parent(def_id) {
+        // Check the parent def (and so on recursively) until we find an
+        // enclosing attribute or reach the crate root.
+        Some(parent) => tcx.coverage_attr_on(parent),
+        // We reached the crate root without seeing a coverage attribute, so
+        // allow coverage instrumentation by default.
+        None => true,
+    }
 }
 
 /// Query implementation for `coverage_ids_info`.
