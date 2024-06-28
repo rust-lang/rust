@@ -10,10 +10,10 @@
 // CHECK-NEXT: [[C:%[0-9]]] = bitcast <16 x i1> [[B]] to i16
 #[no_mangle]
 pub fn lower_while_ascii(mut input: &[u8], mut output: &mut [u8]) -> usize {
-    // process the input in chunks to enable auto-vectorization
-    const USIZE_SIZE: usize = core::mem::size_of::<usize>();
-    const MAGIC_UNROLL: usize = 2;
-    const N: usize = USIZE_SIZE * MAGIC_UNROLL;
+    // Process the input in chunks to enable auto-vectorization.
+    // The real implementation makes this dependant on the size of usize,
+    // but that would require changing the CHECK assertions based on the platform.
+    const N: usize = 16;
 
     output = &mut output[..input.len()];
 
