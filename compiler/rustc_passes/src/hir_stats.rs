@@ -695,7 +695,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_generic_args(&mut self, g: &'v ast::GenericArgs) {
         record_variants!(
             (self, g, g, Id::None, ast, GenericArgs, GenericArgs),
-            [AngleBracketed, Parenthesized]
+            [AngleBracketed, Parenthesized, ParenthesizedElided]
         );
         ast_visit::walk_generic_args(self, g)
     }

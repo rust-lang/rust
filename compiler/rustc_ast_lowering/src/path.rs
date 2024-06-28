@@ -276,6 +276,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         )
                     }
                 },
+                GenericArgs::ParenthesizedElided(_span) => {
+                    todo!()
+                }
             }
         } else {
             (

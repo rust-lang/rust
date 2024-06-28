@@ -1289,6 +1289,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.with_impl_trait(None, |this| this.visit_ty(ty));
                 }
             }
+            GenericArgs::ParenthesizedElided(_span) => {}
         }
     }
 
@@ -1445,7 +1446,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                 span: args.span,
                             });
                         }
-                        None => {}
+                        Some(ast::GenericArgs::ParenthesizedElided(_)) | None => {}
                     }
                 }
             }
@@ -1693,7 +1694,9 @@ fn deny_equality_constraints(
                 // Add `<Bar = RhsTy>` to `Foo`.
                 match &mut assoc_path.segments[len].args {
                     Some(args) => match args.deref_mut() {
-                        GenericArgs::Parenthesized(_) => continue,
+                        GenericArgs::Parenthesized(_) | GenericArgs::ParenthesizedElided(..) => {
+                            continue;
+                        }
                         GenericArgs::AngleBracketed(args) => {
                             args.args.push(arg);
                         }
