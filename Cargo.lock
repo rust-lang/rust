@@ -5261,6 +5261,7 @@ name = "stable_mir"
 version = "0.1.0-preview"
 dependencies = [
  "scoped-tls",
+ "serde",
 ]
 
 [[package]]
