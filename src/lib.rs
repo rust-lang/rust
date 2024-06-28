@@ -73,6 +73,7 @@ mod type_of;
 
 use std::any::Any;
 use std::fmt::Debug;
+use std::ops::Deref;
 #[cfg(not(feature = "master"))]
 use std::sync::atomic::AtomicBool;
 #[cfg(not(feature = "master"))]
@@ -294,7 +295,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         alloc_error_handler_kind: AllocatorKind,
     ) -> Self::Module {
         let mut mods = GccContext {
-            context: Arc::new(new_context(tcx)),
+            context: Arc::new(SyncContext::new(new_context(tcx))),
             should_combine_object_files: false,
             temp_dir: None,
         };
@@ -325,15 +326,34 @@ impl ExtraBackendMethods for GccCodegenBackend {
 }
 
 pub struct GccContext {
-    context: Arc<Context<'static>>,
+    context: Arc<SyncContext>,
     should_combine_object_files: bool,
     // Temporary directory used by LTO. We keep it here so that it's not removed before linking.
     temp_dir: Option<TempDir>,
 }
 
-unsafe impl Send for GccContext {}
-// FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "-Zno-parallel-llvm". Try to disable it here.
-unsafe impl Sync for GccContext {}
+struct SyncContext {
+    context: Context<'static>,
+}
+
+impl SyncContext {
+    fn new(context: Context<'static>) -> Self {
+        Self { context }
+    }
+}
+
+impl Deref for SyncContext {
+    type Target = Context<'static>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.context
+    }
+}
+
+unsafe impl Send for SyncContext {}
+// FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "-Zno-parallel-llvm".
+// TODO: disable it here by returing false in CodegenBackend::supports_parallel().
+unsafe impl Sync for SyncContext {}
 
 impl WriteBackendMethods for GccCodegenBackend {
     type Module = GccContext;

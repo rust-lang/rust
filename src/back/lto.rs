@@ -39,7 +39,7 @@ use tempfile::{tempdir, TempDir};
 
 use crate::back::write::save_temp_bitcode;
 use crate::errors::{DynamicLinkingWithLTO, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib};
-use crate::{to_gcc_opt_level, GccCodegenBackend, GccContext};
+use crate::{to_gcc_opt_level, GccCodegenBackend, GccContext, SyncContext};
 
 /// We keep track of the computed LTO cache keys from the previous
 /// session to determine which CGUs we can reuse.
@@ -485,9 +485,9 @@ fn thin_lto(
         });*/
 
         match module {
-            SerializedModule::Local(ref module_buffer) => {
-                let path = module_buffer.0.to_str().expect("path");
-                let my_path = PathBuf::from(path);
+            SerializedModule::Local(_) => {
+                //let path = module_buffer.0.to_str().expect("path");
+                //let my_path = PathBuf::from(path);
                 //let exists = my_path.exists();
                 //println!("Path: {:?}: {}", path, exists);
                 /*module.module_llvm.should_combine_object_files = true;
@@ -644,7 +644,7 @@ pub unsafe fn optimize_thin_module(
                     unimplemented!("from uncompressed file")
                 }
             }
-            Arc::new(context)
+            Arc::new(SyncContext::new(context))
         }
     };
     let module = ModuleCodegen {
@@ -718,7 +718,7 @@ pub unsafe fn optimize_thin_module(
 }
 
 pub struct ThinBuffer {
-    context: Arc<Context<'static>>,
+    context: Arc<SyncContext>,
 }
 
 // TODO: check if this makes sense to make ThinBuffer Send and Sync.
@@ -726,7 +726,7 @@ unsafe impl Send for ThinBuffer {}
 unsafe impl Sync for ThinBuffer {}
 
 impl ThinBuffer {
-    pub fn new(context: &Arc<Context<'static>>) -> Self {
+    pub(crate) fn new(context: &Arc<SyncContext>) -> Self {
         Self { context: Arc::clone(context) }
     }
 }
