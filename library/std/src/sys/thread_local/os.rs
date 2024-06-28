@@ -50,6 +50,7 @@ unsafe impl<T> Sync for Storage<T> {}
 
 struct Value<T: 'static> {
     value: T,
+    // INVARIANT: if this value is stored under a TLS key, `key` must be that `key`.
     key: Key,
 }
 
@@ -73,10 +74,14 @@ impl<T: 'static> Storage<T> {
             // is not running) + it is coming from a trusted source (self).
             unsafe { &(*ptr).value }
         } else {
+            // SAFETY: trivially correct.
             unsafe { Self::try_initialize(key, ptr, i, f) }
         }
     }
 
+    /// # Safety
+    /// * `key` must be the result of calling `self.key.force()`
+    /// * `ptr` must be the current value associated with `key`.
     unsafe fn try_initialize(
         key: Key,
         ptr: *mut Value<T>,
@@ -91,11 +96,16 @@ impl<T: 'static> Storage<T> {
         let value = Box::new(Value { value: i.and_then(Option::take).unwrap_or_else(f), key });
         let ptr = Box::into_raw(value);
 
-        let old = unsafe { get(key) as *mut Value<T> };
-        // SAFETY: `ptr` is a correct pointer that can be destroyed by the key destructor.
-        unsafe {
+        // SAFETY:
+        // * key came from a `LazyKey` and is thus correct.
+        // * `ptr` is a correct pointer that can be destroyed by the key destructor.
+        // * the value is stored under the key that it contains.
+        let old = unsafe {
+            let old = get(key) as *mut Value<T>;
             set(key, ptr as *mut u8);
-        }
+            old
+        };
+
         if !old.is_null() {
             // If the variable was recursively initialized, drop the old value.
             // SAFETY: We cannot be inside a `LocalKey::with` scope, as the
@@ -123,8 +133,10 @@ unsafe extern "C" fn destroy_value<T: 'static>(ptr: *mut u8) {
     abort_on_dtor_unwind(|| {
         let ptr = unsafe { Box::from_raw(ptr as *mut Value<T>) };
         let key = ptr.key;
+        // SAFETY: `key` is the TLS key `ptr` was stored under.
         unsafe { set(key, ptr::without_provenance_mut(1)) };
         drop(ptr);
+        // SAFETY: `key` is the TLS key `ptr` was stored under.
         unsafe { set(key, ptr::null_mut()) };
     });
 }
