@@ -3,6 +3,8 @@
 //@ aux-build:non_local_macro.rs
 //@ rustc-env:CARGO_CRATE_NAME=non_local_def
 
+#![warn(non_local_definitions)]
+
 extern crate non_local_macro;
 
 const B: u32 = {
