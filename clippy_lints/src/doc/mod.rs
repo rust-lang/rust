@@ -762,6 +762,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         range.end..next_range.start,
                         Span::new(span.hi(), next_span.lo(), span.ctxt(), span.parent()),
                         &containers[..],
+                        span,
                     );
                 }
             },
