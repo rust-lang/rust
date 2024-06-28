@@ -4,7 +4,7 @@ error: range-to patterns with `...` are not allowed
 LL |         [_, ...tail] => println!("{tail}"),
    |             ^^^ help: use `..=` instead
 
-error[E0425]: cannot find value `rest`
+error[E0425]: cannot find value `rest` in this scope
   --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:3:13
    |
 LL |         [1, rest..] => println!("{rest}"),
@@ -15,13 +15,13 @@ help: if you meant to collect the rest of the slice in `rest`, use the at operat
 LL |         [1, rest @ ..] => println!("{rest}"),
    |                  +
 
-error[E0425]: cannot find value `rest`
+error[E0425]: cannot find value `rest` in this scope
   --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:3:35
    |
 LL |         [1, rest..] => println!("{rest}"),
    |                                   ^^^^ not found in this scope
 
-error[E0425]: cannot find value `tail`
+error[E0425]: cannot find value `tail` in this scope
   --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:11:15
    |
 LL |         [_, ..tail] => println!("{tail}"),
@@ -32,13 +32,13 @@ help: if you meant to collect the rest of the slice in `tail`, use the at operat
 LL |         [_, tail @ ..] => println!("{tail}"),
    |             ~~~~~~~~~
 
-error[E0425]: cannot find value `tail`
+error[E0425]: cannot find value `tail` in this scope
   --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:11:35
    |
 LL |         [_, ..tail] => println!("{tail}"),
    |                                   ^^^^ not found in this scope
 
-error[E0425]: cannot find value `tail`
+error[E0425]: cannot find value `tail` in this scope
   --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:17:16
    |
 LL |         [_, ...tail] => println!("{tail}"),
@@ -49,7 +49,7 @@ help: if you meant to collect the rest of the slice in `tail`, use the at operat
 LL |         [_, tail @ ..] => println!("{tail}"),
    |             ~~~~~~~~~
 
-error[E0425]: cannot find value `tail`
+error[E0425]: cannot find value `tail` in this scope
   --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:17:36
    |
 LL |         [_, ...tail] => println!("{tail}"),

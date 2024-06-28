@@ -16,13 +16,13 @@ LL |     (()氷);
    |        expected one of `)`, `,`, `.`, `?`, or an operator
    |        help: missing `,`
 
-error[E0425]: cannot find value `é`
+error[E0425]: cannot find value `é` in this scope
   --> $DIR/multibyte-char-use-seperator-issue-80134.rs:4:8
    |
 LL |     (()é);
    |        ^ not found in this scope
 
-error[E0425]: cannot find value `氷`
+error[E0425]: cannot find value `氷` in this scope
   --> $DIR/multibyte-char-use-seperator-issue-80134.rs:7:8
    |
 LL |     (()氷);

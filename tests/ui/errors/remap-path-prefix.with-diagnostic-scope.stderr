@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `ferris`
+error[E0425]: cannot find value `ferris` in this scope
   --> remapped/errors/remap-path-prefix.rs:19:5
    |
 LL |     ferris

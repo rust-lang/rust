@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `foo`
+error[E0425]: cannot find value `foo` in this scope
   --> $DIR/for-expn.rs:6:7
    |
 LL |       foo

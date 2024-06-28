@@ -16,7 +16,7 @@ LL |         break;
 LL |         let _ = 'a: loop {
    |                 ^^ label `'a` already in scope
 
-error[E0425]: cannot find value `LOOP`
+error[E0425]: cannot find value `LOOP` in this scope
   --> $DIR/loop-break-value.rs:99:15
    |
 LL |     'LOOP: for _ in 0 .. 9 {

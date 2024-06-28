@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `a̐é`
+error[E0425]: cannot find value `a̐é` in this scope
   --> $DIR/unicode_2.rs:4:13
    |
 LL |     let _ = a̐é;

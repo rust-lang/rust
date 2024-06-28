@@ -1,4 +1,4 @@
-error[E0422]: cannot find struct, variant or union type `E`
+error[E0422]: cannot find struct, variant or union type `E` in this scope
   --> $DIR/issue-17518.rs:6:5
    |
 LL |     E { name: "foobar" };

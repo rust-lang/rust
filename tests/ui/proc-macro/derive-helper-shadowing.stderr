@@ -10,7 +10,7 @@ note: the derive helper attribute imported here
 LL |             use empty_helper as renamed;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: cannot find attribute `empty_helper`
+error: cannot find attribute `empty_helper` in this scope
   --> $DIR/derive-helper-shadowing.rs:38:22
    |
 LL |             #[derive(GenHelperUse)]
@@ -22,7 +22,7 @@ help: consider importing this attribute macro through its public re-export
 LL +             use empty_helper;
    |
 
-error: cannot find attribute `empty_helper`
+error: cannot find attribute `empty_helper` in this scope
   --> $DIR/derive-helper-shadowing.rs:14:11
    |
 LL |         #[empty_helper]

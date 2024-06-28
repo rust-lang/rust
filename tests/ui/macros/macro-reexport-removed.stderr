@@ -6,7 +6,7 @@ LL | #![feature(macro_reexport)]
    |
    = note: subsumed by `pub use`
 
-error: cannot find attribute `macro_reexport`
+error: cannot find attribute `macro_reexport` in this scope
   --> $DIR/macro-reexport-removed.rs:5:3
    |
 LL | #[macro_reexport(macro_one)]

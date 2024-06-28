@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `ident_error`
+error[E0425]: cannot find value `ident_error` in this scope
   --> $DIR/issue-103181-2.rs:12:5
    |
 LL |     ident_error;

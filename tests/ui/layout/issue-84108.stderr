@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `OsStr`
+error[E0412]: cannot find type `OsStr` in this scope
   --> $DIR/issue-84108.rs:6:24
    |
 LL | static FOO: (dyn AsRef<OsStr>, u8) = ("hello", 42);
@@ -9,7 +9,7 @@ help: consider importing this struct
 LL + use std::ffi::OsStr;
    |
 
-error[E0412]: cannot find type `Path`
+error[E0412]: cannot find type `Path` in this scope
   --> $DIR/issue-84108.rs:9:14
    |
 LL | const BAR: (&Path, [u8], usize) = ("hello", [], 42);

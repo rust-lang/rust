@@ -70,7 +70,7 @@ help: a trait with a similar name exists
 LL | fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: ToString {
    |                                                         ~~~~~~~~
 
-error[E0405]: cannot find trait `Unresolved`
+error[E0405]: cannot find trait `Unresolved` in this scope
   --> $DIR/assoc_type_bound_with_struct.rs:19:31
    |
 LL | fn issue_95327() where <u8 as Unresolved>::Assoc: String {}

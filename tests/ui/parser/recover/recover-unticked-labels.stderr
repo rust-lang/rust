@@ -14,7 +14,7 @@ LL |     'label: loop { continue label };
    |                             |
    |                             help: labels start with a tick
 
-error[E0425]: cannot find value `label`
+error[E0425]: cannot find value `label` in this scope
   --> $DIR/recover-unticked-labels.rs:4:26
    |
 LL |     'label: loop { break label };

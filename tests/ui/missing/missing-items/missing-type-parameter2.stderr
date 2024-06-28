@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `N`
+error[E0412]: cannot find type `N` in this scope
   --> $DIR/missing-type-parameter2.rs:3:8
    |
 LL | struct X<const N: u8>();
@@ -16,7 +16,7 @@ help: you might be missing a type parameter
 LL | impl<N> X<N> {}
    |     +++
 
-error[E0412]: cannot find type `N`
+error[E0412]: cannot find type `N` in this scope
   --> $DIR/missing-type-parameter2.rs:6:28
    |
 LL | impl<T, const A: u8 = 2> X<N> {}
@@ -33,7 +33,7 @@ help: you might be missing a type parameter
 LL | impl<T, const A: u8 = 2, N> X<N> {}
    |                        +++
 
-error[E0412]: cannot find type `T`
+error[E0412]: cannot find type `T` in this scope
   --> $DIR/missing-type-parameter2.rs:11:20
    |
 LL | struct X<const N: u8>();
@@ -51,7 +51,7 @@ help: you might be missing a type parameter
 LL | fn foo<T>(_: T) where T: Send {}
    |       +++
 
-error[E0412]: cannot find type `T`
+error[E0412]: cannot find type `T` in this scope
   --> $DIR/missing-type-parameter2.rs:11:11
    |
 LL | struct X<const N: u8>();
@@ -69,7 +69,7 @@ help: you might be missing a type parameter
 LL | fn foo<T>(_: T) where T: Send {}
    |       +++
 
-error[E0412]: cannot find type `A`
+error[E0412]: cannot find type `A` in this scope
   --> $DIR/missing-type-parameter2.rs:15:24
    |
 LL | struct X<const N: u8>();

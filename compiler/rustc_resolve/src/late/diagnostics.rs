@@ -351,7 +351,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             };
 
             BaseError {
-                msg: format!("cannot find {expected} `{item_str}`"),
+                msg: format!("cannot find {expected} `{item_str}` in {mod_prefix}{mod_str}"),
                 fallback_label,
                 span: item_span,
                 span_label,
@@ -2522,7 +2522,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 if let Some(generics) = kind.generics() {
                     if span.overlaps(generics.span) {
                         // Avoid the following:
-                        // error[E0405]: cannot find trait `A`
+                        // error[E0405]: cannot find trait `A` in this scope
                         //  --> $DIR/typo-suggestion-named-underscore.rs:CC:LL
                         //   |
                         // L | fn foo<T: A>(x: T) {} // Shouldn't suggest underscore

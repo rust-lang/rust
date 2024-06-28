@@ -9,7 +9,7 @@ LL |         generated!();
    |
    = note: this error originates in the macro `generated` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find value `local_use`
+error[E0425]: cannot find value `local_use` in this scope
   --> $DIR/gen-macro-rules-hygiene.rs:12:1
    |
 LL | gen_macro_rules!();
@@ -20,7 +20,7 @@ LL |         generated!();
    |
    = note: this error originates in the macro `generated` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find value `local_def`
+error[E0425]: cannot find value `local_def` in this scope
   --> $DIR/gen-macro-rules-hygiene.rs:21:9
    |
 LL |         local_def;

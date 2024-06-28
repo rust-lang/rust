@@ -1,4 +1,4 @@
-error: cannot find macro `a`
+error: cannot find macro `a` in this scope
   --> $DIR/expand-full-no-resolution.rs:18:18
    |
 LL |         macro_rules! _a {
@@ -12,7 +12,7 @@ help: the leading underscore in `_a` marks it as unused, consider renaming it to
 LL |         macro_rules! a {
    |                      ~
 
-error: cannot find macro `a`
+error: cannot find macro `a` in this scope
   --> $DIR/expand-full-no-resolution.rs:19:10
    |
 LL |         macro_rules! _a {

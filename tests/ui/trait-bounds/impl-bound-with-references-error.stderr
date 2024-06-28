@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Cow`
+error[E0412]: cannot find type `Cow` in this scope
   --> $DIR/impl-bound-with-references-error.rs:12:13
    |
 LL |     T: Into<Cow<'static, str>>,

@@ -238,7 +238,7 @@ LL |         Foo,
    |
    = help: consider a manual implementation of `Default`
 
-error: cannot find macro `llvm_asm`
+error: cannot find macro `llvm_asm` in this scope
   --> $DIR/macros-nonfatal-errors.rs:99:5
    |
 LL |     llvm_asm!(invalid);

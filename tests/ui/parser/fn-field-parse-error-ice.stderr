@@ -17,7 +17,7 @@ help: escape `fn` to use it as an identifier
 LL |     inner : dyn r#fn ()
    |                 ++
 
-error[E0412]: cannot find type `dyn`
+error[E0412]: cannot find type `dyn` in this scope
   --> $DIR/fn-field-parse-error-ice.rs:4:13
    |
 LL |     inner : dyn fn ()

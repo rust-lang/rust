@@ -29,7 +29,7 @@ note: found an item that was configured out
 LL |     pub fn y() {}
    |            ^
 
-error[E0425]: cannot find function `uwu`
+error[E0425]: cannot find function `uwu` in module `inner`
   --> $DIR/diagnostics-reexport.rs:38:12
    |
 LL |     inner::uwu();

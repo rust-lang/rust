@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `NonExistent`
+error[E0425]: cannot find value `NonExistent` in this scope
   --> $DIR/ambiguous-builtin-attrs.rs:34:5
    |
 LL |     NonExistent;

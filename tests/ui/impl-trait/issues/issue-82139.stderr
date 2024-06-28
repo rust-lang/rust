@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `j`
+error[E0425]: cannot find value `j` in this scope
   --> $DIR/issue-82139.rs:15:26
    |
 LL |         Some(42).map(|_| j)

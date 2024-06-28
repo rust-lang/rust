@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Missing`
+error[E0412]: cannot find type `Missing` in this scope
   --> $DIR/unresolved-field-isnt-copy.rs:4:15
    |
 LL |     x: *const Missing,

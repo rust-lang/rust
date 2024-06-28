@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `F`
+error[E0412]: cannot find type `F` in this scope
   --> $DIR/issue-83693.rs:6:6
    |
 LL | impl F {
@@ -7,13 +7,13 @@ LL | impl F {
    |
    = note: similarly named trait `Fn` defined here
 
-error[E0412]: cannot find type `TestResult`
+error[E0412]: cannot find type `TestResult` in this scope
   --> $DIR/issue-83693.rs:9:22
    |
 LL |         <Self as Fn(&TestResult)>::call
    |                      ^^^^^^^^^^ not found in this scope
 
-error[E0412]: cannot find type `x`
+error[E0412]: cannot find type `x` in this scope
   --> $DIR/issue-83693.rs:16:6
    |
 LL |     <x as Fn(&usize)>::call

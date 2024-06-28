@@ -14,7 +14,7 @@ help: consider introducing lifetime `'db` here
 LL | pub type Tait<'db> = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;
    |              +++++
 
-error[E0412]: cannot find type `LocalKey`
+error[E0412]: cannot find type `LocalKey` in this scope
   --> $DIR/nested-impl-trait-in-tait.rs:3:44
    |
 LL | pub type Tait = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;

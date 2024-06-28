@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `x`
+error[E0425]: cannot find value `x` in this scope
   --> $DIR/pattern-macro.rs:5:5
    |
 LL |     x + 1;

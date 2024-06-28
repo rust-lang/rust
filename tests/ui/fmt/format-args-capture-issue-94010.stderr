@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `foo`
+error[E0425]: cannot find value `foo` in this scope
   --> $DIR/format-args-capture-issue-94010.rs:3:16
    |
 LL |     const FOO: i32 = 123;
@@ -6,7 +6,7 @@ LL |     const FOO: i32 = 123;
 LL |     println!("{foo:X}");
    |                ^^^ help: a constant with a similar name exists (notice the capitalization): `FOO`
 
-error[E0425]: cannot find value `foo`
+error[E0425]: cannot find value `foo` in this scope
   --> $DIR/format-args-capture-issue-94010.rs:5:18
    |
 LL |     const FOO: i32 = 123;

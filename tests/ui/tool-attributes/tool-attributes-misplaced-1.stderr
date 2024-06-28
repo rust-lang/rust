@@ -1,10 +1,10 @@
-error: cannot find derive macro `rustfmt`
+error: cannot find derive macro `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:4:10
    |
 LL | #[derive(rustfmt)]
    |          ^^^^^^^ not found in this scope
 
-error: cannot find derive macro `rustfmt`
+error: cannot find derive macro `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:4:10
    |
 LL | #[derive(rustfmt)]
@@ -12,13 +12,13 @@ LL | #[derive(rustfmt)]
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: cannot find attribute `rustfmt`
+error: cannot find attribute `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:9:3
    |
 LL | #[rustfmt]
    |   ^^^^^^^ not found in this scope
 
-error: cannot find macro `rustfmt`
+error: cannot find macro `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:15:5
    |
 LL |     rustfmt!();

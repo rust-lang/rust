@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `a`
+error[E0425]: cannot find value `a` in this scope
   --> $DIR/issue-33525.rs:2:5
    |
 LL |     a;

@@ -1,4 +1,4 @@
-error: cannot find macro `foo`
+error: cannot find macro `foo` in this scope
   --> $DIR/path-attr-in-const-block.rs:6:19
    |
 LL |         #![path = foo!()]

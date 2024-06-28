@@ -1,4 +1,4 @@
-error: cannot find derive macro `Sync`
+error: cannot find derive macro `Sync` in this scope
   --> $DIR/issue-33571.rs:2:10
    |
 LL |          Sync,
@@ -10,7 +10,7 @@ note: unsafe traits like `Sync` should be implemented explicitly
 LL |          Sync,
    |          ^^^^
 
-error: cannot find derive macro `Sync`
+error: cannot find derive macro `Sync` in this scope
   --> $DIR/issue-33571.rs:2:10
    |
 LL |          Sync,

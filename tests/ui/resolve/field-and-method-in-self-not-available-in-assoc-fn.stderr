@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `field`
+error[E0425]: cannot find value `field` in this scope
   --> $DIR/field-and-method-in-self-not-available-in-assoc-fn.rs:11:9
    |
 LL |     field: u32,
@@ -10,7 +10,7 @@ LL |     fn field(&self) -> u32 {
 LL |         field;
    |         ^^^^^
 
-error[E0425]: cannot find value `field`
+error[E0425]: cannot find value `field` in this scope
   --> $DIR/field-and-method-in-self-not-available-in-assoc-fn.rs:12:15
    |
 LL |     field: u32,
@@ -22,7 +22,7 @@ LL |     fn field(&self) -> u32 {
 LL |         Foo { field }
    |               ^^^^^
 
-error[E0425]: cannot find value `field`
+error[E0425]: cannot find value `field` in this scope
   --> $DIR/field-and-method-in-self-not-available-in-assoc-fn.rs:15:15
    |
 LL |     fn field(&self) -> u32 {

@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `Foo`
+error[E0425]: cannot find value `Foo` in this scope
   --> $DIR/layout-error.rs:27:21
    |
 LL |             let a = Foo;

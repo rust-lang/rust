@@ -1,10 +1,10 @@
-error[E0425]: cannot find value `a`
+error[E0425]: cannot find value `a` in this scope
   --> $DIR/typo-suggestion-named-underscore.rs:4:5
    |
 LL |     a // Shouldn't suggest underscore
    |     ^ not found in this scope
 
-error[E0405]: cannot find trait `A`
+error[E0405]: cannot find trait `A` in this scope
   --> $DIR/typo-suggestion-named-underscore.rs:13:11
    |
 LL | fn foo<T: A>(x: T) {} // Shouldn't suggest underscore

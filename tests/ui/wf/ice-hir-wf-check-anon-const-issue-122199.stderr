@@ -7,7 +7,7 @@ LL | trait Trait<const N: Trait = bar> {
 LL |     fn fnc<const N: Trait = u32>(&self) -> Trait {
    |                  ^ already used
 
-error[E0425]: cannot find value `bar`
+error[E0425]: cannot find value `bar` in this scope
   --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:30
    |
 LL | trait Trait<const N: Trait = bar> {
@@ -19,7 +19,7 @@ error[E0423]: expected value, found builtin type `u32`
 LL |     fn fnc<const N: Trait = u32>(&self) -> Trait {
    |                             ^^^ not a value
 
-error[E0425]: cannot find value `bar`
+error[E0425]: cannot find value `bar` in this scope
   --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:25:9
    |
 LL |         bar

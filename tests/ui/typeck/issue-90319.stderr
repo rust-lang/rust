@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Thing`
+error[E0412]: cannot find type `Thing` in this scope
   --> $DIR/issue-90319.rs:14:23
    |
 LL |     let thing = get::<Thing>();

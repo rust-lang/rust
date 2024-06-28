@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `num`
+error[E0425]: cannot find value `num` in this scope
   --> $DIR/ice-unwrap-probe-many-result-125876.rs:4:24
    |
 LL |     std::ptr::from_ref(num).cast_mut().as_deref();

@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Foo`
+error[E0412]: cannot find type `Foo` in this scope
   --> $DIR/issue-88472.rs:16:16
    |
 LL |     type Bar = Foo;
@@ -10,7 +10,7 @@ note: struct `a::Foo` exists but is inaccessible
 LL |     struct Foo;
    |     ^^^^^^^^^^^ not accessible
 
-error[E0412]: cannot find type `Eee`
+error[E0412]: cannot find type `Eee` in this scope
   --> $DIR/issue-88472.rs:33:16
    |
 LL |     type Baz = Eee;

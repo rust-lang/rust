@@ -1,10 +1,10 @@
-error[E0412]: cannot find type `Someunknownname`
+error[E0412]: cannot find type `Someunknownname` in this scope
   --> $DIR/type-not-found-in-adt-field.rs:2:12
    |
 LL |     m: Vec<Someunknownname<String, ()>>,
    |            ^^^^^^^^^^^^^^^ not found in this scope
 
-error[E0412]: cannot find type `K`
+error[E0412]: cannot find type `K` in this scope
   --> $DIR/type-not-found-in-adt-field.rs:6:8
    |
 LL |     m: K,

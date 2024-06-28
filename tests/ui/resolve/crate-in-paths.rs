@@ -6,5 +6,5 @@ mod bar {
 
 fn main() {
     Foo;
-    //~^ ERROR cannot find value `Foo` [E0425]
+    //~^ ERROR cannot find value `Foo`
 }

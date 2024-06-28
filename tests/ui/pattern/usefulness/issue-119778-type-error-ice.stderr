@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `S`
+error[E0425]: cannot find value `S` in this scope
   --> $DIR/issue-119778-type-error-ice.rs:5:21
    |
 LL |     struct Foo([u8; S]);
@@ -9,7 +9,7 @@ help: you might be missing a const parameter
 LL |     struct Foo<const S: /* Type */>([u8; S]);
    |               +++++++++++++++++++++
 
-error[E0425]: cannot find value `S`
+error[E0425]: cannot find value `S` in this scope
   --> $DIR/issue-119778-type-error-ice.rs:5:21
    |
 LL |     struct Foo([u8; S]);

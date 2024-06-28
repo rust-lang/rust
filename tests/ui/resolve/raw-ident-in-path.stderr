@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `r#break`
+error[E0412]: cannot find type `r#break` in the crate root
   --> $DIR/raw-ident-in-path.rs:3:17
    |
 LL | type A = crate::r#break;

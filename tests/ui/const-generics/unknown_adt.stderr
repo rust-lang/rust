@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `UnknownStruct`
+error[E0412]: cannot find type `UnknownStruct` in this scope
   --> $DIR/unknown_adt.rs:2:12
    |
 LL |     let _: UnknownStruct<7>;

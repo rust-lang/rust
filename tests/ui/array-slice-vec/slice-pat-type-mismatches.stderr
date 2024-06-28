@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `does_not_exist`
+error[E0425]: cannot find value `does_not_exist` in this scope
   --> $DIR/slice-pat-type-mismatches.rs:26:11
    |
 LL |     match does_not_exist {

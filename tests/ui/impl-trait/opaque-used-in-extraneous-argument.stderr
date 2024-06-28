@@ -10,7 +10,7 @@ help: consider using the `'static` lifetime, but this is uncommon unless you're 
 LL | fn frob() -> impl Fn<P, Output = T> + 'static {}
    |                                       ~~~~~~~
 
-error[E0412]: cannot find type `P`
+error[E0412]: cannot find type `P` in this scope
   --> $DIR/opaque-used-in-extraneous-argument.rs:5:22
    |
 LL | fn frob() -> impl Fn<P, Output = T> + '_ {}
@@ -21,7 +21,7 @@ help: you might be missing a type parameter
 LL | fn frob<P>() -> impl Fn<P, Output = T> + '_ {}
    |        +++
 
-error[E0412]: cannot find type `T`
+error[E0412]: cannot find type `T` in this scope
   --> $DIR/opaque-used-in-extraneous-argument.rs:5:34
    |
 LL | fn frob() -> impl Fn<P, Output = T> + '_ {}

@@ -14,13 +14,13 @@ help: you might have meant to compare for equality
 LL |     if let x = 1 && i == 2 {}
    |                        +
 
-error[E0425]: cannot find value `i`
+error[E0425]: cannot find value `i` in this scope
   --> $DIR/bad-if-let-suggestion.rs:2:21
    |
 LL |     if let x = 1 && i = 2 {}
    |                     ^ not found in this scope
 
-error[E0425]: cannot find value `i`
+error[E0425]: cannot find value `i` in this scope
   --> $DIR/bad-if-let-suggestion.rs:9:9
    |
 LL | fn a() {
@@ -29,7 +29,7 @@ LL | fn a() {
 LL |     if (i + j) = i {}
    |         ^ help: a function with a similar name exists: `a`
 
-error[E0425]: cannot find value `j`
+error[E0425]: cannot find value `j` in this scope
   --> $DIR/bad-if-let-suggestion.rs:9:13
    |
 LL | fn a() {
@@ -38,7 +38,7 @@ LL | fn a() {
 LL |     if (i + j) = i {}
    |             ^ help: a function with a similar name exists: `a`
 
-error[E0425]: cannot find value `i`
+error[E0425]: cannot find value `i` in this scope
   --> $DIR/bad-if-let-suggestion.rs:9:18
    |
 LL | fn a() {
@@ -47,7 +47,7 @@ LL | fn a() {
 LL |     if (i + j) = i {}
    |                  ^ help: a function with a similar name exists: `a`
 
-error[E0425]: cannot find value `x`
+error[E0425]: cannot find value `x` in this scope
   --> $DIR/bad-if-let-suggestion.rs:16:8
    |
 LL | fn a() {

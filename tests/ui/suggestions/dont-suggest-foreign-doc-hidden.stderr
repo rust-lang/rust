@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Foo`
+error[E0412]: cannot find type `Foo` in this scope
   --> $DIR/dont-suggest-foreign-doc-hidden.rs:11:16
    |
 LL | pub fn test(_: Foo) {}
@@ -9,7 +9,7 @@ help: consider importing this struct
 LL + use local::Foo;
    |
 
-error[E0412]: cannot find type `Bar`
+error[E0412]: cannot find type `Bar` in this scope
   --> $DIR/dont-suggest-foreign-doc-hidden.rs:14:17
    |
 LL | pub fn test2(_: Bar) {}

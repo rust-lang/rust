@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Missing`
+error[E0412]: cannot find type `Missing` in this scope
   --> $DIR/issue-118950-root-region.rs:19:55
    |
 LL | impl<T> Overlap<for<'a> fn(Assoc<'a, T>)> for T where Missing: Overlap<T> {}

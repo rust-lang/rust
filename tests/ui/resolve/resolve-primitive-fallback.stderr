@@ -4,7 +4,7 @@ error[E0423]: expected value, found builtin type `u16`
 LL |     std::mem::size_of(u16);
    |                       ^^^ not a value
 
-error[E0412]: cannot find type `u8`
+error[E0412]: cannot find type `u8` in the crate root
   --> $DIR/resolve-primitive-fallback.rs:8:14
    |
 LL |     let _: ::u8;

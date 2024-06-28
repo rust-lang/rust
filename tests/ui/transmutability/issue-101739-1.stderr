@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Dst`
+error[E0412]: cannot find type `Dst` in this scope
   --> $DIR/issue-101739-1.rs:8:9
    |
 LL |         Dst: BikeshedIntrinsicFrom<Src, ASSUME_ALIGNMENT>,

@@ -1,28 +1,28 @@
-error[E0425]: cannot find value `no_such_local`
+error[E0425]: cannot find value `no_such_local` in this scope
   --> $DIR/suggest-better-removing-issue-126246.rs:11:13
    |
 LL |     add_one(no_such_local, 10);
    |             ^^^^^^^^^^^^^ not found in this scope
 
-error[E0425]: cannot find value `no_such_local`
+error[E0425]: cannot find value `no_such_local` in this scope
   --> $DIR/suggest-better-removing-issue-126246.rs:13:17
    |
 LL |     add_one(10, no_such_local);
    |                 ^^^^^^^^^^^^^ not found in this scope
 
-error[E0425]: cannot find value `no_such_local`
+error[E0425]: cannot find value `no_such_local` in this scope
   --> $DIR/suggest-better-removing-issue-126246.rs:15:17
    |
 LL |     add_two(10, no_such_local, 10);
    |                 ^^^^^^^^^^^^^ not found in this scope
 
-error[E0425]: cannot find value `no_such_local`
+error[E0425]: cannot find value `no_such_local` in this scope
   --> $DIR/suggest-better-removing-issue-126246.rs:17:13
    |
 LL |     add_two(no_such_local, 10, 10);
    |             ^^^^^^^^^^^^^ not found in this scope
 
-error[E0425]: cannot find value `no_such_local`
+error[E0425]: cannot find value `no_such_local` in this scope
   --> $DIR/suggest-better-removing-issue-126246.rs:19:21
    |
 LL |     add_two(10, 10, no_such_local);

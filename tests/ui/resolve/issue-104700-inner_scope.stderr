@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `bar`
+error[E0425]: cannot find value `bar` in this scope
   --> $DIR/issue-104700-inner_scope.rs:7:8
    |
 LL |     if bar == 2 {
@@ -10,7 +10,7 @@ help: the binding `bar` is available in a different scope in the same function
 LL |         let bar = 2;
    |             ^^^
 
-error[E0425]: cannot find function `test_func`
+error[E0425]: cannot find function `test_func` in this scope
   --> $DIR/issue-104700-inner_scope.rs:10:5
    |
 LL |     test_func(1);

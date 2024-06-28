@@ -4,7 +4,7 @@ error: attribute value must be a literal
 LL |  #![l=|x|[b;x ]]
    |       ^^^^^^^^^
 
-error: cannot find attribute `l`
+error: cannot find attribute `l` in this scope
   --> $DIR/issue-90878-2.rs:1:5
    |
 LL |  #![l=|x|[b;x ]]

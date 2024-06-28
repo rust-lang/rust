@@ -1,4 +1,4 @@
-error: cannot find macro `prinltn`
+error: cannot find macro `prinltn` in this scope
   --> $DIR/println-typo.rs:4:5
    |
 LL |     prinltn!();

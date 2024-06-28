@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `Opaque`
+error[E0425]: cannot find value `Opaque` in this scope
   --> $DIR/rustc-macro-transparency.rs:26:5
    |
 LL |     Opaque;

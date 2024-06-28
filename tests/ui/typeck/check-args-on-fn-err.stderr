@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `unknown`
+error[E0425]: cannot find function `unknown` in this scope
   --> $DIR/check-args-on-fn-err.rs:2:5
    |
 LL |     unknown(1, |glyf| {

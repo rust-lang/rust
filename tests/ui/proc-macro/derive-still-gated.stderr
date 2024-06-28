@@ -1,4 +1,4 @@
-error: cannot find attribute `derive_Empty`
+error: cannot find attribute `derive_Empty` in this scope
   --> $DIR/derive-still-gated.rs:6:3
    |
 LL | #[derive_Empty]

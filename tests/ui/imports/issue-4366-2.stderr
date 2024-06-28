@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Bar`
+error[E0412]: cannot find type `Bar` in this scope
   --> $DIR/issue-4366-2.rs:15:21
    |
 LL |         fn sub() -> Bar { 1 }

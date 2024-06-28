@@ -1,4 +1,4 @@
-error: cannot find macro `macro_rules`
+error: cannot find macro `macro_rules` in this scope
   --> $DIR/issue-118295.rs:1:1
    |
 LL | macro_rules! {}

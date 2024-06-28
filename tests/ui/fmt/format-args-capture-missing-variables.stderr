@@ -6,37 +6,37 @@ LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
    |             |
    |             formatting specifier missing
 
-error[E0425]: cannot find value `foo`
+error[E0425]: cannot find value `foo` in this scope
   --> $DIR/format-args-capture-missing-variables.rs:2:18
    |
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
    |                  ^^^ not found in this scope
 
-error[E0425]: cannot find value `bar`
+error[E0425]: cannot find value `bar` in this scope
   --> $DIR/format-args-capture-missing-variables.rs:2:27
    |
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
    |                           ^^^ not found in this scope
 
-error[E0425]: cannot find value `foo`
+error[E0425]: cannot find value `foo` in this scope
   --> $DIR/format-args-capture-missing-variables.rs:6:15
    |
 LL |     format!("{foo}");
    |               ^^^ not found in this scope
 
-error[E0425]: cannot find value `valueb`
+error[E0425]: cannot find value `valueb` in this scope
   --> $DIR/format-args-capture-missing-variables.rs:8:24
    |
 LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
    |                        ^^^^^^ not found in this scope
 
-error[E0425]: cannot find value `foo`
+error[E0425]: cannot find value `foo` in this scope
   --> $DIR/format-args-capture-missing-variables.rs:14:10
    |
 LL |         {foo}
    |          ^^^ not found in this scope
 
-error[E0425]: cannot find value `foo`
+error[E0425]: cannot find value `foo` in this scope
   --> $DIR/format-args-capture-missing-variables.rs:19:14
    |
 LL |     panic!("{foo} {bar}", bar=1);

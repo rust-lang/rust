@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `V`
+error[E0412]: cannot find type `V` in this scope
   --> $DIR/binder-defaults-112547.rs:8:4
    |
 LL | }> V: IntoIterator

@@ -12,7 +12,7 @@ note: method defined here, with 0 generic parameters
 LL |     fn foo(&self) {}
    |        ^^^
 
-error[E0425]: cannot find function `foo`
+error[E0425]: cannot find function `foo` in this scope
   --> $DIR/issue-104287.rs:10:5
    |
 LL |     foo::<()>(x);

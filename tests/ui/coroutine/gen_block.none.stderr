@@ -6,19 +6,19 @@ LL |     let y = gen { yield 42 };
    |             |
    |             while parsing this struct
 
-error[E0422]: cannot find struct, variant or union type `gen`
+error[E0422]: cannot find struct, variant or union type `gen` in this scope
   --> $DIR/gen_block.rs:7:13
    |
 LL |     let x = gen {};
    |             ^^^ not found in this scope
 
-error[E0422]: cannot find struct, variant or union type `gen`
+error[E0422]: cannot find struct, variant or union type `gen` in this scope
   --> $DIR/gen_block.rs:10:13
    |
 LL |     let y = gen { yield 42 };
    |             ^^^ not found in this scope
 
-error[E0422]: cannot find struct, variant or union type `gen`
+error[E0422]: cannot find struct, variant or union type `gen` in this scope
   --> $DIR/gen_block.rs:13:5
    |
 LL |     gen {};

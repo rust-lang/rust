@@ -10,13 +10,13 @@ note: found an item that was configured out
 LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
 
-error[E0425]: cannot find function `uwu`
+error[E0425]: cannot find function `uwu` in crate `cfged_out`
   --> $DIR/diagnostics-cross-crate.rs:7:16
    |
 LL |     cfged_out::uwu();
    |                ^^^ not found in crate `cfged_out`
 
-error[E0425]: cannot find function `uwu`
+error[E0425]: cannot find function `uwu` in module `cfged_out::inner`
   --> $DIR/diagnostics-cross-crate.rs:11:23
    |
 LL |     cfged_out::inner::uwu();
@@ -28,7 +28,7 @@ note: found an item that was configured out
 LL |     pub fn uwu() {}
    |            ^^^
 
-error[E0425]: cannot find function `meow`
+error[E0425]: cannot find function `meow` in module `cfged_out::inner::right`
   --> $DIR/diagnostics-cross-crate.rs:22:30
    |
 LL |     cfged_out::inner::right::meow();
@@ -41,7 +41,7 @@ LL |         pub fn meow() {}
    |                ^^^^
    = note: the item is gated behind the `what-a-cool-feature` feature
 
-error[E0425]: cannot find function `vanished`
+error[E0425]: cannot find function `vanished` in crate `cfged_out`
   --> $DIR/diagnostics-cross-crate.rs:28:16
    |
 LL |     cfged_out::vanished();
