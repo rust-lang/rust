@@ -100,7 +100,6 @@ run-make/no-alloc-shim/Makefile
 run-make/no-builtins-attribute/Makefile
 run-make/no-duplicate-libs/Makefile
 run-make/obey-crate-type-flag/Makefile
-run-make/output-type-permutations/Makefile
 run-make/panic-abort-eh_frame/Makefile
 run-make/pass-linker-flags-flavor/Makefile
 run-make/pass-linker-flags-from-dep/Makefile
