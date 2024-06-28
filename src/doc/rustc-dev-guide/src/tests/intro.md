@@ -132,19 +132,12 @@ More information can be found in the [toolstate documentation].
 [toolstate documentation]: https://forge.rust-lang.org/infra/toolstate.html
 [toolstate website]: https://rust-lang-nursery.github.io/rust-toolstate/
 
-### Cargo test
+### Integration testing
 
-`cargotest` is a small tool which runs `cargo test` on a few sample projects
-(such as `servo`, `ripgrep`, `tokei`, etc.).
-This ensures there aren't any significant regressions.
-
-> Example: `./x test src/tools/cargotest`
-
-### Crater
-
-Crater is a tool which runs tests on many thousands of public projects.
-This tool has its own separate infrastructure for running.
-See the [Crater chapter](crater.md) for more details.
+Rust tests integration with real-world code to catch regressions and make
+informed decisions about the evolution of the language. There are several kinds
+of integration tests, including Crater. See the [Integration testing
+chapter](integration.md) for more details.
 
 ### Performance testing
 
