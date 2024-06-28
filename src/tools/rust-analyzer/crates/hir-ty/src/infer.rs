@@ -835,11 +835,7 @@ impl<'a> InferenceContext<'a> {
         let return_ty = if let Some(rpits) = self.db.return_type_impl_traits(func) {
             // RPIT opaque types use substitution of their parent function.
             let fn_placeholders = TyBuilder::placeholder_subst(self.db, func);
-            let result = self.insert_inference_vars_for_impl_trait(
-                return_ty,
-                rpits.clone(),
-                fn_placeholders,
-            );
+            let result = self.insert_inference_vars_for_impl_trait(return_ty, fn_placeholders);
             let rpits = rpits.skip_binders();
             for (id, _) in rpits.impl_traits.iter() {
                 if let Entry::Vacant(e) = self.result.type_of_rpit.entry(id) {
@@ -862,12 +858,7 @@ impl<'a> InferenceContext<'a> {
         self.insert_atpit_coercion_table(params_and_ret_tys.iter());
     }
 
-    fn insert_inference_vars_for_impl_trait<T>(
-        &mut self,
-        t: T,
-        rpits: Arc<chalk_ir::Binders<crate::ImplTraits>>,
-        placeholders: Substitution,
-    ) -> T
+    fn insert_inference_vars_for_impl_trait<T>(&mut self, t: T, placeholders: Substitution) -> T
     where
         T: crate::HasInterner<Interner = Interner> + crate::TypeFoldable<Interner>,
     {
@@ -878,13 +869,21 @@ impl<'a> InferenceContext<'a> {
                     TyKind::OpaqueType(opaque_ty_id, _) => *opaque_ty_id,
                     _ => return ty,
                 };
-                let idx = match self.db.lookup_intern_impl_trait_id(opaque_ty_id.into()) {
-                    ImplTraitId::ReturnTypeImplTrait(_, idx) => idx,
-                    ImplTraitId::AssociatedTypeImplTrait(_, idx) => idx,
-                    _ => unreachable!(),
+                let (impl_traits, idx) =
+                    match self.db.lookup_intern_impl_trait_id(opaque_ty_id.into()) {
+                        ImplTraitId::ReturnTypeImplTrait(def, idx) => {
+                            (self.db.return_type_impl_traits(def), idx)
+                        }
+                        ImplTraitId::AssociatedTypeImplTrait(def, idx) => {
+                            (self.db.type_alias_impl_traits(def), idx)
+                        }
+                        _ => unreachable!(),
+                    };
+                let Some(impl_traits) = impl_traits else {
+                    return ty;
                 };
-                let bounds =
-                    (*rpits).map_ref(|rpits| rpits.impl_traits[idx].bounds.map_ref(|it| it.iter()));
+                let bounds = (*impl_traits)
+                    .map_ref(|rpits| rpits.impl_traits[idx].bounds.map_ref(|it| it.iter()));
                 let var = self.table.new_type_var();
                 let var_subst = Substitution::from1(Interner, var.clone());
                 for bound in bounds {
@@ -892,11 +891,8 @@ impl<'a> InferenceContext<'a> {
                     let (var_predicate, binders) =
                         predicate.substitute(Interner, &var_subst).into_value_and_skipped_binders();
                     always!(binders.is_empty(Interner)); // quantified where clauses not yet handled
-                    let var_predicate = self.insert_inference_vars_for_impl_trait(
-                        var_predicate,
-                        rpits.clone(),
-                        placeholders.clone(),
-                    );
+                    let var_predicate = self
+                        .insert_inference_vars_for_impl_trait(var_predicate, placeholders.clone());
                     self.push_obligation(var_predicate.cast(Interner));
                 }
                 self.result.type_of_rpit.insert(idx, var.clone());
@@ -983,16 +979,8 @@ impl<'a> InferenceContext<'a> {
                     self.db.lookup_intern_impl_trait_id(opaque_ty_id.into())
                 {
                     if assoc_tys.contains(&alias_id) {
-                        let atpits = self
-                            .db
-                            .type_alias_impl_traits(alias_id)
-                            .expect("Marked as ATPIT but no impl traits!");
                         let alias_placeholders = TyBuilder::placeholder_subst(self.db, alias_id);
-                        let ty = self.insert_inference_vars_for_impl_trait(
-                            ty,
-                            atpits,
-                            alias_placeholders,
-                        );
+                        let ty = self.insert_inference_vars_for_impl_trait(ty, alias_placeholders);
                         return Some((opaque_ty_id, ty));
                     }
                 }
