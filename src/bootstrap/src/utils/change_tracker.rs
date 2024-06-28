@@ -195,4 +195,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "Removed `dist.missing-tools` configuration as it was deprecated long time ago.",
     },
+    ChangeInfo {
+        change_id: 126701,
+        severity: ChangeSeverity::Warning,
+        summary: "`llvm.lld` is enabled by default for the dist profile. If set to false, `lld` will not be included in the dist build.",
+    },
 ];
