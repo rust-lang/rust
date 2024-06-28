@@ -1608,7 +1608,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// If the def-id is an associated type that was desugared from a
+    /// If the `def_id` is an associated type that was desugared from a
     /// return-position `impl Trait` from a trait, then provide the source info
     /// about where that RPITIT came from.
     pub fn opt_rpitit_info(self, def_id: DefId) -> Option<ImplTraitInTraitData> {
@@ -1616,6 +1616,16 @@ impl<'tcx> TyCtxt<'tcx> {
             self.associated_item(def_id).opt_rpitit_info
         } else {
             None
+        }
+    }
+
+    /// Whether the `def_id` is an associated type that was desugared from a
+    /// `#[const_trait]` or `impl_const`.
+    pub fn is_effects_desugared_assoc_ty(self, def_id: DefId) -> bool {
+        if let DefKind::AssocTy = self.def_kind(def_id) {
+            self.associated_item(def_id).is_effects_desugaring
+        } else {
+            false
         }
     }
 

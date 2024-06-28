@@ -1,0 +1,8 @@
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/ice-123664-unexpected-bound-var.rs:4:34
+   |
+LL | const fn with_positive<F: ~const Fn()>() {}
+   |                                  ^^^^
+
+error: aborting due to 1 previous error
+

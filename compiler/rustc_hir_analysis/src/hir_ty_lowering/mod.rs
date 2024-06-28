@@ -698,7 +698,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         );
 
         debug!(?poly_trait_ref);
-        bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
+        bounds.push_trait_bound(
+            tcx,
+            self.item_def_id().to_def_id(),
+            poly_trait_ref,
+            span,
+            polarity,
+            constness,
+        );
 
         let mut dup_constraints = FxIndexMap::default();
         for constraint in trait_segment.args().constraints {
