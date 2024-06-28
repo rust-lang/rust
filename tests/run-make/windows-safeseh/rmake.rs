@@ -1,4 +1,4 @@
-//@ only-windows
+//@ only-x86_64-pc-windows-msvc
 //@ needs-rust-lld
 
 use run_make_support::rustc;
