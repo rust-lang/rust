@@ -1,67 +1,57 @@
 error[E0267]: `break` inside `async` function
   --> $DIR/break-inside-coroutine-issue-124495.rs:8:5
    |
-LL |   async fn async_fn() {
-   |  _____________________-
-LL | |     break;
-   | |     ^^^^^ cannot `break` inside `async` function
-LL | | }
-   | |_- enclosing `async` function
+LL | async fn async_fn() {
+   | ------------------- enclosing `async` function
+LL |     break;
+   |     ^^^^^ cannot `break` inside `async` function
 
 error[E0267]: `break` inside `gen` function
   --> $DIR/break-inside-coroutine-issue-124495.rs:12:5
    |
-LL |   gen fn gen_fn() {
-   |  _________________-
-LL | |     break;
-   | |     ^^^^^ cannot `break` inside `gen` function
-LL | | }
-   | |_- enclosing `gen` function
+LL | gen fn gen_fn() {
+   | --------------- enclosing `gen` function
+LL |     break;
+   |     ^^^^^ cannot `break` inside `gen` function
 
 error[E0267]: `break` inside `async gen` function
   --> $DIR/break-inside-coroutine-issue-124495.rs:16:5
    |
-LL |   async gen fn async_gen_fn() {
-   |  _____________________________-
-LL | |     break;
-   | |     ^^^^^ cannot `break` inside `async gen` function
-LL | | }
-   | |_- enclosing `async gen` function
+LL | async gen fn async_gen_fn() {
+   | --------------------------- enclosing `async gen` function
+LL |     break;
+   |     ^^^^^ cannot `break` inside `async gen` function
 
 error[E0267]: `break` inside `async` block
   --> $DIR/break-inside-coroutine-issue-124495.rs:20:21
    |
 LL |     let _ = async { break; };
-   |             --------^^^^^---
-   |             |       |
-   |             |       cannot `break` inside `async` block
+   |             -----   ^^^^^ cannot `break` inside `async` block
+   |             |
    |             enclosing `async` block
 
 error[E0267]: `break` inside `async` closure
   --> $DIR/break-inside-coroutine-issue-124495.rs:22:24
    |
 LL |     let _ = async || { break; };
-   |             -----------^^^^^---
-   |             |          |
-   |             |          cannot `break` inside `async` closure
+   |             --------   ^^^^^ cannot `break` inside `async` closure
+   |             |
    |             enclosing `async` closure
 
 error[E0267]: `break` inside `gen` block
   --> $DIR/break-inside-coroutine-issue-124495.rs:24:19
    |
 LL |     let _ = gen { break; };
-   |             ------^^^^^---
-   |             |     |
-   |             |     cannot `break` inside `gen` block
+   |             ---   ^^^^^ cannot `break` inside `gen` block
+   |             |
    |             enclosing `gen` block
 
 error[E0267]: `break` inside `async gen` block
   --> $DIR/break-inside-coroutine-issue-124495.rs:26:25
    |
 LL |     let _ = async gen { break; };
-   |             ------------^^^^^---
-   |             |           |
-   |             |           cannot `break` inside `async gen` block
+   |             ---------   ^^^^^ cannot `break` inside `async gen` block
+   |             |
    |             enclosing `async gen` block
 
 error: aborting due to 7 previous errors

@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<{async block@$DIR/async.rs:12:17: 12:25} as Future>::Output == i32`
+error[E0271]: type mismatch resolving `<{async block@$DIR/async.rs:12:17: 12:22} as Future>::Output == i32`
   --> $DIR/async.rs:12:17
    |
 LL |     needs_async(async {});
