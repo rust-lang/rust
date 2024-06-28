@@ -41,7 +41,6 @@ run-make/raw-dylib-alt-calling-convention/Makefile
 run-make/raw-dylib-c/Makefile
 run-make/redundant-libs/Makefile
 run-make/remap-path-prefix-dwarf/Makefile
-run-make/reproducible-build-2/Makefile
 run-make/reproducible-build/Makefile
 run-make/rlib-format-packed-bundled-libs/Makefile
 run-make/simd-ffi/Makefile
