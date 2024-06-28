@@ -21,9 +21,9 @@ LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
 ...
 LL |     impl PartialEq<()> for &Dog {
-   |     ^^^^^---------^^^^^^^^^----
-   |          |                 |
-   |          |                 `&'_ Dog` is not local
+   |     ^^^^^---------^^^^^^^^^^---
+   |          |                  |
+   |          |                  `Dog` is not local
    |          `PartialEq` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -37,9 +37,9 @@ LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
 ...
 LL |     impl PartialEq<Dog> for () {
-   |     ^^^^^---------^^^^^^^^^^--
-   |          |                  |
-   |          |                  `()` is not local
+   |     ^^^^^---------^---^^^^^^^^
+   |          |         |
+   |          |         `Dog` is not local
    |          `PartialEq` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -53,9 +53,9 @@ LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
 ...
 LL |     impl PartialEq<&Dog> for () {
-   |     ^^^^^---------^^^^^^^^^^^--
-   |          |                   |
-   |          |                   `()` is not local
+   |     ^^^^^---------^^---^^^^^^^^
+   |          |          |
+   |          |          `Dog` is not local
    |          `PartialEq` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -69,9 +69,10 @@ LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
 ...
 LL |     impl PartialEq<Dog> for &Dog {
-   |     ^^^^^---------^^^^^^^^^^----
-   |          |                  |
-   |          |                  `&'_ Dog` is not local
+   |     ^^^^^---------^---^^^^^^^---
+   |          |         |         |
+   |          |         |         `Dog` is not local
+   |          |         `Dog` is not local
    |          `PartialEq` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -85,9 +86,10 @@ LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
 ...
 LL |     impl PartialEq<&Dog> for &Dog {
-   |     ^^^^^---------^^^^^^^^^^^----
-   |          |                   |
-   |          |                   `&'_ Dog` is not local
+   |     ^^^^^---------^^---^^^^^^^---
+   |          |          |         |
+   |          |          |         `Dog` is not local
+   |          |          `Dog` is not local
    |          `PartialEq` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type

@@ -65,9 +65,9 @@ LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
 ...
 LL |     impl Trait for &dyn Trait {}
-   |     ^^^^^-----^^^^^----------
-   |          |         |
-   |          |         `&'_ dyn Trait` is not local
+   |     ^^^^^-----^^^^^^^^^^-----
+   |          |              |
+   |          |              `Trait` is not local
    |          `Trait` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -81,9 +81,9 @@ LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
 ...
 LL |     impl Trait for *mut Test {}
-   |     ^^^^^-----^^^^^---------
-   |          |         |
-   |          |         `*mut Test` is not local
+   |     ^^^^^-----^^^^^^^^^^----
+   |          |              |
+   |          |              `Test` is not local
    |          `Trait` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -97,9 +97,9 @@ LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
 ...
 LL |     impl Trait for *mut [Test] {}
-   |     ^^^^^-----^^^^^-----------
-   |          |         |
-   |          |         `*mut [Test]` is not local
+   |     ^^^^^-----^^^^^^^^^^^----^
+   |          |               |
+   |          |               `Test` is not local
    |          `Trait` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -113,9 +113,9 @@ LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
 ...
 LL |     impl Trait for [Test; 8] {}
-   |     ^^^^^-----^^^^^---------
-   |          |         |
-   |          |         `[Test; 8]` is not local
+   |     ^^^^^-----^^^^^^----^^^^
+   |          |          |
+   |          |          `Test` is not local
    |          `Trait` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -129,9 +129,9 @@ LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
 ...
 LL |     impl Trait for (Test,) {}
-   |     ^^^^^-----^^^^^-------
-   |          |         |
-   |          |         `(Test,)` is not local
+   |     ^^^^^-----^^^^^^----^^
+   |          |          |
+   |          |          `Test` is not local
    |          `Trait` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -145,9 +145,9 @@ LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
 ...
 LL |     impl Trait for fn(Test) -> () {}
-   |     ^^^^^-----^^^^^--------------
-   |          |         |
-   |          |         `fn(: Test) -> ()` is not local
+   |     ^^^^^-----^^^^^^^^----^^^^^^^
+   |          |            |
+   |          |            `Test` is not local
    |          `Trait` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -161,9 +161,9 @@ LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
 ...
 LL |     impl Trait for fn() -> Test {}
-   |     ^^^^^-----^^^^^------------
-   |          |         |
-   |          |         `fn() -> Test` is not local
+   |     ^^^^^-----^^^^^^^^^^^^^----
+   |          |                 |
+   |          |                 `Test` is not local
    |          `Trait` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
