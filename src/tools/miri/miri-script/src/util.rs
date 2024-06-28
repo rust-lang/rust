@@ -219,10 +219,9 @@ impl MiriEnv {
                             break;
                         }
                         // Run the command with this seed.
-                        run(&local_shell, cur).map_err(|err| {
+                        run(&local_shell, cur).inspect_err(|_| {
                             // If we failed, tell everyone about this.
                             failed.store(true, Ordering::Relaxed);
-                            err
                         })?;
                         // Check if some other command failed (in which case we'll stop as well).
                         if failed.load(Ordering::Relaxed) {
