@@ -13,14 +13,15 @@ LL |     y
 error[E0506]: cannot assign to `*x` because it is borrowed
   --> $DIR/issue-74072-lifetime-name-annotations.rs:18:9
    |
+LL |     (async move || {
+   |                  - return type of async closure is &'1 i32
+...
 LL |         let y = &*x;
    |                 --- `*x` is borrowed here
 LL |         *x += 1;
    |         ^^^^^^^ `*x` is assigned to here but it was already borrowed
 LL |         y
    |         - returning this value requires that `*x` is borrowed for `'1`
-LL |     })()
-   |     - return type of async closure is &'1 i32
 
 error: lifetime may not live long enough
   --> $DIR/issue-74072-lifetime-name-annotations.rs:14:20
@@ -61,14 +62,15 @@ LL |    }
 error[E0506]: cannot assign to `*x` because it is borrowed
   --> $DIR/issue-74072-lifetime-name-annotations.rs:28:9
    |
+LL |     (async move || -> &i32 {
+   |                          - return type of async closure is &'1 i32
+...
 LL |         let y = &*x;
    |                 --- `*x` is borrowed here
 LL |         *x += 1;
    |         ^^^^^^^ `*x` is assigned to here but it was already borrowed
 LL |         y
    |         - returning this value requires that `*x` is borrowed for `'1`
-LL |     })()
-   |     - return type of async closure is &'1 i32
 
 error: lifetime may not live long enough
   --> $DIR/issue-74072-lifetime-name-annotations.rs:24:28
@@ -109,14 +111,14 @@ LL |    }
 error[E0506]: cannot assign to `*x` because it is borrowed
   --> $DIR/issue-74072-lifetime-name-annotations.rs:36:9
    |
+LL |     async move {
+   |              - return type of async block is &'1 i32
 LL |         let y = &*x;
    |                 --- `*x` is borrowed here
 LL |         *x += 1;
    |         ^^^^^^^ `*x` is assigned to here but it was already borrowed
 LL |         y
    |         - returning this value requires that `*x` is borrowed for `'1`
-LL |     }
-   |     - return type of async block is &'1 i32
 
 error: aborting due to 8 previous errors
 

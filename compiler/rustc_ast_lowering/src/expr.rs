@@ -227,7 +227,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         *fn_arg_span,
                     ),
                 },
-                ExprKind::Gen(capture_clause, block, genblock_kind) => {
+                ExprKind::Gen(capture_clause, block, genblock_kind, decl_span) => {
                     let desugaring_kind = match genblock_kind {
                         GenBlockKind::Async => hir::CoroutineDesugaring::Async,
                         GenBlockKind::Gen => hir::CoroutineDesugaring::Gen,
@@ -237,6 +237,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         *capture_clause,
                         e.id,
                         None,
+                        *decl_span,
                         e.span,
                         desugaring_kind,
                         hir::CoroutineSource::Block,
@@ -616,6 +617,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         capture_clause: CaptureBy,
         closure_node_id: NodeId,
         return_ty: Option<hir::FnRetTy<'hir>>,
+        fn_decl_span: Span,
         span: Span,
         desugaring_kind: hir::CoroutineDesugaring,
         coroutine_source: hir::CoroutineSource,
@@ -692,7 +694,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             bound_generic_params: &[],
             fn_decl,
             body,
-            fn_decl_span: self.lower_span(span),
+            fn_decl_span: self.lower_span(fn_decl_span),
             fn_arg_span: None,
             kind: hir::ClosureKind::Coroutine(coroutine_kind),
             constness: hir::Constness::NotConst,
@@ -1083,6 +1085,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
                     &inner_decl,
                     |this| this.with_new_scopes(fn_decl_span, |this| this.lower_expr_mut(body)),
+                    fn_decl_span,
                     body.span,
                     coroutine_kind,
                     hir::CoroutineSource::Closure,
