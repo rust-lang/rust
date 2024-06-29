@@ -11,8 +11,6 @@
 #[no_mangle]
 pub fn lower_while_ascii(mut input: &[u8], mut output: &mut [u8]) -> usize {
     // Process the input in chunks to enable auto-vectorization.
-    // The real implementation makes this dependant on the size of usize,
-    // but that would require changing the CHECK assertions based on the platform.
     const N: usize = 16;
 
     output = &mut output[..input.len()];
