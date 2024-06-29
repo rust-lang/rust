@@ -208,6 +208,13 @@ auto:
   - image: test-various
     <<: *job-linux-4c
 
+  - image: x86_64-fuchsia
+    # Only run this job on the nightly channel. Fuchsia requires
+    # nightly features to compile, and this job would fail if
+    # executed on beta and stable.
+    only_on_channel: nightly
+    <<: *job-linux-8c
+
   - image: x86_64-gnu
     <<: *job-linux-4c
 
@@ -228,13 +235,6 @@ auto:
 
   - image: x86_64-gnu-aux
     <<: *job-linux-4c
-
-  - image: x86_64-gnu-integration
-    # Only run this job on the nightly channel. Fuchsia requires
-    # nightly features to compile, and this job would fail if
-    # executed on beta and stable.
-    only_on_channel: nightly
-    <<: *job-linux-8c
 
   - image: x86_64-gnu-debug
     <<: *job-linux-4c

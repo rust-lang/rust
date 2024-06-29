@@ -1,5 +1,6 @@
 # This job builds a toolchain capable of building Fuchsia, and then builds
-# Fuchsia. See the build-fuchsia.sh script in this directory for more details.
+# Fuchsia as an integration test of the toolchain. See the build-fuchsia.sh
+# script in this directory for more details.
 
 FROM ubuntu:22.04
 
@@ -24,7 +25,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 # Duplicated in dist-various-2 Dockerfile.
-# FIXME: Move to canonical triple
 ENV \
     AR_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-ar \
     CC_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-clang \
@@ -48,10 +48,6 @@ ENV CARGO_TARGET_X86_64_UNKNOWN_FUCHSIA_RUSTFLAGS \
 
 ENV TARGETS=x86_64-unknown-fuchsia
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnu
-ENV TARGETS=$TARGETS,wasm32-unknown-unknown
-
-# Fuchsia clang does not have wasm target enabled, use system clang.
-ENV CC_wasm32_unknown_unknown=clang-15
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -76,4 +72,4 @@ ENV RUST_CONFIGURE_ARGS \
   --set target.x86_64-unknown-fuchsia.linker=/usr/local/bin/ld.lld
 ENV SCRIPT \
     python3 ../x.py install --target $TARGETS compiler/rustc library/std clippy && \
-    bash ../src/ci/docker/host-x86_64/x86_64-gnu-integration/build-fuchsia.sh
+    bash ../src/ci/docker/host-x86_64/x86_64-fuchsia/build-fuchsia.sh

@@ -5,14 +5,14 @@
 #
 # You may run this script locally using Docker with the following command:
 #
-# $ src/ci/docker/run.sh x86_64-gnu-integration
+# $ src/ci/docker/run.sh x86_64-fuchsia
 #
 # Alternatively, from within the container with --dev, assuming you have made it
 # as far as building the toolchain with the above command:
 #
-# $ src/ci/docker/run.sh --dev x86_64-gnu-integration
+# $ src/ci/docker/run.sh --dev x86_64-fuchsia
 # docker# git config --global --add safe.directory /checkout/obj/fuchsia
-# docker# ../src/ci/docker/host-x86_64/x86_64-gnu-integration/build-fuchsia.sh
+# docker# ../src/ci/docker/host-x86_64/x86_64-fuchsia/build-fuchsia.sh
 #
 # Also see the docs in the rustc-dev-guide for more info:
 # https://github.com/rust-lang/rustc-dev-guide/pull/1989
@@ -21,7 +21,7 @@ set -euf -o pipefail
 
 # Set this variable to 1 to disable updating the Fuchsia checkout. This is
 # useful for making local changes. You can find the Fuchsia checkout in
-# `obj/x86_64-gnu-integration/fuchsia` in your local checkout after running this
+# `obj/x86_64-fuchsia/fuchsia` in your local checkout after running this
 # job for the first time.
 KEEP_CHECKOUT=
 
@@ -35,7 +35,7 @@ PICK_REFS=()
 # commit hash of fuchsia.git and some other repos in the "monorepo" checkout, in
 # addition to versions of prebuilts. It should be bumped regularly by the
 # Fuchsia team – we aim for every 1-2 months.
-INTEGRATION_SHA=737ebdd83afa47b742ca8325fad0176952fcefbd
+INTEGRATION_SHA=d1d2f20efe46e22be179953dd6726c96eced54ab
 
 checkout=fuchsia
 jiri=.jiri_root/bin/jiri
