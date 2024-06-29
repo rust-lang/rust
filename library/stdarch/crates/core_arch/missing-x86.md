@@ -157,8 +157,6 @@
   * [ ] [`_kshiftli_mask16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kshiftli_mask16)
   * [ ] [`_kshiftri_mask16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kshiftri_mask16)
   * [ ] [`_load_mask16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_load_mask16)
-  * [ ] [`_mm512_cvtsd_f64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtsd_f64)
-  * [ ] [`_mm512_cvtss_f32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtss_f32)
   * [ ] [`_mm512_i32logather_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_i32logather_epi64)
   * [ ] [`_mm512_i32logather_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_i32logather_pd)
   * [ ] [`_mm512_i32loscatter_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_i32loscatter_epi64)

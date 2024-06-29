@@ -25318,8 +25318,27 @@ pub unsafe fn _mm512_castsi512_pd(a: __m512i) -> __m512d {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(vmovd))]
 pub unsafe fn _mm512_cvtsi512_si32(a: __m512i) -> i32 {
-    let extract: i32 = simd_extract!(a.as_i32x16(), 0);
-    extract
+    simd_extract!(a.as_i32x16(), 0)
+}
+
+/// Copy the lower single-precision (32-bit) floating-point element of a to dst.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_cvtss_f32)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_cvtss_f32(a: __m512) -> f32 {
+    simd_extract!(a, 0)
+}
+
+/// Copy the lower double-precision (64-bit) floating-point element of a to dst.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_cvtsd_f64)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_cvtsd_f64(a: __m512d) -> f64 {
+    simd_extract!(a, 0)
 }
 
 /// Broadcast the low packed 32-bit integer from a to all elements of dst.
@@ -58276,6 +58295,20 @@ mod tests {
         let r = _mm512_cvtsi512_si32(a);
         let e: i32 = 1;
         assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_cvtss_f32() {
+        let a = _mm512_setr_ps(
+            312.0134, 3., 2., 5., 8., 9., 64., 50., -4., -3., -2., -5., -8., -9., -64., -50.,
+        );
+        assert_eq!(_mm512_cvtss_f32(a), 312.0134);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_cvtsd_f64() {
+        let r = _mm512_cvtsd_f64(_mm512_setr_pd(-1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8));
+        assert_eq!(r, -1.1);
     }
 
     #[simd_test(enable = "avx512f")]
