@@ -44,7 +44,6 @@ pub fn dylib_path() -> Vec<std::path::PathBuf> {
 
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
-#[allow(dead_code)]
 pub fn exe(name: &str, target: &str) -> String {
     if target.contains("windows") {
         format!("{name}.exe")
@@ -94,4 +93,20 @@ pub fn maybe_dump(dump_name: String, cmd: &Command) {
 
         file.write_all(cmd_dump.as_bytes()).expect("Unable to write file");
     }
+}
+
+/// Finds `key` and returns its value from the given list of arguments `args`.
+pub fn parse_value_from_args<'a>(args: &'a [OsString], key: &str) -> Option<&'a str> {
+    let mut args = args.iter();
+    while let Some(arg) = args.next() {
+        let arg = arg.to_str().unwrap();
+
+        if let Some(value) = arg.strip_prefix(&format!("{key}=")) {
+            return Some(value);
+        } else if arg == key {
+            return args.next().map(|v| v.to_str().unwrap());
+        }
+    }
+
+    None
 }
