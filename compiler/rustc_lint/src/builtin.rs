@@ -2978,11 +2978,16 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
                                 InvalidAsmLabel::FormatArg { missing_precise_span },
                             );
                         }
-                        AsmLabelKind::Binary => cx.emit_span_lint(
-                            BINARY_ASM_LABELS,
-                            span,
-                            InvalidAsmLabel::Binary { missing_precise_span },
-                        ),
+                        AsmLabelKind::Binary => {
+                            // the binary asm issue only occurs when using intel syntax
+                            if !options.contains(InlineAsmOptions::ATT_SYNTAX) {
+                                cx.emit_span_lint(
+                                    BINARY_ASM_LABELS,
+                                    span,
+                                    InvalidAsmLabel::Binary { missing_precise_span },
+                                )
+                            }
+                        }
                     };
                 }
             }
