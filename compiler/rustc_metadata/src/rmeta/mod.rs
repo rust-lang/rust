@@ -416,10 +416,10 @@ define_tables! {
     lookup_deprecation_entry: Table<DefIndex, LazyValue<attr::Deprecation>>,
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
-    super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
+    explicit_super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     // As an optimization, we only store this for trait aliases,
-    // since it's identical to super_predicates_of for traits.
-    implied_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
+    // since it's identical to explicit_super_predicates_of for traits.
+    explicit_implied_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     type_of: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, Ty<'static>>>>,
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
     fn_sig: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::PolyFnSig<'static>>>>,
