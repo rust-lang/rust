@@ -2,8 +2,6 @@
 //@ edition:2021
 //@ rustc-env:CARGO_CRATE_NAME=non_local_def
 
-#![warn(non_local_definitions)]
-
 struct Test;
 
 trait Uto {}
