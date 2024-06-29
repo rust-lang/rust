@@ -1,9 +1,9 @@
 // ignore-tidy-tab
 
-static FOO: u8 = b'\f';  //~ ERROR unknown byte escape
+static FOO: u8 = b'\c';  //~ ERROR unknown byte escape
 
 pub fn main() {
-    b'\f';  //~ ERROR unknown byte escape
+    b'\c';  //~ ERROR unknown byte escape
     b'\x0Z';  //~ ERROR invalid character in numeric character escape: `Z`
     b'	';  //~ ERROR byte constant must be escaped
     b''';  //~ ERROR byte constant must be escaped

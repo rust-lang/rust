@@ -1,15 +1,15 @@
-error: unknown byte escape: `f`
+error: unknown byte escape: `c`
   --> $DIR/byte-literals.rs:3:21
    |
-LL | static FOO: u8 = b'\f';
+LL | static FOO: u8 = b'\c';
    |                     ^ unknown byte escape
    |
    = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 
-error: unknown byte escape: `f`
+error: unknown byte escape: `c`
   --> $DIR/byte-literals.rs:6:8
    |
-LL |     b'\f';
+LL |     b'\c';
    |        ^ unknown byte escape
    |
    = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>

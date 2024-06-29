@@ -26,7 +26,7 @@ fn test_unescape_char_bad() {
     check(r"\u{0}x", EscapeError::MoreThanOneChar);
     check(r"\u{1F63b}}", EscapeError::MoreThanOneChar);
 
-    check(r"\v", EscapeError::InvalidEscape);
+    check(r"\c", EscapeError::InvalidEscape);
     check(r"\💩", EscapeError::InvalidEscape);
     check(r"\●", EscapeError::InvalidEscape);
     check("\\\r", EscapeError::InvalidEscape);
@@ -81,6 +81,11 @@ fn test_unescape_char_good() {
     check(r"\\", '\\');
     check(r"\'", '\'');
     check(r"\0", '\0');
+    check(r"\a", 7 as char);
+    check(r"\f", 12 as char);
+    check(r"\v", 11 as char);
+    check(r"\b", 8 as char);
+    check(r"\e", 27 as char);
 
     check(r"\x00", '\0');
     check(r"\x5a", 'Z');
@@ -167,7 +172,7 @@ fn test_unescape_byte_bad() {
     check(r"\'a", EscapeError::MoreThanOneChar);
     check(r"\0a", EscapeError::MoreThanOneChar);
 
-    check(r"\v", EscapeError::InvalidEscape);
+    check(r"\c", EscapeError::InvalidEscape);
     check(r"\💩", EscapeError::InvalidEscape);
     check(r"\●", EscapeError::InvalidEscape);
 
@@ -227,6 +232,11 @@ fn test_unescape_byte_good() {
     check(r"\\", b'\\');
     check(r"\'", b'\'');
     check(r"\0", b'\0');
+    check(r"\a", 7);
+    check(r"\f", 12);
+    check(r"\v", 11);
+    check(r"\b", 8);
+    check(r"\e", 27);
 
     check(r"\x00", b'\0');
     check(r"\x5a", b'Z');

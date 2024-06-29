@@ -243,6 +243,11 @@ fn scan_escape<T: From<char> + From<u8>>(
         '\\' => '\\',
         '\'' => '\'',
         '0' => '\0',
+        'a' => '\x07',
+        'f' => '\x0c',
+        'v' => '\x0b',
+        'b' => '\x08',
+        'e' => '\x1b',
         'x' => {
             // Parse hexadecimal character code.
 
