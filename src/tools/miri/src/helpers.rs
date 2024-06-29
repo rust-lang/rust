@@ -14,6 +14,7 @@ use rustc_hir::{
     def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE},
 };
 use rustc_index::IndexVec;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::mir;
@@ -163,22 +164,39 @@ pub fn iter_exported_symbols<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut f: impl FnMut(CrateNum, DefId) -> InterpResult<'tcx>,
 ) -> InterpResult<'tcx> {
+    // First, the symbols in the local crate. We can't use `exported_symbols` here as that
+    // skips `#[used]` statics (since `reachable_set` skips them in binary crates).
+    // So we walk all HIR items ourselves instead.
+    let crate_items = tcx.hir_crate_items(());
+    for def_id in crate_items.definitions() {
+        let exported = tcx.def_kind(def_id).has_codegen_attrs() && {
+            let codegen_attrs = tcx.codegen_fn_attrs(def_id);
+            codegen_attrs.contains_extern_indicator()
+                || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
+        };
+        if exported {
+            f(LOCAL_CRATE, def_id.into())?;
+        }
+    }
+
+    // Next, all our dependencies.
     // `dependency_formats` includes all the transitive informations needed to link a crate,
     // which is what we need here since we need to dig out `exported_symbols` from all transitive
     // dependencies.
     let dependency_formats = tcx.dependency_formats(());
+    // Find the dependencies of the executable we are running.
     let dependency_format = dependency_formats
         .iter()
         .find(|(crate_type, _)| *crate_type == CrateType::Executable)
         .expect("interpreting a non-executable crate");
-    for cnum in iter::once(LOCAL_CRATE).chain(dependency_format.1.iter().enumerate().filter_map(
-        |(num, &linkage)| {
-            // We add 1 to the number because that's what rustc also does everywhere it
-            // calls `CrateNum::new`...
-            #[allow(clippy::arithmetic_side_effects)]
-            (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
-        },
-    )) {
+    for cnum in dependency_format.1.iter().enumerate().filter_map(|(num, &linkage)| {
+        // We add 1 to the number because that's what rustc also does everywhere it
+        // calls `CrateNum::new`...
+        #[allow(clippy::arithmetic_side_effects)]
+        (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
+    }) {
         // We can ignore `_export_info` here: we are a Rust crate, and everything is exported
         // from a Rust crate.
         for &(symbol, _export_info) in tcx.exported_symbols(cnum) {
