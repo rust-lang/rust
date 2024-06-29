@@ -613,14 +613,15 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
 #[cfg(not(test))]
 #[cfg(not(no_global_oom_handling))]
 fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
-    // Process the input in chunks to enable auto-vectorization
-    const USIZE_SIZE: usize = mem::size_of::<usize>();
-    const MAGIC_UNROLL: usize = 2;
-    const N: usize = USIZE_SIZE * MAGIC_UNROLL;
+    // Process the input in chunks of 16 bytes to enable auto-vectorization.
+    // Previously the chunk size depended on the size of `usize`,
+    // but on 32-bit platforms with sse or neon is also the better choice.
+    // The only downside on other platforms would be a bit more loop-unrolling.
+    const N: usize = 16;
 
     let mut slice = s.as_bytes();
     let mut out = Vec::with_capacity(slice.len());
-    let mut out_slice = &mut out.spare_capacity_mut()[..slice.len()];
+    let mut out_slice = out.spare_capacity_mut();
 
     let mut ascii_prefix_len = 0_usize;
     let mut is_ascii = [false; N];
@@ -628,7 +629,7 @@ fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
     while slice.len() >= N {
         // Safety: checked in loop condition
         let chunk = unsafe { slice.get_unchecked(..N) };
-        // Safety: out_slice has same length as input slice and gets sliced with the same offsets
+        // Safety: out_slice has at least same length as input slice and gets sliced with the same offsets
         let out_chunk = unsafe { out_slice.get_unchecked_mut(..N) };
 
         for j in 0..N {
@@ -639,6 +640,7 @@ fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
         // size gives the best result, specifically a pmovmsk instruction on x86.
         // There is a codegen test in `issue-123712-str-to-lower-autovectorization.rs` which should
         // be updated when this method is changed.
+        // See also https://github.com/llvm/llvm-project/issues/96395
         if is_ascii.iter().map(|x| *x as u8).sum::<u8>() as usize != N {
             break;
         }
