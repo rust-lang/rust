@@ -1287,10 +1287,15 @@ fn classify_name_ref(
                 syntax::algo::non_trivia_sibling(top.clone().into(), syntax::Direction::Prev)
             {
                 if error_node.kind() == SyntaxKind::ERROR {
-                    qualifier_ctx.unsafe_tok = error_node
-                        .children_with_tokens()
-                        .filter_map(NodeOrToken::into_token)
-                        .find(|it| it.kind() == T![unsafe]);
+                    for token in
+                        error_node.children_with_tokens().filter_map(NodeOrToken::into_token)
+                    {
+                        match token.kind() {
+                            SyntaxKind::UNSAFE_KW => qualifier_ctx.unsafe_tok = Some(token),
+                            SyntaxKind::ASYNC_KW => qualifier_ctx.async_tok = Some(token),
+                            _ => {}
+                        }
+                    }
                     qualifier_ctx.vis_node = error_node.children().find_map(ast::Visibility::cast);
                 }
             }
