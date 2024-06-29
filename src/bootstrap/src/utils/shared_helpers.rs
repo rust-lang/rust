@@ -1,18 +1,65 @@
-//! This file is meant to be included directly from bootstrap shims to avoid a
-//! dependency on the bootstrap library. This reduces the binary size and
-//! improves compilation time by reducing the linking time.
+//! This module serves two purposes:
+//!     1. It is part of the `utils` module and used in other parts of bootstrap.
+//!     2. It is embedded inside bootstrap shims to avoid a dependency on the bootstrap library.
+//!        Therefore, this module should never use any other bootstrap module. This reduces binary
+//!        size and improves compilation time by minimizing linking time.
+
+#![allow(dead_code)]
 
 use std::env;
+use std::ffi::OsString;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::process::Command;
 use std::str::FromStr;
 
+#[cfg(test)]
+mod tests;
+
+/// Returns the environment variable which the dynamic library lookup path
+/// resides in for this platform.
+pub fn dylib_path_var() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "PATH"
+    } else if cfg!(target_vendor = "apple") {
+        "DYLD_LIBRARY_PATH"
+    } else if cfg!(target_os = "haiku") {
+        "LIBRARY_PATH"
+    } else if cfg!(target_os = "aix") {
+        "LIBPATH"
+    } else {
+        "LD_LIBRARY_PATH"
+    }
+}
+
+/// Parses the `dylib_path_var()` environment variable, returning a list of
+/// paths that are members of this lookup path.
+pub fn dylib_path() -> Vec<std::path::PathBuf> {
+    let var = match std::env::var_os(dylib_path_var()) {
+        Some(v) => v,
+        None => return vec![],
+    };
+    std::env::split_paths(&var).collect()
+}
+
+/// Given an executable called `name`, return the filename for the
+/// executable for a particular target.
+#[allow(dead_code)]
+pub fn exe(name: &str, target: &str) -> String {
+    if target.contains("windows") {
+        format!("{name}.exe")
+    } else if target.contains("uefi") {
+        format!("{name}.efi")
+    } else {
+        name.to_string()
+    }
+}
+
 /// Parses the value of the "RUSTC_VERBOSE" environment variable and returns it as a `usize`.
 /// If it was not defined, returns 0 by default.
 ///
 /// Panics if "RUSTC_VERBOSE" is defined with the value that is not an unsigned integer.
-pub(crate) fn parse_rustc_verbose() -> usize {
+pub fn parse_rustc_verbose() -> usize {
     match env::var("RUSTC_VERBOSE") {
         Ok(s) => usize::from_str(&s).expect("RUSTC_VERBOSE should be an integer"),
         Err(_) => 0,
@@ -22,7 +69,7 @@ pub(crate) fn parse_rustc_verbose() -> usize {
 /// Parses the value of the "RUSTC_STAGE" environment variable and returns it as a `String`.
 ///
 /// If "RUSTC_STAGE" was not set, the program will be terminated with 101.
-pub(crate) fn parse_rustc_stage() -> String {
+pub fn parse_rustc_stage() -> String {
     env::var("RUSTC_STAGE").unwrap_or_else(|_| {
         // Don't panic here; it's reasonable to try and run these shims directly. Give a helpful error instead.
         eprintln!("rustc shim: FATAL: RUSTC_STAGE was not set");
@@ -35,7 +82,7 @@ pub(crate) fn parse_rustc_stage() -> String {
 ///
 /// Before writing it, replaces user-specific values to create generic dumps for cross-environment
 /// comparisons.
-pub(crate) fn maybe_dump(dump_name: String, cmd: &Command) {
+pub fn maybe_dump(dump_name: String, cmd: &Command) {
     if let Ok(dump_dir) = env::var("DUMP_BOOTSTRAP_SHIMS") {
         let dump_file = format!("{dump_dir}/{dump_name}");
 
