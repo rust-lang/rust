@@ -1154,9 +1154,9 @@ pub unsafe fn _mm_test_mix_ones_zeros(a: __m128i, mask: __m128i) -> i32 {
 pub unsafe fn _mm_stream_load_si128(mem_addr: *const __m128i) -> __m128i {
     let dst: __m128i;
     crate::arch::asm!(
-        "movntdqa {a}, [{mem_addr}]",
+        vpl!("movntdqa {a}"),
         a = out(xmm_reg) dst,
-        mem_addr = in(reg) mem_addr,
+        p = in(reg) mem_addr,
         options(pure, readonly, nostack, preserves_flags),
     );
     dst

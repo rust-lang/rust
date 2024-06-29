@@ -57,3 +57,33 @@ macro_rules! assert_approx_eq {
         );
     }};
 }
+
+// x86-32 wants to use a 32-bit address size, but asm! defaults to using the full
+// register name (e.g. rax). We have to explicitly override the placeholder to
+// use the 32-bit register name in that case.
+
+#[cfg(target_pointer_width = "32")]
+macro_rules! vpl {
+    ($inst:expr) => {
+        concat!($inst, ", [{p:e}]")
+    };
+}
+#[cfg(target_pointer_width = "64")]
+macro_rules! vpl {
+    ($inst:expr) => {
+        concat!($inst, ", [{p}]")
+    };
+}
+
+#[cfg(target_pointer_width = "32")]
+macro_rules! vps {
+    ($inst1:expr, $inst2:expr) => {
+        concat!($inst1, " [{p:e}]", $inst2)
+    };
+}
+#[cfg(target_pointer_width = "64")]
+macro_rules! vps {
+    ($inst1:expr, $inst2:expr) => {
+        concat!($inst1, " [{p}]", $inst2)
+    };
+}

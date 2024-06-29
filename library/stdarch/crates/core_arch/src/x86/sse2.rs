@@ -1312,8 +1312,8 @@ pub unsafe fn _mm_storel_epi64(mem_addr: *mut __m128i, a: __m128i) {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
     crate::arch::asm!(
-        "movntdq [{mem_addr}], {a}",
-        mem_addr = in(reg) mem_addr,
+        vps!("movntdq",  ",{a}"),
+        p = in(reg) mem_addr,
         a = in(xmm_reg) a,
         options(nostack, preserves_flags),
     );
@@ -1339,8 +1339,8 @@ pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si32(mem_addr: *mut i32, a: i32) {
     crate::arch::asm!(
-        "movnti [{mem_addr}], {a:e}", // `:e` for 32bit value
-        mem_addr = in(reg) mem_addr,
+        vps!("movnti", ",{a:e}"), // `:e` for 32bit value
+        p = in(reg) mem_addr,
         a = in(reg) a,
         options(nostack, preserves_flags),
     );
@@ -2542,8 +2542,8 @@ pub unsafe fn _mm_loadl_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_stream_pd(mem_addr: *mut f64, a: __m128d) {
     crate::arch::asm!(
-        "movntpd [{mem_addr}], {a}",
-        mem_addr = in(reg) mem_addr,
+        vps!("movntpd", ",{a}"),
+        p = in(reg) mem_addr,
         a = in(xmm_reg) a,
         options(nostack, preserves_flags),
     );

@@ -6,37 +6,6 @@ use crate::{
     mem, ptr,
 };
 
-// x86-32 wants to use a 32-bit address size, but asm! defaults to using the full
-// register name (e.g. rax). We have to explicitly override the placeholder to
-// use the 32-bit register name in that case.
-
-#[cfg(target_pointer_width = "32")]
-macro_rules! vpl {
-    ($inst:expr) => {
-        concat!($inst, ", [{p:e}]")
-    };
-}
-#[cfg(target_pointer_width = "64")]
-macro_rules! vpl {
-    ($inst:expr) => {
-        concat!($inst, ", [{p}]")
-    };
-}
-#[cfg(target_pointer_width = "32")]
-macro_rules! vps {
-    ($inst1:expr, $inst2:expr) => {
-        concat!($inst1, " [{p:e}]", $inst2)
-    };
-}
-#[cfg(target_pointer_width = "64")]
-macro_rules! vps {
-    ($inst1:expr, $inst2:expr) => {
-        concat!($inst1, " [{p}]", $inst2)
-    };
-}
-
-pub(crate) use {vpl, vps};
-
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
@@ -27899,8 +27868,8 @@ pub unsafe fn _mm_mask_testn_epi64_mask(k: __mmask8, a: __m128i, b: __m128i) -> 
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm512_stream_ps(mem_addr: *mut f32, a: __m512) {
     crate::arch::asm!(
-        "vmovntps [{mem_addr}], {a}",
-        mem_addr = in(reg) mem_addr,
+        vps!("vmovntps", ",{a}"),
+        p = in(reg) mem_addr,
         a = in(zmm_reg) a,
         options(nostack, preserves_flags),
     );
@@ -27925,8 +27894,8 @@ pub unsafe fn _mm512_stream_ps(mem_addr: *mut f32, a: __m512) {
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm512_stream_pd(mem_addr: *mut f64, a: __m512d) {
     crate::arch::asm!(
-        "vmovntpd [{mem_addr}], {a}",
-        mem_addr = in(reg) mem_addr,
+        vps!("vmovntpd", ",{a}"),
+        p = in(reg) mem_addr,
         a = in(zmm_reg) a,
         options(nostack, preserves_flags),
     );
@@ -27951,11 +27920,30 @@ pub unsafe fn _mm512_stream_pd(mem_addr: *mut f64, a: __m512d) {
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm512_stream_si512(mem_addr: *mut i32, a: __m512i) {
     crate::arch::asm!(
-        "vmovntdq [{mem_addr}], {a}",
-        mem_addr = in(reg) mem_addr,
+        vps!("vmovntdq", ",{a}"),
+        p = in(reg) mem_addr,
         a = in(zmm_reg) a,
         options(nostack, preserves_flags),
     );
+}
+
+/// Load 512-bits of integer data from memory into dst using a non-temporal memory hint. mem_addr
+/// must be aligned on a 64-byte boundary or a general-protection exception may be generated. To
+/// minimize caching, the data is flagged as non-temporal (unlikely to be used again soon)
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_stream_load_si256)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_stream_load_si512(mem_addr: *const __m512i) -> __m512i {
+    let dst: __m512i;
+    crate::arch::asm!(
+        vpl!("vmovntdqa {a}"),
+        a = out(zmm_reg) dst,
+        p = in(reg) mem_addr,
+        options(pure, readonly, nostack, preserves_flags),
+    );
+    dst
 }
 
 /// Sets packed 32-bit integers in `dst` with the supplied values.
@@ -54564,6 +54552,13 @@ mod tests {
         for i in 0..8 {
             assert_eq!(mem.data[i], get_m512i(a, i));
         }
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_stream_load_si512() {
+        let a = _mm512_set_epi64(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = _mm512_stream_load_si512(core::ptr::addr_of!(a) as *const _);
+        assert_eq_m512i(a, r);
     }
 
     #[simd_test(enable = "avx512f")]

@@ -8,8 +8,6 @@ use crate::{
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-use super::avx512f::{vpl, vps};
-
 /// Compute the absolute value of packed signed 16-bit integers in a, and store the unsigned results in dst.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_abs_epi16&expand=30)

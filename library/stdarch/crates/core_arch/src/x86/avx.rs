@@ -1738,8 +1738,8 @@ pub unsafe fn _mm256_lddqu_si256(mem_addr: *const __m256i) -> __m256i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_stream_si256(mem_addr: *mut __m256i, a: __m256i) {
     crate::arch::asm!(
-        "vmovntdq [{mem_addr}], {a}",
-        mem_addr = in(reg) mem_addr,
+        vps!("vmovntdq", ",{a}"),
+        p = in(reg) mem_addr,
         a = in(ymm_reg) a,
         options(nostack, preserves_flags),
     );
@@ -1766,8 +1766,8 @@ pub unsafe fn _mm256_stream_si256(mem_addr: *mut __m256i, a: __m256i) {
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_stream_pd(mem_addr: *mut f64, a: __m256d) {
     crate::arch::asm!(
-        "vmovntpd [{mem_addr}], {a}",
-        mem_addr = in(reg) mem_addr,
+        vps!("vmovntpd", ",{a}"),
+        p = in(reg) mem_addr,
         a = in(ymm_reg) a,
         options(nostack, preserves_flags),
     );
@@ -1795,8 +1795,8 @@ pub unsafe fn _mm256_stream_pd(mem_addr: *mut f64, a: __m256d) {
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_stream_ps(mem_addr: *mut f32, a: __m256) {
     crate::arch::asm!(
-        "vmovntps [{mem_addr}], {a}",
-        mem_addr = in(reg) mem_addr,
+        vps!("vmovntps", ",{a}"),
+        p = in(reg) mem_addr,
         a = in(ymm_reg) a,
         options(nostack, preserves_flags),
     );

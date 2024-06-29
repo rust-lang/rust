@@ -3149,9 +3149,9 @@ pub unsafe fn _mm256_srlv_epi64(a: __m256i, count: __m256i) -> __m256i {
 pub unsafe fn _mm256_stream_load_si256(mem_addr: *const __m256i) -> __m256i {
     let dst: __m256i;
     crate::arch::asm!(
-        "vmovntdqa {a}, [{mem_addr}]",
+        vpl!("vmovntdqa {a}"),
         a = out(ymm_reg) dst,
-        mem_addr = in(reg) mem_addr,
+        p = in(reg) mem_addr,
         options(pure, readonly, nostack, preserves_flags),
     );
     dst
