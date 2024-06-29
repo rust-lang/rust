@@ -89,13 +89,34 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             ty::FloatTy::F128 => self.type_f128(),
         }
     }
-}
 
-impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
-    fn type_i1(&self) -> Type<'gcc> {
+    pub fn type_i1(&self) -> Type<'gcc> {
         self.bool_type
     }
 
+    pub fn type_struct(&self, fields: &[Type<'gcc>], packed: bool) -> Type<'gcc> {
+        let types = fields.to_vec();
+        if let Some(typ) = self.struct_types.borrow().get(fields) {
+            return *typ;
+        }
+        let fields: Vec<_> = fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| {
+                self.context.new_field(None, *field, format!("field{}_TODO", index))
+            })
+            .collect();
+        let typ = self.context.new_struct_type(None, "struct", &fields).as_type();
+        if packed {
+            #[cfg(feature = "master")]
+            typ.set_packed();
+        }
+        self.struct_types.borrow_mut().insert(types, typ);
+        typ
+    }
+}
+
+impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn type_i8(&self) -> Type<'gcc> {
         self.i8_type
     }
@@ -131,34 +152,13 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn type_f64(&self) -> Type<'gcc> {
         self.double_type
     }
-    
+
     fn type_f128(&self) -> Type<'gcc> {
         unimplemented!("f16_f128")
     }
 
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {
         self.context.new_function_pointer_type(None, return_type, params, false)
-    }
-
-    fn type_struct(&self, fields: &[Type<'gcc>], packed: bool) -> Type<'gcc> {
-        let types = fields.to_vec();
-        if let Some(typ) = self.struct_types.borrow().get(fields) {
-            return *typ;
-        }
-        let fields: Vec<_> = fields
-            .iter()
-            .enumerate()
-            .map(|(index, field)| {
-                self.context.new_field(None, *field, format!("field{}_TODO", index))
-            })
-            .collect();
-        let typ = self.context.new_struct_type(None, "struct", &fields).as_type();
-        if packed {
-            #[cfg(feature = "master")]
-            typ.set_packed();
-        }
-        self.struct_types.borrow_mut().insert(types, typ);
-        typ
     }
 
     fn type_kind(&self, typ: Type<'gcc>) -> TypeKind {
