@@ -30,9 +30,8 @@ LL |     *u.c
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL -     *u.c
-LL +     u.c.clone()
-   |
+LL |     (*u.c).clone()
+   |     +    +++++++++
 
 error[E0507]: cannot move out of `*u.d` which is behind a raw pointer
   --> $DIR/move-from-union-field-issue-66500.rs:24:5
@@ -42,9 +41,8 @@ LL |     *u.d
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL -     *u.d
-LL +     u.d.clone()
-   |
+LL |     (*u.d).clone()
+   |     +    +++++++++
 
 error: aborting due to 4 previous errors
 

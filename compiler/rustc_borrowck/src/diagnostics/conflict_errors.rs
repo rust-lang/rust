@@ -1288,7 +1288,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             return false;
         }
         // Try to find predicates on *generic params* that would allow copying `ty`
-        let suggestion =
+        let mut suggestion =
             if let Some(symbol) = tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
                 format!(": {symbol}.clone()")
             } else {
@@ -1296,6 +1296,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             };
         let mut sugg = Vec::with_capacity(2);
         let mut inner_expr = expr;
+        let mut is_raw_ptr = false;
+        let typeck_result = self.infcx.tcx.typeck(self.mir_def_id());
         // Remove uses of `&` and `*` when suggesting `.clone()`.
         while let hir::ExprKind::AddrOf(.., inner) | hir::ExprKind::Unary(hir::UnOp::Deref, inner) =
             &inner_expr.kind
@@ -1306,14 +1308,32 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                 return false;
             }
             inner_expr = inner;
+            if let Some(inner_type) = typeck_result.node_type_opt(inner.hir_id) {
+                if matches!(inner_type.kind(), ty::RawPtr(..)) {
+                    is_raw_ptr = true;
+                    break;
+                }
+            }
         }
-        if inner_expr.span.lo() != expr.span.lo() {
+        // Cloning the raw pointer doesn't make sense in some cases and would cause a type mismatch error. (see #126863)
+        if inner_expr.span.lo() != expr.span.lo() && !is_raw_ptr {
+            // Remove "(*" or "(&"
             sugg.push((expr.span.with_hi(inner_expr.span.lo()), String::new()));
         }
+        // Check whether `expr` is surrounded by parentheses or not.
         let span = if inner_expr.span.hi() != expr.span.hi() {
             // Account for `(*x)` to suggest `x.clone()`.
-            expr.span.with_lo(inner_expr.span.hi())
+            if is_raw_ptr {
+                expr.span.shrink_to_hi()
+            } else {
+                // Remove the close parenthesis ")"
+                expr.span.with_lo(inner_expr.span.hi())
+            }
         } else {
+            if is_raw_ptr {
+                sugg.push((expr.span.shrink_to_lo(), "(".to_string()));
+                suggestion = ").clone()".to_string();
+            }
             expr.span.shrink_to_hi()
         };
         sugg.push((span, suggestion));

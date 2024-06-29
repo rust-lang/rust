@@ -639,12 +639,27 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
     fn add_borrow_suggestions(&self, err: &mut Diag<'_>, span: Span) {
         match self.infcx.tcx.sess.source_map().span_to_snippet(span) {
             Ok(snippet) if snippet.starts_with('*') => {
-                err.span_suggestion_verbose(
-                    span.with_hi(span.lo() + BytePos(1)),
-                    "consider removing the dereference here",
-                    String::new(),
-                    Applicability::MaybeIncorrect,
-                );
+                let sp = span.with_lo(span.lo() + BytePos(1));
+                let inner = self.find_expr(sp);
+                let mut is_raw_ptr = false;
+                if let Some(inner) = inner {
+                    let typck_result = self.infcx.tcx.typeck(self.mir_def_id());
+                    if let Some(inner_type) = typck_result.node_type_opt(inner.hir_id) {
+                        if matches!(inner_type.kind(), ty::RawPtr(..)) {
+                            is_raw_ptr = true;
+                        }
+                    }
+                }
+                // If the `inner` is a raw pointer, do not suggest removing the "*", see #126863
+                // FIXME: need to check whether the assigned object can be a raw pointer, see `tests/ui/borrowck/issue-20801.rs`.
+                if !is_raw_ptr {
+                    err.span_suggestion_verbose(
+                        span.with_hi(span.lo() + BytePos(1)),
+                        "consider removing the dereference here",
+                        String::new(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
             _ => {
                 err.span_suggestion_verbose(
