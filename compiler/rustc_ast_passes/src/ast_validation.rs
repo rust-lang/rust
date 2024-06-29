@@ -1088,7 +1088,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             }
                         }
                     } else if let &Safety::Unsafe(span) = safety {
-                        this.dcx().emit_err(errors::UnsafeItem { span, kind: "extern block" });
+                        let mut diag = this
+                            .dcx()
+                            .create_err(errors::UnsafeItem { span, kind: "extern block" });
+                        rustc_session::parse::add_feature_diagnostics(
+                            &mut diag,
+                            self.session,
+                            sym::unsafe_extern_blocks,
+                        );
+                        diag.emit();
                     }
 
                     if abi.is_none() {
