@@ -470,7 +470,9 @@ Arguments:
         versioned_dirs: bool,
     },
     /// Perform profiling and benchmarking of the compiler using the
-    /// `rustc-perf` benchmark suite.
+    /// `rustc-perf-wrapper` tool.
+    ///
+    /// You need to pass arguments after `--`, e.g.`x perf -- cachegrind`.
     Perf {},
 }
 

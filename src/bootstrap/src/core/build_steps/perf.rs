@@ -1,7 +1,5 @@
-use std::process::Command;
-
 use crate::core::build_steps::compile::{Std, Sysroot};
-use crate::core::build_steps::tool::RustcPerf;
+use crate::core::build_steps::tool::{RustcPerf, Tool};
 use crate::core::builder::Builder;
 use crate::core::config::DebuginfoLevel;
 
@@ -22,24 +20,16 @@ Consider setting `rust.debuginfo-level = 1` in `config.toml`."#);
     let sysroot = builder.ensure(Sysroot::new(compiler));
     let rustc = sysroot.join("bin/rustc");
 
-    let results_dir = builder.build.tempdir().join("rustc-perf");
+    let rustc_perf_dir = builder.build.tempdir().join("rustc-perf");
+    let profile_results_dir = rustc_perf_dir.join("results");
 
-    let mut cmd = Command::new(collector);
-    let cmd = cmd
-        .arg("profile_local")
-        .arg("eprintln")
-        .arg("--out-dir")
-        .arg(&results_dir)
-        .arg("--include")
-        .arg("helloworld")
-        .arg(&rustc);
+    // We need to take args passed after `--` and pass them to `rustc-perf-wrapper`
+    let args = std::env::args().skip_while(|a| a != "--").skip(1);
 
-    builder.info(&format!("Running `rustc-perf` using `{}`", rustc.display()));
-
-    // We need to set the working directory to `src/tools/perf`, so that it can find the directory
-    // with compile-time benchmarks.
-    let cmd = cmd.current_dir(builder.src.join("src/tools/rustc-perf"));
-    builder.build.run(cmd);
-
-    builder.info(&format!("You can find the results at `{}`", results_dir.display()));
+    let mut cmd = builder.tool_cmd(Tool::RustcPerfWrapper);
+    cmd.env("RUSTC_REAL", rustc)
+        .env("PERF_COLLECTOR", collector)
+        .env("PERF_RESULT_DIR", profile_results_dir)
+        .args(args);
+    builder.run(&mut cmd);
 }
