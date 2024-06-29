@@ -21,6 +21,7 @@ use std::io;
 use std::panic;
 use std::path::{Path, PathBuf};
 
+pub use bstr;
 pub use gimli;
 pub use object;
 pub use regex;

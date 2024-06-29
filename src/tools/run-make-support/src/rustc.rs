@@ -106,6 +106,17 @@ impl Rustc {
         self
     }
 
+    /// Remap source path prefixes in all output.
+    pub fn remap_path_prefix<P: AsRef<Path>>(&mut self, from: P, to: P) -> &mut Self {
+        let from = from.as_ref().to_string_lossy();
+        let to = to.as_ref().to_string_lossy();
+
+        self.cmd.arg("--remap-path-prefix");
+        self.cmd.arg(format!("{from}={to}"));
+
+        self
+    }
+
     /// Specify path to the input file.
     pub fn input<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg(path.as_ref());
