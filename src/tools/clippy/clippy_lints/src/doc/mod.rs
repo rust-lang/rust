@@ -6,10 +6,10 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::Visitable;
 use clippy_utils::{in_constant, is_entrypoint_fn, is_trait_impl_item, method_chain_args};
 use pulldown_cmark::Event::{
-    Code, End, FootnoteReference, HardBreak, Html, Rule, SoftBreak, Start, TaskListMarker, Text,
+    Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start, TaskListMarker, Text,
 };
 use pulldown_cmark::Tag::{BlockQuote, CodeBlock, FootnoteDefinition, Heading, Item, Link, Paragraph};
-use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options};
+use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::intravisit::{self, Visitor};
@@ -659,7 +659,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
 
     while let Some((event, range)) = events.next() {
         match event {
-            Html(tag) => {
+            Html(tag) | InlineHtml(tag) => {
                 if tag.starts_with("<code") {
                     code_level += 1;
                 } else if tag.starts_with("</code") {
@@ -670,11 +670,11 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     blockquote_level -= 1;
                 }
             },
-            Start(BlockQuote) => {
+            Start(BlockQuote(_)) => {
                 blockquote_level += 1;
                 containers.push(Container::Blockquote);
             },
-            End(BlockQuote) => {
+            End(TagEnd::BlockQuote) => {
                 blockquote_level -= 1;
                 containers.pop();
             },
@@ -699,15 +699,15 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     }
                 }
             },
-            End(CodeBlock(_)) => {
+            End(TagEnd::CodeBlock) => {
                 in_code = false;
                 is_rust = false;
                 ignore = false;
             },
-            Start(Link(_, url, _)) => in_link = Some(url),
-            End(Link(..)) => in_link = None,
-            Start(Heading(_, _, _) | Paragraph | Item) => {
-                if let Start(Heading(_, _, _)) = event {
+            Start(Link { dest_url, .. }) => in_link = Some(dest_url),
+            End(TagEnd::Link) => in_link = None,
+            Start(Heading { .. } | Paragraph | Item) => {
+                if let Start(Heading { .. }) = event {
                     in_heading = true;
                 }
                 if let Start(Item) = event {
@@ -720,11 +720,11 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 ticks_unbalanced = false;
                 paragraph_range = range;
             },
-            End(Heading(_, _, _) | Paragraph | Item) => {
-                if let End(Heading(_, _, _)) = event {
+            End(TagEnd::Heading(_) | TagEnd::Paragraph | TagEnd::Item) => {
+                if let End(TagEnd::Heading(_)) = event {
                     in_heading = false;
                 }
-                if let End(Item) = event {
+                if let End(TagEnd::Item) = event {
                     containers.pop();
                 }
                 if ticks_unbalanced && let Some(span) = fragments.span(cx, paragraph_range.clone()) {
@@ -746,8 +746,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 text_to_check = Vec::new();
             },
             Start(FootnoteDefinition(..)) => in_footnote_definition = true,
-            End(FootnoteDefinition(..)) => in_footnote_definition = false,
-            Start(_tag) | End(_tag) => (), // We don't care about other tags
+            End(TagEnd::FootnoteDefinition) => in_footnote_definition = false,
+            Start(_) | End(_) => (), // We don't care about other tags
             SoftBreak | HardBreak => {
                 if !containers.is_empty()
                     && let Some((next_event, next_range)) = events.peek()
@@ -765,7 +765,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     );
                 }
             },
-            TaskListMarker(_) | Code(_) | Rule => (),
+            TaskListMarker(_) | Code(_) | Rule | InlineMath(..) | DisplayMath(..) => (),
             FootnoteReference(text) | Text(text) => {
                 paragraph_range.end = range.end;
                 ticks_unbalanced |= text.contains('`') && !in_code;
