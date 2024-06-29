@@ -149,19 +149,10 @@
 
 <details><summary>["AVX512F"]</summary><p>
 
-  * [ ] [`_cvtmask16_u32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_cvtmask16_u32)
-  * [ ] [`_cvtu32_mask16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_cvtu32_mask16)
-  * [ ] [`_kortest_mask16_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kortest_mask16_u8)
-  * [ ] [`_kortestc_mask16_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kortestc_mask16_u8)
-  * [ ] [`_kortestz_mask16_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kortestz_mask16_u8)
-  * [ ] [`_kshiftli_mask16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kshiftli_mask16)
-  * [ ] [`_kshiftri_mask16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kshiftri_mask16)
-  * [ ] [`_load_mask16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_load_mask16)
   * [ ] [`_mm512_i32logather_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_i32logather_epi64)
   * [ ] [`_mm512_i32logather_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_i32logather_pd)
   * [ ] [`_mm512_i32loscatter_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_i32loscatter_epi64)
   * [ ] [`_mm512_i32loscatter_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_i32loscatter_pd)
-  * [ ] [`_mm512_kortestz`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_kortestz)
   * [ ] [`_mm512_mask_i32logather_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_i32logather_epi64)
   * [ ] [`_mm512_mask_i32logather_pd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_i32logather_pd)
   * [ ] [`_mm512_mask_i32loscatter_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_i32loscatter_epi64)
@@ -173,7 +164,6 @@
   * [ ] [`_mm_mask_store_ss`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_store_ss)
   * [ ] [`_mm_maskz_load_sd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_load_sd)
   * [ ] [`_mm_maskz_load_ss`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_load_ss)
-  * [ ] [`_store_mask16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_store_mask16)
 </p></details>
 
 

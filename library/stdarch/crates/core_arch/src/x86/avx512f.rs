@@ -27274,6 +27274,26 @@ pub unsafe fn _mm512_andnot_si512(a: __m512i, b: __m512i) -> __m512i {
     _mm512_and_epi64(_mm512_xor_epi64(a, _mm512_set1_epi64(u64::MAX as i64)), b)
 }
 
+/// Convert 16-bit mask a into an integer value, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_cvtmask16_u32)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _cvtmask16_u32(a: __mmask16) -> u32 {
+    a as u32
+}
+
+/// Convert 32-bit integer value a to an 16-bit mask and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_cvtu32_mask16)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _cvtu32_mask16(a: u32) -> __mmask16 {
+    a as __mmask16
+}
+
 /// Compute the bitwise AND of 16-bit masks a and b, and store the result in k.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=kand_mask16&expand=3212)
@@ -27404,6 +27424,83 @@ pub unsafe fn _mm512_kxnor(a: __mmask16, b: __mmask16) -> __mmask16 {
     _mm512_knot(_mm512_kxor(a, b))
 }
 
+/// Compute the bitwise OR of 16-bit masks a and b. If the result is all zeros, store 1 in dst, otherwise
+/// store 0 in dst. If the result is all ones, store 1 in all_ones, otherwise store 0 in all_ones.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kortest_mask16_u8)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kortest_mask16_u8(a: __mmask16, b: __mmask16, all_ones: *mut u8) -> u8 {
+    let tmp = _kor_mask16(a, b);
+    *all_ones = (tmp == 0xffff) as u8;
+    (tmp == 0) as u8
+}
+
+/// Compute the bitwise OR of 16-bit masks a and b. If the result is all ones, store 1 in dst, otherwise
+/// store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kortestc_mask16_u8)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kortestc_mask16_u8(a: __mmask16, b: __mmask16) -> u8 {
+    (_kor_mask16(a, b) == 0xffff) as u8
+}
+
+/// Compute the bitwise OR of 16-bit masks a and b. If the result is all zeros, store 1 in dst, otherwise
+/// store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kortestz_mask16_u8)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kortestz_mask16_u8(a: __mmask16, b: __mmask16) -> u8 {
+    (_kor_mask16(a, b) == 0) as u8
+}
+
+/// Shift 16-bit mask a left by count bits while shifting in zeros, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftli_mask16)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kshiftli_mask16<const COUNT: u32>(a: __mmask16) -> __mmask16 {
+    a << COUNT
+}
+
+/// Shift 16-bit mask a right by count bits while shifting in zeros, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftri_mask16)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kshiftri_mask16<const COUNT: u32>(a: __mmask16) -> __mmask16 {
+    a >> COUNT
+}
+
+/// Load 16-bit mask from memory
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_load_mask16)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _load_mask16(mem_addr: *const __mmask16) -> __mmask16 {
+    *mem_addr
+}
+
+/// Store 16-bit mask to memory
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_store_mask16)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _store_mask16(mem_addr: *mut __mmask16, a: __mmask16) {
+    *mem_addr = a;
+}
+
 /// Copy 16-bit mask a to k.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm512_kmov&expand=3228)
@@ -27455,12 +27552,20 @@ pub unsafe fn _mm512_kunpackb(a: __mmask16, b: __mmask16) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(cmp))] // generate normal and code instead of kortestw
 pub unsafe fn _mm512_kortestc(a: __mmask16, b: __mmask16) -> i32 {
-    let r = a | b;
-    if r == 0b11111111_11111111 {
-        1
-    } else {
-        0
-    }
+    let r = (a | b) == 0b11111111_11111111;
+    r as i32
+}
+
+/// Performs bitwise OR between k1 and k2, storing the result in dst. ZF flag is set if dst is 0.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_kortestz)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[cfg_attr(test, assert_instr(xor))] // generate normal and code instead of kortestw
+pub unsafe fn _mm512_kortestz(a: __mmask16, b: __mmask16) -> i32 {
+    let r = (a | b) == 0;
+    r as i32
 }
 
 /// Compute the bitwise AND of packed 32-bit integers in a and b, producing intermediate 32-bit values, and set the corresponding bit in result mask k if the intermediate value is non-zero.
@@ -54080,6 +54185,22 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
+    unsafe fn test_cvtmask16_u32() {
+        let a: __mmask16 = 0b11001100_00110011;
+        let r = _cvtmask16_u32(a);
+        let e: u32 = 0b11001100_00110011;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_cvtu32_mask16() {
+        let a: u32 = 0b11001100_00110011;
+        let r = _cvtu32_mask16(a);
+        let e: __mmask16 = 0b11001100_00110011;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_kand() {
         let a: u16 = 0b11001100_00110011;
         let b: u16 = 0b11001100_00110011;
@@ -54185,6 +54306,65 @@ mod tests {
         assert_eq!(r, e);
     }
 
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kortest_mask16_u8() {
+        let a: __mmask16 = 0b0110100101101001;
+        let b: __mmask16 = 0b1011011010110110;
+        let mut all_ones: u8 = 0;
+        let r = _kortest_mask16_u8(a, b, &mut all_ones);
+        assert_eq!(r, 0);
+        assert_eq!(all_ones, 1);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kortestc_mask16_u8() {
+        let a: __mmask16 = 0b0110100101101001;
+        let b: __mmask16 = 0b1011011010110110;
+        let r = _kortestc_mask16_u8(a, b);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kortestz_mask16_u8() {
+        let a: __mmask16 = 0b0110100101101001;
+        let b: __mmask16 = 0b1011011010110110;
+        let r = _kortestz_mask16_u8(a, b);
+        assert_eq!(r, 0);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kshiftli_mask16() {
+        let a: __mmask16 = 0b1001011011000011;
+        let r = _kshiftli_mask16::<3>(a);
+        let e: __mmask16 = 0b1011011000011000;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512dq")]
+    unsafe fn test_kshiftri_mask16() {
+        let a: __mmask16 = 0b0110100100111100;
+        let r = _kshiftri_mask16::<3>(a);
+        let e: __mmask16 = 0b0000110100100111;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_load_mask16() {
+        let a: __mmask16 = 0b1001011011000011;
+        let r = _load_mask16(&a);
+        let e: __mmask16 = 0b1001011011000011;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_store_mask16() {
+        let a: __mmask16 = 0b0110100100111100;
+        let mut r = 0;
+        _store_mask16(&mut r, a);
+        let e: __mmask16 = 0b0110100100111100;
+        assert_eq!(r, e);
+    }
+
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_kmov() {
         let a: u16 = 0b11001100_00110011;
@@ -54226,6 +54406,16 @@ mod tests {
         assert_eq!(r, 0);
         let b: u16 = 0b11111111_11111111;
         let r = _mm512_kortestc(a, b);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_kortestz() {
+        let a: u16 = 0b11001100_00110011;
+        let b: u16 = 0b00101110_00001011;
+        let r = _mm512_kortestz(a, b);
+        assert_eq!(r, 0);
+        let r = _mm512_kortestz(0, 0);
         assert_eq!(r, 1);
     }
 
