@@ -1,4 +1,5 @@
 #![warn(clippy::copy_iterator)]
+#![allow(clippy::manual_inspect)]
 
 #[derive(Copy, Clone)]
 struct Countdown(u8);

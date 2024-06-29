@@ -55,6 +55,7 @@ fn integration_test() {
             "clippy",
             "--all-targets",
             "--all-features",
+            "--message-format=short",
             "--",
             "--cap-lints",
             "warn",

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::If;
 use clippy_utils::is_from_proc_macro;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::{snippet_opt, SpanRangeExt};
 use rustc_errors::Applicability;
 use rustc_hir::{ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -39,18 +39,24 @@ declare_lint_pass!(NeedlessIf => [NEEDLESS_IF]);
 impl LateLintPass<'_> for NeedlessIf {
     fn check_stmt<'tcx>(&mut self, cx: &LateContext<'tcx>, stmt: &Stmt<'tcx>) {
         if let StmtKind::Expr(expr) = stmt.kind
-            && let Some(If {cond, then, r#else: None }) = If::hir(expr)
+            && let Some(If {
+                cond,
+                then,
+                r#else: None,
+            }) = If::hir(expr)
             && let ExprKind::Block(block, ..) = then.kind
             && block.stmts.is_empty()
             && block.expr.is_none()
             && !in_external_macro(cx.sess(), expr.span)
-            && let Some(then_snippet) = snippet_opt(cx, then.span)
-            // Ignore
-            // - empty macro expansions
-            // - empty reptitions in macro expansions
-            // - comments
-            // - #[cfg]'d out code
-            && then_snippet.chars().all(|ch| matches!(ch, '{' | '}') || ch.is_ascii_whitespace())
+            && then.span.check_source_text(cx, |src| {
+                // Ignore
+                // - empty macro expansions
+                // - empty reptitions in macro expansions
+                // - comments
+                // - #[cfg]'d out code
+                src.bytes()
+                    .all(|ch| matches!(ch, b'{' | b'}') || ch.is_ascii_whitespace())
+            })
             && let Some(cond_snippet) = snippet_opt(cx, cond.span)
             && !is_from_proc_macro(cx, expr)
         {

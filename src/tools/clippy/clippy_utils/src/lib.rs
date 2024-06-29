@@ -2666,13 +2666,80 @@ pub enum DefinedTy<'tcx> {
 /// The context an expressions value is used in.
 pub struct ExprUseCtxt<'tcx> {
     /// The parent node which consumes the value.
-    pub node: ExprUseNode<'tcx>,
+    pub node: Node<'tcx>,
+    /// The child id of the node the value came from.
+    pub child_id: HirId,
     /// Any adjustments applied to the type.
     pub adjustments: &'tcx [Adjustment<'tcx>],
-    /// Whether or not the type must unify with another code path.
+    /// Whether the type must unify with another code path.
     pub is_ty_unified: bool,
-    /// Whether or not the value will be moved before it's used.
+    /// Whether the value will be moved before it's used.
     pub moved_before_use: bool,
+    /// Whether the use site has the same `SyntaxContext` as the value.
+    pub same_ctxt: bool,
+}
+impl<'tcx> ExprUseCtxt<'tcx> {
+    pub fn use_node(&self, cx: &LateContext<'tcx>) -> ExprUseNode<'tcx> {
+        match self.node {
+            Node::LetStmt(l) => ExprUseNode::LetStmt(l),
+            Node::ExprField(field) => ExprUseNode::Field(field),
+
+            Node::Item(&Item {
+                kind: ItemKind::Static(..) | ItemKind::Const(..),
+                owner_id,
+                ..
+            })
+            | Node::TraitItem(&TraitItem {
+                kind: TraitItemKind::Const(..),
+                owner_id,
+                ..
+            })
+            | Node::ImplItem(&ImplItem {
+                kind: ImplItemKind::Const(..),
+                owner_id,
+                ..
+            }) => ExprUseNode::ConstStatic(owner_id),
+
+            Node::Item(&Item {
+                kind: ItemKind::Fn(..),
+                owner_id,
+                ..
+            })
+            | Node::TraitItem(&TraitItem {
+                kind: TraitItemKind::Fn(..),
+                owner_id,
+                ..
+            })
+            | Node::ImplItem(&ImplItem {
+                kind: ImplItemKind::Fn(..),
+                owner_id,
+                ..
+            }) => ExprUseNode::Return(owner_id),
+
+            Node::Expr(use_expr) => match use_expr.kind {
+                ExprKind::Ret(_) => ExprUseNode::Return(OwnerId {
+                    def_id: cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
+                }),
+
+                ExprKind::Closure(closure) => ExprUseNode::Return(OwnerId { def_id: closure.def_id }),
+                ExprKind::Call(func, args) => match args.iter().position(|arg| arg.hir_id == self.child_id) {
+                    Some(i) => ExprUseNode::FnArg(func, i),
+                    None => ExprUseNode::Callee,
+                },
+                ExprKind::MethodCall(name, _, args, _) => ExprUseNode::MethodArg(
+                    use_expr.hir_id,
+                    name.args,
+                    args.iter()
+                        .position(|arg| arg.hir_id == self.child_id)
+                        .map_or(0, |i| i + 1),
+                ),
+                ExprKind::Field(_, name) => ExprUseNode::FieldAccess(name),
+                ExprKind::AddrOf(kind, mutbl, _) => ExprUseNode::AddrOf(kind, mutbl),
+                _ => ExprUseNode::Other,
+            },
+            _ => ExprUseNode::Other,
+        }
+    }
 }
 
 /// The node which consumes a value.
@@ -2693,7 +2760,8 @@ pub enum ExprUseNode<'tcx> {
     Callee,
     /// Access of a field.
     FieldAccess(Ident),
-    Expr,
+    /// Borrow expression.
+    AddrOf(ast::BorrowKind, Mutability),
     Other,
 }
 impl<'tcx> ExprUseNode<'tcx> {
@@ -2770,26 +2838,25 @@ impl<'tcx> ExprUseNode<'tcx> {
                 let sig = cx.tcx.fn_sig(id).skip_binder();
                 Some(DefinedTy::Mir(cx.tcx.param_env(id).and(sig.input(i))))
             },
-            Self::LetStmt(_) | Self::FieldAccess(..) | Self::Callee | Self::Expr | Self::Other => None,
+            Self::LetStmt(_) | Self::FieldAccess(..) | Self::Callee | Self::Other | Self::AddrOf(..) => None,
         }
     }
 }
 
 /// Gets the context an expression's value is used in.
-pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> Option<ExprUseCtxt<'tcx>> {
+pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> ExprUseCtxt<'tcx> {
     let mut adjustments = [].as_slice();
     let mut is_ty_unified = false;
     let mut moved_before_use = false;
+    let mut same_ctxt = true;
     let ctxt = e.span.ctxt();
-    walk_to_expr_usage(cx, e, &mut |parent_id, parent, child_id| {
+    let node = walk_to_expr_usage(cx, e, &mut |parent_id, parent, child_id| -> ControlFlow<!> {
         if adjustments.is_empty()
             && let Node::Expr(e) = cx.tcx.hir_node(child_id)
         {
             adjustments = cx.typeck_results().expr_adjustments(e);
         }
-        if cx.tcx.hir().span(parent_id).ctxt() != ctxt {
-            return ControlFlow::Break(());
-        }
+        same_ctxt &= cx.tcx.hir().span(parent_id).ctxt() == ctxt;
         if let Node::Expr(e) = parent {
             match e.kind {
                 ExprKind::If(e, _, _) | ExprKind::Match(e, _, _) if e.hir_id != child_id => {
@@ -2805,71 +2872,26 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> Optio
             }
         }
         ControlFlow::Continue(())
-    })?
-    .continue_value()
-    .map(|(use_node, child_id)| {
-        let node = match use_node {
-            Node::LetStmt(l) => ExprUseNode::LetStmt(l),
-            Node::ExprField(field) => ExprUseNode::Field(field),
-
-            Node::Item(&Item {
-                kind: ItemKind::Static(..) | ItemKind::Const(..),
-                owner_id,
-                ..
-            })
-            | Node::TraitItem(&TraitItem {
-                kind: TraitItemKind::Const(..),
-                owner_id,
-                ..
-            })
-            | Node::ImplItem(&ImplItem {
-                kind: ImplItemKind::Const(..),
-                owner_id,
-                ..
-            }) => ExprUseNode::ConstStatic(owner_id),
-
-            Node::Item(&Item {
-                kind: ItemKind::Fn(..),
-                owner_id,
-                ..
-            })
-            | Node::TraitItem(&TraitItem {
-                kind: TraitItemKind::Fn(..),
-                owner_id,
-                ..
-            })
-            | Node::ImplItem(&ImplItem {
-                kind: ImplItemKind::Fn(..),
-                owner_id,
-                ..
-            }) => ExprUseNode::Return(owner_id),
-
-            Node::Expr(use_expr) => match use_expr.kind {
-                ExprKind::Ret(_) => ExprUseNode::Return(OwnerId {
-                    def_id: cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
-                }),
-                ExprKind::Closure(closure) => ExprUseNode::Return(OwnerId { def_id: closure.def_id }),
-                ExprKind::Call(func, args) => match args.iter().position(|arg| arg.hir_id == child_id) {
-                    Some(i) => ExprUseNode::FnArg(func, i),
-                    None => ExprUseNode::Callee,
-                },
-                ExprKind::MethodCall(name, _, args, _) => ExprUseNode::MethodArg(
-                    use_expr.hir_id,
-                    name.args,
-                    args.iter().position(|arg| arg.hir_id == child_id).map_or(0, |i| i + 1),
-                ),
-                ExprKind::Field(child, name) if child.hir_id == e.hir_id => ExprUseNode::FieldAccess(name),
-                _ => ExprUseNode::Expr,
-            },
-            _ => ExprUseNode::Other,
-        };
-        ExprUseCtxt {
+    });
+    match node {
+        Some(ControlFlow::Continue((node, child_id))) => ExprUseCtxt {
             node,
+            child_id,
             adjustments,
             is_ty_unified,
             moved_before_use,
-        }
-    })
+            same_ctxt,
+        },
+        Some(ControlFlow::Break(_)) => unreachable!("type of node is ControlFlow<!>"),
+        None => ExprUseCtxt {
+            node: Node::Crate(cx.tcx.hir().root_module()),
+            child_id: HirId::INVALID,
+            adjustments: &[],
+            is_ty_unified: true,
+            moved_before_use: true,
+            same_ctxt: false,
+        },
+    }
 }
 
 /// Tokenizes the input while keeping the text associated with each token.

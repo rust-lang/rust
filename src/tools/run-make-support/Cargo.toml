@@ -9,3 +9,4 @@ similar = "2.5.0"
 wasmparser = "0.118.2"
 regex = "1.8" # 1.8 to avoid memchr 2.6.0, as 2.5.0 is pinned in the workspace
 gimli = "0.28.1"
+ar = "0.9.0"

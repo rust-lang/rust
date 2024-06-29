@@ -54,7 +54,6 @@ run-make/incr-add-rust-src-component/Makefile
 run-make/incr-foreign-head-span/Makefile
 run-make/interdependent-c-libraries/Makefile
 run-make/intrinsic-unreachable/Makefile
-run-make/invalid-library/Makefile
 run-make/issue-107094/Makefile
 run-make/issue-109934-lto-debuginfo/Makefile
 run-make/issue-14698/Makefile
@@ -94,14 +93,12 @@ run-make/llvm-ident/Makefile
 run-make/long-linker-command-lines-cmd-exe/Makefile
 run-make/long-linker-command-lines/Makefile
 run-make/longjmp-across-rust/Makefile
-run-make/lto-dylib-dep/Makefile
 run-make/lto-linkage-used-attr/Makefile
 run-make/lto-no-link-whole-rlib/Makefile
 run-make/lto-smoke-c/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/macos-fat-archive/Makefile
 run-make/manual-link/Makefile
-run-make/many-crates-but-no-match/Makefile
 run-make/metadata-dep-info/Makefile
 run-make/min-global-align/Makefile
 run-make/mingw-export-call-convention/Makefile
@@ -119,7 +116,6 @@ run-make/optimization-remarks-dir-pgo/Makefile
 run-make/optimization-remarks-dir/Makefile
 run-make/output-type-permutations/Makefile
 run-make/override-aliased-flags/Makefile
-run-make/overwrite-input/Makefile
 run-make/panic-abort-eh_frame/Makefile
 run-make/pass-linker-flags-flavor/Makefile
 run-make/pass-linker-flags-from-dep/Makefile
@@ -193,7 +189,6 @@ run-make/translation/Makefile
 run-make/type-mismatch-same-crate-name/Makefile
 run-make/unknown-mod-stdin/Makefile
 run-make/unstable-flag-required/Makefile
-run-make/use-suggestions-rust-2018/Makefile
 run-make/used-cdylib-macos/Makefile
 run-make/volatile-intrinsics/Makefile
 run-make/wasm-exceptions-nostd/Makefile

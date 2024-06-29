@@ -61,6 +61,19 @@ pub fn target() -> String {
     env_var("TARGET")
 }
 
+/// `AR`
+#[track_caller]
+pub fn ar(inputs: &[impl AsRef<Path>], output_path: impl AsRef<Path>) {
+    let output = fs::File::create(&output_path).expect(&format!(
+        "the file in path \"{}\" could not be created",
+        output_path.as_ref().display()
+    ));
+    let mut builder = ar::Builder::new(output);
+    for input in inputs {
+        builder.append_path(input).unwrap();
+    }
+}
+
 /// Check if target is windows-like.
 #[must_use]
 pub fn is_windows() -> bool {

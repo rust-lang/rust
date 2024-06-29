@@ -80,11 +80,13 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if matches!(expr.kind, ExprKind::AddrOf(..))
             && !expr.span.from_expansion()
-            && let Some(use_cx) = expr_use_ctxt(cx, expr)
+            && let use_cx = expr_use_ctxt(cx, expr)
+            && use_cx.same_ctxt
             && !use_cx.is_ty_unified
-            && let Some(DefinedTy::Mir(ty)) = use_cx.node.defined_ty(cx)
+            && let use_node = use_cx.use_node(cx)
+            && let Some(DefinedTy::Mir(ty)) = use_node.defined_ty(cx)
             && let ty::Param(ty) = *ty.value.skip_binder().kind()
-            && let Some((hir_id, fn_id, i)) = match use_cx.node {
+            && let Some((hir_id, fn_id, i)) = match use_node {
                 ExprUseNode::MethodArg(_, _, 0) => None,
                 ExprUseNode::MethodArg(hir_id, None, i) => cx
                     .typeck_results()
