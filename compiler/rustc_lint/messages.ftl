@@ -398,7 +398,7 @@ lint_incomplete_include =
 lint_inner_macro_attribute_unstable = inner macro attributes are unstable
 
 lint_invalid_asm_label_binary = avoid using labels containing only the digits `0` and `1` in inline assembly
-    .help = use a different number that has at least one digit 2 or greater
+    .label = use a different label that doesn't start with `0` or `1`
     .note = an LLVM bug makes these labels ambiguous with a binary literal number
     .note = see <https://bugs.llvm.org/show_bug.cgi?id=36144> for more information
 

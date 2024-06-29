@@ -2815,7 +2815,7 @@ declare_lint! {
     ///
     /// fn main() {
     ///     unsafe {
-    ///         asm!("0: bar");
+    ///         asm!("0: jmp 0b");
     ///     }
     /// }
     /// ```
@@ -2824,11 +2824,15 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// A bug in LLVM causes this code to fail
+    /// A [LLVM bug] causes this code to fail to compile because it interprets the `0b` as a binary
+    /// literal instead of a reference to the previous local label `0`. Note that even though the
+    /// bug is marked as fixed, it only fixes a specific usage of intel syntax within standalone
+    /// files, not inline assembly. To work around this bug, don't use labels that could be
+    /// confused with a binary literal.
     ///
     /// See the explanation in [Rust By Example] for more details.
     ///
-    /// [local labels]: https://sourceware.org/binutils/docs/as/Symbol-Names.html#Local-Labels
+    /// [LLVM bug]: https://bugs.llvm.org/show_bug.cgi?id=36144
     /// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels
     pub BINARY_ASM_LABELS,
     Deny,
