@@ -26,7 +26,7 @@ use crate::core::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::flags::get_completion;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::TargetSelection;
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::{command, BootstrapCommand};
 use crate::utils::helpers::{
     self, add_link_lib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
     linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date, LldThreads,
@@ -834,7 +834,7 @@ impl Step for RustdocJSStd {
     fn run(self, builder: &Builder<'_>) {
         let nodejs =
             builder.config.nodejs.as_ref().expect("need nodejs to run rustdoc-js-std tests");
-        let mut command = BootstrapCommand::new(nodejs);
+        let mut command = command(nodejs);
         command
             .arg(builder.src.join("src/tools/rustdoc-js/tester.js"))
             .arg("--crate-name")
@@ -910,7 +910,7 @@ fn get_browser_ui_test_version_inner(
     npm: &Path,
     global: bool,
 ) -> Option<String> {
-    let mut command = BootstrapCommand::new(npm).capture();
+    let mut command = command(npm).capture();
     command.arg("list").arg("--parseable").arg("--long").arg("--depth=0");
     if global {
         command.arg("--global");
@@ -1806,7 +1806,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         let lldb_exe = builder.config.lldb.clone().unwrap_or_else(|| PathBuf::from("lldb"));
-        let lldb_version = BootstrapCommand::new(&lldb_exe)
+        let lldb_version = command(&lldb_exe)
             .capture()
             .allow_failure()
             .arg("--version")
@@ -1815,7 +1815,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             .and_then(|v| if v.trim().is_empty() { None } else { Some(v) });
         if let Some(ref vers) = lldb_version {
             cmd.arg("--lldb-version").arg(vers);
-            let lldb_python_dir = BootstrapCommand::new(&lldb_exe)
+            let lldb_python_dir = command(&lldb_exe)
                 .allow_failure()
                 .capture_stdout()
                 .arg("-P")
@@ -1877,11 +1877,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             let llvm::LlvmResult { llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
-                let llvm_version = builder
-                    .run(BootstrapCommand::new(&llvm_config).capture_stdout().arg("--version"))
-                    .stdout();
+                let llvm_version =
+                    builder.run(command(&llvm_config).capture_stdout().arg("--version")).stdout();
                 let llvm_components = builder
-                    .run(BootstrapCommand::new(&llvm_config).capture_stdout().arg("--components"))
+                    .run(command(&llvm_config).capture_stdout().arg("--components"))
                     .stdout();
                 // Remove trailing newline from llvm-config output.
                 cmd.arg("--llvm-version")
@@ -1901,9 +1900,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // separate compilations. We can add LLVM's library path to the
             // platform-specific environment variable as a workaround.
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
-                let llvm_libdir = builder
-                    .run(BootstrapCommand::new(&llvm_config).capture_stdout().arg("--libdir"))
-                    .stdout();
+                let llvm_libdir =
+                    builder.run(command(&llvm_config).capture_stdout().arg("--libdir")).stdout();
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cmd);
             }
 
@@ -2873,7 +2871,7 @@ impl Step for RemoteCopyLibs {
 
         // Spawn the emulator and wait for it to come online
         let tool = builder.tool_exe(Tool::RemoteTestClient);
-        let mut cmd = BootstrapCommand::new(&tool);
+        let mut cmd = command(&tool);
         cmd.arg("spawn-emulator").arg(target.triple).arg(&server).arg(builder.tempdir());
         if let Some(rootfs) = builder.qemu_rootfs(target) {
             cmd.arg(rootfs);
@@ -2885,7 +2883,7 @@ impl Step for RemoteCopyLibs {
             let f = t!(f);
             let name = f.file_name().into_string().unwrap();
             if helpers::is_dylib(&name) {
-                builder.run(BootstrapCommand::new(&tool).arg("push").arg(f.path()));
+                builder.run(command(&tool).arg("push").arg(f.path()));
             }
         }
     }
@@ -2916,22 +2914,20 @@ impl Step for Distcheck {
         builder.ensure(dist::PlainSourceTarball);
         builder.ensure(dist::Src);
 
-        let mut cmd = BootstrapCommand::new("tar");
+        let mut cmd = command("tar");
         cmd.arg("-xf")
             .arg(builder.ensure(dist::PlainSourceTarball).tarball())
             .arg("--strip-components=1")
             .current_dir(&dir);
         cmd.run(builder);
         builder.run(
-            BootstrapCommand::new("./configure")
+            command("./configure")
                 .args(&builder.config.configure_args)
                 .arg("--enable-vendor")
                 .current_dir(&dir),
         );
         builder.run(
-            BootstrapCommand::new(helpers::make(&builder.config.build.triple))
-                .arg("check")
-                .current_dir(&dir),
+            command(helpers::make(&builder.config.build.triple)).arg("check").current_dir(&dir),
         );
 
         // Now make sure that rust-src has all of libstd's dependencies
@@ -2940,7 +2936,7 @@ impl Step for Distcheck {
         let _ = fs::remove_dir_all(&dir);
         t!(fs::create_dir_all(&dir));
 
-        let mut cmd = BootstrapCommand::new("tar");
+        let mut cmd = command("tar");
         cmd.arg("-xf")
             .arg(builder.ensure(dist::Src).tarball())
             .arg("--strip-components=1")
@@ -2949,7 +2945,7 @@ impl Step for Distcheck {
 
         let toml = dir.join("rust-src/lib/rustlib/src/rust/library/std/Cargo.toml");
         builder.run(
-            BootstrapCommand::new(&builder.initial_cargo)
+            command(&builder.initial_cargo)
                 // Will read the libstd Cargo.toml
                 // which uses the unstable `public-dependency` feature.
                 .env("RUSTC_BOOTSTRAP", "1")
@@ -2978,7 +2974,7 @@ impl Step for Bootstrap {
         // Some tests require cargo submodule to be present.
         builder.build.update_submodule(Path::new("src/tools/cargo"));
 
-        let mut check_bootstrap = BootstrapCommand::new(builder.python());
+        let mut check_bootstrap = command(builder.python());
         check_bootstrap
             .args(["-m", "unittest", "bootstrap_test.py"])
             .env("BUILD_DIR", &builder.out)
@@ -2988,7 +2984,7 @@ impl Step for Bootstrap {
         // Use `python -m unittest` manually if you want to pass arguments.
         check_bootstrap.delay_failure().run(builder);
 
-        let mut cmd = BootstrapCommand::new(&builder.initial_cargo);
+        let mut cmd = command(&builder.initial_cargo);
         cmd.arg("test")
             .args(["--features", "bootstrap-self-test"])
             .current_dir(builder.src.join("src/bootstrap"))
@@ -3139,7 +3135,7 @@ impl Step for RustInstaller {
             return;
         }
 
-        let mut cmd = BootstrapCommand::new(builder.src.join("src/tools/rust-installer/test.sh"));
+        let mut cmd = command(builder.src.join("src/tools/rust-installer/test.sh"));
         let tmpdir = testdir(builder, compiler.host).join("rust-installer");
         let _ = std::fs::remove_dir_all(&tmpdir);
         let _ = std::fs::create_dir_all(&tmpdir);

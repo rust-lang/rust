@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde_derive::Deserialize;
 
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::command;
 use crate::{t, Build, Crate};
 
 /// For more information, see the output of
@@ -70,7 +70,7 @@ pub fn build(build: &mut Build) {
 /// particular crate (e.g., `x build sysroot` to build library/sysroot).
 fn workspace_members(build: &Build) -> Vec<Package> {
     let collect_metadata = |manifest_path| {
-        let mut cargo = BootstrapCommand::new(&build.initial_cargo);
+        let mut cargo = command(&build.initial_cargo);
         cargo
             // Will read the libstd Cargo.toml
             // which uses the unstable `public-dependency` feature.

@@ -11,7 +11,7 @@ use crate::core::build_steps::tool::{self, SourceType, Tool};
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::flags::get_completion;
 use crate::core::config::TargetSelection;
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::command;
 use crate::Mode;
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
@@ -40,8 +40,7 @@ impl Step for BuildManifest {
             panic!("\n\nfailed to specify `dist.upload-addr` in `config.toml`\n\n")
         });
 
-        let today =
-            BootstrapCommand::new("date").capture_stdout().arg("+%Y-%m-%d").run(builder).stdout();
+        let today = command("date").capture_stdout().arg("+%Y-%m-%d").run(builder).stdout();
 
         cmd.arg(sign);
         cmd.arg(distdir(builder));

@@ -1,7 +1,7 @@
 //! Runs rustfmt on the repository.
 
 use crate::core::builder::Builder;
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::command;
 use crate::utils::helpers::{self, program_out_of_date, t};
 use build_helper::ci::CiEnv;
 use build_helper::git::get_git_modified_files;
@@ -54,7 +54,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
 fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, PathBuf)> {
     let stamp_file = build.out.join("rustfmt.stamp");
 
-    let mut cmd = BootstrapCommand::new(match build.initial_rustfmt() {
+    let mut cmd = command(match build.initial_rustfmt() {
         Some(p) => p,
         None => return None,
     });

@@ -8,7 +8,7 @@ use crate::core::builder;
 use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::{command, BootstrapCommand};
 use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::Compiler;
 use crate::Mode;
@@ -438,7 +438,7 @@ impl ErrorIndex {
         // for rustc_private and libLLVM.so, and `sysroot_lib` for libstd, etc.
         let host = builder.config.build;
         let compiler = builder.compiler_for(builder.top_stage, host, host);
-        let mut cmd = BootstrapCommand::new(builder.ensure(ErrorIndex { compiler }));
+        let mut cmd = command(builder.ensure(ErrorIndex { compiler }));
         let mut dylib_paths = builder.rustc_lib_paths(compiler);
         dylib_paths.push(PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host)));
         add_dylib_path(dylib_paths, &mut cmd);
@@ -912,7 +912,7 @@ impl Step for LibcxxVersionTool {
             }
 
             let compiler = builder.cxx(self.target).unwrap();
-            let mut cmd = BootstrapCommand::new(compiler);
+            let mut cmd = command(compiler);
 
             cmd.arg("-o")
                 .arg(&executable)
@@ -925,8 +925,7 @@ impl Step for LibcxxVersionTool {
             }
         }
 
-        let version_output =
-            BootstrapCommand::new(executable).capture_stdout().run(builder).stdout();
+        let version_output = command(executable).capture_stdout().run(builder).stdout();
 
         let version_str = version_output.split_once("version:").unwrap().1;
         let version = version_str.trim().parse::<usize>().unwrap();
@@ -1050,7 +1049,7 @@ impl<'a> Builder<'a> {
     /// Gets a `BootstrapCommand` which is ready to run `tool` in `stage` built for
     /// `host`.
     pub fn tool_cmd(&self, tool: Tool) -> BootstrapCommand {
-        let mut cmd = BootstrapCommand::new(self.tool_exe(tool));
+        let mut cmd = command(self.tool_exe(tool));
         let compiler = self.compiler(0, self.config.build);
         let host = &compiler.host;
         // Prepares the `cmd` provided to be able to run the `compiler` provided.

@@ -162,6 +162,13 @@ enum CommandStatus {
     DidNotStart,
 }
 
+/// Create a new BootstrapCommand. This is a helper function to make command creation
+/// shorter than `BootstrapCommand::new`.
+#[must_use]
+pub fn command<S: AsRef<OsStr>>(program: S) -> BootstrapCommand {
+    BootstrapCommand::new(program)
+}
+
 /// Represents the output of an executed process.
 #[allow(unused)]
 pub struct CommandOutput {

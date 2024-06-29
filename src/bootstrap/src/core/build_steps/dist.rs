@@ -25,7 +25,7 @@ use crate::core::build_steps::tool::{self, Tool};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::channel::{self, Info};
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::{command, BootstrapCommand};
 use crate::utils::helpers::{
     exe, is_dylib, move_file, t, target_supports_cranelift_backend, timeit,
 };
@@ -180,7 +180,7 @@ fn make_win_dist(
     }
 
     //Ask gcc where it keeps its stuff
-    let mut cmd = BootstrapCommand::new(builder.cc(target));
+    let mut cmd = command(builder.cc(target));
     cmd.arg("-print-search-dirs");
     let gcc_out = cmd.capture_stdout().run(builder).stdout();
 
@@ -1023,7 +1023,7 @@ impl Step for PlainSourceTarball {
             }
 
             // Vendor all Cargo dependencies
-            let mut cmd = BootstrapCommand::new(&builder.initial_cargo);
+            let mut cmd = command(&builder.initial_cargo);
             cmd.arg("vendor")
                 .arg("--versioned-dirs")
                 .arg("--sync")
@@ -1599,7 +1599,7 @@ impl Step for Extended {
             let _ = fs::remove_dir_all(&pkg);
 
             let pkgbuild = |component: &str| {
-                let mut cmd = BootstrapCommand::new("pkgbuild");
+                let mut cmd = command("pkgbuild");
                 cmd.arg("--identifier")
                     .arg(format!("org.rust-lang.{}", component))
                     .arg("--scripts")
@@ -1636,7 +1636,7 @@ impl Step for Extended {
             builder.create_dir(&pkg.join("res"));
             builder.create(&pkg.join("res/LICENSE.txt"), &license);
             builder.install(&etc.join("gfx/rust-logo.png"), &pkg.join("res"), 0o644);
-            let mut cmd = BootstrapCommand::new("productbuild");
+            let mut cmd = command("productbuild");
             cmd.arg("--distribution")
                 .arg(xform(&etc.join("pkg/Distribution.xml")))
                 .arg("--resources")
@@ -1703,7 +1703,7 @@ impl Step for Extended {
             let light = wix.join("bin/light.exe");
 
             let heat_flags = ["-nologo", "-gg", "-sfrag", "-srd", "-sreg"];
-            BootstrapCommand::new(&heat)
+            command(&heat)
                 .current_dir(&exe)
                 .arg("dir")
                 .arg("rustc")
@@ -1718,7 +1718,7 @@ impl Step for Extended {
                 .arg(exe.join("RustcGroup.wxs"))
                 .run(builder);
             if built_tools.contains("rust-docs") {
-                BootstrapCommand::new(&heat)
+                command(&heat)
                     .current_dir(&exe)
                     .arg("dir")
                     .arg("rust-docs")
@@ -1735,7 +1735,7 @@ impl Step for Extended {
                     .arg(etc.join("msi/squash-components.xsl"))
                     .run(builder);
             }
-            BootstrapCommand::new(&heat)
+            command(&heat)
                 .current_dir(&exe)
                 .arg("dir")
                 .arg("cargo")
@@ -1751,7 +1751,7 @@ impl Step for Extended {
                 .arg("-t")
                 .arg(etc.join("msi/remove-duplicates.xsl"))
                 .run(builder);
-            BootstrapCommand::new(&heat)
+            command(&heat)
                 .current_dir(&exe)
                 .arg("dir")
                 .arg("rust-std")
@@ -1766,7 +1766,7 @@ impl Step for Extended {
                 .arg(exe.join("StdGroup.wxs"))
                 .run(builder);
             if built_tools.contains("rust-analyzer") {
-                BootstrapCommand::new(&heat)
+                command(&heat)
                     .current_dir(&exe)
                     .arg("dir")
                     .arg("rust-analyzer")
@@ -1784,7 +1784,7 @@ impl Step for Extended {
                     .run(builder);
             }
             if built_tools.contains("clippy") {
-                BootstrapCommand::new(&heat)
+                command(&heat)
                     .current_dir(&exe)
                     .arg("dir")
                     .arg("clippy")
@@ -1802,7 +1802,7 @@ impl Step for Extended {
                     .run(builder);
             }
             if built_tools.contains("miri") {
-                BootstrapCommand::new(&heat)
+                command(&heat)
                     .current_dir(&exe)
                     .arg("dir")
                     .arg("miri")
@@ -1819,7 +1819,7 @@ impl Step for Extended {
                     .arg(etc.join("msi/remove-duplicates.xsl"))
                     .run(builder);
             }
-            BootstrapCommand::new(&heat)
+            command(&heat)
                 .current_dir(&exe)
                 .arg("dir")
                 .arg("rust-analysis")
@@ -1836,7 +1836,7 @@ impl Step for Extended {
                 .arg(etc.join("msi/remove-duplicates.xsl"))
                 .run(builder);
             if target.ends_with("windows-gnu") {
-                BootstrapCommand::new(&heat)
+                command(&heat)
                     .current_dir(&exe)
                     .arg("dir")
                     .arg("rust-mingw")
@@ -1855,7 +1855,7 @@ impl Step for Extended {
             let candle = |input: &Path| {
                 let output = exe.join(input.file_stem().unwrap()).with_extension("wixobj");
                 let arch = if target.contains("x86_64") { "x64" } else { "x86" };
-                let mut cmd = BootstrapCommand::new(&candle);
+                let mut cmd = command(&candle);
                 cmd.current_dir(&exe)
                     .arg("-nologo")
                     .arg("-dRustcDir=rustc")
@@ -1916,7 +1916,7 @@ impl Step for Extended {
 
             builder.info(&format!("building `msi` installer with {light:?}"));
             let filename = format!("{}-{}.msi", pkgname(builder, "rust"), target.triple);
-            let mut cmd = BootstrapCommand::new(&light);
+            let mut cmd = command(&light);
             cmd.arg("-nologo")
                 .arg("-ext")
                 .arg("WixUIExtension")
@@ -2069,7 +2069,7 @@ fn maybe_install_llvm(
     } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmResult { llvm_config, .. }) =
         llvm::prebuilt_llvm_config(builder, target)
     {
-        let mut cmd = BootstrapCommand::new(llvm_config);
+        let mut cmd = command(llvm_config);
         cmd.arg("--libfiles");
         builder.verbose(|| println!("running {cmd:?}"));
         let files = if builder.config.dry_run() {
