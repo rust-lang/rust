@@ -3142,15 +3142,6 @@ pub unsafe fn _mm256_srlv_epi64(a: __m256i, count: __m256i) -> __m256i {
 /// minimize caching, the data is flagged as non-temporal (unlikely to be used again soon)
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_stream_load_si256)
-///
-/// # Safety of non-temporal stores
-///
-/// After using this intrinsic, but before any other access to the memory that this intrinsic
-/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
-/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
-/// return.
-///
-/// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "avx,avx2")]
 #[cfg_attr(test, assert_instr(vmovntdqa))]
@@ -4224,6 +4215,19 @@ mod tests {
         let a = _mm_setr_pd(6.88, 3.44);
         let res = _mm256_broadcastsd_pd(a);
         assert_eq_m256d(res, _mm256_set1_pd(6.88f64));
+    }
+
+    #[simd_test(enable = "avx2")]
+    unsafe fn test_mm_broadcastsi128_si256() {
+        let a = _mm_setr_epi64x(0x0987654321012334, 0x5678909876543210);
+        let res = _mm_broadcastsi128_si256(a);
+        let retval = _mm256_setr_epi64x(
+            0x0987654321012334,
+            0x5678909876543210,
+            0x0987654321012334,
+            0x5678909876543210,
+        );
+        assert_eq_m256i(res, retval);
     }
 
     #[simd_test(enable = "avx2")]

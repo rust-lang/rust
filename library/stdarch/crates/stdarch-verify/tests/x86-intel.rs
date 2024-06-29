@@ -273,7 +273,6 @@ fn verify_all_signatures() {
                 "_mm_cvtsi64x_sd",
                 "_bextr2_u64",
                 "_mm_tzcnt_64",
-                "_mm_broadcastsi128_si256",
             ];
             if !skip.contains(&rust.name) {
                 println!(

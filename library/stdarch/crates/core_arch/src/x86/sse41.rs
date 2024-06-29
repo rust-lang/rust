@@ -1142,20 +1142,11 @@ pub unsafe fn _mm_test_mix_ones_zeros(a: __m128i, mask: __m128i) -> i32 {
     _mm_testnzc_si128(a, mask)
 }
 
-/// Load 128-bits of integer data from memory into dstt. mem_addr must be aligned on a 16-byte
+/// Load 128-bits of integer data from memory into dst. mem_addr must be aligned on a 16-byte
 /// boundary or a general-protection exception may be generated. To minimize caching, the data
 /// is flagged as non-temporal (unlikely to be used again soon)
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_stream_load_si128)
-///
-/// # Safety of non-temporal stores
-///
-/// After using this intrinsic, but before any other access to the memory that this intrinsic
-/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
-/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
-/// return.
-///
-/// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "sse,sse4.1")]
 #[cfg_attr(test, assert_instr(movntdqa))]
