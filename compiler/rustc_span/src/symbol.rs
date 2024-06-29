@@ -809,6 +809,8 @@ symbols! {
         extern_types,
         external,
         external_doc,
+        externally_constructed,
+        externally_constructed_attr,
         f,
         f128,
         f128_nan,

@@ -463,6 +463,9 @@ declare_features! (
     (unstable, extended_varargs_abi_support, "1.65.0", Some(100189)),
     /// Allows defining `extern type`s.
     (unstable, extern_types, "1.23.0", Some(43467)),
+    /// Allows `#[externally_constructed]` on pub structs with private fields,
+    /// indicates they will be contructed externally during dead code analysis.
+    (unstable, externally_constructed_attr, "CURRENT_RUSTC_VERSION", Some(126634)),
     /// Allow using 128-bit (quad precision) floating point numbers.
     (unstable, f128, "1.78.0", Some(116909)),
     /// Allow using 16-bit (half precision) floating point numbers.

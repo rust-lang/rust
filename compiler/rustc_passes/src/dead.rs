@@ -930,8 +930,11 @@ fn create_and_seed_worklist(
                     // checks impls, impl-items and pub structs with all public fields later
                     match tcx.def_kind(id) {
                         DefKind::Impl { .. } => false,
-                        DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => !matches!(tcx.associated_item(id).container, AssocItemContainer::ImplContainer),
-                        DefKind::Struct => struct_all_fields_are_public(tcx, id.to_def_id()) || has_allow_dead_code_or_lang_attr(tcx, id).is_some(),
+                        DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn
+                            => !matches!(tcx.associated_item(id).container, AssocItemContainer::ImplContainer),
+                        DefKind::Struct => struct_all_fields_are_public(tcx, id.to_def_id())
+                            || has_allow_dead_code_or_lang_attr(tcx, id).is_some()
+                            || tcx.has_attr(id, sym::externally_constructed),
                         _ => true
                     })
                 .map(|id| (id, ComesFromAllowExpect::No))
