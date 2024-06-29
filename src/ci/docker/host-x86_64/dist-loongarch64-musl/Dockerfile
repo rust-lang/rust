@@ -27,7 +27,8 @@ ENV HOSTS=loongarch64-unknown-linux-musl
 
 ENV RUST_CONFIGURE_ARGS \
       --enable-extended \
-      --enable-lld \
+      --enable-full-tools \
+      --enable-profiler \
       --disable-docs \
       --set target.loongarch64-unknown-linux-musl.crt-static=false \
       --musl-root-loongarch64=/x-tools/loongarch64-unknown-linux-musl/loongarch64-unknown-linux-musl/sysroot/usr
