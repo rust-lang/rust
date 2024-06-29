@@ -994,6 +994,7 @@ impl flags::AnalysisStats {
                     prefer_prelude: true,
                     style_lints: false,
                     term_search_fuel: 400,
+                    term_search_borrowck: true,
                 },
                 ide::AssistResolveStrategy::All,
                 file_id,

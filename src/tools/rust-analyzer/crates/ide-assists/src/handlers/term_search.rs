@@ -37,7 +37,11 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         sema: &ctx.sema,
         scope: &scope,
         goal: target_ty,
-        config: TermSearchConfig { fuel: ctx.config.term_search_fuel, ..Default::default() },
+        config: TermSearchConfig {
+            fuel: ctx.config.term_search_fuel,
+            enable_borrowcheck: ctx.config.term_search_borrowck,
+            ..Default::default()
+        },
     };
     let paths = hir::term_search::term_search(&term_search_ctx);
 

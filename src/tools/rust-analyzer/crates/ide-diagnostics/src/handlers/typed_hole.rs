@@ -47,7 +47,12 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
         sema: &ctx.sema,
         scope: &scope,
         goal: d.expected.clone(),
-        config: TermSearchConfig { fuel: ctx.config.term_search_fuel, ..Default::default() },
+        config: TermSearchConfig {
+            fuel: ctx.config.term_search_fuel,
+            enable_borrowcheck: ctx.config.term_search_borrowck,
+
+            ..Default::default()
+        },
     };
     let paths = term_search(&term_search_ctx);
 

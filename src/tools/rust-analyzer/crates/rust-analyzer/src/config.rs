@@ -341,6 +341,8 @@ config_data! {
         assist_emitMustUse: bool               = false,
         /// Placeholder expression to use for missing expressions in assists.
         assist_expressionFillDefault: ExprFillDefaultDef              = ExprFillDefaultDef::Todo,
+        /// Enable borrow checking for term search code assists. If set to false, also there will be more suggestions, but some of them may not borrow-check.
+        assist_termSearch_borrowcheck: bool = true,
         /// Term search fuel in "units of work" for assists (Defaults to 1800).
         assist_termSearch_fuel: usize = 1800,
 
@@ -1269,6 +1271,7 @@ impl Config {
             assist_emit_must_use: self.assist_emitMustUse(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
+            term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
         }
     }
 
@@ -1328,6 +1331,7 @@ impl Config {
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             style_lints: self.diagnostics_styleLints_enable().to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
+            term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
         }
     }
     pub fn expand_proc_attr_macros(&self) -> bool {
