@@ -47,6 +47,8 @@ pub struct BootstrapCommand {
     pub command: Command,
     pub failure_behavior: BehaviorOnFailure,
     pub output_mode: OutputMode,
+    // Run the command even during dry run
+    pub run_always: bool,
 }
 
 impl BootstrapCommand {
@@ -107,6 +109,11 @@ impl BootstrapCommand {
         Self { failure_behavior: BehaviorOnFailure::Ignore, ..self }
     }
 
+    pub fn run_always(&mut self) -> &mut Self {
+        self.run_always = true;
+        self
+    }
+
     /// Capture the output of the command, do not print it.
     pub fn capture(self) -> Self {
         Self { output_mode: OutputMode::CaptureAll, ..self }
@@ -128,7 +135,12 @@ impl AsMut<BootstrapCommand> for BootstrapCommand {
 
 impl From<Command> for BootstrapCommand {
     fn from(command: Command) -> Self {
-        Self { command, failure_behavior: BehaviorOnFailure::Exit, output_mode: OutputMode::Print }
+        Self {
+            command,
+            failure_behavior: BehaviorOnFailure::Exit,
+            output_mode: OutputMode::Print,
+            run_always: false,
+        }
     }
 }
 

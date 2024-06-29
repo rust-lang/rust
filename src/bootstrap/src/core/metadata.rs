@@ -81,8 +81,7 @@ fn workspace_members(build: &Build) -> Vec<Package> {
             .arg("--no-deps")
             .arg("--manifest-path")
             .arg(build.src.join(manifest_path));
-        // FIXME: fix stderr
-        let metadata_output = build.run(cargo.capture()).stdout();
+        let metadata_output = build.run(cargo.capture_stdout().run_always()).stdout();
         let Output { packages, .. } = t!(serde_json::from_str(&metadata_output));
         packages
     };
