@@ -75,7 +75,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('setup', 'setup', [CompletionResultType]::ParameterValue, 'Set up the environment for development')
             [CompletionResult]::new('suggest', 'suggest', [CompletionResultType]::ParameterValue, 'Suggest a subset of tests to run, based on modified files')
             [CompletionResult]::new('vendor', 'vendor', [CompletionResultType]::ParameterValue, 'Vendor dependencies')
-            [CompletionResult]::new('perf', 'perf', [CompletionResultType]::ParameterValue, 'Perform profiling and benchmarking of the compiler using the `rustc-perf` benchmark suite')
+            [CompletionResult]::new('perf', 'perf', [CompletionResultType]::ParameterValue, 'Perform profiling and benchmarking of the compiler using the `rustc-perf-wrapper` tool')
             break
         }
         'x.py;build' {
