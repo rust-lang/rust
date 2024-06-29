@@ -1,4 +1,4 @@
-//! Implementation of `StaticKey` for Windows.
+//! Implementation of `LazyKey` for Windows.
 //!
 //! Windows has no native support for running destructors so we manage our own
 //! list of destructors to keep track of how to destroy keys. We then install a
@@ -13,9 +13,9 @@
 //! don't reach a fixed point after a short while then we just inevitably leak
 //! something.
 //!
-//! The list is implemented as an atomic single-linked list of `StaticKey`s and
+//! The list is implemented as an atomic single-linked list of `LazyKey`s and
 //! does not support unregistration. Unfortunately, this means that we cannot
-//! use racy initialization for creating the keys in `StaticKey`, as that could
+//! use racy initialization for creating the keys in `LazyKey`, as that could
 //! result in destructors being missed. Hence, we synchronize the creation of
 //! keys with destructors through [`INIT_ONCE`](c::INIT_ONCE) (`std`'s
 //! [`Once`](crate::sync::Once) cannot be used since it might use TLS itself).
@@ -33,26 +33,26 @@ use crate::sync::atomic::{
 use crate::sys::c;
 use crate::sys::thread_local::guard;
 
-type Key = c::DWORD;
+pub type Key = c::DWORD;
 type Dtor = unsafe extern "C" fn(*mut u8);
 
-pub struct StaticKey {
+pub struct LazyKey {
     /// The key value shifted up by one. Since TLS_OUT_OF_INDEXES == DWORD::MAX
     /// is not a valid key value, this allows us to use zero as sentinel value
     /// without risking overflow.
     key: AtomicU32,
     dtor: Option<Dtor>,
-    next: AtomicPtr<StaticKey>,
+    next: AtomicPtr<LazyKey>,
     /// Currently, destructors cannot be unregistered, so we cannot use racy
     /// initialization for keys. Instead, we need synchronize initialization.
     /// Use the Windows-provided `Once` since it does not require TLS.
     once: UnsafeCell<c::INIT_ONCE>,
 }
 
-impl StaticKey {
+impl LazyKey {
     #[inline]
-    pub const fn new(dtor: Option<Dtor>) -> StaticKey {
-        StaticKey {
+    pub const fn new(dtor: Option<Dtor>) -> LazyKey {
+        LazyKey {
             key: AtomicU32::new(0),
             dtor,
             next: AtomicPtr::new(ptr::null_mut()),
@@ -61,18 +61,7 @@ impl StaticKey {
     }
 
     #[inline]
-    pub unsafe fn set(&'static self, val: *mut u8) {
-        let r = unsafe { c::TlsSetValue(self.key(), val.cast()) };
-        debug_assert_eq!(r, c::TRUE);
-    }
-
-    #[inline]
-    pub unsafe fn get(&'static self) -> *mut u8 {
-        unsafe { c::TlsGetValue(self.key()).cast() }
-    }
-
-    #[inline]
-    fn key(&'static self) -> Key {
+    pub fn force(&'static self) -> Key {
         match self.key.load(Acquire) {
             0 => unsafe { self.init() },
             key => key - 1,
@@ -141,17 +130,28 @@ impl StaticKey {
     }
 }
 
-unsafe impl Send for StaticKey {}
-unsafe impl Sync for StaticKey {}
+unsafe impl Send for LazyKey {}
+unsafe impl Sync for LazyKey {}
 
-static DTORS: AtomicPtr<StaticKey> = AtomicPtr::new(ptr::null_mut());
+#[inline]
+pub unsafe fn set(key: Key, val: *mut u8) {
+    let r = unsafe { c::TlsSetValue(key, val.cast()) };
+    debug_assert_eq!(r, c::TRUE);
+}
+
+#[inline]
+pub unsafe fn get(key: Key) -> *mut u8 {
+    unsafe { c::TlsGetValue(key).cast() }
+}
+
+static DTORS: AtomicPtr<LazyKey> = AtomicPtr::new(ptr::null_mut());
 
 /// Should only be called once per key, otherwise loops or breaks may occur in
 /// the linked list.
-unsafe fn register_dtor(key: &'static StaticKey) {
+unsafe fn register_dtor(key: &'static LazyKey) {
     guard::enable();
 
-    let this = <*const StaticKey>::cast_mut(key);
+    let this = <*const LazyKey>::cast_mut(key);
     // Use acquire ordering to pass along the changes done by the previously
     // registered keys when we store the new head with release ordering.
     let mut head = DTORS.load(Acquire);
@@ -176,9 +176,9 @@ pub unsafe fn run_dtors() {
             let dtor = unsafe { (*cur).dtor.unwrap() };
             cur = unsafe { (*cur).next.load(Relaxed) };
 
-            // In StaticKey::init, we register the dtor before setting `key`.
+            // In LazyKey::init, we register the dtor before setting `key`.
             // So if one thread's `run_dtors` races with another thread executing `init` on the same
-            // `StaticKey`, we can encounter a key of 0 here. That means this key was never
+            // `LazyKey`, we can encounter a key of 0 here. That means this key was never
             // initialized in this thread so we can safely skip it.
             if pre_key == 0 {
                 continue;
