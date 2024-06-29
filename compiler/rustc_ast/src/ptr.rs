@@ -24,6 +24,8 @@ use std::{slice, vec};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::{DynSend, DynSync, Lrc};
+
 /// An owned smart pointer.
 ///
 /// See the [module level documentation][crate::ptr] for details.
@@ -206,5 +208,77 @@ where
 {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         (**self).hash_stable(hcx, hasher);
+    }
+}
+
+#[derive(Debug)]
+pub enum AstOwnerRef<'a> {
+    NonOwner,
+    Synthetic(rustc_span::def_id::LocalDefId),
+    Crate(&'a crate::Crate),
+    Item(&'a crate::Item),
+    TraitItem(&'a crate::AssocItem),
+    ImplItem(&'a crate::AssocItem),
+    ForeignItem(&'a crate::ForeignItem),
+}
+
+#[derive(Debug)]
+enum AstOwnerPtr {
+    NonOwner,
+    Synthetic(rustc_span::def_id::LocalDefId),
+    Crate,
+    Item(*const crate::Item),
+    TraitItem(*const crate::AssocItem),
+    ImplItem(*const crate::AssocItem),
+    ForeignItem(*const crate::ForeignItem),
+}
+
+/// Derived pointer to a part of the AST. This data structure is strongly inspired from
+/// `owning_ref`, but with restricted API to suit its single use.
+#[derive(Debug)]
+pub struct AstOwner {
+    /// Pointer to the full crate.
+    krate: Lrc<crate::Crate>,
+    /// Pointer to an item in that crate.
+    ptr: AstOwnerPtr,
+}
+
+unsafe impl DynSend for AstOwner {}
+unsafe impl DynSync for AstOwner {}
+
+impl AstOwner {
+    /// Create a new `AstOwner` from the crate and an item derived from it.
+    pub unsafe fn new(krate: Lrc<crate::Crate>, item: AstOwnerRef<'_>) -> AstOwner {
+        let ptr = match item {
+            AstOwnerRef::NonOwner => AstOwnerPtr::NonOwner,
+            AstOwnerRef::Synthetic(def_id) => AstOwnerPtr::Synthetic(def_id),
+            AstOwnerRef::Crate(_) => AstOwnerPtr::Crate,
+            AstOwnerRef::Item(item) => AstOwnerPtr::Item(item as *const _),
+            AstOwnerRef::TraitItem(item) => AstOwnerPtr::TraitItem(item as *const _),
+            AstOwnerRef::ImplItem(item) => AstOwnerPtr::ImplItem(item as *const _),
+            AstOwnerRef::ForeignItem(item) => AstOwnerPtr::ForeignItem(item as *const _),
+        };
+
+        AstOwner { krate, ptr }
+    }
+
+    pub fn new_non_owner(krate: Lrc<crate::Crate>) -> AstOwner {
+        AstOwner { krate, ptr: AstOwnerPtr::NonOwner }
+    }
+
+    pub fn as_ref(&self) -> AstOwnerRef<'_> {
+        match self.ptr {
+            AstOwnerPtr::NonOwner => AstOwnerRef::NonOwner,
+            AstOwnerPtr::Synthetic(def_id) => AstOwnerRef::Synthetic(def_id),
+            AstOwnerPtr::Crate => AstOwnerRef::Crate(&*self.krate),
+            // SAFETY: the item is live as long as `krate` is.
+            AstOwnerPtr::Item(item) => AstOwnerRef::Item(unsafe { &*item }),
+            // SAFETY: the item is live as long as `krate` is.
+            AstOwnerPtr::TraitItem(item) => AstOwnerRef::TraitItem(unsafe { &*item }),
+            // SAFETY: the item is live as long as `krate` is.
+            AstOwnerPtr::ImplItem(item) => AstOwnerRef::ImplItem(unsafe { &*item }),
+            // SAFETY: the item is live as long as `krate` is.
+            AstOwnerPtr::ForeignItem(item) => AstOwnerRef::ForeignItem(unsafe { &*item }),
+        }
     }
 }
