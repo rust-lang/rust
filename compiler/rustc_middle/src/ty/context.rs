@@ -601,6 +601,11 @@ fn trait_lang_item_to_lang_item(lang_item: TraitSolverLangItem) -> LangItem {
         TraitSolverLangItem::Destruct => LangItem::Destruct,
         TraitSolverLangItem::DiscriminantKind => LangItem::DiscriminantKind,
         TraitSolverLangItem::DynMetadata => LangItem::DynMetadata,
+        TraitSolverLangItem::EffectsMaybe => LangItem::EffectsMaybe,
+        TraitSolverLangItem::EffectsIntersection => LangItem::EffectsIntersection,
+        TraitSolverLangItem::EffectsIntersectionOutput => LangItem::EffectsIntersectionOutput,
+        TraitSolverLangItem::EffectsNoRuntime => LangItem::EffectsNoRuntime,
+        TraitSolverLangItem::EffectsRuntime => LangItem::EffectsRuntime,
         TraitSolverLangItem::FnPtrTrait => LangItem::FnPtrTrait,
         TraitSolverLangItem::FusedIterator => LangItem::FusedIterator,
         TraitSolverLangItem::Future => LangItem::Future,
@@ -3098,9 +3103,9 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(
             node,
             hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl(hir::Impl { generics, .. }),
+                kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
                 ..
-            }) if generics.params.iter().any(|p| matches!(p.kind, hir::GenericParamKind::Const { is_host_effect: true, .. }))
+            }) if matches!(constness, hir::Constness::Const)
         )
     }
 

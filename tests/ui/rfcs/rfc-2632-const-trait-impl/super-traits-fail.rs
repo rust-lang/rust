@@ -1,7 +1,8 @@
 //@ check-pass
-//@ known-bug: #110395
+//@ compile-flags: -Znext-solver
 
-#![feature(const_trait_impl)]
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 trait Foo {

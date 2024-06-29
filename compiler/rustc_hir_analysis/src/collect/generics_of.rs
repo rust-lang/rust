@@ -354,7 +354,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 kind,
             })
         }
-        GenericParamKind::Const { ty: _, default, is_host_effect } => {
+        GenericParamKind::Const { ty: _, default, is_host_effect, synthetic } => {
             if !matches!(allow_defaults, Defaults::Allowed)
                 && default.is_some()
                 // `host` effect params are allowed to have defaults.
@@ -388,6 +388,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 kind: ty::GenericParamDefKind::Const {
                     has_default: default.is_some(),
                     is_host_effect,
+                    synthetic,
                 },
             })
         }
@@ -541,7 +542,8 @@ struct AnonConstInParamTyDetector {
 
 impl<'v> Visitor<'v> for AnonConstInParamTyDetector {
     fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) {
-        if let GenericParamKind::Const { ty, default: _, is_host_effect: _ } = p.kind {
+        if let GenericParamKind::Const { ty, default: _, is_host_effect: _, synthetic: _ } = p.kind
+        {
             let prev = self.in_param_ty;
             self.in_param_ty = true;
             self.visit_ty(ty);

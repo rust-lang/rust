@@ -1,17 +1,21 @@
-//@ check-pass
+//@ known-bug: #110395
+// FIXME(effects) check-pass
+//@ compile-flags: -Znext-solver
 
 #![crate_type = "lib"]
-#![allow(internal_features)]
+#![allow(internal_features, incomplete_features)]
 #![no_std]
 #![no_core]
 #![feature(
     auto_traits,
     const_trait_impl,
-    effects,  //~ WARN the feature `effects` is incomplete
+    effects,
     lang_items,
     no_core,
     staged_api,
-    unboxed_closures
+    unboxed_closures,
+    rustc_attrs,
+    marker_trait_attr,
 )]
 #![stable(feature = "minicore", since = "1.0.0")]
 
@@ -84,3 +88,49 @@ trait Receiver {}
 impl<T: ?Sized> Receiver for &T {}
 
 impl<T: ?Sized> Receiver for &mut T {}
+
+#[stable(feature = "minicore", since = "1.0.0")]
+pub mod effects {
+    use super::Sized;
+
+    #[lang = "EffectsNoRuntime"]
+    #[stable(feature = "minicore", since = "1.0.0")]
+    pub struct NoRuntime;
+    #[lang = "EffectsMaybe"]
+    #[stable(feature = "minicore", since = "1.0.0")]
+    pub struct Maybe;
+    #[lang = "EffectsRuntime"]
+    #[stable(feature = "minicore", since = "1.0.0")]
+    pub struct Runtime;
+
+    #[lang = "EffectsCompat"]
+    #[stable(feature = "minicore", since = "1.0.0")]
+    pub trait Compat<#[rustc_runtime] const RUNTIME: bool> {}
+
+    #[stable(feature = "minicore", since = "1.0.0")]
+    impl Compat<false> for NoRuntime {}
+    #[stable(feature = "minicore", since = "1.0.0")]
+    impl Compat<true> for Runtime {}
+    #[stable(feature = "minicore", since = "1.0.0")]
+    impl<#[rustc_runtime] const RUNTIME: bool> Compat<RUNTIME> for Maybe {}
+
+    #[lang = "EffectsTyCompat"]
+    #[marker]
+    #[stable(feature = "minicore", since = "1.0.0")]
+    pub trait TyCompat<T: ?Sized> {}
+
+    #[stable(feature = "minicore", since = "1.0.0")]
+    impl<T: ?Sized> TyCompat<T> for T {}
+    #[stable(feature = "minicore", since = "1.0.0")]
+    impl<T: ?Sized> TyCompat<T> for Maybe {}
+    #[stable(feature = "minicore", since = "1.0.0")]
+    impl<T: ?Sized> TyCompat<Maybe> for T {}
+
+    #[lang = "EffectsIntersection"]
+    #[stable(feature = "minicore", since = "1.0.0")]
+    pub trait Intersection {
+        #[lang = "EffectsIntersectionOutput"]
+        #[stable(feature = "minicore", since = "1.0.0")]
+        type Output: ?Sized;
+    }
+}

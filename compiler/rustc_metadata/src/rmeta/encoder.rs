@@ -1454,6 +1454,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 for &def_id in associated_item_def_ids {
                     self.encode_info_for_assoc_item(def_id);
                 }
+                if let Some(assoc_def_id) = self.tcx.associated_type_for_effects(def_id) {
+                    record!(self.tables.associated_type_for_effects[def_id] <- assoc_def_id);
+                }
             }
             if def_kind == DefKind::Closure
                 && let Some(coroutine_kind) = self.tcx.coroutine_kind(def_id)
@@ -1633,6 +1636,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         <- self.tcx.assumed_wf_types_for_rpitit(def_id)
                 );
             }
+        }
+        if item.is_effects_desugaring {
+            self.tables.is_effects_desugaring.set(def_id.index, true);
         }
     }
 

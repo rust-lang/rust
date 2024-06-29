@@ -1,6 +1,6 @@
 //@ check-pass
-
-#![feature(const_trait_impl)]
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 trait Tr {

@@ -57,6 +57,7 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
 #[instrument(level = "trace", skip(tcx), ret)]
 fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
+    use rustc_middle::ty::Ty;
 
     match tcx.opt_rpitit_info(def_id.to_def_id()) {
         Some(ImplTraitInTraitData::Trait { fn_def_id, .. }) => {
@@ -84,6 +85,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             return ty::GenericPredicates {
                 parent: Some(tcx.parent(def_id.to_def_id())),
                 predicates: tcx.arena.alloc_from_iter(predicates),
+                effects_min_tys: ty::List::empty(),
             };
         }
 
@@ -105,6 +107,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             return ty::GenericPredicates {
                 parent: Some(impl_def_id),
                 predicates: tcx.arena.alloc_from_iter(impl_predicates),
+                effects_min_tys: ty::List::empty(),
             };
         }
 
@@ -124,6 +127,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // We use an `IndexSet` to preserve order of insertion.
     // Preserving the order of insertion is important here so as not to break UI tests.
     let mut predicates: FxIndexSet<(ty::Clause<'_>, Span)> = FxIndexSet::default();
+    let mut effects_min_tys = Vec::new();
 
     let hir_generics = node.generics().unwrap_or(NO_GENERICS);
     if let Node::Item(item) = node {
@@ -150,11 +154,13 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // on a trait we must also consider the bounds that follow the trait's name,
     // like `trait Foo: A + B + C`.
     if let Some(self_bounds) = is_trait {
-        predicates.extend(
-            icx.lowerer()
-                .lower_mono_bounds(tcx.types.self_param, self_bounds, PredicateFilter::All)
-                .clauses(),
+        let bounds = icx.lowerer().lower_mono_bounds(
+            tcx.types.self_param,
+            self_bounds,
+            PredicateFilter::All,
         );
+        predicates.extend(bounds.clauses(tcx));
+        effects_min_tys.extend(bounds.effects_min_tys());
     }
 
     // In default impls, we can assume that the self type implements
@@ -187,7 +193,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     param.span,
                 );
                 trace!(?bounds);
-                predicates.extend(bounds.clauses());
+                predicates.extend(bounds.clauses(tcx));
                 trace!(?predicates);
             }
             hir::GenericParamKind::Const { .. } => {
@@ -238,7 +244,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     bound_vars,
                     OnlySelfBounds(false),
                 );
-                predicates.extend(bounds.clauses());
+                predicates.extend(bounds.clauses(tcx));
+                effects_min_tys.extend(bounds.effects_min_tys());
             }
 
             hir::WherePredicate::RegionPredicate(region_pred) => {
@@ -297,7 +304,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // and the duplicated parameter, to ensure that they do not get out of sync.
     if let Node::Item(&Item { kind: ItemKind::OpaqueTy(..), .. }) = node {
         let opaque_ty_node = tcx.parent_hir_node(hir_id);
-        let Node::Ty(&Ty { kind: TyKind::OpaqueDef(_, lifetimes, _), .. }) = opaque_ty_node else {
+        let Node::Ty(&hir::Ty { kind: TyKind::OpaqueDef(_, lifetimes, _), .. }) = opaque_ty_node
+        else {
             bug!("unexpected {opaque_ty_node:?}")
         };
         debug!(?lifetimes);
@@ -306,9 +314,30 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         debug!(?predicates);
     }
 
+    // add `Self::Effects: Compat<HOST>` to ensure non-const impls don't get called
+    // in const contexts.
+    if let Node::TraitItem(&TraitItem { kind: TraitItemKind::Fn(..), .. }) = node
+        && let Some(host_effect_index) = generics.host_effect_index
+    {
+        let parent = generics.parent.unwrap();
+        let Some(assoc_def_id) = tcx.associated_type_for_effects(parent) else {
+            bug!("associated_type_for_effects returned None when there is host effect in generics");
+        };
+        let effects =
+            Ty::new_projection(tcx, assoc_def_id, ty::GenericArgs::identity_for_item(tcx, parent));
+        let param = generics.param_at(host_effect_index, tcx);
+        let span = tcx.def_span(param.def_id);
+        let host = ty::Const::new_param(tcx, ty::ParamConst::for_def(param));
+        let compat = tcx.require_lang_item(LangItem::EffectsCompat, Some(span));
+        let trait_ref =
+            ty::TraitRef::new(tcx, compat, [ty::GenericArg::from(effects), host.into()]);
+        predicates.push((ty::Binder::dummy(trait_ref).upcast(tcx), span));
+    }
+
     ty::GenericPredicates {
         parent: generics.parent,
         predicates: tcx.arena.alloc_from_iter(predicates),
+        effects_min_tys: tcx.mk_type_list(&effects_min_tys),
     }
 }
 
@@ -459,6 +488,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
             ty::GenericPredicates {
                 parent: predicates_and_bounds.parent,
                 predicates: tcx.arena.alloc_slice(&predicates),
+                effects_min_tys: predicates_and_bounds.effects_min_tys,
             }
         }
     } else {
@@ -510,6 +540,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
             return GenericPredicates {
                 parent: parent_preds.parent,
                 predicates: { tcx.arena.alloc_from_iter(filtered_predicates) },
+                effects_min_tys: parent_preds.effects_min_tys,
             };
         }
         gather_explicit_predicates_of(tcx, def_id)
@@ -587,7 +618,7 @@ pub(super) fn implied_predicates_with_filter(
 
     // Combine the two lists to form the complete set of superbounds:
     let implied_bounds =
-        &*tcx.arena.alloc_from_iter(superbounds.clauses().chain(where_bounds_that_match));
+        &*tcx.arena.alloc_from_iter(superbounds.clauses(tcx).chain(where_bounds_that_match));
     debug!(?implied_bounds);
 
     // Now require that immediate supertraits are lowered, which will, in
@@ -618,7 +649,11 @@ pub(super) fn implied_predicates_with_filter(
         _ => {}
     }
 
-    ty::GenericPredicates { parent: None, predicates: implied_bounds }
+    ty::GenericPredicates {
+        parent: None,
+        predicates: implied_bounds,
+        effects_min_tys: ty::List::empty(),
+    }
 }
 
 /// Returns the predicates defined on `item_def_id` of the form
@@ -744,7 +779,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             );
         }
 
-        bounds.clauses().collect()
+        bounds.clauses(self.tcx).collect()
     }
 
     #[instrument(level = "trace", skip(self))]

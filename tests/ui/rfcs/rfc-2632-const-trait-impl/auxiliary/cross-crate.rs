@@ -1,4 +1,5 @@
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 pub trait MyTrait {

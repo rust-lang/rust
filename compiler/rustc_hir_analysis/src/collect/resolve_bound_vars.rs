@@ -951,7 +951,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     self.visit_ty(ty);
                 }
             }
-            GenericParamKind::Const { ty, default, is_host_effect: _ } => {
+            GenericParamKind::Const { ty, default, .. } => {
                 self.visit_ty(ty);
                 if let Some(default) = default {
                     self.visit_body(self.tcx.hir().body(default.body));

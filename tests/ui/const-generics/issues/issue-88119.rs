@@ -1,7 +1,7 @@
 //@ check-pass
 
 #![allow(incomplete_features)]
-#![feature(const_trait_impl, generic_const_exprs)]
+#![feature(const_trait_impl, effects, generic_const_exprs)]
 
 #[const_trait]
 trait ConstName {

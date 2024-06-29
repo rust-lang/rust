@@ -1638,44 +1638,19 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
     let icx = ItemCtxt::new(tcx, def_id);
     let item = tcx.hir().expect_item(def_id);
     let impl_ = item.expect_impl();
-    impl_
-        .of_trait
-        .as_ref()
-        .map(|hir_trait_ref| {
-            let self_ty = tcx.type_of(def_id).instantiate_identity();
+    impl_.of_trait.as_ref().map(|ast_trait_ref| {
+        let selfty = tcx.type_of(def_id).instantiate_identity();
 
-            let trait_ref = if let Some(ErrorGuaranteed { .. }) = check_impl_constness(
-                tcx,
-                tcx.is_const_trait_impl_raw(def_id.to_def_id()),
-                hir_trait_ref,
-            ) {
-                // we have a const impl, but for a trait without `#[const_trait]`, so
-                // without the host param. If we continue with the HIR trait ref, we get
-                // ICEs for generic arg count mismatch. We do a little HIR editing to
-                // make HIR ty lowering happy.
-                let mut path_segments = hir_trait_ref.path.segments.to_vec();
-                let last_segment = path_segments.len() - 1;
-                let mut args = *path_segments[last_segment].args();
-                let last_arg = args.args.len() - 1;
-                assert!(matches!(args.args[last_arg], hir::GenericArg::Const(anon_const) if anon_const.is_desugared_from_effects));
-                args.args = &args.args[..args.args.len() - 1];
-                path_segments[last_segment].args = Some(tcx.hir_arena.alloc(args));
-                let path = hir::Path {
-                    span: hir_trait_ref.path.span,
-                    res: hir_trait_ref.path.res,
-                    segments: tcx.hir_arena.alloc_slice(&path_segments),
-                };
-                let trait_ref = tcx.hir_arena.alloc(hir::TraitRef { path: tcx.hir_arena.alloc(path), hir_ref_id: hir_trait_ref.hir_ref_id });
-                icx.lowerer().lower_impl_trait_ref(trait_ref, self_ty)
-            } else {
-                icx.lowerer().lower_impl_trait_ref(hir_trait_ref, self_ty)
-            };
-            ty::ImplTraitHeader {
-                trait_ref: ty::EarlyBinder::bind(trait_ref),
-                safety: impl_.safety,
-                polarity: polarity_of_impl(tcx, def_id, impl_, item.span)
-            }
-        })
+        check_impl_constness(tcx, tcx.is_const_trait_impl_raw(def_id.to_def_id()), ast_trait_ref);
+
+        let trait_ref = icx.lowerer().lower_impl_trait_ref(ast_trait_ref, selfty);
+
+        ty::ImplTraitHeader {
+            trait_ref: ty::EarlyBinder::bind(trait_ref),
+            safety: impl_.safety,
+            polarity: polarity_of_impl(tcx, def_id, impl_, item.span),
+        }
+    })
 }
 
 fn check_impl_constness(

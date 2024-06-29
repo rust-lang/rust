@@ -368,6 +368,7 @@ rustc_queries! {
         desc { |tcx| "finding item bounds for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        feedable
     }
 
     /// The set of item bounds (see [`TyCtxt::explicit_item_bounds`]) that
@@ -378,6 +379,7 @@ rustc_queries! {
         desc { |tcx| "finding item bounds for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        feedable
     }
 
     /// Elaborated version of the predicates from `explicit_item_bounds`.
@@ -850,6 +852,12 @@ rustc_queries! {
     query associated_types_for_impl_traits_in_associated_fn(fn_def_id: DefId) -> &'tcx [DefId] {
         desc { |tcx| "creating associated items for opaque types returned by `{}`", tcx.def_path_str(fn_def_id) }
         cache_on_disk_if { fn_def_id.is_local() }
+        separate_provide_extern
+    }
+
+    query associated_type_for_effects(def_id: DefId) -> Option<DefId> {
+        desc { |tcx| "creating associated items for effects in `{}`", tcx.def_path_str(def_id) }
+        cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
 
