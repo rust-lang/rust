@@ -82,7 +82,6 @@ run-make/jobserver-error/Makefile
 run-make/libs-through-symlinks/Makefile
 run-make/libtest-json/Makefile
 run-make/libtest-junit/Makefile
-run-make/libtest-padding/Makefile
 run-make/libtest-thread-limit/Makefile
 run-make/link-cfg/Makefile
 run-make/link-framework/Makefile
@@ -125,8 +124,6 @@ run-make/pgo-gen/Makefile
 run-make/pgo-indirect-call-promotion/Makefile
 run-make/pgo-use/Makefile
 run-make/pointer-auth-link-with-c/Makefile
-run-make/pretty-print-to-file/Makefile
-run-make/pretty-print-with-dep-file/Makefile
 run-make/print-calling-conventions/Makefile
 run-make/print-target-list/Makefile
 run-make/profile/Makefile
