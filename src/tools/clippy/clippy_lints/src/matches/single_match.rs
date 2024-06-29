@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{expr_block, get_source_text, snippet};
+use clippy_utils::source::{expr_block, snippet, SpanRangeExt};
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, peel_mid_ty_refs};
 use clippy_utils::{is_lint_allowed, is_unit_expr, is_wild, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs};
 use core::cmp::max;
@@ -17,7 +17,7 @@ use super::{MATCH_BOOL, SINGLE_MATCH, SINGLE_MATCH_ELSE};
 /// span, e.g. a string literal `"//"`, but we know that this isn't the case for empty
 /// match arms.
 fn empty_arm_has_comment(cx: &LateContext<'_>, span: Span) -> bool {
-    if let Some(ff) = get_source_text(cx, span)
+    if let Some(ff) = span.get_source_text(cx)
         && let Some(text) = ff.as_str()
     {
         text.as_bytes().windows(2).any(|w| w == b"//" || w == b"/*")

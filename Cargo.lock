@@ -229,6 +229,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ar"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d67af77d68a931ecd5cbd8a3b5987d63a1d1d1278f7f6a60ae33db485cdebb69"
+
+[[package]]
 name = "ar_archive_writer"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3394,6 +3400,7 @@ dependencies = [
 name = "run_make_support"
 version = "0.2.0"
 dependencies = [
+ "ar",
  "gimli 0.28.1",
  "object 0.34.0",
  "regex",
@@ -4668,6 +4675,8 @@ name = "rustc_smir"
 version = "0.0.0"
 dependencies = [
  "rustc_abi",
+ "rustc_ast",
+ "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_middle",

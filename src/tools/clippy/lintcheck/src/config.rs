@@ -1,8 +1,9 @@
-use clap::Parser;
+use clap::{Parser, Subcommand, ValueEnum};
 use std::num::NonZero;
 use std::path::PathBuf;
 
-#[derive(Clone, Debug, Parser)]
+#[derive(Parser, Clone, Debug)]
+#[command(args_conflicts_with_subcommands = true)]
 pub(crate) struct LintcheckConfig {
     /// Number of threads to use (default: all unless --fix or --recursive)
     #[clap(
@@ -35,12 +36,45 @@ pub(crate) struct LintcheckConfig {
     /// Apply a filter to only collect specified lints, this also overrides `allow` attributes
     #[clap(long = "filter", value_name = "clippy_lint_name", use_value_delimiter = true)]
     pub lint_filter: Vec<String>,
-    /// Change the reports table to use markdown links
-    #[clap(long)]
-    pub markdown: bool,
+    /// Set the output format of the log file
+    #[clap(long, short, default_value = "text")]
+    pub format: OutputFormat,
     /// Run clippy on the dependencies of crates specified in crates-toml
     #[clap(long, conflicts_with("max_jobs"))]
     pub recursive: bool,
+    #[command(subcommand)]
+    pub subcommand: Option<Commands>,
+}
+
+#[derive(Subcommand, Clone, Debug)]
+pub(crate) enum Commands {
+    /// Display a markdown diff between two lintcheck log files in JSON format
+    Diff { old: PathBuf, new: PathBuf },
+    /// Create a lintcheck crates TOML file containing the top N popular crates
+    Popular {
+        /// Output TOML file name
+        output: PathBuf,
+        /// Number of crate names to download
+        #[clap(short, long, default_value_t = 100)]
+        number: usize,
+    },
+}
+
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OutputFormat {
+    Text,
+    Markdown,
+    Json,
+}
+
+impl OutputFormat {
+    fn file_extension(self) -> &'static str {
+        match self {
+            OutputFormat::Text => "txt",
+            OutputFormat::Markdown => "md",
+            OutputFormat::Json => "json",
+        }
+    }
 }
 
 impl LintcheckConfig {
@@ -53,7 +87,7 @@ impl LintcheckConfig {
         config.lintcheck_results_path = PathBuf::from(format!(
             "lintcheck-logs/{}_logs.{}",
             filename.display(),
-            if config.markdown { "md" } else { "txt" }
+            config.format.file_extension(),
         ));
 
         // look at the --threads arg, if 0 is passed, use the threads count
