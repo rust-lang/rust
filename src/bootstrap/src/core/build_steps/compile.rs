@@ -27,6 +27,7 @@ use crate::core::builder::crate_description;
 use crate::core::builder::Cargo;
 use crate::core::builder::{Builder, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath};
 use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
+use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
     exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, output, symlink_dir, t, up_to_date,
 };
@@ -771,7 +772,7 @@ impl Step for StartupObjects {
             let src_file = &src_dir.join(file.to_string() + ".rs");
             let dst_file = &dst_dir.join(file.to_string() + ".o");
             if !up_to_date(src_file, dst_file) {
-                let mut cmd = Command::new(&builder.initial_rustc);
+                let mut cmd = BootstrapCommand::new(&builder.initial_rustc);
                 cmd.env("RUSTC_BOOTSTRAP", "1");
                 if !builder.local_rebuild {
                     // a local_rebuild compiler already has stage1 features
@@ -2076,7 +2077,7 @@ pub fn stream_cargo(
     tail_args: Vec<String>,
     cb: &mut dyn FnMut(CargoMessage<'_>),
 ) -> bool {
-    let mut cargo = Command::from(cargo);
+    let mut cargo = BootstrapCommand::from(cargo).command;
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
     let mut message_format = if builder.config.json_output {

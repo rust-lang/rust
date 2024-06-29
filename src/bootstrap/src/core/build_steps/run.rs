@@ -50,7 +50,7 @@ impl Step for BuildManifest {
         cmd.arg(&builder.config.channel);
 
         builder.create_dir(&distdir(builder));
-        builder.run(&mut cmd);
+        builder.run(cmd);
     }
 }
 
@@ -72,7 +72,7 @@ impl Step for BumpStage0 {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let mut cmd = builder.tool_cmd(Tool::BumpStage0);
         cmd.args(builder.config.args());
-        builder.run(&mut cmd);
+        builder.run(cmd);
     }
 }
 
@@ -94,7 +94,7 @@ impl Step for ReplaceVersionPlaceholder {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let mut cmd = builder.tool_cmd(Tool::ReplaceVersionPlaceholder);
         cmd.arg(&builder.src);
-        builder.run(&mut cmd);
+        builder.run(cmd);
     }
 }
 
@@ -158,8 +158,7 @@ impl Step for Miri {
         // after another --, so this must be at the end.
         miri.args(builder.config.args());
 
-        let mut miri = Command::from(miri);
-        builder.run(&mut miri);
+        builder.run(miri);
     }
 }
 
@@ -189,7 +188,7 @@ impl Step for CollectLicenseMetadata {
         let mut cmd = builder.tool_cmd(Tool::CollectLicenseMetadata);
         cmd.env("REUSE_EXE", reuse);
         cmd.env("DEST", &dest);
-        builder.run(&mut cmd);
+        builder.run(cmd);
 
         dest
     }
@@ -219,7 +218,7 @@ impl Step for GenerateCopyright {
         let mut cmd = builder.tool_cmd(Tool::GenerateCopyright);
         cmd.env("LICENSE_METADATA", &license_metadata);
         cmd.env("DEST", &dest);
-        builder.run(&mut cmd);
+        builder.run(cmd);
 
         dest
     }
@@ -243,7 +242,7 @@ impl Step for GenerateWindowsSys {
     fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::GenerateWindowsSys);
         cmd.arg(&builder.src);
-        builder.run(&mut cmd);
+        builder.run(cmd);
     }
 }
 
