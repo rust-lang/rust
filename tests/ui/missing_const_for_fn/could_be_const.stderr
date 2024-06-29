@@ -157,7 +157,18 @@ LL | const fn msrv_1_46() -> i32 {
    | +++++
 
 error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:122:9
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:117:1
+   |
+LL | fn d(this: D) {}
+   | ^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL | const fn d(this: D) {}
+   | +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:125:9
    |
 LL | /         fn deref_ptr_can_be_const(self) -> usize {
 LL | |
@@ -171,7 +182,7 @@ LL |         const fn deref_ptr_can_be_const(self) -> usize {
    |         +++++
 
 error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:127:9
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:130:9
    |
 LL | /         fn deref_copied_val(self) -> usize {
 LL | |
@@ -185,7 +196,7 @@ LL |         const fn deref_copied_val(self) -> usize {
    |         +++++
 
 error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:138:5
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:141:5
    |
 LL | /     fn union_access_can_be_const() {
 LL | |
@@ -200,7 +211,7 @@ LL |     const fn union_access_can_be_const() {
    |     +++++
 
 error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:152:9
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:155:9
    |
 LL | /         pub fn new(strings: Vec<String>) -> Self {
 LL | |             Self { strings }
@@ -213,7 +224,7 @@ LL |         pub const fn new(strings: Vec<String>) -> Self {
    |             +++++
 
 error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:157:9
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:160:9
    |
 LL | /         pub fn empty() -> Self {
 LL | |             Self { strings: Vec::new() }
@@ -226,7 +237,7 @@ LL |         pub const fn empty() -> Self {
    |             +++++
 
 error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:168:9
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:171:9
    |
 LL | /         pub fn new(text: String) -> Self {
 LL | |             let vec = Vec::new();
@@ -239,5 +250,5 @@ help: make the function `const`
 LL |         pub const fn new(text: String) -> Self {
    |             +++++
 
-error: aborting due to 17 previous errors
+error: aborting due to 18 previous errors
 
