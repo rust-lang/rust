@@ -371,7 +371,7 @@ fn lld_flag_no_threads(builder: &Builder<'_>, lld_mode: LldMode, is_windows: boo
             LldMode::External => {
                 let mut cmd = BootstrapCommand::new("lld").capture_stdout();
                 cmd.arg("-flavor").arg("ld").arg("--version");
-                let out = builder.run(cmd).stdout();
+                let out = cmd.run(builder).stdout();
                 match (out.find(char::is_numeric), out.find('.')) {
                     (Some(b), Some(e)) => out.as_str()[b..e].parse::<i32>().ok().unwrap_or(14) > 10,
                     _ => true,

@@ -355,7 +355,7 @@ than building it.
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
             let out =
-                build.run(BootstrapCommand::new("cmake").capture_stdout().arg("--help")).stdout();
+                BootstrapCommand::new("cmake").capture_stdout().arg("--help").run(build).stdout();
             if !out.contains("Visual Studio") {
                 panic!(
                     "

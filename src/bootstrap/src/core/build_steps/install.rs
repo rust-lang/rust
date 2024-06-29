@@ -113,7 +113,7 @@ fn install_sh(
         .arg(format!("--libdir={}", prepare_dir(&destdir_env, libdir)))
         .arg(format!("--mandir={}", prepare_dir(&destdir_env, mandir)))
         .arg("--disable-ldconfig");
-    builder.run(cmd);
+    cmd.run(builder);
     t!(fs::remove_dir_all(&empty_dir));
 }
 

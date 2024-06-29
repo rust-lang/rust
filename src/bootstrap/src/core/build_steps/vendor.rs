@@ -59,6 +59,6 @@ impl Step for Vendor {
 
         cmd.current_dir(self.root_dir);
 
-        builder.run(cmd);
+        cmd.run(builder);
     }
 }

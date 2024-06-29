@@ -1918,8 +1918,10 @@ impl<'a> Builder<'a> {
         // platform-specific environment variable as a workaround.
         if mode == Mode::ToolRustc || mode == Mode::Codegen {
             if let Some(llvm_config) = self.llvm_config(target) {
-                let llvm_libdir = self
-                    .run(BootstrapCommand::new(llvm_config).capture_stdout().arg("--libdir"))
+                let llvm_libdir = BootstrapCommand::new(llvm_config)
+                    .capture_stdout()
+                    .arg("--libdir")
+                    .run(self)
                     .stdout();
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cargo);
             }

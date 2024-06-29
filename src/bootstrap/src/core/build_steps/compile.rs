@@ -779,14 +779,13 @@ impl Step for StartupObjects {
                     // a local_rebuild compiler already has stage1 features
                     cmd.arg("--cfg").arg("bootstrap");
                 }
-                builder.run(
-                    cmd.arg("--target")
-                        .arg(target.rustc_target_arg())
-                        .arg("--emit=obj")
-                        .arg("-o")
-                        .arg(dst_file)
-                        .arg(src_file),
-                );
+                cmd.arg("--target")
+                    .arg(target.rustc_target_arg())
+                    .arg("--emit=obj")
+                    .arg("-o")
+                    .arg(dst_file)
+                    .arg(src_file)
+                    .run(builder);
             }
 
             let target = sysroot_dir.join((*file).to_string() + ".o");
@@ -1491,7 +1490,7 @@ pub fn compiler_file(
     let mut cmd = BootstrapCommand::new(compiler);
     cmd.args(builder.cflags(target, GitRepo::Rustc, c));
     cmd.arg(format!("-print-file-name={file}"));
-    let out = builder.run(cmd.capture_stdout()).stdout();
+    let out = cmd.capture_stdout().run(builder).stdout();
     PathBuf::from(out.trim())
 }
 
@@ -1836,8 +1835,10 @@ impl Step for Assemble {
             let llvm::LlvmResult { llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: target_compiler.host });
             if !builder.config.dry_run() && builder.config.llvm_tools_enabled {
-                let llvm_bin_dir = builder
-                    .run(BootstrapCommand::new(llvm_config).capture_stdout().arg("--bindir"))
+                let llvm_bin_dir = BootstrapCommand::new(llvm_config)
+                    .capture_stdout()
+                    .arg("--bindir")
+                    .run(builder)
                     .stdout();
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
 
@@ -2163,7 +2164,7 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     }
 
     let previous_mtime = FileTime::from_last_modification_time(&path.metadata().unwrap());
-    builder.run(BootstrapCommand::new("strip").capture().arg("--strip-debug").arg(path));
+    BootstrapCommand::new("strip").capture().arg("--strip-debug").arg(path).run(builder);
 
     // After running `strip`, we have to set the file modification time to what it was before,
     // otherwise we risk Cargo invalidating its fingerprint and rebuilding the world next time

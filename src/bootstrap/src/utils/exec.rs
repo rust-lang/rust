@@ -1,3 +1,4 @@
+use crate::Build;
 use std::ffi::OsStr;
 use std::path::Path;
 use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
@@ -134,13 +135,10 @@ impl BootstrapCommand {
     pub fn capture_stdout(self) -> Self {
         Self { stdout: OutputMode::Capture, ..self }
     }
-}
 
-/// This implementation exists to make it possible to pass both [BootstrapCommand] and
-/// `&mut BootstrapCommand` to `Build.run()`.
-impl AsMut<BootstrapCommand> for BootstrapCommand {
-    fn as_mut(&mut self) -> &mut BootstrapCommand {
-        self
+    /// Run the command, returning its output.
+    pub fn run(&mut self, builder: &Build) -> CommandOutput {
+        builder.run(self)
     }
 }
 

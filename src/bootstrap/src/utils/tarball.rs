@@ -379,7 +379,7 @@ impl<'a> Tarball<'a> {
             cmd.args(["--override-file-mtime", timestamp.trim()]);
         }
 
-        self.builder.run(cmd);
+        cmd.run(self.builder);
 
         // Ensure there are no symbolic links in the tarball. In particular,
         // rustup-toolchain-install-master and most versions of Windows can't handle symbolic links.

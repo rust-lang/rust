@@ -602,7 +602,7 @@ impl Step for Rustdoc {
             &self.compiler.host,
             &target,
         );
-        builder.run(cargo.into_cmd());
+        cargo.into_cmd().run(builder);
 
         // Cargo adds a number of paths to the dylib search path on windows, which results in
         // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
@@ -857,7 +857,7 @@ impl Step for LlvmBitcodeLinker {
             &self.extra_features,
         );
 
-        builder.run(cargo.into_cmd());
+        cargo.into_cmd().run(builder);
 
         let tool_out = builder
             .cargo_out(self.compiler, Mode::ToolRustc, self.target)
@@ -918,7 +918,7 @@ impl Step for LibcxxVersionTool {
                 .arg(&executable)
                 .arg(builder.src.join("src/tools/libcxx-version/main.cpp"));
 
-            builder.run(cmd);
+            cmd.run(builder);
 
             if !executable.exists() {
                 panic!("Something went wrong. {} is not present", executable.display());
@@ -926,7 +926,7 @@ impl Step for LibcxxVersionTool {
         }
 
         let version_output =
-            builder.run(BootstrapCommand::new(executable).capture_stdout()).stdout();
+            BootstrapCommand::new(executable).capture_stdout().run(builder).stdout();
 
         let version_str = version_output.split_once("version:").unwrap().1;
         let version = version_str.trim().parse::<usize>().unwrap();
