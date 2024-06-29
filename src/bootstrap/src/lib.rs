@@ -23,14 +23,13 @@ use std::fmt::Display;
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, Output, Stdio};
 use std::str;
 use std::sync::OnceLock;
 use std::time::SystemTime;
 
 use build_helper::ci::{gha, CiEnv};
 use build_helper::exit;
-use build_helper::util::fail;
 use filetime::FileTime;
 use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
@@ -945,43 +944,61 @@ impl Build {
 
         self.verbose(|| println!("running: {command:?}"));
 
-        let output: io::Result<CommandOutput> = match command.output_mode {
-            OutputMode::Print => command.command.status().map(|status| status.into()),
-            OutputMode::CaptureAll => command.command.output().map(|o| o.into()),
+        let output: io::Result<Output> = match command.output_mode {
+            OutputMode::Print => command.command.status().map(|status| Output {
+                status,
+                stdout: vec![],
+                stderr: vec![],
+            }),
+            OutputMode::CaptureAll => command.command.output(),
             OutputMode::CaptureStdout => {
                 command.command.stderr(Stdio::inherit());
-                command.command.output().map(|o| o.into())
+                command.command.output()
             }
         };
 
-        let output = match output {
-            Ok(output) => output,
-            Err(e) => fail(&format!("failed to execute command: {command:?}\nerror: {e}")),
+        use std::fmt::Write;
+
+        let mut message = String::new();
+        let output: CommandOutput = match output {
+            // Command has succeeded
+            Ok(output) if output.status.success() => output.into(),
+            // Command has started, but then it failed
+            Ok(output) => {
+                writeln!(
+                    message,
+                    "\n\nCommand {command:?} did not execute successfully.\
+            \nExpected success, got: {}",
+                    output.status,
+                )
+                .unwrap();
+
+                let output: CommandOutput = output.into();
+                // If the output mode is OutputMode::Print, the output has already been printed to
+                // stdout/stderr, and we thus don't have anything captured to print anyway.
+                if matches!(command.output_mode, OutputMode::CaptureAll | OutputMode::CaptureStdout)
+                {
+                    writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
+
+                    // Stderr is added to the message only if it was captured
+                    if matches!(command.output_mode, OutputMode::CaptureAll) {
+                        writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
+                    }
+                }
+                output
+            }
+            // The command did not even start
+            Err(e) => {
+                writeln!(
+                    message,
+                    "\n\nCommand {command:?} did not execute successfully.\
+            \nIt was not possible to execute the command: {e:?}"
+                )
+                .unwrap();
+                CommandOutput::did_not_start()
+            }
         };
         if !output.is_success() {
-            use std::fmt::Write;
-
-            // Here we build an error message, and below we decide if it should be printed or not.
-            let mut message = String::new();
-            writeln!(
-                message,
-                "\n\nCommand {command:?} did not execute successfully.\
-            \nExpected success, got: {}",
-                output.status(),
-            )
-            .unwrap();
-
-            // If the output mode is OutputMode::Print, the output has already been printed to
-            // stdout/stderr, and we thus don't have anything captured to print anyway.
-            if matches!(command.output_mode, OutputMode::CaptureAll | OutputMode::CaptureStdout) {
-                writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
-
-                // Stderr is added to the message only if it was captured
-                if matches!(command.output_mode, OutputMode::CaptureAll) {
-                    writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
-                }
-            }
-
             match command.failure_behavior {
                 BehaviorOnFailure::DelayFail => {
                     if self.fail_fast {

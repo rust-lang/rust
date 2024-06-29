@@ -132,25 +132,47 @@ impl From<Command> for BootstrapCommand {
     }
 }
 
+/// Represents the outcome of starting a command.
+enum CommandOutcome {
+    /// The command has started and finished with some status.
+    Finished(ExitStatus),
+    /// It was not even possible to start the command.
+    DidNotStart,
+}
+
 /// Represents the output of an executed process.
 #[allow(unused)]
-pub struct CommandOutput(Output);
+pub struct CommandOutput {
+    outcome: CommandOutcome,
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+}
 
 impl CommandOutput {
+    pub fn did_not_start() -> Self {
+        Self { outcome: CommandOutcome::DidNotStart, stdout: vec![], stderr: vec![] }
+    }
+
     pub fn is_success(&self) -> bool {
-        self.0.status.success()
+        match self.outcome {
+            CommandOutcome::Finished(status) => status.success(),
+            CommandOutcome::DidNotStart => false,
+        }
     }
 
     pub fn is_failure(&self) -> bool {
         !self.is_success()
     }
 
-    pub fn status(&self) -> ExitStatus {
-        self.0.status
+    pub fn status(&self) -> Option<ExitStatus> {
+        match self.outcome {
+            CommandOutcome::Finished(status) => Some(status),
+            CommandOutcome::DidNotStart => None,
+        }
     }
 
     pub fn stdout(&self) -> String {
-        String::from_utf8(self.0.stdout.clone()).expect("Cannot parse process stdout as UTF-8")
+        String::from_utf8(self.stdout.clone()).expect("Cannot parse process stdout as UTF-8")
     }
 
     pub fn stdout_if_ok(&self) -> Option<String> {
@@ -158,24 +180,26 @@ impl CommandOutput {
     }
 
     pub fn stderr(&self) -> String {
-        String::from_utf8(self.0.stderr.clone()).expect("Cannot parse process stderr as UTF-8")
+        String::from_utf8(self.stderr.clone()).expect("Cannot parse process stderr as UTF-8")
     }
 }
 
 impl Default for CommandOutput {
     fn default() -> Self {
-        Self(Output { status: Default::default(), stdout: vec![], stderr: vec![] })
+        Self {
+            outcome: CommandOutcome::Finished(ExitStatus::default()),
+            stdout: vec![],
+            stderr: vec![],
+        }
     }
 }
 
 impl From<Output> for CommandOutput {
     fn from(output: Output) -> Self {
-        Self(output)
-    }
-}
-
-impl From<ExitStatus> for CommandOutput {
-    fn from(status: ExitStatus) -> Self {
-        Self(Output { status, stdout: vec![], stderr: vec![] })
+        Self {
+            outcome: CommandOutcome::Finished(output.status),
+            stdout: output.stdout,
+            stderr: output.stderr,
+        }
     }
 }
