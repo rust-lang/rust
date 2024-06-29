@@ -18,7 +18,7 @@ use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
 use crate::LldMode;
 
-pub use crate::utils::dylib::{dylib_path, dylib_path_var};
+pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
 
 #[cfg(test)]
 mod tests;
@@ -51,7 +51,7 @@ use crate::utils::exec::BootstrapCommand;
 pub use t;
 
 pub fn exe(name: &str, target: TargetSelection) -> String {
-    crate::utils::dylib::exe(name, &target.triple)
+    crate::utils::shared_helpers::exe(name, &target.triple)
 }
 
 /// Returns `true` if the file name given looks like a dynamic library.
