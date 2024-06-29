@@ -7,6 +7,7 @@ use std::env;
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fs;
+use std::io::ErrorKind;
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -1830,6 +1831,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let lldb_version = Command::new(&lldb_exe)
             .arg("--version")
             .output()
+            .and_then(|output| {
+                if output.status.success() { Ok(output) } else { Err(ErrorKind::Other.into()) }
+            })
             .map(|output| String::from_utf8_lossy(&output.stdout).to_string())
             .ok();
         if let Some(ref vers) = lldb_version {
