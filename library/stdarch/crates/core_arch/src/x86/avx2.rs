@@ -5200,9 +5200,6 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    // Miri cannot support this until it is clear how it fits in the Rust memory model
-    // (non-temporal store)
-    #[cfg_attr(miri, ignore)]
     unsafe fn test_mm256_stream_load_si256() {
         let a = _mm256_set_epi64x(5, 6, 7, 8);
         let r = _mm256_stream_load_si256(core::ptr::addr_of!(a) as *const _);

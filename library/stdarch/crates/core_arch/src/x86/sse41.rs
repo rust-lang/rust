@@ -1958,9 +1958,6 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.1")]
-    // Miri cannot support this until it is clear how it fits in the Rust memory model
-    // (non-temporal store)
-    #[cfg_attr(miri, ignore)]
     unsafe fn test_mm_stream_load_si128() {
         let a = _mm_set_epi64x(5, 6);
         let r = _mm_stream_load_si128(core::ptr::addr_of!(a) as *const _);

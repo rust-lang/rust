@@ -146,7 +146,7 @@ jobs:
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-latest
         - target: x86_64-apple-darwin
-          os: macos-11
+          os: macos-13
         - target: x86_64-pc-windows-msvc
           os: windows-latest
         - target: i686-pc-windows-msvc
@@ -175,21 +175,11 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
-    - name: Install Rust (rustup)
+    - name: Install Rust
       run: |
         rustup update nightly --no-self-update
         rustup default nightly
-      if: matrix.os != 'macos-latest'
-    - name: Install Rust (macos)
-      run: |
-        curl https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-        rustup update nightly --no-self-update
-        rustup default nightly
-      if: matrix.os == 'macos-latest'
-    - run: |
-        rustup default nightly
-        rustup target add ${{ matrix.target }}
+    - run: rustup target add ${{ matrix.target }}
       if: "!endsWith(matrix.target, 'emulated')"
     - name: Setup (aarch64-apple-darwin)
       run: |
