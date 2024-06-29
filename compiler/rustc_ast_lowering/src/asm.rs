@@ -11,7 +11,7 @@ use super::LoweringContext;
 
 use rustc_ast::ptr::P;
 use rustc_ast::*;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet, GxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::parse::feature_err;
@@ -68,7 +68,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 .emit();
         }
 
-        let mut clobber_abis = FxIndexMap::default();
+        let mut clobber_abis = GxIndexMap::default();
         if let Some(asm_arch) = asm_arch {
             for (abi_name, abi_span) in &asm.clobber_abis {
                 match asm::InlineAsmClobberAbi::parse(asm_arch, &self.tcx.sess.target, *abi_name) {
@@ -318,8 +318,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        let mut used_input_regs = FxHashMap::default();
-        let mut used_output_regs = FxHashMap::default();
+        let mut used_input_regs = GxHashMap::default();
+        let mut used_output_regs = GxHashMap::default();
 
         for (idx, &(ref op, op_sp)) in operands.iter().enumerate() {
             if let Some(reg) = op.reg() {
@@ -362,7 +362,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Flag to output the error only once per operand
                     let mut skip = false;
 
-                    let mut check = |used_regs: &mut FxHashMap<asm::InlineAsmReg, usize>,
+                    let mut check = |used_regs: &mut GxHashMap<asm::InlineAsmReg, usize>,
                                      input,
                                      r: asm::InlineAsmReg| {
                         match used_regs.entry(r) {
@@ -436,7 +436,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // If a clobber_abi is specified, add the necessary clobbers to the
         // operands list.
-        let mut clobbered = FxHashSet::default();
+        let mut clobbered = GxHashSet::default();
         for (abi, (_, abi_span)) in clobber_abis {
             for &clobber in abi.clobbered_regs() {
                 // Don't emit a clobber for a register already clobbered

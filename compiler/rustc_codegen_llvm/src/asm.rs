@@ -10,7 +10,7 @@ use crate::value::Value;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug, ty::Instance};
 use rustc_span::{sym, Pos, Span, Symbol};
@@ -38,7 +38,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let mut constraints = vec![];
         let mut clobbers = vec![];
         let mut output_types = vec![];
-        let mut op_idx = FxHashMap::default();
+        let mut op_idx = GxHashMap::default();
         let mut clobbered_x87 = false;
         for (idx, op) in operands.iter().enumerate() {
             match *op {

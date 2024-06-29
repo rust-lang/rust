@@ -11,7 +11,7 @@
 use crate::constrained_generic_params as cgp;
 use min_specialization::check_min_specialization;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -97,7 +97,7 @@ fn enforce_impl_params_are_constrained(
     );
 
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
-    let lifetimes_in_associated_types: FxHashSet<_> = tcx
+    let lifetimes_in_associated_types: GxHashSet<_> = tcx
         .associated_item_def_ids(impl_def_id)
         .iter()
         .flat_map(|def_id| {

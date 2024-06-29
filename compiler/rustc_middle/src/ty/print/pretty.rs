@@ -9,7 +9,7 @@ use crate::ty::{
 };
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::gx::{GxHashMap, GxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
@@ -985,8 +985,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         // by looking up the projections associated with the def_id.
         let bounds = tcx.explicit_item_bounds(def_id);
 
-        let mut traits = FxIndexMap::default();
-        let mut fn_traits = FxIndexMap::default();
+        let mut traits = GxIndexMap::default();
+        let mut fn_traits = GxIndexMap::default();
         let mut has_sized_bound = false;
         let mut has_negative_sized_bound = false;
         let mut lifetimes = SmallVec::<[ty::Region<'tcx>; 1]>::new();
@@ -1231,11 +1231,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         trait_ref: ty::PolyTraitRef<'tcx>,
         polarity: ty::PredicatePolarity,
         proj_ty: Option<(DefId, ty::Binder<'tcx, Term<'tcx>>)>,
-        traits: &mut FxIndexMap<
+        traits: &mut GxIndexMap<
             (ty::PolyTraitRef<'tcx>, ty::PredicatePolarity),
-            FxIndexMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
+            GxIndexMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
         >,
-        fn_traits: &mut FxIndexMap<ty::PolyTraitRef<'tcx>, OpaqueFnEntry<'tcx>>,
+        fn_traits: &mut GxIndexMap<ty::PolyTraitRef<'tcx>, OpaqueFnEntry<'tcx>>,
     ) {
         let trait_def_id = trait_ref.def_id();
 
@@ -1994,7 +1994,7 @@ pub struct FmtPrinterData<'a, 'tcx> {
     pub print_alloc_ids: bool,
 
     // set of all named (non-anonymous) region names
-    used_region_names: FxHashSet<Symbol>,
+    used_region_names: GxHashSet<Symbol>,
 
     region_index: usize,
     binder_depth: usize,
@@ -2791,7 +2791,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
         struct RegionNameCollector<'tcx> {
-            used_region_names: FxHashSet<Symbol>,
+            used_region_names: GxHashSet<Symbol>,
             type_collector: SsoHashSet<Ty<'tcx>>,
         }
 
@@ -3309,8 +3309,8 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
 
     // Once constructed, unique namespace+symbol pairs will have a `Some(_)` entry, while
     // non-unique pairs will have a `None` entry.
-    let unique_symbols_rev: &mut FxHashMap<(Namespace, Symbol), Option<DefId>> =
-        &mut FxHashMap::default();
+    let unique_symbols_rev: &mut GxHashMap<(Namespace, Symbol), Option<DefId>> =
+        &mut GxHashMap::default();
 
     for symbol_set in tcx.resolutions(()).glob_map.values() {
         for symbol in symbol_set {

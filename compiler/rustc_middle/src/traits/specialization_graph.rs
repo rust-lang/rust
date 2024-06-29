@@ -2,7 +2,7 @@ use crate::error::StrictCoherenceNeedsNegativeCoherence;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, TyCtxt};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
@@ -107,7 +107,7 @@ pub struct Children {
     // together *all* the impls for a trait, and are populated prior to building
     // the specialization graph.
     /// Impls of the trait.
-    pub non_blanket_impls: FxIndexMap<SimplifiedType, Vec<DefId>>,
+    pub non_blanket_impls: GxIndexMap<SimplifiedType, Vec<DefId>>,
 
     /// Blanket impls associated with the trait.
     pub blanket_impls: Vec<DefId>,

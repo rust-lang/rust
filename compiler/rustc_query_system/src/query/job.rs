@@ -3,7 +3,7 @@ use crate::error::CycleStack;
 use crate::query::plumbing::CycleError;
 use crate::query::DepKind;
 use crate::query::{QueryContext, QueryStackFrame};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
@@ -16,7 +16,7 @@ use std::num::NonZero;
 #[cfg(parallel_compiler)]
 use {
     parking_lot::{Condvar, Mutex},
-    rustc_data_structures::fx::FxHashSet,
+    rustc_data_structures::gx::GxHashSet,
     rustc_data_structures::jobserver,
     rustc_span::DUMMY_SP,
     std::iter,
@@ -31,7 +31,7 @@ pub struct QueryInfo {
     pub query: QueryStackFrame,
 }
 
-pub type QueryMap = FxHashMap<QueryJobId, QueryJobInfo>;
+pub type QueryMap = GxHashMap<QueryJobId, QueryJobInfo>;
 
 /// A value uniquely identifying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -323,7 +323,7 @@ fn cycle_check(
     query: QueryJobId,
     span: Span,
     stack: &mut Vec<(Span, QueryJobId)>,
-    visited: &mut FxHashSet<QueryJobId>,
+    visited: &mut GxHashSet<QueryJobId>,
 ) -> Option<Option<Waiter>> {
     if !visited.insert(query) {
         return if let Some(p) = stack.iter().position(|q| q.1 == query) {
@@ -362,7 +362,7 @@ fn cycle_check(
 fn connected_to_root(
     query_map: &QueryMap,
     query: QueryJobId,
-    visited: &mut FxHashSet<QueryJobId>,
+    visited: &mut GxHashSet<QueryJobId>,
 ) -> bool {
     // We already visited this or we're deliberately ignoring it
     if !visited.insert(query) {
@@ -413,7 +413,7 @@ fn remove_cycle(
     jobs: &mut Vec<QueryJobId>,
     wakelist: &mut Vec<Arc<QueryWaiter>>,
 ) -> bool {
-    let mut visited = FxHashSet::default();
+    let mut visited = GxHashSet::default();
     let mut stack = Vec::new();
     // Look for a cycle starting with the last query in `jobs`
     if let Some(waiter) =
@@ -449,7 +449,7 @@ fn remove_cycle(
                     // Find all the direct waiters who lead to the root
                     visit_waiters(query_map, query, |span, waiter| {
                         // Mark all the other queries in the cycle as already visited
-                        let mut visited = FxHashSet::from_iter(stack.iter().map(|q| q.1));
+                        let mut visited = GxHashSet::from_iter(stack.iter().map(|q| q.1));
 
                         if connected_to_root(query_map, waiter, &mut visited) {
                             waiters.push((span, waiter));

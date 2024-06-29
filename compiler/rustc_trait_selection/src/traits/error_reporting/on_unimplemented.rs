@@ -5,7 +5,7 @@ use rustc_ast::AttrArgsEq;
 use rustc_ast::AttrKind;
 use rustc_ast::{Attribute, MetaItem, NestedMetaItem};
 use rustc_attr as attr;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -700,7 +700,7 @@ impl<'tcx> OnUnimplementedDirective {
         let mut append_const_msg = None;
         info!("evaluate({:?}, trait_ref={:?}, options={:?})", self, trait_ref, options);
 
-        let options_map: FxHashMap<Symbol, String> =
+        let options_map: GxHashMap<Symbol, String> =
             options.iter().filter_map(|(k, v)| v.clone().map(|v| (*k, v))).collect();
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
@@ -910,7 +910,7 @@ impl<'tcx> OnUnimplementedFormatString {
         &self,
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
-        options: &FxHashMap<Symbol, String>,
+        options: &GxHashMap<Symbol, String>,
         long_ty_file: &mut Option<PathBuf>,
     ) -> String {
         let name = tcx.item_name(trait_ref.def_id);
@@ -933,7 +933,7 @@ impl<'tcx> OnUnimplementedFormatString {
                 let name = param.name;
                 Some((name, value))
             })
-            .collect::<FxHashMap<Symbol, String>>();
+            .collect::<GxHashMap<Symbol, String>>();
         let empty_string = String::new();
 
         let s = self.symbol.as_str();

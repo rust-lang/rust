@@ -3,7 +3,7 @@ use crate::hygiene::SyntaxContext;
 use crate::SPAN_TRACK;
 use crate::{BytePos, SpanData};
 
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 
 // This code is very hot and uses lots of arithmetic, avoid overflow checks for performance.
 // See https://github.com/rust-lang/rust/pull/119440#issuecomment-1874255727
@@ -427,7 +427,7 @@ impl Span {
 
 #[derive(Default)]
 pub struct SpanInterner {
-    spans: FxIndexSet<SpanData>,
+    spans: GxIndexSet<SpanData>,
 }
 
 impl SpanInterner {

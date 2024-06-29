@@ -17,7 +17,7 @@ extern crate rustc_target;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenResults, CrateInfo};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -53,11 +53,11 @@ impl CodegenBackend for TheBackend {
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
         _outputs: &OutputFilenames,
-    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+    ) -> (CodegenResults, GxIndexMap<WorkProductId, WorkProduct>) {
         let codegen_results = ongoing_codegen
             .downcast::<CodegenResults>()
             .expect("in join_codegen: ongoing_codegen is not a CodegenResults");
-        (*codegen_results, FxIndexMap::default())
+        (*codegen_results, GxIndexMap::default())
     }
 
     fn link(

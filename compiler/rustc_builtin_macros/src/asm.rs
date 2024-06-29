@@ -6,7 +6,7 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::gx::{GxHashMap, GxIndexMap};
 use rustc_errors::PResult;
 use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
@@ -22,7 +22,7 @@ use smallvec::smallvec;
 pub struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
     pub operands: Vec<(ast::InlineAsmOperand, Span)>,
-    named_args: FxIndexMap<Symbol, usize>,
+    named_args: GxIndexMap<Symbol, usize>,
     reg_args: GrowableBitSet<usize>,
     pub clobber_abis: Vec<(Symbol, Span)>,
     options: ast::InlineAsmOptions,
@@ -452,7 +452,7 @@ fn expand_preparsed_asm(
     for pos in args.reg_args.iter() {
         used[pos] = true;
     }
-    let named_pos: FxHashMap<usize, Symbol> =
+    let named_pos: GxHashMap<usize, Symbol> =
         args.named_args.iter().map(|(&sym, &idx)| (idx, sym)).collect();
     let mut line_spans = Vec::with_capacity(args.templates.len());
     let mut curarg = 0;

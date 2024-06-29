@@ -29,7 +29,7 @@ use rustc_ast::{
     VisibilityKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
@@ -236,7 +236,7 @@ enum Capturing {
 struct CaptureState {
     capturing: Capturing,
     replace_ranges: Vec<ReplaceRange>,
-    inner_attr_ranges: FxHashMap<AttrId, ReplaceRange>,
+    inner_attr_ranges: GxHashMap<AttrId, ReplaceRange>,
 }
 
 /// Iterator over a `TokenStream` that produces `Token`s. It's a bit odd that

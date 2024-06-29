@@ -18,7 +18,7 @@ use smallvec::{smallvec, SmallVec};
 use tracing::{debug, trace};
 
 use rustc_ast::LitKind;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -378,13 +378,13 @@ impl<'tcx> GlobalAlloc<'tcx> {
 
 pub(crate) struct AllocMap<'tcx> {
     /// Maps `AllocId`s to their corresponding allocations.
-    alloc_map: FxHashMap<AllocId, GlobalAlloc<'tcx>>,
+    alloc_map: GxHashMap<AllocId, GlobalAlloc<'tcx>>,
 
     /// Used to ensure that statics and functions only get one associated `AllocId`.
     /// Should never contain a `GlobalAlloc::Memory`!
     //
     // FIXME: Should we just have two separate dedup maps for statics and functions each?
-    dedup: FxHashMap<GlobalAlloc<'tcx>, AllocId>,
+    dedup: GxHashMap<GlobalAlloc<'tcx>, AllocId>,
 
     /// The `AllocId` to assign to the next requested ID.
     /// Always incremented; never gets smaller.

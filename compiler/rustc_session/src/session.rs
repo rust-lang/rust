@@ -11,7 +11,7 @@ use crate::search_paths::{PathKind, SearchPath};
 use crate::{filesearch, lint};
 
 use rustc_data_structures::flock;
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::gx::{GxHashMap, GxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
@@ -177,7 +177,7 @@ pub struct Session {
     pub registered_lints: bool,
 
     /// Cap lint level specified by a driver specifically.
-    pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    pub driver_lint_caps: GxHashMap<lint::LintId, lint::Level>,
 
     /// Tracks the current behavior of the CTFE engine when an error occurs.
     /// Options range from returning the error without a backtrace to returning an error
@@ -197,10 +197,10 @@ pub struct Session {
     pub asm_arch: Option<InlineAsmArch>,
 
     /// Set of enabled features for the current target.
-    pub target_features: FxIndexSet<Symbol>,
+    pub target_features: GxIndexSet<Symbol>,
 
     /// Set of enabled features for the current target, including unstable ones.
-    pub unstable_target_features: FxIndexSet<Symbol>,
+    pub unstable_target_features: GxIndexSet<Symbol>,
 
     /// The version of the rustc process, possibly including a commit hash and description.
     pub cfg_version: &'static str,
@@ -1012,7 +1012,7 @@ pub fn build_session(
     bundle: Option<Lrc<rustc_errors::FluentBundle>>,
     registry: rustc_errors::registry::Registry,
     fluent_resources: Vec<&'static str>,
-    driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    driver_lint_caps: GxHashMap<lint::LintId, lint::Level>,
     target: Target,
     sysroot: PathBuf,
     cfg_version: &'static str,

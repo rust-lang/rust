@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
@@ -254,7 +254,7 @@ fn compute_replacement<'tcx>(
     let mut finder = ReplacementFinder {
         targets: &mut targets,
         can_perform_opt,
-        allowed_replacements: FxHashSet::default(),
+        allowed_replacements: GxHashSet::default(),
     };
     let reachable_blocks = traversal::reachable_as_bitset(body);
     for (bb, bbdata) in body.basic_blocks.iter_enumerated() {
@@ -276,7 +276,7 @@ fn compute_replacement<'tcx>(
     struct ReplacementFinder<'a, 'tcx, F> {
         targets: &'a mut IndexVec<Local, Value<'tcx>>,
         can_perform_opt: F,
-        allowed_replacements: FxHashSet<(Local, Location)>,
+        allowed_replacements: GxHashSet<(Local, Location)>,
     }
 
     impl<'tcx, F> Visitor<'tcx> for ReplacementFinder<'_, 'tcx, F>
@@ -348,7 +348,7 @@ struct Replacer<'tcx> {
     tcx: TyCtxt<'tcx>,
     targets: IndexVec<Local, Value<'tcx>>,
     storage_to_remove: BitSet<Local>,
-    allowed_replacements: FxHashSet<(Local, Location)>,
+    allowed_replacements: GxHashSet<(Local, Location)>,
     any_replacement: bool,
 }
 

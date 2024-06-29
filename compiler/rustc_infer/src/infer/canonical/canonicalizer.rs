@@ -14,7 +14,7 @@ use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_index::Idx;
 use smallvec::SmallVec;
 
@@ -296,7 +296,7 @@ struct Canonicalizer<'cx, 'tcx> {
     query_state: &'cx mut OriginalQueryValues<'tcx>,
     // Note that indices is only used once `var_values` is big enough to be
     // heap-allocated.
-    indices: FxHashMap<GenericArg<'tcx>, BoundVar>,
+    indices: GxHashMap<GenericArg<'tcx>, BoundVar>,
     canonicalize_mode: &'cx dyn CanonicalizeMode,
     needs_canonical_flags: TypeFlags,
 
@@ -584,7 +584,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             needs_canonical_flags,
             variables: SmallVec::from_slice(base.variables),
             query_state,
-            indices: FxHashMap::default(),
+            indices: GxHashMap::default(),
             binder_index: ty::INNERMOST,
         };
         if canonicalizer.query_state.var_values.spilled() {
@@ -695,7 +695,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             return self.variables;
         }
 
-        let reverse_universe_map: FxHashMap<ty::UniverseIndex, ty::UniverseIndex> = self
+        let reverse_universe_map: GxHashMap<ty::UniverseIndex, ty::UniverseIndex> = self
             .query_state
             .universe_map
             .iter()

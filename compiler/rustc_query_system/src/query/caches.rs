@@ -1,6 +1,6 @@
 use crate::dep_graph::DepNodeIndex;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::sync::{Lock, OnceLock};
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -23,7 +23,7 @@ pub trait QueryCache: Sized {
 }
 
 pub struct DefaultCache<K, V> {
-    cache: Sharded<FxHashMap<K, (V, DepNodeIndex)>>,
+    cache: Sharded<GxHashMap<K, (V, DepNodeIndex)>>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
@@ -141,7 +141,7 @@ where
 
 pub struct DefIdCache<V> {
     /// Stores the local DefIds in a dense map. Local queries are much more often dense, so this is
-    /// a win over hashing query keys at marginal memory cost (~5% at most) compared to FxHashMap.
+    /// a win over hashing query keys at marginal memory cost (~5% at most) compared to GxHashMap.
     ///
     /// The second element of the tuple is the set of keys actually present in the IndexVec, used
     /// for faster iteration in `iter()`.

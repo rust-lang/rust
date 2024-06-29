@@ -86,7 +86,7 @@ use crate::errors;
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
@@ -1547,7 +1547,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         // bindings, and we also consider the first pattern to be the "authoritative" set of ids.
         // However, we should take the ids and spans of variables with the same name from the later
         // patterns so the suggestions to prefix with underscores will apply to those too.
-        let mut vars: FxIndexMap<Symbol, (LiveNode, Variable, Vec<(HirId, Span, Span)>)> =
+        let mut vars: GxIndexMap<Symbol, (LiveNode, Variable, Vec<(HirId, Span, Span)>)> =
             <_>::default();
 
         pat.each_binding(|_, hir_id, pat_sp, ident| {

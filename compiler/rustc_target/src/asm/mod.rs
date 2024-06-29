@@ -1,6 +1,6 @@
 use crate::spec::Target;
 use crate::{abi::Size, spec::RelocModel};
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::gx::{GxHashMap, GxIndexSet};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 use std::fmt;
@@ -47,16 +47,16 @@ macro_rules! def_reg_class {
             }
         }
 
-        pub(super) fn regclass_map() -> rustc_data_structures::fx::FxHashMap<
+        pub(super) fn regclass_map() -> rustc_data_structures::gx::GxHashMap<
             super::InlineAsmRegClass,
-            rustc_data_structures::fx::FxIndexSet<super::InlineAsmReg>,
+            rustc_data_structures::gx::GxIndexSet<super::InlineAsmReg>,
         > {
-            use rustc_data_structures::fx::FxHashMap;
-            use rustc_data_structures::fx::FxIndexSet;
+            use rustc_data_structures::gx::GxHashMap;
+            use rustc_data_structures::gx::GxIndexSet;
             use super::InlineAsmRegClass;
-            let mut map = FxHashMap::default();
+            let mut map = GxHashMap::default();
             $(
-                map.insert(InlineAsmRegClass::$arch($arch_regclass::$class), FxIndexSet::default());
+                map.insert(InlineAsmRegClass::$arch($arch_regclass::$class), GxIndexSet::default());
             )*
             map
         }
@@ -107,7 +107,7 @@ macro_rules! def_regs {
             pub fn validate(self,
                 _arch: super::InlineAsmArch,
                 _reloc_model: crate::spec::RelocModel,
-                _target_features: &rustc_data_structures::fx::FxIndexSet<Symbol>,
+                _target_features: &rustc_data_structures::gx::GxIndexSet<Symbol>,
                 _target: &crate::spec::Target,
                 _is_clobber: bool,
             ) -> Result<(), &'static str> {
@@ -131,11 +131,11 @@ macro_rules! def_regs {
         pub(super) fn fill_reg_map(
             _arch: super::InlineAsmArch,
             _reloc_model: crate::spec::RelocModel,
-            _target_features: &rustc_data_structures::fx::FxIndexSet<Symbol>,
+            _target_features: &rustc_data_structures::gx::GxIndexSet<Symbol>,
             _target: &crate::spec::Target,
-            _map: &mut rustc_data_structures::fx::FxHashMap<
+            _map: &mut rustc_data_structures::gx::GxHashMap<
                 super::InlineAsmRegClass,
-                rustc_data_structures::fx::FxIndexSet<super::InlineAsmReg>,
+                rustc_data_structures::gx::GxIndexSet<super::InlineAsmReg>,
             >,
         ) {
             #[allow(unused_imports)]
@@ -375,7 +375,7 @@ impl InlineAsmReg {
         self,
         arch: InlineAsmArch,
         reloc_model: RelocModel,
-        target_features: &FxIndexSet<Symbol>,
+        target_features: &GxIndexSet<Symbol>,
         target: &Target,
         is_clobber: bool,
     ) -> Result<(), &'static str> {
@@ -787,9 +787,9 @@ impl fmt::Display for InlineAsmType {
 pub fn allocatable_registers(
     arch: InlineAsmArch,
     reloc_model: RelocModel,
-    target_features: &FxIndexSet<Symbol>,
+    target_features: &GxIndexSet<Symbol>,
     target: &crate::spec::Target,
-) -> FxHashMap<InlineAsmRegClass, FxIndexSet<InlineAsmReg>> {
+) -> GxHashMap<InlineAsmRegClass, GxIndexSet<InlineAsmReg>> {
     match arch {
         InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
             let mut map = x86::regclass_map();

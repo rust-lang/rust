@@ -2,7 +2,7 @@ use crate::error::ConstNotUsedTraitAlias;
 use crate::ty::fold::{TypeFolder, TypeSuperFoldable};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{GenericArg, GenericArgKind};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
@@ -14,7 +14,7 @@ pub type OpaqueTypeKey<'tcx> = rustc_type_ir::OpaqueTypeKey<TyCtxt<'tcx>>;
 /// list to the opaque type's own generics.
 pub(super) struct ReverseMapper<'tcx> {
     tcx: TyCtxt<'tcx>,
-    map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
+    map: GxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
     /// see call sites to fold_kind_no_missing_regions_error
     /// for an explanation of this field.
     do_not_error: bool,
@@ -32,7 +32,7 @@ pub(super) struct ReverseMapper<'tcx> {
 impl<'tcx> ReverseMapper<'tcx> {
     pub(super) fn new(
         tcx: TyCtxt<'tcx>,
-        map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
+        map: GxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
         span: Span,
         ignore_errors: bool,
     ) -> Self {

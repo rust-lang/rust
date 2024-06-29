@@ -1,7 +1,7 @@
 use super::ObjectSafetyViolation;
 
 use crate::infer::InferCtxt;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -78,7 +78,7 @@ pub fn report_object_safety_error<'tcx>(
             );
         }
     }
-    let mut reported_violations = FxIndexSet::default();
+    let mut reported_violations = GxIndexSet::default();
     let mut multi_span = vec![];
     let mut messages = vec![];
     for violation in violations {

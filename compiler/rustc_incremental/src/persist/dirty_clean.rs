@@ -21,7 +21,7 @@
 
 use crate::errors;
 use rustc_ast::{self as ast, Attribute, NestedMetaItem};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit;
@@ -177,7 +177,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
 
 pub struct DirtyCleanVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    checked_attrs: FxHashSet<ast::AttrId>,
+    checked_attrs: GxHashSet<ast::AttrId>,
 }
 
 impl<'tcx> DirtyCleanVisitor<'tcx> {
@@ -444,7 +444,7 @@ impl<'tcx> FindAllAttrs<'tcx> {
         false
     }
 
-    fn report_unchecked_attrs(&self, mut checked_attrs: FxHashSet<ast::AttrId>) {
+    fn report_unchecked_attrs(&self, mut checked_attrs: GxHashSet<ast::AttrId>) {
         for attr in &self.found_attrs {
             if !checked_attrs.contains(&attr.id) {
                 self.tcx.dcx().emit_err(errors::UncheckedClean { span: attr.span });

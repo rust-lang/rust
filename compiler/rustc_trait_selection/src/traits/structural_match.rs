@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
@@ -33,7 +33,7 @@ pub fn search_for_structural_match_violation<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<Ty<'tcx>> {
-    ty.visit_with(&mut Search { tcx, seen: FxHashSet::default() }).break_value()
+    ty.visit_with(&mut Search { tcx, seen: GxHashSet::default() }).break_value()
 }
 
 /// This implements the traversal over the structure of a given type to try to
@@ -44,7 +44,7 @@ struct Search<'tcx> {
 
     /// Tracks ADTs previously encountered during search, so that
     /// we will not recur on them again.
-    seen: FxHashSet<hir::def_id::DefId>,
+    seen: GxHashSet<hir::def_id::DefId>,
 }
 
 impl<'tcx> Search<'tcx> {

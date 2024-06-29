@@ -3,7 +3,7 @@ use core::ops::ControlFlow;
 use hir::def::CtorKind;
 use hir::intravisit::{walk_expr, walk_stmt, Visitor};
 use hir::{LetStmt, QPath};
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -782,7 +782,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if blk.expr.is_some() {
             return None;
         }
-        let mut shadowed = FxIndexSet::default();
+        let mut shadowed = GxIndexSet::default();
         let mut candidate_idents = vec![];
         let mut find_compatible_candidates = |pat: &hir::Pat<'_>| {
             if let hir::PatKind::Binding(_, hir_id, ident, _) = &pat.kind

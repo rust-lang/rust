@@ -2,7 +2,7 @@ use crate::config::*;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
 use crate::{lint, EarlyDiagCtxt};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hasher::Hash64;
 use rustc_errors::ColorConfig;
@@ -149,7 +149,7 @@ top_level_options!(
         target_triple: TargetTriple [TRACKED],
 
         /// Effective logical environment used by `env!`/`option_env!` macros
-        logical_env: FxIndexMap<String, String> [TRACKED],
+        logical_env: GxIndexMap<String, String> [TRACKED],
 
         test: bool [TRACKED],
         error_format: ErrorOutputType [UNTRACKED],

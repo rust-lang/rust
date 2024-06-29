@@ -1,5 +1,5 @@
 use crate::traits::*;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -24,7 +24,7 @@ pub struct FunctionDebugContext<'tcx, S, L> {
     pub scopes: IndexVec<mir::SourceScope, DebugScope<S, L>>,
 
     /// Maps from an inlined function to its debug info declaration.
-    pub inlined_function_scopes: FxHashMap<Instance<'tcx>, S>,
+    pub inlined_function_scopes: GxHashMap<Instance<'tcx>, S>,
 }
 #[derive(Copy, Clone)]
 pub enum VariableKind {

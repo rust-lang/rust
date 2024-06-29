@@ -6,7 +6,7 @@ use crate::back::write::TargetMachineFactoryFn;
 use crate::{CodegenResults, ModuleCodegen};
 
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::creader::MetadataLoaderDyn;
@@ -95,7 +95,7 @@ pub trait CodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         outputs: &OutputFilenames,
-    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>);
+    ) -> (CodegenResults, GxIndexMap<WorkProductId, WorkProduct>);
 
     /// This is called on the returned `CodegenResults` from `join_codegen`
     fn link(

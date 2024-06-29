@@ -1,6 +1,6 @@
 use crate::dep_graph::dep_kinds;
 use crate::query::plumbing::CyclePlaceholder;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -82,7 +82,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
         _guar: ErrorGuaranteed,
     ) -> Self {
         let mut item_and_field_ids = Vec::new();
-        let mut representable_ids = FxHashSet::default();
+        let mut representable_ids = GxHashSet::default();
         for info in &cycle_error.cycle {
             if info.query.dep_kind == dep_kinds::representability
                 && let Some(field_id) = info.query.def_id
@@ -267,7 +267,7 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
 pub fn recursive_type_error(
     tcx: TyCtxt<'_>,
     mut item_and_field_ids: Vec<(LocalDefId, LocalDefId)>,
-    representable_ids: &FxHashSet<LocalDefId>,
+    representable_ids: &GxHashSet<LocalDefId>,
 ) -> ErrorGuaranteed {
     const ITEM_LIMIT: usize = 5;
 
@@ -352,7 +352,7 @@ fn find_item_ty_spans(
     ty: &hir::Ty<'_>,
     needle: LocalDefId,
     spans: &mut Vec<Span>,
-    seen_representable: &FxHashSet<LocalDefId>,
+    seen_representable: &GxHashSet<LocalDefId>,
 ) {
     match ty.kind {
         hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {

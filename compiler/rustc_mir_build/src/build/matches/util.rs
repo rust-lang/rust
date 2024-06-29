@@ -1,7 +1,7 @@
 use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
 use crate::build::matches::{Binding, Candidate, FlatPat, MatchPair, TestCase};
 use crate::build::Builder;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::TypeVisitableExt;
@@ -278,7 +278,7 @@ pub(super) struct FakeBorrowCollector<'a, 'b, 'tcx> {
     /// borrow (i.e. Deep > Shallow).
     /// Invariant: for any place in `fake_borrows`, all the prefixes of this place that are
     /// dereferences are also borrowed with the same of stronger borrow kind.
-    fake_borrows: FxIndexMap<Place<'tcx>, FakeBorrowKind>,
+    fake_borrows: GxIndexMap<Place<'tcx>, FakeBorrowKind>,
 }
 
 /// Determine the set of places that have to be stable across match guards.
@@ -323,7 +323,7 @@ pub(super) fn collect_fake_borrows<'tcx>(
     scrutinee_base: PlaceBase,
 ) -> Vec<(Place<'tcx>, Local, FakeBorrowKind)> {
     let mut collector =
-        FakeBorrowCollector { cx, scrutinee_base, fake_borrows: FxIndexMap::default() };
+        FakeBorrowCollector { cx, scrutinee_base, fake_borrows: GxIndexMap::default() };
     for candidate in candidates.iter() {
         collector.visit_candidate(candidate);
     }

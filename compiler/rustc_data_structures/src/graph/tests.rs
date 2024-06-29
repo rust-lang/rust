@@ -1,4 +1,4 @@
-use crate::fx::FxHashMap;
+use crate::gx::GxHashMap;
 use std::cmp::max;
 
 use super::*;
@@ -6,8 +6,8 @@ use super::*;
 pub struct TestGraph {
     num_nodes: usize,
     start_node: usize,
-    successors: FxHashMap<usize, Vec<usize>>,
-    predecessors: FxHashMap<usize, Vec<usize>>,
+    successors: GxHashMap<usize, Vec<usize>>,
+    predecessors: GxHashMap<usize, Vec<usize>>,
 }
 
 impl TestGraph {
@@ -15,8 +15,8 @@ impl TestGraph {
         let mut graph = TestGraph {
             num_nodes: start_node + 1,
             start_node,
-            successors: FxHashMap::default(),
-            predecessors: FxHashMap::default(),
+            successors: GxHashMap::default(),
+            predecessors: GxHashMap::default(),
         };
         for &(source, target) in edges {
             graph.num_nodes = max(graph.num_nodes, source + 1);

@@ -6,7 +6,7 @@ use crate::llvm;
 
 use itertools::Itertools as _;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxHashSet, GxIndexMap, GxIndexSet};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
 use rustc_middle::bug;
@@ -154,14 +154,14 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 struct GlobalFileTable {
     /// This "raw" table doesn't include the working dir, so a filename's
     /// global ID is its index in this set **plus one**.
-    raw_file_table: FxIndexSet<Symbol>,
+    raw_file_table: GxIndexSet<Symbol>,
 }
 
 impl GlobalFileTable {
     fn new(all_file_names: impl IntoIterator<Item = Symbol>) -> Self {
         // Collect all of the filenames into a set. Filenames usually come in
         // contiguous runs, so we can dedup adjacent ones to save work.
-        let mut raw_file_table = all_file_names.into_iter().dedup().collect::<FxIndexSet<Symbol>>();
+        let mut raw_file_table = all_file_names.into_iter().dedup().collect::<GxIndexSet<Symbol>>();
 
         // Sort the file table by its actual string values, not the arbitrary
         // ordering of its symbols.
@@ -213,7 +213,7 @@ rustc_index::newtype_index! {
 #[derive(Default)]
 struct VirtualFileMapping {
     local_to_global: IndexVec<LocalFileId, u32>,
-    global_to_local: FxIndexMap<u32, LocalFileId>,
+    global_to_local: GxIndexMap<u32, LocalFileId>,
 }
 
 impl VirtualFileMapping {
@@ -397,8 +397,8 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
 
 struct UsageSets<'tcx> {
     all_mono_items: &'tcx DefIdSet,
-    used_via_inlining: FxHashSet<DefId>,
-    missing_own_coverage: FxHashSet<DefId>,
+    used_via_inlining: GxHashSet<DefId>,
+    missing_own_coverage: GxHashSet<DefId>,
 }
 
 /// Prepare sets of definitions that are relevant to deciding whether something
@@ -408,7 +408,7 @@ fn prepare_usage_sets<'tcx>(tcx: TyCtxt<'tcx>) -> UsageSets<'tcx> {
 
     // Obtain a MIR body for each function participating in codegen, via an
     // arbitrary instance.
-    let mut def_ids_seen = FxHashSet::default();
+    let mut def_ids_seen = GxHashSet::default();
     let def_and_mir_for_all_mono_fns = cgus
         .iter()
         .flat_map(|cgu| cgu.items().keys())
@@ -425,10 +425,10 @@ fn prepare_usage_sets<'tcx>(tcx: TyCtxt<'tcx>) -> UsageSets<'tcx> {
         });
 
     // Functions whose coverage statments were found inlined into other functions.
-    let mut used_via_inlining = FxHashSet::default();
+    let mut used_via_inlining = GxHashSet::default();
     // Functions that were instrumented, but had all of their coverage statements
     // removed by later MIR transforms (e.g. UnreachablePropagation).
-    let mut missing_own_coverage = FxHashSet::default();
+    let mut missing_own_coverage = GxHashSet::default();
 
     for (def_id, body) in def_and_mir_for_all_mono_fns {
         let mut saw_own_coverage = false;

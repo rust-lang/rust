@@ -1,7 +1,7 @@
 //! The entry point of the NLL borrow checker.
 
 use polonius_engine::{Algorithm, Output};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
@@ -39,7 +39,7 @@ pub type PoloniusOutput = Output<RustcFacts>;
 /// closure requirements to propagate, and any generated errors.
 pub(crate) struct NllOutput<'tcx> {
     pub regioncx: RegionInferenceContext<'tcx>,
-    pub opaque_type_values: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
+    pub opaque_type_values: GxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     pub polonius_input: Option<Box<AllFacts>>,
     pub polonius_output: Option<Rc<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
@@ -267,7 +267,7 @@ pub(super) fn dump_annotation<'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
-    opaque_type_values: &FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
+    opaque_type_values: &GxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     diags: &mut crate::diags::BorrowckDiags<'tcx>,
 ) {
     let tcx = infcx.tcx;

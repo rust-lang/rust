@@ -18,7 +18,7 @@
 //!
 
 use rustc_ast::Attribute;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
@@ -83,8 +83,8 @@ pub(super) fn build_custom_mir<'tcx>(
         thir,
         source_scope: OUTERMOST_SOURCE_SCOPE,
         body: &mut body,
-        local_map: FxHashMap::default(),
-        block_map: FxHashMap::default(),
+        local_map: GxHashMap::default(),
+        block_map: GxHashMap::default(),
     };
 
     let res: PResult<_> = try {
@@ -143,8 +143,8 @@ struct ParseCtxt<'tcx, 'body> {
     source_scope: SourceScope,
 
     body: &'body mut Body<'tcx>,
-    local_map: FxHashMap<LocalVarId, Local>,
-    block_map: FxHashMap<LocalVarId, BasicBlock>,
+    local_map: GxHashMap<LocalVarId, Local>,
+    block_map: GxHashMap<LocalVarId, BasicBlock>,
 }
 
 struct ParseError {

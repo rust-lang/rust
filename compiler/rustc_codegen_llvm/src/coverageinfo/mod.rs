@@ -10,7 +10,7 @@ use rustc_codegen_ssa::traits::{
     BaseTypeMethods, BuilderMethods, ConstMethods, CoverageInfoBuilderMethods, MiscMethods,
     StaticMethods,
 };
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::gx::{GxHashMap, GxIndexMap};
 use rustc_llvm::RustString;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
@@ -29,9 +29,9 @@ pub mod mapgen;
 pub struct CrateCoverageContext<'ll, 'tcx> {
     /// Coverage data for each instrumented function identified by DefId.
     pub(crate) function_coverage_map:
-        RefCell<FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>>>,
-    pub(crate) pgo_func_name_var_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
-    pub(crate) mcdc_condition_bitmap_map: RefCell<FxHashMap<Instance<'tcx>, Vec<&'ll llvm::Value>>>,
+        RefCell<GxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>>>,
+    pub(crate) pgo_func_name_var_map: RefCell<GxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
+    pub(crate) mcdc_condition_bitmap_map: RefCell<GxHashMap<Instance<'tcx>, Vec<&'ll llvm::Value>>>,
 }
 
 impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
@@ -45,8 +45,8 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
 
     pub fn take_function_coverage_map(
         &self,
-    ) -> FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>> {
-        self.function_coverage_map.replace(FxIndexMap::default())
+    ) -> GxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>> {
+        self.function_coverage_map.replace(GxIndexMap::default())
     }
 
     /// LLVM use a temp value to record evaluated mcdc test vector of each decision, which is called condition bitmap.

@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::gx::{GxHashMap, GxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
@@ -56,21 +56,21 @@ pub struct OnDiskCache<'sess> {
 
     // Collects all `QuerySideEffects` created during the current compilation
     // session.
-    current_side_effects: Lock<FxHashMap<DepNodeIndex, QuerySideEffects>>,
+    current_side_effects: Lock<GxHashMap<DepNodeIndex, QuerySideEffects>>,
 
     source_map: &'sess SourceMap,
-    file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
+    file_index_to_stable_id: GxHashMap<SourceFileIndex, EncodedSourceFileId>,
 
     // Caches that are populated lazily during decoding.
-    file_index_to_file: Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
+    file_index_to_file: Lock<GxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
 
     // A map from dep-node to the position of the cached query result in
     // `serialized_data`.
-    query_result_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
+    query_result_index: GxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
 
     // A map from dep-node to the position of any associated `QuerySideEffects` in
     // `serialized_data`.
-    prev_side_effects_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
+    prev_side_effects_index: GxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
 
     alloc_decoding_state: AllocDecodingState,
 
@@ -79,7 +79,7 @@ pub struct OnDiskCache<'sess> {
     // to represent the fact that we are storing *encoded* ids. When we decode
     // a `SyntaxContext`, a new id will be allocated from the global `HygieneData`,
     // which will almost certainly be different than the serialized id.
-    syntax_contexts: FxHashMap<u32, AbsoluteBytePos>,
+    syntax_contexts: GxHashMap<u32, AbsoluteBytePos>,
     // A map from the `DefPathHash` of an `ExpnId` to the position
     // of their associated `ExpnData`. Ideally, we would store a `DefId`,
     // but we need to decode this before we've constructed a `TyCtxt` (which
@@ -102,7 +102,7 @@ pub struct OnDiskCache<'sess> {
 // This type is used only for serialization and deserialization.
 #[derive(Encodable, Decodable)]
 struct Footer {
-    file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
+    file_index_to_stable_id: GxHashMap<SourceFileIndex, EncodedSourceFileId>,
     query_result_index: EncodedDepNodeIndex,
     side_effects_index: EncodedDepNodeIndex,
     // The location of all allocations.
@@ -110,7 +110,7 @@ struct Footer {
     // without measurable overhead. This permits larger const allocations without ICEing.
     interpret_alloc_index: Vec<u64>,
     // See `OnDiskCache.syntax_contexts`
-    syntax_contexts: FxHashMap<u32, AbsoluteBytePos>,
+    syntax_contexts: GxHashMap<u32, AbsoluteBytePos>,
     // See `OnDiskCache.expn_data`
     expn_data: UnhashMap<ExpnHash, AbsoluteBytePos>,
     foreign_expn_data: UnhashMap<ExpnHash, u32>,
@@ -198,7 +198,7 @@ impl<'sess> OnDiskCache<'sess> {
             query_result_index: Default::default(),
             prev_side_effects_index: Default::default(),
             alloc_decoding_state: AllocDecodingState::new(Vec::new()),
-            syntax_contexts: FxHashMap::default(),
+            syntax_contexts: GxHashMap::default(),
             expn_data: UnhashMap::default(),
             foreign_expn_data: UnhashMap::default(),
             hygiene_context: Default::default(),
@@ -229,9 +229,9 @@ impl<'sess> OnDiskCache<'sess> {
             let (file_to_file_index, file_index_to_stable_id) = {
                 let files = tcx.sess.source_map().files();
                 let mut file_to_file_index =
-                    FxHashMap::with_capacity_and_hasher(files.len(), Default::default());
+                    GxHashMap::with_capacity_and_hasher(files.len(), Default::default());
                 let mut file_index_to_stable_id =
-                    FxHashMap::with_capacity_and_hasher(files.len(), Default::default());
+                    GxHashMap::with_capacity_and_hasher(files.len(), Default::default());
 
                 for (index, file) in files.iter().enumerate() {
                     let index = SourceFileIndex(index as u32);
@@ -303,7 +303,7 @@ impl<'sess> OnDiskCache<'sess> {
                 interpret_alloc_index
             };
 
-            let mut syntax_contexts = FxHashMap::default();
+            let mut syntax_contexts = GxHashMap::default();
             let mut expn_data = UnhashMap::default();
             let mut foreign_expn_data = UnhashMap::default();
 
@@ -416,7 +416,7 @@ impl<'sess> OnDiskCache<'sess> {
         &self,
         tcx: TyCtxt<'tcx>,
         dep_node_index: SerializedDepNodeIndex,
-        index: &FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
+        index: &GxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
     ) -> Option<T>
     where
         T: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
@@ -462,10 +462,10 @@ pub struct CacheDecoder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     opaque: MemDecoder<'a>,
     source_map: &'a SourceMap,
-    file_index_to_file: &'a Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
-    file_index_to_stable_id: &'a FxHashMap<SourceFileIndex, EncodedSourceFileId>,
+    file_index_to_file: &'a Lock<GxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
+    file_index_to_stable_id: &'a GxHashMap<SourceFileIndex, EncodedSourceFileId>,
     alloc_decoding_session: AllocDecodingSession<'a>,
-    syntax_contexts: &'a FxHashMap<u32, AbsoluteBytePos>,
+    syntax_contexts: &'a GxHashMap<u32, AbsoluteBytePos>,
     expn_data: &'a UnhashMap<ExpnHash, AbsoluteBytePos>,
     foreign_expn_data: &'a UnhashMap<ExpnHash, u32>,
     hygiene_context: &'a HygieneDecodeContext,
@@ -820,13 +820,13 @@ impl_ref_decoder! {<'tcx>
 pub struct CacheEncoder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     encoder: FileEncoder,
-    type_shorthands: FxHashMap<Ty<'tcx>, usize>,
-    predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
-    interpret_allocs: FxIndexSet<interpret::AllocId>,
+    type_shorthands: GxHashMap<Ty<'tcx>, usize>,
+    predicate_shorthands: GxHashMap<ty::PredicateKind<'tcx>, usize>,
+    interpret_allocs: GxIndexSet<interpret::AllocId>,
     source_map: CachingSourceMapView<'tcx>,
-    file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
+    file_to_file_index: GxHashMap<*const SourceFile, SourceFileIndex>,
     hygiene_context: &'a HygieneEncodeContext,
-    symbol_table: FxHashMap<Symbol, usize>,
+    symbol_table: GxHashMap<Symbol, usize>,
 }
 
 impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
@@ -954,11 +954,11 @@ impl<'a, 'tcx> TyEncoder for CacheEncoder<'a, 'tcx> {
         self.encoder.position()
     }
     #[inline]
-    fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize> {
+    fn type_shorthands(&mut self) -> &mut GxHashMap<Ty<'tcx>, usize> {
         &mut self.type_shorthands
     }
     #[inline]
-    fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize> {
+    fn predicate_shorthands(&mut self) -> &mut GxHashMap<ty::PredicateKind<'tcx>, usize> {
         &mut self.predicate_shorthands
     }
     #[inline]

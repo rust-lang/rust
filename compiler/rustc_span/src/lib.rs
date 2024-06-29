@@ -70,7 +70,7 @@ pub mod fatal_error;
 
 pub mod profiling;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::stable_hasher::{Hash128, Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock, Lrc};
 
@@ -99,7 +99,7 @@ pub struct SessionGlobals {
     span_interner: Lock<span_encoding::SpanInterner>,
     /// Maps a macro argument token into use of the corresponding metavariable in the macro body.
     /// Collisions are possible and processed in `maybe_use_metavar_location` on best effort basis.
-    metavar_spans: Lock<FxHashMap<Span, Span>>,
+    metavar_spans: Lock<GxHashMap<Span, Span>>,
     hygiene_data: Lock<hygiene::HygieneData>,
 
     /// The session's source map, if there is one. This field should only be
@@ -174,7 +174,7 @@ pub fn create_default_session_globals_then<R>(f: impl FnOnce() -> R) -> R {
 scoped_tls::scoped_thread_local!(static SESSION_GLOBALS: SessionGlobals);
 
 #[inline]
-pub fn with_metavar_spans<R>(f: impl FnOnce(&mut FxHashMap<Span, Span>) -> R) -> R {
+pub fn with_metavar_spans<R>(f: impl FnOnce(&mut GxHashMap<Span, Span>) -> R) -> R {
     with_session_globals(|session_globals| f(&mut session_globals.metavar_spans.lock()))
 }
 
@@ -876,7 +876,7 @@ impl Span {
 
     /// Check if you can select metavar spans for the given spans to get matching contexts.
     fn try_metavars(a: SpanData, b: SpanData, a_orig: Span, b_orig: Span) -> (SpanData, SpanData) {
-        let get = |mspans: &FxHashMap<_, _>, s| mspans.get(&s).copied();
+        let get = |mspans: &GxHashMap<_, _>, s| mspans.get(&s).copied();
         match with_metavar_spans(|mspans| (get(mspans, a_orig), get(mspans, b_orig))) {
             (None, None) => {}
             (Some(meta_a), None) => {

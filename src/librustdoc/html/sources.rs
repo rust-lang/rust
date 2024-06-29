@@ -9,7 +9,7 @@ use crate::html::render::Context;
 use crate::visit::DocVisitor;
 
 use askama::Template;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -29,7 +29,7 @@ pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), E
     let dst = cx.dst.join("src").join(krate.name(cx.tcx()).as_str());
     cx.shared.ensure_dir(&dst)?;
 
-    let mut collector = SourceCollector { dst, cx, emitted_local_sources: FxHashSet::default() };
+    let mut collector = SourceCollector { dst, cx, emitted_local_sources: GxHashSet::default() };
     collector.visit_crate(krate);
     Ok(())
 }
@@ -38,15 +38,15 @@ pub(crate) fn collect_local_sources<'tcx>(
     tcx: TyCtxt<'tcx>,
     src_root: &Path,
     krate: &clean::Crate,
-) -> FxHashMap<PathBuf, String> {
-    let mut lsc = LocalSourcesCollector { tcx, local_sources: FxHashMap::default(), src_root };
+) -> GxHashMap<PathBuf, String> {
+    let mut lsc = LocalSourcesCollector { tcx, local_sources: GxHashMap::default(), src_root };
     lsc.visit_crate(krate);
     lsc.local_sources
 }
 
 struct LocalSourcesCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    local_sources: FxHashMap<PathBuf, String>,
+    local_sources: GxHashMap<PathBuf, String>,
     src_root: &'a Path,
 }
 
@@ -116,7 +116,7 @@ struct SourceCollector<'a, 'tcx> {
 
     /// Root destination to place all HTML output into
     dst: PathBuf,
-    emitted_local_sources: FxHashSet<PathBuf>,
+    emitted_local_sources: GxHashSet<PathBuf>,
 }
 
 impl DocVisitor for SourceCollector<'_, '_> {

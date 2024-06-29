@@ -3,7 +3,7 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 use rustc_ast::{self as ast, MetaItem};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -54,7 +54,7 @@ fn cs_total_eq_assert(
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {
     let mut stmts = ThinVec::new();
-    let mut seen_type_names = FxHashSet::default();
+    let mut seen_type_names = GxHashSet::default();
     let mut process_variant = |variant: &ast::VariantData| {
         for field in variant.fields() {
             // This basic redundancy checking only prevents duplication of

@@ -26,7 +26,7 @@ use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_ar
 use crate::middle::resolve_bound_vars as rbv;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::gx::{GxHashSet, GxIndexMap};
 use rustc_errors::{
     codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, FatalError,
 };
@@ -700,7 +700,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?poly_trait_ref);
         bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
 
-        let mut dup_constraints = FxIndexMap::default();
+        let mut dup_constraints = GxIndexMap::default();
         for constraint in trait_segment.args().constraints {
             // Don't register any associated item constraints for negative bounds,
             // since we should have emitted an error for them earlier, and they
@@ -1752,7 +1752,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 let generic_segments =
                     self.probe_generic_path_segments(path.segments, None, kind, def_id, span);
-                let indices: FxHashSet<_> =
+                let indices: GxHashSet<_> =
                     generic_segments.iter().map(|GenericPathSegment(_, index)| index).collect();
                 let _ = self.prohibit_generic_args(
                     path.segments.iter().enumerate().filter_map(|(index, seg)| {
@@ -2408,8 +2408,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     #[instrument(level = "trace", skip(self, generate_err))]
     fn validate_late_bound_regions(
         &self,
-        constrained_regions: FxHashSet<ty::BoundRegionKind>,
-        referenced_regions: FxHashSet<ty::BoundRegionKind>,
+        constrained_regions: GxHashSet<ty::BoundRegionKind>,
+        referenced_regions: GxHashSet<ty::BoundRegionKind>,
         generate_err: impl Fn(&str) -> Diag<'tcx>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {

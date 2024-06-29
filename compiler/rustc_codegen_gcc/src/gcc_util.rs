@@ -2,7 +2,7 @@
 use gccjit::Context;
 use smallvec::{smallvec, SmallVec};
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
@@ -46,7 +46,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
 
     // -Ctarget-features
     let supported_features = sess.target.supported_target_features();
-    let mut featsmap = FxHashMap::default();
+    let mut featsmap = GxHashMap::default();
     let feats = sess
         .opts
         .cg
@@ -190,7 +190,7 @@ pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]>
 // ensure only valid combinations are allowed.
 pub fn check_tied_features(
     sess: &Session,
-    features: &FxHashMap<&str, bool>,
+    features: &GxHashMap<&str, bool>,
 ) -> Option<&'static [&'static str]> {
     for tied in sess.target.tied_target_features() {
         // Tied features must be set to the same value, or not set at all

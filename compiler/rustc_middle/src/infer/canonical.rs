@@ -21,7 +21,7 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 pub use rustc_type_ir as ir;
@@ -150,7 +150,7 @@ TrivialTypeTraversalImpls! {
 #[derive(Default)]
 pub struct CanonicalParamEnvCache<'tcx> {
     map: Lock<
-        FxHashMap<
+        GxHashMap<
             ty::ParamEnv<'tcx>,
             (Canonical<'tcx, ty::ParamEnv<'tcx>>, &'tcx [GenericArg<'tcx>]),
         >,

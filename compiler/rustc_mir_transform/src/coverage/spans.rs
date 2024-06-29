@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_middle::mir;
 use rustc_span::Span;
 
@@ -83,7 +83,7 @@ pub(super) fn extract_refined_covspans(
 /// (The input spans should be sorted in BCB dominator order, so that the
 /// retained "first" span is likely to dominate the others.)
 fn remove_unwanted_macro_spans(covspans: &mut Vec<SpanFromMir>) {
-    let mut seen_macro_spans = FxHashSet::default();
+    let mut seen_macro_spans = GxHashSet::default();
     covspans.retain(|covspan| {
         // Ignore (retain) non-macro-expansion spans.
         if covspan.visible_macro.is_none() {

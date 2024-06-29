@@ -29,7 +29,7 @@ use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
 use crate::{with_session_globals, HashStableContext, Span, SpanDecoder, SpanEncoder, DUMMY_SP};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, HashingControls, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
 use rustc_data_structures::unhash::UnhashMap;
@@ -327,11 +327,11 @@ pub(crate) struct HygieneData {
     local_expn_hashes: IndexVec<LocalExpnId, ExpnHash>,
     /// Data and hash information from external crates. We may eventually want to remove these
     /// maps, and fetch the information directly from the other crate's metadata like DefIds do.
-    foreign_expn_data: FxHashMap<ExpnId, ExpnData>,
-    foreign_expn_hashes: FxHashMap<ExpnId, ExpnHash>,
+    foreign_expn_data: GxHashMap<ExpnId, ExpnData>,
+    foreign_expn_hashes: GxHashMap<ExpnId, ExpnHash>,
     expn_hash_to_expn_id: UnhashMap<ExpnHash, ExpnId>,
     syntax_context_data: Vec<SyntaxContextData>,
-    syntax_context_map: FxHashMap<(SyntaxContext, ExpnId, Transparency), SyntaxContext>,
+    syntax_context_map: GxHashMap<(SyntaxContext, ExpnId, Transparency), SyntaxContext>,
     /// Maps the `local_hash` of an `ExpnData` to the next disambiguator value.
     /// This is used by `update_disambiguator` to keep track of which `ExpnData`s
     /// would have collisions without a disambiguator.
@@ -353,8 +353,8 @@ impl HygieneData {
         HygieneData {
             local_expn_data: IndexVec::from_elem_n(Some(root_data), 1),
             local_expn_hashes: IndexVec::from_elem_n(ExpnHash(Fingerprint::ZERO), 1),
-            foreign_expn_data: FxHashMap::default(),
-            foreign_expn_hashes: FxHashMap::default(),
+            foreign_expn_data: GxHashMap::default(),
+            foreign_expn_hashes: GxHashMap::default(),
             expn_hash_to_expn_id: std::iter::once((ExpnHash(Fingerprint::ZERO), ExpnId::root()))
                 .collect(),
             syntax_context_data: vec![SyntaxContextData {
@@ -365,7 +365,7 @@ impl HygieneData {
                 opaque_and_semitransparent: SyntaxContext(0),
                 dollar_crate_name: kw::DollarCrate,
             }],
-            syntax_context_map: FxHashMap::default(),
+            syntax_context_map: GxHashMap::default(),
             expn_data_disambiguators: UnhashMap::default(),
         }
     }
@@ -1185,16 +1185,16 @@ pub struct HygieneEncodeContext {
     /// All `SyntaxContexts` for which we have written `SyntaxContextData` into crate metadata.
     /// This is `None` after we finish encoding `SyntaxContexts`, to ensure
     /// that we don't accidentally try to encode any more `SyntaxContexts`
-    serialized_ctxts: Lock<FxHashSet<SyntaxContext>>,
+    serialized_ctxts: Lock<GxHashSet<SyntaxContext>>,
     /// The `SyntaxContexts` that we have serialized (e.g. as a result of encoding `Spans`)
     /// in the most recent 'round' of serializing. Serializing `SyntaxContextData`
     /// may cause us to serialize more `SyntaxContext`s, so serialize in a loop
     /// until we reach a fixed point.
-    latest_ctxts: Lock<FxHashSet<SyntaxContext>>,
+    latest_ctxts: Lock<GxHashSet<SyntaxContext>>,
 
-    serialized_expns: Lock<FxHashSet<ExpnId>>,
+    serialized_expns: Lock<GxHashSet<ExpnId>>,
 
-    latest_expns: Lock<FxHashSet<ExpnId>>,
+    latest_expns: Lock<GxHashSet<ExpnId>>,
 }
 
 impl HygieneEncodeContext {
@@ -1259,7 +1259,7 @@ struct HygieneDecodeContextInner {
     remapped_ctxts: Vec<Option<SyntaxContext>>,
 
     /// Maps serialized `SyntaxContext` ids that are currently being decoded to a `SyntaxContext`.
-    decoding: FxHashMap<u32, SyntaxContext>,
+    decoding: GxHashMap<u32, SyntaxContext>,
 }
 
 #[derive(Default)]
@@ -1268,7 +1268,7 @@ pub struct HygieneDecodeContext {
     inner: Lock<HygieneDecodeContextInner>,
 
     /// A set of serialized `SyntaxContext` ids that are currently being decoded on each thread.
-    local_in_progress: WorkerLocal<RefCell<FxHashMap<u32, ()>>>,
+    local_in_progress: WorkerLocal<RefCell<GxHashMap<u32, ()>>>,
 }
 
 /// Register an expansion which has been decoded from the on-disk-cache for the local crate.

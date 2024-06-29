@@ -9,7 +9,7 @@ use crate::ty::{
 };
 use crate::ty::{GenericArgKind, GenericArgsRef};
 use rustc_apfloat::Float as _;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
@@ -524,7 +524,7 @@ impl<'tcx> TyCtxt<'tcx> {
         ignore_regions: CheckRegions,
     ) -> Result<(), NotUniqueParam<'tcx>> {
         let mut seen = GrowableBitSet::default();
-        let mut seen_late = FxHashSet::default();
+        let mut seen_late = GxHashSet::default();
         for arg in args {
             match arg.unpack() {
                 GenericArgKind::Lifetime(lt) => match (ignore_regions, lt.kind()) {
@@ -761,8 +761,8 @@ impl<'tcx> TyCtxt<'tcx> {
         inspect_coroutine_fields: InspectCoroutineFields,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
         let mut visitor = OpaqueTypeExpander {
-            seen_opaque_tys: FxHashSet::default(),
-            expanded_cache: FxHashMap::default(),
+            seen_opaque_tys: GxHashSet::default(),
+            expanded_cache: GxHashMap::default(),
             primary_def_id: Some(def_id),
             found_recursion: false,
             found_any_recursion: false,
@@ -994,10 +994,10 @@ struct OpaqueTypeExpander<'tcx> {
     // expanded. When we expand an opaque type we insert the DefId of
     // that type, and when we finish expanding that type we remove the
     // its DefId.
-    seen_opaque_tys: FxHashSet<DefId>,
+    seen_opaque_tys: GxHashSet<DefId>,
     // Cache of all expansions we've seen so far. This is a critical
     // optimization for some large types produced by async fn trees.
-    expanded_cache: FxHashMap<(DefId, GenericArgsRef<'tcx>), Ty<'tcx>>,
+    expanded_cache: GxHashMap<(DefId, GenericArgsRef<'tcx>), Ty<'tcx>>,
     primary_def_id: Option<DefId>,
     found_recursion: bool,
     found_any_recursion: bool,
@@ -1816,8 +1816,8 @@ pub fn reveal_opaque_types_in_bounds<'tcx>(
     val: ty::Clauses<'tcx>,
 ) -> ty::Clauses<'tcx> {
     let mut visitor = OpaqueTypeExpander {
-        seen_opaque_tys: FxHashSet::default(),
-        expanded_cache: FxHashMap::default(),
+        seen_opaque_tys: GxHashSet::default(),
+        expanded_cache: GxHashMap::default(),
         primary_def_id: None,
         found_recursion: false,
         found_any_recursion: false,

@@ -38,7 +38,7 @@
 use rustc_arena::DroplessArena;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
@@ -698,7 +698,7 @@ impl OpportunitySet {
         debug!(?op);
         let op_chain = std::mem::take(&mut op.chain);
         let op_target = op.target;
-        debug_assert_eq!(op_chain.len(), op_chain.iter().collect::<FxHashSet<_>>().len());
+        debug_assert_eq!(op_chain.len(), op_chain.iter().collect::<GxHashSet<_>>().len());
 
         let Some((current, chain)) = op_chain.split_first() else { return };
         let basic_blocks = body.basic_blocks.as_mut();

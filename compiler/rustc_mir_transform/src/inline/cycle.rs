@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet, GxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::TerminatorKind;
@@ -39,8 +39,8 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
         caller: ty::Instance<'tcx>,
         target: LocalDefId,
         stack: &mut Vec<ty::Instance<'tcx>>,
-        seen: &mut FxHashSet<ty::Instance<'tcx>>,
-        recursion_limiter: &mut FxHashMap<DefId, usize>,
+        seen: &mut GxHashSet<ty::Instance<'tcx>>,
+        recursion_limiter: &mut GxHashMap<DefId, usize>,
         recursion_limit: Limit,
     ) -> bool {
         trace!(%caller);
@@ -143,8 +143,8 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
         root,
         target,
         &mut Vec::new(),
-        &mut FxHashSet::default(),
-        &mut FxHashMap::default(),
+        &mut GxHashSet::default(),
+        &mut GxHashMap::default(),
         tcx.recursion_limit(),
     )
 }
@@ -164,7 +164,7 @@ pub(crate) fn mir_inliner_callees<'tcx>(
         // Functions from other crates and MIR shims
         _ => tcx.instance_mir(instance),
     };
-    let mut calls = FxIndexSet::default();
+    let mut calls = GxIndexSet::default();
     for bb_data in body.basic_blocks.iter() {
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { func, args: call_args, .. } = &terminator.kind {

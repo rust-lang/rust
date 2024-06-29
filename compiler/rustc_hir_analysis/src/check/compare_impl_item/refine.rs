@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{outlives::env::OutlivesEnvironment, TyCtxtInferExt};
@@ -63,7 +63,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         return;
     };
 
-    let mut collector = ImplTraitInTraitCollector { tcx, types: FxIndexSet::default() };
+    let mut collector = ImplTraitInTraitCollector { tcx, types: GxIndexSet::default() };
     trait_m_sig.visit_with(&mut collector);
 
     // Bound that we find on RPITITs in the trait signature.
@@ -149,7 +149,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     // possibly have introduced region vars during projection. We don't expect
     // this resolution to have incurred any region errors -- but if we do, then
     // just delay a bug.
-    let mut implied_wf_types = FxIndexSet::default();
+    let mut implied_wf_types = GxIndexSet::default();
     implied_wf_types.extend(trait_m_sig.inputs_and_output);
     implied_wf_types.extend(ocx.normalize(
         &ObligationCause::dummy(),
@@ -182,7 +182,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     // Also, We have to anonymize binders in these types because they may contain
     // `BrNamed` bound vars, which contain unique `DefId`s which correspond to syntax
     // locations that we don't care about when checking bound equality.
-    let trait_bounds = FxIndexSet::from_iter(trait_bounds.fold_with(&mut Anonymize { tcx }));
+    let trait_bounds = GxIndexSet::from_iter(trait_bounds.fold_with(&mut Anonymize { tcx }));
     let impl_bounds = impl_bounds.fold_with(&mut Anonymize { tcx });
 
     // Find any clauses that are present in the impl's RPITITs that are not
@@ -207,7 +207,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
 
 struct ImplTraitInTraitCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
-    types: FxIndexSet<ty::AliasTy<'tcx>>,
+    types: GxIndexSet<ty::AliasTy<'tcx>>,
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {

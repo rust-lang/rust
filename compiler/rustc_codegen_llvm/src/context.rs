@@ -13,7 +13,7 @@ use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::base_n::ALPHANUMERIC_ONLY;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::mono::CodegenUnit;
@@ -52,15 +52,15 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
 
     /// Cache instances of monomorphic and polymorphic items
-    pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
+    pub instances: RefCell<GxHashMap<Instance<'tcx>, &'ll Value>>,
     /// Cache generated vtables
     pub vtables:
-        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
+        RefCell<GxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
-    pub const_str_cache: RefCell<FxHashMap<String, &'ll Value>>,
+    pub const_str_cache: RefCell<GxHashMap<String, &'ll Value>>,
 
     /// Cache of emitted const globals (value -> global)
-    pub const_globals: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
+    pub const_globals: RefCell<GxHashMap<&'ll Value, &'ll Value>>,
 
     /// List of globals for static variables which need to be passed to the
     /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
@@ -77,10 +77,10 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
 
     /// Mapping of non-scalar types to llvm types.
-    pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
+    pub type_lowering: RefCell<GxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
 
     /// Mapping of scalar types to llvm types.
-    pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
+    pub scalar_lltypes: RefCell<GxHashMap<Ty<'tcx>, &'ll Type>>,
 
     pub isize_ty: &'ll Type,
 
@@ -91,7 +91,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     eh_catch_typeinfo: Cell<Option<&'ll Value>>,
     pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
 
-    intrinsics: RefCell<FxHashMap<&'static str, (&'ll Type, &'ll Value)>>,
+    intrinsics: RefCell<GxHashMap<&'static str, (&'ll Type, &'ll Value)>>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
@@ -100,7 +100,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     /// different type and clear the symbol name of the original global.
     /// `global_asm!` needs to be able to find this new global so that it can
     /// compute the correct mangled symbol name to insert into the asm.
-    pub renamed_statics: RefCell<FxHashMap<DefId, &'ll Value>>,
+    pub renamed_statics: RefCell<GxHashMap<DefId, &'ll Value>>,
 }
 
 fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
@@ -517,7 +517,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn vtables(
         &self,
-    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
+    ) -> &RefCell<GxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
     {
         &self.vtables
     }

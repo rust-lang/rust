@@ -8,7 +8,7 @@ use std::mem;
 use std::ops;
 
 use rustc_ast::{LitKind, MetaItem, MetaItemKind, NestedMetaItem};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_feature::Features;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
@@ -46,7 +46,7 @@ impl Cfg {
     /// Parses a `NestedMetaItem` into a `Cfg`.
     fn parse_nested(
         nested_cfg: &NestedMetaItem,
-        exclude: &FxHashSet<Cfg>,
+        exclude: &GxHashSet<Cfg>,
     ) -> Result<Option<Cfg>, InvalidCfgError> {
         match nested_cfg {
             NestedMetaItem::MetaItem(ref cfg) => Cfg::parse_without(cfg, exclude),
@@ -58,7 +58,7 @@ impl Cfg {
 
     pub(crate) fn parse_without(
         cfg: &MetaItem,
-        exclude: &FxHashSet<Cfg>,
+        exclude: &GxHashSet<Cfg>,
     ) -> Result<Option<Cfg>, InvalidCfgError> {
         let name = match cfg.ident() {
             Some(ident) => ident.name,
@@ -123,7 +123,7 @@ impl Cfg {
     /// If the content is not properly formatted, it will return an error indicating what and where
     /// the error is.
     pub(crate) fn parse(cfg: &MetaItem) -> Result<Cfg, InvalidCfgError> {
-        Self::parse_without(cfg, &FxHashSet::default()).map(|ret| ret.unwrap())
+        Self::parse_without(cfg, &GxHashSet::default()).map(|ret| ret.unwrap())
     }
 
     /// Checks whether the given configuration can be matched in the current session.

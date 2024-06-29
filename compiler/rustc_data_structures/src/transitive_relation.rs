@@ -1,5 +1,5 @@
 use crate::frozen::Frozen;
-use crate::fx::{FxHashSet, FxIndexSet};
+use crate::gx::{GxHashSet, GxIndexSet};
 use rustc_index::bit_set::BitMatrix;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -12,11 +12,11 @@ mod tests;
 #[derive(Clone, Debug)]
 pub struct TransitiveRelationBuilder<T> {
     // List of elements. This is used to map from a T to a usize.
-    elements: FxIndexSet<T>,
+    elements: GxIndexSet<T>,
 
     // List of base edges in the graph. Require to compute transitive
     // closure.
-    edges: FxHashSet<Edge>,
+    edges: GxHashSet<Edge>,
 }
 
 #[derive(Debug)]
@@ -38,7 +38,7 @@ impl<T> Deref for TransitiveRelation<T> {
 
 impl<T: Clone> Clone for TransitiveRelation<T> {
     fn clone(&self) -> Self {
-        TransitiveRelation {
+        TransitiveRelation::<T> {
             builder: Frozen::freeze(self.builder.deref().clone()),
             closure: Frozen::freeze(self.closure.deref().clone()),
         }

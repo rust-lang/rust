@@ -37,7 +37,7 @@ pub(crate) struct DebugContext {
 
     dwarf: DwarfUnit,
     unit_range_list: RangeList,
-    created_files: FxHashMap<(StableSourceFileId, SourceFileHash), FileId>,
+    created_files: GxHashMap<(StableSourceFileId, SourceFileHash), FileId>,
     stack_pointer_register: Register,
     namespace_map: DefIdMap<UnitEntryId>,
     array_size_type: UnitEntryId,
@@ -148,7 +148,7 @@ impl DebugContext {
             endian,
             dwarf,
             unit_range_list: RangeList(Vec::new()),
-            created_files: FxHashMap::default(),
+            created_files: GxHashMap::default(),
             stack_pointer_register,
             namespace_map: DefIdMap::default(),
             array_size_type,

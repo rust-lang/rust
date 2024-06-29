@@ -9,7 +9,7 @@ use crate::{
 };
 use jobserver::{Acquired, Client};
 use rustc_ast::attr;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::gx::{GxHashMap, GxIndexMap};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_data_structures::sync::Lrc;
@@ -335,7 +335,7 @@ pub type TargetMachineFactoryFn<B> = Arc<
         + Sync,
 >;
 
-pub type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportInfo)>>>;
+pub type ExportedSymbols = GxHashMap<CrateNum, Arc<Vec<(String, SymbolExportInfo)>>>;
 
 /// Additional resources used by optimize_and_codegen (not module specific)
 #[derive(Clone)]
@@ -522,8 +522,8 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
 fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     sess: &Session,
     compiled_modules: &CompiledModules,
-) -> FxIndexMap<WorkProductId, WorkProduct> {
-    let mut work_products = FxIndexMap::default();
+) -> GxIndexMap<WorkProductId, WorkProduct> {
+    let mut work_products = GxIndexMap::default();
 
     if sess.opts.incremental.is_none() {
         return work_products;
@@ -1130,7 +1130,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
     // Compute the set of symbols we need to retain when doing LTO (if we need to)
     let exported_symbols = {
-        let mut exported_symbols = FxHashMap::default();
+        let mut exported_symbols = GxHashMap::default();
 
         let copy_symbols = |cnum| {
             let symbols = tcx
@@ -2043,7 +2043,7 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
 }
 
 impl<B: ExtraBackendMethods> OngoingCodegen<B> {
-    pub fn join(self, sess: &Session) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+    pub fn join(self, sess: &Session) -> (CodegenResults, GxIndexMap<WorkProductId, WorkProduct>) {
         let _timer = sess.timer("finish_ongoing_codegen");
 
         self.shared_emitter_main.check(sess, true);

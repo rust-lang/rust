@@ -119,7 +119,7 @@ const MAX_BYTES_TO_HASH: usize = 64;
 const MAX_HASHED_BUFFER_LEN: usize = 2 * MAX_BYTES_TO_HASH;
 
 // Const allocations are only hashed for interning. However, they can be large, making the hashing
-// expensive especially since it uses `FxHash`: it's better suited to short keys, not potentially
+// expensive especially since it uses `GxHash`: it's better suited to short keys, not potentially
 // big buffers like the actual bytes of allocation. We can partially hash some fields when they're
 // large.
 impl hash::Hash for Allocation {

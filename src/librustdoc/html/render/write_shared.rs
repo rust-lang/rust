@@ -8,7 +8,7 @@ use std::rc::{Rc, Weak};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_data_structures::flock;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_span::def_id::DefId;
 use rustc_span::Symbol;
@@ -201,8 +201,8 @@ pub(super) fn write_shared(
     struct Hierarchy {
         parent: Weak<Self>,
         elem: OsString,
-        children: RefCell<FxHashMap<OsString, Rc<Self>>>,
-        elems: RefCell<FxHashSet<OsString>>,
+        children: RefCell<GxHashMap<OsString, Rc<Self>>>,
+        elems: RefCell<GxHashSet<OsString>>,
     }
 
     impl Hierarchy {
@@ -415,7 +415,7 @@ else if (window.initSearch) window.initSearch(searchIndex);
     struct TypeImplCollector<'cx, 'cache> {
         // Map from DefId-of-aliased-type to its data.
         aliased_types: IndexMap<DefId, AliasedType<'cache>>,
-        visited_aliases: FxHashSet<DefId>,
+        visited_aliases: GxHashSet<DefId>,
         cache: &'cache Cache,
         cx: &'cache mut Context<'cx>,
     }
@@ -490,7 +490,7 @@ else if (window.initSearch) window.initSearch(searchIndex);
             // Exclude impls that are directly on this type. They're already in the HTML.
             // Some inlining scenarios can cause there to be two versions of the same
             // impl: one on the type alias and one on the underlying target type.
-            let mut seen_impls: FxHashSet<ItemId> = cache
+            let mut seen_impls: GxHashSet<ItemId> = cache
                 .impls
                 .get(&self_did)
                 .map(|s| &s[..])
@@ -523,7 +523,7 @@ else if (window.initSearch) window.initSearch(searchIndex);
     }
     let mut type_impl_collector = TypeImplCollector {
         aliased_types: IndexMap::default(),
-        visited_aliases: FxHashSet::default(),
+        visited_aliases: GxHashSet::default(),
         cache,
         cx,
     };

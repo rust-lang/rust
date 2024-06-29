@@ -59,7 +59,7 @@ use rustc_ast as ast;
 use rustc_ast::expand::{allocator::AllocatorKind, StrippedCfgItem};
 use rustc_attr as attr;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
@@ -479,7 +479,7 @@ rustc_queries! {
     /// Set of all the `DefId`s in this crate that have MIR associated with
     /// them. This includes all the body owners, but also things like struct
     /// constructors.
-    query mir_keys(_: ()) -> &'tcx rustc_data_structures::fx::FxIndexSet<LocalDefId> {
+    query mir_keys(_: ()) -> &'tcx rustc_data_structures::gx::GxIndexSet<LocalDefId> {
         arena_cache
         desc { "getting a list of all mir_keys" }
     }
@@ -1239,7 +1239,7 @@ rustc_queries! {
         feedable
     }
 
-    query asm_target_features(def_id: DefId) -> &'tcx FxIndexSet<Symbol> {
+    query asm_target_features(def_id: DefId) -> &'tcx GxIndexSet<Symbol> {
         desc { |tcx| "computing target features for inline asm of `{}`", tcx.def_path_str(def_id) }
     }
 
@@ -1305,7 +1305,7 @@ rustc_queries! {
     }
 
     /// Return all `impl` blocks in the current crate.
-    query all_local_trait_impls(_: ()) -> &'tcx rustc_data_structures::fx::FxIndexMap<DefId, Vec<LocalDefId>> {
+    query all_local_trait_impls(_: ()) -> &'tcx rustc_data_structures::gx::GxIndexMap<DefId, Vec<LocalDefId>> {
         desc { "finding local trait impls" }
     }
 
@@ -1632,7 +1632,7 @@ rustc_queries! {
     }
 
     /// Returns a list of all `extern` blocks of a crate.
-    query foreign_modules(_: CrateNum) -> &'tcx FxIndexMap<DefId, ForeignModule> {
+    query foreign_modules(_: CrateNum) -> &'tcx GxIndexMap<DefId, ForeignModule> {
         arena_cache
         desc { "looking up the foreign modules of a linked crate" }
         separate_provide_extern
@@ -1715,10 +1715,10 @@ rustc_queries! {
         desc { "resolving lifetimes" }
     }
     query named_variable_map(_: hir::OwnerId) ->
-        Option<&'tcx FxIndexMap<ItemLocalId, ResolvedArg>> {
+        Option<&'tcx GxIndexMap<ItemLocalId, ResolvedArg>> {
         desc { "looking up a named region" }
     }
-    query is_late_bound_map(_: hir::OwnerId) -> Option<&'tcx FxIndexSet<ItemLocalId>> {
+    query is_late_bound_map(_: hir::OwnerId) -> Option<&'tcx GxIndexSet<ItemLocalId>> {
         desc { "testing if a region is late bound" }
     }
     /// For a given item's generic parameter, gets the default lifetimes to be used
@@ -1731,7 +1731,7 @@ rustc_queries! {
         separate_provide_extern
     }
     query late_bound_vars_map(_: hir::OwnerId)
-        -> Option<&'tcx FxIndexMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
+        -> Option<&'tcx GxIndexMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
         desc { "looking up late bound vars" }
     }
 
@@ -1886,10 +1886,10 @@ rustc_queries! {
         desc { "alloc error handler kind for the current crate" }
     }
 
-    query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
+    query upvars_mentioned(def_id: DefId) -> Option<&'tcx GxIndexMap<hir::HirId, hir::Upvar>> {
         desc { |tcx| "collecting upvars mentioned in `{}`", tcx.def_path_str(def_id) }
     }
-    query maybe_unused_trait_imports(_: ()) -> &'tcx FxIndexSet<LocalDefId> {
+    query maybe_unused_trait_imports(_: ()) -> &'tcx GxIndexSet<LocalDefId> {
         desc { "fetching potentially unused trait imports" }
     }
     query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx UnordSet<Symbol> {

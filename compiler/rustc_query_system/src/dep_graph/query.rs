@@ -1,12 +1,12 @@
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::implementation::{Direction, Graph, NodeIndex, INCOMING};
+use rustc_data_structures::gx::GxHashMap;
 use rustc_index::IndexVec;
 
 use super::{DepNode, DepNodeIndex};
 
 pub struct DepGraphQuery {
     pub graph: Graph<DepNode, ()>,
-    pub indices: FxHashMap<DepNode, NodeIndex>,
+    pub indices: GxHashMap<DepNode, NodeIndex>,
     pub dep_index_to_index: IndexVec<DepNodeIndex, Option<NodeIndex>>,
 }
 
@@ -16,7 +16,7 @@ impl DepGraphQuery {
         let edge_count = 6 * node_count;
 
         let graph = Graph::with_capacity(node_count, edge_count);
-        let indices = FxHashMap::default();
+        let indices = GxHashMap::default();
         let dep_index_to_index = IndexVec::new();
 
         DepGraphQuery { graph, indices, dep_index_to_index }

@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Applicability, LintDiagnostic};
 use rustc_hir as hir;
@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplTraitOvercaptures {
 fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
     let sig = tcx.fn_sig(parent_def_id).instantiate_identity();
 
-    let mut in_scope_parameters = FxIndexSet::default();
+    let mut in_scope_parameters = GxIndexSet::default();
     // Populate the in_scope_parameters list first with all of the generics in scope
     let mut current_def_id = Some(parent_def_id.to_def_id());
     while let Some(def_id) = current_def_id {
@@ -150,8 +150,8 @@ fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
 struct VisitOpaqueTypes<'tcx> {
     tcx: TyCtxt<'tcx>,
     parent_def_id: LocalDefId,
-    in_scope_parameters: FxIndexSet<DefId>,
-    seen: FxIndexSet<LocalDefId>,
+    in_scope_parameters: GxIndexSet<DefId>,
+    seen: GxIndexSet<LocalDefId>,
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
@@ -212,7 +212,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
             && parent_def_id == self.parent_def_id
         {
             // Compute the set of args that are captured by the opaque...
-            let mut captured = FxIndexSet::default();
+            let mut captured = GxIndexSet::default();
             let variances = self.tcx.variances_of(opaque_def_id);
             let mut current_def_id = Some(opaque_def_id.to_def_id());
             while let Some(def_id) = current_def_id {

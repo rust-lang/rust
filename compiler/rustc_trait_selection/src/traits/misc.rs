@@ -4,7 +4,7 @@ use crate::regions::InferCtxtRegionExt;
 use crate::traits::{self, FulfillmentError, ObligationCause};
 
 use hir::LangItem;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
@@ -192,7 +192,7 @@ pub fn all_fields_implement_trait<'tcx>(
                 infcx.implied_bounds_tys(
                     param_env,
                     parent_cause.body_id,
-                    &FxIndexSet::from_iter([self_type]),
+                    &GxIndexSet::from_iter([self_type]),
                 ),
             );
             let errors = infcx.resolve_regions(&outlives_env);

@@ -1,7 +1,7 @@
 //! The Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for `clean`.
 
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::gx::{GxHashSet, GxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
@@ -31,13 +31,13 @@ pub(crate) struct Module<'hir> {
     pub(crate) renamed: Option<Symbol>,
     pub(crate) import_id: Option<LocalDefId>,
     /// The key is the item `ItemId` and the value is: (item, renamed, import_id).
-    /// We use `FxIndexMap` to keep the insert order.
-    pub(crate) items: FxIndexMap<
+    /// We use `GxIndexMap` to keep the insert order.
+    pub(crate) items: GxIndexMap<
         (LocalDefId, Option<Symbol>),
         (&'hir hir::Item<'hir>, Option<Symbol>, Option<LocalDefId>),
     >,
     /// Same as for `items`.
-    pub(crate) inlined_foreigns: FxIndexMap<(DefId, Option<Symbol>), (Res, LocalDefId)>,
+    pub(crate) inlined_foreigns: GxIndexMap<(DefId, Option<Symbol>), (Res, LocalDefId)>,
     pub(crate) foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
 }
 
@@ -56,8 +56,8 @@ impl Module<'_> {
             renamed,
             import_id,
             mods: Vec::new(),
-            items: FxIndexMap::default(),
-            inlined_foreigns: FxIndexMap::default(),
+            items: GxIndexMap::default(),
+            inlined_foreigns: GxIndexMap::default(),
             foreigns: Vec::new(),
         }
     }
@@ -133,7 +133,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // it can happen if within the same module a `#[macro_export] macro_rules!`
         // is declared but also a reexport of itself producing two exports of the same
         // macro in the same module.
-        let mut inserted = FxHashSet::default();
+        let mut inserted = GxHashSet::default();
         for child in self.cx.tcx.module_children_local(CRATE_DEF_ID) {
             if !child.reexport_chain.is_empty()
                 && let Res::Def(DefKind::Macro(_), def_id) = child.res

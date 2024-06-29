@@ -6,7 +6,7 @@ use crate::fluent_generated as fluent;
 
 use hir::intravisit::Visitor;
 use rustc_ast as ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet, GxIndexSet};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -404,7 +404,7 @@ fn check_trait_item<'tcx>(
 /// ```
 fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
     // Associates every GAT's def_id to a list of possibly missing bounds detected by this lint.
-    let mut required_bounds_by_item = FxHashMap::default();
+    let mut required_bounds_by_item = GxHashMap::default();
     let associated_items = tcx.associated_items(trait_def_id);
 
     // Loop over all GATs together, because if this lint suggests adding a where-clause bound
@@ -430,7 +430,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
             // Gather the bounds with which all other items inside of this trait constrain the GAT.
             // This is calculated by taking the intersection of the bounds that each item
             // constrains the GAT with individually.
-            let mut new_required_bounds: Option<FxHashSet<ty::Clause<'_>>> = None;
+            let mut new_required_bounds: Option<GxHashSet<ty::Clause<'_>>> = None;
             for item in associated_items.in_definition_order() {
                 let item_def_id = item.def_id.expect_local();
                 // Skip our own GAT, since it does not constrain itself at all.
@@ -479,7 +479,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
                             tcx.explicit_item_bounds(item_def_id)
                                 .instantiate_identity_iter_copied()
                                 .collect::<Vec<_>>(),
-                            &FxIndexSet::default(),
+                            &GxIndexSet::default(),
                             gat_def_id,
                             gat_generics,
                         )
@@ -537,13 +537,13 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
                         tcx,
                         gat_def_id,
                         param_env,
-                        &FxIndexSet::default(),
+                        &GxIndexSet::default(),
                         a,
                         b,
                     )
                 }
                 ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
-                    !ty_known_to_outlive(tcx, gat_def_id, param_env, &FxIndexSet::default(), a, b)
+                    !ty_known_to_outlive(tcx, gat_def_id, param_env, &GxIndexSet::default(), a, b)
                 }
                 _ => bug!("Unexpected ClauseKind"),
             })
@@ -589,7 +589,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
 fn augment_param_env<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    new_predicates: Option<&FxHashSet<ty::Clause<'tcx>>>,
+    new_predicates: Option<&GxHashSet<ty::Clause<'tcx>>>,
 ) -> ty::ParamEnv<'tcx> {
     let Some(new_predicates) = new_predicates else {
         return param_env;
@@ -622,12 +622,12 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     param_env: ty::ParamEnv<'tcx>,
     item_def_id: LocalDefId,
     to_check: T,
-    wf_tys: &FxIndexSet<Ty<'tcx>>,
+    wf_tys: &GxIndexSet<Ty<'tcx>>,
     gat_def_id: LocalDefId,
     gat_generics: &'tcx ty::Generics,
-) -> Option<FxHashSet<ty::Clause<'tcx>>> {
+) -> Option<GxHashSet<ty::Clause<'tcx>>> {
     // The bounds we that we would require from `to_check`
-    let mut bounds = FxHashSet::default();
+    let mut bounds = GxHashSet::default();
 
     let (regions, types) = GATArgsCollector::visit(gat_def_id.to_def_id(), to_check);
 
@@ -724,7 +724,7 @@ fn ty_known_to_outlive<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
-    wf_tys: &FxIndexSet<Ty<'tcx>>,
+    wf_tys: &GxIndexSet<Ty<'tcx>>,
     ty: Ty<'tcx>,
     region: ty::Region<'tcx>,
 ) -> bool {
@@ -743,7 +743,7 @@ fn region_known_to_outlive<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
-    wf_tys: &FxIndexSet<Ty<'tcx>>,
+    wf_tys: &GxIndexSet<Ty<'tcx>>,
     region_a: ty::Region<'tcx>,
     region_b: ty::Region<'tcx>,
 ) -> bool {
@@ -759,7 +759,7 @@ fn test_region_obligations<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
-    wf_tys: &FxIndexSet<Ty<'tcx>>,
+    wf_tys: &GxIndexSet<Ty<'tcx>>,
     add_constraints: impl FnOnce(&InferCtxt<'tcx>),
 ) -> bool {
     // Unfortunately, we have to use a new `InferCtxt` each call, because
@@ -789,18 +789,18 @@ fn test_region_obligations<'tcx>(
 struct GATArgsCollector<'tcx> {
     gat: DefId,
     // Which region appears and which parameter index its instantiated with
-    regions: FxHashSet<(ty::Region<'tcx>, usize)>,
+    regions: GxHashSet<(ty::Region<'tcx>, usize)>,
     // Which params appears and which parameter index its instantiated with
-    types: FxHashSet<(Ty<'tcx>, usize)>,
+    types: GxHashSet<(Ty<'tcx>, usize)>,
 }
 
 impl<'tcx> GATArgsCollector<'tcx> {
     fn visit<T: TypeFoldable<TyCtxt<'tcx>>>(
         gat: DefId,
         t: T,
-    ) -> (FxHashSet<(ty::Region<'tcx>, usize)>, FxHashSet<(Ty<'tcx>, usize)>) {
+    ) -> (GxHashSet<(ty::Region<'tcx>, usize)>, GxHashSet<(Ty<'tcx>, usize)>) {
         let mut visitor =
-            GATArgsCollector { gat, regions: FxHashSet::default(), types: FxHashSet::default() };
+            GATArgsCollector { gat, regions: GxHashSet::default(), types: GxHashSet::default() };
         t.visit_with(&mut visitor);
         (visitor.regions, visitor.types)
     }
@@ -1477,7 +1477,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
         .flat_map(|&(pred, sp)| {
             #[derive(Default)]
             struct CountParams {
-                params: FxHashSet<u32>,
+                params: GxHashSet<u32>,
             }
             impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for CountParams {
                 type Result = ControlFlow<()>;
@@ -1831,7 +1831,7 @@ fn check_variances_for_type_defn<'tcx>(
     assert_eq!(ty_predicates.parent, None);
     let variances = tcx.variances_of(item.owner_id);
 
-    let mut constrained_parameters: FxHashSet<_> = variances
+    let mut constrained_parameters: GxHashSet<_> = variances
         .iter()
         .enumerate()
         .filter(|&(_, &variance)| variance != ty::Bivariant)
@@ -1855,7 +1855,7 @@ fn check_variances_for_type_defn<'tcx>(
                 }
                 _ => None,
             })
-            .collect::<FxHashSet<_>>()
+            .collect::<GxHashSet<_>>()
     });
 
     let ty_generics = tcx.generics_of(item.owner_id);
@@ -2068,7 +2068,7 @@ fn lint_redundant_lifetimes<'tcx>(
     // Keep track of lifetimes which have already been replaced with other lifetimes.
     // This makes sure that if `'a = 'b = 'c`, we don't say `'c` should be replaced by
     // both `'a` and `'b`.
-    let mut shadowed = FxHashSet::default();
+    let mut shadowed = GxHashSet::default();
 
     for (idx, &candidate) in lifetimes.iter().enumerate() {
         // Don't suggest removing a lifetime twice. We only need to check this

@@ -1,6 +1,6 @@
 use std::cmp;
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
@@ -63,7 +63,7 @@ pub type LevelAndSource = (Level, LintLevelSource);
 /// by the attributes for *a single HirId*.
 #[derive(Default, Debug, HashStable)]
 pub struct ShallowLintLevelMap {
-    pub specs: SortedMap<ItemLocalId, FxIndexMap<LintId, LevelAndSource>>,
+    pub specs: SortedMap<ItemLocalId, GxIndexMap<LintId, LevelAndSource>>,
 }
 
 /// From an initial level and source, verify the effect of special annotations:

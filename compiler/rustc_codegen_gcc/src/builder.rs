@@ -18,7 +18,7 @@ use rustc_codegen_ssa::traits::{
     OverflowOp, StaticBuilderMethods,
 };
 use rustc_codegen_ssa::MemFlags;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
@@ -223,7 +223,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             param_types.push(param);
         }
 
-        let mut on_stack_param_indices = FxHashSet::default();
+        let mut on_stack_param_indices = GxHashSet::default();
         if let Some(indices) = self.on_stack_params.borrow().get(&gcc_func) {
             on_stack_param_indices = indices.clone();
         }

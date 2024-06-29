@@ -2,7 +2,7 @@
 
 use super::{to_nonzero, Feature};
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
@@ -60,7 +60,7 @@ macro_rules! declare_features {
             /// "declared" here means that the feature is actually enabled in the current crate.
             pub declared_lib_features: Vec<(Symbol, Span)>,
             /// `declared_lang_features` + `declared_lib_features`.
-            pub declared_features: FxHashSet<Symbol>,
+            pub declared_features: GxHashSet<Symbol>,
             /// Active state of individual features (unstable only).
             $(
                 $(#[doc = $doc])*

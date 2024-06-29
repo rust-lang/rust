@@ -2,13 +2,13 @@
 
 use crate::dep_graph::{DepContext, DepNodeIndex};
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::sync::Lock;
 
 use std::hash::Hash;
 
 pub struct Cache<Key, Value> {
-    hashmap: Lock<FxHashMap<Key, WithDepNode<Value>>>,
+    hashmap: Lock<GxHashMap<Key, WithDepNode<Value>>>,
 }
 
 impl<Key: Clone, Value: Clone> Clone for Cache<Key, Value> {

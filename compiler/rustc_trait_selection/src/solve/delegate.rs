@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
@@ -305,7 +305,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
         assert_eq!(region_constraints.member_constraints, vec![]);
 
-        let mut seen = FxHashSet::default();
+        let mut seen = GxHashSet::default();
         region_constraints
             .outlives
             .into_iter()

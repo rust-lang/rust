@@ -4,7 +4,7 @@ use crate::lints::{
 };
 use crate::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::symbol::Symbol;
@@ -290,7 +290,7 @@ impl EarlyLintPass for NonAsciiIdents {
                 Verified,
             }
 
-            let mut script_states: FxIndexMap<AugmentedScriptSet, ScriptSetUsage> =
+            let mut script_states: GxIndexMap<AugmentedScriptSet, ScriptSetUsage> =
                 Default::default();
             let latin_augmented_script_set = AugmentedScriptSet::for_char('A');
             script_states.insert(latin_augmented_script_set, ScriptSetUsage::Verified);

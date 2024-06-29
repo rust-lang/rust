@@ -1,7 +1,7 @@
 use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageKind};
 use rustc_middle::mir::{self, BasicBlock, SourceInfo, UnOp};
 use rustc_middle::thir::{ExprId, ExprKind, Pat, Thir};
@@ -15,7 +15,7 @@ mod mcdc;
 
 pub(crate) struct BranchInfoBuilder {
     /// Maps condition expressions to their enclosing `!`, for better instrumentation.
-    nots: FxHashMap<ExprId, NotInfo>,
+    nots: GxHashMap<ExprId, NotInfo>,
 
     markers: BlockMarkerGen,
     branch_spans: Vec<BranchSpan>,
@@ -68,7 +68,7 @@ impl BranchInfoBuilder {
     pub(crate) fn new_if_enabled(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Self> {
         if tcx.sess.instrument_coverage_branch() && tcx.is_eligible_for_coverage(def_id) {
             Some(Self {
-                nots: FxHashMap::default(),
+                nots: GxHashMap::default(),
                 markers: BlockMarkerGen::default(),
                 branch_spans: vec![],
                 mcdc_info: tcx.sess.instrument_coverage_mcdc().then(MCDCInfoBuilder::new),

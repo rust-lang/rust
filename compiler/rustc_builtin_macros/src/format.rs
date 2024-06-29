@@ -9,7 +9,7 @@ use rustc_ast::{
     FormatArgsPiece, FormatArgument, FormatArgumentKind, FormatArguments, FormatCount,
     FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait, Recovered,
 };
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_errors::{Applicability, Diag, MultiSpan, PResult, SingleLabelManySpans};
 use rustc_expand::base::*;
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
@@ -658,7 +658,7 @@ fn report_missing_placeholders(
 
         // The set of foreign substitutions we've explained. This prevents spamming the user
         // with `%d should be written as {}` over and over again.
-        let mut explained = FxHashSet::default();
+        let mut explained = GxHashSet::default();
 
         macro_rules! check_foreign {
             ($kind:ident) => {{

@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -63,7 +63,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                     // Side-note: We don't really need to do this remapping for early-bound
                     // lifetimes because they're already "linked" by the bidirectional outlives
                     // predicates we insert in the `explicit_predicates_of` query for RPITITs.
-                    let mut mapping = FxHashMap::default();
+                    let mut mapping = GxHashMap::default();
                     let generics = tcx.generics_of(def_id);
 
                     // For each captured opaque lifetime, if it's late-bound (`ReLateParam` in this

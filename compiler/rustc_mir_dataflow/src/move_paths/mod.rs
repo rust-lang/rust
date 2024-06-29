@@ -1,5 +1,5 @@
 use crate::un_derefer::UnDerefer;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
@@ -300,7 +300,7 @@ pub struct MovePathLookup<'tcx> {
     /// subsequent search so that it is solely relative to that
     /// base-place). For the remaining lookup, we map the projection
     /// elem to the associated MovePathIndex.
-    projections: FxHashMap<(MovePathIndex, AbstractElem), MovePathIndex>,
+    projections: GxHashMap<(MovePathIndex, AbstractElem), MovePathIndex>,
 
     un_derefer: UnDerefer<'tcx>,
 }

@@ -16,8 +16,8 @@ use rustc_ast::{
     MethodCall, NodeId, Path, Ty, TyKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxHashSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
     SuggestionStyle,
@@ -2280,7 +2280,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     fn find_module(&mut self, def_id: DefId) -> Option<(Module<'a>, ImportSuggestion)> {
         let mut result = None;
-        let mut seen_modules = FxHashSet::default();
+        let mut seen_modules = GxHashSet::default();
         let root_did = self.r.graph_root.def_id();
         let mut worklist = vec![(
             self.r.graph_root,
@@ -2782,9 +2782,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             | LifetimeBinderKind::WhereBound
                     );
 
-                    let mut rm_inner_binders: FxIndexSet<Span> = Default::default();
+                    let mut rm_inner_binders: GxIndexSet<Span> = Default::default();
                     let (span, sugg) = if span.is_empty() {
-                        let mut binder_idents: FxIndexSet<Ident> = Default::default();
+                        let mut binder_idents: GxIndexSet<Ident> = Default::default();
                         binder_idents.insert(Ident::from_str(name.unwrap_or("'a")));
 
                         // We need to special case binders in the following situation:

@@ -11,7 +11,7 @@
 //   within the brackets).
 // * `"` is treated as the start of a string.
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
@@ -40,7 +40,7 @@ pub fn compute_debuginfo_type_name<'tcx>(
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
 
     let mut result = String::with_capacity(64);
-    let mut visited = FxHashSet::default();
+    let mut visited = GxHashSet::default();
     push_debuginfo_type_name(tcx, t, qualified, &mut result, &mut visited);
     result
 }
@@ -52,7 +52,7 @@ fn push_debuginfo_type_name<'tcx>(
     t: Ty<'tcx>,
     qualified: bool,
     output: &mut String,
-    visited: &mut FxHashSet<Ty<'tcx>>,
+    visited: &mut GxHashSet<Ty<'tcx>>,
 ) {
     // When targeting MSVC, emit C++ style type names for compatibility with
     // .natvis visualizers (and perhaps other existing native debuggers?)
@@ -455,9 +455,9 @@ fn push_debuginfo_type_name<'tcx>(
     // rustc_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs.
     fn msvc_enum_fallback<'tcx>(
         ty_and_layout: TyAndLayout<'tcx>,
-        push_inner: &dyn Fn(/*output*/ &mut String, /*visited*/ &mut FxHashSet<Ty<'tcx>>),
+        push_inner: &dyn Fn(/*output*/ &mut String, /*visited*/ &mut GxHashSet<Ty<'tcx>>),
         output: &mut String,
-        visited: &mut FxHashSet<Ty<'tcx>>,
+        visited: &mut GxHashSet<Ty<'tcx>>,
     ) {
         debug_assert!(!wants_c_like_enum_debuginfo(ty_and_layout));
         output.push_str("enum2$<");
@@ -520,7 +520,7 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
         vtable_name.push('<');
     }
 
-    let mut visited = FxHashSet::default();
+    let mut visited = GxHashSet::default();
     push_debuginfo_type_name(tcx, t, true, &mut vtable_name, &mut visited);
 
     if cpp_like_debuginfo {
@@ -658,7 +658,7 @@ fn push_generic_params_internal<'tcx>(
     args: GenericArgsRef<'tcx>,
     def_id: DefId,
     output: &mut String,
-    visited: &mut FxHashSet<Ty<'tcx>>,
+    visited: &mut GxHashSet<Ty<'tcx>>,
 ) -> bool {
     debug_assert_eq!(args, tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), args));
     let mut args = args.non_erasable_generics(tcx, def_id).peekable();
@@ -744,7 +744,7 @@ pub fn push_generic_params<'tcx>(
     output: &mut String,
 ) {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
-    let mut visited = FxHashSet::default();
+    let mut visited = GxHashSet::default();
     push_generic_params_internal(tcx, args, def_id, output, &mut visited);
 }
 
@@ -754,7 +754,7 @@ fn push_closure_or_coroutine_name<'tcx>(
     args: GenericArgsRef<'tcx>,
     qualified: bool,
     output: &mut String,
-    visited: &mut FxHashSet<Ty<'tcx>>,
+    visited: &mut GxHashSet<Ty<'tcx>>,
 ) {
     // Name will be "{closure_env#0}<T1, T2, ...>", "{coroutine_env#0}<T1, T2, ...>", or
     // "{async_fn_env#0}<T1, T2, ...>", etc.

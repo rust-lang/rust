@@ -3,7 +3,7 @@ use cranelift_object::ObjectProduct;
 use gimli::SectionId;
 use object::write::{Relocation, StandardSegment};
 use object::{RelocationEncoding, RelocationFlags, SectionKind};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 
 use crate::debuginfo::{DebugReloc, DebugRelocName};
 
@@ -13,7 +13,7 @@ pub(super) trait WriteDebugInfo {
     fn add_debug_section(&mut self, name: SectionId, data: Vec<u8>) -> Self::SectionId;
     fn add_debug_reloc(
         &mut self,
-        section_map: &FxHashMap<SectionId, Self::SectionId>,
+        section_map: &GxHashMap<SectionId, Self::SectionId>,
         from: &Self::SectionId,
         reloc: &DebugReloc,
     );
@@ -50,7 +50,7 @@ impl WriteDebugInfo for ObjectProduct {
 
     fn add_debug_reloc(
         &mut self,
-        section_map: &FxHashMap<SectionId, Self::SectionId>,
+        section_map: &GxHashMap<SectionId, Self::SectionId>,
         from: &Self::SectionId,
         reloc: &DebugReloc,
     ) {

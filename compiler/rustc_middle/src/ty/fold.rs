@@ -1,5 +1,5 @@
 use crate::ty::{self, Binder, BoundTy, Ty, TyCtxt, TypeVisitableExt};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_hir::def_id::DefId;
 use tracing::{debug, instrument};
 
@@ -255,12 +255,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         value: Binder<'tcx, T>,
         mut fld_r: F,
-    ) -> (T, FxIndexMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> (T, GxIndexMap<ty::BoundRegion, ty::Region<'tcx>>)
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let mut region_map = FxIndexMap::default();
+        let mut region_map = GxIndexMap::default();
         let real_fld_r = |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
         let value = self.instantiate_bound_regions_uncached(value, real_fld_r);
         (value, region_map)
@@ -374,7 +374,7 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         struct Anonymize<'a, 'tcx> {
             tcx: TyCtxt<'tcx>,
-            map: &'a mut FxIndexMap<ty::BoundVar, ty::BoundVariableKind>,
+            map: &'a mut GxIndexMap<ty::BoundVar, ty::BoundVariableKind>,
         }
         impl<'tcx> BoundVarReplacerDelegate<'tcx> for Anonymize<'_, 'tcx> {
             fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx> {

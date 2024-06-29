@@ -1,7 +1,7 @@
 //! Code for debugging the dep-graph.
 
 use super::{DepNode, DepNodeIndex};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::sync::Lock;
 use std::error::Error;
 
@@ -39,7 +39,7 @@ impl DepNodeFilter {
 pub struct EdgeFilter {
     pub source: DepNodeFilter,
     pub target: DepNodeFilter,
-    pub index_to_node: Lock<FxHashMap<DepNodeIndex, DepNode>>,
+    pub index_to_node: Lock<GxHashMap<DepNodeIndex, DepNode>>,
 }
 
 impl EdgeFilter {
@@ -51,7 +51,7 @@ impl EdgeFilter {
             Ok(EdgeFilter {
                 source: DepNodeFilter::new(parts[0]),
                 target: DepNodeFilter::new(parts[1]),
-                index_to_node: Lock::new(FxHashMap::default()),
+                index_to_node: Lock::new(GxHashMap::default()),
             })
         }
     }

@@ -3,7 +3,7 @@ use core::ops::ControlFlow;
 use rustc_ast as ast;
 use rustc_ast::visit::Visitor;
 use rustc_ast::*;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_hir as hir;
 use rustc_span::{
     sym,
@@ -282,7 +282,7 @@ fn make_count<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
     sp: Span,
     count: &Option<FormatCount>,
-    argmap: &mut FxIndexMap<(usize, ArgumentType), Option<Span>>,
+    argmap: &mut GxIndexMap<(usize, ArgumentType), Option<Span>>,
 ) -> hir::Expr<'hir> {
     match count {
         Some(FormatCount::Literal(n)) => {
@@ -335,7 +335,7 @@ fn make_format_spec<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
     sp: Span,
     placeholder: &FormatPlaceholder,
-    argmap: &mut FxIndexMap<(usize, ArgumentType), Option<Span>>,
+    argmap: &mut GxIndexMap<(usize, ArgumentType), Option<Span>>,
 ) -> hir::Expr<'hir> {
     let position = match placeholder.argument.index {
         Ok(arg_index) => {
@@ -432,7 +432,7 @@ fn expand_format_args<'hir>(
 
     // Create a list of all _unique_ (argument, format trait) combinations.
     // E.g. "{0} {0:x} {0} {1}" -> [(0, Display), (0, LowerHex), (1, Display)]
-    let mut argmap = FxIndexMap::default();
+    let mut argmap = GxIndexMap::default();
     for piece in &fmt.template {
         let FormatArgsPiece::Placeholder(placeholder) = piece else { continue };
         if placeholder.format_options != Default::default() {

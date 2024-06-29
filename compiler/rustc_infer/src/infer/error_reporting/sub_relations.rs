@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::undo_log::NoUndo;
 use rustc_data_structures::unify as ut;
 use rustc_middle::ty;
@@ -38,7 +38,7 @@ impl ut::UnifyKey for SubId {
 /// still want to suggest specifying the type of the argument.
 #[derive(Default)]
 pub struct SubRelations {
-    map: FxHashMap<ty::TyVid, SubId>,
+    map: GxHashMap<ty::TyVid, SubId>,
     table: ut::UnificationTableStorage<SubId>,
 }
 

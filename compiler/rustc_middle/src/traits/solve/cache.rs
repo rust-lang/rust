@@ -1,6 +1,6 @@
 use super::{inspect, CanonicalInput, QueryResult};
 use crate::ty::TyCtxt;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_data_structures::sync::Lock;
 use rustc_query_system::cache::WithDepNode;
 use rustc_query_system::dep_graph::DepNodeIndex;
@@ -13,7 +13,7 @@ use rustc_type_ir::solve::CacheData;
 /// this works.
 #[derive(Default)]
 pub struct EvaluationCache<'tcx> {
-    map: Lock<FxHashMap<CanonicalInput<'tcx>, CacheEntry<'tcx>>>,
+    map: Lock<GxHashMap<CanonicalInput<'tcx>, CacheEntry<'tcx>>>,
 }
 
 impl<'tcx> rustc_type_ir::inherent::EvaluationCache<TyCtxt<'tcx>> for &'tcx EvaluationCache<'tcx> {
@@ -25,7 +25,7 @@ impl<'tcx> rustc_type_ir::inherent::EvaluationCache<TyCtxt<'tcx>> for &'tcx Eval
         proof_tree: Option<&'tcx inspect::CanonicalGoalEvaluationStep<TyCtxt<'tcx>>>,
         additional_depth: usize,
         encountered_overflow: bool,
-        cycle_participants: FxHashSet<CanonicalInput<'tcx>>,
+        cycle_participants: GxHashSet<CanonicalInput<'tcx>>,
         dep_node: DepNodeIndex,
         result: QueryResult<'tcx>,
     ) {
@@ -116,6 +116,6 @@ struct CacheEntry<'tcx> {
     ///
     /// See the doc comment of `StackEntry::cycle_participants` for more
     /// details.
-    cycle_participants: FxHashSet<CanonicalInput<'tcx>>,
-    with_overflow: FxHashMap<usize, WithDepNode<QueryData<'tcx>>>,
+    cycle_participants: GxHashSet<CanonicalInput<'tcx>>,
+    with_overflow: GxHashMap<usize, WithDepNode<QueryData<'tcx>>>,
 }

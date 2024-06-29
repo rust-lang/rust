@@ -13,7 +13,7 @@ use crate::traits::NormalizeExt;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{util, FulfillmentErrorCode};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, SelectionContext};
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -63,7 +63,7 @@ pub enum Conflict {
 
 pub struct OverlapResult<'tcx> {
     pub impl_header: ty::ImplHeader<'tcx>,
-    pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
+    pub intercrate_ambiguity_causes: GxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 
     /// `true` if the overlap might've been permitted before the shift
     /// to universes.
@@ -1042,8 +1042,8 @@ where
 fn compute_intercrate_ambiguity_causes<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligations: &[PredicateObligation<'tcx>],
-) -> FxIndexSet<IntercrateAmbiguityCause<'tcx>> {
-    let mut causes: FxIndexSet<IntercrateAmbiguityCause<'tcx>> = Default::default();
+) -> GxIndexSet<IntercrateAmbiguityCause<'tcx>> {
+    let mut causes: GxIndexSet<IntercrateAmbiguityCause<'tcx>> = Default::default();
 
     for obligation in obligations {
         search_ambiguity_causes(infcx, obligation.clone().into(), &mut causes);
@@ -1053,7 +1053,7 @@ fn compute_intercrate_ambiguity_causes<'tcx>(
 }
 
 struct AmbiguityCausesVisitor<'a, 'tcx> {
-    causes: &'a mut FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
+    causes: &'a mut GxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 }
 
 impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
@@ -1188,7 +1188,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
 fn search_ambiguity_causes<'tcx>(
     infcx: &InferCtxt<'tcx>,
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    causes: &mut FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
+    causes: &mut GxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 ) {
     infcx.probe(|_| infcx.visit_proof_tree(goal, &mut AmbiguityCausesVisitor { causes }));
 }

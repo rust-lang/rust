@@ -6,7 +6,7 @@ use std::sync::Arc;
 use thin_vec::{thin_vec, ThinVec};
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdSet, LocalModDefId};
@@ -173,7 +173,7 @@ pub(crate) fn try_inline_glob(
     res: Res,
     current_mod: LocalModDefId,
     visited: &mut DefIdSet,
-    inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
+    inlined_names: &mut GxHashSet<(ItemType, Symbol)>,
     import: &hir::Item<'_>,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
@@ -634,7 +634,7 @@ pub(crate) fn build_impl(
 }
 
 fn build_module(cx: &mut DocContext<'_>, did: DefId, visited: &mut DefIdSet) -> clean::Module {
-    let items = build_module_items(cx, did, visited, &mut FxHashSet::default(), None, None);
+    let items = build_module_items(cx, did, visited, &mut GxHashSet::default(), None, None);
 
     let span = clean::Span::new(cx.tcx.def_span(did));
     clean::Module { items, span }
@@ -644,7 +644,7 @@ fn build_module_items(
     cx: &mut DocContext<'_>,
     did: DefId,
     visited: &mut DefIdSet,
-    inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
+    inlined_names: &mut GxHashSet<(ItemType, Symbol)>,
     allowed_def_ids: Option<&DefIdSet>,
     attrs: Option<(&[ast::Attribute], Option<DefId>)>,
 ) -> Vec<clean::Item> {

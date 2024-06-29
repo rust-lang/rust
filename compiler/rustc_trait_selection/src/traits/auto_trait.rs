@@ -7,7 +7,7 @@ use crate::errors::UnableToConstructConstantValue;
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::traits::project::ProjectAndUnifyResult;
 
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet, IndexEntry};
 use rustc_data_structures::unord::UnordSet;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -25,8 +25,8 @@ pub enum RegionTarget<'tcx> {
 
 #[derive(Default, Debug, Clone)]
 pub struct RegionDeps<'tcx> {
-    pub larger: FxIndexSet<RegionTarget<'tcx>>,
-    pub smaller: FxIndexSet<RegionTarget<'tcx>>,
+    pub larger: GxIndexSet<RegionTarget<'tcx>>,
+    pub smaller: GxIndexSet<RegionTarget<'tcx>>,
 }
 
 pub enum AutoTraitResult<A> {
@@ -38,7 +38,7 @@ pub enum AutoTraitResult<A> {
 pub struct AutoTraitInfo<'cx> {
     pub full_user_env: ty::ParamEnv<'cx>,
     pub region_data: RegionConstraintData<'cx>,
-    pub vid_to_region: FxIndexMap<ty::RegionVid, ty::Region<'cx>>,
+    pub vid_to_region: GxIndexMap<ty::RegionVid, ty::Region<'cx>>,
 }
 
 pub struct AutoTraitFinder<'tcx> {
@@ -100,7 +100,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
 
         let infcx = tcx.infer_ctxt().build();
-        let mut fresh_preds = FxIndexSet::default();
+        let mut fresh_preds = GxIndexSet::default();
 
         // Due to the way projections are handled by SelectionContext, we need to run
         // evaluate_predicates twice: once on the original param env, and once on the result of
@@ -222,7 +222,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         user_env: ty::ParamEnv<'tcx>,
-        fresh_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
+        fresh_preds: &mut GxIndexSet<ty::Predicate<'tcx>>,
     ) -> Option<(ty::ParamEnv<'tcx>, ty::ParamEnv<'tcx>)> {
         let tcx = infcx.tcx;
 
@@ -245,7 +245,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }));
 
         let computed_preds = param_env.caller_bounds().iter().map(|c| c.as_predicate());
-        let mut user_computed_preds: FxIndexSet<_> =
+        let mut user_computed_preds: GxIndexSet<_> =
             user_env.caller_bounds().iter().map(|c| c.as_predicate()).collect();
 
         let mut new_env = param_env;
@@ -365,7 +365,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// not just one specific lifetime (e.g., `'static`).
     fn add_user_pred(
         &self,
-        user_computed_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
+        user_computed_preds: &mut GxIndexSet<ty::Predicate<'tcx>>,
         new_pred: ty::Predicate<'tcx>,
     ) {
         let mut should_add_new = true;
@@ -454,9 +454,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     fn map_vid_to_region<'cx>(
         &self,
         regions: &RegionConstraintData<'cx>,
-    ) -> FxIndexMap<ty::RegionVid, ty::Region<'cx>> {
-        let mut vid_map = FxIndexMap::<RegionTarget<'cx>, RegionDeps<'cx>>::default();
-        let mut finished_map = FxIndexMap::default();
+    ) -> GxIndexMap<ty::RegionVid, ty::Region<'cx>> {
+        let mut vid_map = GxIndexMap::<RegionTarget<'cx>, RegionDeps<'cx>>::default();
+        let mut finished_map = GxIndexMap::default();
 
         for (constraint, _) in &regions.constraints {
             match constraint {
@@ -564,8 +564,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         &self,
         ty: Ty<'_>,
         nested: impl Iterator<Item = PredicateObligation<'tcx>>,
-        computed_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
-        fresh_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
+        computed_preds: &mut GxIndexSet<ty::Predicate<'tcx>>,
+        fresh_preds: &mut GxIndexSet<ty::Predicate<'tcx>>,
         predicates: &mut VecDeque<ty::PolyTraitPredicate<'tcx>>,
         selcx: &mut SelectionContext<'_, 'tcx>,
     ) -> bool {

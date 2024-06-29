@@ -1,6 +1,6 @@
 use crate::infer::InferCtxt;
 use crate::traits::{ObligationCause, ObligationCtxt};
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::infer::InferOk;
 use rustc_macros::extension;
@@ -119,7 +119,7 @@ impl<'a, 'tcx: 'a> InferCtxt<'tcx> {
         &'a self,
         param_env: ParamEnv<'tcx>,
         body_id: LocalDefId,
-        tys: &'a FxIndexSet<Ty<'tcx>>,
+        tys: &'a GxIndexSet<Ty<'tcx>>,
         compat: bool,
     ) -> BoundsCompat<'a, 'tcx> {
         tys.iter()
@@ -132,7 +132,7 @@ impl<'a, 'tcx: 'a> InferCtxt<'tcx> {
         &'a self,
         param_env: ParamEnv<'tcx>,
         body_id: LocalDefId,
-        tys: &'a FxIndexSet<Ty<'tcx>>,
+        tys: &'a GxIndexSet<Ty<'tcx>>,
     ) -> Bounds<'a, 'tcx> {
         tys.iter().flat_map(move |ty| {
             implied_outlives_bounds(

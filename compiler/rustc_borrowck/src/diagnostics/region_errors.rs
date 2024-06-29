@@ -1,6 +1,6 @@
 //! Error reporting machinery for lifetime errors.
 
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res::Def;
@@ -968,7 +968,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         };
         debug!(?param);
 
-        let mut visitor = TraitObjectVisitor(FxIndexSet::default());
+        let mut visitor = TraitObjectVisitor(GxIndexSet::default());
         visitor.visit_ty(param.param_ty);
 
         let Some((ident, self_ty)) = NiceRegionError::get_impl_ident_and_self_ty_from_trait(
@@ -988,7 +988,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
     fn suggest_constrain_dyn_trait_in_impl(
         &self,
         err: &mut Diag<'_>,
-        found_dids: &FxIndexSet<DefId>,
+        found_dids: &GxIndexSet<DefId>,
         ident: Ident,
         self_ty: &hir::Ty<'_>,
     ) -> bool {

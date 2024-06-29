@@ -7,7 +7,7 @@ use crate::llvm;
 use libc::c_int;
 use rustc_codegen_ssa::base::wants_wasm_eh;
 use rustc_codegen_ssa::traits::PrintBackendInfo;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
@@ -65,7 +65,7 @@ unsafe fn configure_llvm(sess: &Session) {
     let tg_opts = sess.target.llvm_args.iter().map(AsRef::as_ref);
     let sess_args = cg_opts.chain(tg_opts);
 
-    let user_specified_args: FxHashSet<_> =
+    let user_specified_args: GxHashSet<_> =
         sess_args.clone().map(|s| llvm_arg_to_arg_name(s)).filter(|s| !s.is_empty()).collect();
 
     {
@@ -287,7 +287,7 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
 /// ensure only valid combinations are allowed.
 pub fn check_tied_features(
     sess: &Session,
-    features: &FxHashMap<&str, bool>,
+    features: &GxHashMap<&str, bool>,
 ) -> Option<&'static [&'static str]> {
     if !features.is_empty() {
         for tied in sess.target.tied_target_features() {
@@ -374,7 +374,7 @@ fn llvm_target_features(tm: &llvm::TargetMachine) -> Vec<(&str, &str)> {
 
 fn print_target_features(out: &mut dyn PrintBackendInfo, sess: &Session, tm: &llvm::TargetMachine) {
     let mut llvm_target_features = llvm_target_features(tm);
-    let mut known_llvm_target_features = FxHashSet::<&'static str>::default();
+    let mut known_llvm_target_features = GxHashSet::<&'static str>::default();
     let mut rustc_target_features = sess
         .target
         .supported_target_features()
@@ -540,7 +540,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
 
     // -Ctarget-features
     let supported_features = sess.target.supported_target_features();
-    let mut featsmap = FxHashMap::default();
+    let mut featsmap = GxHashMap::default();
     let feats = sess
         .opts
         .cg

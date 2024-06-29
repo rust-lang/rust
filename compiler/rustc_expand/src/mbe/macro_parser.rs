@@ -77,7 +77,7 @@ use crate::mbe::{macro_rules::Tracker, KleeneOp, TokenTree};
 
 use rustc_ast::token::{self, DocComment, NonterminalKind, Token};
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
 use rustc_parse::parser::{ParseNtResult, Parser};
@@ -325,7 +325,7 @@ pub(crate) type NamedParseResult<F> = ParseResult<NamedMatches, F>;
 
 /// Contains a mapping of `MacroRulesNormalizedIdent`s to `NamedMatch`es.
 /// This represents the mapping of metavars to the token trees they bind to.
-pub(crate) type NamedMatches = FxHashMap<MacroRulesNormalizedIdent, NamedMatch>;
+pub(crate) type NamedMatches = GxHashMap<MacroRulesNormalizedIdent, NamedMatch>;
 
 /// Count how many metavars declarations are in `matcher`.
 pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
@@ -743,7 +743,7 @@ impl TtParser {
     ) -> NamedParseResult<F> {
         // Make that each metavar has _exactly one_ binding. If so, insert the binding into the
         // `NamedParseResult`. Otherwise, it's an error.
-        let mut ret_val = FxHashMap::default();
+        let mut ret_val = GxHashMap::default();
         for loc in matcher {
             if let &MatcherLoc::MetaVarDecl { span, bind, kind, .. } = loc {
                 if kind.is_some() {

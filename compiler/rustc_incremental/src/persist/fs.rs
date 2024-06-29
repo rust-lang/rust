@@ -109,7 +109,7 @@ use rustc_data_structures::base_n::BaseNString;
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::base_n::CASE_INSENSITIVE;
 use rustc_data_structures::flock;
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::gx::{GxHashSet, GxIndexSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::ErrorGuaranteed;
@@ -240,7 +240,7 @@ pub(crate) fn prepare_session_directory(sess: &Session) -> Result<(), ErrorGuara
         }
     };
 
-    let mut source_directories_already_tried = FxHashSet::default();
+    let mut source_directories_already_tried = GxHashSet::default();
 
     loop {
         // Generate a session directory of the form:
@@ -510,7 +510,7 @@ fn delete_session_dir_lock_file(sess: &Session, lock_file_path: &Path) {
 /// ignore-list.
 fn find_source_directory(
     crate_dir: &Path,
-    source_directories_already_tried: &FxHashSet<PathBuf>,
+    source_directories_already_tried: &GxHashSet<PathBuf>,
 ) -> Option<PathBuf> {
     let iter = crate_dir
         .read_dir()
@@ -522,7 +522,7 @@ fn find_source_directory(
 
 fn find_source_directory_in_iter<I>(
     iter: I,
-    source_directories_already_tried: &FxHashSet<PathBuf>,
+    source_directories_already_tried: &GxHashSet<PathBuf>,
 ) -> Option<PathBuf>
 where
     I: Iterator<Item = PathBuf>,
@@ -647,7 +647,7 @@ pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<
 
     // First do a pass over the crate directory, collecting lock files and
     // session directories
-    let mut session_directories = FxIndexSet::default();
+    let mut session_directories = GxIndexSet::default();
     let mut lock_files = UnordSet::default();
 
     for dir_entry in crate_directory.read_dir()? {

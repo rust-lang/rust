@@ -1,5 +1,5 @@
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_data_structures::profiling::{QueryInvocationId, SelfProfilerRef};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -92,7 +92,7 @@ pub(crate) struct DepGraphData<D: Deps> {
 
     colors: DepNodeColorMap,
 
-    processed_side_effects: Lock<FxHashSet<DepNodeIndex>>,
+    processed_side_effects: Lock<GxHashSet<DepNodeIndex>>,
 
     /// When we load, there may be `.o` files, cached MIR, or other such
     /// things available to us. If we find that they are not dirty, we
@@ -100,12 +100,12 @@ pub(crate) struct DepGraphData<D: Deps> {
     /// this map. We can later look for and extract that data.
     previous_work_products: WorkProductMap,
 
-    dep_node_debug: Lock<FxHashMap<DepNode, String>>,
+    dep_node_debug: Lock<GxHashMap<DepNode, String>>,
 
     /// Used by incremental compilation tests to assert that
     /// a particular query result was decoded from disk
     /// (not just marked green)
-    debug_loaded_from_disk: Lock<FxHashSet<DepNode>>,
+    debug_loaded_from_disk: Lock<GxHashSet<DepNode>>,
 }
 
 pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Fingerprint
@@ -1054,7 +1054,7 @@ rustc_index::newtype_index! {
 /// first, and `data` second.
 pub(super) struct CurrentDepGraph<D: Deps> {
     encoder: GraphEncoder<D>,
-    new_node_to_index: Sharded<FxHashMap<DepNode, DepNodeIndex>>,
+    new_node_to_index: Sharded<GxHashMap<DepNode, DepNodeIndex>>,
     prev_index_to_index: Lock<IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>>,
 
     /// This is used to verify that fingerprints do not change between the creation of a node
@@ -1124,7 +1124,7 @@ impl<D: Deps> CurrentDepGraph<D> {
                 previous,
             ),
             new_node_to_index: Sharded::new(|| {
-                FxHashMap::with_capacity_and_hasher(
+                GxHashMap::with_capacity_and_hasher(
                     new_node_count_estimate / sharded::shards(),
                     Default::default(),
                 )
@@ -1295,7 +1295,7 @@ pub struct TaskDeps {
     #[cfg(debug_assertions)]
     node: Option<DepNode>,
     reads: EdgesVec,
-    read_set: FxHashSet<DepNodeIndex>,
+    read_set: GxHashSet<DepNodeIndex>,
     phantom_data: PhantomData<DepNode>,
 }
 
@@ -1305,7 +1305,7 @@ impl Default for TaskDeps {
             #[cfg(debug_assertions)]
             node: None,
             reads: EdgesVec::new(),
-            read_set: FxHashSet::default(),
+            read_set: GxHashSet::default(),
             phantom_data: PhantomData,
         }
     }

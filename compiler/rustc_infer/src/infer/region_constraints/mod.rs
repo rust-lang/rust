@@ -6,7 +6,7 @@ use self::UndoLog::*;
 use super::{MiscVariable, RegionVariableOrigin, Rollback, SubregionOrigin};
 use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, Snapshot};
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
@@ -287,7 +287,7 @@ pub(crate) enum CombineMapType {
     Glb,
 }
 
-type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
+type CombineMap<'tcx> = GxHashMap<TwoRegions<'tcx>, RegionVid>;
 
 #[derive(Debug, Clone, Copy)]
 pub struct RegionVariableInfo {

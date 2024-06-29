@@ -1,5 +1,5 @@
 use pathdiff::diff_paths;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_fs_util::try_canonicalize;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -110,7 +110,7 @@ fn path_relative_from(path: &Path, base: &Path) -> Option<PathBuf> {
 }
 
 fn minimize_rpaths(rpaths: &[OsString]) -> Vec<OsString> {
-    let mut set = FxHashSet::default();
+    let mut set = GxHashSet::default();
     let mut minimized = Vec::new();
     for rpath in rpaths {
         if set.insert(rpath) {

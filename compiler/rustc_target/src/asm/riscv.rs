@@ -1,6 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 use crate::spec::{RelocModel, Target};
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_span::{sym, Symbol};
 use std::fmt;
 
@@ -55,7 +55,7 @@ impl RiscVInlineAsmRegClass {
 fn not_e(
     _arch: InlineAsmArch,
     _reloc_model: RelocModel,
-    target_features: &FxIndexSet<Symbol>,
+    target_features: &GxIndexSet<Symbol>,
     _target: &Target,
     _is_clobber: bool,
 ) -> Result<(), &'static str> {

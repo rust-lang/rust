@@ -3,7 +3,7 @@ use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
 use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter, RegionInferReason};
 use hir::{HirId, Node};
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -123,7 +123,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
     // We use an `IndexSet` to preserve order of insertion.
     // Preserving the order of insertion is important here so as not to break UI tests.
-    let mut predicates: FxIndexSet<(ty::Clause<'_>, Span)> = FxIndexSet::default();
+    let mut predicates: GxIndexSet<(ty::Clause<'_>, Span)> = GxIndexSet::default();
 
     let hir_generics = node.generics().unwrap_or(NO_GENERICS);
     if let Node::Item(item) = node {
@@ -344,10 +344,10 @@ fn compute_bidirectional_outlives_predicates<'tcx>(
 fn const_evaluatable_predicates_of(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> FxIndexSet<(ty::Clause<'_>, Span)> {
+) -> GxIndexSet<(ty::Clause<'_>, Span)> {
     struct ConstCollector<'tcx> {
         tcx: TyCtxt<'tcx>,
-        preds: FxIndexSet<(ty::Clause<'tcx>, Span)>,
+        preds: GxIndexSet<(ty::Clause<'tcx>, Span)>,
     }
 
     impl<'tcx> intravisit::Visitor<'tcx> for ConstCollector<'tcx> {
@@ -373,7 +373,7 @@ fn const_evaluatable_predicates_of(
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(hir_id);
 
-    let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
+    let mut collector = ConstCollector { tcx, preds: GxIndexSet::default() };
     if let hir::Node::Item(item) = node
         && let hir::ItemKind::Impl(impl_) = item.kind
     {

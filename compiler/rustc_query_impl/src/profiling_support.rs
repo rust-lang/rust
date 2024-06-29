@@ -1,5 +1,5 @@
 use measureme::{StringComponent, StringId};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::io::Write;
 
 pub(crate) struct QueryKeyStringCache {
-    def_id_cache: FxHashMap<DefId, StringId>,
+    def_id_cache: GxHashMap<DefId, StringId>,
 }
 
 impl QueryKeyStringCache {

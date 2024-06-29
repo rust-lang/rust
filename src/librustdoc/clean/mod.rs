@@ -34,7 +34,7 @@ use rustc_ast as ast;
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_attr as attr;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet, GxIndexMap, GxIndexSet, IndexEntry};
 use rustc_errors::{codes::*, struct_span_code_err, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -68,7 +68,7 @@ pub(crate) use self::utils::{krate, register_res, synthesize_auto_trait_and_blan
 
 pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let mut items: Vec<Item> = vec![];
-    let mut inserted = FxHashSet::default();
+    let mut inserted = GxHashSet::default();
     items.extend(doc.foreigns.iter().map(|(item, renamed)| {
         let item = clean_maybe_renamed_foreign_item(cx, item, *renamed);
         if let Some(name) = item.name
@@ -683,8 +683,8 @@ pub(crate) fn clean_generics<'tcx>(
         })
         .collect::<Vec<_>>();
 
-    let mut bound_predicates = FxIndexMap::default();
-    let mut region_predicates = FxIndexMap::default();
+    let mut bound_predicates = GxIndexMap::default();
+    let mut region_predicates = GxIndexMap::default();
     let mut eq_predicates = ThinVec::default();
     for pred in gens.predicates.iter().filter_map(|x| clean_where_predicate(x, cx)) {
         match pred {
@@ -816,7 +816,7 @@ fn clean_ty_generics<'tcx>(
 
     // param index -> [(trait DefId, associated type name & generics, term)]
     let mut impl_trait_proj =
-        FxHashMap::<u32, Vec<(DefId, PathSegment, ty::Binder<'_, ty::Term<'_>>)>>::default();
+        GxHashMap::<u32, Vec<(DefId, PathSegment, ty::Binder<'_, ty::Term<'_>>)>>::default();
 
     let where_predicates = preds
         .predicates
@@ -2146,7 +2146,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 })
                 .collect();
 
-            let late_bound_regions: FxIndexSet<_> = obj
+            let late_bound_regions: GxIndexSet<_> = obj
                 .iter()
                 .flat_map(|pred| pred.bound_vars())
                 .filter_map(|var| match var {
@@ -2815,7 +2815,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 return clean_extern_crate(item, name, orig_name, cx);
             }
             ItemKind::Use(path, kind) => {
-                return clean_use_statement(item, name, path, kind, cx, &mut FxHashSet::default());
+                return clean_use_statement(item, name, path, kind, cx, &mut GxHashSet::default());
             }
             _ => unreachable!("not yet converted"),
         };
@@ -2939,7 +2939,7 @@ fn clean_use_statement<'tcx>(
     path: &hir::UsePath<'tcx>,
     kind: hir::UseKind,
     cx: &mut DocContext<'tcx>,
-    inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
+    inlined_names: &mut GxHashSet<(ItemType, Symbol)>,
 ) -> Vec<Item> {
     let mut items = Vec::new();
     let hir::UsePath { segments, ref res, span } = *path;
@@ -2956,7 +2956,7 @@ fn clean_use_statement_inner<'tcx>(
     path: &hir::Path<'tcx>,
     kind: hir::UseKind,
     cx: &mut DocContext<'tcx>,
-    inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
+    inlined_names: &mut GxHashSet<(ItemType, Symbol)>,
 ) -> Vec<Item> {
     if should_ignore_res(path.res) {
         return Vec::new();

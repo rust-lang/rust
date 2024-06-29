@@ -6,7 +6,7 @@ pub(crate) use make::make_test;
 pub(crate) use markdown::test as test_markdown;
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_errors::{ColorConfig, DiagCtxtHandle, ErrorGuaranteed, FatalError};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::CRATE_HIR_ID;
@@ -208,12 +208,12 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<()
         let unused_extern_reports: Vec<_> =
             std::mem::take(&mut unused_extern_reports.lock().unwrap());
         if unused_extern_reports.len() == compiling_test_count {
-            let extern_names = externs.iter().map(|(name, _)| name).collect::<FxHashSet<&String>>();
+            let extern_names = externs.iter().map(|(name, _)| name).collect::<GxHashSet<&String>>();
             let mut unused_extern_names = unused_extern_reports
                 .iter()
-                .map(|uexts| uexts.unused_extern_names.iter().collect::<FxHashSet<&String>>())
+                .map(|uexts| uexts.unused_extern_names.iter().collect::<GxHashSet<&String>>())
                 .fold(extern_names, |uextsa, uextsb| {
-                    uextsa.intersection(&uextsb).copied().collect::<FxHashSet<&String>>()
+                    uextsa.intersection(&uextsb).copied().collect::<GxHashSet<&String>>()
                 })
                 .iter()
                 .map(|v| (*v).clone())
@@ -625,7 +625,7 @@ struct CreateRunnableDoctests {
 
     rustdoc_options: Arc<RustdocOptions>,
     opts: GlobalTestOptions,
-    visited_tests: FxHashMap<(String, usize), usize>,
+    visited_tests: GxHashMap<(String, usize), usize>,
     unused_extern_reports: Arc<Mutex<Vec<UnusedExterns>>>,
     compiling_test_count: AtomicUsize,
 }
@@ -636,7 +636,7 @@ impl CreateRunnableDoctests {
             tests: Vec::new(),
             rustdoc_options: Arc::new(rustdoc_options),
             opts,
-            visited_tests: FxHashMap::default(),
+            visited_tests: GxHashMap::default(),
             unused_extern_reports: Default::default(),
             compiling_test_count: AtomicUsize::new(0),
         }

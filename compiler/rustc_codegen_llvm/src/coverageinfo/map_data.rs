@@ -1,7 +1,7 @@
 use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::coverage::{
     CodeRegion, CounterId, CovTerm, Expression, ExpressionId, FunctionCoverageInfo, Mapping,
@@ -245,7 +245,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
 /// Any mapping or expression operand that refers to these expressions can have
 /// that reference replaced with a constant zero value.
 #[derive(Default)]
-struct ZeroExpressions(FxIndexSet<ExpressionId>);
+struct ZeroExpressions(GxIndexSet<ExpressionId>);
 
 impl ZeroExpressions {
     fn insert(&mut self, id: ExpressionId) {

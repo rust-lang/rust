@@ -21,7 +21,7 @@ use crate::{
     SuggestionStyle, TerminalUrl,
 };
 use derive_setters::Setters;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxHashMap, GxIndexMap, GxIndexSet};
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
 use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_lint_defs::pluralize;
@@ -358,7 +358,7 @@ pub trait Emitter: Translate {
     }
 
     fn render_multispan_macro_backtrace(&self, span: &mut MultiSpan, always_backtrace: bool) {
-        let mut new_labels = FxIndexSet::default();
+        let mut new_labels = GxIndexSet::default();
 
         for &sp in span.primary_spans() {
             if sp.is_dummy() {
@@ -1532,7 +1532,7 @@ impl HumanEmitter {
                 );
 
                 // Contains the vertical lines' positions for active multiline annotations
-                let mut multilines = FxIndexMap::default();
+                let mut multilines = GxIndexMap::default();
 
                 // Get the left-side margin to remove it
                 let mut whitespace_margin = usize::MAX;
@@ -1635,7 +1635,7 @@ impl HumanEmitter {
                         margin,
                     );
 
-                    let mut to_add = FxHashMap::default();
+                    let mut to_add = GxHashMap::default();
 
                     for (depth, style) in depths {
                         // FIXME(#120456) - is `swap_remove` correct?

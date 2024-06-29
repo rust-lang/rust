@@ -10,7 +10,7 @@ use std::ops::ControlFlow;
 
 use hir::def_id::DefId;
 use hir::LangItem;
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::gx::{GxHashSet, GxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
@@ -183,7 +183,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // The bounds returned by `item_bounds` may contain duplicates after
             // normalization, so try to deduplicate when possible to avoid
             // unnecessary ambiguity.
-            let mut distinct_normalized_bounds = FxHashSet::default();
+            let mut distinct_normalized_bounds = GxHashSet::default();
             self.for_each_item_bound::<!>(
                 placeholder_trait_predicate.self_ty(),
                 |selcx, bound, idx| {
@@ -1002,7 +1002,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // We may upcast to auto traits that are either explicitly listed in
                     // the object type's bounds, or implied by the principal trait ref's
                     // supertraits.
-                    let a_auto_traits: FxIndexSet<DefId> = a_data
+                    let a_auto_traits: GxIndexSet<DefId> = a_data
                         .auto_traits()
                         .chain(principal_def_id_a.into_iter().flat_map(|principal_def_id| {
                             self.tcx()

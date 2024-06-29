@@ -53,7 +53,7 @@ use rustc_span::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_target::abi::FIRST_VARIANT;
 
 use std::iter;
@@ -1126,7 +1126,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         var_hir_id: HirId,
         closure_clause: hir::CaptureBy,
-    ) -> Option<FxIndexMap<UpvarMigrationInfo, UnordSet<&'static str>>> {
+    ) -> Option<GxIndexMap<UpvarMigrationInfo, UnordSet<&'static str>>> {
         let auto_traits_def_id = [
             self.tcx.lang_items().clone_trait(),
             self.tcx.lang_items().sync_trait(),
@@ -1171,7 +1171,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }));
         }
 
-        let mut problematic_captures = FxIndexMap::default();
+        let mut problematic_captures = GxIndexMap::default();
         // Check whether captured fields also implement the trait
         for capture in root_var_min_capture_list.iter() {
             let ty = apply_capture_kind_on_capture_ty(
@@ -1237,7 +1237,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         closure_clause: hir::CaptureBy,
         var_hir_id: HirId,
-    ) -> Option<FxIndexSet<UpvarMigrationInfo>> {
+    ) -> Option<GxIndexSet<UpvarMigrationInfo>> {
         let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
         if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id)) {
@@ -1259,7 +1259,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match closure_clause {
                 // Only migrate if closure is a move closure
                 hir::CaptureBy::Value { .. } => {
-                    let mut diagnostics_info = FxIndexSet::default();
+                    let mut diagnostics_info = GxIndexSet::default();
                     let upvars =
                         self.tcx.upvars_mentioned(closure_def_id).expect("must be an upvar");
                     let upvar = upvars[&var_hir_id];
@@ -1275,7 +1275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!(?root_var_min_capture_list);
 
         let mut projections_list = Vec::new();
-        let mut diagnostics_info = FxIndexSet::default();
+        let mut diagnostics_info = GxIndexSet::default();
 
         for captured_place in root_var_min_capture_list.iter() {
             match captured_place.info.capture_kind {
@@ -1357,7 +1357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 diagnostics_info
             } else {
-                FxIndexMap::default()
+                GxIndexMap::default()
             };
 
             let drop_reorder_diagnostic = if let Some(diagnostics_info) = self
@@ -1371,7 +1371,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 drop_migration_needed = true;
                 diagnostics_info
             } else {
-                FxIndexSet::default()
+                GxIndexSet::default()
             };
 
             // Combine all the captures responsible for needing migrations into one HashSet

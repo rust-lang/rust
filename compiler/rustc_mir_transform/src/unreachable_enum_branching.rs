@@ -1,7 +1,7 @@
 //! A pass that eliminates branches on uninhabited or unreachable enum variants.
 
 use crate::MirPass;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_middle::bug;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::{
@@ -52,10 +52,10 @@ fn variant_discriminants<'tcx>(
     layout: &TyAndLayout<'tcx>,
     ty: Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
-) -> FxHashSet<u128> {
+) -> GxHashSet<u128> {
     match &layout.variants {
         Variants::Single { index } => {
-            let mut res = FxHashSet::default();
+            let mut res = GxHashSet::default();
             res.insert(
                 ty.discriminant_for_variant(tcx, *index)
                     .map_or(index.as_u32() as u128, |discr| discr.val),

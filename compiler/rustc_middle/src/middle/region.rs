@@ -7,7 +7,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
 use crate::ty::TyCtxt;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::{HirId, HirIdMap, Node};
@@ -216,11 +216,11 @@ pub struct ScopeTree {
     /// conditional expression or repeating block. (Note that the
     /// enclosing scope ID for the block associated with a closure is
     /// the closure itself.)
-    pub parent_map: FxIndexMap<Scope, (Scope, ScopeDepth)>,
+    pub parent_map: GxIndexMap<Scope, (Scope, ScopeDepth)>,
 
     /// Maps from a variable or binding ID to the block in which that
     /// variable is declared.
-    var_map: FxIndexMap<hir::ItemLocalId, Scope>,
+    var_map: GxIndexMap<hir::ItemLocalId, Scope>,
 
     /// Identifies expressions which, if captured into a temporary, ought to
     /// have a temporary whose lifetime extends to the end of the enclosing *block*,

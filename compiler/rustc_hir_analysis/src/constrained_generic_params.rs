@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_middle::bug;
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -31,7 +31,7 @@ pub fn parameters_for_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_self_ty: Ty<'tcx>,
     impl_trait_ref: Option<ty::TraitRef<'tcx>>,
-) -> FxHashSet<Parameter> {
+) -> GxHashSet<Parameter> {
     let vec = match impl_trait_ref {
         Some(tr) => parameters_for(tcx, tr, false),
         None => parameters_for(tcx, impl_self_ty, false),
@@ -106,7 +106,7 @@ pub fn identify_constrained_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: ty::GenericPredicates<'tcx>,
     impl_trait_ref: Option<ty::TraitRef<'tcx>>,
-    input_parameters: &mut FxHashSet<Parameter>,
+    input_parameters: &mut GxHashSet<Parameter>,
 ) {
     let mut predicates = predicates.predicates.to_vec();
     setup_constraining_predicates(tcx, &mut predicates, impl_trait_ref, input_parameters);
@@ -160,7 +160,7 @@ pub fn setup_constraining_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: &mut [(ty::Clause<'tcx>, Span)],
     impl_trait_ref: Option<ty::TraitRef<'tcx>>,
-    input_parameters: &mut FxHashSet<Parameter>,
+    input_parameters: &mut GxHashSet<Parameter>,
 ) {
     // The canonical way of doing the needed topological sort
     // would be a DFS, but getting the graph and its ownership

@@ -9,7 +9,7 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::{self, DelimSpacing, Spacing, TokenStream};
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
@@ -420,7 +420,7 @@ pub(crate) struct Rustc<'a, 'b> {
     call_site: Span,
     mixed_site: Span,
     krate: CrateNum,
-    rebased_spans: FxHashMap<usize, Span>,
+    rebased_spans: GxHashMap<usize, Span>,
 }
 
 impl<'a, 'b> Rustc<'a, 'b> {
@@ -431,7 +431,7 @@ impl<'a, 'b> Rustc<'a, 'b> {
             call_site: ecx.with_call_site_ctxt(expn_data.call_site),
             mixed_site: ecx.with_mixed_site_ctxt(expn_data.call_site),
             krate: expn_data.macro_def_id.unwrap().krate,
-            rebased_spans: FxHashMap::default(),
+            rebased_spans: GxHashMap::default(),
             ecx,
         }
     }

@@ -6,7 +6,7 @@ use rustc_attr::{
     self as attr, ConstStability, DeprecatedSince, Stability, StabilityLevel, StableSince,
     Unstable, UnstableReason, VERSION_PLACEHOLDER,
 };
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -934,7 +934,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     }
 
     let declared_lib_features = &tcx.features().declared_lib_features;
-    let mut remaining_lib_features = FxIndexMap::default();
+    let mut remaining_lib_features = GxIndexMap::default();
     for (feature, span) in declared_lib_features {
         if !tcx.sess.opts.unstable_features.is_nightly_build() {
             tcx.dcx().emit_err(errors::FeatureOnlyOnNightly {
@@ -978,7 +978,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     /// time, less loading from metadata is performed and thus compiler performance is improved.
     fn check_features<'tcx>(
         tcx: TyCtxt<'tcx>,
-        remaining_lib_features: &mut FxIndexMap<&Symbol, Span>,
+        remaining_lib_features: &mut GxIndexMap<&Symbol, Span>,
         remaining_implications: &mut UnordMap<Symbol, Symbol>,
         defined_features: &LibFeatures,
         all_implications: &UnordMap<Symbol, Symbol>,

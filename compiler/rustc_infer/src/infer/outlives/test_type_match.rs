@@ -1,6 +1,6 @@
 use std::collections::hash_map::Entry;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -89,7 +89,7 @@ pub(super) fn can_match_erased_ty<'tcx>(
 struct MatchAgainstHigherRankedOutlives<'tcx> {
     tcx: TyCtxt<'tcx>,
     pattern_depth: ty::DebruijnIndex,
-    map: FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
+    map: GxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
 }
 
 impl<'tcx> MatchAgainstHigherRankedOutlives<'tcx> {
@@ -97,7 +97,7 @@ impl<'tcx> MatchAgainstHigherRankedOutlives<'tcx> {
         MatchAgainstHigherRankedOutlives {
             tcx,
             pattern_depth: ty::INNERMOST,
-            map: FxHashMap::default(),
+            map: GxHashMap::default(),
         }
     }
 }

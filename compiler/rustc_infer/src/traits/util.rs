@@ -2,7 +2,7 @@ use smallvec::smallvec;
 
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{self, Obligation, ObligationCauseCode, PredicateObligation};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
@@ -17,7 +17,7 @@ pub fn anonymize_predicate<'tcx>(
 
 pub struct PredicateSet<'tcx> {
     tcx: TyCtxt<'tcx>,
-    set: FxHashSet<ty::Predicate<'tcx>>,
+    set: GxHashSet<ty::Predicate<'tcx>>,
 }
 
 impl<'tcx> PredicateSet<'tcx> {

@@ -87,12 +87,12 @@ macro_rules! arena_types {
                     rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::Ty<'tcx>>
                 >,
             [] effective_visibilities: rustc_middle::middle::privacy::EffectiveVisibilities,
-            [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
+            [] upvars_mentioned: rustc_data_structures::gx::GxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
             [] object_safety_violations: rustc_middle::traits::ObjectSafetyViolation,
             [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<'tcx>,
             [decode] attribute: rustc_ast::Attribute,
             [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::symbol::Symbol>,
-            [] ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::symbol::Symbol>,
+            [] ordered_name_set: rustc_data_structures::gx::GxIndexSet<rustc_span::symbol::Symbol>,
             [] pats: rustc_middle::ty::PatternKind<'tcx>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
@@ -100,7 +100,7 @@ macro_rules! arena_types {
             // (during lowering) and the `rustc_middle` arena (for decoding MIR)
             [decode] asm_template: rustc_ast::InlineAsmTemplatePiece,
             [decode] used_trait_imports: rustc_data_structures::unord::UnordSet<rustc_hir::def_id::LocalDefId>,
-            [decode] is_late_bound_map: rustc_data_structures::fx::FxIndexSet<rustc_hir::ItemLocalId>,
+            [decode] is_late_bound_map: rustc_data_structures::gx::GxIndexSet<rustc_hir::ItemLocalId>,
             [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 
             [] dep_kind: rustc_middle::dep_graph::DepKindStruct<'tcx>,

@@ -84,7 +84,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 use std::mem;
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
@@ -208,7 +208,7 @@ struct DropTree {
     /// Nodes in the drop tree, containing drop data and a link to the next node.
     drops: IndexVec<DropIdx, DropNode>,
     /// Map for finding the index of an existing node, given its contents.
-    existing_drops_map: FxHashMap<DropNodeKey, DropIdx>,
+    existing_drops_map: GxHashMap<DropNodeKey, DropIdx>,
     /// Edges into the `DropTree` that need to be added once it's lowered.
     entry_points: Vec<(DropIdx, BasicBlock)>,
 }
@@ -276,7 +276,7 @@ impl DropTree {
         let fake_data =
             DropData { source_info: fake_source_info, local: Local::MAX, kind: DropKind::Storage };
         let drops = IndexVec::from_raw(vec![DropNode { data: fake_data, next: DropIdx::MAX }]);
-        Self { drops, entry_points: Vec::new(), existing_drops_map: FxHashMap::default() }
+        Self { drops, entry_points: Vec::new(), existing_drops_map: GxHashMap::default() }
     }
 
     /// Adds a node to the drop tree, consisting of drop data and the index of

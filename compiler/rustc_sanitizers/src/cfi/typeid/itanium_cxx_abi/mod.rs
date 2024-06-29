@@ -4,7 +4,7 @@
 //! For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 //! see design document in the tracking issue #89653.
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_target::abi::call::{Conv, FnAbi, PassMode};
@@ -40,7 +40,7 @@ pub fn typeid_for_fnabi<'tcx>(
 
     // A dictionary of substitution candidates used for compression (see
     // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-compression).
-    let mut dict: FxHashMap<DictKey<'tcx>, usize> = FxHashMap::default();
+    let mut dict: GxHashMap<DictKey<'tcx>, usize> = GxHashMap::default();
 
     let mut encode_ty_options = EncodeTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("typeid_for_fnabi: invalid option(s) `{:?}`", options.bits()));

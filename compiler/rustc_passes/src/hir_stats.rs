@@ -5,7 +5,7 @@
 use rustc_ast::visit as ast_visit;
 use rustc_ast::visit::BoundKind;
 use rustc_ast::{self as ast, AttrId, NodeId};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_hir as hir;
 use rustc_hir::intravisit as hir_visit;
 use rustc_hir::HirId;
@@ -35,12 +35,12 @@ impl NodeStats {
 
 struct Node {
     stats: NodeStats,
-    subnodes: FxHashMap<&'static str, NodeStats>,
+    subnodes: GxHashMap<&'static str, NodeStats>,
 }
 
 impl Node {
     fn new() -> Node {
-        Node { stats: NodeStats::new(), subnodes: FxHashMap::default() }
+        Node { stats: NodeStats::new(), subnodes: GxHashMap::default() }
     }
 }
 
@@ -63,15 +63,15 @@ impl Node {
 /// unfortunate.
 struct StatCollector<'k> {
     krate: Option<Map<'k>>,
-    nodes: FxHashMap<&'static str, Node>,
-    seen: FxHashSet<Id>,
+    nodes: GxHashMap<&'static str, Node>,
+    seen: GxHashSet<Id>,
 }
 
 pub fn print_hir_stats(tcx: TyCtxt<'_>) {
     let mut collector = StatCollector {
         krate: Some(tcx.hir()),
-        nodes: FxHashMap::default(),
-        seen: FxHashSet::default(),
+        nodes: GxHashMap::default(),
+        seen: GxHashSet::default(),
     };
     tcx.hir().walk_toplevel_module(&mut collector);
     tcx.hir().walk_attributes(&mut collector);
@@ -82,7 +82,7 @@ pub fn print_ast_stats(krate: &ast::Crate, title: &str, prefix: &str) {
     use rustc_ast::visit::Visitor;
 
     let mut collector =
-        StatCollector { krate: None, nodes: FxHashMap::default(), seen: FxHashSet::default() };
+        StatCollector { krate: None, nodes: GxHashMap::default(), seen: GxHashSet::default() };
     collector.visit_crate(krate);
     collector.print(title, prefix);
 }

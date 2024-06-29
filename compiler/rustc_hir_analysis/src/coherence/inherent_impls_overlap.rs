@@ -1,5 +1,5 @@
-use rustc_data_structures::fx::IndexEntry;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::gx::IndexEntry;
+use rustc_data_structures::gx::{GxHashSet, GxIndexMap};
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -68,7 +68,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
     fn check_for_duplicate_items_in_impl(&self, impl_: DefId) -> Result<(), ErrorGuaranteed> {
         let impl_items = self.tcx.associated_items(impl_);
 
-        let mut seen_items = FxIndexMap::default();
+        let mut seen_items = GxIndexMap::default();
         let mut res = Ok(());
         for impl_item in impl_items.in_definition_order() {
             let span = self.tcx.def_span(impl_item.def_id);
@@ -212,11 +212,11 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
             struct ConnectedRegion {
                 idents: SmallVec<[Symbol; 8]>,
-                impl_blocks: FxHashSet<usize>,
+                impl_blocks: GxHashSet<usize>,
             }
             let mut connected_regions: IndexVec<RegionId, _> = Default::default();
             // Reverse map from the Symbol to the connected region id.
-            let mut connected_region_ids = FxIndexMap::default();
+            let mut connected_region_ids = GxIndexMap::default();
 
             for (i, &(&_impl_def_id, impl_items)) in impls_items.iter().enumerate() {
                 if impl_items.len() == 0 {

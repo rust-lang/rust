@@ -1,7 +1,7 @@
 use super::{write_code, DecorationInfo};
 use crate::html::format::Buffer;
 use expect_test::expect_file;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_span::create_default_session_globals_then;
 
 const STYLE: &str = r#"
@@ -72,7 +72,7 @@ fn test_decorations() {
 let y = 2;
 let z = 3;
 let a = 4;";
-        let mut decorations = FxHashMap::default();
+        let mut decorations = GxHashMap::default();
         decorations.insert("example", vec![(0, 10), (11, 21)]);
         decorations.insert("example2", vec![(22, 32)]);
 

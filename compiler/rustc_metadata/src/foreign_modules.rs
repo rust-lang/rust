@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -6,8 +6,8 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::ForeignModule;
 
-pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> FxIndexMap<DefId, ForeignModule> {
-    let mut modules = FxIndexMap::default();
+pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> GxIndexMap<DefId, ForeignModule> {
+    let mut modules = GxIndexMap::default();
 
     // We need to collect all the `ForeignMod`, even if they are empty.
     for id in tcx.hir().items() {

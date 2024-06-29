@@ -1539,7 +1539,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
             // `Sized` bounds. If they came last for example, this would break `Trait + /*elab*/Sized`
             // since it would overwrite the span of the user-written bound. This could be fixed by
             // folding the spans with `Span::to` which requires a bit of effort I think.
-            .collect::<FxIndexMap<_, _>>()
+            .collect::<GxIndexMap<_, _>>()
     });
 
     let mut params_used = BitSet::new_empty(generics.own_params.len());
@@ -1621,7 +1621,7 @@ fn opaque_type_cycle_error(
             }
             err.help("this error will resolve once the item's body returns a concrete type");
         } else {
-            let mut seen = FxHashSet::default();
+            let mut seen = GxHashSet::default();
             seen.insert(span);
             err.span_label(span, "recursive opaque type");
             label = true;

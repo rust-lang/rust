@@ -14,7 +14,7 @@ use std::fmt;
 use std::ptr;
 
 use rustc_ast::Mutability;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::gx::{GxHashSet, GxIndexMap};
 use rustc_hir::def::DefKind;
 use rustc_middle::bug;
 use rustc_middle::mir::display_allocation;
@@ -110,13 +110,13 @@ pub struct Memory<'tcx, M: Machine<'tcx>> {
     pub(super) alloc_map: M::MemoryMap,
 
     /// Map for "extra" function pointers.
-    extra_fn_ptr_map: FxIndexMap<AllocId, M::ExtraFnVal>,
+    extra_fn_ptr_map: GxIndexMap<AllocId, M::ExtraFnVal>,
 
     /// To be able to compare pointers with null, and to check alignment for accesses
     /// to ZSTs (where pointers may dangle), we keep track of the size even for allocations
     /// that do not exist any more.
     // FIXME: this should not be public, but interning currently needs access to it
-    pub(super) dead_alloc_map: FxIndexMap<AllocId, (Size, Align)>,
+    pub(super) dead_alloc_map: GxIndexMap<AllocId, (Size, Align)>,
 
     /// This stores whether we are currently doing reads purely for the purpose of validation.
     /// Those reads do not trigger the machine's hooks for memory reads.
@@ -146,8 +146,8 @@ impl<'tcx, M: Machine<'tcx>> Memory<'tcx, M> {
     pub fn new() -> Self {
         Memory {
             alloc_map: M::MemoryMap::default(),
-            extra_fn_ptr_map: FxIndexMap::default(),
-            dead_alloc_map: FxIndexMap::default(),
+            extra_fn_ptr_map: GxIndexMap::default(),
+            dead_alloc_map: GxIndexMap::default(),
             validation_in_progress: Cell::new(false),
         }
     }
@@ -529,7 +529,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// This function is used by Miri's provenance GC to remove unreachable entries from the dead_alloc_map.
-    pub fn remove_unreachable_allocs(&mut self, reachable_allocs: &FxHashSet<AllocId>) {
+    pub fn remove_unreachable_allocs(&mut self, reachable_allocs: &GxHashSet<AllocId>) {
         // Unlike all the other GC helpers where we check if an `AllocId` is found in the interpreter or
         // is live, here all the IDs in the map are for dead allocations so we don't
         // need to check for liveness.
@@ -951,7 +951,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     {
         // Collect the set of allocations that are *reachable* from `Global` allocations.
         let reachable = {
-            let mut reachable = FxHashSet::default();
+            let mut reachable = GxHashSet::default();
             let global_kind = M::GLOBAL_KIND.map(MemoryKind::Machine);
             let mut todo: Vec<_> =
                 self.memory.alloc_map.filter_map_collect(move |&id, &(kind, _)| {
@@ -1024,7 +1024,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> std::fmt::Debug for DumpAllocs<'a, 'tcx, M> {
 
         let mut allocs_to_print: VecDeque<_> = self.allocs.iter().copied().collect();
         // `allocs_printed` contains all allocations that we have already printed.
-        let mut allocs_printed = FxHashSet::default();
+        let mut allocs_printed = GxHashSet::default();
 
         while let Some(id) = allocs_to_print.pop_front() {
             if !allocs_printed.insert(id) {

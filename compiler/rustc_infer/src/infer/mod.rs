@@ -20,7 +20,7 @@ use opaque_types::OpaqueTypeStorage;
 use region_constraints::{GenericKind, VarInfos, VerifyBound};
 use region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet, GxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
@@ -273,9 +273,9 @@ pub struct InferCtxt<'tcx> {
     /// The set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
     pub reported_trait_errors:
-        RefCell<FxIndexMap<Span, (Vec<ty::Predicate<'tcx>>, ErrorGuaranteed)>>,
+        RefCell<GxIndexMap<Span, (Vec<ty::Predicate<'tcx>>, ErrorGuaranteed)>>,
 
-    pub reported_signature_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
+    pub reported_signature_mismatch: RefCell<GxHashSet<(Span, Option<Span>)>>,
 
     /// When an error occurs, we want to avoid reporting "derived"
     /// errors that are due to this original failure. Normally, we
@@ -1365,7 +1365,7 @@ impl<'tcx> InferCtxt<'tcx> {
             infcx: &'a InferCtxt<'tcx>,
             span: Span,
             lbrct: BoundRegionConversionTime,
-            map: FxHashMap<ty::BoundVar, ty::GenericArg<'tcx>>,
+            map: GxHashMap<ty::BoundVar, ty::GenericArg<'tcx>>,
         }
 
         impl<'tcx> BoundVarReplacerDelegate<'tcx> for ToFreshVars<'_, 'tcx> {

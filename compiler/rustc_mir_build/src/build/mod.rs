@@ -4,7 +4,7 @@ use itertools::Itertools;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
 use rustc_ast::attr;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
@@ -195,13 +195,13 @@ struct Builder<'a, 'tcx> {
 
     /// Temporaries with fixed indexes. Used so that if-let guards on arms
     /// with an or-pattern are only created once.
-    fixed_temps: FxHashMap<ExprId, Local>,
+    fixed_temps: GxHashMap<ExprId, Local>,
     /// Scope of temporaries that should be deduplicated using [Self::fixed_temps].
     fixed_temps_scope: Option<region::Scope>,
 
     /// Maps `HirId`s of variable bindings to the `Local`s created for them.
     /// (A match binding can have two locals; the 2nd is for the arm's guard.)
-    var_indices: FxHashMap<LocalVarId, LocalsForNode>,
+    var_indices: GxHashMap<LocalVarId, LocalsForNode>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     canonical_user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
     upvars: CaptureMap<'tcx>,

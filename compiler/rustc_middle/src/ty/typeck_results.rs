@@ -7,7 +7,7 @@ use crate::{
         GenericArgs, GenericArgsRef, Ty, UserArgs,
     },
 };
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordItems, UnordSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::{
@@ -166,7 +166,7 @@ pub struct TypeckResults<'tcx> {
     /// We also store the type here, so that the compiler can use it as a hint
     /// for figuring out hidden types, even if they are only set in dead code
     /// (which doesn't show up in MIR).
-    pub concrete_opaque_types: FxIndexMap<ty::OpaqueTypeKey<'tcx>, ty::OpaqueHiddenType<'tcx>>,
+    pub concrete_opaque_types: GxIndexMap<ty::OpaqueTypeKey<'tcx>, ty::OpaqueHiddenType<'tcx>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
@@ -203,7 +203,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Stores the predicates that apply on coroutine witness types.
     /// formatting modified file tests/ui/coroutine/retain-resume-ref.rs
-    pub coroutine_stalled_predicates: FxIndexSet<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>,
+    pub coroutine_stalled_predicates: GxIndexSet<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>,
 
     /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
     /// as `&[u8]`, depending on the pattern in which they are used.

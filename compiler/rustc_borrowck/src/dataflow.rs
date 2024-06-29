@@ -1,5 +1,5 @@
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{
     self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
@@ -111,7 +111,7 @@ pub struct Borrows<'mir, 'tcx> {
     body: &'mir Body<'tcx>,
 
     borrow_set: &'mir BorrowSet<'tcx>,
-    borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
+    borrows_out_of_scope_at_location: GxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
 struct OutOfScopePrecomputer<'mir, 'tcx> {
@@ -119,7 +119,7 @@ struct OutOfScopePrecomputer<'mir, 'tcx> {
     visit_stack: Vec<mir::BasicBlock>,
     body: &'mir Body<'tcx>,
     regioncx: &'mir RegionInferenceContext<'tcx>,
-    borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
+    borrows_out_of_scope_at_location: GxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
 impl<'mir, 'tcx> OutOfScopePrecomputer<'mir, 'tcx> {
@@ -129,7 +129,7 @@ impl<'mir, 'tcx> OutOfScopePrecomputer<'mir, 'tcx> {
             visit_stack: vec![],
             body,
             regioncx,
-            borrows_out_of_scope_at_location: FxIndexMap::default(),
+            borrows_out_of_scope_at_location: GxIndexMap::default(),
         }
     }
 }
@@ -214,7 +214,7 @@ pub fn calculate_borrows_out_of_scope_at_location<'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-) -> FxIndexMap<Location, Vec<BorrowIndex>> {
+) -> GxIndexMap<Location, Vec<BorrowIndex>> {
     let mut prec = OutOfScopePrecomputer::new(body, regioncx);
     for (borrow_index, borrow_data) in borrow_set.iter_enumerated() {
         let borrow_region = borrow_data.region;
@@ -232,7 +232,7 @@ struct PoloniusOutOfScopePrecomputer<'mir, 'tcx> {
     body: &'mir Body<'tcx>,
     regioncx: &'mir RegionInferenceContext<'tcx>,
 
-    loans_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
+    loans_out_of_scope_at_location: GxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
 impl<'mir, 'tcx> PoloniusOutOfScopePrecomputer<'mir, 'tcx> {
@@ -242,7 +242,7 @@ impl<'mir, 'tcx> PoloniusOutOfScopePrecomputer<'mir, 'tcx> {
             visit_stack: vec![],
             body,
             regioncx,
-            loans_out_of_scope_at_location: FxIndexMap::default(),
+            loans_out_of_scope_at_location: GxIndexMap::default(),
         }
     }
 }

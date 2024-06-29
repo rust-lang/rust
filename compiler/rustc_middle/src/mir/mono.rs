@@ -5,7 +5,7 @@ use rustc_data_structures::base_n::BaseNString;
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::base_n::CASE_INSENSITIVE;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -258,7 +258,7 @@ pub struct CodegenUnit<'tcx> {
     /// contain something unique to this crate (e.g., a module path)
     /// as well as the crate name and disambiguator.
     name: Symbol,
-    items: FxIndexMap<MonoItem<'tcx>, MonoItemData>,
+    items: GxIndexMap<MonoItem<'tcx>, MonoItemData>,
     size_estimate: usize,
     primary: bool,
     /// True if this is CGU is used to hold code coverage information for dead code,
@@ -333,11 +333,11 @@ impl<'tcx> CodegenUnit<'tcx> {
         self.primary = true;
     }
 
-    pub fn items(&self) -> &FxIndexMap<MonoItem<'tcx>, MonoItemData> {
+    pub fn items(&self) -> &GxIndexMap<MonoItem<'tcx>, MonoItemData> {
         &self.items
     }
 
-    pub fn items_mut(&mut self) -> &mut FxIndexMap<MonoItem<'tcx>, MonoItemData> {
+    pub fn items_mut(&mut self) -> &mut GxIndexMap<MonoItem<'tcx>, MonoItemData> {
         &mut self.items
     }
 

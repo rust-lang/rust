@@ -1,6 +1,6 @@
 use crate::ptr::P;
 use crate::Expr;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
@@ -65,14 +65,14 @@ pub struct FormatArguments {
     arguments: Vec<FormatArgument>,
     num_unnamed_args: usize,
     num_explicit_args: usize,
-    names: FxHashMap<Symbol, usize>,
+    names: GxHashMap<Symbol, usize>,
 }
 
 impl FormatArguments {
     pub fn new() -> Self {
         Self {
             arguments: Vec::new(),
-            names: FxHashMap::default(),
+            names: GxHashMap::default(),
             num_unnamed_args: 0,
             num_explicit_args: 0,
         }

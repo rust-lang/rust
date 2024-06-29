@@ -1,5 +1,5 @@
 use rustc_data_structures::base_n::ToBaseN;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -34,9 +34,9 @@ pub(super) fn mangle<'tcx>(
     let mut cx: SymbolMangler<'_> = SymbolMangler {
         tcx,
         start_offset: prefix.len(),
-        paths: FxHashMap::default(),
-        types: FxHashMap::default(),
-        consts: FxHashMap::default(),
+        paths: GxHashMap::default(),
+        types: GxHashMap::default(),
+        consts: GxHashMap::default(),
         binders: vec![],
         out: String::from(prefix),
     };
@@ -74,9 +74,9 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
     let mut cx = SymbolMangler {
         tcx,
         start_offset: 0,
-        paths: FxHashMap::default(),
-        types: FxHashMap::default(),
-        consts: FxHashMap::default(),
+        paths: GxHashMap::default(),
+        types: GxHashMap::default(),
+        consts: GxHashMap::default(),
         binders: vec![],
         out: String::new(),
     };
@@ -106,9 +106,9 @@ struct SymbolMangler<'tcx> {
     /// The length of the prefix in `out` (e.g. 2 for `_R`).
     start_offset: usize,
     /// The values are start positions in `out`, in bytes.
-    paths: FxHashMap<(DefId, &'tcx [GenericArg<'tcx>]), usize>,
-    types: FxHashMap<Ty<'tcx>, usize>,
-    consts: FxHashMap<ty::Const<'tcx>, usize>,
+    paths: GxHashMap<(DefId, &'tcx [GenericArg<'tcx>]), usize>,
+    types: GxHashMap<Ty<'tcx>, usize>,
+    consts: GxHashMap<ty::Const<'tcx>, usize>,
 }
 
 impl<'tcx> SymbolMangler<'tcx> {

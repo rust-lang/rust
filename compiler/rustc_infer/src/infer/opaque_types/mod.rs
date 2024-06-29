@@ -2,7 +2,7 @@ use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::{self, Obligation};
 use hir::def_id::{DefId, LocalDefId};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_middle::traits::solve::Goal;
@@ -18,7 +18,7 @@ use rustc_span::Span;
 
 mod table;
 
-pub type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
+pub type OpaqueTypeMap<'tcx> = GxIndexMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
 pub use table::{OpaqueTypeStorage, OpaqueTypeTable};
 
 use super::DefineOpaqueTypes;

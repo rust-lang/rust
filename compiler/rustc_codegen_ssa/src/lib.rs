@@ -18,8 +18,8 @@
 //! have to be implemented by each backend.
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxHashSet;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::CrateNum;
@@ -183,12 +183,12 @@ pub struct CrateInfo {
     pub target_cpu: String,
     pub crate_types: Vec<CrateType>,
     pub exported_symbols: UnordMap<CrateType, Vec<String>>,
-    pub linked_symbols: FxIndexMap<CrateType, Vec<(String, SymbolExportKind)>>,
+    pub linked_symbols: GxIndexMap<CrateType, Vec<(String, SymbolExportKind)>>,
     pub local_crate_name: Symbol,
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,
-    pub is_no_builtins: FxHashSet<CrateNum>,
-    pub native_libraries: FxIndexMap<CrateNum, Vec<NativeLib>>,
+    pub is_no_builtins: GxHashSet<CrateNum>,
+    pub native_libraries: GxIndexMap<CrateNum, Vec<NativeLib>>,
     pub crate_name: UnordMap<CrateNum, Symbol>,
     pub used_libraries: Vec<NativeLib>,
     pub used_crate_source: UnordMap<CrateNum, Lrc<CrateSource>>,

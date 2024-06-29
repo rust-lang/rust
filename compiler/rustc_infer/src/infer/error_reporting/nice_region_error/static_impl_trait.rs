@@ -8,7 +8,7 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, Subdiagnostic};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
@@ -222,7 +222,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
             // lifetime as above, but called using a fully-qualified path to the method:
             // `Foo::qux(bar)`.
-            let mut v = TraitObjectVisitor(FxIndexSet::default());
+            let mut v = TraitObjectVisitor(GxIndexSet::default());
             v.visit_ty(param.param_ty);
             if let Some((ident, self_ty)) =
                 NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, item_def_id, &v.0)
@@ -474,7 +474,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     pub fn get_impl_ident_and_self_ty_from_trait(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        trait_objects: &FxIndexSet<DefId>,
+        trait_objects: &GxIndexSet<DefId>,
     ) -> Option<(Ident, &'tcx hir::Ty<'tcx>)> {
         match tcx.hir().get_if_local(def_id)? {
             Node::ImplItem(impl_item) => {
@@ -543,7 +543,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             return false;
         };
 
-        let mut v = TraitObjectVisitor(FxIndexSet::default());
+        let mut v = TraitObjectVisitor(GxIndexSet::default());
         v.visit_ty(ty);
 
         // Get the `Ident` of the method being called and the corresponding `impl` (to point at
@@ -561,7 +561,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     fn suggest_constrain_dyn_trait_in_impl(
         &self,
         err: &mut Diag<'_>,
-        found_dids: &FxIndexSet<DefId>,
+        found_dids: &GxIndexSet<DefId>,
         ident: Ident,
         self_ty: &hir::Ty<'_>,
     ) -> bool {
@@ -581,7 +581,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 }
 
 /// Collect all the trait objects in a type that could have received an implicit `'static` lifetime.
-pub struct TraitObjectVisitor(pub FxIndexSet<DefId>);
+pub struct TraitObjectVisitor(pub GxIndexSet<DefId>);
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for TraitObjectVisitor {
     fn visit_ty(&mut self, t: Ty<'tcx>) {

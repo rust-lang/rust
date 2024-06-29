@@ -4,7 +4,7 @@ use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, Crate, ItemKind, ModKind, NodeId, Path, CRATE_NODE_ID};
 use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_errors::{
     codes::*, report_ambiguity_error, struct_span_code_err, Applicability, Diag, DiagCtxtHandle,
     ErrorGuaranteed, MultiSpan, SuggestionStyle,
@@ -155,7 +155,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        let mut reported_spans = FxHashSet::default();
+        let mut reported_spans = GxHashSet::default();
         for error in std::mem::take(&mut self.privacy_errors) {
             if reported_spans.insert(error.dedup_span) {
                 self.report_privacy_error(&error);
@@ -1151,7 +1151,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         FilterFn: Fn(Res) -> bool,
     {
         let mut candidates = Vec::new();
-        let mut seen_modules = FxHashSet::default();
+        let mut seen_modules = GxHashSet::default();
         let start_did = start_module.def_id();
         let mut worklist = vec![(
             start_module,
@@ -2810,7 +2810,7 @@ fn show_candidates(
                 let mut kinds = accessible_path_strings
                     .iter()
                     .map(|(_, descr, _, _, _)| *descr)
-                    .collect::<FxHashSet<&str>>()
+                    .collect::<GxHashSet<&str>>()
                     .into_iter();
                 let kind = if let Some(kind) = kinds.next()
                     && let None = kinds.next()

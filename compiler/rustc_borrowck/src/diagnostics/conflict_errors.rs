@@ -6,7 +6,7 @@
 use either::Either;
 use hir::ClosureKind;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -186,7 +186,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
 
             let mut is_loop_move = false;
             let mut in_pattern = false;
-            let mut seen_spans = FxIndexSet::default();
+            let mut seen_spans = GxIndexSet::default();
 
             for move_site in &move_site_vec {
                 let move_out = self.move_data.moves[(*move_site).moi];
@@ -1831,7 +1831,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             }
         }
 
-        let mut types_to_constrain = FxIndexSet::default();
+        let mut types_to_constrain = GxIndexSet::default();
 
         let local_ty = self.body.local_decls[place.local].ty;
         let typeck_results = tcx.typeck(self.mir_def_id());
@@ -3485,8 +3485,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             }
         }
 
-        let mut visited = FxIndexSet::default();
-        let mut move_locations = FxIndexSet::default();
+        let mut visited = GxIndexSet::default();
+        let mut move_locations = GxIndexSet::default();
         let mut reinits = vec![];
         let mut result = vec![];
 
@@ -3613,7 +3613,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         let reinits_reachable = reinits
             .into_iter()
             .filter(|reinit| {
-                let mut visited = FxIndexSet::default();
+                let mut visited = GxIndexSet::default();
                 let mut stack = vec![*reinit];
                 while let Some(location) = stack.pop() {
                     if !visited.insert(location) {

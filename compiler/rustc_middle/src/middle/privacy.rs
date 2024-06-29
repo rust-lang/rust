@@ -3,7 +3,7 @@
 //! which are available for use externally when compiled as a library.
 
 use crate::ty::{TyCtxt, Visibility};
-use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
+use rustc_data_structures::gx::{GxIndexMap, IndexEntry};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::DefKind;
 use rustc_macros::HashStable;
@@ -91,7 +91,7 @@ impl EffectiveVisibility {
 /// Holds a map of effective visibilities for reachable HIR nodes.
 #[derive(Clone, Debug)]
 pub struct EffectiveVisibilities<Id = LocalDefId> {
-    map: FxIndexMap<Id, EffectiveVisibility>,
+    map: GxIndexMap<Id, EffectiveVisibility>,
 }
 
 impl EffectiveVisibilities {

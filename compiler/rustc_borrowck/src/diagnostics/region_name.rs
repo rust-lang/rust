@@ -4,7 +4,7 @@
 use std::fmt::{self, Display};
 use std::iter;
 
-use rustc_data_structures::fx::IndexEntry;
+use rustc_data_structures::gx::IndexEntry;
 use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};

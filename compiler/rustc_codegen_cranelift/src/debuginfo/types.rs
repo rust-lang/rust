@@ -2,7 +2,7 @@
 
 use gimli::write::{AttributeValue, UnitEntryId};
 use rustc_codegen_ssa::debuginfo::type_names;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
@@ -10,7 +10,7 @@ use crate::{has_ptr_meta, DebugContext, RevealAllLayoutCx};
 
 #[derive(Default)]
 pub(crate) struct TypeDebugContext<'tcx> {
-    type_map: FxHashMap<Ty<'tcx>, UnitEntryId>,
+    type_map: GxHashMap<Ty<'tcx>, UnitEntryId>,
 }
 
 /// Returns from the enclosing function if the type debuginfo node with the given

@@ -2,7 +2,7 @@ use super::potentially_plural_count;
 use crate::errors::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
 use core::ops::ControlFlow;
 use hir::def_id::{DefId, DefIdMap, LocalDefId};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxHashSet, GxIndexMap, GxIndexSet};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -260,7 +260,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // type.
 
     // Compute placeholder form of impl and trait method tys.
-    let mut wf_tys = FxIndexSet::default();
+    let mut wf_tys = GxIndexSet::default();
 
     let unnormalized_impl_sig = infcx.instantiate_binder_with_fresh_vars(
         impl_m_span,
@@ -332,7 +332,7 @@ fn compare_method_predicate_entailment<'tcx>(
             unnormalized_impl_sig.inputs_and_output.iter().map(|ty| ty.into()).collect();
         // Annoyingly, asking for the WF predicates of an array (with an unevaluated const (only?))
         // will give back the well-formed predicate of the same array.
-        let mut wf_args_seen: FxHashSet<_> = wf_args.iter().copied().collect();
+        let mut wf_args_seen: GxHashSet<_> = wf_args.iter().copied().collect();
         while let Some(arg) = wf_args.pop() {
             let Some(obligations) = rustc_trait_selection::traits::wf::obligations(
                 infcx,
@@ -393,7 +393,7 @@ fn compare_method_predicate_entailment<'tcx>(
 
 struct RemapLateBound<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    mapping: &'a FxIndexMap<ty::BoundRegionKind, ty::BoundRegionKind>,
+    mapping: &'a GxIndexMap<ty::BoundRegionKind, ty::BoundRegionKind>,
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
@@ -546,7 +546,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // prove below that the hidden types are well formed.
     let universe = infcx.create_next_universe();
     let mut idx = 0;
-    let mapping: FxIndexMap<_, _> = collector
+    let mapping: GxIndexMap<_, _> = collector
         .types
         .iter()
         .map(|(_, &(ty, _))| {
@@ -577,7 +577,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         lt_op: |lt| lt,
         ct_op: |ct| ct,
     };
-    let wf_tys = FxIndexSet::from_iter(
+    let wf_tys = GxIndexSet::from_iter(
         unnormalized_trait_sig
             .inputs_and_output
             .iter()
@@ -689,7 +689,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 // contains `def_id`'s early-bound regions.
                 let id_args = GenericArgs::identity_for_item(tcx, def_id);
                 debug!(?id_args, ?args);
-                let map: FxIndexMap<_, _> = std::iter::zip(args, id_args)
+                let map: GxIndexMap<_, _> = std::iter::zip(args, id_args)
                     .skip(tcx.generics_of(trait_m.def_id).count())
                     .filter_map(|(a, b)| Some((a.as_region()?, b.as_region()?)))
                     .collect();
@@ -766,7 +766,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
 struct ImplTraitInTraitCollector<'a, 'tcx, E> {
     ocx: &'a ObligationCtxt<'a, 'tcx, E>,
-    types: FxIndexMap<DefId, (Ty<'tcx>, ty::GenericArgsRef<'tcx>)>,
+    types: GxIndexMap<DefId, (Ty<'tcx>, ty::GenericArgsRef<'tcx>)>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
     body_id: LocalDefId,
@@ -782,7 +782,7 @@ where
         param_env: ty::ParamEnv<'tcx>,
         body_id: LocalDefId,
     ) -> Self {
-        ImplTraitInTraitCollector { ocx, types: FxIndexMap::default(), span, param_env, body_id }
+        ImplTraitInTraitCollector { ocx, types: GxIndexMap::default(), span, param_env, body_id }
     }
 }
 
@@ -841,7 +841,7 @@ where
 
 struct RemapHiddenTyRegions<'tcx> {
     tcx: TyCtxt<'tcx>,
-    map: FxIndexMap<ty::Region<'tcx>, ty::Region<'tcx>>,
+    map: GxIndexMap<ty::Region<'tcx>, ty::Region<'tcx>>,
     num_trait_args: usize,
     num_impl_args: usize,
     def_id: DefId,

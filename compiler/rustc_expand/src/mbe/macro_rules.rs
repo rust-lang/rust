@@ -17,7 +17,7 @@ use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::gx::{GxHashMap, GxIndexMap};
 use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
@@ -141,7 +141,7 @@ impl TTMacroExpander for DummyExpander {
     }
 }
 
-fn trace_macros_note(cx_expansions: &mut FxIndexMap<Span, Vec<String>>, sp: Span, message: String) {
+fn trace_macros_note(cx_expansions: &mut GxIndexMap<Span, Vec<String>>, sp: Span, message: String) {
     let sp = sp.macro_backtrace().last().map_or(sp, |trace| trace.call_site);
     cx_expansions.entry(sp).or_default().push(message);
 }
@@ -739,14 +739,14 @@ struct FirstSets<'tt> {
     // If two sequences have the same span in a matcher, then map that
     // span to None (invalidating the mapping here and forcing the code to
     // use a slow path).
-    first: FxHashMap<Span, Option<TokenSet<'tt>>>,
+    first: GxHashMap<Span, Option<TokenSet<'tt>>>,
 }
 
 impl<'tt> FirstSets<'tt> {
     fn new(tts: &'tt [mbe::TokenTree]) -> FirstSets<'tt> {
         use mbe::TokenTree;
 
-        let mut sets = FirstSets { first: FxHashMap::default() };
+        let mut sets = FirstSets { first: GxHashMap::default() };
         build_recur(&mut sets, tts);
         return sets;
 

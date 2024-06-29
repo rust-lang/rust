@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -68,11 +68,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn infer_opaque_types(
         &self,
         infcx: &InferCtxt<'tcx>,
-        opaque_ty_decls: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
-    ) -> FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> {
-        let mut result: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> = FxIndexMap::default();
-        let mut decls_modulo_regions: FxIndexMap<OpaqueTypeKey<'tcx>, (OpaqueTypeKey<'tcx>, Span)> =
-            FxIndexMap::default();
+        opaque_ty_decls: GxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
+    ) -> GxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> {
+        let mut result: GxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> = GxIndexMap::default();
+        let mut decls_modulo_regions: GxIndexMap<OpaqueTypeKey<'tcx>, (OpaqueTypeKey<'tcx>, Span)> =
+            GxIndexMap::default();
 
         for (opaque_type_key, concrete_type) in opaque_ty_decls {
             debug!(?opaque_type_key, ?concrete_type);
@@ -393,7 +393,7 @@ fn check_opaque_type_parameter_valid<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
     let opaque_env = LazyOpaqueTyEnv::new(tcx, opaque_type_key.def_id);
-    let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
+    let mut seen_params: GxIndexMap<_, Vec<_>> = GxIndexMap::default();
 
     for (i, arg) in opaque_type_key.iter_captured_args(tcx) {
         let arg_is_param = match arg.unpack() {

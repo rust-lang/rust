@@ -12,5 +12,5 @@
 //~| SUGGESTION rustc::default_hash_types
 fn main() {
     let _ = std::collections::HashMap::<String, String>::new();
-    //~^ WARN prefer `FxHashMap` over `HashMap`, it has better performance
+    //~^ WARN prefer `GxHashMap` over `HashMap`, it has better performance
 }

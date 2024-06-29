@@ -3,7 +3,7 @@ use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::Delimiter;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_span::symbol::Ident;
 use rustc_span::DUMMY_SP;
 use smallvec::{smallvec, SmallVec};
@@ -190,7 +190,7 @@ pub(crate) fn placeholder(
 
 #[derive(Default)]
 pub struct PlaceholderExpander {
-    expanded_fragments: FxHashMap<ast::NodeId, AstFragment>,
+    expanded_fragments: GxHashMap<ast::NodeId, AstFragment>,
 }
 
 impl PlaceholderExpander {

@@ -59,7 +59,7 @@ use crate::traits::{
 };
 
 use crate::infer::relate::{self, RelateResult, TypeRelation};
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::gx::{GxIndexMap, GxIndexSet};
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxtHandle,
     DiagStyledString, ErrorGuaranteed, IntoDiagArg, StringPart,
@@ -1571,9 +1571,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             values = None;
         }
         struct OpaqueTypesVisitor<'tcx> {
-            types: FxIndexMap<TyCategory, FxIndexSet<Span>>,
-            expected: FxIndexMap<TyCategory, FxIndexSet<Span>>,
-            found: FxIndexMap<TyCategory, FxIndexSet<Span>>,
+            types: GxIndexMap<TyCategory, GxIndexSet<Span>>,
+            expected: GxIndexMap<TyCategory, GxIndexSet<Span>>,
+            found: GxIndexMap<TyCategory, GxIndexSet<Span>>,
             ignore_span: Span,
             tcx: TyCtxt<'tcx>,
         }
@@ -1611,7 +1611,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 &self,
                 err: &mut Diag<'_>,
                 target: &str,
-                types: &FxIndexMap<TyCategory, FxIndexSet<Span>>,
+                types: &GxIndexMap<TyCategory, GxIndexSet<Span>>,
             ) {
                 for (kind, values) in types.iter() {
                     let count = values.len();

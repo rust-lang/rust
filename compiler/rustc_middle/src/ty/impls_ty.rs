@@ -6,7 +6,7 @@ use crate::mir;
 use crate::ty;
 use crate::ty::fast_reject::SimplifiedType;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_query_system::ich::StableHashingContext;
@@ -20,7 +20,7 @@ where
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         thread_local! {
-            static CACHE: RefCell<FxHashMap<(*const (), HashingControls), Fingerprint>> =
+            static CACHE: RefCell<GxHashMap<(*const (), HashingControls), Fingerprint>> =
                 RefCell::new(Default::default());
         }
 

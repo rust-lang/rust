@@ -352,7 +352,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             self.tcx.asm_target_features(self.enclosing_def_id),
             &sess.target,
         );
-        let mut allocated = FxHashMap::<_, (bool, bool)>::default();
+        let mut allocated = GxHashMap::<_, (bool, bool)>::default();
         let mut regs = vec![None; self.operands.len()];
 
         // Add explicit registers to the allocated set.

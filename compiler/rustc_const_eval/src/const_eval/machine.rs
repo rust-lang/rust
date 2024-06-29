@@ -4,8 +4,8 @@ use std::hash::Hash;
 use std::ops::ControlFlow;
 
 use rustc_ast::Mutability;
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::fx::IndexEntry;
+use rustc_data_structures::gx::GxIndexMap;
+use rustc_data_structures::gx::IndexEntry;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::LangItem;
@@ -105,13 +105,13 @@ impl<'tcx> CompileTimeMachine<'tcx> {
     }
 }
 
-impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxIndexMap<K, V> {
+impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for GxIndexMap<K, V> {
     #[inline(always)]
     fn contains_key<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> bool
     where
         K: Borrow<Q>,
     {
-        FxIndexMap::contains_key(self, k)
+        GxIndexMap::contains_key(self, k)
     }
 
     #[inline(always)]
@@ -119,12 +119,12 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxIndexMap<K, V> {
     where
         K: Borrow<Q>,
     {
-        FxIndexMap::contains_key(self, k)
+        GxIndexMap::contains_key(self, k)
     }
 
     #[inline(always)]
     fn insert(&mut self, k: K, v: V) -> Option<V> {
-        FxIndexMap::insert(self, k, v)
+        GxIndexMap::insert(self, k, v)
     }
 
     #[inline(always)]
@@ -133,7 +133,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxIndexMap<K, V> {
         K: Borrow<Q>,
     {
         // FIXME(#120456) - is `swap_remove` correct?
-        FxIndexMap::swap_remove(self, k)
+        GxIndexMap::swap_remove(self, k)
     }
 
     #[inline(always)]

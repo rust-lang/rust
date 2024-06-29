@@ -15,7 +15,7 @@ use crate::{Finalize, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet}
 use crate::{NameBinding, NameBindingData, NameBindingKind, PathResult, Used};
 
 use rustc_ast::NodeId;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, MultiSpan};
 use rustc_hir::def::{self, DefKind, PartialRes};
@@ -224,7 +224,7 @@ impl<'a> ImportData<'a> {
 pub(crate) struct NameResolution<'a> {
     /// Single imports that may define the name in the namespace.
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
-    pub single_imports: FxHashSet<Import<'a>>,
+    pub single_imports: GxHashSet<Import<'a>>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<NameBinding<'a>>,
     pub shadowed_glob: Option<NameBinding<'a>>,
@@ -526,7 +526,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.finalize_resolutions_in(*module);
         }
 
-        let mut seen_spans = FxHashSet::default();
+        let mut seen_spans = GxHashSet::default();
         let mut errors = vec![];
         let mut prev_root_id: NodeId = NodeId::ZERO;
         let determined_imports = mem::take(&mut self.determined_imports);
@@ -603,7 +603,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     pub(crate) fn check_hidden_glob_reexports(
         &mut self,
-        exported_ambiguities: FxHashSet<NameBinding<'a>>,
+        exported_ambiguities: GxHashSet<NameBinding<'a>>,
     ) {
         for module in self.arenas.local_modules().iter() {
             for (key, resolution) in self.resolutions(*module).borrow().iter() {

@@ -15,7 +15,7 @@
 
 use hir::def::DefKind;
 use rustc_ast::Mutability;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::gx::{GxHashSet, GxIndexMap};
 use rustc_hir as hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::interpret::{ConstAllocation, CtfeProvenance, InterpResult};
@@ -36,7 +36,7 @@ pub trait CompileTimeMachine<'tcx, T> = Machine<
         ExtraFnVal = !,
         FrameExtra = (),
         AllocExtra = (),
-        MemoryMap = FxIndexMap<AllocId, (MemoryKind<T>, Allocation)>,
+        MemoryMap = GxIndexMap<AllocId, (MemoryKind<T>, Allocation)>,
     > + HasStaticRootDefId;
 
 pub trait HasStaticRootDefId {
@@ -197,7 +197,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
     };
     // We need to distinguish "has just been interned" from "was already in `tcx`",
     // so we track this in a separate set.
-    let mut just_interned: FxHashSet<_> = std::iter::once(base_alloc_id).collect();
+    let mut just_interned: GxHashSet<_> = std::iter::once(base_alloc_id).collect();
     // Whether we encountered a bad mutable pointer.
     // We want to first report "dangling" and then "mutable", so we need to delay reporting these
     // errors.

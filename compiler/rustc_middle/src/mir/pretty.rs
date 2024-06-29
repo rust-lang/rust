@@ -317,7 +317,7 @@ where
 fn write_scope_tree(
     tcx: TyCtxt<'_>,
     body: &Body<'_>,
-    scope_tree: &FxHashMap<SourceScope, Vec<SourceScope>>,
+    scope_tree: &GxHashMap<SourceScope, Vec<SourceScope>>,
     w: &mut dyn io::Write,
     parent: SourceScope,
     depth: usize,
@@ -458,7 +458,7 @@ pub fn write_mir_intro<'tcx>(
     writeln!(w, "{{")?;
 
     // construct a scope tree and write it out
-    let mut scope_tree: FxHashMap<SourceScope, Vec<SourceScope>> = Default::default();
+    let mut scope_tree: GxHashMap<SourceScope, Vec<SourceScope>> = Default::default();
     for (index, scope_data) in body.source_scopes.iter().enumerate() {
         if let Some(parent) = scope_data.parent_scope {
             scope_tree.entry(parent).or_default().push(SourceScope::new(index));

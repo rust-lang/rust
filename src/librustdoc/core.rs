@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter};
@@ -41,7 +41,7 @@ pub(crate) struct DocContext<'tcx> {
     /// Most of this logic is copied from rustc_lint::late.
     pub(crate) param_env: ParamEnv<'tcx>,
     /// Later on moved through `clean::Crate` into `cache`
-    pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
+    pub(crate) external_traits: Rc<RefCell<GxHashMap<DefId, clean::Trait>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
     pub(crate) active_extern_traits: DefIdSet,
@@ -54,17 +54,17 @@ pub(crate) struct DocContext<'tcx> {
     pub(crate) args: DefIdMap<clean::GenericArg>,
     pub(crate) current_type_aliases: DefIdMap<usize>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
-    pub(crate) impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
+    pub(crate) impl_trait_bounds: GxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
-    pub(crate) generated_synthetics: FxHashSet<(Ty<'tcx>, DefId)>,
+    pub(crate) generated_synthetics: GxHashSet<(Ty<'tcx>, DefId)>,
     pub(crate) auto_traits: Vec<DefId>,
     /// The options given to rustdoc that could be relevant to a pass.
     pub(crate) render_options: RenderOptions,
     /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
     pub(crate) cache: Cache,
     /// Used by [`clean::inline`] to tell if an item has already been inlined.
-    pub(crate) inlined: FxHashSet<ItemId>,
+    pub(crate) inlined: GxHashSet<ItemId>,
     /// Used by `calculate_doc_coverage`.
     pub(crate) output_format: OutputFormat,
     /// Used by `strip_private`.
@@ -341,7 +341,7 @@ pub(crate) fn run_global_ctxt(
         generated_synthetics: Default::default(),
         auto_traits,
         cache: Cache::new(render_options.document_private, render_options.document_hidden),
-        inlined: FxHashSet::default(),
+        inlined: GxHashSet::default(),
         output_format,
         render_options,
         show_coverage,

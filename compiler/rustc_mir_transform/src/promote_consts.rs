@@ -13,7 +13,7 @@
 //! move analysis runs after promotion on broken MIR.
 
 use either::{Left, Right};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
@@ -178,7 +178,7 @@ struct Validator<'a, 'tcx> {
     /// not have been evaluated, so we only promote such calls in basic blocks that are guaranteed
     /// to execute. In other words, we only promote such calls in basic blocks that are definitely
     /// not dead code. Here we cache the result of computing that set of basic blocks.
-    promotion_safe_blocks: Option<FxHashSet<BasicBlock>>,
+    promotion_safe_blocks: Option<GxHashSet<BasicBlock>>,
 }
 
 impl<'a, 'tcx> std::ops::Deref for Validator<'a, 'tcx> {
@@ -600,8 +600,8 @@ impl<'tcx> Validator<'_, 'tcx> {
     /// Computes the sets of blocks of this MIR that are definitely going to be executed
     /// if the function returns successfully. That makes it safe to promote calls in them
     /// that might fail.
-    fn promotion_safe_blocks(body: &mir::Body<'tcx>) -> FxHashSet<BasicBlock> {
-        let mut safe_blocks = FxHashSet::default();
+    fn promotion_safe_blocks(body: &mir::Body<'tcx>) -> GxHashSet<BasicBlock> {
+        let mut safe_blocks = GxHashSet::default();
         let mut safe_block = START_BLOCK;
         loop {
             safe_blocks.insert(safe_block);

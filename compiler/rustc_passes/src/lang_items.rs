@@ -14,7 +14,7 @@ use crate::weak_lang_items;
 
 use rustc_ast as ast;
 use rustc_ast::visit;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::gx::GxHashMap;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::{extract, GenericRequirement};
 use rustc_hir::{LangItem, LanguageItems, MethodKind, Target};
@@ -37,7 +37,7 @@ struct LanguageItemCollector<'ast, 'tcx> {
     resolver: &'ast ResolverAstLowering,
     // FIXME(#118552): We should probably feed def_span eagerly on def-id creation
     // so we can avoid constructing this map for local def-ids.
-    item_spans: FxHashMap<DefId, Span>,
+    item_spans: GxHashMap<DefId, Span>,
     parent_item: Option<&'ast ast::Item>,
 }
 
@@ -50,7 +50,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
             tcx,
             resolver,
             items: LanguageItems::new(),
-            item_spans: FxHashMap::default(),
+            item_spans: GxHashMap::default(),
             parent_item: None,
         }
     }

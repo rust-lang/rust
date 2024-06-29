@@ -132,7 +132,7 @@
 //! [attempt 3]: https://github.com/rust-lang/rust/pull/72632
 
 use crate::MirPass;
-use rustc_data_structures::fx::{FxIndexMap, IndexEntry, IndexOccupiedEntry};
+use rustc_data_structures::gx::{GxIndexMap, IndexEntry, IndexOccupiedEntry};
 use rustc_index::bit_set::BitSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::bug;
@@ -216,7 +216,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             let mut merged_locals: BitSet<Local> = BitSet::new_empty(body.local_decls.len());
 
             // This is the set of merges we will apply this round. It is a subset of the candidates.
-            let mut merges = FxIndexMap::default();
+            let mut merges = GxIndexMap::default();
 
             for (src, candidates) in candidates.c.iter() {
                 if merged_locals.contains(*src) {
@@ -261,8 +261,8 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
 /// frequently. Everything with a `&'alloc` lifetime points into here.
 #[derive(Default)]
 struct Allocations {
-    candidates: FxIndexMap<Local, Vec<Local>>,
-    candidates_reverse: FxIndexMap<Local, Vec<Local>>,
+    candidates: GxIndexMap<Local, Vec<Local>>,
+    candidates_reverse: GxIndexMap<Local, Vec<Local>>,
     write_info: WriteInfo,
     // PERF: Do this for `MaybeLiveLocals` allocations too.
 }
@@ -283,11 +283,11 @@ struct Candidates<'alloc> {
     ///
     /// We will still report that we would like to merge `_1` and `_2` in an attempt to allow us to
     /// remove that assignment.
-    c: &'alloc mut FxIndexMap<Local, Vec<Local>>,
+    c: &'alloc mut GxIndexMap<Local, Vec<Local>>,
     /// A reverse index of the `c` set; if the `c` set contains `a => Place { local: b, proj }`,
     /// then this contains `b => a`.
     // PERF: Possibly these should be `SmallVec`s?
-    reverse: &'alloc mut FxIndexMap<Local, Vec<Local>>,
+    reverse: &'alloc mut GxIndexMap<Local, Vec<Local>>,
 }
 
 //////////////////////////////////////////////////////////
@@ -298,7 +298,7 @@ struct Candidates<'alloc> {
 fn apply_merges<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    merges: &FxIndexMap<Local, Local>,
+    merges: &GxIndexMap<Local, Local>,
     merged_locals: &BitSet<Local>,
 ) {
     let mut merger = Merger { tcx, merges, merged_locals };
@@ -307,7 +307,7 @@ fn apply_merges<'tcx>(
 
 struct Merger<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    merges: &'a FxIndexMap<Local, Local>,
+    merges: &'a GxIndexMap<Local, Local>,
     merged_locals: &'a BitSet<Local>,
 }
 
@@ -736,8 +736,8 @@ fn places_to_candidate_pair<'tcx>(
 fn find_candidates<'alloc, 'tcx>(
     body: &Body<'tcx>,
     borrowed: &BitSet<Local>,
-    candidates: &'alloc mut FxIndexMap<Local, Vec<Local>>,
-    candidates_reverse: &'alloc mut FxIndexMap<Local, Vec<Local>>,
+    candidates: &'alloc mut GxIndexMap<Local, Vec<Local>>,
+    candidates_reverse: &'alloc mut GxIndexMap<Local, Vec<Local>>,
 ) -> Candidates<'alloc> {
     candidates.clear();
     candidates_reverse.clear();
@@ -759,7 +759,7 @@ fn find_candidates<'alloc, 'tcx>(
 
 struct FindAssignments<'a, 'alloc, 'tcx> {
     body: &'a Body<'tcx>,
-    candidates: &'alloc mut FxIndexMap<Local, Vec<Local>>,
+    candidates: &'alloc mut GxIndexMap<Local, Vec<Local>>,
     borrowed: &'a BitSet<Local>,
 }
 

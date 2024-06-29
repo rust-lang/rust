@@ -3,7 +3,7 @@
 //! All the static files are included here for centralized access in case anything other than the
 //! HTML rendering code (say, the theme checker) needs to access one of these files.
 
-use rustc_data_structures::fx::FxHasher;
+use rustc_data_structures::gx::GxHasher;
 use std::hash::Hasher;
 use std::path::{Path, PathBuf};
 use std::{fmt, str};
@@ -63,7 +63,7 @@ pub(crate) fn static_filename(filename: &str, contents: &[u8]) -> PathBuf {
 }
 
 fn static_suffix(bytes: &[u8]) -> String {
-    let mut hasher = FxHasher::default();
+    let mut hasher = GxHasher::default();
     hasher.write(bytes);
     format!("-{:016x}", hasher.finish())
 }

@@ -85,7 +85,7 @@ use rustc_session::{getopts, EarlyDiagCtxt};
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
 
-/// A macro to create a FxHashMap.
+/// A macro to create a GxHashMap.
 ///
 /// Example:
 ///
@@ -97,7 +97,7 @@ use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
 /// Commas between elements are required (even if the expression is a block).
 macro_rules! map {
     ($( $key: expr => $val: expr ),* $(,)*) => {{
-        let mut map = ::rustc_data_structures::fx::FxHashMap::default();
+        let mut map = ::rustc_data_structures::gx::GxHashMap::default();
         $( map.insert($key, $val); )*
         map
     }}

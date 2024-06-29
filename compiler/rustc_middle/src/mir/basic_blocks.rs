@@ -1,9 +1,9 @@
 use crate::mir::traversal::Postorder;
 use crate::mir::{BasicBlock, BasicBlockData, Terminator, TerminatorKind, START_BLOCK};
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
+use rustc_data_structures::gx::GxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::OnceLock;
 use rustc_index::{IndexSlice, IndexVec};
@@ -20,7 +20,7 @@ pub struct BasicBlocks<'tcx> {
 // Typically 95%+ of basic blocks have 4 or fewer predecessors.
 pub type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
 
-pub type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[Option<u128>; 1]>>;
+pub type SwitchSources = GxHashMap<(BasicBlock, BasicBlock), SmallVec<[Option<u128>; 1]>>;
 
 #[derive(Clone, Default, Debug)]
 struct Cache {
@@ -82,7 +82,7 @@ impl<'tcx> BasicBlocks<'tcx> {
     #[inline]
     pub fn switch_sources(&self) -> &SwitchSources {
         self.cache.switch_sources.get_or_init(|| {
-            let mut switch_sources: SwitchSources = FxHashMap::default();
+            let mut switch_sources: SwitchSources = GxHashMap::default();
             for (bb, data) in self.basic_blocks.iter_enumerated() {
                 if let Some(Terminator {
                     kind: TerminatorKind::SwitchInt { targets, .. }, ..

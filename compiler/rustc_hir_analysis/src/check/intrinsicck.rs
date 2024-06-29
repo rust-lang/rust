@@ -1,5 +1,5 @@
 use rustc_ast::InlineAsmTemplatePiece;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
@@ -127,7 +127,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         template: &[InlineAsmTemplatePiece],
         is_input: bool,
         tied_input: Option<(&'tcx hir::Expr<'tcx>, Option<InlineAsmType>)>,
-        target_features: &FxIndexSet<Symbol>,
+        target_features: &GxIndexSet<Symbol>,
     ) -> Option<InlineAsmType> {
         let ty = (self.get_operand_ty)(expr);
         if ty.has_non_region_infer() {

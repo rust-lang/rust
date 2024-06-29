@@ -2,7 +2,7 @@
 //! It can be used to locate problems in MIR building or optimizations. It assumes that all code
 //! can be executed, so it has false positives.
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::gx::GxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -48,7 +48,7 @@ struct Lint<'a, 'tcx> {
     always_live_locals: &'a BitSet<Local>,
     maybe_storage_live: ResultsCursor<'a, 'tcx, MaybeStorageLive<'a>>,
     maybe_storage_dead: ResultsCursor<'a, 'tcx, MaybeStorageDead<'a>>,
-    places: FxHashSet<PlaceRef<'tcx>>,
+    places: GxHashSet<PlaceRef<'tcx>>,
 }
 
 impl<'a, 'tcx> Lint<'a, 'tcx> {

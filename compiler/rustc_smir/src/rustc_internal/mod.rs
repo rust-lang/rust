@@ -4,8 +4,8 @@
 //! until stable MIR is complete.
 
 use crate::rustc_smir::{context::TablesWrapper, Stable, Tables};
-use rustc_data_structures::fx;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::gx;
+use rustc_data_structures::gx::GxIndexMap;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
@@ -395,15 +395,15 @@ macro_rules! run_driver {
     }};
 }
 
-/// Simmilar to rustc's `FxIndexMap`, `IndexMap` with extra
+/// Simmilar to rustc's `IndexMap`, `IndexMap` with extra
 /// safety features added.
 pub struct IndexMap<K, V> {
-    index_map: fx::FxIndexMap<K, V>,
+    index_map: gx::GxIndexMap<K, V>,
 }
 
 impl<K, V> Default for IndexMap<K, V> {
     fn default() -> Self {
-        Self { index_map: FxIndexMap::default() }
+        Self { index_map: GxIndexMap::default() }
     }
 }
 

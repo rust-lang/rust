@@ -3,7 +3,7 @@
 
 use crate::errors;
 
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::gx::GxIndexSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_lint_defs::builtin::UNCOVERED_PARAM_IN_PROJECTION;
@@ -286,7 +286,7 @@ fn orphan_check<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_def_id: LocalDefId,
     mode: OrphanCheckMode,
-) -> Result<(), OrphanCheckErr<'tcx, FxIndexSet<DefId>>> {
+) -> Result<(), OrphanCheckErr<'tcx, GxIndexSet<DefId>>> {
     // We only accept this routine to be invoked on implementations
     // of a trait, not inherent implementations.
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -369,7 +369,7 @@ fn emit_orphan_check_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     impl_def_id: LocalDefId,
-    err: traits::OrphanCheckErr<'tcx, FxIndexSet<DefId>>,
+    err: traits::OrphanCheckErr<'tcx, GxIndexSet<DefId>>,
 ) -> ErrorGuaranteed {
     match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
@@ -482,7 +482,7 @@ fn emit_orphan_check_error<'tcx>(
 
 fn lint_uncovered_ty_params<'tcx>(
     tcx: TyCtxt<'tcx>,
-    UncoveredTyParams { uncovered, local_ty }: UncoveredTyParams<'tcx, FxIndexSet<DefId>>,
+    UncoveredTyParams { uncovered, local_ty }: UncoveredTyParams<'tcx, GxIndexSet<DefId>>,
     impl_def_id: LocalDefId,
 ) {
     let hir_id = tcx.local_def_id_to_hir_id(impl_def_id);
@@ -510,7 +510,7 @@ fn lint_uncovered_ty_params<'tcx>(
 
 struct UncoveredTyParamCollector<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'tcx>,
-    uncovered_params: FxIndexSet<DefId>,
+    uncovered_params: GxIndexSet<DefId>,
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UncoveredTyParamCollector<'_, 'tcx> {

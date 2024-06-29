@@ -1,5 +1,5 @@
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::gx::{GxHashMap, GxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
@@ -953,7 +953,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
     let cloned_shared = Rc::clone(&cx.shared);
     let cache = &cloned_shared.cache;
-    let mut extern_crates = FxHashSet::default();
+    let mut extern_crates = GxHashSet::default();
 
     if !t.is_object_safe(cx.tcx()) {
         write_section_heading(
@@ -973,7 +973,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     if let Some(implementors) = cache.implementors.get(&it.item_id.expect_def_id()) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
-        let mut implementor_dups: FxHashMap<Symbol, (DefId, bool)> = FxHashMap::default();
+        let mut implementor_dups: GxHashMap<Symbol, (DefId, bool)> = GxHashMap::default();
         for implementor in implementors {
             if let Some(did) = implementor.inner_impl().for_.without_borrowed_ref().def_id(cache)
                 && !did.is_local()
@@ -2112,7 +2112,7 @@ fn render_implementor(
     implementor: &Impl,
     trait_: &clean::Item,
     w: &mut Buffer,
-    implementor_dups: &FxHashMap<Symbol, (DefId, bool)>,
+    implementor_dups: &GxHashMap<Symbol, (DefId, bool)>,
     aliases: &[String],
 ) {
     // If there's already another implementor that has the same abridged name, use the
