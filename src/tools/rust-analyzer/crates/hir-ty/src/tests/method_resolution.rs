@@ -2099,3 +2099,42 @@ fn test() {
 "#,
     );
 }
+
+#[test]
+fn mismatched_args_due_to_supertraits_with_deref() {
+    check_no_mismatches(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+trait Trait1 {
+    type Assoc: Deref<Target = String>;
+}
+
+trait Trait2: Trait1 {
+}
+
+trait Trait3 {
+    type T1: Trait1;
+    type T2: Trait2;
+    fn bar(&self, x: bool, y: bool);
+}
+
+struct Foo;
+
+impl Foo {
+    fn bar(&mut self, _: &'static str) {}
+}
+
+impl Deref for Foo {
+    type Target = u32;
+    fn deref(&self) -> &Self::Target { &0 }
+}
+
+fn problem_method<T: Trait3>() {
+    let mut foo = Foo;
+    foo.bar("hello"); // Rustc ok, RA errors (mismatched args)
+}
+"#,
+    );
+}

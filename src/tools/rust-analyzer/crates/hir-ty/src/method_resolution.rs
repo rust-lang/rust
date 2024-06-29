@@ -30,8 +30,8 @@ use crate::{
     utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, GenericArgData,
     Goal, Guidance, InEnvironment, Interner, Mutability, Scalar, Solution, Substitution,
-    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, VariableKind,
-    WhereClause,
+    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, TyVariableKind,
+    VariableKind, WhereClause,
 };
 
 /// This is used as a key for indexing impls.
@@ -1083,6 +1083,11 @@ fn iterate_method_candidates_by_receiver(
     table.run_in_snapshot(|table| {
         let mut autoderef = autoderef::Autoderef::new(table, receiver_ty.clone(), true);
         while let Some((self_ty, _)) = autoderef.next() {
+            if matches!(self_ty.kind(Interner), TyKind::InferenceVar(_, TyVariableKind::General)) {
+                // don't try to resolve methods on unknown types
+                return ControlFlow::Continue(());
+            }
+
             iterate_trait_method_candidates(
                 &self_ty,
                 autoderef.table,
