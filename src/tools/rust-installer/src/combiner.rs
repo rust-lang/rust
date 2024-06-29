@@ -55,6 +55,12 @@ actor! {
         /// The formats used to compress the tarball
         #[arg(value_name = "FORMAT", default_value_t)]
         compression_formats: CompressionFormats,
+
+        /// Modification time that will be set for all files added to the archive.
+        /// The default is the date of the first Rust commit from 2006.
+        /// This serves for better reproducibility of the archives.
+        #[arg(value_name = "FILE_MTIME", default_value_t = 1153704088)]
+        override_file_mtime: u64,
     }
 }
 
@@ -145,7 +151,8 @@ impl Combiner {
             .input(self.package_name)
             .output(path_to_str(&output)?.into())
             .compression_profile(self.compression_profile)
-            .compression_formats(self.compression_formats);
+            .compression_formats(self.compression_formats)
+            .override_file_mtime(self.override_file_mtime);
         tarballer.run()?;
 
         Ok(())
