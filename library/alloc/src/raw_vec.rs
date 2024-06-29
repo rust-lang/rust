@@ -429,6 +429,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     pub fn shrink_to_fit(&mut self, cap: usize) {
         if let Err(err) = self.shrink(cap) {
             handle_error(err);
@@ -511,9 +512,25 @@ impl<T, A: Allocator> RawVec<T, A> {
     }
 
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     fn shrink(&mut self, cap: usize) -> Result<(), TryReserveError> {
         assert!(cap <= self.capacity(), "Tried to shrink to a larger capacity");
+        // SAFETY: Just checked this isn't trying to grow
+        unsafe { self.shrink_unchecked(cap) }
+    }
 
+    /// `shrink`, but without the capacity check.
+    ///
+    /// This is split out so that `shrink` can inline the check, since it
+    /// optimizes out in things like `shrink_to_fit`, without needing to
+    /// also inline all this code, as doing that ends up failing the
+    /// `vec-shrink-panic` codegen test when `shrink_to_fit` ends up being too
+    /// big for LLVM to be willing to inline.
+    ///
+    /// # Safety
+    /// `cap <= self.capacity()`
+    #[cfg(not(no_global_oom_handling))]
+    unsafe fn shrink_unchecked(&mut self, cap: usize) -> Result<(), TryReserveError> {
         let (ptr, layout) = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
         // See current_memory() why this assert is here
         const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
