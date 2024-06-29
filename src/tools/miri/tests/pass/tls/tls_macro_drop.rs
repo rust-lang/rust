@@ -4,27 +4,28 @@
 use std::cell::RefCell;
 use std::thread;
 
-struct TestCell {
-    value: RefCell<u8>,
-}
-
-impl Drop for TestCell {
-    fn drop(&mut self) {
-        for _ in 0..10 {
-            thread::yield_now();
-        }
-        println!("Dropping: {} (should be before 'Continue main 1').", *self.value.borrow())
-    }
-}
-
-thread_local! {
-    static A: TestCell = TestCell { value: RefCell::new(0) };
-    static A_CONST: TestCell = const { TestCell { value: RefCell::new(10) } };
-}
-
 /// Check that destructors of the library thread locals are executed immediately
 /// after a thread terminates.
 fn check_destructors() {
+    struct TestCell {
+        value: RefCell<u8>,
+    }
+
+    impl Drop for TestCell {
+        fn drop(&mut self) {
+            for _ in 0..10 {
+                thread::yield_now();
+            }
+            println!("Dropping: {} (should be before 'Continue main 1').", *self.value.borrow())
+        }
+    }
+
+    // Test both regular and `const` thread-locals.
+    thread_local! {
+        static A: TestCell = TestCell { value: RefCell::new(0) };
+        static A_CONST: TestCell = const { TestCell { value: RefCell::new(10) } };
+    }
+
     // We use the same value for both of them, since destructor order differs between Miri on Linux
     // (which uses `register_dtor_fallback`, in the end using a single pthread_key to manage a
     // thread-local linked list of dtors to call), real Linux rustc (which uses
@@ -44,26 +45,29 @@ fn check_destructors() {
     println!("Continue main 1.")
 }
 
-struct JoinCell {
-    value: RefCell<Option<thread::JoinHandle<u8>>>,
-}
-
-impl Drop for JoinCell {
-    fn drop(&mut self) {
-        for _ in 0..10 {
-            thread::yield_now();
-        }
-        let join_handle = self.value.borrow_mut().take().unwrap();
-        println!("Joining: {} (should be before 'Continue main 2').", join_handle.join().unwrap());
-    }
-}
-
-thread_local! {
-    static B: JoinCell = JoinCell { value: RefCell::new(None) };
-}
-
 /// Check that the destructor can be blocked joining another thread.
 fn check_blocking() {
+    struct JoinCell {
+        value: RefCell<Option<thread::JoinHandle<u8>>>,
+    }
+
+    impl Drop for JoinCell {
+        fn drop(&mut self) {
+            for _ in 0..10 {
+                thread::yield_now();
+            }
+            let join_handle = self.value.borrow_mut().take().unwrap();
+            println!(
+                "Joining: {} (should be before 'Continue main 2').",
+                join_handle.join().unwrap()
+            );
+        }
+    }
+
+    thread_local! {
+        static B: JoinCell = JoinCell { value: RefCell::new(None) };
+    }
+
     thread::spawn(|| {
         B.with(|f| {
             assert!(f.value.borrow().is_none());
@@ -74,10 +78,36 @@ fn check_blocking() {
     .join()
     .unwrap();
     println!("Continue main 2.");
-    // Preempt the main thread so that the destructor gets executed and can join
-    // the thread.
-    thread::yield_now();
-    thread::yield_now();
+}
+
+fn check_tls_init_in_dtor() {
+    struct Bar;
+
+    impl Drop for Bar {
+        fn drop(&mut self) {
+            println!("Bar dtor (should be before `Continue main 3`).");
+        }
+    }
+
+    struct Foo;
+
+    impl Drop for Foo {
+        fn drop(&mut self) {
+            println!("Foo dtor (should be before `Bar dtor`).");
+            // We initialize another thread-local inside the dtor, which is an interesting corner case.
+            thread_local!(static BAR: Bar = Bar);
+            BAR.with(|_| {});
+        }
+    }
+
+    thread_local!(static FOO: Foo = Foo);
+
+    thread::spawn(|| {
+        FOO.with(|_| {});
+    })
+    .join()
+    .unwrap();
+    println!("Continue main 3.");
 }
 
 // This test tests that TLS destructors have run before the thread joins. The
@@ -248,6 +278,8 @@ fn dtors_in_dtors_in_dtors() {
 fn main() {
     check_destructors();
     check_blocking();
+    check_tls_init_in_dtor();
+
     join_orders_after_tls_destructors();
     dtors_in_dtors_in_dtors();
 }

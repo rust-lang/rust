@@ -303,7 +303,7 @@ pub fn create_ecx<'tcx>(
         let mut argvs = Vec::<Immediate<Provenance>>::with_capacity(config.args.len());
         for arg in config.args.iter() {
             // Make space for `0` terminator.
-            let size = u64::try_from(arg.len()).unwrap().checked_add(1).unwrap();
+            let size = u64::try_from(arg.len()).unwrap().strict_add(1);
             let arg_type = Ty::new_array(tcx, tcx.types.u8, size);
             let arg_place =
                 ecx.allocate(ecx.layout_of(arg_type)?, MiriMemoryKind::Machine.into())?;
@@ -468,7 +468,7 @@ pub fn eval_entry<'tcx>(
         // Check for thread leaks.
         if !ecx.have_all_terminated() {
             tcx.dcx().err("the main thread terminated without waiting for all remaining threads");
-            tcx.dcx().note("pass `-Zmiri-ignore-leaks` to disable this check");
+            tcx.dcx().note("set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check");
             return None;
         }
         // Check for memory leaks.
@@ -476,14 +476,7 @@ pub fn eval_entry<'tcx>(
         let leaks = ecx.find_leaked_allocations(&ecx.machine.static_roots);
         if !leaks.is_empty() {
             report_leaks(&ecx, leaks);
-            let leak_message = "the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check";
-            if ecx.machine.collect_leak_backtraces {
-                // If we are collecting leak backtraces, each leak is a distinct error diagnostic.
-                tcx.dcx().note(leak_message);
-            } else {
-                // If we do not have backtraces, we just report an error without any span.
-                tcx.dcx().err(leak_message);
-            };
+            tcx.dcx().note("set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check");
             // Ignore the provided return code - let the reported error
             // determine the return code.
             return None;

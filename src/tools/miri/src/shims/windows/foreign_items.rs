@@ -138,6 +138,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.GetUserProfileDirectoryW(token, buf, size)?;
                 this.write_scalar(result, dest)?;
             }
+            "GetCurrentProcessId" => {
+                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let result = this.GetCurrentProcessId()?;
+                this.write_int(result, dest)?;
+            }
 
             // File related shims
             "NtWriteFile" => {
@@ -647,7 +652,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // If the function succeeds, the return value is the length of the string that
                     // is copied to the buffer, in characters, not including the terminating null
                     // character.
-                    this.write_int(size_needed.checked_sub(1).unwrap(), dest)?;
+                    this.write_int(size_needed.strict_sub(1), dest)?;
                 } else {
                     // If the buffer is too small to hold the module name, the string is truncated
                     // to nSize characters including the terminating null character, the function
@@ -689,7 +694,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     throw_unsup_format!("FormatMessageW: buffer not big enough");
                 }
                 // The return value is the number of characters stored *excluding* the null terminator.
-                this.write_int(length.checked_sub(1).unwrap(), dest)?;
+                this.write_int(length.strict_sub(1), dest)?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
@@ -742,11 +747,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
                 this.write_int(1, dest)?;
-            }
-            "GetCurrentProcessId" if this.frame_in_std() => {
-                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                let result = this.GetCurrentProcessId()?;
-                this.write_int(result, dest)?;
             }
             // this is only callable from std because we know that std ignores the return value
             "SwitchToThread" if this.frame_in_std() => {

@@ -14,6 +14,7 @@ use rustc_hir::{
     def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE},
 };
 use rustc_index::IndexVec;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::mir;
@@ -163,22 +164,39 @@ pub fn iter_exported_symbols<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut f: impl FnMut(CrateNum, DefId) -> InterpResult<'tcx>,
 ) -> InterpResult<'tcx> {
+    // First, the symbols in the local crate. We can't use `exported_symbols` here as that
+    // skips `#[used]` statics (since `reachable_set` skips them in binary crates).
+    // So we walk all HIR items ourselves instead.
+    let crate_items = tcx.hir_crate_items(());
+    for def_id in crate_items.definitions() {
+        let exported = tcx.def_kind(def_id).has_codegen_attrs() && {
+            let codegen_attrs = tcx.codegen_fn_attrs(def_id);
+            codegen_attrs.contains_extern_indicator()
+                || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
+        };
+        if exported {
+            f(LOCAL_CRATE, def_id.into())?;
+        }
+    }
+
+    // Next, all our dependencies.
     // `dependency_formats` includes all the transitive informations needed to link a crate,
     // which is what we need here since we need to dig out `exported_symbols` from all transitive
     // dependencies.
     let dependency_formats = tcx.dependency_formats(());
+    // Find the dependencies of the executable we are running.
     let dependency_format = dependency_formats
         .iter()
         .find(|(crate_type, _)| *crate_type == CrateType::Executable)
         .expect("interpreting a non-executable crate");
-    for cnum in iter::once(LOCAL_CRATE).chain(dependency_format.1.iter().enumerate().filter_map(
-        |(num, &linkage)| {
-            // We add 1 to the number because that's what rustc also does everywhere it
-            // calls `CrateNum::new`...
-            #[allow(clippy::arithmetic_side_effects)]
-            (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
-        },
-    )) {
+    for cnum in dependency_format.1.iter().enumerate().filter_map(|(num, &linkage)| {
+        // We add 1 to the number because that's what rustc also does everywhere it
+        // calls `CrateNum::new`...
+        #[allow(clippy::arithmetic_side_effects)]
+        (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
+    }) {
         // We can ignore `_export_info` here: we are a Rust crate, and everything is exported
         // from a Rust crate.
         for &(symbol, _export_info) in tcx.exported_symbols(cnum) {
@@ -273,6 +291,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Helper function to get a `libc` constant as a `Scalar`.
     fn eval_libc(&self, name: &str) -> Scalar {
+        if self.eval_context_ref().tcx.sess.target.os == "windows" {
+            panic!(
+                "`libc` crate is not reliably available on Windows targets; Miri should not use it there"
+            );
+        }
         self.eval_path_scalar(&["libc", name])
     }
 
@@ -316,6 +339,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Helper function to get the `TyAndLayout` of a `libc` type
     fn libc_ty_layout(&self, name: &str) -> TyAndLayout<'tcx> {
         let this = self.eval_context_ref();
+        if this.tcx.sess.target.os == "windows" {
+            panic!(
+                "`libc` crate is not reliably available on Windows targets; Miri should not use it there"
+            );
+        }
         let ty = this
             .resolve_path(&["libc", name], Namespace::TypeNS)
             .ty(*this.tcx, ty::ParamEnv::reveal_all());
@@ -963,7 +991,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an out-of-bounds access.
         let string_length = u64::try_from(c_str.len()).unwrap();
-        let string_length = string_length.checked_add(1).unwrap();
+        let string_length = string_length.strict_add(1);
         if size < string_length {
             return Ok((false, string_length));
         }
@@ -1027,7 +1055,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required
         // 0x0000 terminator to memory would cause an out-of-bounds access.
         let string_length = u64::try_from(wide_str.len()).unwrap();
-        let string_length = string_length.checked_add(1).unwrap();
+        let string_length = string_length.strict_add(1);
         if size < string_length {
             return Ok((false, string_length));
         }
@@ -1048,7 +1076,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Always returns a `Vec<u32>` no matter the size of `wchar_t`.
     fn read_wchar_t_str(&self, ptr: Pointer) -> InterpResult<'tcx, Vec<u32>> {
         let this = self.eval_context_ref();
-        let wchar_t = this.libc_ty_layout("wchar_t");
+        let wchar_t = if this.tcx.sess.target.os == "windows" {
+            // We don't have libc on Windows so we have to hard-code the type ourselves.
+            this.machine.layouts.u16
+        } else {
+            this.libc_ty_layout("wchar_t")
+        };
         self.read_c_str_with_char_size(ptr, wchar_t.size, wchar_t.align.abi)
     }
 
@@ -1391,7 +1424,7 @@ pub(crate) fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
     if success {
         // If the function succeeds, the return value is the number of characters stored in the target buffer,
         // not including the terminating null character.
-        u32::try_from(len.checked_sub(1).unwrap()).unwrap()
+        u32::try_from(len.strict_sub(1)).unwrap()
     } else {
         // If the target buffer was not large enough to hold the data, the return value is the buffer size, in characters,
         // required to hold the string and its terminating null character.

@@ -227,8 +227,8 @@ pub fn report_error<'tcx>(
         let helps = match info {
             UnsupportedInIsolation(_) =>
                 vec![
-                    (None, format!("pass the flag `-Zmiri-disable-isolation` to disable isolation;")),
-                    (None, format!("or pass `-Zmiri-isolation-error=warn` to configure Miri to return an error code from isolated operations (if supported for that operation) and continue with a warning")),
+                    (None, format!("set `MIRIFLAGS=-Zmiri-disable-isolation` to disable isolation;")),
+                    (None, format!("or set `MIRIFLAGS=-Zmiri-isolation-error=warn` to make Miri return an error code from isolated operations (if supported for that operation) and continue with a warning")),
                 ],
             UnsupportedForeignItem(_) => {
                 vec![
@@ -465,19 +465,22 @@ pub fn report_leaks<'tcx>(
 ) {
     let mut any_pruned = false;
     for (id, kind, mut alloc) in leaks {
+        let mut title = format!(
+            "memory leaked: {id:?} ({}, size: {:?}, align: {:?})",
+            kind,
+            alloc.size().bytes(),
+            alloc.align.bytes()
+        );
         let Some(backtrace) = alloc.extra.backtrace.take() else {
+            ecx.tcx.dcx().err(title);
             continue;
         };
+        title.push_str(", allocated here:");
         let (backtrace, pruned) = prune_stacktrace(backtrace, &ecx.machine);
         any_pruned |= pruned;
         report_msg(
             DiagLevel::Error,
-            format!(
-                "memory leaked: {id:?} ({}, size: {:?}, align: {:?}), allocated here:",
-                kind,
-                alloc.size().bytes(),
-                alloc.align.bytes()
-            ),
+            title,
             vec![],
             vec![],
             vec![],
@@ -644,12 +647,8 @@ impl<'tcx> MiriMachine<'tcx> {
                     (
                         None,
                         format!(
-                            "This program is using integer-to-pointer casts or (equivalently) `ptr::with_exposed_provenance`,"
+                            "This program is using integer-to-pointer casts or (equivalently) `ptr::with_exposed_provenance`, which means that Miri might miss pointer bugs in this program."
                         ),
-                    ),
-                    (
-                        None,
-                        format!("which means that Miri might miss pointer bugs in this program."),
                     ),
                     (
                         None,
@@ -666,13 +665,13 @@ impl<'tcx> MiriMachine<'tcx> {
                     (
                         None,
                         format!(
-                            "You can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `with_exposed_provenance` semantics."
+                            "You can then set `MIRIFLAGS=-Zmiri-strict-provenance` to ensure you are not relying on `with_exposed_provenance` semantics."
                         ),
                     ),
                     (
                         None,
                         format!(
-                            "Alternatively, the `-Zmiri-permissive-provenance` flag disables this warning."
+                            "Alternatively, `MIRIFLAGS=-Zmiri-permissive-provenance` disables this warning."
                         ),
                     ),
                 ],

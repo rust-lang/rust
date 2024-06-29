@@ -5,18 +5,6 @@ use rustc_target::abi::{Align, Size};
 
 use crate::*;
 
-/// Check some basic requirements for this allocation request:
-/// non-zero size, power-of-two alignment.
-pub(super) fn check_alloc_request<'tcx>(size: u64, align: u64) -> InterpResult<'tcx> {
-    if size == 0 {
-        throw_ub_format!("creating allocation with size 0");
-    }
-    if !align.is_power_of_two() {
-        throw_ub_format!("creating allocation with non-power-of-two alignment {}", align);
-    }
-    Ok(())
-}
-
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Returns the alignment that `malloc` would guarantee for requests of the given size.
