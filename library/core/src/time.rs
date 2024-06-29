@@ -620,13 +620,14 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(duration_abs_diff)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(100, 0).abs_diff(Duration::new(80, 0)), Duration::new(20, 0));
     /// assert_eq!(Duration::new(100, 400_000_000).abs_diff(Duration::new(110, 0)), Duration::new(9, 600_000_000));
     /// ```
-    #[unstable(feature = "duration_abs_diff", issue = "117618")]
+    #[stable(feature = "duration_abs_diff", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "duration_abs_diff", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(const_option)]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
