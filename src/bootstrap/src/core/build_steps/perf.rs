@@ -27,7 +27,7 @@ Consider setting `rust.debuginfo-level = 1` in `config.toml`."#);
     let args = std::env::args().skip_while(|a| a != "--").skip(1);
 
     let mut cmd = builder.tool_cmd(Tool::RustcPerfWrapper);
-    cmd.env("PERF_RUSTC", rustc)
+    cmd.env("RUSTC_REAL", rustc)
         .env("PERF_COLLECTOR", collector)
         .env("PERF_RESULT_DIR", profile_results_dir)
         .args(args);

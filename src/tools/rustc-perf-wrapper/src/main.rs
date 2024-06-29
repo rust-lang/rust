@@ -68,7 +68,7 @@ struct SharedOpts {
 #[derive(Debug, clap::Parser)]
 struct BuildContext {
     /// Compiler binary that will be benchmarked/profiled.
-    #[clap(long, hide = true, env = "PERF_RUSTC")]
+    #[clap(long, hide = true, env = "RUSTC_REAL")]
     compiler: PathBuf,
     /// rustc-perf collector binary that will be used for running benchmarks/profilers.
     #[clap(long, hide = true, env = "PERF_COLLECTOR")]
