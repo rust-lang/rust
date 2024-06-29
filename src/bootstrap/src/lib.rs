@@ -936,11 +936,10 @@ impl Build {
     /// Execute a command and return its output.
     /// This method should be used for all command executions in bootstrap.
     fn run<C: AsMut<BootstrapCommand>>(&self, mut command: C) -> CommandOutput {
-        if self.config.dry_run() {
+        let command = command.as_mut();
+        if self.config.dry_run() && !command.run_always {
             return CommandOutput::default();
         }
-
-        let command = command.as_mut();
 
         self.verbose(|| println!("running: {command:?}"));
 

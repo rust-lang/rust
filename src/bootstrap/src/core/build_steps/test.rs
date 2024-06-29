@@ -1805,7 +1805,13 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         let lldb_exe = builder.config.lldb.clone().unwrap_or_else(|| PathBuf::from("lldb"));
         let lldb_version = builder
-            .run(BootstrapCommand::new(&lldb_exe).capture().allow_failure().arg("--version"))
+            .run(
+                BootstrapCommand::new(&lldb_exe)
+                    .capture()
+                    .allow_failure()
+                    .run_always()
+                    .arg("--version"),
+            )
             .stdout_if_ok();
         if let Some(ref vers) = lldb_version {
             cmd.arg("--lldb-version").arg(vers);
