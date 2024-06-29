@@ -2042,7 +2042,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     if block_num > 1 && found_semi {
                         err.span_suggestion_verbose(
-                            span.shrink_to_lo(),
+                            // use the span of the *whole* expr
+                            self.tcx.hir().span(binding_hir_id).shrink_to_lo(),
                             "you might have meant to return this to infer its type parameters",
                             "return ",
                             Applicability::MaybeIncorrect,
