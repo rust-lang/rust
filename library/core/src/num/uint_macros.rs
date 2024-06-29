@@ -2726,7 +2726,7 @@ macro_rules! uint_impl {
         pub const fn div_ceil(self, rhs: Self) -> Self {
             let d = self / rhs;
             let r = self % rhs;
-            if r > 0 && rhs > 0 {
+            if r > 0 {
                 d + 1
             } else {
                 d
