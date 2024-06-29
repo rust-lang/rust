@@ -13,7 +13,7 @@ use std::{
     path::Path,
 };
 
-fn parse(config: &str) -> Config {
+pub(crate) fn parse(config: &str) -> Config {
     Config::parse_inner(&["check".to_string(), "--config=/does/not/exist".to_string()], |&_| {
         toml::from_str(&config).unwrap()
     })

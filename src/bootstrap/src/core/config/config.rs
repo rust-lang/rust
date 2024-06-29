@@ -18,10 +18,13 @@ use std::sync::OnceLock;
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::build_steps::llvm;
 use crate::core::config::flags::{Color, Flags, Warnings};
+use crate::core::download::is_ci_rustc_available_for_target;
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{self, exe, output, t};
+use build_helper::ci::CiEnv;
 use build_helper::exit;
+use build_helper::git::get_closest_merge_base_commit;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
@@ -1526,9 +1529,11 @@ impl Config {
             config.mandir = mandir.map(PathBuf::from);
         }
 
+        config.llvm_assertions =
+            toml.llvm.as_ref().map_or(false, |llvm| llvm.assertions.unwrap_or(false));
+
         // Store off these values as options because if they're not provided
         // we'll infer default values for them later
-        let mut llvm_assertions = None;
         let mut llvm_tests = None;
         let mut llvm_plugins = None;
         let mut debug = None;
@@ -1607,7 +1612,8 @@ impl Config {
             is_user_configured_rust_channel = channel.is_some();
             set(&mut config.channel, channel);
 
-            config.download_rustc_commit = config.download_ci_rustc_commit(download_rustc);
+            config.download_rustc_commit =
+                config.download_ci_rustc_commit(download_rustc, config.llvm_assertions);
 
             // FIXME: handle download-rustc incompatible options.
 
@@ -1743,7 +1749,7 @@ impl Config {
                 optimize: optimize_toml,
                 thin_lto,
                 release_debuginfo,
-                assertions,
+                assertions: _,
                 tests,
                 plugins,
                 ccache,
@@ -1775,7 +1781,6 @@ impl Config {
                 Some(StringOrBool::Bool(false)) | None => {}
             }
             set(&mut config.ninja_in_file, ninja);
-            llvm_assertions = assertions;
             llvm_tests = tests;
             llvm_plugins = plugins;
             set(&mut config.llvm_optimize, optimize_toml);
@@ -1802,8 +1807,8 @@ impl Config {
             config.llvm_enable_warnings = enable_warnings.unwrap_or(false);
             config.llvm_build_config = build_config.clone().unwrap_or(Default::default());
 
-            let asserts = llvm_assertions.unwrap_or(false);
-            config.llvm_from_ci = config.parse_download_ci_llvm(download_ci_llvm, asserts);
+            config.llvm_from_ci =
+                config.parse_download_ci_llvm(download_ci_llvm, config.llvm_assertions);
 
             if config.llvm_from_ci {
                 // None of the LLVM options, except assertions, are supported
@@ -1960,7 +1965,6 @@ impl Config {
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
 
-        config.llvm_assertions = llvm_assertions.unwrap_or(false);
         config.llvm_tests = llvm_tests.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
         config.rust_optimize = optimize.unwrap_or(RustOptimize::Bool(true));
@@ -2433,7 +2437,15 @@ impl Config {
     }
 
     /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
-    fn download_ci_rustc_commit(&self, download_rustc: Option<StringOrBool>) -> Option<String> {
+    fn download_ci_rustc_commit(
+        &self,
+        download_rustc: Option<StringOrBool>,
+        llvm_assertions: bool,
+    ) -> Option<String> {
+        if !is_ci_rustc_available_for_target(&self.build.triple, llvm_assertions) {
+            return None;
+        }
+
         // If `download-rustc` is not set, default to rebuilding.
         let if_unchanged = match download_rustc {
             None | Some(StringOrBool::Bool(false)) => return None,
@@ -2451,15 +2463,14 @@ impl Config {
         let compiler = format!("{top_level}/compiler/");
         let library = format!("{top_level}/library/");
 
-        // Look for a version to compare to based on the current commit.
-        // Only commits merged by bors will have CI artifacts.
-        let merge_base = output(
-            helpers::git(Some(&self.src))
-                .arg("rev-list")
-                .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
-                .args(["-n1", "--first-parent", "HEAD"]),
-        );
-        let commit = merge_base.trim_end();
+        let commit = get_closest_merge_base_commit(
+            &self.git_config(),
+            Some(&self.src),
+            &self.stage0_metadata.config.git_merge_commit_email,
+            &[self.src.join("compiler"), self.src.join("library")],
+        )
+        .unwrap();
+
         if commit.is_empty() {
             println!("ERROR: could not find commit hash for downloading rustc");
             println!("HELP: maybe your repository history is too shallow?");
@@ -2468,9 +2479,21 @@ impl Config {
             crate::exit!(1);
         }
 
+        if CiEnv::is_ci() && {
+            let head_sha = output(helpers::git(None).arg("rev-parse").arg("HEAD"));
+            let head_sha = head_sha.trim();
+            commit == head_sha
+        } {
+            eprintln!("CI rustc commit matches with HEAD and we are in CI.");
+            eprintln!(
+                "`rustc.download-ci` functionality will be skipped as artifacts are not available."
+            );
+            return None;
+        }
+
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let has_changes = !t!(helpers::git(Some(&self.src))
-            .args(["diff-index", "--quiet", commit, "--", &compiler, &library])
+            .args(["diff-index", "--quiet", &commit, "--", &compiler, &library])
             .status())
         .success();
         if has_changes {
