@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![warn(non_local_definitions)]
-
 trait Trait<T> {}
 
 fn main() {
