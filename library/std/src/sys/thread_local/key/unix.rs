@@ -16,6 +16,7 @@ pub unsafe fn set(key: Key, value: *mut u8) {
 }
 
 #[inline]
+#[cfg(any(not(target_thread_local), test))]
 pub unsafe fn get(key: Key) -> *mut u8 {
     unsafe { libc::pthread_getspecific(key) as *mut u8 }
 }

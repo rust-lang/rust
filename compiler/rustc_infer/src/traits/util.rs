@@ -275,10 +275,10 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                 }
                 // Get predicates implied by the trait, or only super predicates if we only care about self predicates.
                 let predicates = match self.mode {
-                    Filter::All => tcx.implied_predicates_of(data.def_id()),
-                    Filter::OnlySelf => tcx.super_predicates_of(data.def_id()),
+                    Filter::All => tcx.explicit_implied_predicates_of(data.def_id()),
+                    Filter::OnlySelf => tcx.explicit_super_predicates_of(data.def_id()),
                     Filter::OnlySelfThatDefines(ident) => {
-                        tcx.super_predicates_that_define_assoc_item((data.def_id(), ident))
+                        tcx.explicit_supertraits_containing_assoc_item((data.def_id(), ident))
                     }
                 };
 
@@ -420,7 +420,7 @@ pub fn transitive_bounds<'tcx>(
 
 /// A specialized variant of `elaborate` that only elaborates trait references that may
 /// define the given associated item with the name `assoc_name`. It uses the
-/// `super_predicates_that_define_assoc_item` query to avoid enumerating super-predicates that
+/// `explicit_supertraits_containing_assoc_item` query to avoid enumerating super-predicates that
 /// aren't related to `assoc_item`. This is used when resolving types like `Self::Item` or
 /// `T::Item` and helps to avoid cycle errors (see e.g. #35237).
 pub fn transitive_bounds_that_define_assoc_item<'tcx>(

@@ -646,6 +646,9 @@ rustc_queries! {
     }
 
     /// Returns the predicates written explicitly by the user.
+    ///
+    /// You should probably use `predicates_of` unless you're looking for
+    /// predicates with explicit spans for diagnostics purposes.
     query explicit_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
         desc { |tcx| "computing explicit predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
@@ -662,29 +665,32 @@ rustc_queries! {
         feedable
     }
 
-    /// Maps from the `DefId` of a trait to the list of
-    /// super-predicates. This is a subset of the full list of
-    /// predicates. We store these in a separate map because we must
-    /// evaluate them even during type conversion, often before the
-    /// full predicates are available (note that supertraits have
-    /// additional acyclicity requirements).
-    query super_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
+    /// Maps from the `DefId` of a trait to the list of super-predicates of the trait,
+    /// *before* elaboration (so it doesn't contain transitive super-predicates). This
+    /// is a subset of the full list of predicates. We store these in a separate map
+    /// because we must evaluate them even during type conversion, often before the full
+    /// predicates are available (note that super-predicates must not be cyclic).
+    query explicit_super_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
         desc { |tcx| "computing the super predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
-    query implied_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
+    /// The predicates of the trait that are implied during elaboration. This is a
+    /// superset of the super-predicates of the trait, but a subset of the predicates
+    /// of the trait. For regular traits, this includes all super-predicates and their
+    /// associated type bounds. For trait aliases, currently, this includes all of the
+    /// predicates of the trait alias.
+    query explicit_implied_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
         desc { |tcx| "computing the implied predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
-    /// The `Option<Ident>` is the name of an associated type. If it is `None`, then this query
-    /// returns the full set of predicates. If `Some<Ident>`, then the query returns only the
-    /// subset of super-predicates that reference traits that define the given associated type.
-    /// This is used to avoid cycles in resolving types like `T::Item`.
-    query super_predicates_that_define_assoc_item(key: (DefId, rustc_span::symbol::Ident)) -> ty::GenericPredicates<'tcx> {
+    /// The Ident is the name of an associated type.The query returns only the subset
+    /// of supertraits that define the given associated type. This is used to avoid
+    /// cycles in resolving type-dependent associated item paths like `T::Item`.
+    query explicit_supertraits_containing_assoc_item(key: (DefId, rustc_span::symbol::Ident)) -> ty::GenericPredicates<'tcx> {
         desc { |tcx| "computing the super traits of `{}` with associated type name `{}`",
             tcx.def_path_str(key.0),
             key.1

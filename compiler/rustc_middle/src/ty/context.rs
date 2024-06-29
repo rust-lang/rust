@@ -342,12 +342,15 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         )
     }
 
-    fn super_predicates_of(
+    fn explicit_super_predicates_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
         ty::EarlyBinder::bind(
-            self.super_predicates_of(def_id).instantiate_identity(self).predicates.into_iter(),
+            self.explicit_super_predicates_of(def_id)
+                .instantiate_identity(self)
+                .predicates
+                .into_iter(),
         )
     }
 
@@ -2440,7 +2443,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`
     /// returns true if the `trait_def_id` defines an associated item of name `assoc_name`.
     pub fn trait_may_define_assoc_item(self, trait_def_id: DefId, assoc_name: Ident) -> bool {
-        self.super_traits_of(trait_def_id).any(|trait_did| {
+        self.supertrait_def_ids(trait_def_id).any(|trait_did| {
             self.associated_items(trait_did)
                 .filter_by_name_unhygienic(assoc_name.name)
                 .any(|item| self.hygienic_eq(assoc_name, item.ident(self), trait_did))
@@ -2463,9 +2466,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Computes the def-ids of the transitive supertraits of `trait_def_id`. This (intentionally)
     /// does not compute the full elaborated super-predicates but just the set of def-ids. It is used
-    /// to identify which traits may define a given associated type to help avoid cycle errors.
-    /// Returns a `DefId` iterator.
-    fn super_traits_of(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
+    /// to identify which traits may define a given associated type to help avoid cycle errors,
+    /// and to make size estimates for vtable layout computation.
+    pub fn supertrait_def_ids(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
         let mut set = FxHashSet::default();
         let mut stack = vec![trait_def_id];
 
@@ -2473,7 +2476,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         iter::from_fn(move || -> Option<DefId> {
             let trait_did = stack.pop()?;
-            let generic_predicates = self.super_predicates_of(trait_did);
+            let generic_predicates = self.explicit_super_predicates_of(trait_did);
 
             for (predicate, _) in generic_predicates.predicates {
                 if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder() {

@@ -575,19 +575,17 @@ impl Build {
         };
         // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
         if !update(true).status().map_or(false, |status| status.success()) {
-            self.run(&mut update(false));
+            self.run(update(false));
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
-        let has_local_modifications = !self.run_cmd(
-            BootstrapCommand::from(submodule_git().args(["diff-index", "--quiet", "HEAD"]))
-                .allow_failure()
-                .output_mode(match self.is_verbose() {
-                    true => OutputMode::All,
-                    false => OutputMode::OnlyOutput,
-                }),
-        );
+        let has_local_modifications = self
+            .run(
+                BootstrapCommand::from(submodule_git().args(["diff-index", "--quiet", "HEAD"]))
+                    .allow_failure(),
+            )
+            .is_failure();
         if has_local_modifications {
             self.run(submodule_git().args(["stash", "push"]));
         }
@@ -939,7 +937,7 @@ impl Build {
     }
 
     /// Adds the `RUST_TEST_THREADS` env var if necessary
-    fn add_rust_test_threads(&self, cmd: &mut Command) {
+    fn add_rust_test_threads(&self, cmd: &mut BootstrapCommand) {
         if env::var_os("RUST_TEST_THREADS").is_none() {
             cmd.env("RUST_TEST_THREADS", self.jobs().to_string());
         }
@@ -961,10 +959,13 @@ impl Build {
     }
 
     /// Execute a command and return its output.
-    fn run_tracked(&self, command: BootstrapCommand<'_>) -> CommandOutput {
+    /// This method should be used for all command executions in bootstrap.
+    fn run<C: Into<BootstrapCommand>>(&self, command: C) -> CommandOutput {
         if self.config.dry_run() {
             return CommandOutput::default();
         }
+
+        let mut command = command.into();
 
         self.verbose(|| println!("running: {command:?}"));
 
@@ -1022,22 +1023,6 @@ impl Build {
             }
         }
         output
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
-    fn run(&self, cmd: &mut Command) {
-        self.run_cmd(BootstrapCommand::from(cmd).fail_fast().output_mode(
-            match self.is_verbose() {
-                true => OutputMode::All,
-                false => OutputMode::OnlyOutput,
-            },
-        ));
-    }
-
-    /// A centralized function for running commands that do not return output.
-    pub(crate) fn run_cmd<'a, C: Into<BootstrapCommand<'a>>>(&self, cmd: C) -> bool {
-        let command = cmd.into();
-        self.run_tracked(command).is_success()
     }
 
     /// Check if verbosity is greater than the `level`

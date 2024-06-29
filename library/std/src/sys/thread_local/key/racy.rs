@@ -1,4 +1,4 @@
-//! A `StaticKey` implementation using racy initialization.
+//! A `LazyKey` implementation using racy initialization.
 //!
 //! Unfortunately, none of the platforms currently supported by `std` allows
 //! creating TLS keys at compile-time. Thus we need a way to lazily create keys.
@@ -10,34 +10,12 @@ use crate::sync::atomic::{self, AtomicUsize, Ordering};
 
 /// A type for TLS keys that are statically allocated.
 ///
-/// This type is entirely `unsafe` to use as it does not protect against
-/// use-after-deallocation or use-during-deallocation.
-///
-/// The actual OS-TLS key is lazily allocated when this is used for the first
-/// time. The key is also deallocated when the Rust runtime exits or `destroy`
-/// is called, whichever comes first.
-///
-/// # Examples
-///
-/// ```ignore (cannot-doctest-private-modules)
-/// use tls::os::{StaticKey, INIT};
-///
-/// // Use a regular global static to store the key.
-/// static KEY: StaticKey = INIT;
-///
-/// // The state provided via `get` and `set` is thread-local.
-/// unsafe {
-///     assert!(KEY.get().is_null());
-///     KEY.set(1 as *mut u8);
-/// }
-/// ```
-pub struct StaticKey {
+/// This is basically a `LazyLock<Key>`, but avoids blocking and circular
+/// dependencies with the rest of `std`.
+pub struct LazyKey {
     /// Inner static TLS key (internals).
     key: AtomicUsize,
     /// Destructor for the TLS value.
-    ///
-    /// See `Key::new` for information about when the destructor runs and how
-    /// it runs.
     dtor: Option<unsafe extern "C" fn(*mut u8)>,
 }
 
@@ -51,32 +29,14 @@ const KEY_SENTVAL: usize = 0;
 #[cfg(target_os = "nto")]
 const KEY_SENTVAL: usize = libc::PTHREAD_KEYS_MAX + 1;
 
-impl StaticKey {
+impl LazyKey {
     #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
-    pub const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> StaticKey {
-        StaticKey { key: atomic::AtomicUsize::new(KEY_SENTVAL), dtor }
-    }
-
-    /// Gets the value associated with this TLS key
-    ///
-    /// This will lazily allocate a TLS key from the OS if one has not already
-    /// been allocated.
-    #[inline]
-    pub unsafe fn get(&self) -> *mut u8 {
-        unsafe { super::get(self.key()) }
-    }
-
-    /// Sets this TLS key to a new value.
-    ///
-    /// This will lazily allocate a TLS key from the OS if one has not already
-    /// been allocated.
-    #[inline]
-    pub unsafe fn set(&self, val: *mut u8) {
-        unsafe { super::set(self.key(), val) }
+    pub const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> LazyKey {
+        LazyKey { key: atomic::AtomicUsize::new(KEY_SENTVAL), dtor }
     }
 
     #[inline]
-    fn key(&self) -> super::Key {
+    pub fn force(&self) -> super::Key {
         match self.key.load(Ordering::Acquire) {
             KEY_SENTVAL => self.lazy_init() as super::Key,
             n => n as super::Key,

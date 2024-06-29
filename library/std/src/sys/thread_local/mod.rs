@@ -36,7 +36,7 @@ cfg_if::cfg_if! {
         pub use native::{EagerStorage, LazyStorage, thread_local_inner};
     } else {
         mod os;
-        pub use os::{Key, thread_local_inner};
+        pub use os::{Storage, thread_local_inner};
     }
 }
 
@@ -126,28 +126,33 @@ pub(crate) mod key {
             mod unix;
             #[cfg(test)]
             mod tests;
-            pub(super) use racy::StaticKey;
-            use unix::{Key, create, destroy, get, set};
+            pub(super) use racy::LazyKey;
+            pub(super) use unix::{Key, set};
+            #[cfg(any(not(target_thread_local), test))]
+            pub(super) use unix::get;
+            use unix::{create, destroy};
         } else if #[cfg(all(not(target_thread_local), target_os = "windows"))] {
             #[cfg(test)]
             mod tests;
             mod windows;
-            pub(super) use windows::{StaticKey, run_dtors};
+            pub(super) use windows::{Key, LazyKey, get, run_dtors, set};
         } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
             mod racy;
             mod sgx;
             #[cfg(test)]
             mod tests;
-            pub(super) use racy::StaticKey;
-            use sgx::{Key, create, destroy, get, set};
+            pub(super) use racy::LazyKey;
+            pub(super) use sgx::{Key, get, set};
+            use sgx::{create, destroy};
         } else if #[cfg(target_os = "xous")] {
             mod racy;
             #[cfg(test)]
             mod tests;
             mod xous;
-            pub(super) use racy::StaticKey;
+            pub(super) use racy::LazyKey;
             pub(crate) use xous::destroy_tls;
-            use xous::{Key, create, destroy, get, set};
+            pub(super) use xous::{Key, get, set};
+            use xous::{create, destroy};
         }
     }
 }
