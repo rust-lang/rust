@@ -12,7 +12,6 @@ use stdx::TupleExt;
 
 use crate::{
     consteval::{try_const_usize, usize_const},
-    error_lifetime,
     infer::{BindingMode, Expectation, InferenceContext, TypeMismatch},
     lower::lower_to_chalk_mutability,
     primitive::UintTy,
@@ -394,19 +393,20 @@ impl InferenceContext<'_> {
         expected: &Ty,
         default_bm: BindingMode,
     ) -> Ty {
-        let expectation = match expected.as_reference() {
-            Some((inner_ty, _lifetime, _exp_mut)) => inner_ty.clone(),
+        let (expectation_type, expectation_lt) = match expected.as_reference() {
+            Some((inner_ty, lifetime, _exp_mut)) => (inner_ty.clone(), lifetime.clone()),
             None => {
                 let inner_ty = self.table.new_type_var();
+                let inner_lt = self.table.new_lifetime_var();
                 let ref_ty =
-                    TyKind::Ref(mutability, error_lifetime(), inner_ty.clone()).intern(Interner);
+                    TyKind::Ref(mutability, inner_lt.clone(), inner_ty.clone()).intern(Interner);
                 // Unification failure will be reported by the caller.
                 self.unify(&ref_ty, expected);
-                inner_ty
+                (inner_ty, inner_lt)
             }
         };
-        let subty = self.infer_pat(inner_pat, &expectation, default_bm);
-        TyKind::Ref(mutability, error_lifetime(), subty).intern(Interner)
+        let subty = self.infer_pat(inner_pat, &expectation_type, default_bm);
+        TyKind::Ref(mutability, expectation_lt, subty).intern(Interner)
     }
 
     fn infer_bind_pat(
@@ -433,7 +433,8 @@ impl InferenceContext<'_> {
 
         let bound_ty = match mode {
             BindingMode::Ref(mutability) => {
-                TyKind::Ref(mutability, error_lifetime(), inner_ty.clone()).intern(Interner)
+                let inner_lt = self.table.new_lifetime_var();
+                TyKind::Ref(mutability, inner_lt, inner_ty.clone()).intern(Interner)
             }
             BindingMode::Move => inner_ty.clone(),
         };

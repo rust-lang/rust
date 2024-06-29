@@ -474,7 +474,7 @@ impl InferenceContext<'_> {
 
     fn walk_expr_with_adjust(&mut self, tgt_expr: ExprId, adjustment: &[Adjustment]) {
         if let Some((last, rest)) = adjustment.split_last() {
-            match last.kind {
+            match &last.kind {
                 Adjust::NeverToAny | Adjust::Deref(None) | Adjust::Pointer(_) => {
                     self.walk_expr_with_adjust(tgt_expr, rest)
                 }

@@ -26,6 +26,7 @@ use hir_def::{
     AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId,
 };
 use hir_expand::{db::ExpandDatabase, FileRange, InFile};
+use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use stdx::format_to;
 use syntax::{
@@ -94,7 +95,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
     let mut had_annotations = false;
     let mut mismatches = FxHashMap::default();
     let mut types = FxHashMap::default();
-    let mut adjustments = FxHashMap::<_, Vec<_>>::default();
+    let mut adjustments = FxHashMap::default();
     for (file_id, annotations) in db.extract_annotations() {
         for (range, expected) in annotations {
             let file_range = FileRange { file_id, range };
@@ -107,13 +108,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             } else if expected.starts_with("adjustments:") {
                 adjustments.insert(
                     file_range,
-                    expected
-                        .trim_start_matches("adjustments:")
-                        .trim()
-                        .split(',')
-                        .map(|it| it.trim().to_owned())
-                        .filter(|it| !it.is_empty())
-                        .collect(),
+                    expected.trim_start_matches("adjustments:").trim().to_owned(),
                 );
             } else {
                 panic!("unexpected annotation: {expected}");
@@ -200,7 +195,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                     adjustments
                         .iter()
                         .map(|Adjustment { kind, .. }| format!("{kind:?}"))
-                        .collect::<Vec<_>>()
+                        .join(", ")
                 );
             }
         }
