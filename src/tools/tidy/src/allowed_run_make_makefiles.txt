@@ -82,7 +82,6 @@ run-make/jobserver-error/Makefile
 run-make/libs-through-symlinks/Makefile
 run-make/libtest-json/Makefile
 run-make/libtest-junit/Makefile
-run-make/libtest-padding/Makefile
 run-make/libtest-thread-limit/Makefile
 run-make/link-cfg/Makefile
 run-make/link-framework/Makefile
@@ -100,8 +99,6 @@ run-make/macos-fat-archive/Makefile
 run-make/manual-link/Makefile
 run-make/metadata-dep-info/Makefile
 run-make/min-global-align/Makefile
-run-make/mingw-export-call-convention/Makefile
-run-make/mismatching-target-triples/Makefile
 run-make/missing-crate-dependency/Makefile
 run-make/mixing-libs/Makefile
 run-make/msvc-opt-minsize/Makefile
@@ -114,13 +111,11 @@ run-make/obey-crate-type-flag/Makefile
 run-make/optimization-remarks-dir-pgo/Makefile
 run-make/optimization-remarks-dir/Makefile
 run-make/output-type-permutations/Makefile
-run-make/override-aliased-flags/Makefile
 run-make/panic-abort-eh_frame/Makefile
 run-make/pass-linker-flags-flavor/Makefile
 run-make/pass-linker-flags-from-dep/Makefile
 run-make/pass-linker-flags/Makefile
 run-make/pass-non-c-like-enum-to-c/Makefile
-run-make/pdb-alt-path/Makefile
 run-make/pdb-buildinfo-cl-cmd/Makefile
 run-make/pgo-gen-lto/Makefile
 run-make/pgo-gen-no-imp-symbols/Makefile
@@ -128,8 +123,6 @@ run-make/pgo-gen/Makefile
 run-make/pgo-indirect-call-promotion/Makefile
 run-make/pgo-use/Makefile
 run-make/pointer-auth-link-with-c/Makefile
-run-make/pretty-print-to-file/Makefile
-run-make/pretty-print-with-dep-file/Makefile
 run-make/print-calling-conventions/Makefile
 run-make/print-target-list/Makefile
 run-make/profile/Makefile
@@ -147,7 +140,6 @@ run-make/remap-path-prefix/Makefile
 run-make/reproducible-build-2/Makefile
 run-make/reproducible-build/Makefile
 run-make/return-non-c-like-enum-from-c/Makefile
-run-make/return-non-c-like-enum/Makefile
 run-make/rlib-chain/Makefile
 run-make/rlib-format-packed-bundled-libs-2/Makefile
 run-make/rlib-format-packed-bundled-libs-3/Makefile

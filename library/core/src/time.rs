@@ -842,7 +842,7 @@ impl Duration {
 
     /// Returns the number of seconds contained by this `Duration` as `f64`.
     ///
-    /// The returned value does include the fractional (nanosecond) part of the duration.
+    /// The returned value includes the fractional (nanosecond) part of the duration.
     ///
     /// # Examples
     /// ```
@@ -861,7 +861,7 @@ impl Duration {
 
     /// Returns the number of seconds contained by this `Duration` as `f32`.
     ///
-    /// The returned value does include the fractional (nanosecond) part of the duration.
+    /// The returned value includes the fractional (nanosecond) part of the duration.
     ///
     /// # Examples
     /// ```
@@ -880,7 +880,7 @@ impl Duration {
 
     /// Returns the number of milliseconds contained by this `Duration` as `f64`.
     ///
-    /// The returned value does include the fractional (nanosecond) part of the duration.
+    /// The returned value includes the fractional (nanosecond) part of the duration.
     ///
     /// # Examples
     /// ```
@@ -901,7 +901,7 @@ impl Duration {
 
     /// Returns the number of milliseconds contained by this `Duration` as `f32`.
     ///
-    /// The returned value does include the fractional (nanosecond) part of the duration.
+    /// The returned value includes the fractional (nanosecond) part of the duration.
     ///
     /// # Examples
     /// ```
