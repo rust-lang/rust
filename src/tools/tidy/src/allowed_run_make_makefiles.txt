@@ -100,8 +100,6 @@ run-make/macos-fat-archive/Makefile
 run-make/manual-link/Makefile
 run-make/metadata-dep-info/Makefile
 run-make/min-global-align/Makefile
-run-make/mingw-export-call-convention/Makefile
-run-make/mismatching-target-triples/Makefile
 run-make/missing-crate-dependency/Makefile
 run-make/mixing-libs/Makefile
 run-make/msvc-opt-minsize/Makefile
@@ -120,7 +118,6 @@ run-make/pass-linker-flags-flavor/Makefile
 run-make/pass-linker-flags-from-dep/Makefile
 run-make/pass-linker-flags/Makefile
 run-make/pass-non-c-like-enum-to-c/Makefile
-run-make/pdb-alt-path/Makefile
 run-make/pdb-buildinfo-cl-cmd/Makefile
 run-make/pgo-gen-lto/Makefile
 run-make/pgo-gen-no-imp-symbols/Makefile
