@@ -459,13 +459,18 @@ impl<'a> AstValidator<'a> {
     fn check_item_safety(&self, span: Span, safety: Safety) {
         match self.extern_mod_safety {
             Some(extern_safety) => {
-                if matches!(safety, Safety::Unsafe(_) | Safety::Safe(_))
-                    && (extern_safety == Safety::Default || !self.features.unsafe_extern_blocks)
-                {
-                    self.dcx().emit_err(errors::InvalidSafetyOnExtern {
-                        item_span: span,
-                        block: self.current_extern_span().shrink_to_lo(),
-                    });
+                if matches!(safety, Safety::Unsafe(_) | Safety::Safe(_)) {
+                    if extern_safety == Safety::Default {
+                        self.dcx().emit_err(errors::InvalidSafetyOnExtern {
+                            item_span: span,
+                            block: Some(self.current_extern_span().shrink_to_lo()),
+                        });
+                    } else if !self.features.unsafe_extern_blocks {
+                        self.dcx().emit_err(errors::InvalidSafetyOnExtern {
+                            item_span: span,
+                            block: None,
+                        });
+                    }
                 }
             }
             None => {

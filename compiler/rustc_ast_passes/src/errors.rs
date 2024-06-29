@@ -222,7 +222,7 @@ pub struct InvalidSafetyOnExtern {
     #[primary_span]
     pub item_span: Span,
     #[suggestion(code = "unsafe ", applicability = "machine-applicable", style = "verbose")]
-    pub block: Span,
+    pub block: Option<Span>,
 }
 
 #[derive(Diagnostic)]
