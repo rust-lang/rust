@@ -19,12 +19,12 @@ fn foo(_1: Box<[T]>) -> T {
         _4 = const 0_usize;
         _5 = Len((*_1));
         _6 = Lt(_4, _5);
-        assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, _4) -> [success: bb1, unwind: bb5];
+        assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, _4) -> [success: bb1, unwind: bb7];
     }
 
     bb1: {
         _3 = &(*_1)[_4];
-        _2 = <T as Clone>::clone(move _3) -> [return: bb2, unwind: bb5];
+        _2 = <T as Clone>::clone(move _3) -> [return: bb2, unwind: bb7];
     }
 
     bb2: {
@@ -49,6 +49,14 @@ fn foo(_1: Box<[T]>) -> T {
     }
 
     bb6 (cleanup): {
+        drop(_0) -> [return: bb8, unwind terminate(cleanup)];
+    }
+
+    bb7 (cleanup): {
+        drop(_1) -> [return: bb8, unwind terminate(cleanup)];
+    }
+
+    bb8 (cleanup): {
         resume;
     }
 }

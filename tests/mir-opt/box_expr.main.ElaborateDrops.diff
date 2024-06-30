@@ -26,62 +26,57 @@
       bb1: {
           StorageLive(_5);
           _5 = ShallowInitBox(move _4, S);
-          (*_5) = S::new() -> [return: bb2, unwind: bb8];
+          (*_5) = S::new() -> [return: bb2, unwind: bb7];
       }
   
       bb2: {
           _1 = move _5;
--         drop(_5) -> [return: bb3, unwind continue];
-+         goto -> bb3;
-      }
-  
-      bb3: {
           StorageDead(_5);
           StorageLive(_6);
           StorageLive(_7);
           _7 = move _1;
-          _6 = std::mem::drop::<Box<S>>(move _7) -> [return: bb4, unwind: bb6];
+          _6 = std::mem::drop::<Box<S>>(move _7) -> [return: bb3, unwind: bb5];
       }
   
-      bb4: {
+      bb3: {
           StorageDead(_7);
           StorageDead(_6);
           _0 = const ();
--         drop(_1) -> [return: bb5, unwind continue];
-+         goto -> bb5;
+-         drop(_1) -> [return: bb4, unwind continue];
++         goto -> bb4;
       }
   
-      bb5: {
+      bb4: {
           StorageDead(_1);
           return;
       }
   
+      bb5 (cleanup): {
+-         drop(_7) -> [return: bb6, unwind terminate(cleanup)];
++         goto -> bb6;
+      }
+  
       bb6 (cleanup): {
--         drop(_7) -> [return: bb7, unwind terminate(cleanup)];
-+         goto -> bb7;
+-         drop(_1) -> [return: bb8, unwind terminate(cleanup)];
++         goto -> bb8;
       }
   
       bb7 (cleanup): {
--         drop(_1) -> [return: bb9, unwind terminate(cleanup)];
-+         goto -> bb9;
+-         drop(_5) -> [return: bb8, unwind terminate(cleanup)];
++         goto -> bb10;
       }
   
       bb8 (cleanup): {
--         drop(_5) -> [return: bb9, unwind terminate(cleanup)];
-+         goto -> bb11;
-      }
-  
-      bb9 (cleanup): {
           resume;
 +     }
 + 
-+     bb10 (cleanup): {
++     bb9 (cleanup): {
 +         _8 = &mut _5;
-+         _9 = <Box<S> as Drop>::drop(move _8) -> [return: bb9, unwind terminate(cleanup)];
++         _9 = <Box<S> as Drop>::drop(move _8) -> [return: bb8, unwind terminate(cleanup)];
 +     }
 + 
-+     bb11 (cleanup): {
-+         goto -> bb10;
++     bb10 (cleanup): {
++         goto -> bb9;
       }
   }
   

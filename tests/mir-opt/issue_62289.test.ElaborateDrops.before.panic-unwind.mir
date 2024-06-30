@@ -38,7 +38,7 @@ fn test() -> Option<Box<u32>> {
         StorageLive(_6);
         StorageLive(_7);
         _7 = Option::<u32>::None;
-        _6 = <Option<u32> as Try>::branch(move _7) -> [return: bb2, unwind: bb12];
+        _6 = <Option<u32> as Try>::branch(move _7) -> [return: bb2, unwind: bb10];
     }
 
     bb2: {
@@ -58,7 +58,11 @@ fn test() -> Option<Box<u32>> {
         (*_5) = _12;
         StorageDead(_12);
         _1 = move _5;
-        drop(_5) -> [return: bb7, unwind: bb11];
+        StorageDead(_5);
+        _0 = Option::<Box<u32>>::Some(move _1);
+        StorageDead(_1);
+        StorageDead(_6);
+        goto -> bb8;
     }
 
     bb5: {
@@ -66,47 +70,35 @@ fn test() -> Option<Box<u32>> {
         _9 = ((_6 as Break).0: std::option::Option<std::convert::Infallible>);
         StorageLive(_11);
         _11 = _9;
-        _0 = <Option<Box<u32>> as FromResidual<Option<Infallible>>>::from_residual(move _11) -> [return: bb6, unwind: bb12];
+        _0 = <Option<Box<u32>> as FromResidual<Option<Infallible>>>::from_residual(move _11) -> [return: bb6, unwind: bb10];
     }
 
     bb6: {
         StorageDead(_11);
         StorageDead(_9);
-        drop(_5) -> [return: bb9, unwind continue];
+        drop(_5) -> [return: bb7, unwind: bb9];
     }
 
     bb7: {
         StorageDead(_5);
-        _0 = Option::<Box<u32>>::Some(move _1);
-        drop(_1) -> [return: bb8, unwind continue];
+        StorageDead(_1);
+        StorageDead(_6);
+        goto -> bb8;
     }
 
     bb8: {
-        StorageDead(_1);
-        StorageDead(_6);
-        goto -> bb10;
-    }
-
-    bb9: {
-        StorageDead(_5);
-        StorageDead(_1);
-        StorageDead(_6);
-        goto -> bb10;
-    }
-
-    bb10: {
         return;
     }
 
+    bb9 (cleanup): {
+        drop(_0) -> [return: bb11, unwind terminate(cleanup)];
+    }
+
+    bb10 (cleanup): {
+        drop(_5) -> [return: bb11, unwind terminate(cleanup)];
+    }
+
     bb11 (cleanup): {
-        drop(_1) -> [return: bb13, unwind terminate(cleanup)];
-    }
-
-    bb12 (cleanup): {
-        drop(_5) -> [return: bb13, unwind terminate(cleanup)];
-    }
-
-    bb13 (cleanup): {
         resume;
     }
 }

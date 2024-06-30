@@ -26,7 +26,7 @@ fn move_out_from_end() -> () {
         StorageLive(_2);
         _3 = SizeOf(i32);
         _4 = AlignOf(i32);
-        _5 = alloc::alloc::exchange_malloc(move _3, move _4) -> [return: bb1, unwind: bb14];
+        _5 = alloc::alloc::exchange_malloc(move _3, move _4) -> [return: bb1, unwind: bb9];
     }
 
     bb1: {
@@ -34,78 +34,58 @@ fn move_out_from_end() -> () {
         _6 = ShallowInitBox(move _5, i32);
         (*_6) = const 1_i32;
         _2 = move _6;
-        drop(_6) -> [return: bb2, unwind: bb13];
-    }
-
-    bb2: {
         StorageDead(_6);
         StorageLive(_7);
         _8 = SizeOf(i32);
         _9 = AlignOf(i32);
-        _10 = alloc::alloc::exchange_malloc(move _8, move _9) -> [return: bb3, unwind: bb13];
+        _10 = alloc::alloc::exchange_malloc(move _8, move _9) -> [return: bb2, unwind: bb8];
     }
 
-    bb3: {
+    bb2: {
         StorageLive(_11);
         _11 = ShallowInitBox(move _10, i32);
         (*_11) = const 2_i32;
         _7 = move _11;
-        drop(_11) -> [return: bb4, unwind: bb12];
-    }
-
-    bb4: {
         StorageDead(_11);
         _1 = [move _2, move _7];
-        drop(_7) -> [return: bb5, unwind: bb13];
-    }
-
-    bb5: {
         StorageDead(_7);
-        drop(_2) -> [return: bb6, unwind: bb14];
-    }
-
-    bb6: {
         StorageDead(_2);
         FakeRead(ForLet(None), _1);
         PlaceMention(_1);
         StorageLive(_12);
         _12 = move _1[1 of 2];
         _0 = const ();
-        drop(_12) -> [return: bb9, unwind: bb11];
+        drop(_12) -> [return: bb5, unwind: bb7];
     }
 
-    bb7: {
+    bb3: {
         FakeRead(ForMatchedPlace(None), _1);
         unreachable;
     }
 
-    bb8: {
-        goto -> bb7;
+    bb4: {
+        goto -> bb3;
     }
 
-    bb9: {
+    bb5: {
         StorageDead(_12);
-        drop(_1) -> [return: bb10, unwind: bb14];
+        drop(_1) -> [return: bb6, unwind: bb9];
     }
 
-    bb10: {
+    bb6: {
         StorageDead(_1);
         return;
     }
 
-    bb11 (cleanup): {
-        drop(_1) -> [return: bb14, unwind terminate(cleanup)];
+    bb7 (cleanup): {
+        drop(_1) -> [return: bb9, unwind terminate(cleanup)];
     }
 
-    bb12 (cleanup): {
-        drop(_7) -> [return: bb13, unwind terminate(cleanup)];
+    bb8 (cleanup): {
+        drop(_2) -> [return: bb9, unwind terminate(cleanup)];
     }
 
-    bb13 (cleanup): {
-        drop(_2) -> [return: bb14, unwind terminate(cleanup)];
-    }
-
-    bb14 (cleanup): {
+    bb9 (cleanup): {
         resume;
     }
 }
