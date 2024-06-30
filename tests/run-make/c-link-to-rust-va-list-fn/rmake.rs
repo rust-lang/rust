@@ -12,7 +12,7 @@ fn main() {
     cc().input("test.c")
         .input(static_lib_name("checkrust"))
         .out_exe("test")
-        .args(&extra_c_flags())
+        .args(extra_c_flags())
         .run();
     run("test");
 }

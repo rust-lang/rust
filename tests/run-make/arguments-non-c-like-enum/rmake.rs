@@ -10,8 +10,8 @@ pub fn main() {
     cc().input("test.c")
         .input(static_lib_name("nonclike"))
         .out_exe("test")
-        .args(&extra_c_flags())
-        .args(&extra_cxx_flags())
+        .args(extra_c_flags())
+        .args(extra_cxx_flags())
         .inspect(|cmd| eprintln!("{cmd:?}"))
         .run();
     run("test");
