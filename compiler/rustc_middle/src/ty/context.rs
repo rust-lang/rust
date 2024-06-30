@@ -537,14 +537,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.trait_def(trait_def_id).implement_via_object
     }
 
-    fn fn_trait_kind_from_def_id(self, trait_def_id: DefId) -> Option<ty::ClosureKind> {
-        self.fn_trait_kind_from_def_id(trait_def_id)
-    }
-
-    fn async_fn_trait_kind_from_def_id(self, trait_def_id: DefId) -> Option<ty::ClosureKind> {
-        self.async_fn_trait_kind_from_def_id(trait_def_id)
-    }
-
     fn supertrait_def_ids(self, trait_def_id: DefId) -> impl IntoIterator<Item = DefId> {
         self.supertrait_def_ids(trait_def_id)
     }
@@ -608,8 +600,11 @@ macro_rules! bidirectional_lang_item_map {
 bidirectional_lang_item_map! {
 // tidy-alphabetical-start
     AsyncDestruct,
+    AsyncFn,
     AsyncFnKindHelper,
     AsyncFnKindUpvars,
+    AsyncFnMut,
+    AsyncFnOnce,
     AsyncFnOnceOutput,
     AsyncIterator,
     CallOnceFuture,
@@ -622,11 +617,14 @@ bidirectional_lang_item_map! {
     Destruct,
     DiscriminantKind,
     DynMetadata,
-    EffectsMaybe,
     EffectsIntersection,
     EffectsIntersectionOutput,
+    EffectsMaybe,
     EffectsNoRuntime,
     EffectsRuntime,
+    Fn,
+    FnMut,
+    FnOnce,
     FnPtrTrait,
     FusedIterator,
     Future,

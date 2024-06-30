@@ -387,15 +387,37 @@ where
             G::consider_auto_trait_candidate(self, goal)
         } else if cx.trait_is_alias(trait_def_id) {
             G::consider_trait_alias_candidate(self, goal)
-        } else if let Some(kind) = self.cx().fn_trait_kind_from_def_id(trait_def_id) {
-            G::consider_builtin_fn_trait_candidates(self, goal, kind)
-        } else if let Some(kind) = self.cx().async_fn_trait_kind_from_def_id(trait_def_id) {
-            G::consider_builtin_async_fn_trait_candidates(self, goal, kind)
         } else {
             match cx.as_lang_item(trait_def_id) {
                 Some(TraitSolverLangItem::Sized) => G::consider_builtin_sized_candidate(self, goal),
                 Some(TraitSolverLangItem::Copy | TraitSolverLangItem::Clone) => {
                     G::consider_builtin_copy_clone_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::Fn) => {
+                    G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::Fn)
+                }
+                Some(TraitSolverLangItem::FnMut) => {
+                    G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::FnMut)
+                }
+                Some(TraitSolverLangItem::FnOnce) => {
+                    G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::FnOnce)
+                }
+                Some(TraitSolverLangItem::AsyncFn) => {
+                    G::consider_builtin_async_fn_trait_candidates(self, goal, ty::ClosureKind::Fn)
+                }
+                Some(TraitSolverLangItem::AsyncFnMut) => {
+                    G::consider_builtin_async_fn_trait_candidates(
+                        self,
+                        goal,
+                        ty::ClosureKind::FnMut,
+                    )
+                }
+                Some(TraitSolverLangItem::AsyncFnOnce) => {
+                    G::consider_builtin_async_fn_trait_candidates(
+                        self,
+                        goal,
+                        ty::ClosureKind::FnOnce,
+                    )
                 }
                 Some(TraitSolverLangItem::PointerLike) => {
                     G::consider_builtin_pointer_like_candidate(self, goal)
