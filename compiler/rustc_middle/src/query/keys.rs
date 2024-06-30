@@ -484,6 +484,14 @@ impl Key for Option<Symbol> {
     }
 }
 
+impl Key for (DefId, Symbol) {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 /// Canonical query goals correspond to abstract trait operations that
 /// are not tied to any crate in particular.
 impl<'tcx, T: Clone> Key for Canonical<'tcx, T> {

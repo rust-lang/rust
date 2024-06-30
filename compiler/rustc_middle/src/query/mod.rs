@@ -1226,6 +1226,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// This query backs the [`TyCtxt::has_attr`] function to make it faster.
+    /// You should use that function instead.
+    query has_attr_query(key: (DefId, Symbol)) -> bool {
+        desc { |tcx| "checking whether `{}` has attr {}", tcx.def_path_str(key.0), key.1 }
+    }
+
     /// Determines whether an item is annotated with `doc(hidden)`.
     query is_doc_hidden(def_id: DefId) -> bool {
         desc { |tcx| "checking whether `{}` is `doc(hidden)`", tcx.def_path_str(def_id) }

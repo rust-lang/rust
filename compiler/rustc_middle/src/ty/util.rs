@@ -19,7 +19,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable};
 use rustc_session::Limit;
-use rustc_span::sym;
+use rustc_span::{sym, Symbol};
 use rustc_target::abi::{Float, Integer, IntegerType, Size};
 use rustc_target::spec::abi::Abi;
 use smallvec::{smallvec, SmallVec};
@@ -1829,6 +1829,12 @@ pub fn reveal_opaque_types_in_bounds<'tcx>(
     val.fold_with(&mut visitor)
 }
 
+/// Determines whether an item is annotated with an attribute.
+pub fn has_attr_query(tcx: TyCtxt<'_>, key: (DefId, Symbol)) -> bool {
+    let (did, attr) = key;
+    tcx.get_attrs(did, attr).next().is_some()
+}
+
 /// Determines whether an item is directly annotated with `doc(hidden)`.
 fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     tcx.get_attrs(def_id, sym::doc)
@@ -1865,6 +1871,7 @@ pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Intrinsi
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         reveal_opaque_types_in_bounds,
+        has_attr_query,
         is_doc_hidden,
         is_doc_notable_trait,
         intrinsic_raw,
