@@ -13,7 +13,6 @@
 #![cfg(any(feature = "sysroot-abi", rust_analyzer))]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
-#![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unreachable_pub, internal_features)]
 
 extern crate proc_macro;

@@ -17,7 +17,6 @@
 //!
 //! [`Parser`]: crate::parser::Parser
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(rustdoc::private_intra_doc_links)]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 

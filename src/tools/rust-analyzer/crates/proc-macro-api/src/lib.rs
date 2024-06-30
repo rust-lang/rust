@@ -5,8 +5,6 @@
 //! is used to provide basic infrastructure for communication between two
 //! processes: Client (RA itself), Server (the external program)
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 pub mod msg;
 mod process;
 

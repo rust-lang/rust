@@ -6,7 +6,6 @@
 //! * Extracting markup (mainly, `$0` markers) out of fixture strings.
 //! * marks (see the eponymous module).
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(clippy::print_stderr)]
 
 mod assert_linear;

@@ -38,8 +38,6 @@
 //! [`Handle`]: loader::Handle
 //! [`Entries`]: loader::Entry
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 mod anchored_path;
 pub mod file_set;
 pub mod loader;
