@@ -1,6 +1,24 @@
 use std::{env, io::IsTerminal, sync::Arc};
 
-use compiletest::{common::Mode, log_config, parse_config, run_tests};
+use compiletest::{
+    common::{Config, Mode},
+    log_config, parse_config, run_tests,
+};
+
+// Warn if filters point to a non .rs file
+fn warn_invalid_files(config: &Config) {
+    for filter in &config.filters {
+        let path = config.src_base.join(filter);
+        if path.is_file() && !path.extension().is_some_and(|ext| ext == "rs") {
+            eprintln!();
+            eprintln!(
+                "WARNING: Running {} test on an invalid source file: {}",
+                config.mode,
+                path.display(),
+            );
+        }
+    }
+}
 
 fn main() {
     tracing_subscriber::fmt::init();
@@ -32,6 +50,7 @@ help: try setting `profiler = true` in the `[build]` section of `config.toml`"#
         );
     }
 
+    warn_invalid_files(&config);
     log_config(&config);
     run_tests(config);
 }
