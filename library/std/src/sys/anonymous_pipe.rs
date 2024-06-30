@@ -223,6 +223,7 @@ mod windows {
             RawHandle,
         },
         sys::{
+            c::{GetFileType, FILE_TYPE_PIPE},
             handle::Handle,
             pipe::{anon_pipe, AnonPipe, Pipes},
         },
@@ -279,8 +280,12 @@ mod windows {
     impl_traits!(PipeReader);
     impl_traits!(PipeWriter);
 
-    fn owned_handle_to_anon_pipe(owned_handle: OwnedHandle) -> AnonPipe {
-        AnonPipe::from_inner(Handle::from_inner(owned_handle))
+    fn convert_to_pipe(owned_handle: OwnedHandle) -> io::Result<AnonPipe> {
+        if unsafe { GetFileType(owned_handle.as_raw_handle()) } == FILE_TYPE_PIPE {
+            Ok(AnonPipe::from_inner(Handle::from_inner(owned_handle)))
+        } else {
+            Err(io::Error::new(io::ErrorKind::InvalidInput, "Not a pipe"))
+        }
     }
 
     #[unstable(feature = "anonymous_pipe", issue = "127154")]
@@ -288,7 +293,7 @@ mod windows {
         type Error = io::Error;
 
         fn try_from(owned_handle: OwnedHandle) -> Result<Self, Self::Error> {
-            Ok(Self(owned_handle_to_anon_pipe(owned_handle)))
+            convert_to_pipe(owned_handle).map(Self)
         }
     }
 
@@ -297,7 +302,7 @@ mod windows {
         type Error = io::Error;
 
         fn try_from(owned_handle: OwnedHandle) -> Result<Self, Self::Error> {
-            Ok(Self(owned_handle_to_anon_pipe(owned_handle)))
+            convert_to_pipe(owned_handle).map(Self)
         }
     }
 }
