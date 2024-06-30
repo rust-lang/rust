@@ -20,8 +20,8 @@ fn main() {
         .out_exe(&dynamic_lib_name("bar"))
         .arg("-fPIC")
         .arg("-shared")
-        .args(&extra_c_flags())
-        .args(&extra_cxx_flags())
+        .args(extra_c_flags())
+        .args(extra_cxx_flags())
         .run();
     llvm_readobj()
         .input(dynamic_lib_name("bar"))
