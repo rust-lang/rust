@@ -123,9 +123,21 @@ fn after_unsafe_token() {
     check(
         r#"unsafe $0"#,
         expect![[r#"
+            kw async
             kw fn
             kw impl
             kw trait
+        "#]],
+    );
+}
+
+#[test]
+fn after_async_token() {
+    check(
+        r#"async $0"#,
+        expect![[r#"
+            kw fn
+            kw unsafe
         "#]],
     );
 }
@@ -157,6 +169,7 @@ fn after_visibility_unsafe() {
     check(
         r#"pub unsafe $0"#,
         expect![[r#"
+            kw async
             kw fn
             kw trait
         "#]],
@@ -170,6 +183,7 @@ fn in_impl_assoc_item_list() {
         expect![[r#"
             ma makro!(…)  macro_rules! makro
             md module
+            kw async
             kw const
             kw crate::
             kw fn
@@ -189,6 +203,7 @@ fn in_impl_assoc_item_list_after_attr() {
         expect![[r#"
             ma makro!(…)  macro_rules! makro
             md module
+            kw async
             kw const
             kw crate::
             kw fn
@@ -208,6 +223,7 @@ fn in_trait_assoc_item_list() {
         expect![[r#"
             ma makro!(…) macro_rules! makro
             md module
+            kw async
             kw const
             kw crate::
             kw fn
@@ -225,6 +241,7 @@ fn in_trait_assoc_fn_missing_body() {
         expect![[r#"
             ma makro!(…) macro_rules! makro
             md module
+            kw async
             kw const
             kw crate::
             kw fn
@@ -242,6 +259,7 @@ fn in_trait_assoc_const_missing_body() {
         expect![[r#"
             ma makro!(…) macro_rules! makro
             md module
+            kw async
             kw const
             kw crate::
             kw fn
@@ -259,6 +277,7 @@ fn in_trait_assoc_type_aliases_missing_ty() {
         expect![[r#"
             ma makro!(…) macro_rules! makro
             md module
+            kw async
             kw const
             kw crate::
             kw fn
