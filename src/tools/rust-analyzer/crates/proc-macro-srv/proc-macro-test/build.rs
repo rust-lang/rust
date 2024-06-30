@@ -8,7 +8,7 @@
 //! 1.58) and future ABIs (stage1, nightly)
 
 use std::{
-    env, fs,
+    env,
     path::{Path, PathBuf},
     process::Command,
 };
