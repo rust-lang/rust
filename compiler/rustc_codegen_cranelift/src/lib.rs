@@ -79,6 +79,7 @@ mod pretty_clif;
 mod toolchain;
 mod trap;
 mod unsize;
+mod unwind_module;
 mod value_and_place;
 mod vtable;
 
@@ -130,22 +131,13 @@ struct CodegenCx {
     global_asm: String,
     inline_asm_index: Cell<usize>,
     debug_context: Option<DebugContext>,
-    unwind_context: UnwindContext,
     cgu_name: Symbol,
 }
 
 impl CodegenCx {
-    fn new(
-        tcx: TyCtxt<'_>,
-        backend_config: BackendConfig,
-        isa: &dyn TargetIsa,
-        debug_info: bool,
-        cgu_name: Symbol,
-    ) -> Self {
+    fn new(tcx: TyCtxt<'_>, isa: &dyn TargetIsa, debug_info: bool, cgu_name: Symbol) -> Self {
         assert_eq!(pointer_ty(tcx), isa.pointer_type());
 
-        let unwind_context =
-            UnwindContext::new(isa, matches!(backend_config.codegen_mode, CodegenMode::Aot));
         let debug_context = if debug_info && !tcx.sess.target.options.is_like_windows {
             Some(DebugContext::new(tcx, isa, cgu_name.as_str()))
         } else {
@@ -158,7 +150,6 @@ impl CodegenCx {
             global_asm: String::new(),
             inline_asm_index: Cell::new(0),
             debug_context,
-            unwind_context,
             cgu_name,
         }
     }
@@ -175,12 +166,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
     }
 
     fn init(&self, sess: &Session) {
-        use rustc_session::config::Lto;
+        use rustc_session::config::{InstrumentCoverage, Lto};
         match sess.lto() {
             Lto::No | Lto::ThinLocal => {}
             Lto::Thin | Lto::Fat => {
                 sess.dcx().warn("LTO is not supported. You may get a linker error.")
             }
+        }
+
+        if sess.opts.cg.instrument_coverage() != InstrumentCoverage::No {
+            sess.dcx()
+                .fatal("`-Cinstrument-coverage` is LLVM specific and not supported by Cranelift");
         }
 
         let mut config = self.config.borrow_mut();
