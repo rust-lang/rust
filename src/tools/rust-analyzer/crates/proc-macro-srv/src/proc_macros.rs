@@ -2,7 +2,7 @@
 
 use libloading::Library;
 use proc_macro::bridge;
-use proc_macro_api::{ProcMacroKind, RustCInfo};
+use proc_macro_api::ProcMacroKind;
 
 use crate::{dylib::LoadProcMacroDylibError, ProcMacroSrvSpan};
 
@@ -29,15 +29,15 @@ impl ProcMacros {
     pub(crate) fn from_lib(
         lib: &Library,
         symbol_name: String,
-        info: RustCInfo,
+        version_string: &str,
     ) -> Result<ProcMacros, LoadProcMacroDylibError> {
-        if info.version_string == crate::RUSTC_VERSION_STRING {
+        if version_string == crate::RUSTC_VERSION_STRING {
             let macros =
                 unsafe { lib.get::<&&[bridge::client::ProcMacro]>(symbol_name.as_bytes()) }?;
 
             return Ok(Self { exported_macros: macros.to_vec() });
         }
-        Err(LoadProcMacroDylibError::AbiMismatch(info.version_string))
+        Err(LoadProcMacroDylibError::AbiMismatch(version_string.to_owned()))
     }
 
     pub(crate) fn expand<S: ProcMacroSrvSpan>(
@@ -116,17 +116,4 @@ impl ProcMacros {
             })
             .collect()
     }
-}
-
-#[test]
-fn test_version_check() {
-    let path = paths::AbsPathBuf::assert(crate::proc_macro_test_dylib_path());
-    let info = proc_macro_api::read_dylib_info(&path).unwrap();
-    assert_eq!(
-        info.version_string,
-        crate::RUSTC_VERSION_STRING,
-        "sysroot ABI mismatch: dylib rustc version (read from .rustc section): {:?} != proc-macro-srv version (read from 'rustc --version'): {:?}",
-        info.version_string,
-        crate::RUSTC_VERSION_STRING,
-    );
 }

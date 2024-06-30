@@ -1,5 +1,7 @@
 //! Handles dynamic library loading for proc macro
 
+mod version;
+
 use std::{fmt, fs::File, io};
 
 use libloading::Library;
@@ -7,7 +9,7 @@ use memmap2::Mmap;
 use object::Object;
 use paths::{AbsPath, Utf8Path, Utf8PathBuf};
 use proc_macro::bridge;
-use proc_macro_api::{read_dylib_info, ProcMacroKind};
+use proc_macro_api::ProcMacroKind;
 
 use crate::ProcMacroSrvSpan;
 
@@ -119,11 +121,14 @@ impl ProcMacroLibraryLibloading {
         let abs_file: &AbsPath = file
             .try_into()
             .map_err(|_| invalid_data_err(format!("expected an absolute path, got {file}")))?;
-        let version_info = read_dylib_info(abs_file)?;
+        let version_info = version::read_dylib_info(abs_file)?;
 
         let lib = load_library(file).map_err(invalid_data_err)?;
-        let proc_macros =
-            crate::proc_macros::ProcMacros::from_lib(&lib, symbol_name, version_info)?;
+        let proc_macros = crate::proc_macros::ProcMacros::from_lib(
+            &lib,
+            symbol_name,
+            &version_info.version_string,
+        )?;
         Ok(ProcMacroLibraryLibloading { _lib: lib, proc_macros })
     }
 }
