@@ -123,9 +123,11 @@ macro_rules! float_mul {
 mod float_mul {
     use super::*;
 
+    // FIXME(#616): Stop ignoring arches that don't have native support once fix for builtins is in
+    // nightly.
     float_mul! {
-        f32, __mulsf3, Single, all();
-        f64, __muldf3, Double, all();
+        f32, __mulsf3, Single, not(target_arch = "arm");
+        f64, __muldf3, Double, not(target_arch = "arm");
     }
 }
 

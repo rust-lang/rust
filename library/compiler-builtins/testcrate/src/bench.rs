@@ -17,9 +17,10 @@ pub fn skip_sys_checks(test_name: &str) -> bool {
         "extend_f16_f32",
         "trunc_f32_f16",
         "trunc_f64_f16",
-        // FIXME(f16_f128): rounding error
+        // FIXME(#616): re-enable once fix is in nightly
         // <https://github.com/rust-lang/compiler-builtins/issues/616>
-        "mul_f128",
+        "mul_f32",
+        "mul_f64",
     ];
 
     // FIXME(f16_f128): error on LE ppc64. There are more tests that are cfg-ed out completely
@@ -29,7 +30,13 @@ pub fn skip_sys_checks(test_name: &str) -> bool {
 
     // FIXME(f16_f128): system symbols have incorrect results
     // <https://github.com/rust-lang/compiler-builtins/issues/617#issuecomment-2125914639>
-    const X86_NO_SSE_SKIPPED: &[&str] = &["add_f128", "sub_f128", "powi_f32", "powi_f64"];
+    const X86_NO_SSE_SKIPPED: &[&str] =
+        &["add_f128", "sub_f128", "mul_f128", "powi_f32", "powi_f64"];
+
+    // FIXME(f16_f128): Wide multiply carry bug in `compiler-rt`, re-enable when nightly no longer
+    // uses `compiler-rt` version.
+    // <https://github.com/llvm/llvm-project/issues/91840>
+    const AARCH64_SKIPPED: &[&str] = &["mul_f128"];
 
     // FIXME(llvm): system symbols have incorrect results on Windows
     // <https://github.com/rust-lang/compiler-builtins/issues/617#issuecomment-2121359807>
@@ -58,6 +65,10 @@ pub fn skip_sys_checks(test_name: &str) -> bool {
     if cfg!(all(target_arch = "x86", not(target_feature = "sse")))
         && X86_NO_SSE_SKIPPED.contains(&test_name)
     {
+        return true;
+    }
+
+    if cfg!(target_arch = "aarch64") && AARCH64_SKIPPED.contains(&test_name) {
         return true;
     }
 
