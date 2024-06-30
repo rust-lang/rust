@@ -1624,6 +1624,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         otherwise_block
     }
 
+    /// Given a match-pair that corresponds to an or-pattern, expand each subpattern into a new
+    /// subcandidate. Any candidate that has been expanded that way should be passed to
+    /// `finalize_or_candidate` after its subcandidates have been processed.
+    fn create_or_subcandidates<'pat>(
+        &mut self,
+        candidate: &mut Candidate<'pat, 'tcx>,
+        match_pair: MatchPair<'pat, 'tcx>,
+    ) {
+        let TestCase::Or { pats } = match_pair.test_case else { bug!() };
+        debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
+        candidate.or_span = Some(match_pair.pattern.span);
+        candidate.subcandidates = pats
+            .into_vec()
+            .into_iter()
+            .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
+            .collect();
+        candidate.subcandidates[0].false_edge_start_block = candidate.false_edge_start_block;
+    }
+
     /// Simplify subcandidates and process any leftover match pairs. The candidate should have been
     /// expanded with `create_or_subcandidates`.
     ///
@@ -1722,25 +1741,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
             });
         }
-    }
-
-    /// Given a match-pair that corresponds to an or-pattern, expand each subpattern into a new
-    /// subcandidate. Any candidate that has been expanded that way should be passed to
-    /// `finalize_or_candidate` after its subcandidates have been processed.
-    fn create_or_subcandidates<'pat>(
-        &mut self,
-        candidate: &mut Candidate<'pat, 'tcx>,
-        match_pair: MatchPair<'pat, 'tcx>,
-    ) {
-        let TestCase::Or { pats } = match_pair.test_case else { bug!() };
-        debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
-        candidate.or_span = Some(match_pair.pattern.span);
-        candidate.subcandidates = pats
-            .into_vec()
-            .into_iter()
-            .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
-            .collect();
-        candidate.subcandidates[0].false_edge_start_block = candidate.false_edge_start_block;
     }
 
     /// Try to merge all of the subcandidates of the given candidate into one. This avoids
