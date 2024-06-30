@@ -210,7 +210,7 @@ impl Compiler {
         F: for<'tcx> FnOnce(&'tcx Queries<'tcx>) -> T,
     {
         // Must declare `_timer` first so that it is dropped after `queries`.
-        let mut _timer = None;
+        let _timer;
         let queries = Queries::new(self);
         let ret = f(&queries);
 
@@ -233,7 +233,7 @@ impl Compiler {
 
         // The timer's lifetime spans the dropping of `queries`, which contains
         // the global context.
-        _timer = Some(self.sess.timer("free_global_ctxt"));
+        _timer = self.sess.timer("free_global_ctxt");
         if let Err((path, error)) = queries.finish() {
             self.sess.dcx().emit_fatal(errors::FailedWritingFile { path: &path, error });
         }
