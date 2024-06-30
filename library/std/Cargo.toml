@@ -100,8 +100,6 @@ test = true
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-# x.py uses beta cargo, so `check-cfg` entries do not yet take effect
-# for rust-lang/rust. But for users of `-Zbuild-std` it does.
 check-cfg = [
     'cfg(bootstrap)',
     'cfg(target_arch, values("xtensa"))',
