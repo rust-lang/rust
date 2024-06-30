@@ -29,7 +29,7 @@ use crate::core::builder::{Builder, Kind, PathSet, RunConfig, ShouldRun, Step, T
 use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
-    exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, output, symlink_dir, t, up_to_date,
+    exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, output, t, up_to_date,
 };
 use crate::LLVM_TOOLS;
 use crate::{CLang, Compiler, DependencyType, GitRepo, Mode};
@@ -1624,42 +1624,16 @@ impl Step for Sysroot {
             });
         }
 
-        // Symlink the source root into the same location inside the sysroot,
+        // Copy the source root into the same location inside the sysroot,
         // where `rust-src` component would go (`$sysroot/lib/rustlib/src/rust`),
         // so that any tools relying on `rust-src` also work for local builds,
         // and also for translating the virtual `/rustc/$hash` back to the real
         // directory (for running tests with `rust.remap-debuginfo = true`).
-        let sysroot_lib_rustlib_src = sysroot.join("lib/rustlib/src");
-        t!(fs::create_dir_all(&sysroot_lib_rustlib_src));
-        let sysroot_lib_rustlib_src_rust = sysroot_lib_rustlib_src.join("rust");
-        if let Err(e) = symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_src_rust) {
-            eprintln!(
-                "WARNING: creating symbolic link `{}` to `{}` failed with {}",
-                sysroot_lib_rustlib_src_rust.display(),
-                builder.src.display(),
-                e,
-            );
-            if builder.config.rust_remap_debuginfo {
-                eprintln!(
-                    "WARNING: some `tests/ui` tests will fail when lacking `{}`",
-                    sysroot_lib_rustlib_src_rust.display(),
-                );
-            }
-        }
-        // Same for the rustc-src component.
-        let sysroot_lib_rustlib_rustcsrc = sysroot.join("lib/rustlib/rustc-src");
-        t!(fs::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
-        let sysroot_lib_rustlib_rustcsrc_rust = sysroot_lib_rustlib_rustcsrc.join("rust");
-        if let Err(e) =
-            symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_rustcsrc_rust)
-        {
-            eprintln!(
-                "WARNING: creating symbolic link `{}` to `{}` failed with {}",
-                sysroot_lib_rustlib_rustcsrc_rust.display(),
-                builder.src.display(),
-                e,
-            );
-        }
+        let rustlib_src_rust = sysroot.join("lib/rustlib/src/rust");
+        dist::copy_rustlib_src(builder, &rustlib_src_rust);
+
+        let rustlib_rustcsrc_rust = sysroot.join("lib/rustlib/rustc-src/rust");
+        dist::copy_rustlib_rustc_src(builder, &rustlib_rustcsrc_rust);
 
         sysroot
     }
