@@ -338,9 +338,6 @@ pub(crate) mod copy;
 mod cursor;
 mod error;
 mod impls;
-/// Annoymous pipe implementation
-#[unstable(feature = "annoymous_pipe", issue = "127154")]
-pub mod pipe;
 pub mod prelude;
 mod stdio;
 mod util;

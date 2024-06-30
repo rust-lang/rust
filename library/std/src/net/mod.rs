@@ -43,6 +43,10 @@ mod tcp;
 pub(crate) mod test;
 mod udp;
 
+/// Annoymous pipe implementation
+#[unstable(feature = "annoymous_pipe", issue = "127154")]
+pub mod pipe;
+
 /// Possible values which can be passed to the [`TcpStream::shutdown`] method.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
