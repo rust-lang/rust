@@ -65,12 +65,6 @@ impl<'a, 'tcx> QueryResult<'a, &'tcx GlobalCtxt<'tcx>> {
     }
 }
 
-impl<T> Default for Query<T> {
-    fn default() -> Self {
-        Query { result: RefCell::new(None) }
-    }
-}
-
 pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
     gcx_cell: OnceLock<GlobalCtxt<'tcx>>,
@@ -90,8 +84,8 @@ impl<'tcx> Queries<'tcx> {
             gcx_cell: OnceLock::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             hir_arena: WorkerLocal::new(|_| rustc_hir::Arena::default()),
-            parse: Default::default(),
-            gcx: Default::default(),
+            parse: Query { result: RefCell::new(None) },
+            gcx: Query { result: RefCell::new(None) },
         }
     }
 
