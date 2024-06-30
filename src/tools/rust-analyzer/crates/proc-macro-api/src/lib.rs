@@ -15,10 +15,8 @@ use indexmap::IndexSet;
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use span::Span;
-use std::{
-    fmt, io,
-    sync::{Arc, Mutex},
-};
+use std::{fmt, io, sync::Arc};
+use tt::SmolStr;
 
 use serde::{Deserialize, Serialize};
 
@@ -48,9 +46,7 @@ pub struct ProcMacroServer {
     ///
     /// That means that concurrent salsa requests may block each other when expanding proc macros,
     /// which is unfortunate, but simple and good enough for the time being.
-    ///
-    /// Therefore, we just wrap the `ProcMacroProcessSrv` in a mutex here.
-    process: Arc<Mutex<ProcMacroProcessSrv>>,
+    process: Arc<ProcMacroProcessSrv>,
     path: AbsPathBuf,
 }
 
@@ -70,9 +66,9 @@ impl MacroDylib {
 /// we share a single expander process for all macros.
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
-    process: Arc<Mutex<ProcMacroProcessSrv>>,
+    process: Arc<ProcMacroProcessSrv>,
     dylib_path: AbsPathBuf,
-    name: String,
+    name: SmolStr,
     kind: ProcMacroKind,
 }
 
@@ -89,7 +85,6 @@ impl PartialEq for ProcMacro {
 #[derive(Clone, Debug)]
 pub struct ServerError {
     pub message: String,
-    // io::Error isn't Clone for some reason
     pub io: Option<Arc<io::Error>>,
 }
 
@@ -104,10 +99,6 @@ impl fmt::Display for ServerError {
     }
 }
 
-pub struct MacroPanic {
-    pub message: String,
-}
-
 impl ProcMacroServer {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
     pub fn spawn(
@@ -115,10 +106,7 @@ impl ProcMacroServer {
         env: &FxHashMap<String, String>,
     ) -> io::Result<ProcMacroServer> {
         let process = ProcMacroProcessSrv::run(process_path, env)?;
-        Ok(ProcMacroServer {
-            process: Arc::new(Mutex::new(process)),
-            path: process_path.to_owned(),
-        })
+        Ok(ProcMacroServer { process: Arc::new(process), path: process_path.to_owned() })
     }
 
     pub fn path(&self) -> &AbsPath {
@@ -127,15 +115,14 @@ impl ProcMacroServer {
 
     pub fn load_dylib(&self, dylib: MacroDylib) -> Result<Vec<ProcMacro>, ServerError> {
         let _p = tracing::info_span!("ProcMacroServer::load_dylib").entered();
-        let macros =
-            self.process.lock().unwrap_or_else(|e| e.into_inner()).find_proc_macros(&dylib.path)?;
+        let macros = self.process.find_proc_macros(&dylib.path)?;
 
         match macros {
             Ok(macros) => Ok(macros
                 .into_iter()
                 .map(|(name, kind)| ProcMacro {
                     process: self.process.clone(),
-                    name,
+                    name: name.into(),
                     kind,
                     dylib_path: dylib.path.clone(),
                 })
@@ -163,7 +150,7 @@ impl ProcMacro {
         call_site: Span,
         mixed_site: Span,
     ) -> Result<Result<tt::Subtree<Span>, PanicMessage>, ServerError> {
-        let version = self.process.lock().unwrap_or_else(|e| e.into_inner()).version();
+        let version = self.process.version();
         let current_dir = env.get("CARGO_MANIFEST_DIR");
 
         let mut span_data_table = IndexSet::default();
@@ -190,11 +177,7 @@ impl ProcMacro {
             },
         };
 
-        let response = self
-            .process
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .send_task(msg::Request::ExpandMacro(Box::new(task)))?;
+        let response = self.process.send_task(msg::Request::ExpandMacro(Box::new(task)))?;
 
         match response {
             msg::Response::ExpandMacro(it) => {
