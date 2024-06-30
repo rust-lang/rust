@@ -95,7 +95,12 @@ const EXCEPTIONS: ExceptionList = &[
     ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
     ("snap", "BSD-3-Clause"),                                // rustc
     ("wasm-encoder", "Apache-2.0 WITH LLVM-exception"),      // rustc
+    ("wasm-metadata", "Apache-2.0 WITH LLVM-exception"),     // rustc
     ("wasmparser", "Apache-2.0 WITH LLVM-exception"),        // rustc
+    ("wast", "Apache-2.0 WITH LLVM-exception"),              // rustc
+    ("wat", "Apache-2.0 WITH LLVM-exception"),               // rustc
+    ("wit-component", "Apache-2.0 WITH LLVM-exception"),     // rustc
+    ("wit-parser", "Apache-2.0 WITH LLVM-exception"),        // rustc
     // tidy-alphabetical-end
 ];
 
