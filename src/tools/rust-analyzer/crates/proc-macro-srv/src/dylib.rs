@@ -133,24 +133,32 @@ impl ProcMacroLibraryLibloading {
     }
 }
 
-pub struct Expander {
+pub(crate) struct Expander {
     inner: ProcMacroLibraryLibloading,
+    path: Utf8PathBuf,
+}
+
+impl Drop for Expander {
+    fn drop(&mut self) {
+        #[cfg(windows)]
+        std::fs::remove_file(&self.path).ok();
+    }
 }
 
 impl Expander {
-    pub fn new(lib: &Utf8Path) -> Result<Expander, LoadProcMacroDylibError> {
+    pub(crate) fn new(lib: &Utf8Path) -> Result<Expander, LoadProcMacroDylibError> {
         // Some libraries for dynamic loading require canonicalized path even when it is
         // already absolute
         let lib = lib.canonicalize_utf8()?;
 
-        let lib = ensure_file_with_lock_free_access(&lib)?;
+        let path = ensure_file_with_lock_free_access(&lib)?;
 
-        let library = ProcMacroLibraryLibloading::open(lib.as_ref())?;
+        let library = ProcMacroLibraryLibloading::open(path.as_ref())?;
 
-        Ok(Expander { inner: library })
+        Ok(Expander { inner: library, path })
     }
 
-    pub fn expand<S: ProcMacroSrvSpan>(
+    pub(crate) fn expand<S: ProcMacroSrvSpan>(
         &self,
         macro_name: &str,
         macro_body: tt::Subtree<S>,
@@ -169,7 +177,7 @@ impl Expander {
         result.map_err(|e| e.into_string().unwrap_or_default())
     }
 
-    pub fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
+    pub(crate) fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
         self.inner.proc_macros.list_macros()
     }
 }
@@ -198,7 +206,7 @@ fn ensure_file_with_lock_free_access(path: &Utf8Path) -> io::Result<Utf8PathBuf>
     unique_name.push_str(file_name);
 
     to.push(unique_name);
-    std::fs::copy(path, &to).unwrap();
+    std::fs::copy(path, &to)?;
     Ok(to)
 }
 

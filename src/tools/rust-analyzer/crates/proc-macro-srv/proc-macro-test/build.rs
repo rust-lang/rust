@@ -30,8 +30,7 @@ fn main() {
 
     if !has_features {
         println!("proc-macro-test testing only works on nightly toolchains");
-        let info_path = out_dir.join("proc_macro_test_location.txt");
-        fs::File::create(info_path).unwrap();
+        println!("cargo::rustc-env=PROC_MACRO_TEST_LOCATION=\"\"");
         return;
     }
 
