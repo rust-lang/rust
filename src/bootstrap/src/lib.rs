@@ -34,7 +34,7 @@ use filetime::FileTime;
 use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::channel::GitInfo;
-use utils::helpers::hex_encode;
+use utils::helpers::{hex_encode, retry};
 
 use crate::core::builder;
 use crate::core::builder::Kind;
@@ -1676,7 +1676,7 @@ impl Build {
         if src == dst {
             return;
         }
-        let _ = fs::remove_file(dst);
+        let _ = retry(60, || fs::remove_file(dst));
         let metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
         let mut src = src.to_path_buf();
         if metadata.file_type().is_symlink() {

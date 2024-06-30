@@ -517,3 +517,19 @@ pub fn git(source_dir: Option<&Path>) -> Command {
 
     git
 }
+
+/// Retry a function up to n times, returning the last call to fun.
+/// Stops early if the function returns `Ok`.
+pub fn retry<T, E>(n: usize, mut fun: impl FnMut() -> Result<T, E>) -> Result<T, E> {
+    let mut retries = 0;
+    loop {
+        retries += 1;
+
+        let result = fun();
+        if result.is_ok() || retries == n {
+            return result;
+        }
+        // wait an arbitrary length of time.
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+}
