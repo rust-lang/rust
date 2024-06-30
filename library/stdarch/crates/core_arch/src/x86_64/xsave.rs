@@ -124,16 +124,12 @@ pub unsafe fn _xrstors64(mem_addr: *const u8, rs_mask: u64) {
     xrstors64(mem_addr, (rs_mask >> 32) as u32, rs_mask as u32);
 }
 
-// FIXME: https://github.com/rust-lang/stdarch/issues/209
-// All these tests fail with Intel SDE.
-
 #[cfg(test)]
 mod tests {
     use crate::core_arch::x86_64::xsave;
     use std::fmt;
     use stdarch_test::simd_test;
 
-    // FIXME: https://github.com/rust-lang/stdarch/issues/209
     #[repr(align(64))]
     struct XsaveArea {
         // max size for 256-bit registers is 800 bytes:
@@ -176,10 +172,14 @@ mod tests {
         }
     }
 
-    /*
+    // We cannot test `_xsave64`, `_xrstor64`, `_xsaveopt64`, `_xsaves64` and `_xrstors64` directly
+    // as they are privileged instructions and will need access to the kernel to run and test them.
+    // See https://github.com/rust-lang/stdarch/issues/209
+
+    #[cfg_attr(stdarch_intel_sde, ignore)]
     #[simd_test(enable = "xsave")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
-    unsafe fn xsave64() {
+    unsafe fn test_xsave64() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
@@ -190,9 +190,10 @@ mod tests {
         assert_eq!(a, b);
     }
 
+    #[cfg_attr(stdarch_intel_sde, ignore)]
     #[simd_test(enable = "xsave,xsaveopt")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
-    unsafe fn xsaveopt64() {
+    unsafe fn test_xsaveopt64() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
@@ -202,11 +203,10 @@ mod tests {
         xsave::_xsaveopt64(b.ptr(), m);
         assert_eq!(a, b);
     }
-    */
 
     #[simd_test(enable = "xsave,xsavec")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
-    unsafe fn xsavec64() {
+    unsafe fn test_xsavec64() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
@@ -216,18 +216,4 @@ mod tests {
         xsave::_xsavec64(b.ptr(), m);
         assert_eq!(a, b);
     }
-    /*
-       #[simd_test(enable = "xsave,xsaves")]
-       #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
-       unsafe fn xsaves64() {
-           let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
-           let mut a = XsaveArea::new();
-           let mut b = XsaveArea::new();
-
-           xsave::_xsaves64(a.ptr(), m);
-           xsave::_xrstors64(a.ptr(), m);
-           xsave::_xsaves64(b.ptr(), m);
-           assert_eq!(a, b);
-       }
-    */
 }

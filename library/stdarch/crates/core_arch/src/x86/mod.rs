@@ -798,15 +798,11 @@ mod bmi2;
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::bmi2::*;
 
-#[cfg(not(stdarch_intel_sde))]
 mod sse4a;
-#[cfg(not(stdarch_intel_sde))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::sse4a::*;
 
-#[cfg(not(stdarch_intel_sde))]
 mod tbm;
-#[cfg(not(stdarch_intel_sde))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::tbm::*;
 

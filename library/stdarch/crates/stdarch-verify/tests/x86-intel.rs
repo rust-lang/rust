@@ -189,25 +189,12 @@ fn verify_all_signatures() {
                 "__cpuid_count",
                 "__cpuid",
                 "__get_cpuid_max",
-                // Priviledged
-                "_xsave",
-                "_xrstor",
+                // Privileged, see https://github.com/rust-lang/stdarch/issues/209
                 "_xsetbv",
-                "_xgetbv",
-                "_xsaveopt",
-                "_xsavec",
                 "_xsaves",
                 "_xrstors",
-                "_xsave64",
-                "_xrstor64",
-                "_xsaveopt64",
-                "_xsavec64",
                 "_xsaves64",
                 "_xrstors64",
-                "_fxsave",
-                "_fxrstor",
-                "_fxsave64",
-                "_fxrstor64",
                 // TSC
                 "_rdtsc",
                 "__rdtscp",
@@ -251,6 +238,10 @@ fn verify_all_signatures() {
                 // Has tests with different name
                 "_mm_min_epi8",
                 "_mm_min_epi32",
+                "_xrstor",
+                "_xrstor64",
+                "_fxrstor",
+                "_fxrstor64",
                 // Needs `f16` to test
                 "_mm_cvtps_ph",
                 "_mm256_cvtps_ph",

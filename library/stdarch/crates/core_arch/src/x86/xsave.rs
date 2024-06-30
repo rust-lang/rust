@@ -208,11 +208,14 @@ mod tests {
         }
     }
 
-    // FIXME: https://github.com/rust-lang/stdarch/issues/209
-    /*
+    // We cannot test for `_xsave`, `xrstor`, `_xsetbv`, `_xsaveopt`, `_xsaves`, `_xrstors` as they
+    // are privileged instructions and will need access to kernel mode to execute and test them.
+    // see https://github.com/rust-lang/stdarch/issues/209
+
+    #[cfg_attr(stdarch_intel_sde, ignore)]
     #[simd_test(enable = "xsave")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
-    unsafe fn xsave() {
+    unsafe fn test_xsave() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
@@ -222,27 +225,21 @@ mod tests {
         _xsave(b.ptr(), m);
         assert_eq!(a, b);
     }
-    */
 
     #[simd_test(enable = "xsave")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
-    unsafe fn xgetbv_xsetbv() {
+    unsafe fn test_xgetbv() {
         let xcr_n: u32 = _XCR_XFEATURE_ENABLED_MASK;
 
         let xcr: u64 = _xgetbv(xcr_n);
-        // FIXME: XSETBV is a privileged instruction we should only test this
-        // when running in privileged mode:
-        //
-        // _xsetbv(xcr_n, xcr);
         let xcr_cpy: u64 = _xgetbv(xcr_n);
         assert_eq!(xcr, xcr_cpy);
     }
 
-    // FIXME: https://github.com/rust-lang/stdarch/issues/209
-    /*
+    #[cfg_attr(stdarch_intel_sde, ignore)]
     #[simd_test(enable = "xsave,xsaveopt")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
-    unsafe fn xsaveopt() {
+    unsafe fn test_xsaveopt() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
@@ -252,11 +249,10 @@ mod tests {
         _xsaveopt(b.ptr(), m);
         assert_eq!(a, b);
     }
-    */
 
     #[simd_test(enable = "xsave,xsavec")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
-    unsafe fn xsavec() {
+    unsafe fn test_xsavec() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
@@ -266,19 +262,4 @@ mod tests {
         _xsavec(b.ptr(), m);
         assert_eq!(a, b);
     }
-
-    // FIXME: https://github.com/rust-lang/stdarch/issues/209
-    /*
-    #[simd_test(enable = "xsave,xsaves")]
-    unsafe fn xsaves() {
-        let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
-        let mut a = XsaveArea::new();
-        let mut b = XsaveArea::new();
-
-        _xsaves(a.ptr(), m);
-        _xrstors(a.ptr(), m);
-        _xsaves(b.ptr(), m);
-        assert_eq!(a, b);
-    }
-    */
 }
