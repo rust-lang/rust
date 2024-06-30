@@ -5,8 +5,9 @@ mod pass_mode;
 mod returning;
 
 use std::borrow::Cow;
+use std::mem;
 
-use cranelift_codegen::ir::SigRef;
+use cranelift_codegen::ir::{ArgumentPurpose, SigRef};
 use cranelift_codegen::isa::CallConv;
 use cranelift_module::ModuleError;
 use rustc_codegen_ssa::errors::CompilerBuiltinsCannotCall;
@@ -17,7 +18,7 @@ use rustc_middle::ty::TypeVisitableExt;
 use rustc_monomorphize::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
-use rustc_target::abi::call::{Conv, FnAbi};
+use rustc_target::abi::call::{Conv, FnAbi, PassMode};
 use rustc_target::spec::abi::Abi;
 
 use self::pass_mode::*;
@@ -487,6 +488,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     let args = args;
     assert_eq!(fn_abi.args.len(), args.len());
 
+    #[derive(Copy, Clone)]
     enum CallTarget {
         Direct(FuncRef),
         Indirect(SigRef, Value),
@@ -532,7 +534,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     };
 
     self::returning::codegen_with_call_return_arg(fx, &fn_abi.ret, ret_place, |fx, return_ptr| {
-        let call_args = return_ptr
+        let mut call_args = return_ptr
             .into_iter()
             .chain(first_arg_override.into_iter())
             .chain(
@@ -545,40 +547,17 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             )
             .collect::<Vec<Value>>();
 
-        let call_inst = match func_ref {
+        // FIXME: Find a cleaner way to support varargs.
+        if fn_abi.c_variadic {
+            adjust_call_for_c_variadic(fx, &fn_abi, source_info, func_ref, &mut call_args);
+        }
+
+        match func_ref {
             CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, &call_args),
             CallTarget::Indirect(sig, func_ptr) => {
                 fx.bcx.ins().call_indirect(sig, func_ptr, &call_args)
             }
-        };
-
-        // FIXME find a cleaner way to support varargs
-        if fn_sig.c_variadic() {
-            if !matches!(fn_sig.abi(), Abi::C { .. }) {
-                fx.tcx.dcx().span_fatal(
-                    source_info.span,
-                    format!("Variadic call for non-C abi {:?}", fn_sig.abi()),
-                );
-            }
-            let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
-            let abi_params = call_args
-                .into_iter()
-                .map(|arg| {
-                    let ty = fx.bcx.func.dfg.value_type(arg);
-                    if !ty.is_int() {
-                        // FIXME set %al to upperbound on float args once floats are supported
-                        fx.tcx.dcx().span_fatal(
-                            source_info.span,
-                            format!("Non int ty {:?} for variadic call", ty),
-                        );
-                    }
-                    AbiParam::new(ty)
-                })
-                .collect::<Vec<AbiParam>>();
-            fx.bcx.func.dfg.signatures[sig_ref].params = abi_params;
         }
-
-        call_inst
     });
 
     if let Some(dest) = target {
@@ -586,6 +565,100 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         fx.bcx.ins().jump(ret_block, &[]);
     } else {
         fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+    }
+
+    fn adjust_call_for_c_variadic<'tcx>(
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        source_info: mir::SourceInfo,
+        target: CallTarget,
+        call_args: &mut Vec<Value>,
+    ) {
+        if fn_abi.conv != Conv::C {
+            fx.tcx.dcx().span_fatal(
+                source_info.span,
+                format!("Variadic call for non-C abi {:?}", fn_abi.conv),
+            );
+        }
+        let sig_ref = match target {
+            CallTarget::Direct(func_ref) => fx.bcx.func.dfg.ext_funcs[func_ref].signature,
+            CallTarget::Indirect(sig_ref, _) => sig_ref,
+        };
+        // `mem::take()` the `params` so that `fx.bcx` can be used below.
+        let mut abi_params = mem::take(&mut fx.bcx.func.dfg.signatures[sig_ref].params);
+
+        // Recalculate the parameters in the signature to ensure the signature contains the variadic arguments.
+        let has_return_arg = matches!(fn_abi.ret.mode, PassMode::Indirect { .. });
+        // Drop everything except the return argument (if there is one).
+        abi_params.truncate(if has_return_arg { 1 } else { 0 });
+        // Add the fixed arguments.
+        abi_params.extend(
+            fn_abi.args[..fn_abi.fixed_count as usize]
+                .iter()
+                .flat_map(|arg_abi| arg_abi.get_abi_param(fx.tcx).into_iter()),
+        );
+        let fixed_arg_count = abi_params.len();
+        // Add the variadic arguments.
+        abi_params.extend(
+            fn_abi.args[fn_abi.fixed_count as usize..]
+                .iter()
+                .flat_map(|arg_abi| arg_abi.get_abi_param(fx.tcx).into_iter()),
+        );
+
+        if fx.tcx.sess.target.is_like_osx && fx.tcx.sess.target.arch == "aarch64" {
+            // Add any padding arguments needed for Apple AArch64.
+            // There's no need to pad the argument list unless variadic arguments are actually being
+            // passed.
+            if abi_params.len() > fixed_arg_count {
+                // 128-bit integers take 2 registers, and everything else takes 1.
+                // FIXME: Add support for non-integer types
+                // This relies on the checks below to ensure all arguments are integer types and
+                // that the ABI is "C".
+                // The return argument isn't counted as it goes in its own dedicated register.
+                let integer_registers_used: usize = abi_params
+                    [if has_return_arg { 1 } else { 0 }..fixed_arg_count]
+                    .iter()
+                    .map(|arg| if arg.value_type.bits() == 128 { 2 } else { 1 })
+                    .sum();
+                // The ABI uses 8 registers before it starts pushing arguments to the stack. Pad out
+                // the registers if needed to ensure the variadic arguments are passed on the stack.
+                if integer_registers_used < 8 {
+                    abi_params.splice(
+                        fixed_arg_count..fixed_arg_count,
+                        (integer_registers_used..8).map(|_| AbiParam::new(types::I64)),
+                    );
+                    call_args.splice(
+                        fixed_arg_count..fixed_arg_count,
+                        (integer_registers_used..8).map(|_| fx.bcx.ins().iconst(types::I64, 0)),
+                    );
+                }
+            }
+
+            // `StructArgument` is not currently used by the `aarch64` ABI, and is therefore not
+            // handled when calculating how many padding arguments to use. Assert that this remains
+            // the case.
+            assert!(abi_params.iter().all(|param| matches!(
+                param.purpose,
+                // The only purposes used are `Normal` and `StructReturn`.
+                ArgumentPurpose::Normal | ArgumentPurpose::StructReturn
+            )));
+        }
+
+        // Check all parameters are integers.
+        for param in abi_params.iter() {
+            if !param.value_type.is_int() {
+                // FIXME: Set %al to upperbound on float args once floats are supported.
+                fx.tcx.dcx().span_fatal(
+                    source_info.span,
+                    format!("Non int ty {:?} for variadic call", param.value_type),
+                );
+            }
+        }
+
+        assert_eq!(abi_params.len(), call_args.len());
+
+        // Put the `AbiParam`s back in the signature.
+        fx.bcx.func.dfg.signatures[sig_ref].params = abi_params;
     }
 }
 
