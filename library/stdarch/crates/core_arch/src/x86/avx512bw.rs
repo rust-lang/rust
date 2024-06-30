@@ -1630,7 +1630,9 @@ pub unsafe fn _mm_maskz_mullo_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m1
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmaxuw))]
 pub unsafe fn _mm512_max_epu16(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpmaxuw(a.as_u16x32(), b.as_u16x32()))
+    let a = a.as_u16x32();
+    let b = b.as_u16x32();
+    transmute(simd_select::<i16x32, _>(simd_gt(a, b), a, b))
 }
 
 /// Compare packed unsigned 16-bit integers in a and b, and store packed maximum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1716,7 +1718,9 @@ pub unsafe fn _mm_maskz_max_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmaxub))]
 pub unsafe fn _mm512_max_epu8(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpmaxub(a.as_u8x64(), b.as_u8x64()))
+    let a = a.as_u8x64();
+    let b = b.as_u8x64();
+    transmute(simd_select::<i8x64, _>(simd_gt(a, b), a, b))
 }
 
 /// Compare packed unsigned 8-bit integers in a and b, and store packed maximum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1802,7 +1806,9 @@ pub unsafe fn _mm_maskz_max_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmaxsw))]
 pub unsafe fn _mm512_max_epi16(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpmaxsw(a.as_i16x32(), b.as_i16x32()))
+    let a = a.as_i16x32();
+    let b = b.as_i16x32();
+    transmute(simd_select::<i16x32, _>(simd_gt(a, b), a, b))
 }
 
 /// Compare packed signed 16-bit integers in a and b, and store packed maximum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1888,7 +1894,9 @@ pub unsafe fn _mm_maskz_max_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmaxsb))]
 pub unsafe fn _mm512_max_epi8(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpmaxsb(a.as_i8x64(), b.as_i8x64()))
+    let a = a.as_i8x64();
+    let b = b.as_i8x64();
+    transmute(simd_select::<i8x64, _>(simd_gt(a, b), a, b))
 }
 
 /// Compare packed signed 8-bit integers in a and b, and store packed maximum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1974,7 +1982,9 @@ pub unsafe fn _mm_maskz_max_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpminuw))]
 pub unsafe fn _mm512_min_epu16(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpminuw(a.as_u16x32(), b.as_u16x32()))
+    let a = a.as_u16x32();
+    let b = b.as_u16x32();
+    transmute(simd_select::<i16x32, _>(simd_lt(a, b), a, b))
 }
 
 /// Compare packed unsigned 16-bit integers in a and b, and store packed minimum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -2060,7 +2070,9 @@ pub unsafe fn _mm_maskz_min_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpminub))]
 pub unsafe fn _mm512_min_epu8(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpminub(a.as_u8x64(), b.as_u8x64()))
+    let a = a.as_u8x64();
+    let b = b.as_u8x64();
+    transmute(simd_select::<i8x64, _>(simd_lt(a, b), a, b))
 }
 
 /// Compare packed unsigned 8-bit integers in a and b, and store packed minimum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -2146,7 +2158,9 @@ pub unsafe fn _mm_maskz_min_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpminsw))]
 pub unsafe fn _mm512_min_epi16(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpminsw(a.as_i16x32(), b.as_i16x32()))
+    let a = a.as_i16x32();
+    let b = b.as_i16x32();
+    transmute(simd_select::<i16x32, _>(simd_lt(a, b), a, b))
 }
 
 /// Compare packed signed 16-bit integers in a and b, and store packed minimum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -2232,7 +2246,9 @@ pub unsafe fn _mm_maskz_min_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpminsb))]
 pub unsafe fn _mm512_min_epi8(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpminsb(a.as_i8x64(), b.as_i8x64()))
+    let a = a.as_i8x64();
+    let b = b.as_i8x64();
+    transmute(simd_select::<i8x64, _>(simd_lt(a, b), a, b))
 }
 
 /// Compare packed signed 8-bit integers in a and b, and store packed minimum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -10503,24 +10519,6 @@ extern "C" {
     fn vpcmpb256(a: i8x32, b: i8x32, op: i32, mask: u32) -> u32;
     #[link_name = "llvm.x86.avx512.mask.cmp.b.128"]
     fn vpcmpb128(a: i8x16, b: i8x16, op: i32, mask: u16) -> u16;
-
-    #[link_name = "llvm.x86.avx512.mask.pmaxu.w.512"]
-    fn vpmaxuw(a: u16x32, b: u16x32) -> u16x32;
-    #[link_name = "llvm.x86.avx512.mask.pmaxu.b.512"]
-    fn vpmaxub(a: u8x64, b: u8x64) -> u8x64;
-    #[link_name = "llvm.x86.avx512.mask.pmaxs.w.512"]
-    fn vpmaxsw(a: i16x32, b: i16x32) -> i16x32;
-    #[link_name = "llvm.x86.avx512.mask.pmaxs.b.512"]
-    fn vpmaxsb(a: i8x64, b: i8x64) -> i8x64;
-
-    #[link_name = "llvm.x86.avx512.mask.pminu.w.512"]
-    fn vpminuw(a: u16x32, b: u16x32) -> u16x32;
-    #[link_name = "llvm.x86.avx512.mask.pminu.b.512"]
-    fn vpminub(a: u8x64, b: u8x64) -> u8x64;
-    #[link_name = "llvm.x86.avx512.mask.pmins.w.512"]
-    fn vpminsw(a: i16x32, b: i16x32) -> i16x32;
-    #[link_name = "llvm.x86.avx512.mask.pmins.b.512"]
-    fn vpminsb(a: i8x64, b: i8x64) -> i8x64;
 
     #[link_name = "llvm.x86.avx512.pmaddw.d.512"]
     fn vpmaddwd(a: i16x32, b: i16x32) -> i32x16;
