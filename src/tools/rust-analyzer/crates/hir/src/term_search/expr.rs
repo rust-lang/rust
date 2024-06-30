@@ -9,8 +9,8 @@ use hir_ty::{
 use itertools::Itertools;
 
 use crate::{
-    Adt, AsAssocItem, AssocItemContainer, Const, ConstParam, Field, Function, GenericDef, Local,
-    ModuleDef, SemanticsScope, Static, Struct, StructKind, Trait, Type, Variant,
+    Adt, AsAssocItem, AssocItemContainer, Const, ConstParam, Field, Function, Local, ModuleDef,
+    SemanticsScope, Static, Struct, StructKind, Trait, Type, Variant,
 };
 
 /// Helper function to get path to `ModuleDef`
@@ -33,43 +33,6 @@ fn mod_item_path_str(
     let path = mod_item_path(sema_scope, def, cfg);
     path.map(|it| it.display(sema_scope.db.upcast()).to_string())
         .ok_or(DisplaySourceCodeError::PathNotFound)
-}
-
-/// Helper function to get path to `Type`
-fn type_path(
-    sema_scope: &SemanticsScope<'_>,
-    ty: &Type,
-    cfg: ImportPathConfig,
-) -> Result<String, DisplaySourceCodeError> {
-    let db = sema_scope.db;
-    let m = sema_scope.module();
-
-    match ty.as_adt() {
-        Some(adt) => {
-            let ty_name = ty.display_source_code(db, m.id, true)?;
-
-            let mut path = mod_item_path(sema_scope, &ModuleDef::Adt(adt), cfg).unwrap();
-            path.pop_segment();
-            let path = path.display(db.upcast()).to_string();
-            let res = match path.is_empty() {
-                true => ty_name,
-                false => format!("{path}::{ty_name}"),
-            };
-            Ok(res)
-        }
-        None => ty.display_source_code(db, m.id, true),
-    }
-}
-
-/// Helper function to filter out generic parameters that are default
-fn non_default_generics(db: &dyn HirDatabase, def: GenericDef, generics: &[Type]) -> Vec<Type> {
-    def.type_or_const_params(db)
-        .into_iter()
-        .filter_map(|it| it.as_type_param(db))
-        .zip(generics)
-        .filter(|(tp, arg)| tp.default(db).as_ref() != Some(arg))
-        .map(|(_, arg)| arg.clone())
-        .collect()
 }
 
 /// Type tree shows how can we get from set of types to some type.
@@ -208,20 +171,7 @@ impl Expr {
                     None => Ok(format!("{target_str}.{func_name}({args})")),
                 }
             }
-            Expr::Variant { variant, generics, params } => {
-                let generics = non_default_generics(db, variant.parent_enum(db).into(), generics);
-                let generics_str = match generics.is_empty() {
-                    true => String::new(),
-                    false => {
-                        let generics = generics
-                            .iter()
-                            .map(|it| type_path(sema_scope, it, cfg))
-                            .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
-                            .into_iter()
-                            .join(", ");
-                        format!("::<{generics}>")
-                    }
-                };
+            Expr::Variant { variant, params, .. } => {
                 let inner = match variant.kind(db) {
                     StructKind::Tuple => {
                         let args = params
@@ -230,7 +180,7 @@ impl Expr {
                             .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                             .into_iter()
                             .join(", ");
-                        format!("{generics_str}({args})")
+                        format!("({args})")
                     }
                     StructKind::Record => {
                         let fields = variant.fields(db);
@@ -248,16 +198,15 @@ impl Expr {
                             .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
                             .into_iter()
                             .join(", ");
-                        format!("{generics_str}{{ {args} }}")
+                        format!("{{ {args} }}")
                     }
-                    StructKind::Unit => generics_str,
+                    StructKind::Unit => String::new(),
                 };
 
                 let prefix = mod_item_path_str(sema_scope, &ModuleDef::Variant(*variant))?;
                 Ok(format!("{prefix}{inner}"))
             }
-            Expr::Struct { strukt, generics, params } => {
-                let generics = non_default_generics(db, (*strukt).into(), generics);
+            Expr::Struct { strukt, params, .. } => {
                 let inner = match strukt.kind(db) {
                     StructKind::Tuple => {
                         let args = params
@@ -286,18 +235,7 @@ impl Expr {
                             .join(", ");
                         format!(" {{ {args} }}")
                     }
-                    StructKind::Unit => match generics.is_empty() {
-                        true => String::new(),
-                        false => {
-                            let generics = generics
-                                .iter()
-                                .map(|it| type_path(sema_scope, it, cfg))
-                                .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
-                                .into_iter()
-                                .join(", ");
-                            format!("::<{generics}>")
-                        }
-                    },
+                    StructKind::Unit => String::new(),
                 };
 
                 let prefix = mod_item_path_str(sema_scope, &ModuleDef::Adt(Adt::Struct(*strukt)))?;

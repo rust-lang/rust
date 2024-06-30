@@ -300,6 +300,7 @@ fn integrated_diagnostics_benchmark() {
         prefer_no_std: false,
         prefer_prelude: false,
         term_search_fuel: 400,
+        term_search_borrowck: true,
     };
     host.analysis()
         .diagnostics(&diagnostics_config, ide::AssistResolveStrategy::None, file_id)

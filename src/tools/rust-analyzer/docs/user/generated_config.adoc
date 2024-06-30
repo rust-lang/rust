@@ -9,6 +9,11 @@ for enum variants.
 --
 Placeholder expression to use for missing expressions in assists.
 --
+[[rust-analyzer.assist.termSearch.borrowcheck]]rust-analyzer.assist.termSearch.borrowcheck (default: `true`)::
++
+--
+Enable borrow checking for term search code assists. If set to false, also there will be more suggestions, but some of them may not borrow-check.
+--
 [[rust-analyzer.assist.termSearch.fuel]]rust-analyzer.assist.termSearch.fuel (default: `1800`)::
 +
 --

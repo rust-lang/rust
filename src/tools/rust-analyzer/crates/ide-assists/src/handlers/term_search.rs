@@ -37,7 +37,11 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         sema: &ctx.sema,
         scope: &scope,
         goal: target_ty,
-        config: TermSearchConfig { fuel: ctx.config.term_search_fuel, ..Default::default() },
+        config: TermSearchConfig {
+            fuel: ctx.config.term_search_fuel,
+            enable_borrowcheck: ctx.config.term_search_borrowck,
+            ..Default::default()
+        },
     };
     let paths = hir::term_search::term_search(&term_search_ctx);
 
@@ -144,7 +148,7 @@ fn f() { let a = A { x: 1, y: true }; let b: i32 = a.x; }"#,
             term_search,
             r#"//- minicore: todo, unimplemented, option
 fn f() { let a: i32 = 1; let b: Option<i32> = todo$0!(); }"#,
-            r#"fn f() { let a: i32 = 1; let b: Option<i32> = Some::<i32>(a); }"#,
+            r#"fn f() { let a: i32 = 1; let b: Option<i32> = Some(a); }"#,
         )
     }
 
@@ -156,7 +160,7 @@ fn f() { let a: i32 = 1; let b: Option<i32> = todo$0!(); }"#,
 enum Option<T> { None, Some(T) }
 fn f() { let a: i32 = 1; let b: Option<i32> = todo$0!(); }"#,
             r#"enum Option<T> { None, Some(T) }
-fn f() { let a: i32 = 1; let b: Option<i32> = Option::Some::<i32>(a); }"#,
+fn f() { let a: i32 = 1; let b: Option<i32> = Option::Some(a); }"#,
         )
     }
 
@@ -168,7 +172,7 @@ fn f() { let a: i32 = 1; let b: Option<i32> = Option::Some::<i32>(a); }"#,
 enum Option<T> { None, Some(T) }
 fn f() { let a: Option<i32> = Option::None; let b: Option<Option<i32>> = todo$0!(); }"#,
             r#"enum Option<T> { None, Some(T) }
-fn f() { let a: Option<i32> = Option::None; let b: Option<Option<i32>> = Option::Some::<Option<i32>>(a); }"#,
+fn f() { let a: Option<i32> = Option::None; let b: Option<Option<i32>> = Option::Some(a); }"#,
         )
     }
 
@@ -180,7 +184,7 @@ fn f() { let a: Option<i32> = Option::None; let b: Option<Option<i32>> = Option:
 enum Foo<T = i32> { Foo(T) }
 fn f() { let a = 0; let b: Foo = todo$0!(); }"#,
             r#"enum Foo<T = i32> { Foo(T) }
-fn f() { let a = 0; let b: Foo = Foo::Foo::<i32>(a); }"#,
+fn f() { let a = 0; let b: Foo = Foo::Foo(a); }"#,
         );
 
         check_assist(

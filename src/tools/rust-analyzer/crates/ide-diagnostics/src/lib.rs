@@ -234,6 +234,7 @@ pub struct DiagnosticsConfig {
     pub prefer_no_std: bool,
     pub prefer_prelude: bool,
     pub term_search_fuel: u64,
+    pub term_search_borrowck: bool,
 }
 
 impl DiagnosticsConfig {
@@ -260,6 +261,7 @@ impl DiagnosticsConfig {
             prefer_no_std: false,
             prefer_prelude: true,
             term_search_fuel: 400,
+            term_search_borrowck: true,
         }
     }
 }
