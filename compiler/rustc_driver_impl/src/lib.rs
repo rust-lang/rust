@@ -41,7 +41,6 @@ use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::output::collect_crate_types;
 use rustc_session::{config, filesearch, EarlyDiagCtxt, Session};
-use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
@@ -448,21 +447,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            let linker = queries.codegen_and_build_linker()?;
-
-            // This must run after monomorphization so that all generic types
-            // have been instantiated.
-            if sess.opts.unstable_opts.print_type_sizes {
-                sess.code_stats.print_type_sizes();
-            }
-
-            if sess.opts.unstable_opts.print_vtable_sizes {
-                let crate_name = queries.global_ctxt()?.enter(|tcx| tcx.crate_name(LOCAL_CRATE));
-
-                sess.code_stats.print_vtable_sizes(crate_name);
-            }
-
-            Ok(Some(linker))
+            Ok(Some(queries.codegen_and_build_linker()?))
         })?;
 
         // Linking is done outside the `compiler.enter()` so that the
