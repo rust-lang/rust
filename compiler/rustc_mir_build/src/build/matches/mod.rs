@@ -2021,19 +2021,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // The block that we should branch to if none of the
         // `target_candidates` match.
-        let remainder_start = if !remaining_candidates.is_empty() {
-            let remainder_start = self.cfg.start_new_block();
-            self.match_candidates(
-                span,
-                scrutinee_span,
-                remainder_start,
-                otherwise_block,
-                remaining_candidates,
-            );
-            remainder_start
-        } else {
-            otherwise_block
-        };
+        let remainder_start = self.cfg.start_new_block();
 
         // For each outcome of test, process the candidates that still apply.
         let target_blocks: FxIndexMap<_, _> = target_candidates
@@ -2060,6 +2048,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             match_place,
             &test,
             target_blocks,
+        );
+
+        self.match_candidates(
+            span,
+            scrutinee_span,
+            remainder_start,
+            otherwise_block,
+            remaining_candidates,
         );
     }
 }
