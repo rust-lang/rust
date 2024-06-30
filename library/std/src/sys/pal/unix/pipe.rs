@@ -84,6 +84,10 @@ impl AnonPipe {
     pub fn is_write_vectored(&self) -> bool {
         self.0.is_write_vectored()
     }
+
+    pub fn as_file_desc(&self) -> &FileDesc {
+        &self.0
+    }
 }
 
 impl IntoInner<FileDesc> for AnonPipe {

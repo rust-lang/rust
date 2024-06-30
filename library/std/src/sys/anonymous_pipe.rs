@@ -161,42 +161,22 @@ mod unix {
         }
     }
 
-    enum AccessMode {
-        Readable,
-        Writable,
-    }
-
-    fn check_access_mode(pipe: AnonPipe, expected_access_mode: AccessMode) -> io::Result<AnonPipe> {
-        let ret = unsafe { libc::fcntl(pipe.as_raw_fd(), libc::F_GETFL) };
-        let access_mode = ret & libc::O_ACCMODE;
-        let expected_access_mode_str = match expected_access_mode {
-            AccessMode::Readable => "readable",
-            AccessMode::Writable => "writable",
-        };
-        let expected_access_mode = match expected_access_mode {
-            AccessMode::Readable => libc::O_RDONLY,
-            AccessMode::Writable => libc::O_WRONLY,
-        };
-
-        if ret == -1 {
-            Err(io::Error::last_os_error())
-        } else if access_mode == libc::O_RDWR && access_mode == expected_access_mode {
-            Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!("Pipe {} is not {}", pipe.as_raw_fd(), expected_access_mode_str),
-            ))
-        } else {
-            Ok(pipe)
-        }
-    }
-
     #[unstable(feature = "anonymous_pipe", issue = "127154")]
     impl TryFrom<OwnedFd> for PipeReader {
         type Error = io::Error;
 
         fn try_from(owned_fd: OwnedFd) -> Result<Self, Self::Error> {
             convert_to_pipe(owned_fd)
-                .and_then(|pipe| check_access_mode(pipe, AccessMode::Readable))
+                .and_then(|pipe| {
+                    if pipe.as_file_desc().get_access_mode()?.readable {
+                        Ok(pipe)
+                    } else {
+                        Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            format!("Pipe {} is not readable", pipe.as_raw_fd()),
+                        ))
+                    }
+                })
                 .map(Self)
         }
     }
@@ -207,7 +187,16 @@ mod unix {
 
         fn try_from(owned_fd: OwnedFd) -> Result<Self, Self::Error> {
             convert_to_pipe(owned_fd)
-                .and_then(|pipe| check_access_mode(pipe, AccessMode::Writable))
+                .and_then(|pipe| {
+                    if pipe.as_file_desc().get_access_mode()?.writable {
+                        Ok(pipe)
+                    } else {
+                        Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            format!("Pipe {} is not writable", pipe.as_raw_fd()),
+                        ))
+                    }
+                })
                 .map(Self)
         }
     }
