@@ -50,34 +50,6 @@
   * [ ] [`_tile_zero`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tile_zero)
 </p></details>
 
-
-<details><summary>["AVX512BW"]</summary><p>
-
-  * [ ] [`_cvtmask32_u32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_cvtmask32_u32)
-  * [ ] [`_cvtmask64_u64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_cvtmask64_u64)
-  * [ ] [`_cvtu32_mask32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_cvtu32_mask32)
-  * [ ] [`_cvtu64_mask64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_cvtu64_mask64)
-  * [ ] [`_kortest_mask32_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kortest_mask32_u8)
-  * [ ] [`_kortest_mask64_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kortest_mask64_u8)
-  * [ ] [`_kortestc_mask32_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kortestc_mask32_u8)
-  * [ ] [`_kortestc_mask64_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kortestc_mask64_u8)
-  * [ ] [`_kortestz_mask32_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kortestz_mask32_u8)
-  * [ ] [`_kortestz_mask64_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kortestz_mask64_u8)
-  * [ ] [`_kshiftli_mask32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kshiftli_mask32)
-  * [ ] [`_kshiftli_mask64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kshiftli_mask64)
-  * [ ] [`_kshiftri_mask32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kshiftri_mask32)
-  * [ ] [`_kshiftri_mask64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kshiftri_mask64)
-  * [ ] [`_ktest_mask32_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_ktest_mask32_u8)
-  * [ ] [`_ktest_mask64_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_ktest_mask64_u8)
-  * [ ] [`_ktestc_mask32_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_ktestc_mask32_u8)
-  * [ ] [`_ktestc_mask64_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_ktestc_mask64_u8)
-  * [ ] [`_ktestz_mask32_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_ktestz_mask32_u8)
-  * [ ] [`_ktestz_mask64_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_ktestz_mask64_u8)
-  * [ ] [`_mm512_kunpackd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_kunpackd)
-  * [ ] [`_mm512_kunpackw`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_kunpackw)
-</p></details>
-
-
 <details><summary>["AVX512BW", "AVX512VL"]</summary><p>
 
   * [ ] [`_mm256_mask_reduce_add_epi16`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_reduce_add_epi16)

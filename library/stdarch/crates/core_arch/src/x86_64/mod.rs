@@ -46,6 +46,10 @@ mod avx512f;
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512f::*;
 
+mod avx512bw;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub use self::avx512bw::*;
+
 mod bswap;
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::bswap::*;

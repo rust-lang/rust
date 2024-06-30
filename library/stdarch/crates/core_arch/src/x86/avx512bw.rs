@@ -9363,6 +9363,26 @@ pub unsafe fn _mm_movm_epi8(k: __mmask16) -> __m128i {
     transmute(simd_select_bitmask(k, one, zero))
 }
 
+/// Convert 32-bit mask a into an integer value, and store the result in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#_cvtmask32_u32)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _cvtmask32_u32(a: __mmask32) -> u32 {
+    a
+}
+
+/// Convert integer value a into an 32-bit mask, and store the result in k.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_cvtu32_mask32)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _cvtu32_mask32(a: u32) -> __mmask32 {
+    a
+}
+
 /// Add 32-bit masks in a and b, and store the result in k.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kadd_mask32&expand=3207)
@@ -9410,7 +9430,7 @@ pub unsafe fn _kand_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 #[target_feature(enable = "avx512bw")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _knot_mask32(a: __mmask32) -> __mmask32 {
-    a ^ 0b11111111_11111111_11111111_11111111
+    !a
 }
 
 /// Compute the bitwise NOT of 64-bit mask a, and store the result in k.
@@ -9420,7 +9440,7 @@ pub unsafe fn _knot_mask32(a: __mmask32) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _knot_mask64(a: __mmask64) -> __mmask64 {
-    a ^ 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111
+    !a
 }
 
 /// Compute the bitwise NOT of 32-bit masks a and then AND with b, and store the result in k.
@@ -9501,6 +9521,212 @@ pub unsafe fn _kxnor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _kxnor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     _knot_mask64(a ^ b)
+}
+
+/// Compute the bitwise OR of 32-bit masks a and b. If the result is all zeros, store 1 in dst, otherwise
+/// store 0 in dst. If the result is all ones, store 1 in all_ones, otherwise store 0 in all_ones.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kortest_mask32_u8)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kortest_mask32_u8(a: __mmask32, b: __mmask32, all_ones: *mut u8) -> u8 {
+    let tmp = _kor_mask32(a, b);
+    *all_ones = (tmp == 0xffffffff) as u8;
+    (tmp == 0) as u8
+}
+
+/// Compute the bitwise OR of 64-bit masks a and b. If the result is all zeros, store 1 in dst, otherwise
+/// store 0 in dst. If the result is all ones, store 1 in all_ones, otherwise store 0 in all_ones.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kortest_mask64_u8)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kortest_mask64_u8(a: __mmask64, b: __mmask64, all_ones: *mut u8) -> u8 {
+    let tmp = _kor_mask64(a, b);
+    *all_ones = (tmp == 0xffffffff_ffffffff) as u8;
+    (tmp == 0) as u8
+}
+
+/// Compute the bitwise OR of 32-bit masks a and b. If the result is all ones, store 1 in dst, otherwise
+/// store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kortestc_mask32_u8)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kortestc_mask32_u8(a: __mmask32, b: __mmask32) -> u8 {
+    (_kor_mask32(a, b) == 0xffffffff) as u8
+}
+
+/// Compute the bitwise OR of 64-bit masks a and b. If the result is all ones, store 1 in dst, otherwise
+/// store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kortestc_mask64_u8)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kortestc_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
+    (_kor_mask64(a, b) == 0xffffffff_ffffffff) as u8
+}
+
+/// Compute the bitwise OR of 32-bit masks a and b. If the result is all zeros, store 1 in dst, otherwise
+/// store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kortestz_mask32_u8)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kortestz_mask32_u8(a: __mmask32, b: __mmask32) -> u8 {
+    (_kor_mask32(a, b) == 0) as u8
+}
+
+/// Compute the bitwise OR of 64-bit masks a and b. If the result is all zeros, store 1 in dst, otherwise
+/// store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kortestz_mask64_u8)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kortestz_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
+    (_kor_mask64(a, b) == 0) as u8
+}
+
+/// Shift the bits of 32-bit mask a left by count while shifting in zeros, and store the least significant 32 bits of the result in k.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftli_mask32)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kshiftli_mask32<const COUNT: u32>(a: __mmask32) -> __mmask32 {
+    a << COUNT
+}
+
+/// Shift the bits of 64-bit mask a left by count while shifting in zeros, and store the least significant 32 bits of the result in k.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftli_mask64)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kshiftli_mask64<const COUNT: u32>(a: __mmask64) -> __mmask64 {
+    a << COUNT
+}
+
+/// Shift the bits of 32-bit mask a right by count while shifting in zeros, and store the least significant 32 bits of the result in k.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftri_mask32)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kshiftri_mask32<const COUNT: u32>(a: __mmask32) -> __mmask32 {
+    a >> COUNT
+}
+
+/// Shift the bits of 64-bit mask a right by count while shifting in zeros, and store the least significant 32 bits of the result in k.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_kshiftri_mask64)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _kshiftri_mask64<const COUNT: u32>(a: __mmask64) -> __mmask64 {
+    a >> COUNT
+}
+
+/// Compute the bitwise AND of 32-bit masks a and b, and if the result is all zeros, store 1 in dst,
+/// otherwise store 0 in dst. Compute the bitwise NOT of a and then AND with b, if the result is all
+/// zeros, store 1 in and_not, otherwise store 0 in and_not.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_ktest_mask32_u8)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _ktest_mask32_u8(a: __mmask32, b: __mmask32, and_not: *mut u8) -> u8 {
+    *and_not = (_kandn_mask32(a, b) == 0) as u8;
+    (_kand_mask32(a, b) == 0) as u8
+}
+
+/// Compute the bitwise AND of 64-bit masks a and b, and if the result is all zeros, store 1 in dst,
+/// otherwise store 0 in dst. Compute the bitwise NOT of a and then AND with b, if the result is all
+/// zeros, store 1 in and_not, otherwise store 0 in and_not.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_ktest_mask64_u8)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _ktest_mask64_u8(a: __mmask64, b: __mmask64, and_not: *mut u8) -> u8 {
+    *and_not = (_kandn_mask64(a, b) == 0) as u8;
+    (_kand_mask64(a, b) == 0) as u8
+}
+
+/// Compute the bitwise NOT of 32-bit mask a and then AND with 16-bit mask b, if the result is all
+/// zeros, store 1 in dst, otherwise store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_ktestc_mask32_u8)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _ktestc_mask32_u8(a: __mmask32, b: __mmask32) -> u8 {
+    (_kandn_mask32(a, b) == 0) as u8
+}
+
+/// Compute the bitwise NOT of 64-bit mask a and then AND with 8-bit mask b, if the result is all
+/// zeros, store 1 in dst, otherwise store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_ktestc_mask64_u8)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _ktestc_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
+    (_kandn_mask64(a, b) == 0) as u8
+}
+
+/// Compute the bitwise AND of 32-bit masks a and  b, if the result is all zeros, store 1 in dst, otherwise
+/// store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_ktestz_mask32_u8)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _ktestz_mask32_u8(a: __mmask32, b: __mmask32) -> u8 {
+    (_kand_mask32(a, b) == 0) as u8
+}
+
+/// Compute the bitwise AND of 64-bit masks a and  b, if the result is all zeros, store 1 in dst, otherwise
+/// store 0 in dst.
+///
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_ktestz_mask64_u8)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _ktestz_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
+    (_kand_mask64(a, b) == 0) as u8
+}
+
+/// Unpack and interleave 16 bits from masks a and b, and store the 32-bit result in k.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_kunpackw)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[cfg_attr(test, assert_instr(mov))] // generate normal and code instead of kunpckwd
+pub unsafe fn _mm512_kunpackw(a: __mmask32, b: __mmask32) -> __mmask32 {
+    ((a & 0xffff) << 16) | (b & 0xffff)
+}
+
+/// Unpack and interleave 32 bits from masks a and b, and store the 64-bit result in k.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_kunpackd)
+#[inline]
+#[target_feature(enable = "avx512bw")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[cfg_attr(test, assert_instr(mov))] // generate normal and code instead of kunpckdq
+pub unsafe fn _mm512_kunpackd(a: __mmask64, b: __mmask64) -> __mmask64 {
+    ((a & 0xffffffff) << 32) | (b & 0xffffffff)
 }
 
 /// Convert packed 16-bit integers in a to packed 8-bit integers with truncation, and store the results in dst.
@@ -18711,6 +18937,22 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512bw")]
+    unsafe fn test_cvtmask32_u32() {
+        let a: __mmask32 = 0b11001100_00110011_01100110_10011001;
+        let r = _cvtmask32_u32(a);
+        let e: u32 = 0b11001100_00110011_01100110_10011001;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_cvtu32_mask32() {
+        let a: u32 = 0b11001100_00110011_01100110_10011001;
+        let r = _cvtu32_mask32(a);
+        let e: __mmask32 = 0b11001100_00110011_01100110_10011001;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512bw")]
     unsafe fn test_kadd_mask32() {
         let a: __mmask32 = 11;
         let b: __mmask32 = 22;
@@ -18848,6 +19090,160 @@ mod tests {
         let r = _kxnor_mask64(a, b);
         let e: __mmask64 =
             0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_kortest_mask32_u8() {
+        let a: __mmask32 = 0b0110100101101001_0110100101101001;
+        let b: __mmask32 = 0b1011011010110110_1011011010110110;
+        let mut all_ones: u8 = 0;
+        let r = _kortest_mask32_u8(a, b, &mut all_ones);
+        assert_eq!(r, 0);
+        assert_eq!(all_ones, 1);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_kortest_mask64_u8() {
+        let a: __mmask64 = 0b0110100101101001_0110100101101001;
+        let b: __mmask64 = 0b1011011010110110_1011011010110110;
+        let mut all_ones: u8 = 0;
+        let r = _kortest_mask64_u8(a, b, &mut all_ones);
+        assert_eq!(r, 0);
+        assert_eq!(all_ones, 0);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_kortestc_mask32_u8() {
+        let a: __mmask32 = 0b0110100101101001_0110100101101001;
+        let b: __mmask32 = 0b1011011010110110_1011011010110110;
+        let r = _kortestc_mask32_u8(a, b);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_kortestc_mask64_u8() {
+        let a: __mmask64 = 0b0110100101101001_0110100101101001;
+        let b: __mmask64 = 0b1011011010110110_1011011010110110;
+        let r = _kortestc_mask64_u8(a, b);
+        assert_eq!(r, 0);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_kortestz_mask32_u8() {
+        let a: __mmask32 = 0b0110100101101001_0110100101101001;
+        let b: __mmask32 = 0b1011011010110110_1011011010110110;
+        let r = _kortestz_mask32_u8(a, b);
+        assert_eq!(r, 0);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_kortestz_mask64_u8() {
+        let a: __mmask64 = 0b0110100101101001_0110100101101001;
+        let b: __mmask64 = 0b1011011010110110_1011011010110110;
+        let r = _kortestz_mask64_u8(a, b);
+        assert_eq!(r, 0);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_kshiftli_mask32() {
+        let a: __mmask32 = 0b0110100101101001_0110100101101001;
+        let r = _kshiftli_mask32::<3>(a);
+        let e: __mmask32 = 0b0100101101001011_0100101101001000;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_kshiftli_mask64() {
+        let a: __mmask64 = 0b0110100101101001_0110100101101001;
+        let r = _kshiftli_mask64::<3>(a);
+        let e: __mmask64 = 0b0110100101101001011_0100101101001000;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_kshiftri_mask32() {
+        let a: __mmask32 = 0b0110100101101001_0110100101101001;
+        let r = _kshiftri_mask32::<3>(a);
+        let e: __mmask32 = 0b0000110100101101_0010110100101101;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_kshiftri_mask64() {
+        let a: __mmask64 = 0b0110100101101001011_0100101101001000;
+        let r = _kshiftri_mask64::<3>(a);
+        let e: __mmask64 = 0b0110100101101001_0110100101101001;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_ktest_mask32_u8() {
+        let a: __mmask32 = 0b0110100100111100_0110100100111100;
+        let b: __mmask32 = 0b1001011011000011_1001011011000011;
+        let mut and_not: u8 = 0;
+        let r = _ktest_mask32_u8(a, b, &mut and_not);
+        assert_eq!(r, 1);
+        assert_eq!(and_not, 0);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_ktestc_mask32_u8() {
+        let a: __mmask32 = 0b0110100100111100_0110100100111100;
+        let b: __mmask32 = 0b1001011011000011_1001011011000011;
+        let r = _ktestc_mask32_u8(a, b);
+        assert_eq!(r, 0);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_ktestz_mask32_u8() {
+        let a: __mmask32 = 0b0110100100111100_0110100100111100;
+        let b: __mmask32 = 0b1001011011000011_1001011011000011;
+        let r = _ktestz_mask32_u8(a, b);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_ktest_mask64_u8() {
+        let a: __mmask64 = 0b0110100100111100_0110100100111100;
+        let b: __mmask64 = 0b1001011011000011_1001011011000011;
+        let mut and_not: u8 = 0;
+        let r = _ktest_mask64_u8(a, b, &mut and_not);
+        assert_eq!(r, 1);
+        assert_eq!(and_not, 0);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_ktestc_mask64_u8() {
+        let a: __mmask64 = 0b0110100100111100_0110100100111100;
+        let b: __mmask64 = 0b1001011011000011_1001011011000011;
+        let r = _ktestc_mask64_u8(a, b);
+        assert_eq!(r, 0);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_ktestz_mask64_u8() {
+        let a: __mmask64 = 0b0110100100111100_0110100100111100;
+        let b: __mmask64 = 0b1001011011000011_1001011011000011;
+        let r = _ktestz_mask64_u8(a, b);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_mm512_kunpackw() {
+        let a: u32 = 0x11001100_00110011;
+        let b: u32 = 0x00101110_00001011;
+        let r = _mm512_kunpackw(a, b);
+        let e: u32 = 0x00110011_00001011;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512bw")]
+    unsafe fn test_mm512_kunpackd() {
+        let a: u64 = 0xf_1100110000110011;
+        let b: u64 = 0xf_0010111000001011;
+        let r = _mm512_kunpackd(a, b);
+        let e: u64 = 0x1100110000110011_0010111000001011;
         assert_eq!(r, e);
     }
 
