@@ -366,6 +366,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.is_lang_item(def_id, trait_lang_item_to_lang_item(lang_item))
     }
 
+    fn as_lang_item(self, def_id: DefId) -> Option<TraitSolverLangItem> {
+        lang_item_to_trait_lang_item(self.lang_items().from_def_id(def_id)?)
+    }
+
     fn associated_type_def_ids(self, def_id: DefId) -> impl IntoIterator<Item = DefId> {
         self.associated_items(def_id)
             .in_definition_order()
@@ -584,44 +588,61 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 }
 
-fn trait_lang_item_to_lang_item(lang_item: TraitSolverLangItem) -> LangItem {
-    match lang_item {
-        TraitSolverLangItem::AsyncDestruct => LangItem::AsyncDestruct,
-        TraitSolverLangItem::AsyncFnKindHelper => LangItem::AsyncFnKindHelper,
-        TraitSolverLangItem::AsyncFnKindUpvars => LangItem::AsyncFnKindUpvars,
-        TraitSolverLangItem::AsyncFnOnceOutput => LangItem::AsyncFnOnceOutput,
-        TraitSolverLangItem::AsyncIterator => LangItem::AsyncIterator,
-        TraitSolverLangItem::CallOnceFuture => LangItem::CallOnceFuture,
-        TraitSolverLangItem::CallRefFuture => LangItem::CallRefFuture,
-        TraitSolverLangItem::Clone => LangItem::Clone,
-        TraitSolverLangItem::Copy => LangItem::Copy,
-        TraitSolverLangItem::Coroutine => LangItem::Coroutine,
-        TraitSolverLangItem::CoroutineReturn => LangItem::CoroutineReturn,
-        TraitSolverLangItem::CoroutineYield => LangItem::CoroutineYield,
-        TraitSolverLangItem::Destruct => LangItem::Destruct,
-        TraitSolverLangItem::DiscriminantKind => LangItem::DiscriminantKind,
-        TraitSolverLangItem::DynMetadata => LangItem::DynMetadata,
-        TraitSolverLangItem::EffectsMaybe => LangItem::EffectsMaybe,
-        TraitSolverLangItem::EffectsIntersection => LangItem::EffectsIntersection,
-        TraitSolverLangItem::EffectsIntersectionOutput => LangItem::EffectsIntersectionOutput,
-        TraitSolverLangItem::EffectsNoRuntime => LangItem::EffectsNoRuntime,
-        TraitSolverLangItem::EffectsRuntime => LangItem::EffectsRuntime,
-        TraitSolverLangItem::FnPtrTrait => LangItem::FnPtrTrait,
-        TraitSolverLangItem::FusedIterator => LangItem::FusedIterator,
-        TraitSolverLangItem::Future => LangItem::Future,
-        TraitSolverLangItem::FutureOutput => LangItem::FutureOutput,
-        TraitSolverLangItem::Iterator => LangItem::Iterator,
-        TraitSolverLangItem::Metadata => LangItem::Metadata,
-        TraitSolverLangItem::Option => LangItem::Option,
-        TraitSolverLangItem::PointeeTrait => LangItem::PointeeTrait,
-        TraitSolverLangItem::PointerLike => LangItem::PointerLike,
-        TraitSolverLangItem::Poll => LangItem::Poll,
-        TraitSolverLangItem::Sized => LangItem::Sized,
-        TraitSolverLangItem::TransmuteTrait => LangItem::TransmuteTrait,
-        TraitSolverLangItem::Tuple => LangItem::Tuple,
-        TraitSolverLangItem::Unpin => LangItem::Unpin,
-        TraitSolverLangItem::Unsize => LangItem::Unsize,
+macro_rules! bidirectional_lang_item_map {
+    ($($name:ident),+ $(,)?) => {
+        fn trait_lang_item_to_lang_item(lang_item: TraitSolverLangItem) -> LangItem {
+            match lang_item {
+                $(TraitSolverLangItem::$name => LangItem::$name,)+
+            }
+        }
+
+        fn lang_item_to_trait_lang_item(lang_item: LangItem) -> Option<TraitSolverLangItem> {
+            Some(match lang_item {
+                $(LangItem::$name => TraitSolverLangItem::$name,)+
+                _ => return None,
+            })
+        }
     }
+}
+
+bidirectional_lang_item_map! {
+// tidy-alphabetical-start
+    AsyncDestruct,
+    AsyncFnKindHelper,
+    AsyncFnKindUpvars,
+    AsyncFnOnceOutput,
+    AsyncIterator,
+    CallOnceFuture,
+    CallRefFuture,
+    Clone,
+    Copy,
+    Coroutine,
+    CoroutineReturn,
+    CoroutineYield,
+    Destruct,
+    DiscriminantKind,
+    DynMetadata,
+    EffectsMaybe,
+    EffectsIntersection,
+    EffectsIntersectionOutput,
+    EffectsNoRuntime,
+    EffectsRuntime,
+    FnPtrTrait,
+    FusedIterator,
+    Future,
+    FutureOutput,
+    Iterator,
+    Metadata,
+    Option,
+    PointeeTrait,
+    PointerLike,
+    Poll,
+    Sized,
+    TransmuteTrait,
+    Tuple,
+    Unpin,
+    Unsize,
+// tidy-alphabetical-end
 }
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
