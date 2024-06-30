@@ -820,7 +820,7 @@ fn foo(&self) -> Self::T { String::new() }
                                 tcx.defaultness(item.id.owner_id)
                             {
                                 let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
-                                if self.infcx.can_eq(param_env, assoc_ty, found) {
+                                if self.infcx.can_eq_shallow(param_env, assoc_ty, found) {
                                     diag.span_label(
                                         item.span,
                                         "associated type defaults can't be assumed inside the \
@@ -843,7 +843,7 @@ fn foo(&self) -> Self::T { String::new() }
                         let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
                         if let hir::Defaultness::Default { has_value: true } =
                             tcx.defaultness(item.id.owner_id)
-                            && self.infcx.can_eq(param_env, assoc_ty, found)
+                            && self.infcx.can_eq_shallow(param_env, assoc_ty, found)
                         {
                             diag.span_label(
                                 item.span,

@@ -25,13 +25,11 @@ impl Bar<Foo> {
 
 impl Bar<u32> {
     fn foo(self: Bar<Foo>) {
-        //[current]~^ ERROR: invalid `self` parameter
-        //[next]~^^ ERROR: type mismatch resolving `u32 == Foo`
+        //~^ ERROR: invalid `self` parameter
         self.bar()
     }
     fn foomp(self: &Bar<Foo>) {
-        //[current]~^ ERROR: invalid `self` parameter
-        //[next]~^^ ERROR: type mismatch resolving `u32 == Foo`
+        //~^ ERROR: invalid `self` parameter
         self.bar()
     }
 }
