@@ -7,7 +7,7 @@ LL |     foo::<false>();
    |     expected 0 generic arguments
    |
 note: function defined here, with 0 generic parameters
-  --> $DIR/auxiliary/cross-crate.rs:3:14
+  --> $DIR/auxiliary/cross-crate.rs:5:14
    |
 LL | pub const fn foo() {}
    |              ^^^
@@ -19,7 +19,7 @@ LL |     <() as Bar<false>>::bar();
    |            ^^^ expected 0 generic arguments
    |
 note: trait defined here, with 0 generic parameters
-  --> $DIR/auxiliary/cross-crate.rs:6:11
+  --> $DIR/auxiliary/cross-crate.rs:8:11
    |
 LL | pub trait Bar {
    |           ^^^
@@ -37,7 +37,7 @@ LL |     foo::<true>();
    |     expected 0 generic arguments
    |
 note: function defined here, with 0 generic parameters
-  --> $DIR/auxiliary/cross-crate.rs:3:14
+  --> $DIR/auxiliary/cross-crate.rs:5:14
    |
 LL | pub const fn foo() {}
    |              ^^^
@@ -49,7 +49,7 @@ LL |     <() as Bar<true>>::bar();
    |            ^^^ expected 0 generic arguments
    |
 note: trait defined here, with 0 generic parameters
-  --> $DIR/auxiliary/cross-crate.rs:6:11
+  --> $DIR/auxiliary/cross-crate.rs:8:11
    |
 LL | pub trait Bar {
    |           ^^^

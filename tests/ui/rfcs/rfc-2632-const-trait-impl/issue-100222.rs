@@ -1,5 +1,6 @@
 //@ revisions: nn ny yn yy
-//@ check-pass
+//@ known-bug: #110395
+//@ compile-flags: -Znext-solver
 #![allow(incomplete_features)]
 #![feature(const_trait_impl, effects, associated_type_defaults, const_mut_refs)]
 

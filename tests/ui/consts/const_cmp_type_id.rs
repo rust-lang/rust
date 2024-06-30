@@ -1,12 +1,17 @@
-//@ known-bug: #110395
-#![feature(const_type_id)]
-#![feature(const_trait_impl, effects)]
+//@ check-pass
+//@ compile-flags: -Znext-solver
+#![feature(const_type_id, const_trait_impl, effects)]
+#![allow(incomplete_features)]
 
 use std::any::TypeId;
 
-const fn main() {
-    assert!(TypeId::of::<u8>() == TypeId::of::<u8>());
-    assert!(TypeId::of::<()>() != TypeId::of::<u8>());
-    const _A: bool = TypeId::of::<u8>() < TypeId::of::<u16>();
-    // can't assert `_A` because it is not deterministic
+fn main() {
+    const {
+        // FIXME(effects) this isn't supposed to pass (right now) but it did.
+        // revisit binops typeck please.
+        assert!(TypeId::of::<u8>() == TypeId::of::<u8>());
+        assert!(TypeId::of::<()>() != TypeId::of::<u8>());
+        let _a = TypeId::of::<u8>() < TypeId::of::<u16>();
+        // can't assert `_a` because it is not deterministic
+    }
 }

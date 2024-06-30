@@ -4,6 +4,11 @@ error[E0635]: unknown feature `const_cmp`
 LL |     const_cmp,
    |     ^^^^^^^^^
 
+error: using `#![feature(effects)]` without enabling next trait solver globally
+   |
+   = note: the next trait solver must be enabled globally for the effects feature to work correctly
+   = help: use `-Znext-solver` to enable
+
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-impl-trait.rs:13:30
    |
@@ -238,7 +243,7 @@ LL | const fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T> + ~const Des
    |                           |
    |                           the destructor for this type cannot be evaluated in constant functions
 
-error: aborting due to 32 previous errors
+error: aborting due to 33 previous errors
 
 Some errors have detailed explanations: E0493, E0635.
 For more information about an error, try `rustc --explain E0493`.

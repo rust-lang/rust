@@ -1,5 +1,5 @@
 //@ check-pass
-
+//@ compile-flags: -Znext-solver
 // effects ice https://github.com/rust-lang/rust/issues/113375 index out of bounds
 
 #![allow(incomplete_features, unused)]

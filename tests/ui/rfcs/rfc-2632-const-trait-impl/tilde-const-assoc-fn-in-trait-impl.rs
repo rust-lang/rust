@@ -1,7 +1,8 @@
 // Regression test for issue #119700.
 //@ check-pass
-
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+//@ compile-flags: -Znext-solver
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 trait Main {
