@@ -1119,6 +1119,11 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
         }
     }
 
+    /// Returns whether the first match pair of this candidate is an or-pattern.
+    fn starts_with_or_pattern(&self) -> bool {
+        matches!(&*self.match_pairs, [MatchPair { test_case: TestCase::Or { .. }, .. }, ..])
+    }
+
     /// Visit the leaf candidates (those with no subcandidates) contained in
     /// this candidate.
     fn visit_leaves<'a>(&'a mut self, mut visit_leaf: impl FnMut(&'a mut Self)) {
@@ -1435,39 +1440,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         otherwise_block: BasicBlock,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
     ) {
-        // If any candidate starts with an or-pattern, we have to expand the or-pattern before we
-        // can proceed further.
-        let expand_ors = candidates.iter().any(|candidate| {
-            matches!(
-                &*candidate.match_pairs,
-                [MatchPair { test_case: TestCase::Or { .. }, .. }, ..]
-            )
-        });
         ensure_sufficient_stack(|| {
-            if !expand_ors {
-                // No candidates start with an or-pattern, we can continue.
-                self.match_expanded_candidates(
-                    span,
-                    scrutinee_span,
-                    start_block,
-                    otherwise_block,
-                    candidates,
-                );
-            } else {
-                self.expand_and_match_or_candidates(
-                    span,
-                    scrutinee_span,
-                    start_block,
-                    otherwise_block,
-                    candidates,
-                );
-            }
+            self.match_candidates_with_enough_stack(
+                span,
+                scrutinee_span,
+                start_block,
+                otherwise_block,
+                candidates,
+            )
         });
     }
 
-    /// Construct the decision tree for `candidates`. Caller must ensure that no candidate in
-    /// `candidates` starts with an or-pattern.
-    fn match_expanded_candidates(
+    /// Construct the decision tree for `candidates`. Don't call this, call `match_candidates`
+    /// instead to reserve sufficient stack space.
+    fn match_candidates_with_enough_stack(
         &mut self,
         span: Span,
         scrutinee_span: Span,
@@ -1492,12 +1478,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // The first candidate has satisfied all its match pairs; we link it up and continue
                 // with the remaining candidates.
                 start_block = self.select_matched_candidate(first, start_block);
-                self.match_expanded_candidates(
+                self.match_candidates(span, scrutinee_span, start_block, otherwise_block, remaining)
+            }
+            candidates if candidates.iter().any(|candidate| candidate.starts_with_or_pattern()) => {
+                // If any candidate starts with an or-pattern, we have to expand the or-pattern before we
+                // can proceed further.
+                self.expand_and_match_or_candidates(
                     span,
                     scrutinee_span,
                     start_block,
                     otherwise_block,
-                    remaining,
+                    candidates,
                 )
             }
             candidates => {
@@ -1591,9 +1582,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut expand_until = 0;
         for (i, candidate) in candidates.iter().enumerate() {
             expand_until = i + 1;
-            if candidate.match_pairs.len() > 1
-                && matches!(&candidate.match_pairs[0].test_case, TestCase::Or { .. })
-            {
+            if candidate.match_pairs.len() > 1 && candidate.starts_with_or_pattern() {
                 // The candidate has an or-pattern as well as more match pairs: we must
                 // split the candidates list here.
                 break;
@@ -1604,8 +1593,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Expand one level of or-patterns for each candidate in `candidates_to_expand`.
         let mut expanded_candidates = Vec::new();
         for candidate in candidates_to_expand.iter_mut() {
-            if let [MatchPair { test_case: TestCase::Or { .. }, .. }, ..] = &*candidate.match_pairs
-            {
+            if candidate.starts_with_or_pattern() {
                 let or_match_pair = candidate.match_pairs.remove(0);
                 // Expand the or-pattern into subcandidates.
                 self.create_or_subcandidates(candidate, or_match_pair);
