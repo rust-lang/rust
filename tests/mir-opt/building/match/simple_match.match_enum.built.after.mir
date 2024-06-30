@@ -8,7 +8,7 @@ fn match_enum(_1: E1) -> bool {
     bb0: {
         PlaceMention(_1);
         _2 = discriminant(_1);
-        switchInt(move _2) -> [0: bb4, 1: bb6, 2: bb8, otherwise: bb3];
+        switchInt(move _2) -> [0: bb2, 1: bb4, 2: bb6, otherwise: bb1];
     }
 
     bb1: {
@@ -17,48 +17,40 @@ fn match_enum(_1: E1) -> bool {
     }
 
     bb2: {
-        goto -> bb1;
+        goto -> bb8;
     }
 
     bb3: {
-        goto -> bb2;
+        goto -> bb1;
     }
 
     bb4: {
-        goto -> bb10;
+        goto -> bb8;
     }
 
     bb5: {
-        goto -> bb3;
+        goto -> bb1;
     }
 
     bb6: {
+        _0 = const false;
         goto -> bb10;
     }
 
     bb7: {
-        goto -> bb3;
+        goto -> bb1;
     }
 
     bb8: {
-        _0 = const false;
-        goto -> bb12;
+        falseEdge -> [real: bb9, imaginary: bb6];
     }
 
     bb9: {
-        goto -> bb3;
+        _0 = const true;
+        goto -> bb10;
     }
 
     bb10: {
-        falseEdge -> [real: bb11, imaginary: bb8];
-    }
-
-    bb11: {
-        _0 = const true;
-        goto -> bb12;
-    }
-
-    bb12: {
         return;
     }
 }

@@ -1313,11 +1313,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
         refutable: bool,
     ) -> BasicBlock {
+        // This will generate code to test scrutinee_place and branch to the appropriate arm block.
         // See the doc comment on `match_candidates` for why we have an otherwise block.
-        let otherwise_block = self.cfg.start_new_block();
-
-        // This will generate code to test scrutinee_place and branch to the appropriate arm block
-        self.match_candidates(match_start_span, scrutinee_span, block, otherwise_block, candidates);
+        let otherwise_block =
+            self.match_candidates(match_start_span, scrutinee_span, block, candidates);
 
         // Link each leaf candidate to the `false_edge_start_block` of the next one.
         let mut previous_candidate: Option<&mut Candidate<'_, '_>> = None;
@@ -1368,26 +1367,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         otherwise_block
     }
 
-    /// The main match algorithm. It begins with a set of candidates
-    /// `candidates` and has the job of generating code to determine
-    /// which of these candidates, if any, is the correct one. The
+    /// The main match algorithm. It begins with a set of candidates `candidates` and has the job of
+    /// generating code that branches to an appropriate block if the scrutinee matches one of these
+    /// candidates. The
     /// candidates are sorted such that the first item in the list
     /// has the highest priority. When a candidate is found to match
     /// the value, we will set and generate a branch to the appropriate
     /// pre-binding block.
     ///
-    /// If we find that *NONE* of the candidates apply, we branch to `otherwise_block`.
+    /// If none of the candidates apply, we continue to the returned `otherwise_block`.
     ///
     /// It might be surprising that the input can be non-exhaustive.
-    /// Indeed, initially, it is not, because all matches are
+    /// Indeed, for matches, initially, it is not, because all matches are
     /// exhaustive in Rust. But during processing we sometimes divide
     /// up the list of candidates and recurse with a non-exhaustive
     /// list. This is how our lowering approach (called "backtracking
     /// automaton" in the literature) works.
     /// See [`Builder::test_candidates`] for more details.
-    ///
-    /// If `fake_borrows` is `Some`, then places which need fake borrows
-    /// will be added to it.
     ///
     /// For an example of how we use `otherwise_block`, consider:
     /// ```
@@ -1413,7 +1409,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// }
     /// if y {
     ///     if x {
-    ///         // This is actually unreachable because the `(true, true)` case was handled above.
+    ///         // This is actually unreachable because the `(true, true)` case was handled above,
+    ///         // but we don't know that from within the lowering algorithm.
     ///         // continue
     ///     } else {
     ///         return 3
@@ -1430,25 +1427,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// the algorithm. For more details on why we lower like this, see [`Builder::test_candidates`].
     ///
     /// Note how we test `x` twice. This is the tradeoff of backtracking automata: we prefer smaller
-    /// code size at the expense of non-optimal code paths.
+    /// code size so we accept non-optimal code paths.
     #[instrument(skip(self), level = "debug")]
     fn match_candidates(
         &mut self,
         span: Span,
         scrutinee_span: Span,
         start_block: BasicBlock,
-        otherwise_block: BasicBlock,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
-    ) {
+    ) -> BasicBlock {
         ensure_sufficient_stack(|| {
-            self.match_candidates_with_enough_stack(
-                span,
-                scrutinee_span,
-                start_block,
-                otherwise_block,
-                candidates,
-            )
-        });
+            self.match_candidates_with_enough_stack(span, scrutinee_span, start_block, candidates)
+        })
     }
 
     /// Construct the decision tree for `candidates`. Don't call this, call `match_candidates`
@@ -1458,9 +1448,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         scrutinee_span: Span,
         start_block: BasicBlock,
-        otherwise_block: BasicBlock,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
-    ) {
+    ) -> BasicBlock {
         if let [first, ..] = candidates {
             if first.false_edge_start_block.is_none() {
                 first.false_edge_start_block = Some(start_block);
@@ -1471,9 +1460,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let rest = match candidates {
             [] => {
                 // If there are no candidates that still need testing, we're done.
-                let source_info = self.source_info(span);
-                self.cfg.goto(start_block, source_info, otherwise_block);
-                return;
+                return start_block;
             }
             [first, remaining @ ..] if first.match_pairs.is_empty() => {
                 // The first candidate has satisfied all its match pairs; we link it up and continue
@@ -1494,13 +1481,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Process any candidates that remain.
         let BlockAnd(start_block, remaining_candidates) = rest;
-        self.match_candidates(
-            span,
-            scrutinee_span,
-            start_block,
-            otherwise_block,
-            remaining_candidates,
-        );
+        self.match_candidates(span, scrutinee_span, start_block, remaining_candidates)
     }
 
     /// Link up matched candidates.
@@ -1605,14 +1586,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         // Process the expanded candidates.
-        let remainder_start = self.cfg.start_new_block();
-        // There might be new or-patterns obtained from expanding the old ones, so we call
-        // `match_candidates` again.
-        self.match_candidates(
+        let remainder_start = self.match_candidates(
             span,
             scrutinee_span,
             start_block,
-            remainder_start,
             expanded_candidates.as_mut_slice(),
         );
 
@@ -1711,6 +1688,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.merge_trivial_subcandidates(candidate);
 
         if !candidate.match_pairs.is_empty() {
+            let or_span = candidate.or_span.unwrap_or(candidate.extra_data.span);
+            let source_info = self.source_info(or_span);
             // If more match pairs remain, test them after each subcandidate.
             // We could add them to the or-candidates before the call to `test_or_pattern` but this
             // would make it impossible to detect simplifiable or-patterns. That would guarantee
@@ -1724,6 +1703,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 assert!(leaf_candidate.match_pairs.is_empty());
                 leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
                 let or_start = leaf_candidate.pre_binding_block.unwrap();
+                let otherwise =
+                    self.match_candidates(span, scrutinee_span, or_start, &mut [leaf_candidate]);
                 // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q,
                 // R | S)` will fail too. If there is no guard, we skip testing of `Q` by branching
                 // directly to `last_otherwise`. If there is a guard,
@@ -1734,13 +1715,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } else {
                     last_otherwise.unwrap()
                 };
-                self.match_candidates(
-                    span,
-                    scrutinee_span,
-                    or_start,
-                    or_otherwise,
-                    &mut [leaf_candidate],
-                );
+                self.cfg.goto(otherwise, source_info, or_otherwise);
             });
         }
     }
@@ -2019,15 +1994,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let target_blocks: FxIndexMap<_, _> = target_candidates
             .into_iter()
             .map(|(branch, mut candidates)| {
-                let candidate_start = self.cfg.start_new_block();
-                self.match_candidates(
-                    span,
-                    scrutinee_span,
-                    candidate_start,
-                    remainder_start,
-                    &mut *candidates,
-                );
-                (branch, candidate_start)
+                let branch_start = self.cfg.start_new_block();
+                let branch_otherwise =
+                    self.match_candidates(span, scrutinee_span, branch_start, &mut *candidates);
+                let source_info = self.source_info(span);
+                self.cfg.goto(branch_otherwise, source_info, remainder_start);
+                (branch, branch_start)
             })
             .collect();
 
