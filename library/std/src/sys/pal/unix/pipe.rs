@@ -9,6 +9,7 @@ use crate::sys_common::{FromInner, IntoInner};
 // Anonymous pipes
 ////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct AnonPipe(FileDesc);
 
 pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
@@ -46,6 +47,10 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
 }
 
 impl AnonPipe {
+    pub fn try_clone(&self) -> io::Result<Self> {
+        self.0.duplicate().map(Self)
+    }
+
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
     }

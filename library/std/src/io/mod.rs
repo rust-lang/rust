@@ -338,6 +338,8 @@ pub(crate) mod copy;
 mod cursor;
 mod error;
 mod impls;
+#[unstable(feature = "annoymous_pipe", issue = "")]
+pub mod pipe;
 pub mod prelude;
 mod stdio;
 mod util;
