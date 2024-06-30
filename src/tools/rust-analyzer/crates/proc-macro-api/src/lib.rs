@@ -65,7 +65,7 @@ impl MacroDylib {
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
     process: Arc<ProcMacroProcessSrv>,
-    dylib_path: AbsPathBuf,
+    dylib_path: Arc<AbsPathBuf>,
     name: SmolStr,
     kind: ProcMacroKind,
 }
@@ -75,7 +75,7 @@ impl PartialEq for ProcMacro {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && self.kind == other.kind
-            && self.dylib_path == other.dylib_path
+            && Arc::ptr_eq(&self.dylib_path, &other.dylib_path)
             && Arc::ptr_eq(&self.process, &other.process)
     }
 }
@@ -116,6 +116,7 @@ impl ProcMacroServer {
         let _p = tracing::info_span!("ProcMacroServer::load_dylib").entered();
         let macros = self.process.find_proc_macros(&dylib.path)?;
 
+        let dylib_path = Arc::new(dylib.path);
         match macros {
             Ok(macros) => Ok(macros
                 .into_iter()
@@ -123,7 +124,7 @@ impl ProcMacroServer {
                     process: self.process.clone(),
                     name: name.into(),
                     kind,
-                    dylib_path: dylib.path.clone(),
+                    dylib_path: dylib_path.clone(),
                 })
                 .collect()),
             Err(message) => Err(ServerError { message, io: None }),

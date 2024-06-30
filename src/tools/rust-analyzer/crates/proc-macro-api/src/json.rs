@@ -1,3 +1,4 @@
+//! Protocol functions for json.
 use std::io::{self, BufRead, Write};
 
 pub fn read_json<'a>(
