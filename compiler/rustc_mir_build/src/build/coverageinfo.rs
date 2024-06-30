@@ -2,7 +2,7 @@ use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageKind};
+use rustc_middle::mir::coverage::{BlockMarkerId, BranchArm, CoverageKind};
 use rustc_middle::mir::{self, BasicBlock, SourceInfo, UnOp};
 use rustc_middle::thir::{ExprId, ExprKind, Pat, Thir};
 use rustc_middle::ty::TyCtxt;
@@ -18,7 +18,7 @@ pub(crate) struct BranchInfoBuilder {
     nots: FxHashMap<ExprId, NotInfo>,
 
     markers: BlockMarkerGen,
-    branch_spans: Vec<BranchSpan>,
+    branch_arm_lists: Vec<Vec<BranchArm>>,
 
     mcdc_info: Option<MCDCInfoBuilder>,
 }
@@ -31,6 +31,12 @@ struct NotInfo {
     /// True if the associated expression is nested within an odd number of `!`
     /// expressions relative to `enclosing_not` (inclusive of `enclosing_not`).
     is_flipped: bool,
+}
+
+pub(crate) struct MatchArm {
+    pub(crate) source_info: SourceInfo,
+    pub(crate) pre_binding_block: Option<BasicBlock>,
+    pub(crate) arm_block: BasicBlock,
 }
 
 #[derive(Default)]
@@ -70,7 +76,7 @@ impl BranchInfoBuilder {
             Some(Self {
                 nots: FxHashMap::default(),
                 markers: BlockMarkerGen::default(),
-                branch_spans: vec![],
+                branch_arm_lists: vec![],
                 mcdc_info: tcx.sess.instrument_coverage_mcdc().then(MCDCInfoBuilder::new),
             })
         } else {
@@ -141,24 +147,51 @@ impl BranchInfoBuilder {
             let true_marker = self.markers.inject_block_marker(cfg, source_info, true_block);
             let false_marker = self.markers.inject_block_marker(cfg, source_info, false_block);
 
-            self.branch_spans.push(BranchSpan {
+            let arm = |marker| BranchArm {
                 span: source_info.span,
-                true_marker,
-                false_marker,
-            });
+                pre_guard_marker: marker,
+                arm_taken_marker: marker,
+            };
+            self.branch_arm_lists.push(vec![arm(true_marker), arm(false_marker)]);
         }
+    }
+
+    pub(crate) fn add_match_arms(&mut self, cfg: &mut CFG<'_>, arms: &[MatchArm]) {
+        // Match expressions with 0-1 arms don't have any branches for their arms.
+        if arms.len() < 2 {
+            return;
+        }
+
+        // FIXME(#124118) The current implementation of branch coverage for
+        // match arms can't handle or-patterns.
+        if arms.iter().any(|arm| arm.pre_binding_block.is_none()) {
+            return;
+        }
+
+        let branch_arms = arms
+            .iter()
+            .map(|&MatchArm { source_info, pre_binding_block, arm_block }| {
+                let pre_guard_marker =
+                    self.markers.inject_block_marker(cfg, source_info, pre_binding_block.unwrap());
+                let arm_taken_marker =
+                    self.markers.inject_block_marker(cfg, source_info, arm_block);
+                BranchArm { span: source_info.span, pre_guard_marker, arm_taken_marker }
+            })
+            .collect::<Vec<_>>();
+
+        self.branch_arm_lists.push(branch_arms);
     }
 
     pub(crate) fn into_done(self) -> Option<Box<mir::coverage::BranchInfo>> {
         let Self {
             nots: _,
             markers: BlockMarkerGen { num_block_markers },
-            branch_spans,
+            branch_arm_lists,
             mcdc_info,
         } = self;
 
         if num_block_markers == 0 {
-            assert!(branch_spans.is_empty());
+            assert!(branch_arm_lists.is_empty());
             return None;
         }
 
@@ -167,7 +200,7 @@ impl BranchInfoBuilder {
 
         Some(Box::new(mir::coverage::BranchInfo {
             num_block_markers,
-            branch_spans,
+            branch_arm_lists,
             mcdc_branch_spans,
             mcdc_decision_spans,
         }))
@@ -240,7 +273,7 @@ impl<'tcx> Builder<'_, 'tcx> {
     }
 
     /// If branch coverage is enabled, inject marker statements into `then_block`
-    /// and `else_block`, and record their IDs in the table of branch spans.
+    /// and `else_block`, and record their IDs in the branch table.
     pub(crate) fn visit_coverage_branch_condition(
         &mut self,
         mut expr_id: ExprId,

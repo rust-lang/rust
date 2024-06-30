@@ -26,8 +26,17 @@
    LL|       |
    LL|     15|    match value {
    LL|      8|        Enum::D(d) => consume(d),
+  ------------------
+  |  Branch (LL:9): [True: 8, False: 7]
+  ------------------
    LL|      4|        Enum::C(c) => consume(c),
+  ------------------
+  |  Branch (LL:9): [True: 4, False: 3]
+  ------------------
    LL|      2|        Enum::B(b) => consume(b),
+  ------------------
+  |  Branch (LL:9): [True: 2, False: 1]
+  ------------------
    LL|      1|        Enum::A(a) => consume(a),
    LL|       |    }
    LL|       |
@@ -53,18 +62,22 @@
    LL|      3|    match value {
    LL|      8|        Enum::D(d) if cond => consume(d),
   ------------------
+  |  Branch (LL:9): [True: 24, False: 21]
   |  Branch (LL:23): [True: 8, False: 16]
   ------------------
    LL|      4|        Enum::C(c) if cond => consume(c),
   ------------------
+  |  Branch (LL:9): [True: 12, False: 25]
   |  Branch (LL:23): [True: 4, False: 8]
   ------------------
    LL|      2|        Enum::B(b) if cond => consume(b),
   ------------------
+  |  Branch (LL:9): [True: 6, False: 27]
   |  Branch (LL:23): [True: 2, False: 4]
   ------------------
    LL|      1|        Enum::A(a) if cond => consume(a),
   ------------------
+  |  Branch (LL:9): [True: 3, False: 28]
   |  Branch (LL:23): [True: 1, False: 2]
   ------------------
    LL|     30|        _ => consume(0),
@@ -101,5 +114,5 @@
    LL|       |    }
    LL|       |}
    LL|       |
-   LL|       |// FIXME(#124118) Actually instrument match arms for branch coverage.
+   LL|       |// FIXME(#124118) Support match expressions with or-patterns.
 

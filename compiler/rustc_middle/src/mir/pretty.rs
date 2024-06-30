@@ -487,14 +487,18 @@ fn write_coverage_branch_info(
     branch_info: &coverage::BranchInfo,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::BranchInfo { branch_spans, mcdc_branch_spans, mcdc_decision_spans, .. } =
+    let coverage::BranchInfo { branch_arm_lists, mcdc_branch_spans, mcdc_decision_spans, .. } =
         branch_info;
 
-    for coverage::BranchSpan { span, true_marker, false_marker } in branch_spans {
-        writeln!(
-            w,
-            "{INDENT}coverage branch {{ true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
-        )?;
+    for arms in branch_arm_lists {
+        writeln!(w, "{INDENT}coverage branches {{")?;
+        for coverage::BranchArm { span, pre_guard_marker, arm_taken_marker } in arms {
+            writeln!(w, "{INDENT}{INDENT}{pre_guard_marker:?}, {arm_taken_marker:?} => {span:?}")?;
+        }
+        writeln!(w, "{INDENT}}}")?;
+    }
+    if !branch_arm_lists.is_empty() {
+        writeln!(w)?;
     }
 
     for coverage::MCDCBranchSpan {
@@ -521,8 +525,7 @@ fn write_coverage_branch_info(
         )?;
     }
 
-    if !branch_spans.is_empty() || !mcdc_branch_spans.is_empty() || !mcdc_decision_spans.is_empty()
-    {
+    if !mcdc_branch_spans.is_empty() || !mcdc_decision_spans.is_empty() {
         writeln!(w)?;
     }
 

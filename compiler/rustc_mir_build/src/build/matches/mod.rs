@@ -8,7 +8,7 @@
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
 use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
-use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use crate::build::{coverageinfo, BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use rustc_data_structures::{fx::FxIndexMap, stack::ensure_sufficient_stack};
 use rustc_hir::{BindingMode, ByRef};
@@ -400,6 +400,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         outer_source_info: SourceInfo,
         fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)>,
     ) -> BlockAnd<()> {
+        let mut coverage_match_arms = self.coverage_branch_info.is_some().then_some(vec![]);
+
         let arm_end_blocks: Vec<_> = arm_candidates
             .into_iter()
             .map(|(arm, candidate)| {
@@ -434,6 +436,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         opt_scrutinee_place,
                     );
 
+                    let pre_binding_block = candidate.pre_binding_block;
+
                     let arm_block = this.bind_pattern(
                         outer_source_info,
                         candidate,
@@ -442,6 +446,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some((arm, match_scope)),
                         false,
                     );
+
+                    if let Some(coverage_match_arms) = coverage_match_arms.as_mut() {
+                        coverage_match_arms.push(coverageinfo::MatchArm {
+                            source_info: this.source_info(arm.pattern.span),
+                            pre_binding_block,
+                            arm_block,
+                        })
+                    }
 
                     this.fixed_temps_scope = old_dedup_scope;
 
@@ -453,6 +465,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             })
             .collect();
+
+        if let Some(coverage_match_arms) = coverage_match_arms {
+            self.coverage_branch_info
+                .as_mut()
+                .expect("checked when creating `coverage_match_arms`")
+                .add_match_arms(&mut self.cfg, &coverage_match_arms);
+        }
 
         // all the arm blocks will rejoin here
         let end_block = self.cfg.start_new_block();

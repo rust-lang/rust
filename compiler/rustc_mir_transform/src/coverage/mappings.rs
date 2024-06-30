@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
-use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, ConditionInfo, CoverageKind};
+use rustc_middle::mir::coverage::{BlockMarkerId, ConditionInfo, CoverageKind};
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
@@ -21,14 +21,11 @@ pub(super) struct CodeMapping {
     pub(super) bcb: BasicCoverageBlock,
 }
 
-/// This is separate from [`MCDCBranch`] to help prepare for larger changes
-/// that will be needed for improved branch coverage in the future.
-/// (See <https://github.com/rust-lang/rust/pull/124217>.)
 #[derive(Debug)]
-pub(super) struct BranchPair {
+pub(super) struct BranchArm {
     pub(super) span: Span,
-    pub(super) true_bcb: BasicCoverageBlock,
-    pub(super) false_bcb: BasicCoverageBlock,
+    pub(super) pre_guard_bcb: BasicCoverageBlock,
+    pub(super) arm_taken_bcb: BasicCoverageBlock,
 }
 
 /// Associates an MC/DC branch span with condition info besides fields for normal branch.
@@ -56,7 +53,7 @@ pub(super) struct MCDCDecision {
 #[derive(Default)]
 pub(super) struct ExtractedMappings {
     pub(super) code_mappings: Vec<CodeMapping>,
-    pub(super) branch_pairs: Vec<BranchPair>,
+    pub(super) branch_arm_lists: Vec<Vec<BranchArm>>,
     pub(super) mcdc_bitmap_bytes: u32,
     pub(super) mcdc_branches: Vec<MCDCBranch>,
     pub(super) mcdc_decisions: Vec<MCDCDecision>,
@@ -71,7 +68,7 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
     basic_coverage_blocks: &CoverageGraph,
 ) -> ExtractedMappings {
     let mut code_mappings = vec![];
-    let mut branch_pairs = vec![];
+    let mut branch_arm_lists = vec![];
     let mut mcdc_bitmap_bytes = 0;
     let mut mcdc_branches = vec![];
     let mut mcdc_decisions = vec![];
@@ -93,7 +90,7 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
         extract_refined_covspans(mir_body, hir_info, basic_coverage_blocks, &mut code_mappings);
     }
 
-    branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, basic_coverage_blocks));
+    branch_arm_lists.extend(extract_branch_arm_lists(mir_body, hir_info, basic_coverage_blocks));
 
     extract_mcdc_mappings(
         mir_body,
@@ -106,7 +103,7 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
 
     ExtractedMappings {
         code_mappings,
-        branch_pairs,
+        branch_arm_lists,
         mcdc_bitmap_bytes,
         mcdc_branches,
         mcdc_decisions,
@@ -121,7 +118,7 @@ impl ExtractedMappings {
         // Fully destructure self to make sure we don't miss any fields that have mappings.
         let Self {
             code_mappings,
-            branch_pairs,
+            branch_arm_lists,
             mcdc_bitmap_bytes: _,
             mcdc_branches,
             mcdc_decisions,
@@ -136,9 +133,11 @@ impl ExtractedMappings {
         for &CodeMapping { span: _, bcb } in code_mappings {
             insert(bcb);
         }
-        for &BranchPair { true_bcb, false_bcb, .. } in branch_pairs {
-            insert(true_bcb);
-            insert(false_bcb);
+        for &BranchArm { span: _, pre_guard_bcb, arm_taken_bcb } in
+            branch_arm_lists.iter().flatten()
+        {
+            insert(pre_guard_bcb);
+            insert(arm_taken_bcb);
         }
         for &MCDCBranch { true_bcb, false_bcb, .. } in mcdc_branches {
             insert(true_bcb);
@@ -179,39 +178,55 @@ fn resolve_block_markers(
 }
 
 // FIXME: There is currently a lot of redundancy between
-// `extract_branch_pairs` and `extract_mcdc_mappings`. This is needed so
+// `extract_branch_arm_lists` and `extract_mcdc_mappings`. This is needed so
 // that they can each be modified without interfering with the other, but in
 // the long term we should try to bring them together again when branch coverage
 // and MC/DC coverage support are more mature.
 
-pub(super) fn extract_branch_pairs(
+pub(super) fn extract_branch_arm_lists(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
-) -> Vec<BranchPair> {
+) -> Vec<Vec<BranchArm>> {
     let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else { return vec![] };
 
     let block_markers = resolve_block_markers(branch_info, mir_body);
 
     branch_info
-        .branch_spans
+        .branch_arm_lists
         .iter()
-        .filter_map(|&BranchSpan { span: raw_span, true_marker, false_marker }| {
-            // For now, ignore any branch span that was introduced by
-            // expansion. This makes things like assert macros less noisy.
-            if !raw_span.ctxt().outer_expn_data().is_root() {
+        .filter_map(|arms| {
+            let mut bcb_arms = Vec::with_capacity(arms.len());
+
+            // If any arm can't be resolved, return None to skip the entire list
+            // of arms that contains it.
+            for &mir::coverage::BranchArm { span: raw_span, pre_guard_marker, arm_taken_marker } in
+                arms
+            {
+                // For now, ignore any branch span that was introduced by
+                // expansion. This makes things like assert macros less noisy.
+                if !raw_span.ctxt().outer_expn_data().is_root() {
+                    return None;
+                }
+
+                let (span, _) =
+                    unexpand_into_body_span_with_visible_macro(raw_span, hir_info.body_span)?;
+
+                let pre_guard_bcb =
+                    basic_coverage_blocks.bcb_from_bb(block_markers[pre_guard_marker]?)?;
+                let arm_taken_bcb =
+                    basic_coverage_blocks.bcb_from_bb(block_markers[arm_taken_marker]?)?;
+
+                bcb_arms.push(BranchArm { span, pre_guard_bcb, arm_taken_bcb });
+            }
+            assert_eq!(arms.len(), bcb_arms.len());
+
+            if bcb_arms.len() < 2 {
+                debug_assert!(false, "MIR building shouldn't create branches with <2 arms");
                 return None;
             }
-            let (span, _) =
-                unexpand_into_body_span_with_visible_macro(raw_span, hir_info.body_span)?;
 
-            let bcb_from_marker =
-                |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
-
-            let true_bcb = bcb_from_marker(true_marker)?;
-            let false_bcb = bcb_from_marker(false_marker)?;
-
-            Some(BranchPair { span, true_bcb, false_bcb })
+            Some(bcb_arms)
         })
         .collect::<Vec<_>>()
 }

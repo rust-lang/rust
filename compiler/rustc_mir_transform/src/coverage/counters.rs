@@ -101,7 +101,12 @@ impl CoverageCounters {
         BcbCounter::Counter { id }
     }
 
-    fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
+    pub(super) fn make_expression(
+        &mut self,
+        lhs: BcbCounter,
+        op: Op,
+        rhs: BcbCounter,
+    ) -> BcbCounter {
         let new_expr = BcbExpression { lhs, op, rhs };
         *self
             .expressions_memo
