@@ -3,8 +3,11 @@
 pub enum TraitSolverLangItem {
     // tidy-alphabetical-start
     AsyncDestruct,
+    AsyncFn,
     AsyncFnKindHelper,
     AsyncFnKindUpvars,
+    AsyncFnMut,
+    AsyncFnOnce,
     AsyncFnOnceOutput,
     AsyncIterator,
     CallOnceFuture,
@@ -17,6 +20,9 @@ pub enum TraitSolverLangItem {
     Destruct,
     DiscriminantKind,
     DynMetadata,
+    Fn,
+    FnMut,
+    FnOnce,
     FnPtrTrait,
     FusedIterator,
     Future,
