@@ -5,8 +5,10 @@ use std::fmt;
 
 /// A packed 128-bit integer. Useful for reducing the size of structures in
 /// some cases.
+// Currently packed(4) to pack well with `newtype_index!` types, since
+// loading `[u32; 4]` and `[u64; 2]` are about as easy on host platforms.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(packed(8))]
+#[repr(packed(4))]
 pub struct Pu128(pub u128);
 
 impl Pu128 {
