@@ -6,8 +6,6 @@
 // addition to `cargo check`. Either split it into 3 crates (one for test, one for check
 // and one common utilities) or change its name and docs to reflect the current state.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 use std::{fmt, io, process::Command, time::Duration};
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};

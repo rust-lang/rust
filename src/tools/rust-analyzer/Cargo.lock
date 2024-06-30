@@ -1337,7 +1337,6 @@ dependencies = [
  "stdx",
  "text-size",
  "tracing",
- "triomphe",
  "tt",
 ]
 

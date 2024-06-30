@@ -9,8 +9,6 @@
 //! The `cli` submodule implements some batch-processing analysis, primarily as
 //! a debugging aid.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 pub mod cli;
 
 mod caps;

@@ -2,8 +2,6 @@
 //! input and output) of macros. It closely mirrors `proc_macro` crate's
 //! `TokenTree`.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 pub mod buffer;
 pub mod iter;
 

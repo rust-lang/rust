@@ -6,8 +6,6 @@
 //! The tests for this functionality live in another crate:
 //! `hir_def::macro_expansion_tests::mbe`.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 mod expander;
 mod parser;
 mod syntax_bridge;

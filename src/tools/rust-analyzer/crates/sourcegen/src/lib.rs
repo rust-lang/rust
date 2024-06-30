@@ -6,8 +6,6 @@
 //!
 //! This crate contains utilities to make this kind of source-gen easy.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 use std::{
     fmt, fs, mem,
     path::{Path, PathBuf},

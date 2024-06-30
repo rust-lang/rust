@@ -1,7 +1,5 @@
 //! Discovery of `cargo` & `rustc` executables.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 use std::{env, iter, path::PathBuf};
 
 use camino::{Utf8Path, Utf8PathBuf};

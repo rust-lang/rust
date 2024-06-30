@@ -7,8 +7,6 @@
 //! Hopefully, one day a reliable file watching/walking crate appears on
 //! crates.io, and we can reduce this to trivial glue code.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 use std::{
     fs,
     path::{Component, Path},

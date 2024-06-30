@@ -15,7 +15,6 @@ doctest = false
 serde.workspace = true
 serde_json = { workspace = true, features = ["unbounded_depth"] }
 tracing.workspace = true
-triomphe.workspace = true
 rustc-hash.workspace = true
 indexmap.workspace = true
 

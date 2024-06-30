@@ -15,8 +15,6 @@
 //!   procedural macros).
 //! * Lowering of concrete model to a [`base_db::CrateGraph`]
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 mod build_scripts;
 mod cargo_workspace;
 mod cfg;

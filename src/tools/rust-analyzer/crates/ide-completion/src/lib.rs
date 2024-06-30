@@ -1,7 +1,5 @@
 //! `completions` crate provides utilities for generating completions of user input.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 mod completions;
 mod config;
 mod context;

@@ -37,7 +37,6 @@
 
 use std::collections::VecDeque;
 
-use indexmap::IndexSet;
 use la_arena::RawIdx;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
@@ -46,7 +45,8 @@ use text_size::TextRange;
 
 use crate::msg::ENCODE_CLOSE_SPAN_VERSION;
 
-pub type SpanDataIndexMap = IndexSet<Span>;
+pub type SpanDataIndexMap =
+    indexmap::IndexSet<Span, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 
 pub fn serialize_span_data_index_map(map: &SpanDataIndexMap) -> Vec<u32> {
     map.iter()
@@ -328,7 +328,7 @@ impl InternableSpan for TokenId {
     }
 }
 impl InternableSpan for Span {
-    type Table = IndexSet<Span>;
+    type Table = SpanDataIndexMap;
     fn token_id_of(table: &mut Self::Table, span: Self) -> TokenId {
         TokenId(table.insert_full(span).0 as u32)
     }

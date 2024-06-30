@@ -8,7 +8,6 @@
 //! specific JSON shapes here -- there's little value in such tests, as we can't
 //! be sure without a real client anyway.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(clippy::disallowed_types)]
 
 mod ratoml;

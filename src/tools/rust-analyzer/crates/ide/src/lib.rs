@@ -8,7 +8,7 @@
 //! in this crate.
 
 // For proving that RootDatabase is RefUnwindSafe.
-#![warn(rust_2018_idioms, unused_lifetimes)]
+
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![recursion_limit = "128"]
 

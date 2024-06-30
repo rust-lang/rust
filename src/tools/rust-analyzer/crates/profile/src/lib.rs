@@ -1,7 +1,5 @@
 //! A collection of tools for profiling rust-analyzer.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 #[cfg(feature = "cpu_profiler")]
 mod google_cpu_profiler;
 mod memory_usage;
