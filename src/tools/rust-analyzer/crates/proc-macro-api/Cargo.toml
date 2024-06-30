@@ -12,15 +12,12 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-object.workspace = true
 serde.workspace = true
 serde_json = { workspace = true, features = ["unbounded_depth"] }
 tracing.workspace = true
 triomphe.workspace = true
 rustc-hash.workspace = true
-memmap2 = "0.5.4"
-snap = "1.1.0"
-indexmap = "2.1.0"
+indexmap.workspace = true
 
 # local deps
 paths = { workspace = true, features = ["serde1"] }

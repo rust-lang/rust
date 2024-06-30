@@ -9,7 +9,6 @@
 
 pub mod msg;
 mod process;
-mod version;
 
 use base_db::Env;
 use indexmap::IndexSet;
@@ -30,8 +29,6 @@ use crate::{
     },
     process::ProcMacroProcessSrv,
 };
-
-pub use version::{read_dylib_info, read_version, RustCInfo};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum ProcMacroKind {

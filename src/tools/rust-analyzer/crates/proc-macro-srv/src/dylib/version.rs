@@ -11,6 +11,7 @@ use paths::AbsPath;
 use snap::read::FrameDecoder as SnapDecoder;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct RustCInfo {
     pub version: (usize, usize, usize),
     pub channel: String,
@@ -163,4 +164,17 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     uncompressed.read_exact(&mut version_string_utf8)?;
     let version_string = String::from_utf8(version_string_utf8);
     version_string.map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+}
+
+#[test]
+fn test_version_check() {
+    let path = paths::AbsPathBuf::assert(crate::proc_macro_test_dylib_path());
+    let info = read_dylib_info(&path).unwrap();
+    assert_eq!(
+        info.version_string,
+        crate::RUSTC_VERSION_STRING,
+        "sysroot ABI mismatch: dylib rustc version (read from .rustc section): {:?} != proc-macro-srv version (read from 'rustc --version'): {:?}",
+        info.version_string,
+        crate::RUSTC_VERSION_STRING,
+    );
 }
