@@ -8,8 +8,6 @@ extern crate rustc_driver as _;
 
 use std::io;
 
-use proc_macro_api::msg::ServerConfig;
-
 fn main() -> std::io::Result<()> {
     let v = std::env::var("RUST_ANALYZER_INTERNALS_DO_NOT_USE");
     match v.as_deref() {
@@ -48,7 +46,9 @@ fn run() -> io::Result<()> {
                 msg::Response::ApiVersionCheck(proc_macro_api::msg::CURRENT_API_VERSION)
             }
             msg::Request::SetConfig(_) => {
-                msg::Response::SetConfig(ServerConfig { span_mode: msg::SpanMode::Id })
+                msg::Response::SetConfig(proc_macro_api::msg::ServerConfig {
+                    span_mode: msg::SpanMode::Id,
+                })
             }
         };
         write_response(res)?

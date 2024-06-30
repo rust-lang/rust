@@ -9,9 +9,7 @@ pub mod msg;
 mod process;
 
 use base_db::Env;
-use indexmap::IndexSet;
 use paths::{AbsPath, AbsPathBuf};
-use rustc_hash::FxHashMap;
 use span::Span;
 use std::{fmt, io, sync::Arc};
 use tt::SmolStr;
@@ -21,7 +19,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     msg::{
         deserialize_span_data_index_map, flat::serialize_span_data_index_map, ExpandMacro,
-        ExpnGlobals, FlatTree, PanicMessage, HAS_GLOBAL_SPANS, RUST_ANALYZER_SPAN_SUPPORT,
+        ExpnGlobals, FlatTree, PanicMessage, SpanDataIndexMap, HAS_GLOBAL_SPANS,
+        RUST_ANALYZER_SPAN_SUPPORT,
     },
     process::ProcMacroProcessSrv,
 };
@@ -101,7 +100,8 @@ impl ProcMacroServer {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
     pub fn spawn(
         process_path: &AbsPath,
-        env: &FxHashMap<String, String>,
+        env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>
+            + Clone,
     ) -> io::Result<ProcMacroServer> {
         let process = ProcMacroProcessSrv::run(process_path, env)?;
         Ok(ProcMacroServer { process: Arc::new(process), path: process_path.to_owned() })
@@ -151,7 +151,7 @@ impl ProcMacro {
         let version = self.process.version();
         let current_dir = env.get("CARGO_MANIFEST_DIR");
 
-        let mut span_data_table = IndexSet::default();
+        let mut span_data_table = SpanDataIndexMap::default();
         let def_site = span_data_table.insert_full(def_site).0;
         let call_site = span_data_table.insert_full(call_site).0;
         let mixed_site = span_data_table.insert_full(mixed_site).0;

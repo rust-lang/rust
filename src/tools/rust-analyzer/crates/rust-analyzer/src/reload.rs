@@ -529,7 +529,7 @@ impl GlobalState {
                     None => ws.find_sysroot_proc_macro_srv()?,
                 };
 
-                let env = match &ws.kind {
+                let env: FxHashMap<_, _> = match &ws.kind {
                     ProjectWorkspaceKind::Cargo { cargo_config_extra_env, .. }
                     | ProjectWorkspaceKind::DetachedFile {
                         cargo: Some(_),

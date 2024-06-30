@@ -7,7 +7,6 @@ use std::{
 };
 
 use paths::AbsPath;
-use rustc_hash::FxHashMap;
 use stdx::JodChild;
 
 use crate::{
@@ -36,10 +35,11 @@ struct ProcessSrvState {
 impl ProcMacroProcessSrv {
     pub(crate) fn run(
         process_path: &AbsPath,
-        env: &FxHashMap<String, String>,
+        env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>
+            + Clone,
     ) -> io::Result<ProcMacroProcessSrv> {
         let create_srv = |null_stderr| {
-            let mut process = Process::run(process_path, env, null_stderr)?;
+            let mut process = Process::run(process_path, env.clone(), null_stderr)?;
             let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
 
             io::Result::Ok(ProcMacroProcessSrv {
@@ -158,7 +158,7 @@ struct Process {
 impl Process {
     fn run(
         path: &AbsPath,
-        env: &FxHashMap<String, String>,
+        env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>,
         null_stderr: bool,
     ) -> io::Result<Process> {
         let child = JodChild(mk_child(path, env, null_stderr)?);
@@ -176,7 +176,7 @@ impl Process {
 
 fn mk_child(
     path: &AbsPath,
-    env: &FxHashMap<String, String>,
+    env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>,
     null_stderr: bool,
 ) -> io::Result<Child> {
     let mut cmd = Command::new(path);
