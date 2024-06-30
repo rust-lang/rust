@@ -364,11 +364,10 @@ fn create_venv_at_path(path: &Path) -> Result<(), Error> {
 
     let stderr = String::from_utf8_lossy(&out.stderr);
     let err = if stderr.contains("No module named virtualenv") {
-        Error::Generic(
+        Error::Generic(format!(
             "virtualenv not found: you may need to install it \
-                               (`python3 -m pip install venv`)"
-                .to_owned(),
-        )
+                               (`{sys_py} -m pip install virtualenv`)"
+        ))
     } else {
         Error::Generic(format!(
             "failed to create venv at '{}' using {sys_py}: {stderr}",

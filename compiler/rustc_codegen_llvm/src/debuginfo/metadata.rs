@@ -1449,12 +1449,18 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
     .di_node
 }
 
-fn vcall_visibility_metadata<'ll, 'tcx>(
+pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
     trait_ref: Option<PolyExistentialTraitRef<'tcx>>,
     vtable: &'ll Value,
 ) {
+    // FIXME(flip1995): The virtual function elimination optimization only works with full LTO in
+    // LLVM at the moment.
+    if !cx.sess().opts.unstable_opts.virtual_function_elimination || cx.sess().lto() != Lto::Fat {
+        return;
+    }
+
     enum VCallVisibility {
         Public = 0,
         LinkageUnit = 1,
@@ -1531,12 +1537,6 @@ pub fn create_vtable_di_node<'ll, 'tcx>(
     poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
     vtable: &'ll Value,
 ) {
-    // FIXME(flip1995): The virtual function elimination optimization only works with full LTO in
-    // LLVM at the moment.
-    if cx.sess().opts.unstable_opts.virtual_function_elimination && cx.sess().lto() == Lto::Fat {
-        vcall_visibility_metadata(cx, ty, poly_trait_ref, vtable);
-    }
-
     if cx.dbg_cx.is_none() {
         return;
     }

@@ -469,13 +469,18 @@ impl<'a> AstValidator<'a> {
     fn check_item_safety(&self, span: Span, safety: Safety) {
         match self.extern_mod_safety {
             Some(extern_safety) => {
-                if matches!(safety, Safety::Unsafe(_) | Safety::Safe(_))
-                    && (extern_safety == Safety::Default || !self.features.unsafe_extern_blocks)
-                {
-                    self.dcx().emit_err(errors::InvalidSafetyOnExtern {
-                        item_span: span,
-                        block: self.current_extern_span().shrink_to_lo(),
-                    });
+                if matches!(safety, Safety::Unsafe(_) | Safety::Safe(_)) {
+                    if extern_safety == Safety::Default {
+                        self.dcx().emit_err(errors::InvalidSafetyOnExtern {
+                            item_span: span,
+                            block: Some(self.current_extern_span().shrink_to_lo()),
+                        });
+                    } else if !self.features.unsafe_extern_blocks {
+                        self.dcx().emit_err(errors::InvalidSafetyOnExtern {
+                            item_span: span,
+                            block: None,
+                        });
+                    }
                 }
             }
             None => {
@@ -1098,7 +1103,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             }
                         }
                     } else if let &Safety::Unsafe(span) = safety {
-                        this.dcx().emit_err(errors::UnsafeItem { span, kind: "extern block" });
+                        let mut diag = this
+                            .dcx()
+                            .create_err(errors::UnsafeItem { span, kind: "extern block" });
+                        rustc_session::parse::add_feature_diagnostics(
+                            &mut diag,
+                            self.session,
+                            sym::unsafe_extern_blocks,
+                        );
+                        diag.emit();
                     }
 
                     if abi.is_none() {

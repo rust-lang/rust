@@ -337,6 +337,7 @@ bootstrap_tool!(
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
+    RustcPerfWrapper, "src/tools/rustc-perf-wrapper", "rustc-perf-wrapper";
 );
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
