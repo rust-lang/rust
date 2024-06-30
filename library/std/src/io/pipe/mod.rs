@@ -12,12 +12,16 @@ pub fn pipe() -> io::Result<(PipeReader, PipeWriter)> {
     }
 }
 
+/// Read end of the annoymous pipe.
 #[derive(Debug)]
 pub struct PipeReader(AnonPipe);
 
+/// Write end of the annoymous pipe.
 #[derive(Debug)]
 pub struct PipeWriter(AnonPipe);
 
+/// The owned fd provided is not a pipe.
+#[derive(Debug)]
 pub struct NotAPipeError;
 
 impl PipeReader {
@@ -174,7 +178,7 @@ mod windows {
 
     #[inline]
     pub(super) fn pipe() -> io::Result<(PipeReader, PipeWriter)> {
-        anon_pipe(true, false).map(|Pipes { ours, their }| (PipeReader(ours), PipeWrite(theirs)))
+        anon_pipe(true, false).map(|Pipes { ours, theirs }| (PipeReader(ours), PipeWriter(theirs)))
     }
 
     macro_rules! impl_traits {
