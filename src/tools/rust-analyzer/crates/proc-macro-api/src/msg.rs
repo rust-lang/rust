@@ -122,8 +122,12 @@ impl ExpnGlobals {
 }
 
 pub trait Message: Serialize + DeserializeOwned {
-    fn read(inp: &mut impl BufRead, buf: &mut String) -> io::Result<Option<Self>> {
-        Ok(match read_json(inp, buf)? {
+    fn read<R: BufRead>(
+        from_proto: ProtocolRead<R>,
+        inp: &mut R,
+        buf: &mut String,
+    ) -> io::Result<Option<Self>> {
+        Ok(match from_proto(inp, buf)? {
             None => None,
             Some(text) => {
                 let mut deserializer = serde_json::Deserializer::from_str(text);
@@ -134,44 +138,20 @@ pub trait Message: Serialize + DeserializeOwned {
             }
         })
     }
-    fn write(self, out: &mut impl Write) -> io::Result<()> {
+    fn write<W: Write>(self, to_proto: ProtocolWrite<W>, out: &mut W) -> io::Result<()> {
         let text = serde_json::to_string(&self)?;
-        write_json(out, &text)
+        to_proto(out, &text)
     }
 }
 
 impl Message for Request {}
 impl Message for Response {}
 
-fn read_json<'a>(inp: &mut impl BufRead, buf: &'a mut String) -> io::Result<Option<&'a String>> {
-    loop {
-        buf.clear();
-
-        inp.read_line(buf)?;
-        buf.pop(); // Remove trailing '\n'
-
-        if buf.is_empty() {
-            return Ok(None);
-        }
-
-        // Some ill behaved macro try to use stdout for debugging
-        // We ignore it here
-        if !buf.starts_with('{') {
-            tracing::error!("proc-macro tried to print : {}", buf);
-            continue;
-        }
-
-        return Ok(Some(buf));
-    }
-}
-
-fn write_json(out: &mut impl Write, msg: &str) -> io::Result<()> {
-    tracing::debug!("> {}", msg);
-    out.write_all(msg.as_bytes())?;
-    out.write_all(b"\n")?;
-    out.flush()?;
-    Ok(())
-}
+#[allow(type_alias_bounds)]
+type ProtocolRead<R: BufRead> =
+    for<'i, 'buf> fn(inp: &'i mut R, buf: &'buf mut String) -> io::Result<Option<&'buf String>>;
+#[allow(type_alias_bounds)]
+type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) -> io::Result<()>;
 
 #[cfg(test)]
 mod tests {

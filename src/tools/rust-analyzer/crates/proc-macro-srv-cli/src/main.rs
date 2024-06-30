@@ -6,6 +6,8 @@
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
 
+use proc_macro_api::json::{read_json, write_json};
+
 use std::io;
 
 fn main() -> std::io::Result<()> {
@@ -30,9 +32,10 @@ fn run() -> io::Result<()> {
     eprintln!("{err}");
     use proc_macro_api::msg::{self, Message};
 
-    let read_request = |buf: &mut String| msg::Request::read(&mut io::stdin().lock(), buf);
+    let read_request =
+        |buf: &mut String| msg::Request::read(read_json, &mut io::stdin().lock(), buf);
 
-    let write_response = |msg: msg::Response| msg.write(&mut io::stdout().lock());
+    let write_response = |msg: msg::Response| msg.write(write_json, &mut io::stdout().lock());
 
     let mut buf = String::new();
 
@@ -61,9 +64,10 @@ fn run() -> io::Result<()> {
     use proc_macro_api::msg::{self, Message};
     use proc_macro_srv::EnvSnapshot;
 
-    let read_request = |buf: &mut String| msg::Request::read(&mut io::stdin().lock(), buf);
+    let read_request =
+        |buf: &mut String| msg::Request::read(read_json, &mut io::stdin().lock(), buf);
 
-    let write_response = |msg: msg::Response| msg.write(&mut io::stdout().lock());
+    let write_response = |msg: msg::Response| msg.write(write_json, &mut io::stdout().lock());
 
     let env = EnvSnapshot::new();
     let mut srv = proc_macro_srv::ProcMacroSrv::new(&env);

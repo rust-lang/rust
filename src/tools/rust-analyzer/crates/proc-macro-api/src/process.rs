@@ -10,6 +10,7 @@ use paths::AbsPath;
 use stdx::JodChild;
 
 use crate::{
+    json::{read_json, write_json},
     msg::{Message, Request, Response, SpanMode, CURRENT_API_VERSION, RUST_ANALYZER_SPAN_SUPPORT},
     ProcMacroKind, ServerError,
 };
@@ -201,11 +202,11 @@ fn send_request(
     req: Request,
     buf: &mut String,
 ) -> Result<Response, ServerError> {
-    req.write(&mut writer).map_err(|err| ServerError {
+    req.write(write_json, &mut writer).map_err(|err| ServerError {
         message: "failed to write request".into(),
         io: Some(Arc::new(err)),
     })?;
-    let res = Response::read(&mut reader, buf).map_err(|err| ServerError {
+    let res = Response::read(read_json, &mut reader, buf).map_err(|err| ServerError {
         message: "failed to read response".into(),
         io: Some(Arc::new(err)),
     })?;

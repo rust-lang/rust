@@ -5,6 +5,7 @@
 //! is used to provide basic infrastructure for communication between two
 //! processes: Client (RA itself), Server (the external program)
 
+pub mod json;
 pub mod msg;
 mod process;
 

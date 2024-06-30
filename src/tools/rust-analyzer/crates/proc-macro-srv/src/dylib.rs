@@ -142,6 +142,7 @@ impl Drop for Expander {
     fn drop(&mut self) {
         #[cfg(windows)]
         std::fs::remove_file(&self.path).ok();
+        _ = self.path;
     }
 }
 
