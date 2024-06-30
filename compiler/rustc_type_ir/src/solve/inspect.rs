@@ -21,6 +21,7 @@ use crate::solve::{
     CandidateSource, CanonicalInput, Certainty, Goal, GoalSource, QueryInput, QueryResult,
 };
 use crate::{Canonical, CanonicalVarValues, Interner};
+use derive_where::derive_where;
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -31,15 +32,12 @@ use std::hash::Hash;
 /// This is only ever used as [CanonicalState]. Any type information in proof
 /// trees used mechanically has to be canonicalized as we otherwise leak
 /// inference variables from a nested `InferCtxt`.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = "T: Clone"),
-    Copy(bound = "T: Copy"),
-    PartialEq(bound = "T: PartialEq"),
-    Eq(bound = "T: Eq"),
-    Hash(bound = "T: Hash"),
-    Debug(bound = "T: Debug")
-)]
+#[derive_where(Clone; I: Interner, T: Clone)]
+#[derive_where(Copy; I: Interner, T: Copy)]
+#[derive_where(PartialEq; I: Interner, T: PartialEq)]
+#[derive_where(Eq; I: Interner, T: Eq)]
+#[derive_where(Hash; I: Interner, T: Hash)]
+#[derive_where(Debug; I: Interner, T: Debug)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub struct State<I: Interner, T> {
     pub var_values: CanonicalVarValues<I>,
@@ -52,24 +50,21 @@ pub type CanonicalState<I, T> = Canonical<I, State<I, T>>;
 /// for the `CanonicalVarValues` of the canonicalized goal.
 /// We use this to map any [CanonicalState] from the local `InferCtxt`
 /// of the solver query to the `InferCtxt` of the caller.
-#[derive(derivative::Derivative)]
-#[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""))]
+#[derive_where(PartialEq, Eq, Hash; I: Interner)]
 pub struct GoalEvaluation<I: Interner> {
     pub uncanonicalized_goal: Goal<I, I::Predicate>,
     pub orig_values: Vec<I::GenericArg>,
     pub evaluation: CanonicalGoalEvaluation<I>,
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""), Debug(bound = ""))]
+#[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
 pub struct CanonicalGoalEvaluation<I: Interner> {
     pub goal: CanonicalInput<I>,
     pub kind: CanonicalGoalEvaluationKind<I>,
     pub result: QueryResult<I>,
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""), Debug(bound = ""))]
+#[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
 pub enum CanonicalGoalEvaluationKind<I: Interner> {
     Overflow,
     CycleInStack,
@@ -77,8 +72,7 @@ pub enum CanonicalGoalEvaluationKind<I: Interner> {
     Evaluation { final_revision: I::CanonicalGoalEvaluationStepRef },
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""), Debug(bound = ""))]
+#[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
 pub struct CanonicalGoalEvaluationStep<I: Interner> {
     pub instantiated_goal: QueryInput<I, I::Predicate>,
 
@@ -89,8 +83,7 @@ pub struct CanonicalGoalEvaluationStep<I: Interner> {
 /// A self-contained computation during trait solving. This either
 /// corresponds to a `EvalCtxt::probe(_X)` call or the root evaluation
 /// of a goal.
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""))]
+#[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
 pub struct Probe<I: Interner> {
     /// What happened inside of this probe in chronological order.
     pub steps: Vec<ProbeStep<I>>,
@@ -98,8 +91,7 @@ pub struct Probe<I: Interner> {
     pub final_state: CanonicalState<I, ()>,
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(PartialEq(bound = ""), Eq(bound = ""), Hash(bound = ""), Debug(bound = ""))]
+#[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
 pub enum ProbeStep<I: Interner> {
     /// We added a goal to the `EvalCtxt` which will get proven
     /// the next time `EvalCtxt::try_evaluate_added_goals` is called.
@@ -121,15 +113,7 @@ pub enum ProbeStep<I: Interner> {
 /// What kind of probe we're in. In case the probe represents a candidate, or
 /// the final result of the current goal - via [ProbeKind::Root] - we also
 /// store the [QueryResult].
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Hash(bound = ""),
-    Debug(bound = "")
-)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub enum ProbeKind<I: Interner> {
     /// The root inference context while proving a goal.

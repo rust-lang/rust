@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-derivative = "2.2.0"
+derive-where = "1.2.7"
 indexmap = { version = "2.0.0" }
 itoa = "1.0"
 md5 = { package = "md-5", version = "0.10.0" }

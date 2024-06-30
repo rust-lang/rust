@@ -3,6 +3,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
 
+use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 #[cfg(feature = "nightly")]
@@ -25,15 +26,12 @@ use crate::{self as ty, Interner};
 /// e.g., `liberate_late_bound_regions`).
 ///
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = "T: Clone"),
-    Copy(bound = "T: Copy"),
-    Hash(bound = "T: Hash"),
-    PartialEq(bound = "T: PartialEq"),
-    Eq(bound = "T: Eq"),
-    Debug(bound = "T: Debug")
-)]
+#[derive_where(Clone; I: Interner, T: Clone)]
+#[derive_where(Copy; I: Interner, T: Copy)]
+#[derive_where(Hash; I: Interner, T: Hash)]
+#[derive_where(PartialEq; I: Interner, T: PartialEq)]
+#[derive_where(Eq; I: Interner, T: Eq)]
+#[derive_where(Debug; I: Interner, T: Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct Binder<I: Interner, T> {
     value: T,
@@ -351,21 +349,18 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 ///
 /// If you don't have anything to `instantiate`, you may be looking for
 /// [`instantiate_identity`](EarlyBinder::instantiate_identity) or [`skip_binder`](EarlyBinder::skip_binder).
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = "T: Clone"),
-    Copy(bound = "T: Copy"),
-    PartialEq(bound = "T: PartialEq"),
-    Eq(bound = "T: Eq"),
-    Ord(bound = "T: Ord"),
-    PartialOrd(bound = "T: Ord"),
-    Hash(bound = "T: Hash"),
-    Debug(bound = "T: Debug")
-)]
+#[derive_where(Clone; I: Interner, T: Clone)]
+#[derive_where(Copy; I: Interner, T: Copy)]
+#[derive_where(PartialEq; I: Interner, T: PartialEq)]
+#[derive_where(Eq; I: Interner, T: Eq)]
+#[derive_where(Ord; I: Interner, T: Ord)]
+#[derive_where(PartialOrd; I: Interner, T: Ord)]
+#[derive_where(Hash; I: Interner, T: Hash)]
+#[derive_where(Debug; I: Interner, T: Debug)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub struct EarlyBinder<I: Interner, T> {
     value: T,
-    #[derivative(Debug = "ignore")]
+    #[derive_where(skip(Debug))]
     _tcx: PhantomData<I>,
 }
 

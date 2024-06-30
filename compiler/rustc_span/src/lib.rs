@@ -38,6 +38,7 @@
 // this crate without this line making `rustc_span` available.
 extern crate self as rustc_span;
 
+use derive_where::derive_where;
 use rustc_data_structures::{outline, AtomicRef};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
@@ -467,18 +468,18 @@ impl FileName {
 /// `SpanData` is public because `Span` uses a thread-local interner and can't be
 /// sent to other threads, but some pieces of performance infra run in a separate thread.
 /// Using `Span` is generally preferred.
-#[derive(Clone, Copy, Hash, PartialEq, Eq, derivative::Derivative)]
-#[derivative(PartialOrd, Ord)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive_where(PartialOrd, Ord)]
 pub struct SpanData {
     pub lo: BytePos,
     pub hi: BytePos,
     /// Information about where the macro came from, if this piece of
     /// code was created by a macro expansion.
-    #[derivative(PartialOrd = "ignore", Ord = "ignore")]
+    #[derive_where(skip)]
     // `SyntaxContext` does not implement `Ord`.
     // The other fields are enough to determine in-file order.
     pub ctxt: SyntaxContext,
-    #[derivative(PartialOrd = "ignore", Ord = "ignore")]
+    #[derive_where(skip)]
     // `LocalDefId` does not implement `Ord`.
     // The other fields are enough to determine in-file order.
     pub parent: Option<LocalDefId>,
