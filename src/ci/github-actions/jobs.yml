@@ -215,6 +215,11 @@ auto:
     only_on_channel: nightly
     <<: *job-linux-8c
 
+  # Tests integration with Rust for Linux.
+  # Builds stage 1 compiler and tries to compile a few RfL examples with it.
+  - image: x86_64-rust-for-linux
+    <<: *job-linux-8c
+
   - image: x86_64-gnu
     <<: *job-linux-4c
 
@@ -465,8 +470,3 @@ auto:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
     <<: *job-windows-8c
-
-  # Tests integration with Rust for Linux.
-  # Builds stage 1 compiler and tries to compile a few RfL examples with it.
-  - image: rfl
-    <<: *job-linux-8c
