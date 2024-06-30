@@ -616,7 +616,7 @@ dependencies = [
  "oorandom",
  "project-model",
  "ra-ap-rustc_abi",
- "ra-ap-rustc_index 0.53.0",
+ "ra-ap-rustc_index",
  "ra-ap-rustc_pattern_analysis",
  "rustc-hash",
  "scoped-tls",
@@ -1489,19 +1489,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80b1d613eee933486c0613a7bc26e515e46f43adf479d1edd5e537f983e9ce46"
 dependencies = [
  "bitflags 2.5.0",
- "ra-ap-rustc_index 0.53.0",
+ "ra-ap-rustc_index",
  "tracing",
-]
-
-[[package]]
-name = "ra-ap-rustc_index"
-version = "0.44.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ad68bacffb87dcdbb23a3ce11261375078aaa06b85d348c49f39ffd5510dc20"
-dependencies = [
- "arrayvec",
- "ra-ap-rustc_index_macros 0.44.0",
- "smallvec",
 ]
 
 [[package]]
@@ -1511,20 +1500,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f072060ac77e9e1a02cc20028095993af7e72cc0804779c68bcbf47b16de49c9"
 dependencies = [
  "arrayvec",
- "ra-ap-rustc_index_macros 0.53.0",
+ "ra-ap-rustc_index_macros",
  "smallvec",
-]
-
-[[package]]
-name = "ra-ap-rustc_index_macros"
-version = "0.44.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8782aaf3a113837c533dfb1c45df91cd17e1fdd1d2f9a20c2e0d1976025c4f1f"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "synstructure",
 ]
 
 [[package]]
@@ -1555,17 +1532,17 @@ version = "0.53.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70dad7a491c2554590222e0c9212dcb7c2e7aceb668875075012a35ea780d135"
 dependencies = [
- "ra-ap-rustc_index 0.53.0",
+ "ra-ap-rustc_index",
  "ra-ap-rustc_lexer",
 ]
 
 [[package]]
 name = "ra-ap-rustc_pattern_analysis"
-version = "0.44.0"
+version = "0.53.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d63d1e1d5b2a13273cee1a10011147418f40e12b70f70578ce1dee0f1cafc334"
+checksum = "34768e1faf88c31f2e9ad57b48318a52b507dafac0cddbf01b5d63bfc0b0a365"
 dependencies = [
- "ra-ap-rustc_index 0.44.0",
+ "ra-ap-rustc_index",
  "rustc-hash",
  "rustc_apfloat",
  "smallvec",
