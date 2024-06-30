@@ -525,11 +525,12 @@ macro_rules! impl_common_helpers {
             /// Generic command arguments provider. Prefer specific helper methods if possible.
             /// Note that for some executables, arguments might be platform specific. For C/C++
             /// compilers, arguments might be platform *and* compiler specific.
-            pub fn args<S>(&mut self, args: &[S]) -> &mut Self
+            pub fn args<V, S>(&mut self, args: V) -> &mut Self
             where
+                V: AsRef<[S]>,
                 S: AsRef<::std::ffi::OsStr>,
             {
-                self.cmd.args(args);
+                self.cmd.args(args.as_ref());
                 self
             }
 
