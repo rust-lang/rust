@@ -25,7 +25,7 @@ Integration jobs build large open-source Rust projects that are used as
 regression tests in CI. Our integration jobs build the following projects:
 
 - [Fuchsia](fuchsia.md)
-- Linux kernel
+- [Rust for Linux](rust-for-linux.md)
 
 ## A note about terminology
 
