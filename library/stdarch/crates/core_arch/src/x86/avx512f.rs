@@ -16534,27 +16534,6 @@ pub unsafe fn _mm512_mask_i32scatter_epi64<const SCALE: i32>(
     vpscatterdq(slice, mask, offsets, src, SCALE);
 }
 
-/// Scatter 64-bit integers from a into memory using 32-bit indices. 64-bit elements are stored at addresses starting at base_addr and offset by each 32-bit element in vindex (each index is scaled by the factor in scale). scale should be 1, 2, 4 or 8.
-///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_i32scatter_epi64&expand=4099)
-#[inline]
-#[target_feature(enable = "avx512f,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vpscatterdq, SCALE = 1))]
-#[rustc_legacy_const_generics(3)]
-pub unsafe fn _mm256_i32scatter_epi64<const SCALE: i32>(
-    slice: *mut u8,
-    offsets: __m128i,
-    src: __m256i,
-) {
-    static_assert_imm8_scale!(SCALE);
-    let src = src.as_i64x4();
-    let neg_one = -1;
-    let slice = slice as *mut i8;
-    let offsets = offsets.as_i32x4();
-    vpscatterdq256(slice, neg_one, offsets, src, SCALE);
-}
-
 /// Scatter 64-bit integers from a into memory using 64-bit indices. 64-bit elements are stored at addresses starting at base_addr and offset by each 64-bit element in vindex (each index is scaled by the factor in scale). scale should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_i64scatter_epi64&expand=3116)
@@ -16682,6 +16661,1153 @@ pub unsafe fn _mm512_mask_i64scatter_epi32<const SCALE: i32>(
     let slice = slice as *mut i8;
     let offsets = offsets.as_i64x8();
     vpscatterqd(slice, mask, offsets, src, SCALE);
+}
+
+/// Loads 8 64-bit integer elements from memory starting at location base_addr at packed 32-bit integer
+/// indices stored in the lower half of vindex scaled by scale and stores them in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_i32logather_epi64)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpgatherdq, SCALE = 1))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_i32logather_epi64<const SCALE: i32>(
+    vindex: __m512i,
+    base_addr: *const u8,
+) -> __m512i {
+    _mm512_i32gather_epi64::<SCALE>(_mm512_castsi512_si256(vindex), base_addr as _)
+}
+
+/// Loads 8 64-bit integer elements from memory starting at location base_addr at packed 32-bit integer
+/// indices stored in the lower half of vindex scaled by scale and stores them in dst using writemask k
+/// (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_i32logather_epi64)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpgatherdq, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_mask_i32logather_epi64<const SCALE: i32>(
+    src: __m512i,
+    k: __mmask8,
+    vindex: __m512i,
+    base_addr: *const u8,
+) -> __m512i {
+    _mm512_mask_i32gather_epi64::<SCALE>(src, k, _mm512_castsi512_si256(vindex), base_addr as _)
+}
+
+/// Loads 8 double-precision (64-bit) floating-point elements from memory starting at location base_addr
+/// at packed 32-bit integer indices stored in the lower half of vindex scaled by scale and stores them in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_i32logather_pd)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgatherdpd, SCALE = 1))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_i32logather_pd<const SCALE: i32>(
+    vindex: __m512i,
+    base_addr: *const u8,
+) -> __m512d {
+    _mm512_i32gather_pd::<SCALE>(_mm512_castsi512_si256(vindex), base_addr as _)
+}
+
+/// Loads 8 double-precision (64-bit) floating-point elements from memory starting at location base_addr
+/// at packed 32-bit integer indices stored in the lower half of vindex scaled by scale and stores them in dst
+/// using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_i32logather_pd)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgatherdpd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_mask_i32logather_pd<const SCALE: i32>(
+    src: __m512d,
+    k: __mmask8,
+    vindex: __m512i,
+    base_addr: *const u8,
+) -> __m512d {
+    _mm512_mask_i32gather_pd::<SCALE>(src, k, _mm512_castsi512_si256(vindex), base_addr as _)
+}
+
+/// Stores 8 64-bit integer elements from a to memory starting at location base_addr at packed 32-bit integer
+/// indices stored in the lower half of vindex scaled by scale.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_i32loscatter_epi64)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpscatterdq, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_i32loscatter_epi64<const SCALE: i32>(
+    base_addr: *mut u8,
+    vindex: __m512i,
+    a: __m512i,
+) {
+    _mm512_i32scatter_epi64::<SCALE>(base_addr as _, _mm512_castsi512_si256(vindex), a)
+}
+
+/// Stores 8 64-bit integer elements from a to memory starting at location base_addr at packed 32-bit integer
+/// indices stored in the lower half of vindex scaled by scale using writemask k (elements whose corresponding
+/// mask bit is not set are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_i32loscatter_epi64)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpscatterdq, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_mask_i32loscatter_epi64<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m512i,
+    a: __m512i,
+) {
+    _mm512_mask_i32scatter_epi64::<SCALE>(base_addr as _, k, _mm512_castsi512_si256(vindex), a)
+}
+
+/// Stores 8 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 32-bit integer indices stored in the lower half of vindex scaled by scale.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_i32loscatter_pd)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscatterdpd, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_i32loscatter_pd<const SCALE: i32>(
+    base_addr: *mut u8,
+    vindex: __m512i,
+    a: __m512d,
+) {
+    _mm512_i32scatter_pd::<SCALE>(base_addr as _, _mm512_castsi512_si256(vindex), a)
+}
+
+/// Stores 8 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 32-bit integer indices stored in the lower half of vindex scaled by scale using writemask k
+/// (elements whose corresponding mask bit is not set are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_i32loscatter_pd)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscatterdpd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm512_mask_i32loscatter_pd<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m512i,
+    a: __m512d,
+) {
+    _mm512_mask_i32scatter_pd::<SCALE>(base_addr as _, k, _mm512_castsi512_si256(vindex), a)
+}
+
+/// Stores 8 32-bit integer elements from a to memory starting at location base_addr at packed 32-bit integer
+/// indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32scatter_epi32)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterdd, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_i32scatter_epi32<const SCALE: i32>(
+    base_addr: *mut u8,
+    vindex: __m256i,
+    a: __m256i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterdd_256(base_addr as _, 0xff, vindex.as_i32x8(), a.as_i32x8(), SCALE)
+}
+
+/// Stores 8 32-bit integer elements from a to memory starting at location base_addr at packed 32-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements whose corresponding mask bit is not set
+/// are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i32scatter_epi32)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterdd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_i32scatter_epi32<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m256i,
+    a: __m256i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterdd_256(base_addr as _, k, vindex.as_i32x8(), a.as_i32x8(), SCALE)
+}
+
+/// Scatter 64-bit integers from a into memory using 32-bit indices. 64-bit elements are stored at addresses starting at base_addr and offset by each 32-bit element in vindex (each index is scaled by the factor in scale). scale should be 1, 2, 4 or 8.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_i32scatter_epi64&expand=4099)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[cfg_attr(test, assert_instr(vpscatterdq, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_i32scatter_epi64<const SCALE: i32>(
+    slice: *mut u8,
+    offsets: __m128i,
+    src: __m256i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    let src = src.as_i64x4();
+    let slice = slice as *mut i8;
+    let offsets = offsets.as_i32x4();
+    vpscatterdq_256(slice, 0xff, offsets, src, SCALE);
+}
+
+/// Stores 4 64-bit integer elements from a to memory starting at location base_addr at packed 32-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements whose corresponding mask bit is not set
+/// are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32scatter_epi64)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterdq, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_i32scatter_epi64<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m128i,
+    a: __m256i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterdq_256(base_addr as _, k, vindex.as_i32x4(), a.as_i64x4(), SCALE)
+}
+
+/// Stores 4 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32scatter_pd)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterdpd, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_i32scatter_pd<const SCALE: i32>(
+    base_addr: *mut u8,
+    vindex: __m128i,
+    a: __m256d,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterdpd_256(base_addr as _, 0xff, vindex.as_i32x4(), a.as_f64x4(), SCALE)
+}
+
+/// Stores 4 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale using writemask k (elements whose corresponding
+/// mask bit is not set are not written to memory).
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterdpd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_i32scatter_pd<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m128i,
+    a: __m256d,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterdpd_256(base_addr as _, k, vindex.as_i32x4(), a.as_f64x4(), SCALE)
+}
+
+/// Stores 8 single-precision (32-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32scatter_ps)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterdps, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_i32scatter_ps<const SCALE: i32>(
+    base_addr: *mut u8,
+    vindex: __m256i,
+    a: __m256,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterdps_256(base_addr as _, 0xff, vindex.as_i32x8(), a.as_f32x8(), SCALE)
+}
+
+/// Stores 8 single-precision (32-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale using writemask k (elements whose corresponding
+/// mask bit is not set are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i32scatter_ps)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterdps, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_i32scatter_ps<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m256i,
+    a: __m256,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterdps_256(base_addr as _, k, vindex.as_i32x8(), a.as_f32x8(), SCALE)
+}
+
+/// Stores 4 32-bit integer elements from a to memory starting at location base_addr at packed 64-bit integer
+/// indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i64scatter_epi32)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterqd, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_i64scatter_epi32<const SCALE: i32>(
+    base_addr: *mut u8,
+    vindex: __m256i,
+    a: __m128i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterqd_256(base_addr as _, 0xff, vindex.as_i64x4(), a.as_i32x4(), SCALE)
+}
+
+/// Stores 4 32-bit integer elements from a to memory starting at location base_addr at packed 64-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements whose corresponding mask bit is not set
+/// are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i64scatter_epi32)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterqd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_i64scatter_epi32<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m256i,
+    a: __m128i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterqd_256(base_addr as _, k, vindex.as_i64x4(), a.as_i32x4(), SCALE)
+}
+
+/// Stores 4 64-bit integer elements from a to memory starting at location base_addr at packed 64-bit integer
+/// indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i64scatter_epi64)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterqq, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_i64scatter_epi64<const SCALE: i32>(
+    base_addr: *mut u8,
+    vindex: __m256i,
+    a: __m256i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterqq_256(base_addr as _, 0xff, vindex.as_i64x4(), a.as_i64x4(), SCALE)
+}
+
+/// Stores 4 64-bit integer elements from a to memory starting at location base_addr at packed 64-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements whose corresponding mask bit is not set
+/// are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i64scatter_epi64)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterqq, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_i64scatter_epi64<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m256i,
+    a: __m256i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterqq_256(base_addr as _, k, vindex.as_i64x4(), a.as_i64x4(), SCALE)
+}
+
+/// Stores 4 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 64-bit integer indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i64scatter_pd)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterqpd, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_i64scatter_pd<const SCALE: i32>(
+    base_addr: *mut u8,
+    vindex: __m256i,
+    a: __m256d,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterqpd_256(base_addr as _, 0xff, vindex.as_i64x4(), a.as_f64x4(), SCALE)
+}
+
+/// Stores 4 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 64-bit integer indices stored in vindex scaled by scale using writemask k (elements whose corresponding
+/// mask bit is not set are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i64scatter_pd)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterqpd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_i64scatter_pd<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m256i,
+    a: __m256d,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterqpd_256(base_addr as _, k, vindex.as_i64x4(), a.as_f64x4(), SCALE)
+}
+
+/// Stores 4 single-precision (32-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 64-bit integer indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i64scatter_ps)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterqps, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_i64scatter_ps<const SCALE: i32>(
+    base_addr: *mut u8,
+    vindex: __m256i,
+    a: __m128,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterqps_256(base_addr as _, 0xff, vindex.as_i64x4(), a.as_f32x4(), SCALE)
+}
+
+/// Stores 4 single-precision (32-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 64-bit integer indices stored in vindex scaled by scale using writemask k (elements whose corresponding
+/// mask bit is not set are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i64scatter_ps)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterqps, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_i64scatter_ps<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m256i,
+    a: __m128,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterqps_256(base_addr as _, k, vindex.as_i64x4(), a.as_f32x4(), SCALE)
+}
+
+/// Loads 8 32-bit integer elements from memory starting at location base_addr at packed 32-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements are copied from src when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mmask_i32gather_epi32)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpgatherdd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mmask_i32gather_epi32<const SCALE: i32>(
+    src: __m256i,
+    k: __mmask8,
+    vindex: __m256i,
+    base_addr: *const u8,
+) -> __m256i {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vpgatherdd_256(
+        src.as_i32x8(),
+        base_addr as _,
+        vindex.as_i32x8(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 4 64-bit integer elements from memory starting at location base_addr at packed 32-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements are copied from src when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mmask_i32gather_epi64)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpgatherdq, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mmask_i32gather_epi64<const SCALE: i32>(
+    src: __m256i,
+    k: __mmask8,
+    vindex: __m128i,
+    base_addr: *const u8,
+) -> __m256i {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vpgatherdq_256(
+        src.as_i64x4(),
+        base_addr as _,
+        vindex.as_i32x4(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 4 double-precision (64-bit) floating-point elements from memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale using writemask k (elements are copied
+/// from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mmask_i32gather_pd)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vgatherdpd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mmask_i32gather_pd<const SCALE: i32>(
+    src: __m256d,
+    k: __mmask8,
+    vindex: __m128i,
+    base_addr: *const u8,
+) -> __m256d {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vgatherdpd_256(
+        src.as_f64x4(),
+        base_addr as _,
+        vindex.as_i32x4(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 8 single-precision (32-bit) floating-point elements from memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale using writemask k (elements are copied
+/// from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mmask_i32gather_ps)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vgatherdps, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mmask_i32gather_ps<const SCALE: i32>(
+    src: __m256,
+    k: __mmask8,
+    vindex: __m256i,
+    base_addr: *const u8,
+) -> __m256 {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vgatherdps_256(
+        src.as_f32x8(),
+        base_addr as _,
+        vindex.as_i32x8(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 4 32-bit integer elements from memory starting at location base_addr at packed 64-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements are copied from src when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mmask_i64gather_epi32)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpgatherqd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mmask_i64gather_epi32<const SCALE: i32>(
+    src: __m128i,
+    k: __mmask8,
+    vindex: __m256i,
+    base_addr: *const u8,
+) -> __m128i {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vpgatherqd_256(
+        src.as_i32x4(),
+        base_addr as _,
+        vindex.as_i64x4(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 4 64-bit integer elements from memory starting at location base_addr at packed 32-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements are copied from src when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mmask_i64gather_epi64)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpgatherqq, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mmask_i64gather_epi64<const SCALE: i32>(
+    src: __m256i,
+    k: __mmask8,
+    vindex: __m256i,
+    base_addr: *const u8,
+) -> __m256i {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vpgatherqq_256(
+        src.as_i64x4(),
+        base_addr as _,
+        vindex.as_i64x4(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 4 double-precision (64-bit) floating-point elements from memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale using writemask k (elements are copied
+/// from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mmask_i64gather_pd)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vgatherqpd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mmask_i64gather_pd<const SCALE: i32>(
+    src: __m256d,
+    k: __mmask8,
+    vindex: __m256i,
+    base_addr: *const u8,
+) -> __m256d {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vgatherqpd_256(
+        src.as_f64x4(),
+        base_addr as _,
+        vindex.as_i64x4(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 4 single-precision (32-bit) floating-point elements from memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale using writemask k (elements are copied
+/// from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mmask_i64gather_ps)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vgatherqps, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mmask_i64gather_ps<const SCALE: i32>(
+    src: __m128,
+    k: __mmask8,
+    vindex: __m256i,
+    base_addr: *const u8,
+) -> __m128 {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vgatherqps_256(
+        src.as_f32x4(),
+        base_addr as _,
+        vindex.as_i64x4(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Stores 4 32-bit integer elements from a to memory starting at location base_addr at packed 32-bit integer
+/// indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32scatter_epi32)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterdd, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_i32scatter_epi32<const SCALE: i32>(
+    base_addr: *mut u8,
+    vindex: __m128i,
+    a: __m128i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterdd_128(base_addr as _, 0xff, vindex.as_i32x4(), a.as_i32x4(), SCALE)
+}
+
+/// Stores 4 32-bit integer elements from a to memory starting at location base_addr at packed 32-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements whose corresponding mask bit is not set
+/// are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i32scatter_epi32)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterdd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_i32scatter_epi32<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m128i,
+    a: __m128i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterdd_128(base_addr as _, k, vindex.as_i32x4(), a.as_i32x4(), SCALE)
+}
+
+/// Stores 2 64-bit integer elements from a to memory starting at location base_addr at packed 32-bit integer
+/// indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32scatter_epi64)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterdq, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_i32scatter_epi64<const SCALE: i32>(
+    base_addr: *mut u8,
+    vindex: __m128i,
+    a: __m128i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterdq_128(base_addr as _, 0xff, vindex.as_i32x4(), a.as_i64x2(), SCALE)
+}
+
+/// Stores 2 64-bit integer elements from a to memory starting at location base_addr at packed 32-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements whose corresponding mask bit is not set
+/// are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i32scatter_epi64)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterdq, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_i32scatter_epi64<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m128i,
+    a: __m128i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterdq_128(base_addr as _, k, vindex.as_i32x4(), a.as_i64x2(), SCALE)
+}
+
+/// Stores 2 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32scatter_pd)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterdpd, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_i32scatter_pd<const SCALE: i32>(base_addr: *mut u8, vindex: __m128i, a: __m128d) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterdpd_128(base_addr as _, 0xff, vindex.as_i32x4(), a.as_f64x2(), SCALE)
+}
+
+/// Stores 2 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale using writemask k (elements whose corresponding
+/// mask bit is not set are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i32scatter_pd)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterdpd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_i32scatter_pd<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m128i,
+    a: __m128d,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterdpd_128(base_addr as _, k, vindex.as_i32x4(), a.as_f64x2(), SCALE)
+}
+
+/// Stores 4 single-precision (32-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32scatter_ps)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterdps, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_i32scatter_ps<const SCALE: i32>(base_addr: *mut u8, vindex: __m128i, a: __m128) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterdps_128(base_addr as _, 0xff, vindex.as_i32x4(), a.as_f32x4(), SCALE)
+}
+
+/// Stores 4 single-precision (32-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale using writemask k (elements whose corresponding
+/// mask bit is not set are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i32scatter_ps)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterdps, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_i32scatter_ps<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m128i,
+    a: __m128,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterdps_128(base_addr as _, k, vindex.as_i32x4(), a.as_f32x4(), SCALE)
+}
+
+/// Stores 2 32-bit integer elements from a to memory starting at location base_addr at packed 64-bit integer
+/// indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i64scatter_epi32)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterqd, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_i64scatter_epi32<const SCALE: i32>(
+    base_addr: *mut u8,
+    vindex: __m128i,
+    a: __m128i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterqd_128(base_addr as _, 0xff, vindex.as_i64x2(), a.as_i32x4(), SCALE)
+}
+
+/// Stores 2 32-bit integer elements from a to memory starting at location base_addr at packed 64-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements whose corresponding mask bit is not set
+/// are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i64scatter_epi32)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterqd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_i64scatter_epi32<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m128i,
+    a: __m128i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterqd_128(base_addr as _, k, vindex.as_i64x2(), a.as_i32x4(), SCALE)
+}
+
+/// Stores 2 64-bit integer elements from a to memory starting at location base_addr at packed 64-bit integer
+/// indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i64scatter_epi64)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterqq, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_i64scatter_epi64<const SCALE: i32>(
+    base_addr: *mut u8,
+    vindex: __m128i,
+    a: __m128i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterqq_128(base_addr as _, 0xff, vindex.as_i64x2(), a.as_i64x2(), SCALE)
+}
+
+/// Stores 2 64-bit integer elements from a to memory starting at location base_addr at packed 64-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements whose corresponding mask bit is not set
+/// are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i64scatter_epi64)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterqq, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_i64scatter_epi64<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m128i,
+    a: __m128i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vpscatterqq_128(base_addr as _, k, vindex.as_i64x2(), a.as_i64x2(), SCALE)
+}
+
+/// Stores 2 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 64-bit integer indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i64scatter_pd)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterqpd, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_i64scatter_pd<const SCALE: i32>(base_addr: *mut u8, vindex: __m128i, a: __m128d) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterqpd_128(base_addr as _, 0xff, vindex.as_i64x2(), a.as_f64x2(), SCALE)
+}
+
+/// Stores 2 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 64-bit integer indices stored in vindex scaled by scale using writemask k (elements whose corresponding
+/// mask bit is not set are not written to memory).
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterqpd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_i64scatter_pd<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m128i,
+    a: __m128d,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterqpd_128(base_addr as _, k, vindex.as_i64x2(), a.as_f64x2(), SCALE)
+}
+
+/// Stores 2 single-precision (32-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 64-bit integer indices stored in vindex scaled by scale
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i64scatter_ps)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterqps, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_i64scatter_ps<const SCALE: i32>(base_addr: *mut u8, vindex: __m128i, a: __m128) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterqps_128(base_addr as _, 0xff, vindex.as_i64x2(), a.as_f32x4(), SCALE)
+}
+
+/// Stores 2 single-precision (32-bit) floating-point elements from a to memory starting at location base_addr
+/// at packed 64-bit integer indices stored in vindex scaled by scale using writemask k (elements whose corresponding
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i64scatter_ps)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vscatterqps, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_i64scatter_ps<const SCALE: i32>(
+    base_addr: *mut u8,
+    k: __mmask8,
+    vindex: __m128i,
+    a: __m128,
+) {
+    static_assert_imm8_scale!(SCALE);
+    vscatterqps_128(base_addr as _, k, vindex.as_i64x2(), a.as_f32x4(), SCALE)
+}
+
+/// Loads 4 32-bit integer elements from memory starting at location base_addr at packed 32-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements are copied from src when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mmask_i32gather_epi32)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpgatherdd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mmask_i32gather_epi32<const SCALE: i32>(
+    src: __m128i,
+    k: __mmask8,
+    vindex: __m128i,
+    base_addr: *const u8,
+) -> __m128i {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vpgatherdd_128(
+        src.as_i32x4(),
+        base_addr as _,
+        vindex.as_i32x4(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 2 64-bit integer elements from memory starting at location base_addr at packed 32-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements are copied from src when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mmask_i32gather_epi64)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpgatherdq, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mmask_i32gather_epi64<const SCALE: i32>(
+    src: __m128i,
+    k: __mmask8,
+    vindex: __m128i,
+    base_addr: *const u8,
+) -> __m128i {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vpgatherdq_128(
+        src.as_i64x2(),
+        base_addr as _,
+        vindex.as_i32x4(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 2 double-precision (64-bit) floating-point elements from memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale using writemask k (elements are copied
+/// from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mmask_i32gather_pd)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vgatherdpd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mmask_i32gather_pd<const SCALE: i32>(
+    src: __m128d,
+    k: __mmask8,
+    vindex: __m128i,
+    base_addr: *const u8,
+) -> __m128d {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vgatherdpd_128(
+        src.as_f64x2(),
+        base_addr as _,
+        vindex.as_i32x4(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 4 single-precision (32-bit) floating-point elements from memory starting at location base_addr
+/// at packed 32-bit integer indices stored in vindex scaled by scale using writemask k (elements are copied
+/// from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mmask_i32gather_ps)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vgatherdps, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mmask_i32gather_ps<const SCALE: i32>(
+    src: __m128,
+    k: __mmask8,
+    vindex: __m128i,
+    base_addr: *const u8,
+) -> __m128 {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vgatherdps_128(
+        src.as_f32x4(),
+        base_addr as _,
+        vindex.as_i32x4(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 2 32-bit integer elements from memory starting at location base_addr at packed 64-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements are copied from src when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mmask_i64gather_epi32)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpgatherqd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mmask_i64gather_epi32<const SCALE: i32>(
+    src: __m128i,
+    k: __mmask8,
+    vindex: __m128i,
+    base_addr: *const u8,
+) -> __m128i {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vpgatherqd_128(
+        src.as_i32x4(),
+        base_addr as _,
+        vindex.as_i64x2(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 2 64-bit integer elements from memory starting at location base_addr at packed 64-bit integer
+/// indices stored in vindex scaled by scale using writemask k (elements are copied from src when the corresponding
+/// mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mmask_i64gather_epi64)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpgatherqq, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mmask_i64gather_epi64<const SCALE: i32>(
+    src: __m128i,
+    k: __mmask8,
+    vindex: __m128i,
+    base_addr: *const u8,
+) -> __m128i {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vpgatherqq_128(
+        src.as_i64x2(),
+        base_addr as _,
+        vindex.as_i64x2(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 2 double-precision (64-bit) floating-point elements from memory starting at location base_addr
+/// at packed 64-bit integer indices stored in vindex scaled by scale using writemask k (elements are copied
+/// from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mmask_i64gather_pd)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vgatherqpd, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mmask_i64gather_pd<const SCALE: i32>(
+    src: __m128d,
+    k: __mmask8,
+    vindex: __m128i,
+    base_addr: *const u8,
+) -> __m128d {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vgatherqpd_128(
+        src.as_f64x2(),
+        base_addr as _,
+        vindex.as_i64x2(),
+        k,
+        SCALE,
+    ))
+}
+
+/// Loads 2 single-precision (32-bit) floating-point elements from memory starting at location base_addr
+/// at packed 64-bit integer indices stored in vindex scaled by scale using writemask k (elements are copied
+/// from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mmask_i64gather_ps)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vgatherqps, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mmask_i64gather_ps<const SCALE: i32>(
+    src: __m128,
+    k: __mmask8,
+    vindex: __m128i,
+    base_addr: *const u8,
+) -> __m128 {
+    static_assert_imm8_scale!(SCALE);
+    transmute(vgatherqps_128(
+        src.as_f32x4(),
+        base_addr as _,
+        vindex.as_i64x2(),
+        k,
+        SCALE,
+    ))
 }
 
 /// Contiguously store the active 32-bit integers in a (those with their respective bit set in writemask k) to dst, and pass through the remaining elements from src.
@@ -33844,6 +34970,94 @@ pub unsafe fn _mm_maskz_load_pd(k: __mmask8, mem_addr: *const f64) -> __m128d {
     dst
 }
 
+/// Load a single-precision (32-bit) floating-point element from memory into the lower element of dst
+/// using writemask k (the element is copied from src when mask bit 0 is not set), and set the upper
+/// 3 packed elements of dst to zero. mem_addr must be aligned on a 16-byte boundary or a general-protection
+/// exception may be generated.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_load_ss)
+#[inline]
+#[cfg_attr(test, assert_instr(vmovss))]
+#[target_feature(enable = "sse,avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_load_ss(src: __m128, k: __mmask8, mem_addr: *const f32) -> __m128 {
+    let mut dst: __m128 = src;
+    asm!(
+        vpl!("vmovss {dst}{{{k}}}"),
+        p = in(reg) mem_addr,
+        k = in(kreg) k,
+        dst = inout(xmm_reg) dst,
+        options(pure, readonly, nostack, preserves_flags),
+    );
+    dst
+}
+
+/// Load a single-precision (32-bit) floating-point element from memory into the lower element of dst
+/// using zeromask k (the element is zeroed out when mask bit 0 is not set), and set the upper 3 packed
+/// elements of dst to zero. mem_addr must be aligned on a 16-byte boundary or a general-protection
+/// exception may be generated.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_load_ss)
+#[inline]
+#[cfg_attr(test, assert_instr(vmovss))]
+#[target_feature(enable = "sse,avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_maskz_load_ss(k: __mmask8, mem_addr: *const f32) -> __m128 {
+    let mut dst: __m128;
+    asm!(
+        vpl!("vmovss {dst}{{{k}}} {{z}}"),
+        p = in(reg) mem_addr,
+        k = in(kreg) k,
+        dst = out(xmm_reg) dst,
+        options(pure, readonly, nostack, preserves_flags),
+    );
+    dst
+}
+
+/// Load a double-precision (64-bit) floating-point element from memory into the lower element of dst
+/// using writemask k (the element is copied from src when mask bit 0 is not set), and set the upper
+/// element of dst to zero. mem_addr must be aligned on a 16-byte boundary or a general-protection
+/// exception may be generated.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_load_sd)
+#[inline]
+#[cfg_attr(test, assert_instr(vmovsd))]
+#[target_feature(enable = "sse,avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_load_sd(src: __m128d, k: __mmask8, mem_addr: *const f64) -> __m128d {
+    let mut dst: __m128d = src;
+    asm!(
+        vpl!("vmovsd {dst}{{{k}}}"),
+        p = in(reg) mem_addr,
+        k = in(kreg) k,
+        dst = inout(xmm_reg) dst,
+        options(pure, readonly, nostack, preserves_flags),
+    );
+    dst
+}
+
+/// Load a double-precision (64-bit) floating-point element from memory into the lower element of dst
+/// using zeromask k (the element is zeroed out when mask bit 0 is not set), and set the upper element
+/// of dst to zero. mem_addr must be aligned on a 16-byte boundary or a general-protection exception
+/// may be generated.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_load_sd)
+#[inline]
+#[cfg_attr(test, assert_instr(vmovsd))]
+#[target_feature(enable = "sse,avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_maskz_load_sd(k: __mmask8, mem_addr: *const f64) -> __m128d {
+    let mut dst: __m128d;
+    asm!(
+        vpl!("vmovsd {dst}{{{k}}} {{z}}"),
+        p = in(reg) mem_addr,
+        k = in(kreg) k,
+        dst = out(xmm_reg) dst,
+        options(pure, readonly, nostack, preserves_flags),
+    );
+    dst
+}
+
 /// Store packed 32-bit integers from a into memory using writemask k.
 /// mem_addr does not need to be aligned on any particular boundary.
 ///
@@ -34261,6 +35475,42 @@ pub unsafe fn _mm_mask_store_pd(mem_addr: *mut f64, mask: __mmask8, a: __m128d) 
         mask = in(kreg) mask,
         a = in(xmm_reg) a,
         options(nostack, preserves_flags)
+    );
+}
+
+/// Store a single-precision (32-bit) floating-point element from a into memory using writemask k. mem_addr
+/// must be aligned on a 16-byte boundary or a general-protection exception may be generated.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_store_ss)
+#[inline]
+#[cfg_attr(test, assert_instr(vmovss))]
+#[target_feature(enable = "sse,avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_store_ss(mem_addr: *mut f32, k: __mmask8, a: __m128) {
+    asm!(
+        vps!("vmovss", "{{{k}}}, {a}"),
+        p = in(reg) mem_addr,
+        k = in(kreg) k,
+        a = in(xmm_reg) a,
+        options(nostack, preserves_flags),
+    );
+}
+
+/// Store a double-precision (64-bit) floating-point element from a into memory using writemask k. mem_addr
+/// must be aligned on a 16-byte boundary or a general-protection exception may be generated.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_store_sd)
+#[inline]
+#[cfg_attr(test, assert_instr(vmovsd))]
+#[target_feature(enable = "sse,avx512f")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_store_sd(mem_addr: *mut f64, k: __mmask8, a: __m128d) {
+    asm!(
+        vps!("vmovsd", "{{{k}}}, {a}"),
+        p = in(reg) mem_addr,
+        k = in(kreg) k,
+        a = in(xmm_reg) a,
+        options(nostack, preserves_flags),
     );
 }
 
@@ -41162,8 +42412,6 @@ extern "C" {
     fn vscatterqps(slice: *mut i8, mask: i8, offsets: i64x8, src: f32x8, scale: i32);
     #[link_name = "llvm.x86.avx512.scatter.dpq.512"]
     fn vpscatterdq(slice: *mut i8, mask: i8, offsets: i32x8, src: i64x8, scale: i32);
-    #[link_name = "llvm.x86.avx512.scattersiv4.di"]
-    fn vpscatterdq256(slice: *mut i8, mask: i8, offsets: i32x4, src: i64x4, scale: i32);
 
     #[link_name = "llvm.x86.avx512.scatter.dpi.512"]
     fn vpscatterdd(slice: *mut i8, mask: i16, offsets: i32x16, src: i32x16, scale: i32);
@@ -41171,6 +42419,74 @@ extern "C" {
     fn vpscatterqq(slice: *mut i8, mask: i8, offsets: i64x8, src: i64x8, scale: i32);
     #[link_name = "llvm.x86.avx512.scatter.qpi.512"]
     fn vpscatterqd(slice: *mut i8, mask: i8, offsets: i64x8, src: i32x8, scale: i32);
+
+    #[link_name = "llvm.x86.avx512.scattersiv4.si"]
+    fn vpscatterdd_128(slice: *mut i8, k: u8, offsets: i32x4, src: i32x4, scale: i32);
+    #[link_name = "llvm.x86.avx512.scattersiv2.di"]
+    fn vpscatterdq_128(slice: *mut i8, k: u8, offsets: i32x4, src: i64x2, scale: i32);
+    #[link_name = "llvm.x86.avx512.scattersiv2.df"]
+    fn vscatterdpd_128(slice: *mut i8, k: u8, offsets: i32x4, src: f64x2, scale: i32);
+    #[link_name = "llvm.x86.avx512.scattersiv4.sf"]
+    fn vscatterdps_128(slice: *mut i8, k: u8, offsets: i32x4, src: f32x4, scale: i32);
+    #[link_name = "llvm.x86.avx512.scatterdiv4.si"]
+    fn vpscatterqd_128(slice: *mut i8, k: u8, offsets: i64x2, src: i32x4, scale: i32);
+    #[link_name = "llvm.x86.avx512.scatterdiv2.di"]
+    fn vpscatterqq_128(slice: *mut i8, k: u8, offsets: i64x2, src: i64x2, scale: i32);
+    #[link_name = "llvm.x86.avx512.scatterdiv2.df"]
+    fn vscatterqpd_128(slice: *mut i8, k: u8, offsets: i64x2, src: f64x2, scale: i32);
+    #[link_name = "llvm.x86.avx512.scatterdiv4.sf"]
+    fn vscatterqps_128(slice: *mut i8, k: u8, offsets: i64x2, src: f32x4, scale: i32);
+
+    #[link_name = "llvm.x86.avx512.scattersiv8.si"]
+    fn vpscatterdd_256(slice: *mut i8, k: u8, offsets: i32x8, src: i32x8, scale: i32);
+    #[link_name = "llvm.x86.avx512.scattersiv4.di"]
+    fn vpscatterdq_256(slice: *mut i8, k: u8, offsets: i32x4, src: i64x4, scale: i32);
+    #[link_name = "llvm.x86.avx512.scattersiv4.df"]
+    fn vscatterdpd_256(slice: *mut i8, k: u8, offsets: i32x4, src: f64x4, scale: i32);
+    #[link_name = "llvm.x86.avx512.scattersiv8.sf"]
+    fn vscatterdps_256(slice: *mut i8, k: u8, offsets: i32x8, src: f32x8, scale: i32);
+    #[link_name = "llvm.x86.avx512.scatterdiv8.si"]
+    fn vpscatterqd_256(slice: *mut i8, k: u8, offsets: i64x4, src: i32x4, scale: i32);
+    #[link_name = "llvm.x86.avx512.scatterdiv4.di"]
+    fn vpscatterqq_256(slice: *mut i8, k: u8, offsets: i64x4, src: i64x4, scale: i32);
+    #[link_name = "llvm.x86.avx512.scatterdiv4.df"]
+    fn vscatterqpd_256(slice: *mut i8, k: u8, offsets: i64x4, src: f64x4, scale: i32);
+    #[link_name = "llvm.x86.avx512.scatterdiv8.sf"]
+    fn vscatterqps_256(slice: *mut i8, k: u8, offsets: i64x4, src: f32x4, scale: i32);
+
+    #[link_name = "llvm.x86.avx512.gather3siv4.si"]
+    fn vpgatherdd_128(src: i32x4, slice: *const i8, offsets: i32x4, k: u8, scale: i32) -> i32x4;
+    #[link_name = "llvm.x86.avx512.gather3siv2.di"]
+    fn vpgatherdq_128(src: i64x2, slice: *const i8, offsets: i32x4, k: u8, scale: i32) -> i64x2;
+    #[link_name = "llvm.x86.avx512.gather3siv2.df"]
+    fn vgatherdpd_128(src: f64x2, slice: *const i8, offsets: i32x4, k: u8, scale: i32) -> f64x2;
+    #[link_name = "llvm.x86.avx512.gather3siv4.sf"]
+    fn vgatherdps_128(src: f32x4, slice: *const u8, offsets: i32x4, k: u8, scale: i32) -> f32x4;
+    #[link_name = "llvm.x86.avx512.gather3div4.si"]
+    fn vpgatherqd_128(src: i32x4, slice: *const u8, offsets: i64x2, k: u8, scale: i32) -> i32x4;
+    #[link_name = "llvm.x86.avx512.gather3div2.di"]
+    fn vpgatherqq_128(src: i64x2, slice: *const i8, offsets: i64x2, k: u8, scale: i32) -> i64x2;
+    #[link_name = "llvm.x86.avx512.gather3div2.df"]
+    fn vgatherqpd_128(src: f64x2, slice: *const i8, offsets: i64x2, k: u8, scale: i32) -> f64x2;
+    #[link_name = "llvm.x86.avx512.gather3div4.sf"]
+    fn vgatherqps_128(src: f32x4, slice: *const i8, offsets: i64x2, k: u8, scale: i32) -> f32x4;
+
+    #[link_name = "llvm.x86.avx512.gather3siv8.si"]
+    fn vpgatherdd_256(src: i32x8, slice: *const i8, offsets: i32x8, k: u8, scale: i32) -> i32x8;
+    #[link_name = "llvm.x86.avx512.gather3siv4.di"]
+    fn vpgatherdq_256(src: i64x4, slice: *const i8, offsets: i32x4, k: u8, scale: i32) -> i64x4;
+    #[link_name = "llvm.x86.avx512.gather3siv4.df"]
+    fn vgatherdpd_256(src: f64x4, slice: *const i8, offsets: i32x4, k: u8, scale: i32) -> f64x4;
+    #[link_name = "llvm.x86.avx512.gather3siv8.sf"]
+    fn vgatherdps_256(src: f32x8, slice: *const i8, offsets: i32x8, k: u8, scale: i32) -> f32x8;
+    #[link_name = "llvm.x86.avx512.gather3div8.si"]
+    fn vpgatherqd_256(src: i32x4, slice: *const i8, offsets: i64x4, k: u8, scale: i32) -> i32x4;
+    #[link_name = "llvm.x86.avx512.gather3div4.di"]
+    fn vpgatherqq_256(src: i64x4, slice: *const i8, offsets: i64x4, k: u8, scale: i32) -> i64x4;
+    #[link_name = "llvm.x86.avx512.gather3div4.df"]
+    fn vgatherqpd_256(src: f64x4, slice: *const i8, offsets: i64x4, k: u8, scale: i32) -> f64x4;
+    #[link_name = "llvm.x86.avx512.gather3div8.sf"]
+    fn vgatherqps_256(src: f32x4, slice: *const i8, offsets: i64x4, k: u8, scale: i32) -> f32x4;
 
     #[link_name = "llvm.x86.avx512.mask.cmp.ss"]
     fn vcmpss(a: __m128, b: __m128, op: i32, m: i8, sae: i32) -> i8;
@@ -50253,6 +51569,60 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_load_ss() {
+        #[repr(align(16))]
+        struct Align {
+            data: f32,
+        }
+        let src = _mm_set_ss(2.0);
+        let mem = Align { data: 1.0 };
+        let r = _mm_mask_load_ss(src, 0b1, &mem.data);
+        assert_eq_m128(r, _mm_set_ss(1.0));
+        let r = _mm_mask_load_ss(src, 0b0, &mem.data);
+        assert_eq_m128(r, _mm_set_ss(2.0));
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_load_ss() {
+        #[repr(align(16))]
+        struct Align {
+            data: f32,
+        }
+        let mem = Align { data: 1.0 };
+        let r = _mm_maskz_load_ss(0b1, &mem.data);
+        assert_eq_m128(r, _mm_set_ss(1.0));
+        let r = _mm_maskz_load_ss(0b0, &mem.data);
+        assert_eq_m128(r, _mm_set_ss(0.0));
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_load_sd() {
+        #[repr(align(16))]
+        struct Align {
+            data: f64,
+        }
+        let src = _mm_set_sd(2.0);
+        let mem = Align { data: 1.0 };
+        let r = _mm_mask_load_sd(src, 0b1, &mem.data);
+        assert_eq_m128d(r, _mm_set_sd(1.0));
+        let r = _mm_mask_load_sd(src, 0b0, &mem.data);
+        assert_eq_m128d(r, _mm_set_sd(2.0));
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_load_sd() {
+        #[repr(align(16))]
+        struct Align {
+            data: f64,
+        }
+        let mem = Align { data: 1.0 };
+        let r = _mm_maskz_load_sd(0b1, &mem.data);
+        assert_eq_m128d(r, _mm_set_sd(1.0));
+        let r = _mm_maskz_load_sd(0b0, &mem.data);
+        assert_eq_m128d(r, _mm_set_sd(0.0));
+    }
+
     #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm_mask_storeu_pd() {
         let mut r = [42_f64; 2];
@@ -50275,6 +51645,34 @@ mod tests {
         _mm_mask_store_pd(r.data.as_mut_ptr(), m, a);
         let e = _mm_setr_pd(42.0, 2.0);
         assert_eq_m128d(_mm_load_pd(r.data.as_ptr()), e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_store_ss() {
+        #[repr(align(16))]
+        struct Align {
+            data: f32,
+        }
+        let a = _mm_set_ss(2.0);
+        let mut mem = Align { data: 1.0 };
+        _mm_mask_store_ss(&mut mem.data, 0b1, a);
+        assert_eq!(mem.data, 2.0);
+        _mm_mask_store_ss(&mut mem.data, 0b0, a);
+        assert_eq!(mem.data, 2.0);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_store_sd() {
+        #[repr(align(16))]
+        struct Align {
+            data: f64,
+        }
+        let a = _mm_set_sd(2.0);
+        let mut mem = Align { data: 1.0 };
+        _mm_mask_store_sd(&mut mem.data, 0b1, a);
+        assert_eq!(mem.data, 2.0);
+        _mm_mask_store_sd(&mut mem.data, 0b0, a);
+        assert_eq!(mem.data, 2.0);
     }
 
     #[simd_test(enable = "avx512f")]
