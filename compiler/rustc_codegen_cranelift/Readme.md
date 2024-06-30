@@ -70,7 +70,7 @@ For more docs on how to build and test see [build_system/usage.txt](build_system
 |FreeBSD|✅[^no-rustup]|❓|❓|❓|
 |AIX|❌[^xcoff]|N/A|N/A|❌[^xcoff]|
 |Other unixes|❓|❓|❓|❓|
-|macOS|✅|❌[^apple-silicon]|N/A|N/A|
+|macOS|✅|✅[^no-rustup]|N/A|N/A|
 |Windows|✅[^no-rustup]|❌|N/A|N/A|
 
 ✅: Fully supported and tested
@@ -80,7 +80,6 @@ For more docs on how to build and test see [build_system/usage.txt](build_system
 Not all targets are available as rustup component for nightly. See notes in the platform support matrix.
 
 [^xcoff]: XCOFF object file format is not supported.
-[^apple-silicon]: Tracked in [#1248](https://github.com/rust-lang/rustc_codegen_cranelift/issues/1248).
 [^no-rustup]: Not available as rustup component for nightly. You can build it yourself.
 
 ## Usage

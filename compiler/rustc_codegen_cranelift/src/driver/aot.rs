@@ -26,6 +26,7 @@ use rustc_session::Session;
 use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
 use crate::debuginfo::TypeDebugContext;
 use crate::global_asm::GlobalAsmConfig;
+use crate::unwind_module::UnwindModule;
 use crate::{prelude::*, BackendConfig};
 
 struct ModuleCodegenResult {
@@ -318,7 +319,11 @@ fn produce_final_output_artifacts(
     // These are used in linking steps and will be cleaned up afterward.
 }
 
-fn make_module(sess: &Session, backend_config: &BackendConfig, name: String) -> ObjectModule {
+fn make_module(
+    sess: &Session,
+    backend_config: &BackendConfig,
+    name: String,
+) -> UnwindModule<ObjectModule> {
     let isa = crate::build_isa(sess, backend_config);
 
     let mut builder =
@@ -327,16 +332,15 @@ fn make_module(sess: &Session, backend_config: &BackendConfig, name: String) -> 
     // is important, while cg_clif cares more about compilation times. Enabling -Zfunction-sections
     // can easily double the amount of time necessary to perform linking.
     builder.per_function_section(sess.opts.unstable_opts.function_sections.unwrap_or(false));
-    ObjectModule::new(builder)
+    UnwindModule::new(ObjectModule::new(builder), true)
 }
 
 fn emit_cgu(
     output_filenames: &OutputFilenames,
     prof: &SelfProfilerRef,
     name: String,
-    module: ObjectModule,
+    module: UnwindModule<ObjectModule>,
     debug: Option<DebugContext>,
-    unwind_context: UnwindContext,
     global_asm_object_file: Option<PathBuf>,
     producer: &str,
 ) -> Result<ModuleCodegenResult, String> {
@@ -345,8 +349,6 @@ fn emit_cgu(
     if let Some(mut debug) = debug {
         debug.emit(&mut product);
     }
-
-    unwind_context.emit(&mut product);
 
     let module_regular = emit_module(
         output_filenames,
@@ -494,7 +496,6 @@ fn module_codegen(
 
             let mut cx = crate::CodegenCx::new(
                 tcx,
-                backend_config.clone(),
                 module.isa(),
                 tcx.sess.opts.debuginfo != DebugInfo::None,
                 cgu_name,
@@ -531,13 +532,7 @@ fn module_codegen(
                     }
                 }
             }
-            crate::main_shim::maybe_create_entry_wrapper(
-                tcx,
-                &mut module,
-                &mut cx.unwind_context,
-                false,
-                cgu.is_primary(),
-            );
+            crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, false, cgu.is_primary());
 
             let cgu_name = cgu.name().as_str().to_owned();
 
@@ -571,7 +566,6 @@ fn module_codegen(
                     cgu_name,
                     module,
                     cx.debug_context,
-                    cx.unwind_context,
                     global_asm_object_file,
                     &producer,
                 )
@@ -665,13 +659,10 @@ pub(crate) fn run_aot(
     });
 
     let mut allocator_module = make_module(tcx.sess, &backend_config, "allocator_shim".to_string());
-    let mut allocator_unwind_context = UnwindContext::new(allocator_module.isa(), true);
-    let created_alloc_shim =
-        crate::allocator::codegen(tcx, &mut allocator_module, &mut allocator_unwind_context);
+    let created_alloc_shim = crate::allocator::codegen(tcx, &mut allocator_module);
 
     let allocator_module = if created_alloc_shim {
-        let mut product = allocator_module.finish();
-        allocator_unwind_context.emit(&mut product);
+        let product = allocator_module.finish();
 
         match emit_module(
             tcx.output_filenames(()),
