@@ -128,11 +128,7 @@ pub extern "C" fn returns_twou16s() -> TwoU16s {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn receives_fiveu16s(x: FiveU16s) {
-    // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // powerpc64:   [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [10 x i8], align [[ABI_ALIGN:8]]
+    // CHECK: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
 
     // CHECK: [[RUST_ALLOCA:%.+]] = alloca [10 x i8], align [[RUST_ALIGN:2]]
 
@@ -218,11 +214,7 @@ pub extern "C" fn returns_doubledouble() -> DoubleDouble {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn receives_three32s(x: Three32s) {
-    // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // powerpc64:   [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [12 x i8], align [[ABI_ALIGN:8]]
+    // CHECK: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
 
     // CHECK: [[RUST_ALLOCA:%.+]] = alloca [12 x i8], align [[RUST_ALIGN:4]]
 
@@ -271,7 +263,7 @@ pub extern "C" fn returns_three32s() -> Three32s {
 #[inline(never)]
 pub extern "C" fn receives_doublefloat(x: DoubleFloat) {
     // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [12 x i8], align [[ABI_ALIGN:8]]
+    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
     // powerpc64:   [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
     // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
 
@@ -382,11 +374,7 @@ pub fn return_twou16s() -> TwoU16s {
 // CHECK-LABEL: @call_fiveu16s
 #[no_mangle]
 pub fn call_fiveu16s() {
-    // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // powerpc64:   [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [10 x i8], align [[ABI_ALIGN:8]]
+    // CHECK: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
 
     // CHECK: [[RUST_ALLOCA:%.+]] = alloca [10 x i8], align 2
 
@@ -416,7 +404,7 @@ pub fn return_fiveu16s() -> FiveU16s {
     // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
     // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
     // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [10 x i8], align [[ABI_ALIGN:8]]
+    // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
 
     // aarch64:     [[ABI_VALUE:%.+]] = call [[ABI_TYPE:\[2 x i64\]]] @returns_fiveu16s()
     // loongarch64: [[ABI_VALUE:%.+]] = call [[ABI_TYPE:\[2 x i64\]]] @returns_fiveu16s()
@@ -501,7 +489,7 @@ pub fn return_doubledouble() -> DoubleDouble {
 #[no_mangle]
 pub fn call_doublefloat() {
     // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [12 x i8], align [[ABI_ALIGN:8]]
+    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
     // powerpc64:   [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
     // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
 
@@ -544,7 +532,7 @@ pub fn return_doublefloat() -> DoubleFloat {
     // The other targets copy the cast ABI type to an alloca.
 
     // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [12 x i8], align [[ABI_ALIGN:8]]
+    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
     // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
 
     // aarch64:     [[RUST_ALLOCA:%.+]] = alloca [16 x i8], align [[RUST_ALIGN:8]]
@@ -568,12 +556,7 @@ pub fn return_doublefloat() -> DoubleFloat {
 // CHECK-LABEL: @call_three32s
 #[no_mangle]
 pub fn call_three32s() {
-    // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // powerpc64:   [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [12 x i8], align [[ABI_ALIGN:8]]
-
+    // CHECK: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
     // CHECK: [[RUST_ALLOCA:%.+]] = alloca [12 x i8], align [[RUST_ALIGN:4]]
     // CHECK: call void @llvm.memcpy.{{.+}}(ptr align [[ABI_ALIGN]] [[ABI_ALLOCA]], ptr align [[RUST_ALIGN]] [[RUST_ALLOCA]], i64 12, i1 false)
 
@@ -600,7 +583,7 @@ pub fn return_three32s() -> Three32s {
     // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
     // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
     // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
-    // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [12 x i8], align [[ABI_ALIGN:8]]
+    // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:8]]
 
     // aarch64:     [[ABI_VALUE:%.+]] = call [[ABI_TYPE:\[2 x i64\]]] @returns_three32s()
     // loongarch64: [[ABI_VALUE:%.+]] = call [[ABI_TYPE:\[2 x i64\]]] @returns_three32s()
