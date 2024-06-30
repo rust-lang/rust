@@ -7,6 +7,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_span::Symbol;
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::{
     abi::{Align, Size},
     spec::abi::Abi,
@@ -52,7 +53,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match link_name.as_str() {
             // This matches calls to the foreign item `panic_impl`.
             // The implementation is provided by the function with the `#[panic_handler]` attribute.
-            "panic_impl" => {
+            name if name == mangle_internal_symbol(*this.tcx, "rust_begin_unwind") => {
                 // We don't use `check_shim` here because we are just forwarding to the lang
                 // item. Argument count checking will be performed when the returned `Body` is
                 // called.
@@ -470,7 +471,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // Rust allocation
-            "__rust_alloc" | "miri_alloc" => {
+            name if name == mangle_internal_symbol(*this.tcx, "__rust_alloc")
+                || name == "miri_alloc" =>
+            {
                 let default = |this: &mut MiriInterpCx<'tcx>| {
                     // Only call `check_shim` when `#[global_allocator]` isn't used. When that
                     // macro is used, we act like no shim exists, so that the exported function can run.
@@ -481,9 +484,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.check_rustc_alloc_request(size, align)?;
 
                     let memory_kind = match link_name.as_str() {
-                        "__rust_alloc" => MiriMemoryKind::Rust,
                         "miri_alloc" => MiriMemoryKind::Miri,
-                        _ => unreachable!(),
+                        _ => MiriMemoryKind::Rust,
                     };
 
                     let ptr = this.allocate_ptr(
@@ -496,15 +498,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 match link_name.as_str() {
-                    "__rust_alloc" => return this.emulate_allocator(default),
                     "miri_alloc" => {
                         default(this)?;
                         return Ok(EmulateItemResult::NeedsReturn);
                     }
-                    _ => unreachable!(),
+                    _ => return this.emulate_allocator(default),
                 }
             }
-            "__rust_alloc_zeroed" => {
+            name if name == mangle_internal_symbol(*this.tcx, "__rust_alloc_zeroed") => {
                 return this.emulate_allocator(|this| {
                     // See the comment for `__rust_alloc` why `check_shim` is only called in the
                     // default case.
@@ -529,7 +530,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_pointer(ptr, dest)
                 });
             }
-            "__rust_dealloc" | "miri_dealloc" => {
+            name if name == mangle_internal_symbol(*this.tcx, "__rust_dealloc")
+                || name == "miri_dealloc" =>
+            {
                 let default = |this: &mut MiriInterpCx<'tcx>| {
                     // See the comment for `__rust_alloc` why `check_shim` is only called in the
                     // default case.
@@ -540,9 +543,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let align = this.read_target_usize(align)?;
 
                     let memory_kind = match link_name.as_str() {
-                        "__rust_dealloc" => MiriMemoryKind::Rust,
                         "miri_dealloc" => MiriMemoryKind::Miri,
-                        _ => unreachable!(),
+                        _ => MiriMemoryKind::Rust,
                     };
 
                     // No need to check old_size/align; we anyway check that they match the allocation.
@@ -554,17 +556,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 match link_name.as_str() {
-                    "__rust_dealloc" => {
-                        return this.emulate_allocator(default);
-                    }
                     "miri_dealloc" => {
                         default(this)?;
                         return Ok(EmulateItemResult::NeedsReturn);
                     }
-                    _ => unreachable!(),
+                    _ => return this.emulate_allocator(default),
                 }
             }
-            "__rust_realloc" => {
+            name if name == mangle_internal_symbol(*this.tcx, "__rust_realloc") => {
                 return this.emulate_allocator(|this| {
                     // See the comment for `__rust_alloc` why `check_shim` is only called in the
                     // default case.

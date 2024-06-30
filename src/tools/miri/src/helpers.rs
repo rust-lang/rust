@@ -24,7 +24,7 @@ use rustc_middle::ty::{
     FloatTy, IntTy, Ty, TyCtxt, UintTy,
 };
 use rustc_session::config::CrateType;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{Span, Symbol};
 use rustc_target::abi::{Align, FieldIdx, FieldsShape, Size, Variants};
 use rustc_target::spec::abi::Abi;
 
@@ -1180,14 +1180,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // This got just allocated, so there definitely is a pointer here.
         let provenance = mplace.ptr().into_pointer_or_addr().unwrap().provenance;
         this.alloc_mark_immutable(provenance.get_alloc_id().unwrap()).unwrap();
-    }
-
-    fn item_link_name(&self, def_id: DefId) -> Symbol {
-        let tcx = self.eval_context_ref().tcx;
-        match tcx.get_attrs(def_id, sym::link_name).filter_map(|a| a.value_str()).next() {
-            Some(name) => name,
-            None => tcx.item_name(def_id),
-        }
     }
 
     /// Converts `src` from floating point to integer type `dest_ty`
