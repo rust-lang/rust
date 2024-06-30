@@ -4570,6 +4570,694 @@ pub unsafe fn _mm_mask_cmp_epi8_mask<const IMM8: i32>(
     simd_bitmask(r)
 }
 
+/// Reduce the packed 16-bit integers in a by addition. Returns the sum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_add_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_add_epi16(a: __m256i) -> i16 {
+    simd_reduce_add_unordered(a.as_i16x16())
+}
+
+/// Reduce the packed 16-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_add_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_add_epi16(k: __mmask16, a: __m256i) -> i16 {
+    simd_reduce_add_unordered(simd_select_bitmask(
+        k,
+        a.as_i16x16(),
+        _mm256_setzero_si256().as_i16x16(),
+    ))
+}
+
+/// Reduce the packed 16-bit integers in a by addition. Returns the sum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_add_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_add_epi16(a: __m128i) -> i16 {
+    simd_reduce_add_unordered(a.as_i16x8())
+}
+
+/// Reduce the packed 16-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_add_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_add_epi16(k: __mmask8, a: __m128i) -> i16 {
+    simd_reduce_add_unordered(simd_select_bitmask(
+        k,
+        a.as_i16x8(),
+        _mm_setzero_si128().as_i16x8(),
+    ))
+}
+
+/// Reduce the packed 8-bit integers in a by addition. Returns the sum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_add_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_add_epi8(a: __m256i) -> i8 {
+    simd_reduce_add_unordered(a.as_i8x32())
+}
+
+/// Reduce the packed 8-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_add_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_add_epi8(k: __mmask32, a: __m256i) -> i8 {
+    simd_reduce_add_unordered(simd_select_bitmask(
+        k,
+        a.as_i8x32(),
+        _mm256_setzero_si256().as_i8x32(),
+    ))
+}
+
+/// Reduce the packed 8-bit integers in a by addition. Returns the sum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_add_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_add_epi8(a: __m128i) -> i8 {
+    simd_reduce_add_unordered(a.as_i8x16())
+}
+
+/// Reduce the packed 8-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_add_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_add_epi8(k: __mmask16, a: __m128i) -> i8 {
+    simd_reduce_add_unordered(simd_select_bitmask(
+        k,
+        a.as_i8x16(),
+        _mm_setzero_si128().as_i8x16(),
+    ))
+}
+
+/// Reduce the packed 16-bit integers in a by bitwise AND. Returns the bitwise AND of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_and_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_and_epi16(a: __m256i) -> i16 {
+    simd_reduce_and(a.as_i16x16())
+}
+
+/// Reduce the packed 16-bit integers in a by bitwise AND using mask k. Returns the bitwise AND of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_and_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_and_epi16(k: __mmask16, a: __m256i) -> i16 {
+    simd_reduce_and(simd_select_bitmask(
+        k,
+        a.as_i16x16(),
+        _mm256_set1_epi64x(-1).as_i16x16(),
+    ))
+}
+
+/// Reduce the packed 16-bit integers in a by bitwise AND. Returns the bitwise AND of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_and_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_and_epi16(a: __m128i) -> i16 {
+    simd_reduce_and(a.as_i16x8())
+}
+
+/// Reduce the packed 16-bit integers in a by bitwise AND using mask k. Returns the bitwise AND of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_and_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_and_epi16(k: __mmask8, a: __m128i) -> i16 {
+    simd_reduce_and(simd_select_bitmask(
+        k,
+        a.as_i16x8(),
+        _mm_set1_epi64x(-1).as_i16x8(),
+    ))
+}
+
+/// Reduce the packed 8-bit integers in a by bitwise AND. Returns the bitwise AND of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_and_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_and_epi8(a: __m256i) -> i8 {
+    simd_reduce_and(a.as_i8x32())
+}
+
+/// Reduce the packed 8-bit integers in a by bitwise AND using mask k. Returns the bitwise AND of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_and_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_and_epi8(k: __mmask32, a: __m256i) -> i8 {
+    simd_reduce_and(simd_select_bitmask(
+        k,
+        a.as_i8x32(),
+        _mm256_set1_epi64x(-1).as_i8x32(),
+    ))
+}
+
+/// Reduce the packed 8-bit integers in a by bitwise AND. Returns the bitwise AND of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_and_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_and_epi8(a: __m128i) -> i8 {
+    simd_reduce_and(a.as_i8x16())
+}
+
+/// Reduce the packed 8-bit integers in a by bitwise AND using mask k. Returns the bitwise AND of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_and_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_and_epi8(k: __mmask16, a: __m128i) -> i8 {
+    simd_reduce_and(simd_select_bitmask(
+        k,
+        a.as_i8x16(),
+        _mm_set1_epi64x(-1).as_i8x16(),
+    ))
+}
+
+/// Reduce the packed 16-bit integers in a by maximum. Returns the maximum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_max_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_max_epi16(a: __m256i) -> i16 {
+    simd_reduce_max(a.as_i16x16())
+}
+
+/// Reduce the packed 16-bit integers in a by maximum using mask k. Returns the maximum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_max_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_max_epi16(k: __mmask16, a: __m256i) -> i16 {
+    simd_reduce_max(simd_select_bitmask(k, a.as_i16x16(), i16x16::splat(-32768)))
+}
+
+/// Reduce the packed 16-bit integers in a by maximum. Returns the maximum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_max_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_max_epi16(a: __m128i) -> i16 {
+    simd_reduce_max(a.as_i16x8())
+}
+
+/// Reduce the packed 16-bit integers in a by maximum using mask k. Returns the maximum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_max_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_max_epi16(k: __mmask8, a: __m128i) -> i16 {
+    simd_reduce_max(simd_select_bitmask(k, a.as_i16x8(), i16x8::splat(-32768)))
+}
+
+/// Reduce the packed 8-bit integers in a by maximum. Returns the maximum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_max_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_max_epi8(a: __m256i) -> i8 {
+    simd_reduce_max(a.as_i8x32())
+}
+
+/// Reduce the packed 8-bit integers in a by maximum using mask k. Returns the maximum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_max_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_max_epi8(k: __mmask32, a: __m256i) -> i8 {
+    simd_reduce_max(simd_select_bitmask(k, a.as_i8x32(), i8x32::splat(-128)))
+}
+
+/// Reduce the packed 8-bit integers in a by maximum. Returns the maximum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_max_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_max_epi8(a: __m128i) -> i8 {
+    simd_reduce_max(a.as_i8x16())
+}
+
+/// Reduce the packed 8-bit integers in a by maximum using mask k. Returns the maximum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_max_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_max_epi8(k: __mmask16, a: __m128i) -> i8 {
+    simd_reduce_max(simd_select_bitmask(k, a.as_i8x16(), i8x16::splat(-128)))
+}
+
+/// Reduce the packed unsigned 16-bit integers in a by maximum. Returns the maximum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_max_epu16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_max_epu16(a: __m256i) -> u16 {
+    simd_reduce_max(a.as_u16x16())
+}
+
+/// Reduce the packed unsigned 16-bit integers in a by maximum using mask k. Returns the maximum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_max_epu16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_max_epu16(k: __mmask16, a: __m256i) -> u16 {
+    simd_reduce_max(simd_select_bitmask(k, a.as_u16x16(), u16x16::splat(0)))
+}
+
+/// Reduce the packed unsigned 16-bit integers in a by maximum. Returns the maximum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_max_epu16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_max_epu16(a: __m128i) -> u16 {
+    simd_reduce_max(a.as_u16x8())
+}
+
+/// Reduce the packed unsigned 16-bit integers in a by maximum using mask k. Returns the maximum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_max_epu16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_max_epu16(k: __mmask8, a: __m128i) -> u16 {
+    simd_reduce_max(simd_select_bitmask(k, a.as_u16x8(), u16x8::splat(0)))
+}
+
+/// Reduce the packed unsigned 8-bit integers in a by maximum. Returns the maximum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_max_epu8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_max_epu8(a: __m256i) -> u8 {
+    simd_reduce_max(a.as_u8x32())
+}
+
+/// Reduce the packed unsigned 8-bit integers in a by maximum using mask k. Returns the maximum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_max_epu8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_max_epu8(k: __mmask32, a: __m256i) -> u8 {
+    simd_reduce_max(simd_select_bitmask(k, a.as_u8x32(), u8x32::splat(0)))
+}
+
+/// Reduce the packed unsigned 8-bit integers in a by maximum. Returns the maximum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_max_epu8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_max_epu8(a: __m128i) -> u8 {
+    simd_reduce_max(a.as_u8x16())
+}
+
+/// Reduce the packed unsigned 8-bit integers in a by maximum using mask k. Returns the maximum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_max_epu8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_max_epu8(k: __mmask16, a: __m128i) -> u8 {
+    simd_reduce_max(simd_select_bitmask(k, a.as_u8x16(), u8x16::splat(0)))
+}
+
+/// Reduce the packed 16-bit integers in a by minimum. Returns the minimum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_min_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_min_epi16(a: __m256i) -> i16 {
+    simd_reduce_min(a.as_i16x16())
+}
+
+/// Reduce the packed 16-bit integers in a by minimum using mask k. Returns the minimum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_min_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_min_epi16(k: __mmask16, a: __m256i) -> i16 {
+    simd_reduce_min(simd_select_bitmask(k, a.as_i16x16(), i16x16::splat(0x7fff)))
+}
+
+/// Reduce the packed 16-bit integers in a by minimum. Returns the minimum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_min_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_min_epi16(a: __m128i) -> i16 {
+    simd_reduce_min(a.as_i16x8())
+}
+
+/// Reduce the packed 16-bit integers in a by minimum using mask k. Returns the minimum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_min_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_min_epi16(k: __mmask8, a: __m128i) -> i16 {
+    simd_reduce_min(simd_select_bitmask(k, a.as_i16x8(), i16x8::splat(0x7fff)))
+}
+
+/// Reduce the packed 8-bit integers in a by minimum. Returns the minimum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_min_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_min_epi8(a: __m256i) -> i8 {
+    simd_reduce_min(a.as_i8x32())
+}
+
+/// Reduce the packed 8-bit integers in a by minimum using mask k. Returns the minimum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_min_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_min_epi8(k: __mmask32, a: __m256i) -> i8 {
+    simd_reduce_min(simd_select_bitmask(k, a.as_i8x32(), i8x32::splat(0x7f)))
+}
+
+/// Reduce the packed 8-bit integers in a by minimum. Returns the minimum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_min_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_min_epi8(a: __m128i) -> i8 {
+    simd_reduce_min(a.as_i8x16())
+}
+
+/// Reduce the packed 8-bit integers in a by minimum using mask k. Returns the minimum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_min_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_min_epi8(k: __mmask16, a: __m128i) -> i8 {
+    simd_reduce_min(simd_select_bitmask(k, a.as_i8x16(), i8x16::splat(0x7f)))
+}
+
+/// Reduce the packed unsigned 16-bit integers in a by minimum. Returns the minimum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_min_epu16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_min_epu16(a: __m256i) -> u16 {
+    simd_reduce_min(a.as_u16x16())
+}
+
+/// Reduce the packed unsigned 16-bit integers in a by minimum using mask k. Returns the minimum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_min_epu16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_min_epu16(k: __mmask16, a: __m256i) -> u16 {
+    simd_reduce_min(simd_select_bitmask(k, a.as_u16x16(), u16x16::splat(0xffff)))
+}
+
+/// Reduce the packed unsigned 16-bit integers in a by minimum. Returns the minimum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_min_epu16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_min_epu16(a: __m128i) -> u16 {
+    simd_reduce_min(a.as_u16x8())
+}
+
+/// Reduce the packed unsigned 16-bit integers in a by minimum using mask k. Returns the minimum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_min_epu16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_min_epu16(k: __mmask8, a: __m128i) -> u16 {
+    simd_reduce_min(simd_select_bitmask(k, a.as_u16x8(), u16x8::splat(0xffff)))
+}
+
+/// Reduce the packed unsigned 8-bit integers in a by minimum. Returns the minimum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_min_epu8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_min_epu8(a: __m256i) -> u8 {
+    simd_reduce_min(a.as_u8x32())
+}
+
+/// Reduce the packed unsigned 8-bit integers in a by minimum using mask k. Returns the minimum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_min_epu8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_min_epu8(k: __mmask32, a: __m256i) -> u8 {
+    simd_reduce_min(simd_select_bitmask(k, a.as_u8x32(), u8x32::splat(0xff)))
+}
+
+/// Reduce the packed unsigned 8-bit integers in a by minimum. Returns the minimum of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_min_epu8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_min_epu8(a: __m128i) -> u8 {
+    simd_reduce_min(a.as_u8x16())
+}
+
+/// Reduce the packed unsigned 8-bit integers in a by minimum using mask k. Returns the minimum of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_min_epu8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_min_epu8(k: __mmask16, a: __m128i) -> u8 {
+    simd_reduce_min(simd_select_bitmask(k, a.as_u8x16(), u8x16::splat(0xff)))
+}
+
+/// Reduce the packed 16-bit integers in a by multiplication. Returns the product of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_mul_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_mul_epi16(a: __m256i) -> i16 {
+    simd_reduce_mul_unordered(a.as_i16x16())
+}
+
+/// Reduce the packed 16-bit integers in a by multiplication using mask k. Returns the product of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_mul_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_mul_epi16(k: __mmask16, a: __m256i) -> i16 {
+    simd_reduce_mul_unordered(simd_select_bitmask(k, a.as_i16x16(), i16x16::splat(1)))
+}
+
+/// Reduce the packed 16-bit integers in a by multiplication. Returns the product of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_mul_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_mul_epi16(a: __m128i) -> i16 {
+    simd_reduce_mul_unordered(a.as_i16x8())
+}
+
+/// Reduce the packed 16-bit integers in a by multiplication using mask k. Returns the product of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_mul_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_mul_epi16(k: __mmask8, a: __m128i) -> i16 {
+    simd_reduce_mul_unordered(simd_select_bitmask(k, a.as_i16x8(), i16x8::splat(1)))
+}
+
+/// Reduce the packed 8-bit integers in a by multiplication. Returns the product of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_mul_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_mul_epi8(a: __m256i) -> i8 {
+    simd_reduce_mul_unordered(a.as_i8x32())
+}
+
+/// Reduce the packed 8-bit integers in a by multiplication using mask k. Returns the product of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_mul_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_mul_epi8(k: __mmask32, a: __m256i) -> i8 {
+    simd_reduce_mul_unordered(simd_select_bitmask(k, a.as_i8x32(), i8x32::splat(1)))
+}
+
+/// Reduce the packed 8-bit integers in a by multiplication. Returns the product of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_mul_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_mul_epi8(a: __m128i) -> i8 {
+    simd_reduce_mul_unordered(a.as_i8x16())
+}
+
+/// Reduce the packed 8-bit integers in a by multiplication using mask k. Returns the product of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_mul_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_mul_epi8(k: __mmask16, a: __m128i) -> i8 {
+    simd_reduce_mul_unordered(simd_select_bitmask(k, a.as_i8x16(), i8x16::splat(1)))
+}
+
+/// Reduce the packed 16-bit integers in a by bitwise OR. Returns the bitwise OR of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_or_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_or_epi16(a: __m256i) -> i16 {
+    simd_reduce_or(a.as_i16x16())
+}
+
+/// Reduce the packed 16-bit integers in a by bitwise OR using mask k. Returns the bitwise OR of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_or_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_or_epi16(k: __mmask16, a: __m256i) -> i16 {
+    simd_reduce_or(simd_select_bitmask(
+        k,
+        a.as_i16x16(),
+        _mm256_setzero_si256().as_i16x16(),
+    ))
+}
+
+/// Reduce the packed 16-bit integers in a by bitwise OR. Returns the bitwise OR of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_or_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_or_epi16(a: __m128i) -> i16 {
+    simd_reduce_or(a.as_i16x8())
+}
+
+/// Reduce the packed 16-bit integers in a by bitwise OR using mask k. Returns the bitwise OR of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_or_epi16)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_or_epi16(k: __mmask8, a: __m128i) -> i16 {
+    simd_reduce_or(simd_select_bitmask(
+        k,
+        a.as_i16x8(),
+        _mm_setzero_si128().as_i16x8(),
+    ))
+}
+
+/// Reduce the packed 8-bit integers in a by bitwise OR. Returns the bitwise OR of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_reduce_or_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_reduce_or_epi8(a: __m256i) -> i8 {
+    simd_reduce_or(a.as_i8x32())
+}
+
+/// Reduce the packed 8-bit integers in a by bitwise OR using mask k. Returns the bitwise OR of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_reduce_or_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_mask_reduce_or_epi8(k: __mmask32, a: __m256i) -> i8 {
+    simd_reduce_or(simd_select_bitmask(
+        k,
+        a.as_i8x32(),
+        _mm256_setzero_si256().as_i8x32(),
+    ))
+}
+
+/// Reduce the packed 8-bit integers in a by bitwise OR. Returns the bitwise OR of all elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_reduce_or_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_reduce_or_epi8(a: __m128i) -> i8 {
+    simd_reduce_or(a.as_i8x16())
+}
+
+/// Reduce the packed 8-bit integers in a by bitwise OR using mask k. Returns the bitwise OR of all active elements in a.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_reduce_or_epi8)
+#[inline]
+#[target_feature(enable = "avx512bw,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_reduce_or_epi8(k: __mmask16, a: __m128i) -> i8 {
+    simd_reduce_or(simd_select_bitmask(
+        k,
+        a.as_i8x16(),
+        _mm_setzero_si128().as_i8x16(),
+    ))
+}
+
 /// Load 512-bits (composed of 32 packed 16-bit integers) from memory into dst. mem_addr does not need to be aligned on any particular boundary.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_loadu_epi16&expand=3368)
@@ -15028,6 +15716,496 @@ mod tests {
         assert_eq!(r, 0b01010101_01010101);
     }
 
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_add_epi16() {
+        let a = _mm256_set1_epi16(1);
+        let e = _mm256_reduce_add_epi16(a);
+        assert_eq!(16, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_add_epi16() {
+        let a = _mm256_set1_epi16(1);
+        let e = _mm256_mask_reduce_add_epi16(0b11111111_00000000, a);
+        assert_eq!(8, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_add_epi16() {
+        let a = _mm_set1_epi16(1);
+        let e = _mm_reduce_add_epi16(a);
+        assert_eq!(8, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_add_epi16() {
+        let a = _mm_set1_epi16(1);
+        let e = _mm_mask_reduce_add_epi16(0b11110000, a);
+        assert_eq!(4, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_add_epi8() {
+        let a = _mm256_set1_epi8(1);
+        let e = _mm256_reduce_add_epi8(a);
+        assert_eq!(32, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_add_epi8() {
+        let a = _mm256_set1_epi8(1);
+        let e = _mm256_mask_reduce_add_epi8(0b11111111_00000000_11111111_00000000, a);
+        assert_eq!(16, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_add_epi8() {
+        let a = _mm_set1_epi8(1);
+        let e = _mm_reduce_add_epi8(a);
+        assert_eq!(16, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_add_epi8() {
+        let a = _mm_set1_epi8(1);
+        let e = _mm_mask_reduce_add_epi8(0b11111111_00000000, a);
+        assert_eq!(8, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_and_epi16() {
+        let a = _mm256_set_epi16(1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2);
+        let e = _mm256_reduce_and_epi16(a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_and_epi16() {
+        let a = _mm256_set_epi16(1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2);
+        let e = _mm256_mask_reduce_and_epi16(0b11111111_00000000, a);
+        assert_eq!(1, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_and_epi16() {
+        let a = _mm_set_epi16(1, 1, 1, 1, 2, 2, 2, 2);
+        let e = _mm_reduce_and_epi16(a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_and_epi16() {
+        let a = _mm_set_epi16(1, 1, 1, 1, 2, 2, 2, 2);
+        let e = _mm_mask_reduce_and_epi16(0b11110000, a);
+        assert_eq!(1, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_and_epi8() {
+        let a = _mm256_set_epi8(
+            1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2,
+            2, 2, 2,
+        );
+        let e = _mm256_reduce_and_epi8(a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_and_epi8() {
+        let a = _mm256_set_epi8(
+            1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2,
+            2, 2, 2,
+        );
+        let e = _mm256_mask_reduce_and_epi8(0b11111111_00000000_11111111_00000000, a);
+        assert_eq!(1, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_and_epi8() {
+        let a = _mm_set_epi8(1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2);
+        let e = _mm_reduce_and_epi8(a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_and_epi8() {
+        let a = _mm_set_epi8(1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2);
+        let e = _mm_mask_reduce_and_epi8(0b11111111_00000000, a);
+        assert_eq!(1, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_mul_epi16() {
+        let a = _mm256_set_epi16(2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1);
+        let e = _mm256_reduce_mul_epi16(a);
+        assert_eq!(256, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_mul_epi16() {
+        let a = _mm256_set_epi16(1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2);
+        let e = _mm256_mask_reduce_mul_epi16(0b11111111_00000000, a);
+        assert_eq!(1, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_mul_epi16() {
+        let a = _mm_set_epi16(2, 2, 2, 2, 1, 1, 1, 1);
+        let e = _mm_reduce_mul_epi16(a);
+        assert_eq!(16, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_mul_epi16() {
+        let a = _mm_set_epi16(1, 1, 1, 1, 2, 2, 2, 2);
+        let e = _mm_mask_reduce_mul_epi16(0b11110000, a);
+        assert_eq!(1, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_mul_epi8() {
+        let a = _mm256_set_epi8(
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            2, 2, 2,
+        );
+        let e = _mm256_reduce_mul_epi8(a);
+        assert_eq!(64, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_mul_epi8() {
+        let a = _mm256_set_epi8(
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            2, 2, 2,
+        );
+        let e = _mm256_mask_reduce_mul_epi8(0b11111111_00000000_11111111_00000000, a);
+        assert_eq!(1, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_mul_epi8() {
+        let a = _mm_set_epi8(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2);
+        let e = _mm_reduce_mul_epi8(a);
+        assert_eq!(8, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_mul_epi8() {
+        let a = _mm_set_epi8(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2);
+        let e = _mm_mask_reduce_mul_epi8(0b11111111_00000000, a);
+        assert_eq!(1, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_max_epi16() {
+        let a = _mm256_set_epi16(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: i16 = _mm256_reduce_max_epi16(a);
+        assert_eq!(15, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_max_epi16() {
+        let a = _mm256_set_epi16(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: i16 = _mm256_mask_reduce_max_epi16(0b11111111_00000000, a);
+        assert_eq!(7, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_max_epi16() {
+        let a = _mm_set_epi16(0, 1, 2, 3, 4, 5, 6, 7);
+        let e: i16 = _mm_reduce_max_epi16(a);
+        assert_eq!(7, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_max_epi16() {
+        let a = _mm_set_epi16(0, 1, 2, 3, 4, 5, 6, 7);
+        let e: i16 = _mm_mask_reduce_max_epi16(0b11110000, a);
+        assert_eq!(3, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_max_epi8() {
+        let a = _mm256_set_epi8(
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        );
+        let e: i8 = _mm256_reduce_max_epi8(a);
+        assert_eq!(31, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_max_epi8() {
+        let a = _mm256_set_epi8(
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        );
+        let e: i8 = _mm256_mask_reduce_max_epi8(0b1111111111111111_0000000000000000, a);
+        assert_eq!(15, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_max_epi8() {
+        let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: i8 = _mm_reduce_max_epi8(a);
+        assert_eq!(15, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_max_epi8() {
+        let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: i8 = _mm_mask_reduce_max_epi8(0b11111111_00000000, a);
+        assert_eq!(7, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_max_epu16() {
+        let a = _mm256_set_epi16(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: u16 = _mm256_reduce_max_epu16(a);
+        assert_eq!(15, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_max_epu16() {
+        let a = _mm256_set_epi16(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: u16 = _mm256_mask_reduce_max_epu16(0b11111111_00000000, a);
+        assert_eq!(7, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_max_epu16() {
+        let a = _mm_set_epi16(0, 1, 2, 3, 4, 5, 6, 7);
+        let e: u16 = _mm_reduce_max_epu16(a);
+        assert_eq!(7, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_max_epu16() {
+        let a = _mm_set_epi16(0, 1, 2, 3, 4, 5, 6, 7);
+        let e: u16 = _mm_mask_reduce_max_epu16(0b11110000, a);
+        assert_eq!(3, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_max_epu8() {
+        let a = _mm256_set_epi8(
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        );
+        let e: u8 = _mm256_reduce_max_epu8(a);
+        assert_eq!(31, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_max_epu8() {
+        let a = _mm256_set_epi8(
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        );
+        let e: u8 = _mm256_mask_reduce_max_epu8(0b1111111111111111_0000000000000000, a);
+        assert_eq!(15, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_max_epu8() {
+        let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: u8 = _mm_reduce_max_epu8(a);
+        assert_eq!(15, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_max_epu8() {
+        let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: u8 = _mm_mask_reduce_max_epu8(0b11111111_00000000, a);
+        assert_eq!(7, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_min_epi16() {
+        let a = _mm256_set_epi16(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: i16 = _mm256_reduce_min_epi16(a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_min_epi16() {
+        let a = _mm256_set_epi16(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: i16 = _mm256_mask_reduce_min_epi16(0b11111111_00000000, a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_min_epi16() {
+        let a = _mm_set_epi16(0, 1, 2, 3, 4, 5, 6, 7);
+        let e: i16 = _mm_reduce_min_epi16(a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_min_epi16() {
+        let a = _mm_set_epi16(0, 1, 2, 3, 4, 5, 6, 7);
+        let e: i16 = _mm_mask_reduce_min_epi16(0b11110000, a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_min_epi8() {
+        let a = _mm256_set_epi8(
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        );
+        let e: i8 = _mm256_reduce_min_epi8(a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_min_epi8() {
+        let a = _mm256_set_epi8(
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        );
+        let e: i8 = _mm256_mask_reduce_min_epi8(0b1111111111111111_0000000000000000, a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_min_epi8() {
+        let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: i8 = _mm_reduce_min_epi8(a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_min_epi8() {
+        let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: i8 = _mm_mask_reduce_min_epi8(0b11111111_00000000, a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_min_epu16() {
+        let a = _mm256_set_epi16(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: u16 = _mm256_reduce_min_epu16(a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_min_epu16() {
+        let a = _mm256_set_epi16(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: u16 = _mm256_mask_reduce_min_epu16(0b11111111_00000000, a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_min_epu16() {
+        let a = _mm_set_epi16(0, 1, 2, 3, 4, 5, 6, 7);
+        let e: u16 = _mm_reduce_min_epu16(a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_min_epu16() {
+        let a = _mm_set_epi16(0, 1, 2, 3, 4, 5, 6, 7);
+        let e: u16 = _mm_mask_reduce_min_epu16(0b11110000, a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_min_epu8() {
+        let a = _mm256_set_epi8(
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        );
+        let e: u8 = _mm256_reduce_min_epu8(a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_min_epu8() {
+        let a = _mm256_set_epi8(
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        );
+        let e: u8 = _mm256_mask_reduce_min_epu8(0b1111111111111111_0000000000000000, a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_min_epu8() {
+        let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: u8 = _mm_reduce_min_epu8(a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_min_epu8() {
+        let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e: u8 = _mm_mask_reduce_min_epu8(0b11111111_00000000, a);
+        assert_eq!(0, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_or_epi16() {
+        let a = _mm256_set_epi16(1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2);
+        let e = _mm256_reduce_or_epi16(a);
+        assert_eq!(3, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_or_epi16() {
+        let a = _mm256_set_epi16(1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2);
+        let e = _mm256_mask_reduce_or_epi16(0b11111111_00000000, a);
+        assert_eq!(1, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_or_epi16() {
+        let a = _mm_set_epi16(1, 1, 1, 1, 2, 2, 2, 2);
+        let e = _mm_reduce_or_epi16(a);
+        assert_eq!(3, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_or_epi16() {
+        let a = _mm_set_epi16(1, 1, 1, 1, 2, 2, 2, 2);
+        let e = _mm_mask_reduce_or_epi16(0b11110000, a);
+        assert_eq!(1, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_reduce_or_epi8() {
+        let a = _mm256_set_epi8(
+            1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2,
+            2, 2, 2,
+        );
+        let e = _mm256_reduce_or_epi8(a);
+        assert_eq!(3, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_reduce_or_epi8() {
+        let a = _mm256_set_epi8(
+            1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2,
+            2, 2, 2,
+        );
+        let e = _mm256_mask_reduce_or_epi8(0b11111111_00000000_11111111_00000000, a);
+        assert_eq!(1, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_reduce_or_epi8() {
+        let a = _mm_set_epi8(1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2);
+        let e = _mm_reduce_or_epi8(a);
+        assert_eq!(3, e);
+    }
+
+    #[simd_test(enable = "avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_reduce_or_epi8() {
+        let a = _mm_set_epi8(1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2);
+        let e = _mm_mask_reduce_or_epi8(0b11111111_00000000, a);
+        assert_eq!(1, e);
+    }
+
     #[simd_test(enable = "avx512bw")]
     unsafe fn test_mm512_loadu_epi16() {
         #[rustfmt::skip]
@@ -19231,19 +20409,19 @@ mod tests {
 
     #[simd_test(enable = "avx512bw")]
     unsafe fn test_mm512_kunpackw() {
-        let a: u32 = 0x11001100_00110011;
-        let b: u32 = 0x00101110_00001011;
+        let a: u32 = 0x00110011;
+        let b: u32 = 0x00001011;
         let r = _mm512_kunpackw(a, b);
-        let e: u32 = 0x00110011_00001011;
+        let e: u32 = 0x00111011;
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "avx512bw")]
     unsafe fn test_mm512_kunpackd() {
-        let a: u64 = 0xf_1100110000110011;
-        let b: u64 = 0xf_0010111000001011;
+        let a: u64 = 0x11001100_00110011;
+        let b: u64 = 0x00101110_00001011;
         let r = _mm512_kunpackd(a, b);
-        let e: u64 = 0x1100110000110011_0010111000001011;
+        let e: u64 = 0x00110011_00001011;
         assert_eq!(r, e);
     }
 
