@@ -1,5 +1,7 @@
 //! Provides the `extern static` that this platform expects.
 
+use rustc_symbol_mangling::mangle_internal_symbol;
+
 use crate::*;
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -50,7 +52,11 @@ impl<'tcx> MiriMachine<'tcx> {
         // "__rust_alloc_error_handler_should_panic"
         let val = ecx.tcx.sess.opts.unstable_opts.oom.should_panic();
         let val = ImmTy::from_int(val, ecx.machine.layouts.u8);
-        Self::alloc_extern_static(ecx, "__rust_alloc_error_handler_should_panic", val)?;
+        Self::alloc_extern_static(
+            ecx,
+            &mangle_internal_symbol(*ecx.tcx, "__rust_alloc_error_handler_should_panic"),
+            val,
+        )?;
 
         if ecx.target_os_is_unix() {
             // "environ" is mandated by POSIX.
