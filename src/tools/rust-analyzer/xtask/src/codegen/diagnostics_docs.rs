@@ -63,7 +63,7 @@ fn is_valid_diagnostic_name(diagnostic: &str) -> Result<(), String> {
     if diagnostic.chars().any(|c| c.is_ascii_uppercase()) {
         return Err("Diagnostic names can't contain uppercase symbols".into());
     }
-    if diagnostic.chars().any(|c| !c.is_ascii()) {
+    if !diagnostic.is_ascii() {
         return Err("Diagnostic can't contain non-ASCII symbols".into());
     }
 

@@ -119,12 +119,11 @@ impl flags::RustcPull {
         // Fetch given rustc commit.
         cmd!(sh, "git fetch http://localhost:{JOSH_PORT}/rust-lang/rust.git@{commit}{JOSH_FILTER}.git")
             .run()
-            .map_err(|e| {
+            .inspect_err(|_| {
                 // Try to un-do the previous `git commit`, to leave the repo in the state we found it it.
                 cmd!(sh, "git reset --hard HEAD^")
                     .run()
                     .expect("FAILED to clean up again after failed `git fetch`, sorry for that");
-                e
             })
             .context("FAILED to fetch new commits, something went wrong (committing the rust-version file has been undone)")?;
 

@@ -3367,7 +3367,7 @@ mod tests {
         for idx in url_offsets {
             let link = &schema[idx..];
             // matching on whitespace to ignore normal links
-            if let Some(link_end) = link.find(|c| c == ' ' || c == '[') {
+            if let Some(link_end) = link.find([' ', '[']) {
                 if link.chars().nth(link_end) == Some('[') {
                     if let Some(link_text_end) = link.find(']') {
                         let link_text = link[link_end..(link_text_end + 1)].to_string();

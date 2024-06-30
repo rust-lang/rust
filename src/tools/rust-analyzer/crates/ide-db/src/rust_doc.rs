@@ -7,11 +7,7 @@ pub fn is_rust_fence(s: &str) -> bool {
     let mut seen_rust_tags = false;
     let mut seen_other_tags = false;
 
-    let tokens = s
-        .trim()
-        .split(|c| c == ',' || c == ' ' || c == '\t')
-        .map(str::trim)
-        .filter(|t| !t.is_empty());
+    let tokens = s.trim().split([',', ' ', '\t']).map(str::trim).filter(|t| !t.is_empty());
 
     for token in tokens {
         match token {

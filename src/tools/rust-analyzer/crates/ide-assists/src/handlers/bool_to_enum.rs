@@ -76,7 +76,11 @@ pub(crate) fn bool_to_enum(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
 
             let usages = definition.usages(&ctx.sema).all();
             add_enum_def(edit, ctx, &usages, target_node, &target_module);
-            replace_usages(edit, ctx, usages, definition, &target_module);
+            let mut delayed_mutations = Vec::new();
+            replace_usages(edit, ctx, usages, definition, &target_module, &mut delayed_mutations);
+            for (scope, path) in delayed_mutations {
+                insert_use(&scope, path, &ctx.config.insert_use);
+            }
         },
     )
 }
@@ -197,6 +201,7 @@ fn replace_usages(
     usages: UsageSearchResult,
     target_definition: Definition,
     target_module: &hir::Module,
+    delayed_mutations: &mut Vec<(ImportScope, ast::Path)>,
 ) {
     for (file_id, references) in usages {
         edit.edit_file(file_id);
@@ -217,6 +222,7 @@ fn replace_usages(
                             def.usages(&ctx.sema).all(),
                             target_definition,
                             target_module,
+                            delayed_mutations,
                         )
                     }
                 } else if let Some(initializer) = find_assignment_usage(&name) {
@@ -255,6 +261,7 @@ fn replace_usages(
                                     def.usages(&ctx.sema).all(),
                                     target_definition,
                                     target_module,
+                                    delayed_mutations,
                                 )
                             }
                         }
@@ -306,7 +313,7 @@ fn replace_usages(
                         ImportScope::Module(it) => ImportScope::Module(edit.make_mut(it)),
                         ImportScope::Block(it) => ImportScope::Block(edit.make_mut(it)),
                     };
-                    insert_use(&scope, path, &ctx.config.insert_use);
+                    delayed_mutations.push((scope, path));
                 }
             },
         )

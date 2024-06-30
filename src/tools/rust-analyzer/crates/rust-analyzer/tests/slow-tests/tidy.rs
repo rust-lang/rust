@@ -155,7 +155,7 @@ Zlib OR Apache-2.0 OR MIT
 
     let meta = cmd!(sh, "cargo metadata --format-version 1").read().unwrap();
     let mut licenses = meta
-        .split(|c| c == ',' || c == '{' || c == '}')
+        .split([',', '{', '}'])
         .filter(|it| it.contains(r#""license""#))
         .map(|it| it.trim())
         .map(|it| it[r#""license":"#.len()..].trim_matches('"'))

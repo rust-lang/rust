@@ -305,7 +305,7 @@ fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
         }
         let range = TextRange::at(offset, len.try_into().unwrap());
         let line_no_caret = &line[len..];
-        let end_marker = line_no_caret.find(|c| c == '$');
+        let end_marker = line_no_caret.find('$');
         let next = line_no_caret.find(marker).map_or(line.len(), |it| it + len);
 
         let cond = |end_marker| {
