@@ -7,7 +7,6 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
