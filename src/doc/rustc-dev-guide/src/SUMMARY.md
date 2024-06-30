@@ -27,6 +27,7 @@
     - [Integration testing](./tests/integration.md)
         - [Crater](./tests/crater.md)
         - [Fuchsia](./tests/fuchsia.md)
+        - [Rust for Linux](./tests/rust-for-linux.md)
     - [Performance testing](./tests/perf.md)
     - [Suggest tests tool](./tests/suggest-tests.md)
 - [Debugging the compiler](./compiler-debugging.md)
