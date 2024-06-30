@@ -17,7 +17,7 @@ fn main() -> () {
     }
 
     bb1: {
-        falseUnwind -> [real: bb2, unwind: bb15];
+        falseUnwind -> [real: bb2, unwind: bb14];
     }
 
     bb2: {
@@ -25,7 +25,7 @@ fn main() -> () {
         StorageLive(_3);
         _3 = const true;
         PlaceMention(_3);
-        switchInt(_3) -> [0: bb5, otherwise: bb7];
+        switchInt(_3) -> [0: bb4, otherwise: bb6];
     }
 
     bb3: {
@@ -34,49 +34,45 @@ fn main() -> () {
     }
 
     bb4: {
-        goto -> bb3;
+        falseEdge -> [real: bb8, imaginary: bb6];
     }
 
     bb5: {
-        falseEdge -> [real: bb9, imaginary: bb7];
+        goto -> bb3;
     }
 
     bb6: {
-        goto -> bb4;
+        _0 = const ();
+        goto -> bb13;
     }
 
     bb7: {
-        _0 = const ();
-        goto -> bb14;
+        goto -> bb3;
     }
 
     bb8: {
-        goto -> bb4;
+        _2 = const 4_i32;
+        goto -> bb11;
     }
 
     bb9: {
-        _2 = const 4_i32;
-        goto -> bb12;
-    }
-
-    bb10: {
         unreachable;
     }
 
-    bb11: {
-        goto -> bb12;
+    bb10: {
+        goto -> bb11;
     }
 
-    bb12: {
+    bb11: {
         FakeRead(ForLet(None), _2);
         StorageDead(_3);
         StorageLive(_5);
         StorageLive(_6);
         _6 = &_2;
-        _5 = std::mem::drop::<&i32>(move _6) -> [return: bb13, unwind: bb15];
+        _5 = std::mem::drop::<&i32>(move _6) -> [return: bb12, unwind: bb14];
     }
 
-    bb13: {
+    bb12: {
         StorageDead(_6);
         StorageDead(_5);
         _1 = const ();
@@ -84,13 +80,13 @@ fn main() -> () {
         goto -> bb1;
     }
 
-    bb14: {
+    bb13: {
         StorageDead(_3);
         StorageDead(_2);
         return;
     }
 
-    bb15 (cleanup): {
+    bb14 (cleanup): {
         resume;
     }
 }
