@@ -8,7 +8,7 @@ LL |     fn foo(self: Bar<Foo>) {
    = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0307]: invalid `self` parameter type: `&Bar<Foo>`
-  --> $DIR/method_resolution4.rs:32:20
+  --> $DIR/method_resolution4.rs:31:20
    |
 LL |     fn foomp(self: &Bar<Foo>) {
    |                    ^^^^^^^^^
