@@ -254,8 +254,6 @@ mod tests {
     }
     */
 
-    // FIXME: this looks like a bug in Intel's SDE:
-    #[cfg(not(stdarch_intel_sde))]
     #[simd_test(enable = "xsave,xsavec")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
     unsafe fn xsavec() {

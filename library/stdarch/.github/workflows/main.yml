@@ -115,6 +115,7 @@ jobs:
           os: ubuntu-latest
           test_everything: true
           rustflags: --cfg stdarch_intel_sde
+          disable_assert_instr: true
         - target: arm-unknown-linux-gnueabihf
           os: ubuntu-latest
         - target: armv7-unknown-linux-gnueabihf
