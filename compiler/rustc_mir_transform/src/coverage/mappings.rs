@@ -9,9 +9,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
-use crate::coverage::spans::{
-    extract_refined_covspans, unexpand_into_body_span_with_visible_macro,
-};
+use crate::coverage::spans::extract_refined_covspans;
+use crate::coverage::unexpand::unexpand_into_body_span_with_visible_macro;
 use crate::coverage::ExtractedHirInfo;
 
 /// Associates an ordinary executable code span with its corresponding BCB.

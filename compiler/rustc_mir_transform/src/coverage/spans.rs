@@ -14,11 +14,6 @@ use crate::coverage::ExtractedHirInfo;
 
 mod from_mir;
 
-// FIXME(#124545) It's awkward that we have to re-export this, because it's an
-// internal detail of `from_mir` that is also needed when handling branch and
-// MC/DC spans. Ideally we would find a more natural home for it.
-pub(super) use from_mir::unexpand_into_body_span_with_visible_macro;
-
 pub(super) fn extract_refined_covspans(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
