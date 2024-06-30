@@ -1427,108 +1427,39 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Note how we test `x` twice. This is the tradeoff of backtracking automata: we prefer smaller
     /// code size at the expense of non-optimal code paths.
     #[instrument(skip(self), level = "debug")]
-    fn match_candidates<'pat>(
+    fn match_candidates(
         &mut self,
         span: Span,
         scrutinee_span: Span,
         start_block: BasicBlock,
         otherwise_block: BasicBlock,
-        candidates: &mut [&mut Candidate<'pat, 'tcx>],
+        candidates: &mut [&mut Candidate<'_, 'tcx>],
     ) {
-        // We process or-patterns here. If any candidate starts with an or-pattern, we have to
-        // expand the or-pattern before we can proceed further.
-        //
-        // We can't expand them freely however. The rule is: if the candidate has an or-pattern as
-        // its only remaining match pair, we can expand it freely. If it has other match pairs, we
-        // can expand it but we can't process more candidates after it.
-        //
-        // If we didn't stop, the `otherwise` cases could get mixed up. E.g. in the following,
-        // or-pattern simplification (in `merge_trivial_subcandidates`) makes it so the `1` and `2`
-        // cases branch to a same block (which then tests `false`). If we took `(2, _)` in the same
-        // set of candidates, when we reach the block that tests `false` we don't know whether we
-        // came from `1` or `2`, hence we can't know where to branch on failure.
-        // ```ignore(illustrative)
-        // match (1, true) {
-        //     (1 | 2, false) => {},
-        //     (2, _) => {},
-        //     _ => {}
-        // }
-        // ```
-        //
-        // We therefore split the `candidates` slice in two, expand or-patterns in the first half,
-        // and process both halves separately.
-        let mut expand_until = 0;
-        for (i, candidate) in candidates.iter().enumerate() {
-            if matches!(
+        // If any candidate starts with an or-pattern, we have to expand the or-pattern before we
+        // can proceed further.
+        let expand_ors = candidates.iter().any(|candidate| {
+            matches!(
                 &*candidate.match_pairs,
                 [MatchPair { test_case: TestCase::Or { .. }, .. }, ..]
-            ) {
-                expand_until = i + 1;
-                if candidate.match_pairs.len() > 1 {
-                    break;
-                }
-            }
-            if expand_until != 0 {
-                expand_until = i + 1;
-            }
-        }
-        let (candidates_to_expand, remaining_candidates) = candidates.split_at_mut(expand_until);
-
+            )
+        });
         ensure_sufficient_stack(|| {
-            if candidates_to_expand.is_empty() {
+            if !expand_ors {
                 // No candidates start with an or-pattern, we can continue.
                 self.match_expanded_candidates(
                     span,
                     scrutinee_span,
                     start_block,
                     otherwise_block,
-                    remaining_candidates,
+                    candidates,
                 );
             } else {
-                // Expand one level of or-patterns for each candidate in `candidates_to_expand`.
-                let mut expanded_candidates = Vec::new();
-                for candidate in candidates_to_expand.iter_mut() {
-                    if let [MatchPair { test_case: TestCase::Or { .. }, .. }, ..] =
-                        &*candidate.match_pairs
-                    {
-                        let or_match_pair = candidate.match_pairs.remove(0);
-                        // Expand the or-pattern into subcandidates.
-                        self.create_or_subcandidates(candidate, or_match_pair);
-                        // Collect the newly created subcandidates.
-                        for subcandidate in candidate.subcandidates.iter_mut() {
-                            expanded_candidates.push(subcandidate);
-                        }
-                    } else {
-                        expanded_candidates.push(candidate);
-                    }
-                }
-
-                // Process the expanded candidates.
-                let remainder_start = self.cfg.start_new_block();
-                // There might be new or-patterns obtained from expanding the old ones, so we call
-                // `match_candidates` again.
-                self.match_candidates(
+                self.expand_and_match_or_candidates(
                     span,
                     scrutinee_span,
                     start_block,
-                    remainder_start,
-                    expanded_candidates.as_mut_slice(),
-                );
-
-                // Simplify subcandidates and process any leftover match pairs.
-                for candidate in candidates_to_expand {
-                    if !candidate.subcandidates.is_empty() {
-                        self.finalize_or_candidate(span, scrutinee_span, candidate);
-                    }
-                }
-
-                // Process the remaining candidates.
-                self.match_candidates(
-                    span,
-                    scrutinee_span,
-                    remainder_start,
                     otherwise_block,
-                    remaining_candidates,
+                    candidates,
                 );
             }
         });
@@ -1622,6 +1553,98 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // pre-binding block for the next candidate.
         candidate.otherwise_block = Some(otherwise_block);
         otherwise_block
+    }
+
+    /// Takes a list of candidates such that some of the candidates' first match pairs are
+    /// or-patterns, expands as many or-patterns as possible, and processes the resulting
+    /// candidates.
+    fn expand_and_match_or_candidates(
+        &mut self,
+        span: Span,
+        scrutinee_span: Span,
+        start_block: BasicBlock,
+        otherwise_block: BasicBlock,
+        candidates: &mut [&mut Candidate<'_, 'tcx>],
+    ) {
+        // We can't expand or-patterns freely. The rule is: if the candidate has an
+        // or-pattern as its only remaining match pair, we can expand it freely. If it has
+        // other match pairs, we can expand it but we can't process more candidates after
+        // it.
+        //
+        // If we didn't stop, the `otherwise` cases could get mixed up. E.g. in the
+        // following, or-pattern simplification (in `merge_trivial_subcandidates`) makes it
+        // so the `1` and `2` cases branch to a same block (which then tests `false`). If we
+        // took `(2, _)` in the same set of candidates, when we reach the block that tests
+        // `false` we don't know whether we came from `1` or `2`, hence we can't know where
+        // to branch on failure.
+        //
+        // ```ignore(illustrative)
+        // match (1, true) {
+        //     (1 | 2, false) => {},
+        //     (2, _) => {},
+        //     _ => {}
+        // }
+        // ```
+        //
+        // We therefore split the `candidates` slice in two, expand or-patterns in the first half,
+        // and process the rest separately.
+        let mut expand_until = 0;
+        for (i, candidate) in candidates.iter().enumerate() {
+            expand_until = i + 1;
+            if candidate.match_pairs.len() > 1
+                && matches!(&candidate.match_pairs[0].test_case, TestCase::Or { .. })
+            {
+                // The candidate has an or-pattern as well as more match pairs: we must
+                // split the candidates list here.
+                break;
+            }
+        }
+        let (candidates_to_expand, remaining_candidates) = candidates.split_at_mut(expand_until);
+
+        // Expand one level of or-patterns for each candidate in `candidates_to_expand`.
+        let mut expanded_candidates = Vec::new();
+        for candidate in candidates_to_expand.iter_mut() {
+            if let [MatchPair { test_case: TestCase::Or { .. }, .. }, ..] = &*candidate.match_pairs
+            {
+                let or_match_pair = candidate.match_pairs.remove(0);
+                // Expand the or-pattern into subcandidates.
+                self.create_or_subcandidates(candidate, or_match_pair);
+                // Collect the newly created subcandidates.
+                for subcandidate in candidate.subcandidates.iter_mut() {
+                    expanded_candidates.push(subcandidate);
+                }
+            } else {
+                expanded_candidates.push(candidate);
+            }
+        }
+
+        // Process the expanded candidates.
+        let remainder_start = self.cfg.start_new_block();
+        // There might be new or-patterns obtained from expanding the old ones, so we call
+        // `match_candidates` again.
+        self.match_candidates(
+            span,
+            scrutinee_span,
+            start_block,
+            remainder_start,
+            expanded_candidates.as_mut_slice(),
+        );
+
+        // Simplify subcandidates and process any leftover match pairs.
+        for candidate in candidates_to_expand {
+            if !candidate.subcandidates.is_empty() {
+                self.finalize_or_candidate(span, scrutinee_span, candidate);
+            }
+        }
+
+        // Process the remaining candidates.
+        self.match_candidates(
+            span,
+            scrutinee_span,
+            remainder_start,
+            otherwise_block,
+            remaining_candidates,
+        );
     }
 
     /// Given a match-pair that corresponds to an or-pattern, expand each subpattern into a new
