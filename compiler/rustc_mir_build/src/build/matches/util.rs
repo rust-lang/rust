@@ -72,6 +72,10 @@ pub(super) fn collect_fake_borrows<'tcx>(
     temp_span: Span,
     scrutinee_base: PlaceBase,
 ) -> Vec<(Place<'tcx>, Local, FakeBorrowKind)> {
+    if candidates.iter().all(|candidate| !candidate.has_guard) {
+        // Fake borrows are only used when there is a guard.
+        return Vec::new();
+    }
     let mut collector =
         FakeBorrowCollector { cx, scrutinee_base, fake_borrows: FxIndexMap::default() };
     for candidate in candidates.iter() {

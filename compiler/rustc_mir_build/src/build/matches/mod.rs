@@ -366,36 +366,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             unpack!(block = self.lower_scrutinee(block, scrutinee_id, scrutinee_span));
 
         let arms = arms.iter().map(|arm| &self.thir[*arm]);
-        // Assemble the initial list of candidates. These top-level candidates are 1:1 with the
-        // original match arms, but other parts of match lowering also introduce subcandidates (for
-        // sub-or-patterns). So inside the algorithm, the candidates list may not correspond to
-        // match arms directly.
-        let candidates: Vec<_> = arms
+        let match_start_span = span.shrink_to_lo().to(scrutinee_span);
+        let patterns = arms
             .clone()
             .map(|arm| {
-                let arm_has_guard = arm.guard.is_some();
-                let arm_candidate =
-                    Candidate::new(scrutinee_place.clone(), &arm.pattern, arm_has_guard, self);
-                arm_candidate
+                let has_match_guard =
+                    if arm.guard.is_some() { HasMatchGuard::Yes } else { HasMatchGuard::No };
+                (&*arm.pattern, has_match_guard)
             })
             .collect();
-
-        // The set of places that we are creating fake borrows of. If there are no match guards then
-        // we don't need any fake borrows, so don't track them.
-        let match_has_guard = candidates.iter().any(|candidate| candidate.has_guard);
-        let fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)> = if match_has_guard {
-            util::collect_fake_borrows(self, &candidates, scrutinee_span, scrutinee_place.base())
-        } else {
-            Vec::new()
-        };
-
-        let match_start_span = span.shrink_to_lo().to(scrutinee_span);
         let built_tree = self.lower_match_tree(
             block,
             scrutinee_span,
             &scrutinee_place,
             match_start_span,
-            candidates,
+            patterns,
             false,
         );
 
@@ -404,9 +389,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             scrutinee_place,
             scrutinee_span,
             arms,
-            built_tree.branches,
+            built_tree,
             self.source_info(span),
-            fake_borrow_temps,
         )
     }
 
@@ -438,16 +422,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_place_builder: PlaceBuilder<'tcx>,
         scrutinee_span: Span,
         arms: impl IntoIterator<Item = &'pat Arm<'tcx>>,
-        lowered_branches: impl IntoIterator<Item = MatchTreeBranch<'tcx>>,
+        built_match_tree: BuiltMatchTree<'tcx>,
         outer_source_info: SourceInfo,
-        fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)>,
     ) -> BlockAnd<()>
     where
         'tcx: 'pat,
     {
         let arm_end_blocks: Vec<BasicBlock> = arms
             .into_iter()
-            .zip(lowered_branches)
+            .zip(built_match_tree.branches)
             .map(|(arm, branch)| {
                 debug!("lowering arm {:?}\ncorresponding branch = {:?}", arm, branch);
 
@@ -483,7 +466,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let arm_block = this.bind_pattern(
                         outer_source_info,
                         branch,
-                        &fake_borrow_temps,
+                        &built_match_tree.fake_borrow_temps,
                         scrutinee_span,
                         Some((arm, match_scope)),
                         EmitStorageLive::Yes,
@@ -700,13 +683,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         initializer: PlaceBuilder<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {
-        let candidate = Candidate::new(initializer.clone(), irrefutable_pat, false, self);
         let built_tree = self.lower_match_tree(
             block,
             irrefutable_pat.span,
             &initializer,
             irrefutable_pat.span,
-            vec![candidate],
+            vec![(irrefutable_pat, HasMatchGuard::No)],
             false,
         );
         let [branch] = built_tree.branches.try_into().unwrap();
@@ -1136,12 +1118,15 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
     fn new(
         place: PlaceBuilder<'tcx>,
         pattern: &'pat Pat<'tcx>,
-        has_guard: bool,
+        has_guard: HasMatchGuard,
         cx: &mut Builder<'_, 'tcx>,
     ) -> Self {
         // Use `FlatPat` to build simplified match pairs, then immediately
         // incorporate them into a new candidate.
-        Self::from_flat_pat(FlatPat::new(place, pattern, cx), has_guard)
+        Self::from_flat_pat(
+            FlatPat::new(place, pattern, cx),
+            matches!(has_guard, HasMatchGuard::Yes),
+        )
     }
 
     /// Incorporates an already-simplified [`FlatPat`] into a new candidate.
@@ -1437,6 +1422,10 @@ struct MatchTreeBranch<'tcx> {
 struct BuiltMatchTree<'tcx> {
     branches: Vec<MatchTreeBranch<'tcx>>,
     otherwise_block: BasicBlock,
+    /// If any of the branches had a guard, we collect here the places and locals to fakely borrow
+    /// to ensure match guards can't modify the values as we match them. For more details, see
+    /// [`util::collect_fake_borrows`].
+    fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)>,
 }
 
 impl<'tcx> MatchTreeSubBranch<'tcx> {
@@ -1487,12 +1476,18 @@ impl<'tcx> MatchTreeBranch<'tcx> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HasMatchGuard {
+    Yes,
+    No,
+}
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// The entrypoint of the matching algorithm. Create the decision tree for the match expression,
     /// starting from `block`.
     ///
-    /// Modifies `candidates` to store the bindings and type ascriptions for
-    /// that candidate.
+    /// `patterns` is a list of patterns, one for each arm. The associated boolean indicates whether
+    /// the arm has a guard.
     ///
     /// `refutable` indicates whether the candidate list is refutable (for `if let` and `let else`)
     /// or not (for `let` and `match`). In the refutable case we return the block to which we branch
@@ -1503,9 +1498,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         scrutinee_place_builder: &PlaceBuilder<'tcx>,
         match_start_span: Span,
-        mut candidates: Vec<Candidate<'pat, 'tcx>>,
+        patterns: Vec<(&'pat Pat<'tcx>, HasMatchGuard)>,
         refutable: bool,
-    ) -> BuiltMatchTree<'tcx> {
+    ) -> BuiltMatchTree<'tcx>
+    where
+        'tcx: 'pat,
+    {
+        // Assemble the initial list of candidates. These top-level candidates are 1:1 with the
+        // input patterns, but other parts of match lowering also introduce subcandidates (for
+        // sub-or-patterns). So inside the algorithm, the candidates list may not correspond to
+        // match arms directly.
+        let mut candidates: Vec<Candidate<'_, '_>> = patterns
+            .into_iter()
+            .map(|(pat, has_guard)| {
+                Candidate::new(scrutinee_place_builder.clone(), pat, has_guard, self)
+            })
+            .collect();
+
+        let fake_borrow_temps = util::collect_fake_borrows(
+            self,
+            &candidates,
+            scrutinee_span,
+            scrutinee_place_builder.base(),
+        );
+
         // This will generate code to test scrutinee_place and branch to the appropriate arm block.
         // If none of the arms match, we branch to `otherwise_block`. When lowering a `match`
         // expression, exhaustiveness checking ensures that this block is unreachable.
@@ -1584,6 +1600,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         BuiltMatchTree {
             branches: candidates.into_iter().map(MatchTreeBranch::from_candidate).collect(),
             otherwise_block,
+            fake_borrow_temps,
         }
     }
 
@@ -2334,9 +2351,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         let expr_span = self.thir[expr_id].span;
         let scrutinee = unpack!(block = self.lower_scrutinee(block, expr_id, expr_span));
-        let candidate = Candidate::new(scrutinee.clone(), pat, false, self);
-        let built_tree =
-            self.lower_match_tree(block, expr_span, &scrutinee, pat.span, vec![candidate], true);
+        let built_tree = self.lower_match_tree(
+            block,
+            expr_span,
+            &scrutinee,
+            pat.span,
+            vec![(pat, HasMatchGuard::No)],
+            true,
+        );
         let [branch] = built_tree.branches.try_into().unwrap();
 
         self.break_for_else(built_tree.otherwise_block, self.source_info(expr_span));
