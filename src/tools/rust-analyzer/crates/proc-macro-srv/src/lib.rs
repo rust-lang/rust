@@ -48,8 +48,7 @@ use span::Span;
 
 use crate::server::TokenStream;
 
-// see `build.rs`
-include!(concat!(env!("OUT_DIR"), "/rustc_version.rs"));
+pub const RUSTC_VERSION_STRING: &str = env!("RUSTC_VERSION");
 
 trait ProcMacroSrvSpan: Copy {
     type Server: proc_macro::bridge::server::Server<TokenStream = TokenStream<Self>>;
