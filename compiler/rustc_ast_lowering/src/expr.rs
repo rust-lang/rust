@@ -377,19 +377,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut generic_args = ThinVec::new();
         for (idx, arg) in args.into_iter().enumerate() {
             if legacy_args_idx.contains(&idx) {
-                let parent_def_id = self.current_hir_id_owner;
+                let parent_def_id = self.current_def_id_parent;
                 let node_id = self.next_node_id();
 
                 // HACK(min_generic_const_args): see lower_anon_const
                 if !arg.is_potential_trivial_const_arg() {
                     // Add a definition for the in-band const def.
-                    self.create_def(
-                        parent_def_id.def_id,
-                        node_id,
-                        kw::Empty,
-                        DefKind::AnonConst,
-                        f.span,
-                    );
+                    self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
                 }
 
                 let anon_const = AnonConst { id: node_id, value: arg };
