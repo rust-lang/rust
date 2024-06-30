@@ -20,10 +20,6 @@ pub struct PipeReader(AnonPipe);
 #[derive(Debug)]
 pub struct PipeWriter(AnonPipe);
 
-/// The owned fd provided is not a pipe.
-#[derive(Debug)]
-pub struct NotAPipeError;
-
 impl PipeReader {
     /// Create a new [`PipeReader`] instance that shares the same underlying file description.
     pub fn try_clone(&self) -> io::Result<Self> {
@@ -89,7 +85,11 @@ mod unix {
     use super::*;
 
     use crate::{
-        os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
+        fs::File,
+        os::{
+            fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
+            unix::fs::FileTypeExt,
+        },
         sys::{
             fd::FileDesc,
             pipe::{anon_pipe, AnonPipe},
@@ -139,23 +139,61 @@ mod unix {
     impl_traits!(PipeReader);
     impl_traits!(PipeWriter);
 
-    fn owned_fd_to_anon_pipe(owned_fd: OwnedFd) -> AnonPipe {
-        AnonPipe::from_inner(FileDesc::from_inner(owned_fd))
+    fn convert_to_pipe(owned_fd: OwnedFd) -> io::Result<AnonPipe> {
+        let file = File::from(owned_fd);
+        if file.metadata()?.file_type().is_fifo() {
+            Ok(AnonPipe::from_inner(FileDesc::from_inner(OwnedFd::from(file))))
+        } else {
+            Err(io::Error::new(io::ErrorKind::InvalidInput, "Not a pipe"))
+        }
+    }
+
+    enum AccessMode {
+        Readable,
+        Writable,
+    }
+
+    fn check_access_mode(pipe: AnonPipe, expected_access_mode: AccessMode) -> io::Result<AnonPipe> {
+        let ret = unsafe { libc::fcntl(pipe.as_raw_fd(), libc::F_GETFL) };
+        let access_mode = ret & libc::O_ACCMODE;
+        let expected_access_mode_str = match expected_access_mode {
+            AccessMode::Readable => "readable",
+            AccessMode::Writable => "writable",
+        };
+        let expected_access_mode = match expected_access_mode {
+            AccessMode::Readable => libc::O_RDONLY,
+            AccessMode::Writable => libc::O_WRONLY,
+        };
+
+        if ret == -1 {
+            Err(io::Error::last_os_error())
+        } else if access_mode == libc::O_RDWR && access_mode == expected_access_mode {
+            Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("Pipe {} is not {}", pipe.as_raw_fd(), expected_access_mode_str),
+            ))
+        } else {
+            Ok(pipe)
+        }
     }
 
     impl TryFrom<OwnedFd> for PipeReader {
-        type Error = NotAPipeError;
+        type Error = io::Error;
 
         fn try_from(owned_fd: OwnedFd) -> Result<Self, Self::Error> {
-            Ok(Self(owned_fd_to_anon_pipe(owned_fd)))
+            convert_to_pipe(owned_fd)
+                .and_then(|pipe| check_access_mode(pipe, AccessMode::Readable))
+                .map(Self)
         }
     }
 
     impl TryFrom<OwnedFd> for PipeWriter {
-        type Error = NotAPipeError;
+        type Error = io::Error;
 
         fn try_from(owned_fd: OwnedFd) -> Result<Self, Self::Error> {
-            Ok(Self(owned_fd_to_anon_pipe(owned_fd)))
+            convert_to_pipe(owned_fd)
+                .and_then(|pipe| check_access_mode(pipe, AccessMode::Writable))
+                .map(Self)
         }
     }
 }
@@ -225,7 +263,7 @@ mod windows {
     }
 
     impl TryFrom<OwnedHandle> for PipeReader {
-        type Error = NotAPipeError;
+        type Error = io::Error;
 
         fn try_from(owned_handle: OwnedHandle) -> Result<Self, Self::Error> {
             Ok(Self(owned_handle_to_anon_pipe(owned_handle)))
@@ -233,7 +271,7 @@ mod windows {
     }
 
     impl TryFrom<OwnedHandle> for PipeWriter {
-        type Error = NotAPipeError;
+        type Error = io::Error;
 
         fn try_from(owned_handle: OwnedHandle) -> Result<Self, Self::Error> {
             Ok(Self(owned_handle_to_anon_pipe(owned_handle)))
