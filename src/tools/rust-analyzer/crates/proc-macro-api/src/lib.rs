@@ -156,23 +156,26 @@ impl ProcMacro {
         let call_site = span_data_table.insert_full(call_site).0;
         let mixed_site = span_data_table.insert_full(mixed_site).0;
         let task = ExpandMacro {
-            macro_body: FlatTree::new(subtree, version, &mut span_data_table),
-            macro_name: self.name.to_string(),
-            attributes: attr.map(|subtree| FlatTree::new(subtree, version, &mut span_data_table)),
+            data: msg::ExpandMacroData {
+                macro_body: FlatTree::new(subtree, version, &mut span_data_table),
+                macro_name: self.name.to_string(),
+                attributes: attr
+                    .map(|subtree| FlatTree::new(subtree, version, &mut span_data_table)),
+                has_global_spans: ExpnGlobals {
+                    serialize: version >= HAS_GLOBAL_SPANS,
+                    def_site,
+                    call_site,
+                    mixed_site,
+                },
+                span_data_table: if version >= RUST_ANALYZER_SPAN_SUPPORT {
+                    serialize_span_data_index_map(&span_data_table)
+                } else {
+                    Vec::new()
+                },
+            },
             lib: self.dylib_path.to_path_buf().into(),
             env: env.into(),
             current_dir,
-            has_global_spans: ExpnGlobals {
-                serialize: version >= HAS_GLOBAL_SPANS,
-                def_site,
-                call_site,
-                mixed_site,
-            },
-            span_data_table: if version >= RUST_ANALYZER_SPAN_SUPPORT {
-                serialize_span_data_index_map(&span_data_table)
-            } else {
-                Vec::new()
-            },
         };
 
         let response = self.process.send_task(msg::Request::ExpandMacro(Box::new(task)))?;

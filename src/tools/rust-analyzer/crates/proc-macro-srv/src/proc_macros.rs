@@ -1,8 +1,9 @@
 //! Proc macro ABI
 
-use libloading::Library;
 use proc_macro::bridge;
 use proc_macro_api::ProcMacroKind;
+
+use libloading::Library;
 
 use crate::{dylib::LoadProcMacroDylibError, ProcMacroSrvSpan};
 

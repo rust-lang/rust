@@ -5,7 +5,7 @@ use proc_macro_api::msg::TokenId;
 use span::{ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
 use tt::TextRange;
 
-use crate::{dylib, proc_macro_test_dylib_path, ProcMacroSrv};
+use crate::{dylib, proc_macro_test_dylib_path, EnvSnapshot, ProcMacroSrv};
 
 fn parse_string(call_site: TokenId, src: &str) -> crate::server_impl::TokenStream<TokenId> {
     crate::server_impl::TokenStream::with_subtree(
@@ -96,7 +96,8 @@ fn assert_expand_impl(
 
 pub(crate) fn list() -> Vec<String> {
     let dylib_path = proc_macro_test_dylib_path();
-    let mut srv = ProcMacroSrv::default();
+    let env = EnvSnapshot::new();
+    let mut srv = ProcMacroSrv::new(&env);
     let res = srv.list_macros(&dylib_path).unwrap();
     res.into_iter().map(|(name, kind)| format!("{name} [{kind:?}]")).collect()
 }
