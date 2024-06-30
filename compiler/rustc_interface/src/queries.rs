@@ -116,35 +116,6 @@ impl<'tcx> Queries<'tcx> {
             )
         })
     }
-
-    pub fn codegen_and_build_linker(&'tcx self) -> Result<Linker> {
-        self.global_ctxt()?.enter(|tcx| {
-            let ongoing_codegen = passes::start_codegen(&*self.compiler.codegen_backend, tcx)?;
-
-            // This must run after monomorphization so that all generic types
-            // have been instantiated.
-            if tcx.sess.opts.unstable_opts.print_type_sizes {
-                tcx.sess.code_stats.print_type_sizes();
-            }
-
-            if tcx.sess.opts.unstable_opts.print_vtable_sizes {
-                let crate_name = tcx.crate_name(LOCAL_CRATE);
-
-                tcx.sess.code_stats.print_vtable_sizes(crate_name);
-            }
-
-            Ok(Linker {
-                dep_graph: tcx.dep_graph.clone(),
-                output_filenames: tcx.output_filenames(()).clone(),
-                crate_hash: if tcx.needs_crate_hash() {
-                    Some(tcx.crate_hash(LOCAL_CRATE))
-                } else {
-                    None
-                },
-                ongoing_codegen,
-            })
-        })
-    }
 }
 
 pub struct Linker {
@@ -156,6 +127,36 @@ pub struct Linker {
 }
 
 impl Linker {
+    pub fn codegen_and_build_linker(
+        tcx: TyCtxt<'_>,
+        codegen_backend: &dyn CodegenBackend,
+    ) -> Result<Linker> {
+        let ongoing_codegen = passes::start_codegen(codegen_backend, tcx)?;
+
+        // This must run after monomorphization so that all generic types
+        // have been instantiated.
+        if tcx.sess.opts.unstable_opts.print_type_sizes {
+            tcx.sess.code_stats.print_type_sizes();
+        }
+
+        if tcx.sess.opts.unstable_opts.print_vtable_sizes {
+            let crate_name = tcx.crate_name(LOCAL_CRATE);
+
+            tcx.sess.code_stats.print_vtable_sizes(crate_name);
+        }
+
+        Ok(Linker {
+            dep_graph: tcx.dep_graph.clone(),
+            output_filenames: tcx.output_filenames(()).clone(),
+            crate_hash: if tcx.needs_crate_hash() {
+                Some(tcx.crate_hash(LOCAL_CRATE))
+            } else {
+                None
+            },
+            ongoing_codegen,
+        })
+    }
+
     pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) -> Result<()> {
         let (codegen_results, work_products) =
             codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames);
