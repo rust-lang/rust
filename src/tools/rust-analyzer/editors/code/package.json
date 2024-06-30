@@ -1187,12 +1187,6 @@
                                 "description": "Put the expression into a pinned `Box`",
                                 "scope": "expr"
                             },
-                            "Ok": {
-                                "postfix": "ok",
-                                "body": "Ok(${receiver})",
-                                "description": "Wrap the expression in a `Result::Ok`",
-                                "scope": "expr"
-                            },
                             "Err": {
                                 "postfix": "err",
                                 "body": "Err(${receiver})",
@@ -1203,6 +1197,12 @@
                                 "postfix": "some",
                                 "body": "Some(${receiver})",
                                 "description": "Wrap the expression in an `Option::Some`",
+                                "scope": "expr"
+                            },
+                            "Ok": {
+                                "postfix": "ok",
+                                "body": "Ok(${receiver})",
+                                "description": "Wrap the expression in a `Result::Ok`",
                                 "scope": "expr"
                             }
                         },

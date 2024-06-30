@@ -809,7 +809,6 @@ checksum = "168fb715dda47215e360912c096649d23d58bf392ac62f73919e831745e40f26"
 dependencies = [
  "equivalent",
  "hashbrown",
- "serde",
 ]
 
 [[package]]
@@ -1683,7 +1682,6 @@ dependencies = [
  "ide",
  "ide-db",
  "ide-ssr",
- "indexmap",
  "itertools",
  "load-cargo",
  "lsp-server 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
