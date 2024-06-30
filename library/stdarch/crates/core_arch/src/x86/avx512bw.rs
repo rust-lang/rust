@@ -364,12 +364,7 @@ pub unsafe fn _mm_maskz_add_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddusw))]
 pub unsafe fn _mm512_adds_epu16(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpaddusw(
-        a.as_u16x32(),
-        b.as_u16x32(),
-        _mm512_setzero_si512().as_u16x32(),
-        0b11111111_11111111_11111111_11111111,
-    ))
+    transmute(simd_saturating_add(a.as_u16x32(), b.as_u16x32()))
 }
 
 /// Add packed unsigned 16-bit integers in a and b using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -385,7 +380,8 @@ pub unsafe fn _mm512_mask_adds_epu16(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    transmute(vpaddusw(a.as_u16x32(), b.as_u16x32(), src.as_u16x32(), k))
+    let add = _mm512_adds_epu16(a, b).as_u16x32();
+    transmute(simd_select_bitmask(k, add, src.as_u16x32()))
 }
 
 /// Add packed unsigned 16-bit integers in a and b using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -396,12 +392,8 @@ pub unsafe fn _mm512_mask_adds_epu16(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddusw))]
 pub unsafe fn _mm512_maskz_adds_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpaddusw(
-        a.as_u16x32(),
-        b.as_u16x32(),
-        _mm512_setzero_si512().as_u16x32(),
-        k,
-    ))
+    let add = _mm512_adds_epu16(a, b).as_u16x32();
+    transmute(simd_select_bitmask(k, add, u16x32::splat(0)))
 }
 
 /// Add packed unsigned 16-bit integers in a and b using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -417,12 +409,8 @@ pub unsafe fn _mm256_mask_adds_epu16(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    transmute(vpaddusw256(
-        a.as_u16x16(),
-        b.as_u16x16(),
-        src.as_u16x16(),
-        k,
-    ))
+    let add = _mm256_adds_epu16(a, b).as_u16x16();
+    transmute(simd_select_bitmask(k, add, src.as_u16x16()))
 }
 
 /// Add packed unsigned 16-bit integers in a and b using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -433,12 +421,8 @@ pub unsafe fn _mm256_mask_adds_epu16(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddusw))]
 pub unsafe fn _mm256_maskz_adds_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
-    transmute(vpaddusw256(
-        a.as_u16x16(),
-        b.as_u16x16(),
-        _mm256_setzero_si256().as_u16x16(),
-        k,
-    ))
+    let add = _mm256_adds_epu16(a, b).as_u16x16();
+    transmute(simd_select_bitmask(k, add, u16x16::splat(0)))
 }
 
 /// Add packed unsigned 16-bit integers in a and b using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -449,7 +433,8 @@ pub unsafe fn _mm256_maskz_adds_epu16(k: __mmask16, a: __m256i, b: __m256i) -> _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddusw))]
 pub unsafe fn _mm_mask_adds_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpaddusw128(a.as_u16x8(), b.as_u16x8(), src.as_u16x8(), k))
+    let add = _mm_adds_epu16(a, b).as_u16x8();
+    transmute(simd_select_bitmask(k, add, src.as_u16x8()))
 }
 
 /// Add packed unsigned 16-bit integers in a and b using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -460,12 +445,8 @@ pub unsafe fn _mm_mask_adds_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m1
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddusw))]
 pub unsafe fn _mm_maskz_adds_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpaddusw128(
-        a.as_u16x8(),
-        b.as_u16x8(),
-        _mm_setzero_si128().as_u16x8(),
-        k,
-    ))
+    let add = _mm_adds_epu16(a, b).as_u16x8();
+    transmute(simd_select_bitmask(k, add, u16x8::splat(0)))
 }
 
 /// Add packed unsigned 8-bit integers in a and b using saturation, and store the results in dst.
@@ -476,12 +457,7 @@ pub unsafe fn _mm_maskz_adds_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m12
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
 pub unsafe fn _mm512_adds_epu8(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpaddusb(
-        a.as_u8x64(),
-        b.as_u8x64(),
-        _mm512_setzero_si512().as_u8x64(),
-        0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111,
-    ))
+    transmute(simd_saturating_add(a.as_u8x64(), b.as_u8x64()))
 }
 
 /// Add packed unsigned 8-bit integers in a and b using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -492,7 +468,8 @@ pub unsafe fn _mm512_adds_epu8(a: __m512i, b: __m512i) -> __m512i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
 pub unsafe fn _mm512_mask_adds_epu8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpaddusb(a.as_u8x64(), b.as_u8x64(), src.as_u8x64(), k))
+    let add = _mm512_adds_epu8(a, b).as_u8x64();
+    transmute(simd_select_bitmask(k, add, src.as_u8x64()))
 }
 
 /// Add packed unsigned 8-bit integers in a and b using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -503,12 +480,8 @@ pub unsafe fn _mm512_mask_adds_epu8(src: __m512i, k: __mmask64, a: __m512i, b: _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
 pub unsafe fn _mm512_maskz_adds_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpaddusb(
-        a.as_u8x64(),
-        b.as_u8x64(),
-        _mm512_setzero_si512().as_u8x64(),
-        k,
-    ))
+    let add = _mm512_adds_epu8(a, b).as_u8x64();
+    transmute(simd_select_bitmask(k, add, u8x64::splat(0)))
 }
 
 /// Add packed unsigned 8-bit integers in a and b using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -519,7 +492,8 @@ pub unsafe fn _mm512_maskz_adds_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
 pub unsafe fn _mm256_mask_adds_epu8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
-    transmute(vpaddusb256(a.as_u8x32(), b.as_u8x32(), src.as_u8x32(), k))
+    let add = _mm256_adds_epu8(a, b).as_u8x32();
+    transmute(simd_select_bitmask(k, add, src.as_u8x32()))
 }
 
 /// Add packed unsigned 8-bit integers in a and b using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -530,12 +504,8 @@ pub unsafe fn _mm256_mask_adds_epu8(src: __m256i, k: __mmask32, a: __m256i, b: _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
 pub unsafe fn _mm256_maskz_adds_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
-    transmute(vpaddusb256(
-        a.as_u8x32(),
-        b.as_u8x32(),
-        _mm256_setzero_si256().as_u8x32(),
-        k,
-    ))
+    let add = _mm256_adds_epu8(a, b).as_u8x32();
+    transmute(simd_select_bitmask(k, add, u8x32::splat(0)))
 }
 
 /// Add packed unsigned 8-bit integers in a and b using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -546,7 +516,8 @@ pub unsafe fn _mm256_maskz_adds_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
 pub unsafe fn _mm_mask_adds_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpaddusb128(a.as_u8x16(), b.as_u8x16(), src.as_u8x16(), k))
+    let add = _mm_adds_epu8(a, b).as_u8x16();
+    transmute(simd_select_bitmask(k, add, src.as_u8x16()))
 }
 
 /// Add packed unsigned 8-bit integers in a and b using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -557,12 +528,8 @@ pub unsafe fn _mm_mask_adds_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m1
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
 pub unsafe fn _mm_maskz_adds_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpaddusb128(
-        a.as_u8x16(),
-        b.as_u8x16(),
-        _mm_setzero_si128().as_u8x16(),
-        k,
-    ))
+    let add = _mm_adds_epu8(a, b).as_u8x16();
+    transmute(simd_select_bitmask(k, add, u8x16::splat(0)))
 }
 
 /// Add packed signed 16-bit integers in a and b using saturation, and store the results in dst.
@@ -573,12 +540,7 @@ pub unsafe fn _mm_maskz_adds_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m12
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddsw))]
 pub unsafe fn _mm512_adds_epi16(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpaddsw(
-        a.as_i16x32(),
-        b.as_i16x32(),
-        _mm512_setzero_si512().as_i16x32(),
-        0b11111111_11111111_11111111_11111111,
-    ))
+    transmute(simd_saturating_add(a.as_i16x32(), b.as_i16x32()))
 }
 
 /// Add packed signed 16-bit integers in a and b using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -594,7 +556,8 @@ pub unsafe fn _mm512_mask_adds_epi16(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    transmute(vpaddsw(a.as_i16x32(), b.as_i16x32(), src.as_i16x32(), k))
+    let add = _mm512_adds_epi16(a, b).as_i16x32();
+    transmute(simd_select_bitmask(k, add, src.as_i16x32()))
 }
 
 /// Add packed signed 16-bit integers in a and b using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -605,12 +568,8 @@ pub unsafe fn _mm512_mask_adds_epi16(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddsw))]
 pub unsafe fn _mm512_maskz_adds_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpaddsw(
-        a.as_i16x32(),
-        b.as_i16x32(),
-        _mm512_setzero_si512().as_i16x32(),
-        k,
-    ))
+    let add = _mm512_adds_epi16(a, b).as_i16x32();
+    transmute(simd_select_bitmask(k, add, i16x32::splat(0)))
 }
 
 /// Add packed signed 16-bit integers in a and b using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -626,7 +585,8 @@ pub unsafe fn _mm256_mask_adds_epi16(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    transmute(vpaddsw256(a.as_i16x16(), b.as_i16x16(), src.as_i16x16(), k))
+    let add = _mm256_adds_epi16(a, b).as_i16x16();
+    transmute(simd_select_bitmask(k, add, src.as_i16x16()))
 }
 
 /// Add packed signed 16-bit integers in a and b using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -637,12 +597,8 @@ pub unsafe fn _mm256_mask_adds_epi16(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddsw))]
 pub unsafe fn _mm256_maskz_adds_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
-    transmute(vpaddsw256(
-        a.as_i16x16(),
-        b.as_i16x16(),
-        _mm256_setzero_si256().as_i16x16(),
-        k,
-    ))
+    let add = _mm256_adds_epi16(a, b).as_i16x16();
+    transmute(simd_select_bitmask(k, add, i16x16::splat(0)))
 }
 
 /// Add packed signed 16-bit integers in a and b using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -653,7 +609,8 @@ pub unsafe fn _mm256_maskz_adds_epi16(k: __mmask16, a: __m256i, b: __m256i) -> _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddsw))]
 pub unsafe fn _mm_mask_adds_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpaddsw128(a.as_i16x8(), b.as_i16x8(), src.as_i16x8(), k))
+    let add = _mm_adds_epi16(a, b).as_i16x8();
+    transmute(simd_select_bitmask(k, add, src.as_i16x8()))
 }
 
 /// Add packed signed 16-bit integers in a and b using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -664,12 +621,8 @@ pub unsafe fn _mm_mask_adds_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m1
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddsw))]
 pub unsafe fn _mm_maskz_adds_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpaddsw128(
-        a.as_i16x8(),
-        b.as_i16x8(),
-        _mm_setzero_si128().as_i16x8(),
-        k,
-    ))
+    let add = _mm_adds_epi16(a, b).as_i16x8();
+    transmute(simd_select_bitmask(k, add, i16x8::splat(0)))
 }
 
 /// Add packed signed 8-bit integers in a and b using saturation, and store the results in dst.
@@ -680,12 +633,7 @@ pub unsafe fn _mm_maskz_adds_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m12
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
 pub unsafe fn _mm512_adds_epi8(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpaddsb(
-        a.as_i8x64(),
-        b.as_i8x64(),
-        _mm512_setzero_si512().as_i8x64(),
-        0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111,
-    ))
+    transmute(simd_saturating_add(a.as_i8x64(), b.as_i8x64()))
 }
 
 /// Add packed signed 8-bit integers in a and b using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -696,7 +644,8 @@ pub unsafe fn _mm512_adds_epi8(a: __m512i, b: __m512i) -> __m512i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
 pub unsafe fn _mm512_mask_adds_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpaddsb(a.as_i8x64(), b.as_i8x64(), src.as_i8x64(), k))
+    let add = _mm512_adds_epi8(a, b).as_i8x64();
+    transmute(simd_select_bitmask(k, add, src.as_i8x64()))
 }
 
 /// Add packed signed 8-bit integers in a and b using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -707,12 +656,8 @@ pub unsafe fn _mm512_mask_adds_epi8(src: __m512i, k: __mmask64, a: __m512i, b: _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
 pub unsafe fn _mm512_maskz_adds_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpaddsb(
-        a.as_i8x64(),
-        b.as_i8x64(),
-        _mm512_setzero_si512().as_i8x64(),
-        k,
-    ))
+    let add = _mm512_adds_epi8(a, b).as_i8x64();
+    transmute(simd_select_bitmask(k, add, i8x64::splat(0)))
 }
 
 /// Add packed signed 8-bit integers in a and b using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -723,7 +668,8 @@ pub unsafe fn _mm512_maskz_adds_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
 pub unsafe fn _mm256_mask_adds_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
-    transmute(vpaddsb256(a.as_i8x32(), b.as_i8x32(), src.as_i8x32(), k))
+    let add = _mm256_adds_epi8(a, b).as_i8x32();
+    transmute(simd_select_bitmask(k, add, src.as_i8x32()))
 }
 
 /// Add packed signed 8-bit integers in a and b using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -734,12 +680,8 @@ pub unsafe fn _mm256_mask_adds_epi8(src: __m256i, k: __mmask32, a: __m256i, b: _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
 pub unsafe fn _mm256_maskz_adds_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
-    transmute(vpaddsb256(
-        a.as_i8x32(),
-        b.as_i8x32(),
-        _mm256_setzero_si256().as_i8x32(),
-        k,
-    ))
+    let add = _mm256_adds_epi8(a, b).as_i8x32();
+    transmute(simd_select_bitmask(k, add, i8x32::splat(0)))
 }
 
 /// Add packed signed 8-bit integers in a and b using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -750,7 +692,8 @@ pub unsafe fn _mm256_maskz_adds_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
 pub unsafe fn _mm_mask_adds_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpaddsb128(a.as_i8x16(), b.as_i8x16(), src.as_i8x16(), k))
+    let add = _mm_adds_epi8(a, b).as_i8x16();
+    transmute(simd_select_bitmask(k, add, src.as_i8x16()))
 }
 
 /// Add packed signed 8-bit integers in a and b using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -761,12 +704,8 @@ pub unsafe fn _mm_mask_adds_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m1
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
 pub unsafe fn _mm_maskz_adds_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpaddsb128(
-        a.as_i8x16(),
-        b.as_i8x16(),
-        _mm_setzero_si128().as_i8x16(),
-        k,
-    ))
+    let add = _mm_adds_epi8(a, b).as_i8x16();
+    transmute(simd_select_bitmask(k, add, i8x16::splat(0)))
 }
 
 /// Subtract packed 16-bit integers in b from packed 16-bit integers in a, and store the results in dst.
@@ -949,12 +888,7 @@ pub unsafe fn _mm_maskz_sub_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubusw))]
 pub unsafe fn _mm512_subs_epu16(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpsubusw(
-        a.as_u16x32(),
-        b.as_u16x32(),
-        _mm512_setzero_si512().as_u16x32(),
-        0b11111111_11111111_11111111_11111111,
-    ))
+    transmute(simd_saturating_sub(a.as_u16x32(), b.as_u16x32()))
 }
 
 /// Subtract packed unsigned 16-bit integers in b from packed unsigned 16-bit integers in a using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -970,7 +904,8 @@ pub unsafe fn _mm512_mask_subs_epu16(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    transmute(vpsubusw(a.as_u16x32(), b.as_u16x32(), src.as_u16x32(), k))
+    let sub = _mm512_subs_epu16(a, b).as_u16x32();
+    transmute(simd_select_bitmask(k, sub, src.as_u16x32()))
 }
 
 /// Subtract packed unsigned 16-bit integers in b from packed unsigned 16-bit integers in a using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -981,12 +916,8 @@ pub unsafe fn _mm512_mask_subs_epu16(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubusw))]
 pub unsafe fn _mm512_maskz_subs_epu16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpsubusw(
-        a.as_u16x32(),
-        b.as_u16x32(),
-        _mm512_setzero_si512().as_u16x32(),
-        k,
-    ))
+    let sub = _mm512_subs_epu16(a, b).as_u16x32();
+    transmute(simd_select_bitmask(k, sub, u16x32::splat(0)))
 }
 
 /// Subtract packed unsigned 16-bit integers in b from packed unsigned 16-bit integers in a using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1002,12 +933,8 @@ pub unsafe fn _mm256_mask_subs_epu16(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    transmute(vpsubusw256(
-        a.as_u16x16(),
-        b.as_u16x16(),
-        src.as_u16x16(),
-        k,
-    ))
+    let sub = _mm256_subs_epu16(a, b).as_u16x16();
+    transmute(simd_select_bitmask(k, sub, src.as_u16x16()))
 }
 
 /// Subtract packed unsigned 16-bit integers in b from packed unsigned 16-bit integers in a using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -1018,12 +945,8 @@ pub unsafe fn _mm256_mask_subs_epu16(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubusw))]
 pub unsafe fn _mm256_maskz_subs_epu16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
-    transmute(vpsubusw256(
-        a.as_u16x16(),
-        b.as_u16x16(),
-        _mm256_setzero_si256().as_u16x16(),
-        k,
-    ))
+    let sub = _mm256_subs_epu16(a, b).as_u16x16();
+    transmute(simd_select_bitmask(k, sub, u16x16::splat(0)))
 }
 
 /// Subtract packed unsigned 16-bit integers in b from packed unsigned 16-bit integers in a using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1034,7 +957,8 @@ pub unsafe fn _mm256_maskz_subs_epu16(k: __mmask16, a: __m256i, b: __m256i) -> _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubusw))]
 pub unsafe fn _mm_mask_subs_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpsubusw128(a.as_u16x8(), b.as_u16x8(), src.as_u16x8(), k))
+    let sub = _mm_subs_epu16(a, b).as_u16x8();
+    transmute(simd_select_bitmask(k, sub, src.as_u16x8()))
 }
 
 /// Subtract packed unsigned 16-bit integers in b from packed unsigned 16-bit integers in a using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -1045,12 +969,8 @@ pub unsafe fn _mm_mask_subs_epu16(src: __m128i, k: __mmask8, a: __m128i, b: __m1
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubusw))]
 pub unsafe fn _mm_maskz_subs_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpsubusw128(
-        a.as_u16x8(),
-        b.as_u16x8(),
-        _mm_setzero_si128().as_u16x8(),
-        k,
-    ))
+    let sub = _mm_subs_epu16(a, b).as_u16x8();
+    transmute(simd_select_bitmask(k, sub, u16x8::splat(0)))
 }
 
 /// Subtract packed unsigned 8-bit integers in b from packed unsigned 8-bit integers in a using saturation, and store the results in dst.
@@ -1061,12 +981,7 @@ pub unsafe fn _mm_maskz_subs_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m12
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
 pub unsafe fn _mm512_subs_epu8(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpsubusb(
-        a.as_u8x64(),
-        b.as_u8x64(),
-        _mm512_setzero_si512().as_u8x64(),
-        0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111,
-    ))
+    transmute(simd_saturating_sub(a.as_u8x64(), b.as_u8x64()))
 }
 
 /// Subtract packed unsigned 8-bit integers in b from packed unsigned 8-bit integers in a using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1077,7 +992,8 @@ pub unsafe fn _mm512_subs_epu8(a: __m512i, b: __m512i) -> __m512i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
 pub unsafe fn _mm512_mask_subs_epu8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpsubusb(a.as_u8x64(), b.as_u8x64(), src.as_u8x64(), k))
+    let sub = _mm512_subs_epu8(a, b).as_u8x64();
+    transmute(simd_select_bitmask(k, sub, src.as_u8x64()))
 }
 
 /// Subtract packed unsigned 8-bit integers in b from packed unsigned 8-bit integers in a using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -1088,12 +1004,8 @@ pub unsafe fn _mm512_mask_subs_epu8(src: __m512i, k: __mmask64, a: __m512i, b: _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
 pub unsafe fn _mm512_maskz_subs_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpsubusb(
-        a.as_u8x64(),
-        b.as_u8x64(),
-        _mm512_setzero_si512().as_u8x64(),
-        k,
-    ))
+    let sub = _mm512_subs_epu8(a, b).as_u8x64();
+    transmute(simd_select_bitmask(k, sub, u8x64::splat(0)))
 }
 
 /// Subtract packed unsigned 8-bit integers in b from packed unsigned 8-bit integers in a using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1104,7 +1016,8 @@ pub unsafe fn _mm512_maskz_subs_epu8(k: __mmask64, a: __m512i, b: __m512i) -> __
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
 pub unsafe fn _mm256_mask_subs_epu8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
-    transmute(vpsubusb256(a.as_u8x32(), b.as_u8x32(), src.as_u8x32(), k))
+    let sub = _mm256_subs_epu8(a, b).as_u8x32();
+    transmute(simd_select_bitmask(k, sub, src.as_u8x32()))
 }
 
 /// Subtract packed unsigned 8-bit integers in b from packed unsigned 8-bit integers in a using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -1115,12 +1028,8 @@ pub unsafe fn _mm256_mask_subs_epu8(src: __m256i, k: __mmask32, a: __m256i, b: _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
 pub unsafe fn _mm256_maskz_subs_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
-    transmute(vpsubusb256(
-        a.as_u8x32(),
-        b.as_u8x32(),
-        _mm256_setzero_si256().as_u8x32(),
-        k,
-    ))
+    let sub = _mm256_subs_epu8(a, b).as_u8x32();
+    transmute(simd_select_bitmask(k, sub, u8x32::splat(0)))
 }
 
 /// Subtract packed unsigned 8-bit integers in b from packed unsigned 8-bit integers in a using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1131,7 +1040,8 @@ pub unsafe fn _mm256_maskz_subs_epu8(k: __mmask32, a: __m256i, b: __m256i) -> __
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
 pub unsafe fn _mm_mask_subs_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpsubusb128(a.as_u8x16(), b.as_u8x16(), src.as_u8x16(), k))
+    let sub = _mm_subs_epu8(a, b).as_u8x16();
+    transmute(simd_select_bitmask(k, sub, src.as_u8x16()))
 }
 
 /// Subtract packed unsigned 8-bit integers in b from packed unsigned 8-bit integers in a using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -1142,12 +1052,8 @@ pub unsafe fn _mm_mask_subs_epu8(src: __m128i, k: __mmask16, a: __m128i, b: __m1
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
 pub unsafe fn _mm_maskz_subs_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpsubusb128(
-        a.as_u8x16(),
-        b.as_u8x16(),
-        _mm_setzero_si128().as_u8x16(),
-        k,
-    ))
+    let sub = _mm_subs_epu8(a, b).as_u8x16();
+    transmute(simd_select_bitmask(k, sub, u8x16::splat(0)))
 }
 
 /// Subtract packed signed 16-bit integers in b from packed 16-bit integers in a using saturation, and store the results in dst.
@@ -1158,12 +1064,7 @@ pub unsafe fn _mm_maskz_subs_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m12
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubsw))]
 pub unsafe fn _mm512_subs_epi16(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpsubsw(
-        a.as_i16x32(),
-        b.as_i16x32(),
-        _mm512_setzero_si512().as_i16x32(),
-        0b11111111_11111111_11111111_11111111,
-    ))
+    transmute(simd_saturating_sub(a.as_i16x32(), b.as_i16x32()))
 }
 
 /// Subtract packed signed 16-bit integers in b from packed 16-bit integers in a using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1179,7 +1080,8 @@ pub unsafe fn _mm512_mask_subs_epi16(
     a: __m512i,
     b: __m512i,
 ) -> __m512i {
-    transmute(vpsubsw(a.as_i16x32(), b.as_i16x32(), src.as_i16x32(), k))
+    let sub = _mm512_subs_epi16(a, b).as_i16x32();
+    transmute(simd_select_bitmask(k, sub, src.as_i16x32()))
 }
 
 /// Subtract packed signed 16-bit integers in b from packed 16-bit integers in a using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -1190,12 +1092,8 @@ pub unsafe fn _mm512_mask_subs_epi16(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubsw))]
 pub unsafe fn _mm512_maskz_subs_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpsubsw(
-        a.as_i16x32(),
-        b.as_i16x32(),
-        _mm512_setzero_si512().as_i16x32(),
-        k,
-    ))
+    let sub = _mm512_subs_epi16(a, b).as_i16x32();
+    transmute(simd_select_bitmask(k, sub, i16x32::splat(0)))
 }
 
 /// Subtract packed signed 16-bit integers in b from packed 16-bit integers in a using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1211,7 +1109,8 @@ pub unsafe fn _mm256_mask_subs_epi16(
     a: __m256i,
     b: __m256i,
 ) -> __m256i {
-    transmute(vpsubsw256(a.as_i16x16(), b.as_i16x16(), src.as_i16x16(), k))
+    let sub = _mm256_subs_epi16(a, b).as_i16x16();
+    transmute(simd_select_bitmask(k, sub, src.as_i16x16()))
 }
 
 /// Subtract packed signed 16-bit integers in b from packed 16-bit integers in a using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -1222,12 +1121,8 @@ pub unsafe fn _mm256_mask_subs_epi16(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubsw))]
 pub unsafe fn _mm256_maskz_subs_epi16(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
-    transmute(vpsubsw256(
-        a.as_i16x16(),
-        b.as_i16x16(),
-        _mm256_setzero_si256().as_i16x16(),
-        k,
-    ))
+    let sub = _mm256_subs_epi16(a, b).as_i16x16();
+    transmute(simd_select_bitmask(k, sub, i16x16::splat(0)))
 }
 
 /// Subtract packed signed 16-bit integers in b from packed 16-bit integers in a using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1238,7 +1133,8 @@ pub unsafe fn _mm256_maskz_subs_epi16(k: __mmask16, a: __m256i, b: __m256i) -> _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubsw))]
 pub unsafe fn _mm_mask_subs_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpsubsw128(a.as_i16x8(), b.as_i16x8(), src.as_i16x8(), k))
+    let sub = _mm_subs_epi16(a, b).as_i16x8();
+    transmute(simd_select_bitmask(k, sub, src.as_i16x8()))
 }
 
 /// Subtract packed signed 16-bit integers in b from packed 16-bit integers in a using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -1249,12 +1145,8 @@ pub unsafe fn _mm_mask_subs_epi16(src: __m128i, k: __mmask8, a: __m128i, b: __m1
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubsw))]
 pub unsafe fn _mm_maskz_subs_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpsubsw128(
-        a.as_i16x8(),
-        b.as_i16x8(),
-        _mm_setzero_si128().as_i16x8(),
-        k,
-    ))
+    let sub = _mm_subs_epi16(a, b).as_i16x8();
+    transmute(simd_select_bitmask(k, sub, i16x8::splat(0)))
 }
 
 /// Subtract packed signed 8-bit integers in b from packed 8-bit integers in a using saturation, and store the results in dst.
@@ -1265,12 +1157,7 @@ pub unsafe fn _mm_maskz_subs_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m12
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
 pub unsafe fn _mm512_subs_epi8(a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpsubsb(
-        a.as_i8x64(),
-        b.as_i8x64(),
-        _mm512_setzero_si512().as_i8x64(),
-        0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111,
-    ))
+    transmute(simd_saturating_sub(a.as_i8x64(), b.as_i8x64()))
 }
 
 /// Subtract packed signed 8-bit integers in b from packed 8-bit integers in a using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1281,7 +1168,8 @@ pub unsafe fn _mm512_subs_epi8(a: __m512i, b: __m512i) -> __m512i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
 pub unsafe fn _mm512_mask_subs_epi8(src: __m512i, k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpsubsb(a.as_i8x64(), b.as_i8x64(), src.as_i8x64(), k))
+    let sub = _mm512_subs_epi8(a, b).as_i8x64();
+    transmute(simd_select_bitmask(k, sub, src.as_i8x64()))
 }
 
 /// Subtract packed signed 8-bit integers in b from packed 8-bit integers in a using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -1292,12 +1180,8 @@ pub unsafe fn _mm512_mask_subs_epi8(src: __m512i, k: __mmask64, a: __m512i, b: _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
 pub unsafe fn _mm512_maskz_subs_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
-    transmute(vpsubsb(
-        a.as_i8x64(),
-        b.as_i8x64(),
-        _mm512_setzero_si512().as_i8x64(),
-        k,
-    ))
+    let sub = _mm512_subs_epi8(a, b).as_i8x64();
+    transmute(simd_select_bitmask(k, sub, i8x64::splat(0)))
 }
 
 /// Subtract packed signed 8-bit integers in b from packed 8-bit integers in a using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1308,7 +1192,8 @@ pub unsafe fn _mm512_maskz_subs_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
 pub unsafe fn _mm256_mask_subs_epi8(src: __m256i, k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
-    transmute(vpsubsb256(a.as_i8x32(), b.as_i8x32(), src.as_i8x32(), k))
+    let sub = _mm256_subs_epi8(a, b).as_i8x32();
+    transmute(simd_select_bitmask(k, sub, src.as_i8x32()))
 }
 
 /// Subtract packed signed 8-bit integers in b from packed 8-bit integers in a using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -1319,12 +1204,8 @@ pub unsafe fn _mm256_mask_subs_epi8(src: __m256i, k: __mmask32, a: __m256i, b: _
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
 pub unsafe fn _mm256_maskz_subs_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
-    transmute(vpsubsb256(
-        a.as_i8x32(),
-        b.as_i8x32(),
-        _mm256_setzero_si256().as_i8x32(),
-        k,
-    ))
+    let sub = _mm256_subs_epi8(a, b).as_i8x32();
+    transmute(simd_select_bitmask(k, sub, i8x32::splat(0)))
 }
 
 /// Subtract packed signed 8-bit integers in b from packed 8-bit integers in a using saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1335,7 +1216,8 @@ pub unsafe fn _mm256_maskz_subs_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
 pub unsafe fn _mm_mask_subs_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpsubsb128(a.as_i8x16(), b.as_i8x16(), src.as_i8x16(), k))
+    let sub = _mm_subs_epi8(a, b).as_i8x16();
+    transmute(simd_select_bitmask(k, sub, src.as_i8x16()))
 }
 
 /// Subtract packed signed 8-bit integers in b from packed 8-bit integers in a using saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -1346,12 +1228,8 @@ pub unsafe fn _mm_mask_subs_epi8(src: __m128i, k: __mmask16, a: __m128i, b: __m1
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
 pub unsafe fn _mm_maskz_subs_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
-    transmute(vpsubsb128(
-        a.as_i8x16(),
-        b.as_i8x16(),
-        _mm_setzero_si128().as_i8x16(),
-        k,
-    ))
+    let sub = _mm_subs_epi8(a, b).as_i8x16();
+    transmute(simd_select_bitmask(k, sub, i8x16::splat(0)))
 }
 
 /// Multiply the packed unsigned 16-bit integers in a and b, producing intermediate 32-bit integers, and store the high 16 bits of the intermediate integers in dst.
@@ -5505,8 +5383,8 @@ pub unsafe fn _mm_maskz_packus_epi16(k: __mmask16, a: __m128i, b: __m128i) -> __
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpavgw))]
 pub unsafe fn _mm512_avg_epu16(a: __m512i, b: __m512i) -> __m512i {
-    let a = simd_cast::<_, u32x32>(a.as_u16x16());
-    let b = simd_cast::<_, u32x32>(b.as_u16x16());
+    let a = simd_cast::<_, u32x32>(a.as_u16x32());
+    let b = simd_cast::<_, u32x32>(b.as_u16x32());
     let r = simd_shr(simd_add(simd_add(a, b), u32x32::splat(1)), u32x32::splat(1));
     transmute(simd_cast::<_, u16x32>(r))
 }
@@ -10595,62 +10473,6 @@ pub unsafe fn _mm_mask_cvtusepi16_storeu_epi8(mem_addr: *mut i8, k: __mmask8, a:
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.x86.avx512.mask.paddus.w.512"]
-    fn vpaddusw(a: u16x32, b: u16x32, src: u16x32, mask: u32) -> u16x32;
-    #[link_name = "llvm.x86.avx512.mask.paddus.w.256"]
-    fn vpaddusw256(a: u16x16, b: u16x16, src: u16x16, mask: u16) -> u16x16;
-    #[link_name = "llvm.x86.avx512.mask.paddus.w.128"]
-    fn vpaddusw128(a: u16x8, b: u16x8, src: u16x8, mask: u8) -> u16x8;
-
-    #[link_name = "llvm.x86.avx512.mask.paddus.b.512"]
-    fn vpaddusb(a: u8x64, b: u8x64, src: u8x64, mask: u64) -> u8x64;
-    #[link_name = "llvm.x86.avx512.mask.paddus.b.256"]
-    fn vpaddusb256(a: u8x32, b: u8x32, src: u8x32, mask: u32) -> u8x32;
-    #[link_name = "llvm.x86.avx512.mask.paddus.b.128"]
-    fn vpaddusb128(a: u8x16, b: u8x16, src: u8x16, mask: u16) -> u8x16;
-
-    #[link_name = "llvm.x86.avx512.mask.padds.w.512"]
-    fn vpaddsw(a: i16x32, b: i16x32, src: i16x32, mask: u32) -> i16x32;
-    #[link_name = "llvm.x86.avx512.mask.padds.w.256"]
-    fn vpaddsw256(a: i16x16, b: i16x16, src: i16x16, mask: u16) -> i16x16;
-    #[link_name = "llvm.x86.avx512.mask.padds.w.128"]
-    fn vpaddsw128(a: i16x8, b: i16x8, src: i16x8, mask: u8) -> i16x8;
-
-    #[link_name = "llvm.x86.avx512.mask.padds.b.512"]
-    fn vpaddsb(a: i8x64, b: i8x64, src: i8x64, mask: u64) -> i8x64;
-    #[link_name = "llvm.x86.avx512.mask.padds.b.256"]
-    fn vpaddsb256(a: i8x32, b: i8x32, src: i8x32, mask: u32) -> i8x32;
-    #[link_name = "llvm.x86.avx512.mask.padds.b.128"]
-    fn vpaddsb128(a: i8x16, b: i8x16, src: i8x16, mask: u16) -> i8x16;
-
-    #[link_name = "llvm.x86.avx512.mask.psubus.w.512"]
-    fn vpsubusw(a: u16x32, b: u16x32, src: u16x32, mask: u32) -> u16x32;
-    #[link_name = "llvm.x86.avx512.mask.psubus.w.256"]
-    fn vpsubusw256(a: u16x16, b: u16x16, src: u16x16, mask: u16) -> u16x16;
-    #[link_name = "llvm.x86.avx512.mask.psubus.w.128"]
-    fn vpsubusw128(a: u16x8, b: u16x8, src: u16x8, mask: u8) -> u16x8;
-
-    #[link_name = "llvm.x86.avx512.mask.psubus.b.512"]
-    fn vpsubusb(a: u8x64, b: u8x64, src: u8x64, mask: u64) -> u8x64;
-    #[link_name = "llvm.x86.avx512.mask.psubus.b.256"]
-    fn vpsubusb256(a: u8x32, b: u8x32, src: u8x32, mask: u32) -> u8x32;
-    #[link_name = "llvm.x86.avx512.mask.psubus.b.128"]
-    fn vpsubusb128(a: u8x16, b: u8x16, src: u8x16, mask: u16) -> u8x16;
-
-    #[link_name = "llvm.x86.avx512.mask.psubs.w.512"]
-    fn vpsubsw(a: i16x32, b: i16x32, src: i16x32, mask: u32) -> i16x32;
-    #[link_name = "llvm.x86.avx512.mask.psubs.w.256"]
-    fn vpsubsw256(a: i16x16, b: i16x16, src: i16x16, mask: u16) -> i16x16;
-    #[link_name = "llvm.x86.avx512.mask.psubs.w.128"]
-    fn vpsubsw128(a: i16x8, b: i16x8, src: i16x8, mask: u8) -> i16x8;
-
-    #[link_name = "llvm.x86.avx512.mask.psubs.b.512"]
-    fn vpsubsb(a: i8x64, b: i8x64, src: i8x64, mask: u64) -> i8x64;
-    #[link_name = "llvm.x86.avx512.mask.psubs.b.256"]
-    fn vpsubsb256(a: i8x32, b: i8x32, src: i8x32, mask: u32) -> i8x32;
-    #[link_name = "llvm.x86.avx512.mask.psubs.b.128"]
-    fn vpsubsb128(a: i8x16, b: i8x16, src: i8x16, mask: u16) -> i8x16;
-
     #[link_name = "llvm.x86.avx512.pmul.hr.sw.512"]
     fn vpmulhrsw(a: i16x32, b: i16x32) -> i16x32;
 
