@@ -39,9 +39,7 @@ impl ByteSlice for [u8] {
     fn parse_digits(&self, mut func: impl FnMut(u8)) -> &Self {
         let mut s = self;
 
-        // FIXME: Can't use s.split_first() here yet,
-        // see https://github.com/rust-lang/rust/issues/109328
-        while let [c, s_next @ ..] = s {
+        while let Some((c, s_next)) = s.split_first() {
             let c = c.wrapping_sub(b'0');
             if c < 10 {
                 func(c);
