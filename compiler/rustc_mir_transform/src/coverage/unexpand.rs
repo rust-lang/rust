@@ -1,12 +1,18 @@
 use rustc_span::{ExpnKind, MacroKind, Span, Symbol};
 
-/// Returns an extrapolated span (pre-expansion[^1]) corresponding to a range
-/// within the function's body source. This span is guaranteed to be contained
-/// within, or equal to, the `body_span`. If the extrapolated span is not
-/// contained within the `body_span`, `None` is returned.
+/// Walks through the expansion ancestors of `original_span` to find a span that
+/// is contained in `body_span` and has the same [syntax context] as `body_span`.
+pub(crate) fn unexpand_into_body_span(original_span: Span, body_span: Span) -> Option<Span> {
+    // Because we don't need to return any extra ancestor information,
+    // we can just delegate directly to `find_ancestor_inside_same_ctxt`.
+    original_span.find_ancestor_inside_same_ctxt(body_span)
+}
+
+/// Walks through the expansion ancestors of `original_span` to find a span that
+/// is contained in `body_span` and has the same [syntax context] as `body_span`.
 ///
-/// [^1]Expansions result from Rust syntax including macros, syntactic sugar,
-/// etc.).
+/// If the returned span represents a bang-macro invocation (e.g. `foo!(..)`),
+/// the returned symbol will be the name of that macro (e.g. `foo`).
 pub(crate) fn unexpand_into_body_span_with_visible_macro(
     original_span: Span,
     body_span: Span,
@@ -24,15 +30,15 @@ pub(crate) fn unexpand_into_body_span_with_visible_macro(
 }
 
 /// Walks through the expansion ancestors of `original_span` to find a span that
-/// is contained in `body_span` and has the same [`SyntaxContext`] as `body_span`.
+/// is contained in `body_span` and has the same [syntax context] as `body_span`.
 /// The ancestor that was traversed just before the matching span (if any) is
 /// also returned.
 ///
-/// For example, a return value of `Some((ancestor, Some(prev))` means that:
+/// For example, a return value of `Some((ancestor, Some(prev)))` means that:
 /// - `ancestor == original_span.find_ancestor_inside_same_ctxt(body_span)`
-/// - `ancestor == prev.parent_callsite()`
+/// - `prev.parent_callsite() == ancestor`
 ///
-/// [`SyntaxContext`]: rustc_span::SyntaxContext
+/// [syntax context]: rustc_span::SyntaxContext
 fn unexpand_into_body_span_with_prev(
     original_span: Span,
     body_span: Span,
@@ -45,7 +51,7 @@ fn unexpand_into_body_span_with_prev(
         curr = curr.parent_callsite()?;
     }
 
-    debug_assert_eq!(Some(curr), original_span.find_ancestor_in_same_ctxt(body_span));
+    debug_assert_eq!(Some(curr), original_span.find_ancestor_inside_same_ctxt(body_span));
     if let Some(prev) = prev {
         debug_assert_eq!(Some(curr), prev.parent_callsite());
     }
