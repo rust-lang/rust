@@ -359,14 +359,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // FIXME(effects) find a better way to do this
         // Operators don't have generic methods, but making them `#[const_trait]` gives them
         // `const host: bool`.
-        let args = if self.tcx.has_attr(trait_def_id, sym::const_trait) {
-            self.tcx.mk_args_from_iter(
-                args.iter()
-                    .chain([self.tcx.expected_host_effect_param_for_body(self.body_id).into()]),
-            )
-        } else {
-            args
-        };
+        let args =
+            if self.tcx.features().effects && self.tcx.has_attr(trait_def_id, sym::const_trait) {
+                self.tcx.mk_args_from_iter(
+                    args.iter()
+                        .chain([self.tcx.expected_host_effect_param_for_body(self.body_id).into()]),
+                )
+            } else {
+                args
+            };
         self.construct_obligation_for_trait(m_name, trait_def_id, obligation, args)
     }
 
