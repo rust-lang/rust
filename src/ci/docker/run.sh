@@ -225,14 +225,6 @@ else
     args="$args --env SCCACHE_DIR=/sccache --volume $HOME/.cache/sccache:/sccache"
 fi
 
-# By default, container volumes are bound as read-only; therefore doing experimental work
-# or debugging within the container environment (such as fetching submodules and
-# building them) is not possible. Setting READ_ONLY_SRC to 0 enables this capability by
-# binding the volumes in read-write mode.
-if [ "$READ_ONLY_SRC" != "0" ]; then
-    SRC_MOUNT_OPTION=":ro"
-fi
-
 # Run containers as privileged as it should give them access to some more
 # syscalls such as ptrace and whatnot. In the upgrade to LLVM 5.0 it was
 # discovered that the leak sanitizer apparently needs these syscalls nowadays so
@@ -267,7 +259,7 @@ if [ -f /.dockerenv ]; then
   docker cp . checkout:/checkout
   args="$args --volumes-from checkout"
 else
-  args="$args --volume $root_dir:/checkout$SRC_MOUNT_OPTION"
+  args="$args --volume $root_dir:/checkout"
   args="$args --volume $objdir:/checkout/obj"
   args="$args --volume $HOME/.cargo:/cargo"
   args="$args --volume /tmp/toolstate:/tmp/toolstate"
