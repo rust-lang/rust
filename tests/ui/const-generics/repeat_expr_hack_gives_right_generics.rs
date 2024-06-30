@@ -1,14 +1,18 @@
-// Given an anon const `a`: `{ N }` and some anon const `b` which references the
-// first anon const: `{ [1; a] }`. `b` should not have any generics as it is not
-// a simple `N` argument nor is it a repeat expr count.
+// Given a const argument `a`: `{ N }` and some const argument `b` which references the
+// first anon const like so: `{ [1; a] }`. The `b` anon const should not be allowed to use
+// any generic parameters as:
+// - The anon const is not a simple bare parameter, e.g. `N`
+// - The anon const is not the *length* of an array repeat expression, e.g. the `N` in `[1; N]`.
 //
-// On the other hand `b` *is* a repeat expr count and so it should inherit its
-// parents generics as part of the `const_evaluatable_unchecked` fcw (#76200).
+// On the other hand `a` *is* a const argument for the length of a repeat expression and
+// so it *should* inherit the generics declared on its parent definition. (This hack is
+// introduced for backwards compatibility and is tracked in #76200)
 //
-// In this specific case however `b`'s parent should be `a` and so it should wind
-// up not having any generics after all. If `a` were to inherit its generics from
-// the enclosing item then the reference to `a` from `b` would contain generic
-// parameters not usable by `b` which would cause us to ICE.
+// In this specific case `a`'s parent should be `b` which does not have any generics.
+// This means that even though `a` inherits generics from `b`, it still winds up not having
+// access to any generic parameters.  If `a` were to inherit its generics from the surrounding
+// function `foo` then the reference to `a` from `b` would contain generic parameters not usable
+// by `b` which would cause us to ICE.
 
 fn bar<const N: usize>() {}
 
