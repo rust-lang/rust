@@ -1,7 +1,7 @@
 //! Determine rustc version `proc-macro-srv` (and thus the sysroot ABI) is
 //! build with and make it accessible at runtime for ABI selection.
 
-use std::{env, fs::File, io::Write, path::PathBuf, process::Command};
+use std::{env, process::Command};
 
 fn main() {
     println!("cargo::rustc-check-cfg=cfg(rust_analyzer)");
