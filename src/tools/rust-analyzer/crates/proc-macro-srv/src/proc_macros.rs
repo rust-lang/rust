@@ -49,11 +49,12 @@ impl ProcMacros {
         call_site: S,
         mixed_site: S,
     ) -> Result<tt::Subtree<S>, crate::PanicMessage> {
-        let parsed_body = crate::server::TokenStream::with_subtree(macro_body);
+        let parsed_body = crate::server_impl::TokenStream::with_subtree(macro_body);
 
-        let parsed_attributes = attributes.map_or_else(crate::server::TokenStream::new, |attr| {
-            crate::server::TokenStream::with_subtree(attr)
-        });
+        let parsed_attributes = attributes
+            .map_or_else(crate::server_impl::TokenStream::new, |attr| {
+                crate::server_impl::TokenStream::with_subtree(attr)
+            });
 
         for proc_macro in &self.exported_macros {
             match proc_macro {

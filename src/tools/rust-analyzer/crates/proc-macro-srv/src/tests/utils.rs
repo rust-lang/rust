@@ -7,8 +7,8 @@ use tt::TextRange;
 
 use crate::{dylib, proc_macro_test_dylib_path, ProcMacroSrv};
 
-fn parse_string(call_site: TokenId, src: &str) -> crate::server::TokenStream<TokenId> {
-    crate::server::TokenStream::with_subtree(
+fn parse_string(call_site: TokenId, src: &str) -> crate::server_impl::TokenStream<TokenId> {
+    crate::server_impl::TokenStream::with_subtree(
         mbe::parse_to_token_tree_static_span(call_site, src).unwrap(),
     )
 }
@@ -17,8 +17,8 @@ fn parse_string_spanned(
     anchor: SpanAnchor,
     call_site: SyntaxContextId,
     src: &str,
-) -> crate::server::TokenStream<Span> {
-    crate::server::TokenStream::with_subtree(
+) -> crate::server_impl::TokenStream<Span> {
+    crate::server_impl::TokenStream::with_subtree(
         mbe::parse_to_token_tree(anchor, call_site, src).unwrap(),
     )
 }

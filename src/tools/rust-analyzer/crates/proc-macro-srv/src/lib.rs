@@ -26,7 +26,7 @@ extern crate rustc_lexer;
 
 mod dylib;
 mod proc_macros;
-mod server;
+mod server_impl;
 
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -46,35 +46,9 @@ use proc_macro_api::{
 };
 use span::Span;
 
-use crate::server::TokenStream;
+use crate::server_impl::TokenStream;
 
 pub const RUSTC_VERSION_STRING: &str = env!("RUSTC_VERSION");
-
-trait ProcMacroSrvSpan: Copy {
-    type Server: proc_macro::bridge::server::Server<TokenStream = TokenStream<Self>>;
-    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server;
-}
-
-impl ProcMacroSrvSpan for TokenId {
-    type Server = server::token_id::TokenIdServer;
-
-    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
-        Self::Server { interner: &server::SYMBOL_INTERNER, call_site, def_site, mixed_site }
-    }
-}
-impl ProcMacroSrvSpan for Span {
-    type Server = server::rust_analyzer_span::RaSpanServer;
-    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
-        Self::Server {
-            interner: &server::SYMBOL_INTERNER,
-            call_site,
-            def_site,
-            mixed_site,
-            tracked_env_vars: Default::default(),
-            tracked_paths: Default::default(),
-        }
-    }
-}
 
 #[derive(Default)]
 pub struct ProcMacroSrv {
@@ -164,6 +138,32 @@ impl ProcMacroSrv {
             ),
             Entry::Occupied(e) => e.into_mut(),
         })
+    }
+}
+
+trait ProcMacroSrvSpan: Copy {
+    type Server: proc_macro::bridge::server::Server<TokenStream = TokenStream<Self>>;
+    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server;
+}
+
+impl ProcMacroSrvSpan for TokenId {
+    type Server = server_impl::token_id::TokenIdServer;
+
+    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
+        Self::Server { interner: &server_impl::SYMBOL_INTERNER, call_site, def_site, mixed_site }
+    }
+}
+impl ProcMacroSrvSpan for Span {
+    type Server = server_impl::rust_analyzer_span::RaSpanServer;
+    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
+        Self::Server {
+            interner: &server_impl::SYMBOL_INTERNER,
+            call_site,
+            def_site,
+            mixed_site,
+            tracked_env_vars: Default::default(),
+            tracked_paths: Default::default(),
+        }
     }
 }
 

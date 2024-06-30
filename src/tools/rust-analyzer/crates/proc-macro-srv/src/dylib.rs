@@ -2,13 +2,13 @@
 
 mod version;
 
+use proc_macro::bridge;
 use std::{fmt, fs::File, io};
 
 use libloading::Library;
 use memmap2::Mmap;
 use object::Object;
 use paths::{AbsPath, Utf8Path, Utf8PathBuf};
-use proc_macro::bridge;
 use proc_macro_api::ProcMacroKind;
 
 use crate::ProcMacroSrvSpan;
