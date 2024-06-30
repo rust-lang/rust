@@ -53,7 +53,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::{self as hir, ConstArgKind};
+use rustc_hir::{self as hir};
 use rustc_hir::{
     ConstArg, GenericArg, HirId, ItemLocalMap, MissingLifetimeKind, ParamName, TraitCandidate,
 };
@@ -126,7 +126,7 @@ struct LoweringContext<'a, 'hir> {
     /// they do get their own DefIds. Some of these DefIds have to be created during
     /// AST lowering, rather than def collection, because we can't tell until after
     /// name resolution whether an anonymous constant will end up instead being a
-    /// [`rustc_hir::ConstArgKind::Path`]. However, to compute which generics are
+    /// [`hir::ConstArgKind::Path`]. However, to compute which generics are
     /// available to an anonymous constant nested inside another, we need to make
     /// sure that the parent is recorded as the parent anon const, not the enclosing
     /// item. So we need to track parent defs differently from HIR owners, since they
@@ -1207,7 +1207,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     None,
                 );
-                ConstArgKind::Path(qpath)
+                hir::ConstArgKind::Path(qpath)
             }
             _ => {
                 // Construct an AnonConst where the expr is the "ty"'s path.
@@ -1287,7 +1287,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
             return ConstArg {
                 hir_id: self.next_id(),
-                kind: ConstArgKind::Path(qpath),
+                kind: hir::ConstArgKind::Path(qpath),
                 is_desugared_from_effects: false,
             };
         }
@@ -1296,7 +1296,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.children.push((lowered_anon.def_id, hir::MaybeOwner::NonOwner(lowered_anon.hir_id)));
         ConstArg {
             hir_id: self.next_id(),
-            kind: ConstArgKind::Anon(lowered_anon),
+            kind: hir::ConstArgKind::Anon(lowered_anon),
             is_desugared_from_effects: false,
         }
     }
