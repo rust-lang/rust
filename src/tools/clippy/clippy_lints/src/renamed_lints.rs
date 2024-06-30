@@ -38,6 +38,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::cast_ref_to_mut", "invalid_reference_casting"),
     ("clippy::clone_double_ref", "suspicious_double_ref_op"),
     ("clippy::cmp_nan", "invalid_nan_comparisons"),
+    ("clippy::double_neg", "double_negation"),
     ("clippy::drop_bounds", "drop_bounds"),
     ("clippy::drop_copy", "dropping_copy_types"),
     ("clippy::drop_ref", "dropping_references"),

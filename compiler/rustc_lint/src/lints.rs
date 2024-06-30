@@ -349,6 +349,12 @@ pub struct BuiltinTrivialBounds<'a> {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_builtin_double_negation)]
+#[note(lint_builtin_double_negation_note)]
+#[help(lint_builtin_double_negation_help)]
+pub struct BuiltinDoubleNegation;
+
+#[derive(LintDiagnostic)]
 pub enum BuiltinEllipsisInclusiveRangePatternsLint {
     #[diag(lint_builtin_ellipsis_inclusive_range_patterns)]
     Parenthesise {

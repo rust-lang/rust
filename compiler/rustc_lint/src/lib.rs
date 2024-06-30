@@ -170,6 +170,7 @@ early_lint_methods!(
             IncompleteInternalFeatures: IncompleteInternalFeatures,
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
+            DoubleNegation: DoubleNegation,
         ]
     ]
 );

@@ -26,10 +26,10 @@ use crate::{
     lints::{
         BuiltinAnonymousParams, BuiltinBoxPointers, BuiltinConstNoMangle,
         BuiltinDeprecatedAttrLink, BuiltinDeprecatedAttrLinkSuggestion, BuiltinDeprecatedAttrUsed,
-        BuiltinDerefNullptr, BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
-        BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
-        BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
-        BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
+        BuiltinDerefNullptr, BuiltinDoubleNegation, BuiltinEllipsisInclusiveRangePatternsLint,
+        BuiltinExplicitOutlives, BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote,
+        BuiltinIncompleteFeatures, BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures,
+        BuiltinKeywordIdents, BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
         BuiltinMutablesTransmutes, BuiltinNamedAsmLabel, BuiltinNoMangleGeneric,
         BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds,
         BuiltinTypeAliasGenericBounds, BuiltinTypeAliasGenericBoundsSuggestion,
@@ -104,19 +104,11 @@ declare_lint! {
 
 declare_lint_pass!(WhileTrue => [WHILE_TRUE]);
 
-/// Traverse through any amount of parenthesis and return the first non-parens expression.
-fn pierce_parens(mut expr: &ast::Expr) -> &ast::Expr {
-    while let ast::ExprKind::Paren(sub) = &expr.kind {
-        expr = sub;
-    }
-    expr
-}
-
 impl EarlyLintPass for WhileTrue {
     #[inline]
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if let ast::ExprKind::While(cond, _, label) = &e.kind
-            && let ast::ExprKind::Lit(token_lit) = pierce_parens(cond).kind
+            && let ast::ExprKind::Lit(token_lit) = cond.peel_parens().kind
             && let token::Lit { kind: token::Bool, symbol: kw::True, .. } = token_lit
             && !cond.span.from_expansion()
         {
@@ -1635,6 +1627,51 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     }
 }
 
+declare_lint! {
+    /// The `double_negation` lint detects expressions of the form `--x`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn main() {
+    ///     let x = 1;
+    ///     let _b = --x;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Negating something twice is usually the same as not negating it at all.
+    /// However, a double negation in Rust can easily be confused with the
+    /// prefix decrement operator that exists in many languages derived from C.
+    /// Use `-(-x)` if you really wanted to negate the value twice.
+    ///
+    /// To decrement a value, use `x -= 1` instead.
+    pub DOUBLE_NEGATION,
+    Warn,
+    "detects expressions of the form `--x`"
+}
+
+declare_lint_pass!(
+    /// Lint for expressions of the form `--x` that can be confused with C's
+    /// prefix decrement operator.
+    DoubleNegation => [DOUBLE_NEGATION]
+);
+
+impl EarlyLintPass for DoubleNegation {
+    #[inline]
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
+        if let ExprKind::Unary(UnOp::Neg, ref inner) = expr.kind
+            && let ExprKind::Unary(UnOp::Neg, ref inner2) = inner.kind
+            && !matches!(inner2.kind, ExprKind::Unary(UnOp::Neg, _))
+        {
+            cx.emit_span_lint(DOUBLE_NEGATION, expr.span, BuiltinDoubleNegation);
+        }
+    }
+}
+
 declare_lint_pass!(
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// which are used by other parts of the compiler.
@@ -1654,7 +1691,8 @@ declare_lint_pass!(
         UNSTABLE_FEATURES,
         UNREACHABLE_PUB,
         TYPE_ALIAS_BOUNDS,
-        TRIVIAL_BOUNDS
+        TRIVIAL_BOUNDS,
+        DOUBLE_NEGATION
     ]
 );
 
@@ -2688,7 +2726,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
 }
 
 declare_lint! {
-    /// The `deref_nullptr` lint detects when an null pointer is dereferenced,
+    /// The `deref_nullptr` lint detects when a null pointer is dereferenced,
     /// which causes [undefined behavior].
     ///
     /// ### Example
