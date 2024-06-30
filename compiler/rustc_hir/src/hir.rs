@@ -255,6 +255,8 @@ impl<'hir> ConstArg<'hir> {
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub enum ConstArgKind<'hir> {
+    /// **Note:** Currently this is only used for bare const params, not paths to any const.
+    /// However, in the future, we'll be using it for all of those.
     Path(QPath<'hir>),
     Anon(&'hir AnonConst),
 }

@@ -1,9 +1,8 @@
 error[E0119]: conflicting implementations of trait `Trait` for type `[(); _]`
-  --> $DIR/generic_const_type_mismatch.rs:9:1
+  --> $DIR/generic_const_type_mismatch.rs:8:1
    |
 LL | impl<const N: u8> Trait for [(); N] {}
    | ----------------------------------- first implementation here
-LL |
 LL | impl<const N: i8> Trait for [(); N] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `[(); _]`
 
