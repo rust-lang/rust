@@ -82,6 +82,11 @@ const fn max_iov() -> usize {
 }
 
 impl FileDesc {
+    #[inline]
+    pub fn try_clone(&self) -> io::Result<Self> {
+        self.duplicate()
+    }
+
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::read(
