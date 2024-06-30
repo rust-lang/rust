@@ -29,6 +29,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::misc::{
@@ -1712,15 +1713,7 @@ fn receiver_is_valid<'tcx>(
     let cause =
         ObligationCause::new(span, wfcx.body_def_id, traits::ObligationCauseCode::MethodReceiver);
 
-    let can_eq_self = |ty| {
-        wfcx.infcx.probe(|_| {
-            let ocx = ObligationCtxt::new(wfcx.infcx);
-            let Ok(()) = ocx.eq(&ObligationCause::dummy(), wfcx.param_env, self_ty, ty) else {
-                return false;
-            };
-            ocx.select_where_possible().is_empty()
-        })
-    };
+    let can_eq_self = |ty| infcx.can_eq(wfcx.param_env, self_ty, ty);
 
     // `self: Self` is always valid.
     if can_eq_self(receiver_ty) {
