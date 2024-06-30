@@ -2345,7 +2345,7 @@ pub unsafe fn _mm512_cmplt_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmplt_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
-    _mm512_cmplt_epu16_mask(a, b) & k1
+    _mm512_mask_cmp_epu16_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for less-than, and store the results in mask vector k.
@@ -2367,7 +2367,7 @@ pub unsafe fn _mm256_cmplt_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmplt_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
-    _mm256_cmplt_epu16_mask(a, b) & k1
+    _mm256_mask_cmp_epu16_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for less-than, and store the results in mask vector k.
@@ -2389,7 +2389,7 @@ pub unsafe fn _mm_cmplt_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmplt_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
-    _mm_cmplt_epu16_mask(a, b) & k1
+    _mm_mask_cmp_epu16_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for less-than, and store the results in mask vector k.
@@ -2411,7 +2411,7 @@ pub unsafe fn _mm512_cmplt_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmplt_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
-    _mm512_cmplt_epu8_mask(a, b) & k1
+    _mm512_mask_cmp_epu8_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for less-than, and store the results in mask vector k.
@@ -2433,7 +2433,7 @@ pub unsafe fn _mm256_cmplt_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmplt_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
-    _mm256_cmplt_epu8_mask(a, b) & k1
+    _mm256_mask_cmp_epu8_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for less-than, and store the results in mask vector k.
@@ -2455,7 +2455,7 @@ pub unsafe fn _mm_cmplt_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmplt_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
-    _mm_cmplt_epu8_mask(a, b) & k1
+    _mm_mask_cmp_epu8_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for less-than, and store the results in mask vector k.
@@ -2477,7 +2477,7 @@ pub unsafe fn _mm512_cmplt_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmplt_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
-    _mm512_cmplt_epi16_mask(a, b) & k1
+    _mm512_mask_cmp_epi16_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for less-than, and store the results in mask vector k.
@@ -2499,7 +2499,7 @@ pub unsafe fn _mm256_cmplt_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmplt_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
-    _mm256_cmplt_epi16_mask(a, b) & k1
+    _mm256_mask_cmp_epi16_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for less-than, and store the results in mask vector k.
@@ -2521,7 +2521,7 @@ pub unsafe fn _mm_cmplt_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmplt_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
-    _mm_cmplt_epi16_mask(a, b) & k1
+    _mm_mask_cmp_epi16_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for less-than, and store the results in mask vector k.
@@ -2543,7 +2543,7 @@ pub unsafe fn _mm512_cmplt_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmplt_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
-    _mm512_cmplt_epi8_mask(a, b) & k1
+    _mm512_mask_cmp_epi8_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for less-than, and store the results in mask vector k.
@@ -2565,7 +2565,7 @@ pub unsafe fn _mm256_cmplt_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmplt_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
-    _mm256_cmplt_epi8_mask(a, b) & k1
+    _mm256_mask_cmp_epi8_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for less-than, and store the results in mask vector k.
@@ -2587,7 +2587,7 @@ pub unsafe fn _mm_cmplt_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmplt_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
-    _mm_cmplt_epi8_mask(a, b) & k1
+    _mm_mask_cmp_epi8_mask::<_MM_CMPINT_LT>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for greater-than, and store the results in mask vector k.
@@ -2609,7 +2609,7 @@ pub unsafe fn _mm512_cmpgt_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpgt_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
-    _mm512_cmpgt_epu16_mask(a, b) & k1
+    _mm512_mask_cmp_epu16_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for greater-than, and store the results in mask vector k.
@@ -2631,7 +2631,7 @@ pub unsafe fn _mm256_cmpgt_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpgt_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
-    _mm256_cmpgt_epu16_mask(a, b) & k1
+    _mm256_mask_cmp_epu16_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for greater-than, and store the results in mask vector k.
@@ -2653,7 +2653,7 @@ pub unsafe fn _mm_cmpgt_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpgt_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
-    _mm_cmpgt_epu16_mask(a, b) & k1
+    _mm_mask_cmp_epu16_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for greater-than, and store the results in mask vector k.
@@ -2675,7 +2675,7 @@ pub unsafe fn _mm512_cmpgt_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpgt_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
-    _mm512_cmpgt_epu8_mask(a, b) & k1
+    _mm512_mask_cmp_epu8_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for greater-than, and store the results in mask vector k.
@@ -2697,7 +2697,7 @@ pub unsafe fn _mm256_cmpgt_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpgt_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
-    _mm256_cmpgt_epu8_mask(a, b) & k1
+    _mm256_mask_cmp_epu8_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for greater-than, and store the results in mask vector k.
@@ -2719,7 +2719,7 @@ pub unsafe fn _mm_cmpgt_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpgt_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
-    _mm_cmpgt_epu8_mask(a, b) & k1
+    _mm_mask_cmp_epu8_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for greater-than, and store the results in mask vector k.
@@ -2741,7 +2741,7 @@ pub unsafe fn _mm512_cmpgt_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpgt_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
-    _mm512_cmpgt_epi16_mask(a, b) & k1
+    _mm512_mask_cmp_epi16_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for greater-than, and store the results in mask vector k.
@@ -2763,7 +2763,7 @@ pub unsafe fn _mm256_cmpgt_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpgt_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
-    _mm256_cmpgt_epi16_mask(a, b) & k1
+    _mm256_mask_cmp_epi16_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for greater-than, and store the results in mask vector k.
@@ -2785,7 +2785,7 @@ pub unsafe fn _mm_cmpgt_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpgt_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
-    _mm_cmpgt_epi16_mask(a, b) & k1
+    _mm_mask_cmp_epi16_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for greater-than, and store the results in mask vector k.
@@ -2807,7 +2807,7 @@ pub unsafe fn _mm512_cmpgt_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpgt_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
-    _mm512_cmpgt_epi8_mask(a, b) & k1
+    _mm512_mask_cmp_epi8_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for greater-than, and store the results in mask vector k.
@@ -2829,7 +2829,7 @@ pub unsafe fn _mm256_cmpgt_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpgt_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
-    _mm256_cmpgt_epi8_mask(a, b) & k1
+    _mm256_mask_cmp_epi8_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for greater-than, and store the results in mask vector k.
@@ -2851,7 +2851,7 @@ pub unsafe fn _mm_cmpgt_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpgt_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
-    _mm_cmpgt_epi8_mask(a, b) & k1
+    _mm_mask_cmp_epi8_mask::<_MM_CMPINT_NLE>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.
@@ -2873,7 +2873,7 @@ pub unsafe fn _mm512_cmple_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmple_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
-    _mm512_cmple_epu16_mask(a, b) & k1
+    _mm512_mask_cmp_epu16_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.
@@ -2895,7 +2895,7 @@ pub unsafe fn _mm256_cmple_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmple_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
-    _mm256_cmple_epu16_mask(a, b) & k1
+    _mm256_mask_cmp_epu16_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.
@@ -2917,7 +2917,7 @@ pub unsafe fn _mm_cmple_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmple_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
-    _mm_cmple_epu16_mask(a, b) & k1
+    _mm_mask_cmp_epu16_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.   
@@ -2939,7 +2939,7 @@ pub unsafe fn _mm512_cmple_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmple_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
-    _mm512_cmple_epu8_mask(a, b) & k1
+    _mm512_mask_cmp_epu8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.   
@@ -2961,7 +2961,7 @@ pub unsafe fn _mm256_cmple_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmple_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
-    _mm256_cmple_epu8_mask(a, b) & k1
+    _mm256_mask_cmp_epu8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.   
@@ -2983,7 +2983,7 @@ pub unsafe fn _mm_cmple_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmple_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
-    _mm_cmple_epu8_mask(a, b) & k1
+    _mm_mask_cmp_epu8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.
@@ -3005,7 +3005,7 @@ pub unsafe fn _mm512_cmple_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmple_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
-    _mm512_cmple_epi16_mask(a, b) & k1
+    _mm512_mask_cmp_epi16_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.
@@ -3027,7 +3027,7 @@ pub unsafe fn _mm256_cmple_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmple_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
-    _mm256_cmple_epi16_mask(a, b) & k1
+    _mm256_mask_cmp_epi16_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.
@@ -3049,7 +3049,7 @@ pub unsafe fn _mm_cmple_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmple_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
-    _mm_cmple_epi16_mask(a, b) & k1
+    _mm_mask_cmp_epi16_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.
@@ -3071,7 +3071,7 @@ pub unsafe fn _mm512_cmple_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmple_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
-    _mm512_cmple_epi8_mask(a, b) & k1
+    _mm512_mask_cmp_epi8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.
@@ -3093,7 +3093,7 @@ pub unsafe fn _mm256_cmple_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmple_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
-    _mm256_cmple_epi8_mask(a, b) & k1
+    _mm256_mask_cmp_epi8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.
@@ -3115,7 +3115,7 @@ pub unsafe fn _mm_cmple_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmple_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
-    _mm_cmple_epi8_mask(a, b) & k1
+    _mm_mask_cmp_epi8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for greater-than-or-equal, and store the results in mask vector k.
@@ -3137,7 +3137,7 @@ pub unsafe fn _mm512_cmpge_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpge_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
-    _mm512_cmpge_epu16_mask(a, b) & k1
+    _mm512_mask_cmp_epu16_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for greater-than-or-equal, and store the results in mask vector k.
@@ -3159,7 +3159,7 @@ pub unsafe fn _mm256_cmpge_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpge_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
-    _mm256_cmpge_epu16_mask(a, b) & k1
+    _mm256_mask_cmp_epu16_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for greater-than-or-equal, and store the results in mask vector k.
@@ -3181,7 +3181,7 @@ pub unsafe fn _mm_cmpge_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpge_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
-    _mm_cmpge_epu16_mask(a, b) & k1
+    _mm_mask_cmp_epu16_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for greater-than-or-equal, and store the results in mask vector k.
@@ -3203,7 +3203,7 @@ pub unsafe fn _mm512_cmpge_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpge_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
-    _mm512_cmpge_epu8_mask(a, b) & k1
+    _mm512_mask_cmp_epu8_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for greater-than-or-equal, and store the results in mask vector k.
@@ -3225,7 +3225,7 @@ pub unsafe fn _mm256_cmpge_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpge_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
-    _mm256_cmpge_epu8_mask(a, b) & k1
+    _mm256_mask_cmp_epu8_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for greater-than-or-equal, and store the results in mask vector k.
@@ -3247,7 +3247,7 @@ pub unsafe fn _mm_cmpge_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpge_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
-    _mm_cmpge_epu8_mask(a, b) & k1
+    _mm_mask_cmp_epu8_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for greater-than-or-equal, and store the results in mask vector k.
@@ -3269,7 +3269,7 @@ pub unsafe fn _mm512_cmpge_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpge_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
-    _mm512_cmpge_epi16_mask(a, b) & k1
+    _mm512_mask_cmp_epi16_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for greater-than-or-equal, and store the results in mask vector k.
@@ -3291,7 +3291,7 @@ pub unsafe fn _mm256_cmpge_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpge_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
-    _mm256_cmpge_epi16_mask(a, b) & k1
+    _mm256_mask_cmp_epi16_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for greater-than-or-equal, and store the results in mask vector k.
@@ -3313,7 +3313,7 @@ pub unsafe fn _mm_cmpge_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpge_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
-    _mm_cmpge_epi16_mask(a, b) & k1
+    _mm_mask_cmp_epi16_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for greater-than-or-equal, and store the results in mask vector k.
@@ -3335,7 +3335,7 @@ pub unsafe fn _mm512_cmpge_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpge_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
-    _mm512_cmpge_epi8_mask(a, b) & k1
+    _mm512_mask_cmp_epi8_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for greater-than-or-equal, and store the results in mask vector k.
@@ -3357,7 +3357,7 @@ pub unsafe fn _mm256_cmpge_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpge_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
-    _mm256_cmpge_epi8_mask(a, b) & k1
+    _mm256_mask_cmp_epi8_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for greater-than-or-equal, and store the results in mask vector k.
@@ -3379,7 +3379,7 @@ pub unsafe fn _mm_cmpge_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpge_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
-    _mm_cmpge_epi8_mask(a, b) & k1
+    _mm_mask_cmp_epi8_mask::<_MM_CMPINT_NLT>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for equality, and store the results in mask vector k.
@@ -3401,7 +3401,7 @@ pub unsafe fn _mm512_cmpeq_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpeq_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
-    _mm512_cmpeq_epu16_mask(a, b) & k1
+    _mm512_mask_cmp_epu16_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for equality, and store the results in mask vector k.
@@ -3423,7 +3423,7 @@ pub unsafe fn _mm256_cmpeq_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpeq_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
-    _mm256_cmpeq_epu16_mask(a, b) & k1
+    _mm256_mask_cmp_epu16_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for equality, and store the results in mask vector k.
@@ -3445,7 +3445,7 @@ pub unsafe fn _mm_cmpeq_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpeq_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
-    _mm_cmpeq_epu16_mask(a, b) & k1
+    _mm_mask_cmp_epu16_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for equality, and store the results in mask vector k.
@@ -3467,7 +3467,7 @@ pub unsafe fn _mm512_cmpeq_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpeq_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
-    _mm512_cmpeq_epu8_mask(a, b) & k1
+    _mm512_mask_cmp_epu8_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for equality, and store the results in mask vector k.
@@ -3489,7 +3489,7 @@ pub unsafe fn _mm256_cmpeq_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpeq_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
-    _mm256_cmpeq_epu8_mask(a, b) & k1
+    _mm256_mask_cmp_epu8_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for equality, and store the results in mask vector k.
@@ -3511,7 +3511,7 @@ pub unsafe fn _mm_cmpeq_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpeq_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
-    _mm_cmpeq_epu8_mask(a, b) & k1
+    _mm_mask_cmp_epu8_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for equality, and store the results in mask vector k.
@@ -3533,7 +3533,7 @@ pub unsafe fn _mm512_cmpeq_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpeq_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
-    _mm512_cmpeq_epi16_mask(a, b) & k1
+    _mm512_mask_cmp_epi16_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for equality, and store the results in mask vector k.
@@ -3555,7 +3555,7 @@ pub unsafe fn _mm256_cmpeq_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpeq_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
-    _mm256_cmpeq_epi16_mask(a, b) & k1
+    _mm256_mask_cmp_epi16_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for equality, and store the results in mask vector k.
@@ -3577,7 +3577,7 @@ pub unsafe fn _mm_cmpeq_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpeq_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
-    _mm_cmpeq_epi16_mask(a, b) & k1
+    _mm_mask_cmp_epi16_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for equality, and store the results in mask vector k.
@@ -3599,7 +3599,7 @@ pub unsafe fn _mm512_cmpeq_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpeq_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
-    _mm512_cmpeq_epi8_mask(a, b) & k1
+    _mm512_mask_cmp_epi8_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for equality, and store the results in mask vector k.
@@ -3621,7 +3621,7 @@ pub unsafe fn _mm256_cmpeq_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpeq_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
-    _mm256_cmpeq_epi8_mask(a, b) & k1
+    _mm256_mask_cmp_epi8_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for equality, and store the results in mask vector k.
@@ -3643,7 +3643,7 @@ pub unsafe fn _mm_cmpeq_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpeq_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
-    _mm_cmpeq_epi8_mask(a, b) & k1
+    _mm_mask_cmp_epi8_mask::<_MM_CMPINT_EQ>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for not-equal, and store the results in mask vector k.
@@ -3665,7 +3665,7 @@ pub unsafe fn _mm512_cmpneq_epu16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpneq_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
-    _mm512_cmpneq_epu16_mask(a, b) & k1
+    _mm512_mask_cmp_epu16_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for not-equal, and store the results in mask vector k.
@@ -3687,7 +3687,7 @@ pub unsafe fn _mm256_cmpneq_epu16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpneq_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
-    _mm256_cmpneq_epu16_mask(a, b) & k1
+    _mm256_mask_cmp_epu16_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b for not-equal, and store the results in mask vector k.
@@ -3709,7 +3709,7 @@ pub unsafe fn _mm_cmpneq_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpneq_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
-    _mm_cmpneq_epu16_mask(a, b) & k1
+    _mm_mask_cmp_epu16_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for not-equal, and store the results in mask vector k.
@@ -3731,7 +3731,7 @@ pub unsafe fn _mm512_cmpneq_epu8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpneq_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
-    _mm512_cmpneq_epu8_mask(a, b) & k1
+    _mm512_mask_cmp_epu8_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for not-equal, and store the results in mask vector k.
@@ -3753,7 +3753,7 @@ pub unsafe fn _mm256_cmpneq_epu8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpneq_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
-    _mm256_cmpneq_epu8_mask(a, b) & k1
+    _mm256_mask_cmp_epu8_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b for not-equal, and store the results in mask vector k.
@@ -3775,7 +3775,7 @@ pub unsafe fn _mm_cmpneq_epu8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpneq_epu8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
-    _mm_cmpneq_epu8_mask(a, b) & k1
+    _mm_mask_cmp_epu8_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for not-equal, and store the results in mask vector k.
@@ -3797,7 +3797,7 @@ pub unsafe fn _mm512_cmpneq_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpneq_epi16_mask(k1: __mmask32, a: __m512i, b: __m512i) -> __mmask32 {
-    _mm512_cmpneq_epi16_mask(a, b) & k1
+    _mm512_mask_cmp_epi16_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for not-equal, and store the results in mask vector k.
@@ -3819,7 +3819,7 @@ pub unsafe fn _mm256_cmpneq_epi16_mask(a: __m256i, b: __m256i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpneq_epi16_mask(k1: __mmask16, a: __m256i, b: __m256i) -> __mmask16 {
-    _mm256_cmpneq_epi16_mask(a, b) & k1
+    _mm256_mask_cmp_epi16_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
 
 /// Compare packed signed 16-bit integers in a and b for not-equal, and store the results in mask vector k.
@@ -3841,7 +3841,7 @@ pub unsafe fn _mm_cmpneq_epi16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpneq_epi16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> __mmask8 {
-    _mm_cmpneq_epi16_mask(a, b) & k1
+    _mm_mask_cmp_epi16_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for not-equal, and store the results in mask vector k.
@@ -3863,7 +3863,7 @@ pub unsafe fn _mm512_cmpneq_epi8_mask(a: __m512i, b: __m512i) -> __mmask64 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm512_mask_cmpneq_epi8_mask(k1: __mmask64, a: __m512i, b: __m512i) -> __mmask64 {
-    _mm512_cmpneq_epi8_mask(a, b) & k1
+    _mm512_mask_cmp_epi8_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for not-equal, and store the results in mask vector k.
@@ -3885,7 +3885,7 @@ pub unsafe fn _mm256_cmpneq_epi8_mask(a: __m256i, b: __m256i) -> __mmask32 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm256_mask_cmpneq_epi8_mask(k1: __mmask32, a: __m256i, b: __m256i) -> __mmask32 {
-    _mm256_cmpneq_epi8_mask(a, b) & k1
+    _mm256_mask_cmp_epi8_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
 
 /// Compare packed signed 8-bit integers in a and b for not-equal, and store the results in mask vector k.
@@ -3907,7 +3907,7 @@ pub unsafe fn _mm_cmpneq_epi8_mask(a: __m128i, b: __m128i) -> __mmask16 {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcmp))]
 pub unsafe fn _mm_mask_cmpneq_epi8_mask(k1: __mmask16, a: __m128i, b: __m128i) -> __mmask16 {
-    _mm_cmpneq_epi8_mask(a, b) & k1
+    _mm_mask_cmp_epi8_mask::<_MM_CMPINT_NE>(k1, a, b)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b based on the comparison operand specified by `IMM8`, and store the results in mask vector k.
@@ -3922,7 +3922,17 @@ pub unsafe fn _mm512_cmp_epu16_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> 
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u16x32();
     let b = b.as_u16x32();
-    vpcmpuw(a, b, IMM8, 0b11111111_11111111_11111111_11111111)
+    let r = match IMM8 {
+        0 => simd_eq(a, b),
+        1 => simd_lt(a, b),
+        2 => simd_le(a, b),
+        3 => i16x32::splat(0),
+        4 => simd_ne(a, b),
+        5 => simd_ge(a, b),
+        6 => simd_gt(a, b),
+        _ => i16x32::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -3941,7 +3951,18 @@ pub unsafe fn _mm512_mask_cmp_epu16_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u16x32();
     let b = b.as_u16x32();
-    vpcmpuw(a, b, IMM8, k1)
+    let k1 = simd_select_bitmask(k1, i16x32::splat(-1), i16x32::splat(0));
+    let r = match IMM8 {
+        0 => simd_and(k1, simd_eq(a, b)),
+        1 => simd_and(k1, simd_lt(a, b)),
+        2 => simd_and(k1, simd_le(a, b)),
+        3 => i16x32::splat(0),
+        4 => simd_and(k1, simd_ne(a, b)),
+        5 => simd_and(k1, simd_ge(a, b)),
+        6 => simd_and(k1, simd_gt(a, b)),
+        _ => i16x32::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -3956,7 +3977,17 @@ pub unsafe fn _mm256_cmp_epu16_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> 
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u16x16();
     let b = b.as_u16x16();
-    vpcmpuw256(a, b, IMM8, 0b11111111_11111111)
+    let r = match IMM8 {
+        0 => simd_eq(a, b),
+        1 => simd_lt(a, b),
+        2 => simd_le(a, b),
+        3 => i16x16::splat(0),
+        4 => simd_ne(a, b),
+        5 => simd_ge(a, b),
+        6 => simd_gt(a, b),
+        _ => i16x16::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -3975,7 +4006,18 @@ pub unsafe fn _mm256_mask_cmp_epu16_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u16x16();
     let b = b.as_u16x16();
-    vpcmpuw256(a, b, IMM8, k1)
+    let k1 = simd_select_bitmask(k1, i16x16::splat(-1), i16x16::splat(0));
+    let r = match IMM8 {
+        0 => simd_and(k1, simd_eq(a, b)),
+        1 => simd_and(k1, simd_lt(a, b)),
+        2 => simd_and(k1, simd_le(a, b)),
+        3 => i16x16::splat(0),
+        4 => simd_and(k1, simd_ne(a, b)),
+        5 => simd_and(k1, simd_ge(a, b)),
+        6 => simd_and(k1, simd_gt(a, b)),
+        _ => i16x16::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -3990,7 +4032,17 @@ pub unsafe fn _mm_cmp_epu16_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __m
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u16x8();
     let b = b.as_u16x8();
-    vpcmpuw128(a, b, IMM8, 0b11111111)
+    let r = match IMM8 {
+        0 => simd_eq(a, b),
+        1 => simd_lt(a, b),
+        2 => simd_le(a, b),
+        3 => i16x8::splat(0),
+        4 => simd_ne(a, b),
+        5 => simd_ge(a, b),
+        6 => simd_gt(a, b),
+        _ => i16x8::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed unsigned 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -4009,7 +4061,18 @@ pub unsafe fn _mm_mask_cmp_epu16_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u16x8();
     let b = b.as_u16x8();
-    vpcmpuw128(a, b, IMM8, k1)
+    let k1 = simd_select_bitmask(k1, i16x8::splat(-1), i16x8::splat(0));
+    let r = match IMM8 {
+        0 => simd_and(k1, simd_eq(a, b)),
+        1 => simd_and(k1, simd_lt(a, b)),
+        2 => simd_and(k1, simd_le(a, b)),
+        3 => i16x8::splat(0),
+        4 => simd_and(k1, simd_ne(a, b)),
+        5 => simd_and(k1, simd_ge(a, b)),
+        6 => simd_and(k1, simd_gt(a, b)),
+        _ => i16x8::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -4024,12 +4087,17 @@ pub unsafe fn _mm512_cmp_epu8_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> _
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u8x64();
     let b = b.as_u8x64();
-    vpcmpub(
-        a,
-        b,
-        IMM8,
-        0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111,
-    )
+    let r = match IMM8 {
+        0 => simd_eq(a, b),
+        1 => simd_lt(a, b),
+        2 => simd_le(a, b),
+        3 => i8x64::splat(0),
+        4 => simd_ne(a, b),
+        5 => simd_ge(a, b),
+        6 => simd_gt(a, b),
+        _ => i8x64::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -4048,7 +4116,18 @@ pub unsafe fn _mm512_mask_cmp_epu8_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u8x64();
     let b = b.as_u8x64();
-    vpcmpub(a, b, IMM8, k1)
+    let k1 = simd_select_bitmask(k1, i8x64::splat(-1), i8x64::splat(0));
+    let r = match IMM8 {
+        0 => simd_and(k1, simd_eq(a, b)),
+        1 => simd_and(k1, simd_lt(a, b)),
+        2 => simd_and(k1, simd_le(a, b)),
+        3 => i8x64::splat(0),
+        4 => simd_and(k1, simd_ne(a, b)),
+        5 => simd_and(k1, simd_ge(a, b)),
+        6 => simd_and(k1, simd_gt(a, b)),
+        _ => i8x64::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -4063,7 +4142,17 @@ pub unsafe fn _mm256_cmp_epu8_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> _
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u8x32();
     let b = b.as_u8x32();
-    vpcmpub256(a, b, IMM8, 0b11111111_11111111_11111111_11111111)
+    let r = match IMM8 {
+        0 => simd_eq(a, b),
+        1 => simd_lt(a, b),
+        2 => simd_le(a, b),
+        3 => i8x32::splat(0),
+        4 => simd_ne(a, b),
+        5 => simd_ge(a, b),
+        6 => simd_gt(a, b),
+        _ => i8x32::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -4082,7 +4171,18 @@ pub unsafe fn _mm256_mask_cmp_epu8_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u8x32();
     let b = b.as_u8x32();
-    vpcmpub256(a, b, IMM8, k1)
+    let k1 = simd_select_bitmask(k1, i8x32::splat(-1), i8x32::splat(0));
+    let r = match IMM8 {
+        0 => simd_and(k1, simd_eq(a, b)),
+        1 => simd_and(k1, simd_lt(a, b)),
+        2 => simd_and(k1, simd_le(a, b)),
+        3 => i8x32::splat(0),
+        4 => simd_and(k1, simd_ne(a, b)),
+        5 => simd_and(k1, simd_ge(a, b)),
+        6 => simd_and(k1, simd_gt(a, b)),
+        _ => i8x32::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -4097,7 +4197,17 @@ pub unsafe fn _mm_cmp_epu8_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __mm
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u8x16();
     let b = b.as_u8x16();
-    vpcmpub128(a, b, IMM8, 0b11111111_11111111)
+    let r = match IMM8 {
+        0 => simd_eq(a, b),
+        1 => simd_lt(a, b),
+        2 => simd_le(a, b),
+        3 => i8x16::splat(0),
+        4 => simd_ne(a, b),
+        5 => simd_ge(a, b),
+        6 => simd_gt(a, b),
+        _ => i8x16::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed unsigned 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -4116,7 +4226,18 @@ pub unsafe fn _mm_mask_cmp_epu8_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_u8x16();
     let b = b.as_u8x16();
-    vpcmpub128(a, b, IMM8, k1)
+    let k1 = simd_select_bitmask(k1, i8x16::splat(-1), i8x16::splat(0));
+    let r = match IMM8 {
+        0 => simd_and(k1, simd_eq(a, b)),
+        1 => simd_and(k1, simd_lt(a, b)),
+        2 => simd_and(k1, simd_le(a, b)),
+        3 => i8x16::splat(0),
+        4 => simd_and(k1, simd_ne(a, b)),
+        5 => simd_and(k1, simd_ge(a, b)),
+        6 => simd_and(k1, simd_gt(a, b)),
+        _ => i8x16::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed signed 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -4131,7 +4252,17 @@ pub unsafe fn _mm512_cmp_epi16_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> 
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i16x32();
     let b = b.as_i16x32();
-    vpcmpw(a, b, IMM8, 0b11111111_11111111_11111111_11111111)
+    let r = match IMM8 {
+        0 => simd_eq(a, b),
+        1 => simd_lt(a, b),
+        2 => simd_le(a, b),
+        3 => i16x32::splat(0),
+        4 => simd_ne(a, b),
+        5 => simd_ge(a, b),
+        6 => simd_gt(a, b),
+        _ => i16x32::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed signed 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -4150,7 +4281,18 @@ pub unsafe fn _mm512_mask_cmp_epi16_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i16x32();
     let b = b.as_i16x32();
-    vpcmpw(a, b, IMM8, k1)
+    let k1 = simd_select_bitmask(k1, i16x32::splat(-1), i16x32::splat(0));
+    let r = match IMM8 {
+        0 => simd_and(k1, simd_eq(a, b)),
+        1 => simd_and(k1, simd_lt(a, b)),
+        2 => simd_and(k1, simd_le(a, b)),
+        3 => i16x32::splat(0),
+        4 => simd_and(k1, simd_ne(a, b)),
+        5 => simd_and(k1, simd_ge(a, b)),
+        6 => simd_and(k1, simd_gt(a, b)),
+        _ => i16x32::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed signed 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -4165,7 +4307,17 @@ pub unsafe fn _mm256_cmp_epi16_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> 
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i16x16();
     let b = b.as_i16x16();
-    vpcmpw256(a, b, IMM8, 0b11111111_11111111)
+    let r = match IMM8 {
+        0 => simd_eq(a, b),
+        1 => simd_lt(a, b),
+        2 => simd_le(a, b),
+        3 => i16x16::splat(0),
+        4 => simd_ne(a, b),
+        5 => simd_ge(a, b),
+        6 => simd_gt(a, b),
+        _ => i16x16::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed signed 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -4184,7 +4336,18 @@ pub unsafe fn _mm256_mask_cmp_epi16_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i16x16();
     let b = b.as_i16x16();
-    vpcmpw256(a, b, IMM8, k1)
+    let k1 = simd_select_bitmask(k1, i16x16::splat(-1), i16x16::splat(0));
+    let r = match IMM8 {
+        0 => simd_and(k1, simd_eq(a, b)),
+        1 => simd_and(k1, simd_lt(a, b)),
+        2 => simd_and(k1, simd_le(a, b)),
+        3 => i16x16::splat(0),
+        4 => simd_and(k1, simd_ne(a, b)),
+        5 => simd_and(k1, simd_ge(a, b)),
+        6 => simd_and(k1, simd_gt(a, b)),
+        _ => i16x16::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed signed 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -4199,7 +4362,17 @@ pub unsafe fn _mm_cmp_epi16_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __m
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i16x8();
     let b = b.as_i16x8();
-    vpcmpw128(a, b, IMM8, 0b11111111)
+    let r = match IMM8 {
+        0 => simd_eq(a, b),
+        1 => simd_lt(a, b),
+        2 => simd_le(a, b),
+        3 => i16x8::splat(0),
+        4 => simd_ne(a, b),
+        5 => simd_ge(a, b),
+        6 => simd_gt(a, b),
+        _ => i16x8::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed signed 16-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -4218,7 +4391,18 @@ pub unsafe fn _mm_mask_cmp_epi16_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i16x8();
     let b = b.as_i16x8();
-    vpcmpw128(a, b, IMM8, k1)
+    let k1 = simd_select_bitmask(k1, i16x8::splat(-1), i16x8::splat(0));
+    let r = match IMM8 {
+        0 => simd_and(k1, simd_eq(a, b)),
+        1 => simd_and(k1, simd_lt(a, b)),
+        2 => simd_and(k1, simd_le(a, b)),
+        3 => i16x8::splat(0),
+        4 => simd_and(k1, simd_ne(a, b)),
+        5 => simd_and(k1, simd_ge(a, b)),
+        6 => simd_and(k1, simd_gt(a, b)),
+        _ => i16x8::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed signed 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -4233,12 +4417,17 @@ pub unsafe fn _mm512_cmp_epi8_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> _
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i8x64();
     let b = b.as_i8x64();
-    vpcmpb(
-        a,
-        b,
-        IMM8,
-        0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111111,
-    )
+    let r = match IMM8 {
+        0 => simd_eq(a, b),
+        1 => simd_lt(a, b),
+        2 => simd_le(a, b),
+        3 => i8x64::splat(0),
+        4 => simd_ne(a, b),
+        5 => simd_ge(a, b),
+        6 => simd_gt(a, b),
+        _ => i8x64::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed signed 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -4257,7 +4446,18 @@ pub unsafe fn _mm512_mask_cmp_epi8_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i8x64();
     let b = b.as_i8x64();
-    vpcmpb(a, b, IMM8, k1)
+    let k1 = simd_select_bitmask(k1, i8x64::splat(-1), i8x64::splat(0));
+    let r = match IMM8 {
+        0 => simd_and(k1, simd_eq(a, b)),
+        1 => simd_and(k1, simd_lt(a, b)),
+        2 => simd_and(k1, simd_le(a, b)),
+        3 => i8x64::splat(0),
+        4 => simd_and(k1, simd_ne(a, b)),
+        5 => simd_and(k1, simd_ge(a, b)),
+        6 => simd_and(k1, simd_gt(a, b)),
+        _ => i8x64::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed signed 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -4272,7 +4472,17 @@ pub unsafe fn _mm256_cmp_epi8_mask<const IMM8: i32>(a: __m256i, b: __m256i) -> _
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i8x32();
     let b = b.as_i8x32();
-    vpcmpb256(a, b, IMM8, 0b11111111_11111111_11111111_11111111)
+    let r = match IMM8 {
+        0 => simd_eq(a, b),
+        1 => simd_lt(a, b),
+        2 => simd_le(a, b),
+        3 => i8x32::splat(0),
+        4 => simd_ne(a, b),
+        5 => simd_ge(a, b),
+        6 => simd_gt(a, b),
+        _ => i8x32::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed signed 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -4291,7 +4501,18 @@ pub unsafe fn _mm256_mask_cmp_epi8_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i8x32();
     let b = b.as_i8x32();
-    vpcmpb256(a, b, IMM8, k1)
+    let k1 = simd_select_bitmask(k1, i8x32::splat(-1), i8x32::splat(0));
+    let r = match IMM8 {
+        0 => simd_and(k1, simd_eq(a, b)),
+        1 => simd_and(k1, simd_lt(a, b)),
+        2 => simd_and(k1, simd_le(a, b)),
+        3 => i8x32::splat(0),
+        4 => simd_and(k1, simd_ne(a, b)),
+        5 => simd_and(k1, simd_ge(a, b)),
+        6 => simd_and(k1, simd_gt(a, b)),
+        _ => i8x32::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed signed 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -4306,7 +4527,17 @@ pub unsafe fn _mm_cmp_epi8_mask<const IMM8: i32>(a: __m128i, b: __m128i) -> __mm
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i8x16();
     let b = b.as_i8x16();
-    vpcmpb128(a, b, IMM8, 0b11111111_11111111)
+    let r = match IMM8 {
+        0 => simd_eq(a, b),
+        1 => simd_lt(a, b),
+        2 => simd_le(a, b),
+        3 => i8x16::splat(0),
+        4 => simd_ne(a, b),
+        5 => simd_ge(a, b),
+        6 => simd_gt(a, b),
+        _ => i8x16::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Compare packed signed 8-bit integers in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -4325,7 +4556,18 @@ pub unsafe fn _mm_mask_cmp_epi8_mask<const IMM8: i32>(
     static_assert_uimm_bits!(IMM8, 3);
     let a = a.as_i8x16();
     let b = b.as_i8x16();
-    vpcmpb128(a, b, IMM8, k1)
+    let k1 = simd_select_bitmask(k1, i8x16::splat(-1), i8x16::splat(0));
+    let r = match IMM8 {
+        0 => simd_and(k1, simd_eq(a, b)),
+        1 => simd_and(k1, simd_lt(a, b)),
+        2 => simd_and(k1, simd_le(a, b)),
+        3 => i8x16::splat(0),
+        4 => simd_and(k1, simd_ne(a, b)),
+        5 => simd_and(k1, simd_ge(a, b)),
+        6 => simd_and(k1, simd_gt(a, b)),
+        _ => i8x16::splat(-1),
+    };
+    simd_bitmask(r)
 }
 
 /// Load 512-bits (composed of 32 packed 16-bit integers) from memory into dst. mem_addr does not need to be aligned on any particular boundary.
@@ -10491,34 +10733,6 @@ pub unsafe fn _mm_mask_cvtusepi16_storeu_epi8(mem_addr: *mut i8, k: __mmask8, a:
 extern "C" {
     #[link_name = "llvm.x86.avx512.pmul.hr.sw.512"]
     fn vpmulhrsw(a: i16x32, b: i16x32) -> i16x32;
-
-    #[link_name = "llvm.x86.avx512.mask.ucmp.w.512"]
-    fn vpcmpuw(a: u16x32, b: u16x32, op: i32, mask: u32) -> u32;
-    #[link_name = "llvm.x86.avx512.mask.ucmp.w.256"]
-    fn vpcmpuw256(a: u16x16, b: u16x16, op: i32, mask: u16) -> u16;
-    #[link_name = "llvm.x86.avx512.mask.ucmp.w.128"]
-    fn vpcmpuw128(a: u16x8, b: u16x8, op: i32, mask: u8) -> u8;
-
-    #[link_name = "llvm.x86.avx512.mask.ucmp.b.512"]
-    fn vpcmpub(a: u8x64, b: u8x64, op: i32, mask: u64) -> u64;
-    #[link_name = "llvm.x86.avx512.mask.ucmp.b.256"]
-    fn vpcmpub256(a: u8x32, b: u8x32, op: i32, mask: u32) -> u32;
-    #[link_name = "llvm.x86.avx512.mask.ucmp.b.128"]
-    fn vpcmpub128(a: u8x16, b: u8x16, op: i32, mask: u16) -> u16;
-
-    #[link_name = "llvm.x86.avx512.mask.cmp.w.512"]
-    fn vpcmpw(a: i16x32, b: i16x32, op: i32, mask: u32) -> u32;
-    #[link_name = "llvm.x86.avx512.mask.cmp.w.256"]
-    fn vpcmpw256(a: i16x16, b: i16x16, op: i32, mask: u16) -> u16;
-    #[link_name = "llvm.x86.avx512.mask.cmp.w.128"]
-    fn vpcmpw128(a: i16x8, b: i16x8, op: i32, mask: u8) -> u8;
-
-    #[link_name = "llvm.x86.avx512.mask.cmp.b.512"]
-    fn vpcmpb(a: i8x64, b: i8x64, op: i32, mask: u64) -> u64;
-    #[link_name = "llvm.x86.avx512.mask.cmp.b.256"]
-    fn vpcmpb256(a: i8x32, b: i8x32, op: i32, mask: u32) -> u32;
-    #[link_name = "llvm.x86.avx512.mask.cmp.b.128"]
-    fn vpcmpb128(a: i8x16, b: i8x16, op: i32, mask: u16) -> u16;
 
     #[link_name = "llvm.x86.avx512.pmaddw.d.512"]
     fn vpmaddwd(a: i16x32, b: i16x32) -> i32x16;
