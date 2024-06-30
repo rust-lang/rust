@@ -9,9 +9,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
-use crate::coverage::spans::{
-    extract_refined_covspans, unexpand_into_body_span_with_visible_macro,
-};
+use crate::coverage::spans::extract_refined_covspans;
+use crate::coverage::unexpand::unexpand_into_body_span;
 use crate::coverage::ExtractedHirInfo;
 
 /// Associates an ordinary executable code span with its corresponding BCB.
@@ -202,8 +201,7 @@ pub(super) fn extract_branch_pairs(
             if !raw_span.ctxt().outer_expn_data().is_root() {
                 return None;
             }
-            let (span, _) =
-                unexpand_into_body_span_with_visible_macro(raw_span, hir_info.body_span)?;
+            let span = unexpand_into_body_span(raw_span, hir_info.body_span)?;
 
             let bcb_from_marker =
                 |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
@@ -238,7 +236,7 @@ pub(super) fn extract_mcdc_mappings(
             if !raw_span.ctxt().outer_expn_data().is_root() {
                 return None;
             }
-            let (span, _) = unexpand_into_body_span_with_visible_macro(raw_span, body_span)?;
+            let span = unexpand_into_body_span(raw_span, body_span)?;
 
             let true_bcb = bcb_from_marker(true_marker)?;
             let false_bcb = bcb_from_marker(false_marker)?;
@@ -261,7 +259,7 @@ pub(super) fn extract_mcdc_mappings(
 
     mcdc_decisions.extend(branch_info.mcdc_decision_spans.iter().filter_map(
         |decision: &mir::coverage::MCDCDecisionSpan| {
-            let (span, _) = unexpand_into_body_span_with_visible_macro(decision.span, body_span)?;
+            let span = unexpand_into_body_span(decision.span, body_span)?;
 
             let end_bcbs = decision
                 .end_markers

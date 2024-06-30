@@ -1,3 +1,4 @@
+use crate::build::matches::{DeclareLetBindings, EmitStorageLive, ScheduleDrops};
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use rustc_middle::middle::region::Scope;
@@ -201,7 +202,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             pattern,
                             UserTypeProjections::none(),
                             &mut |this, _, _, node, span, _, _| {
-                                this.storage_live_binding(block, node, span, OutsideGuard, true);
+                                this.storage_live_binding(
+                                    block,
+                                    node,
+                                    span,
+                                    OutsideGuard,
+                                    ScheduleDrops::Yes,
+                                );
                             },
                         );
                         let else_block_span = this.thir[*else_block].span;
@@ -213,8 +220,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     pattern,
                                     None,
                                     initializer_span,
-                                    false,
-                                    true,
+                                    DeclareLetBindings::No,
+                                    EmitStorageLive::No,
                                 )
                             });
                         matching.and(failure)
@@ -291,7 +298,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             pattern,
                             UserTypeProjections::none(),
                             &mut |this, _, _, node, span, _, _| {
-                                this.storage_live_binding(block, node, span, OutsideGuard, true);
+                                this.storage_live_binding(
+                                    block,
+                                    node,
+                                    span,
+                                    OutsideGuard,
+                                    ScheduleDrops::Yes,
+                                );
                                 this.schedule_drop_for_binding(node, span, OutsideGuard);
                             },
                         )

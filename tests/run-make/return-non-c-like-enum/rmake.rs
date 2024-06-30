@@ -11,8 +11,8 @@ fn main() {
     cc().input("test.c")
         .arg(&static_lib_name("nonclike"))
         .out_exe("test")
-        .args(&extra_c_flags())
-        .args(&extra_cxx_flags())
+        .args(extra_c_flags())
+        .args(extra_cxx_flags())
         .run();
     run("test");
 }

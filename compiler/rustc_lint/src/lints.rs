@@ -67,12 +67,6 @@ pub struct BuiltinWhileTrue {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_builtin_box_pointers)]
-pub struct BuiltinBoxPointers<'a> {
-    pub ty: Ty<'a>,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_builtin_non_shorthand_field_patterns)]
 pub struct BuiltinNonShorthandFieldPatterns {
     pub ident: Ident,
