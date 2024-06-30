@@ -6,6 +6,7 @@ mod mappings;
 mod spans;
 #[cfg(test)]
 mod tests;
+mod unexpand;
 
 use rustc_middle::mir::coverage::{
     CodeRegion, CoverageKind, DecisionInfo, FunctionCoverageInfo, Mapping, MappingKind,
