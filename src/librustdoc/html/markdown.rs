@@ -54,7 +54,8 @@ use crate::html::render::small_url_encode;
 use crate::html::toc::TocBuilder;
 
 use pulldown_cmark::{
-    html, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, OffsetIter, Options, Parser, Tag,
+    html, BrokenLink, BrokenLinkCallback, CodeBlockKind, CowStr, Event, LinkType, OffsetIter,
+    Options, Parser, Tag, TagEnd,
 };
 
 #[cfg(test)]
@@ -230,7 +231,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         let mut original_text = String::new();
         for event in &mut self.inner {
             match event {
-                Event::End(Tag::CodeBlock(..)) => break,
+                Event::End(TagEnd::CodeBlock) => break,
                 Event::Text(ref s) => {
                     original_text.push_str(s);
                 }
@@ -359,16 +360,17 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
         match &mut event {
             // This is a shortcut link that was resolved by the broken_link_callback: `[fn@f]`
             // Remove any disambiguator.
-            Some(Event::Start(Tag::Link(
+            Some(Event::Start(Tag::Link {
                 // [fn@f] or [fn@f][]
-                LinkType::ShortcutUnknown | LinkType::CollapsedUnknown,
-                dest,
+                link_type: LinkType::ShortcutUnknown | LinkType::CollapsedUnknown,
+                dest_url,
                 title,
-            ))) => {
-                debug!("saw start of shortcut link to {dest} with title {title}");
+                ..
+            })) => {
+                debug!("saw start of shortcut link to {dest_url} with title {title}");
                 // If this is a shortcut link, it was resolved by the broken_link_callback.
                 // So the URL will already be updated properly.
-                let link = self.links.iter().find(|&link| *link.href == **dest);
+                let link = self.links.iter().find(|&link| *link.href == **dest_url);
                 // Since this is an external iterator, we can't replace the inner text just yet.
                 // Store that we saw a link so we know to replace it later.
                 if let Some(link) = link {
@@ -381,16 +383,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                 }
             }
             // Now that we're done with the shortcut link, don't replace any more text.
-            Some(Event::End(Tag::Link(
-                LinkType::ShortcutUnknown | LinkType::CollapsedUnknown,
-                dest,
-                _,
-            ))) => {
-                debug!("saw end of shortcut link to {dest}");
-                if self.links.iter().any(|link| *link.href == **dest) {
-                    assert!(self.shortcut_link.is_some(), "saw closing link without opening tag");
-                    self.shortcut_link = None;
-                }
+            Some(Event::End(TagEnd::Link)) if self.shortcut_link.is_some() => {
+                debug!("saw end of shortcut link");
+                self.shortcut_link = None;
             }
             // Handle backticks in inline code blocks, but only if we're in the middle of a shortcut link.
             // [`fn@f`]
@@ -433,9 +428,11 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             }
             // If this is a link, but not a shortcut link,
             // replace the URL, since the broken_link_callback was not called.
-            Some(Event::Start(Tag::Link(_, dest, title))) => {
-                if let Some(link) = self.links.iter().find(|&link| *link.original_text == **dest) {
-                    *dest = CowStr::Borrowed(link.href.as_ref());
+            Some(Event::Start(Tag::Link { dest_url, title, .. })) => {
+                if let Some(link) =
+                    self.links.iter().find(|&link| *link.original_text == **dest_url)
+                {
+                    *dest_url = CowStr::Borrowed(link.href.as_ref());
                     if title.is_empty() && !link.tooltip.is_empty() {
                         *title = CowStr::Borrowed(link.tooltip.as_ref());
                     }
@@ -477,9 +474,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for TableWrapper<'a, I> {
                 self.stored_events.push_back(Event::Start(Tag::Table(t)));
                 Event::Html(CowStr::Borrowed("<div>"))
             }
-            Event::End(Tag::Table(t)) => {
+            Event::End(TagEnd::Table) => {
                 self.stored_events.push_back(Event::Html(CowStr::Borrowed("</div>")));
-                Event::End(Tag::Table(t))
+                Event::End(TagEnd::Table)
             }
             e => e,
         })
@@ -519,11 +516,11 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
         }
 
         let event = self.inner.next();
-        if let Some((Event::Start(Tag::Heading(level, _, _)), _)) = event {
+        if let Some((Event::Start(Tag::Heading { level, .. }), _)) = event {
             let mut id = String::new();
             for event in &mut self.inner {
                 match &event.0 {
-                    Event::End(Tag::Heading(..)) => break,
+                    Event::End(TagEnd::Heading(_)) => break,
                     Event::Text(text) | Event::Code(text) => {
                         id.extend(text.chars().filter_map(slugify));
                         self.buf.push_back(event);
@@ -566,27 +563,27 @@ impl<'a, I: Iterator<Item = Event<'a>>> SummaryLine<'a, I> {
     }
 }
 
-fn check_if_allowed_tag(t: &Tag<'_>) -> bool {
+fn check_if_allowed_tag(t: &TagEnd) -> bool {
     matches!(
         t,
-        Tag::Paragraph
-            | Tag::Emphasis
-            | Tag::Strong
-            | Tag::Strikethrough
-            | Tag::Link(..)
-            | Tag::BlockQuote
+        TagEnd::Paragraph
+            | TagEnd::Emphasis
+            | TagEnd::Strong
+            | TagEnd::Strikethrough
+            | TagEnd::Link
+            | TagEnd::BlockQuote
     )
 }
 
-fn is_forbidden_tag(t: &Tag<'_>) -> bool {
+fn is_forbidden_tag(t: &TagEnd) -> bool {
     matches!(
         t,
-        Tag::CodeBlock(_)
-            | Tag::Table(_)
-            | Tag::TableHead
-            | Tag::TableRow
-            | Tag::TableCell
-            | Tag::FootnoteDefinition(_)
+        TagEnd::CodeBlock
+            | TagEnd::Table
+            | TagEnd::TableHead
+            | TagEnd::TableRow
+            | TagEnd::TableCell
+            | TagEnd::FootnoteDefinition
     )
 }
 
@@ -604,12 +601,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
             let mut is_start = true;
             let is_allowed_tag = match event {
                 Event::Start(ref c) => {
-                    if is_forbidden_tag(c) {
+                    if is_forbidden_tag(&c.to_end()) {
                         self.skipped_tags += 1;
                         return None;
                     }
                     self.depth += 1;
-                    check_if_allowed_tag(c)
+                    check_if_allowed_tag(&c.to_end())
                 }
                 Event::End(ref c) => {
                     if is_forbidden_tag(c) {
@@ -633,7 +630,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
                 if is_start {
                     Some(Event::Start(Tag::Paragraph))
                 } else {
-                    Some(Event::End(Tag::Paragraph))
+                    Some(Event::End(TagEnd::Paragraph))
                 }
             } else {
                 Some(event)
@@ -679,7 +676,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
                 Some((Event::Start(Tag::FootnoteDefinition(def)), _)) => {
                     let mut content = Vec::new();
                     for (event, _) in &mut self.inner {
-                        if let Event::End(Tag::FootnoteDefinition(..)) = event {
+                        if let Event::End(TagEnd::FootnoteDefinition) = event {
                             break;
                         }
                         content.push(event);
@@ -696,7 +693,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
                         for (mut content, id) in v {
                             write!(ret, "<li id=\"fn{id}\">").unwrap();
                             let mut is_paragraph = false;
-                            if let Some(&Event::End(Tag::Paragraph)) = content.last() {
+                            if let Some(&Event::End(TagEnd::Paragraph)) = content.last() {
                                 content.pop();
                                 is_paragraph = true;
                             }
@@ -806,7 +803,7 @@ pub(crate) fn find_codes<T: doctest::DoctestVisitor>(
                 tests.visit_test(text, block_info, line);
                 prev_offset = offset.start;
             }
-            Event::Start(Tag::Heading(level, _, _)) => {
+            Event::Start(Tag::Heading { level, .. }) => {
                 register_header = Some(level as u32);
             }
             Event::Text(ref s) if register_header.is_some() => {
@@ -1432,7 +1429,7 @@ impl MarkdownItemInfo<'_> {
 
         // Treat inline HTML as plain text.
         let p = p.map(|event| match event.0 {
-            Event::Html(text) => (Event::Text(text), event.1),
+            Event::Html(text) | Event::InlineHtml(text) => (Event::Text(text), event.1),
             _ => event,
         });
 
@@ -1442,7 +1439,7 @@ impl MarkdownItemInfo<'_> {
         let p = Footnotes::new(p);
         let p = TableWrapper::new(p.map(|(ev, _)| ev));
         let p = p.filter(|event| {
-            !matches!(event, Event::Start(Tag::Paragraph) | Event::End(Tag::Paragraph))
+            !matches!(event, Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph))
         });
         html::push_html(&mut s, p);
 
@@ -1472,7 +1469,7 @@ impl MarkdownSummaryLine<'_> {
         let mut s = String::new();
 
         let without_paragraphs = LinkReplacer::new(&mut summary, links).filter(|event| {
-            !matches!(event, Event::Start(Tag::Paragraph) | Event::End(Tag::Paragraph))
+            !matches!(event, Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph))
         });
 
         html::push_html(&mut s, without_paragraphs);
@@ -1544,8 +1541,8 @@ fn markdown_summary_with_limit(
                 _ => {}
             },
             Event::End(tag) => match tag {
-                Tag::Emphasis | Tag::Strong => buf.close_tag(),
-                Tag::Paragraph | Tag::Heading(..) => return ControlFlow::Break(()),
+                TagEnd::Emphasis | TagEnd::Strong => buf.close_tag(),
+                TagEnd::Paragraph | TagEnd::Heading(_) => return ControlFlow::Break(()),
                 _ => {}
             },
             Event::HardBreak | Event::SoftBreak => buf.push(" ")?,
@@ -1605,8 +1602,8 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
             }
             Event::HardBreak | Event::SoftBreak => s.push(' '),
             Event::Start(Tag::CodeBlock(..)) => break,
-            Event::End(Tag::Paragraph) => break,
-            Event::End(Tag::Heading(..)) => break,
+            Event::End(TagEnd::Paragraph) => break,
+            Event::End(TagEnd::Heading(..)) => break,
             _ => (),
         }
     }
@@ -1765,7 +1762,7 @@ pub(crate) fn markdown_links<'md, R>(
 
     while let Some((event, span)) = event_iter.next() {
         match event {
-            Event::Start(Tag::Link(link_type, dest, _)) if may_be_doc_link(link_type) => {
+            Event::Start(Tag::Link { link_type, dest_url, .. }) if may_be_doc_link(link_type) => {
                 let range = match link_type {
                     // Link is pulled from the link itself.
                     LinkType::ReferenceUnknown | LinkType::ShortcutUnknown => {
@@ -1775,7 +1772,7 @@ pub(crate) fn markdown_links<'md, R>(
                     LinkType::Inline => span_for_offset_backward(span, b'(', b')'),
                     // Link is pulled from elsewhere in the document.
                     LinkType::Reference | LinkType::Collapsed | LinkType::Shortcut => {
-                        span_for_link(&dest, span)
+                        span_for_link(&dest_url, span)
                     }
                     LinkType::Autolink | LinkType::Email => unreachable!(),
                 };
@@ -1795,7 +1792,7 @@ pub(crate) fn markdown_links<'md, R>(
 
                 if let Some(link) = preprocess_link(MarkdownLink {
                     kind: link_type,
-                    link: dest.into_string(),
+                    link: dest_url.into_string(),
                     display_text,
                     range,
                 }) {
@@ -1810,8 +1807,8 @@ pub(crate) fn markdown_links<'md, R>(
 }
 
 /// Collects additional data of link.
-fn collect_link_data<'input, 'callback>(
-    event_iter: &mut OffsetIter<'input, 'callback>,
+fn collect_link_data<'input, F: BrokenLinkCallback<'input>>(
+    event_iter: &mut OffsetIter<'input, F>,
 ) -> Option<String> {
     let mut display_text: Option<String> = None;
     let mut append_text = |text: CowStr<'_>| {
