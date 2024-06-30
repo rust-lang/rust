@@ -3,6 +3,9 @@ error[E0747]: constant provided when a type was expected
    |
 LL |     foo::<main>()
    |           ^^^^
+   |
+   = help: `main` is a function item, not a type
+   = help: function item types cannot be named directly
 
 error: aborting due to 1 previous error
 
