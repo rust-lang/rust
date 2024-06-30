@@ -102,10 +102,20 @@ macro without_args {
     }
 }
 
+macro_rules! id {
+    ($($tt:tt)*) => {
+        $($tt)*
+    };
+}
 
 include!(concat!("foo/", "foo.rs"));
 
+struct S<T>(T);
 fn main() {
+    struct TestLocal;
+    // regression test, TestLocal here used to not resolve
+    let _: S<id![TestLocal]>;
+
     format_args!("Hello, {}!", (92,).0);
     dont_color_me_braces!();
     noop!(noop!(1));

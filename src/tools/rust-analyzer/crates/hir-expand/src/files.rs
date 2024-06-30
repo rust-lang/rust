@@ -158,6 +158,40 @@ impl<FileId: Copy, N: AstNode> InFileWrapper<FileId, &N> {
 // region:specific impls
 
 impl InFile<&SyntaxNode> {
+    pub fn parent_ancestors_with_macros(
+        self,
+        db: &dyn db::ExpandDatabase,
+    ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
+        let succ = move |node: &InFile<SyntaxNode>| match node.value.parent() {
+            Some(parent) => Some(node.with_value(parent)),
+            None => db
+                .lookup_intern_macro_call(node.file_id.macro_file()?.macro_call_id)
+                .to_node_item(db)
+                .syntax()
+                .cloned()
+                .map(|node| node.parent())
+                .transpose(),
+        };
+        std::iter::successors(succ(&self.cloned()), succ)
+    }
+
+    pub fn ancestors_with_macros(
+        self,
+        db: &dyn db::ExpandDatabase,
+    ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
+        let succ = move |node: &InFile<SyntaxNode>| match node.value.parent() {
+            Some(parent) => Some(node.with_value(parent)),
+            None => db
+                .lookup_intern_macro_call(node.file_id.macro_file()?.macro_call_id)
+                .to_node_item(db)
+                .syntax()
+                .cloned()
+                .map(|node| node.parent())
+                .transpose(),
+        };
+        std::iter::successors(Some(self.cloned()), succ)
+    }
+
     /// Falls back to the macro call range if the node cannot be mapped up fully.
     ///
     /// For attributes and derives, this will point back to the attribute only.
