@@ -711,16 +711,8 @@ impl Step for RustcDev {
         let stamp = compile::librustc_stamp(builder, compiler_to_use, target);
         copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
+        copy_rustlib_rustc_src(builder, &tarball.image_dir().join("lib/rustlib/rustc-src/rust"));
         let src_files = &["Cargo.lock"];
-        // This is the reduced set of paths which will become the rustc-dev component
-        // (essentially the compiler crates and all of their path dependencies).
-        copy_src_dirs(
-            builder,
-            &builder.src,
-            &["compiler"],
-            &[],
-            &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
-        );
         for file in src_files {
             tarball.add_file(builder.src.join(file), "lib/rustlib/rustc-src/rust", 0o644);
         }
@@ -785,6 +777,33 @@ impl Step for Analysis {
         tarball.add_dir(src, format!("lib/rustlib/{}/analysis", target.triple));
         Some(tarball.generate())
     }
+}
+
+pub fn copy_rustlib_rustc_src(builder: &Builder<'_>, dst: &Path) {
+    // This is the reduced set of paths which will become the rustc-dev component
+    // (essentially the compiler crates and all of their path dependencies).
+    copy_src_dirs(builder, &builder.src, &["compiler"], &[], dst);
+}
+
+pub fn copy_rustlib_src(builder: &Builder<'_>, dst: &Path) {
+    // This is the reduced set of paths which will become the rust-src component
+    // (essentially libstd and all of its path dependencies).
+    copy_src_dirs(
+        builder,
+        &builder.src,
+        &["library", "src/llvm-project/libunwind"],
+        &[
+            // not needed and contains symlinks which rustup currently
+            // chokes on when unpacking.
+            "library/backtrace/crates",
+            // these are 30MB combined and aren't necessary for building
+            // the standard library.
+            "library/stdarch/Cargo.toml",
+            "library/stdarch/crates/stdarch-verify",
+            "library/stdarch/crates/intrinsic-test",
+        ],
+        dst,
+    );
 }
 
 /// Use the `builder` to make a filtered copy of `base`/X for X in (`src_dirs` - `exclude_dirs`) to
@@ -918,24 +937,7 @@ impl Step for Src {
         let dst_src = tarball.image_dir().join("lib/rustlib/src/rust");
 
         let src_files = ["Cargo.lock"];
-        // This is the reduced set of paths which will become the rust-src component
-        // (essentially libstd and all of its path dependencies).
-        copy_src_dirs(
-            builder,
-            &builder.src,
-            &["library", "src/llvm-project/libunwind"],
-            &[
-                // not needed and contains symlinks which rustup currently
-                // chokes on when unpacking.
-                "library/backtrace/crates",
-                // these are 30MB combined and aren't necessary for building
-                // the standard library.
-                "library/stdarch/Cargo.toml",
-                "library/stdarch/crates/stdarch-verify",
-                "library/stdarch/crates/intrinsic-test",
-            ],
-            &dst_src,
-        );
+        copy_rustlib_src(builder, &dst_src);
         for file in src_files.iter() {
             builder.copy_link(&builder.src.join(file), &dst_src.join(file));
         }
