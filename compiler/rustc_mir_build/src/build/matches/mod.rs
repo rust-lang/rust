@@ -1457,7 +1457,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         span: Span,
         scrutinee_span: Span,
-        mut start_block: BasicBlock,
+        start_block: BasicBlock,
         otherwise_block: BasicBlock,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
     ) {
@@ -1467,41 +1467,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        match candidates {
+        // Process a prefix of the candidates.
+        let rest = match candidates {
             [] => {
-                // If there are no candidates that still need testing, we're done. Since all matches are
-                // exhaustive, execution should never reach this point.
+                // If there are no candidates that still need testing, we're done.
                 let source_info = self.source_info(span);
                 self.cfg.goto(start_block, source_info, otherwise_block);
+                return;
             }
             [first, remaining @ ..] if first.match_pairs.is_empty() => {
                 // The first candidate has satisfied all its match pairs; we link it up and continue
                 // with the remaining candidates.
-                start_block = self.select_matched_candidate(first, start_block);
-                self.match_candidates(span, scrutinee_span, start_block, otherwise_block, remaining)
+                let remainder_start = self.select_matched_candidate(first, start_block);
+                remainder_start.and(remaining)
             }
             candidates if candidates.iter().any(|candidate| candidate.starts_with_or_pattern()) => {
                 // If any candidate starts with an or-pattern, we have to expand the or-pattern before we
                 // can proceed further.
-                self.expand_and_match_or_candidates(
-                    span,
-                    scrutinee_span,
-                    start_block,
-                    otherwise_block,
-                    candidates,
-                )
+                self.expand_and_match_or_candidates(span, scrutinee_span, start_block, candidates)
             }
             candidates => {
                 // The first candidate has some unsatisfied match pairs; we proceed to do more tests.
-                self.test_candidates(
-                    span,
-                    scrutinee_span,
-                    candidates,
-                    start_block,
-                    otherwise_block,
-                );
+                self.test_candidates(span, scrutinee_span, candidates, start_block)
             }
-        }
+        };
+
+        // Process any candidates that remain.
+        let BlockAnd(start_block, remaining_candidates) = rest;
+        self.match_candidates(
+            span,
+            scrutinee_span,
+            start_block,
+            otherwise_block,
+            remaining_candidates,
+        );
     }
 
     /// Link up matched candidates.
@@ -1547,16 +1546,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Takes a list of candidates such that some of the candidates' first match pairs are
-    /// or-patterns, expands as many or-patterns as possible, and processes the resulting
-    /// candidates.
-    fn expand_and_match_or_candidates(
+    /// or-patterns. This expands as many or-patterns as possible and processes the resulting
+    /// candidates. Returns the unprocessed candidates if any.
+    fn expand_and_match_or_candidates<'pat, 'b, 'c>(
         &mut self,
         span: Span,
         scrutinee_span: Span,
         start_block: BasicBlock,
-        otherwise_block: BasicBlock,
-        candidates: &mut [&mut Candidate<'_, 'tcx>],
-    ) {
+        candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
+    ) -> BlockAnd<&'b mut [&'c mut Candidate<'pat, 'tcx>]> {
         // We can't expand or-patterns freely. The rule is: if the candidate has an
         // or-pattern as its only remaining match pair, we can expand it freely. If it has
         // other match pairs, we can expand it but we can't process more candidates after
@@ -1625,14 +1623,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        // Process the remaining candidates.
-        self.match_candidates(
-            span,
-            scrutinee_span,
-            remainder_start,
-            otherwise_block,
-            remaining_candidates,
-        );
+        remainder_start.and(remaining_candidates)
     }
 
     /// Given a match-pair that corresponds to an or-pattern, expand each subpattern into a new
@@ -2003,14 +1994,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// }
     /// # }
     /// ```
+    ///
+    /// We return the unprocessed candidates.
     fn test_candidates<'pat, 'b, 'c>(
         &mut self,
         span: Span,
         scrutinee_span: Span,
         candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
         start_block: BasicBlock,
-        otherwise_block: BasicBlock,
-    ) {
+    ) -> BlockAnd<&'b mut [&'c mut Candidate<'pat, 'tcx>]> {
         // Extract the match-pair from the highest priority candidate and build a test from it.
         let (match_place, test) = self.pick_test(candidates);
 
@@ -2050,13 +2042,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             target_blocks,
         );
 
-        self.match_candidates(
-            span,
-            scrutinee_span,
-            remainder_start,
-            otherwise_block,
-            remaining_candidates,
-        );
+        remainder_start.and(remaining_candidates)
     }
 }
 
