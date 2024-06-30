@@ -2,7 +2,7 @@
 //@ edition: 2021
 //@ min-llvm-version: 18
 //@ compile-flags: -Zcoverage-options=mcdc
-//@ llvm-cov-flags: --show-mcdc
+//@ llvm-cov-flags: --show-branches=count --show-mcdc
 
 fn mcdc_check_neither(a: bool, b: bool) {
     if a && b {
@@ -67,6 +67,14 @@ fn mcdc_nested_if(a: bool, b: bool, c: bool) {
     }
 }
 
+fn mcdc_ignore_single_branch(a: bool) {
+    if a {
+        say("a");
+    } else {
+        say("not a");
+    }
+}
+
 #[coverage(off)]
 fn main() {
     mcdc_check_neither(false, false);
@@ -95,6 +103,9 @@ fn main() {
     mcdc_nested_if(true, false, true);
     mcdc_nested_if(true, true, true);
     mcdc_nested_if(true, true, false);
+
+    mcdc_ignore_single_branch(true);
+    mcdc_ignore_single_branch(false);
 }
 
 #[coverage(off)]

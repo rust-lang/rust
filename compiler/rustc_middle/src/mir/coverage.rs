@@ -52,6 +52,14 @@ rustc_index::newtype_index! {
 }
 
 rustc_index::newtype_index! {
+    /// ID of a mcdc decision. Used to identify decision in a function.
+    #[derive(HashStable)]
+    #[encodable]
+    #[debug_format = "DecisionId({})"]
+    pub struct DecisionId {}
+}
+
+rustc_index::newtype_index! {
     /// ID of a mcdc condition. Used by llvm to check mcdc coverage.
     ///
     /// Note for future: the max limit of 0xFFFF is probably too loose. Actually llvm does not
@@ -283,8 +291,8 @@ pub struct BranchInfo {
     /// data structures without having to scan the entire body first.
     pub num_block_markers: usize,
     pub branch_spans: Vec<BranchSpan>,
-    pub mcdc_branch_spans: Vec<MCDCBranchSpan>,
-    pub mcdc_decision_spans: Vec<MCDCDecisionSpan>,
+    pub mcdc_degraded_spans: Vec<MCDCBranchSpan>,
+    pub mcdc_spans: Vec<(MCDCDecisionSpan, Vec<MCDCBranchSpan>)>,
 }
 
 #[derive(Clone, Debug)]
@@ -317,12 +325,16 @@ impl Default for ConditionInfo {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct MCDCBranchSpan {
     pub span: Span,
-    /// If `None`, this actually represents a normal branch span inserted for
-    /// code that was too complex for MC/DC.
-    pub condition_info: Option<ConditionInfo>,
-    pub true_marker: BlockMarkerId,
-    pub false_marker: BlockMarkerId,
-    pub decision_depth: u16,
+    pub condition_info: ConditionInfo,
+    pub markers: MCDCBranchMarkers,
+}
+
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub enum MCDCBranchMarkers {
+    /// The first indicates true branch, the second indicates the false branch.
+    Boolean(BlockMarkerId, BlockMarkerId),
+    PatternMatching,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -336,7 +348,6 @@ pub struct DecisionInfo {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct MCDCDecisionSpan {
     pub span: Span,
-    pub num_conditions: usize,
     pub end_markers: Vec<BlockMarkerId>,
     pub decision_depth: u16,
 }

@@ -21,7 +21,7 @@ use rustc_span::{BytePos, Pos, RelativeBytePos, Span, Symbol};
 
 use crate::coverage::counters::{CounterIncrementSite, CoverageCounters};
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
-use crate::coverage::mappings::ExtractedMappings;
+use crate::coverage::mappings::{ExtractedMappings, MCDCBranchBlocks};
 use crate::MirPass;
 
 /// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
@@ -71,7 +71,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     ////////////////////////////////////////////////////
     // Extract coverage spans and other mapping info from MIR.
-    let extracted_mappings = mappings::extract_all_mapping_info_from_mir(
+    let mut extracted_mappings = mappings::extract_all_mapping_info_from_mir(
         tcx,
         mir_body,
         &hir_info,
@@ -91,29 +91,29 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     }
 
     let bcb_has_counter_mappings = |bcb| bcbs_with_counter_mappings.contains(bcb);
-    let coverage_counters =
+    let mut coverage_counters =
         CoverageCounters::make_bcb_counters(&basic_coverage_blocks, bcb_has_counter_mappings);
 
-    let mappings = create_mappings(tcx, &hir_info, &extracted_mappings, &coverage_counters);
+    inject_coverage_statements(
+        mir_body,
+        &basic_coverage_blocks,
+        bcb_has_counter_mappings,
+        &mut coverage_counters,
+    );
+
+    let mappings = create_mappings(tcx, &hir_info, &mut extracted_mappings, &mut coverage_counters);
     if mappings.is_empty() {
         // No spans could be converted into valid mappings, so skip this function.
         debug!("no spans could be converted into valid mappings; skipping");
         return;
     }
 
-    inject_coverage_statements(
-        mir_body,
-        &basic_coverage_blocks,
-        bcb_has_counter_mappings,
-        &coverage_counters,
-    );
-
     inject_mcdc_statements(mir_body, &basic_coverage_blocks, &extracted_mappings);
 
     let mcdc_num_condition_bitmaps = extracted_mappings
-        .mcdc_decisions
+        .mcdc_mappings
         .iter()
-        .map(|&mappings::MCDCDecision { decision_depth, .. }| decision_depth)
+        .map(|&(mappings::MCDCDecision { decision_depth, .. }, _)| decision_depth)
         .max()
         .map_or(0, |max| usize::from(max) + 1);
 
@@ -135,8 +135,8 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 fn create_mappings<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_info: &ExtractedHirInfo,
-    extracted_mappings: &ExtractedMappings,
-    coverage_counters: &CoverageCounters,
+    extracted_mappings: &mut ExtractedMappings,
+    coverage_counters: &mut CoverageCounters,
 ) -> Vec<Mapping> {
     let source_map = tcx.sess.source_map();
     let body_span = hir_info.body_span;
@@ -160,9 +160,9 @@ fn create_mappings<'tcx>(
     let ExtractedMappings {
         code_mappings,
         branch_pairs,
-        mcdc_bitmap_bytes: _,
-        mcdc_branches,
-        mcdc_decisions,
+        mcdc_bitmap_bytes,
+        mcdc_degraded_branches,
+        mcdc_mappings,
     } = extracted_mappings;
     let mut mappings = Vec::new();
 
@@ -184,27 +184,91 @@ fn create_mappings<'tcx>(
             Some(Mapping { kind, code_region })
         },
     ));
+    let mut counter_for_bcbs_group = |bcbs: &[BasicCoverageBlock]| {
+        let counters = bcbs
+            .into_iter()
+            .copied()
+            .map(|bcb| {
+                coverage_counters.bcb_counter(bcb).expect("all BCBs with spans were given counters")
+            })
+            .collect::<Vec<_>>();
+        counters
+            .into_iter()
+            .fold(None, |acc, val| Some(coverage_counters.make_sum_expression(acc, val)))
+            .expect("counters must be non-empty")
+    };
 
-    mappings.extend(mcdc_branches.iter().filter_map(
-        |&mappings::MCDCBranch { span, true_bcb, false_bcb, condition_info, decision_depth: _ }| {
+    let mut create_mcdc_branch_terms = |branch_bcbs: &MCDCBranchBlocks| match branch_bcbs {
+        MCDCBranchBlocks::Boolean(true_bcb, false_bcb) => {
+            let true_counter = counter_for_bcbs_group(&[*true_bcb]);
+            let false_counter = counter_for_bcbs_group(&[*false_bcb]);
+            (true_counter.as_term(), false_counter.as_term())
+        }
+        MCDCBranchBlocks::PatternMatching => {
+            unimplemented!("mcdc for pattern matching is not implemented yet");
+        }
+    };
+    // MCDC branch mappings are appended with their decisions in case decisions were ignored.
+    mappings.extend(mcdc_degraded_branches.iter().filter_map(
+        |&mappings::MCDCBranch { span, ref branch_bcbs, condition_info: _ }| {
             let code_region = region_for_span(span)?;
-            let true_term = term_for_bcb(true_bcb);
-            let false_term = term_for_bcb(false_bcb);
-            let kind = match condition_info {
-                Some(mcdc_params) => MappingKind::MCDCBranch { true_term, false_term, mcdc_params },
-                None => MappingKind::Branch { true_term, false_term },
-            };
-            Some(Mapping { kind, code_region })
+            let (true_term, false_term) = create_mcdc_branch_terms(branch_bcbs);
+            Some(Mapping { kind: MappingKind::Branch { true_term, false_term }, code_region })
         },
     ));
 
-    mappings.extend(mcdc_decisions.iter().filter_map(
-        |&mappings::MCDCDecision { span, bitmap_idx, num_conditions, .. }| {
-            let code_region = region_for_span(span)?;
-            let kind = MappingKind::MCDCDecision(DecisionInfo { bitmap_idx, num_conditions });
-            Some(Mapping { kind, code_region })
-        },
-    ));
+    let mut next_bitmap_idx = |num_conditions: u16| {
+        let bitmap_idx = *mcdc_bitmap_bytes;
+        // Each decision containing N conditions needs 2^N bits of space in
+        // the bitmap, rounded up to a whole number of bytes.
+        // The decision's "bitmap index" points to its first byte in the bitmap.
+        *mcdc_bitmap_bytes += (1_u16 << num_conditions).div_ceil(8) as u32;
+        bitmap_idx
+    };
+
+    for (decision, branches) in mcdc_mappings {
+        let num_conditions = branches.len() as u16;
+        let conditions = branches
+            .into_iter()
+            .filter_map(|&mut mappings::MCDCBranch { span, ref branch_bcbs, condition_info }| {
+                let code_region = region_for_span(span)?;
+                let (true_term, false_term) = create_mcdc_branch_terms(branch_bcbs);
+                Some(Mapping {
+                    kind: MappingKind::MCDCBranch {
+                        true_term,
+                        false_term,
+                        mcdc_params: condition_info,
+                    },
+                    code_region,
+                })
+            })
+            .collect::<Vec<_>>();
+
+        if conditions.len() == num_conditions as usize
+            && let Some(code_region) = region_for_span(decision.span)
+        {
+            decision.bitmap_idx = next_bitmap_idx(num_conditions);
+            let kind = MappingKind::MCDCDecision(DecisionInfo {
+                bitmap_idx: decision.bitmap_idx,
+                num_conditions,
+            });
+            mappings.extend(
+                std::iter::once(Mapping { kind, code_region }).chain(conditions.into_iter()),
+            );
+        } else {
+            mappings.extend(conditions.into_iter().map(|mapping| {
+                let MappingKind::MCDCBranch { true_term, false_term, mcdc_params: _ } =
+                    mapping.kind
+                else {
+                    unreachable!("all mappings here are MCDCBranch as shown above");
+                };
+                Mapping {
+                    kind: MappingKind::Branch { true_term, false_term },
+                    code_region: mapping.code_region,
+                }
+            }))
+        }
+    }
 
     mappings
 }
@@ -268,43 +332,41 @@ fn inject_mcdc_statements<'tcx>(
     basic_coverage_blocks: &CoverageGraph,
     extracted_mappings: &ExtractedMappings,
 ) {
-    // Inject test vector update first because `inject_statement` always insert new statement at head.
-    for &mappings::MCDCDecision {
-        span: _,
-        ref end_bcbs,
-        bitmap_idx,
-        num_conditions: _,
-        decision_depth,
-    } in &extracted_mappings.mcdc_decisions
-    {
-        for end in end_bcbs {
-            let end_bb = basic_coverage_blocks[*end].leader_bb();
+    for (decision, conditions) in &extracted_mappings.mcdc_mappings {
+        // Inject test vector update first because `inject_statement` always insert new statement at head.
+        for &end in &decision.end_bcbs {
+            let end_bb = basic_coverage_blocks[end].leader_bb();
             inject_statement(
                 mir_body,
-                CoverageKind::TestVectorBitmapUpdate { bitmap_idx, decision_depth },
+                CoverageKind::TestVectorBitmapUpdate {
+                    bitmap_idx: decision.bitmap_idx,
+                    decision_depth: decision.decision_depth,
+                },
                 end_bb,
             );
         }
-    }
 
-    for &mappings::MCDCBranch { span: _, true_bcb, false_bcb, condition_info, decision_depth } in
-        &extracted_mappings.mcdc_branches
-    {
-        let Some(condition_info) = condition_info else { continue };
-        let id = condition_info.condition_id;
-
-        let true_bb = basic_coverage_blocks[true_bcb].leader_bb();
-        inject_statement(
-            mir_body,
-            CoverageKind::CondBitmapUpdate { id, value: true, decision_depth },
-            true_bb,
-        );
-        let false_bb = basic_coverage_blocks[false_bcb].leader_bb();
-        inject_statement(
-            mir_body,
-            CoverageKind::CondBitmapUpdate { id, value: false, decision_depth },
-            false_bb,
-        );
+        for &mappings::MCDCBranch { span: _, ref branch_bcbs, condition_info } in conditions {
+            let id = condition_info.condition_id;
+            let true_bcbs = match branch_bcbs {
+                MCDCBranchBlocks::Boolean(true_bcb, _) => &[*true_bcb],
+                MCDCBranchBlocks::PatternMatching => {
+                    unimplemented!("mcdc for pattern matching is not implemented yet")
+                }
+            };
+            for &bcb in true_bcbs {
+                let bb = basic_coverage_blocks[bcb].leader_bb();
+                inject_statement(
+                    mir_body,
+                    CoverageKind::CondBitmapUpdate {
+                        id,
+                        value: true,
+                        decision_depth: decision.decision_depth,
+                    },
+                    bb,
+                );
+            }
+        }
     }
 }
 

@@ -101,7 +101,12 @@ impl CoverageCounters {
         BcbCounter::Counter { id }
     }
 
-    fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
+    pub(super) fn make_expression(
+        &mut self,
+        lhs: BcbCounter,
+        op: Op,
+        rhs: BcbCounter,
+    ) -> BcbCounter {
         let new_expr = BcbExpression { lhs, op, rhs };
         *self
             .expressions_memo
@@ -159,7 +164,11 @@ impl CoverageCounters {
     /// Variant of `make_expression` that makes `lhs` optional and assumes [`Op::Add`].
     ///
     /// This is useful when using [`Iterator::fold`] to build an arbitrary-length sum.
-    fn make_sum_expression(&mut self, lhs: Option<BcbCounter>, rhs: BcbCounter) -> BcbCounter {
+    pub(super) fn make_sum_expression(
+        &mut self,
+        lhs: Option<BcbCounter>,
+        rhs: BcbCounter,
+    ) -> BcbCounter {
         let Some(lhs) = lhs else { return rhs };
         self.make_expression(lhs, Op::Add, rhs)
     }

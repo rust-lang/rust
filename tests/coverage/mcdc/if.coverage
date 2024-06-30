@@ -2,11 +2,14 @@
    LL|       |//@ edition: 2021
    LL|       |//@ min-llvm-version: 18
    LL|       |//@ compile-flags: -Zcoverage-options=mcdc
-   LL|       |//@ llvm-cov-flags: --show-mcdc
+   LL|       |//@ llvm-cov-flags: --show-branches=count --show-mcdc
    LL|       |
    LL|      2|fn mcdc_check_neither(a: bool, b: bool) {
    LL|      2|    if a && b {
                           ^0
+  ------------------
+  |  Branch (LL:8): [True: 0, False: 2]
+  |  Branch (LL:13): [True: 0, False: 0]
   ------------------
   |---> MC/DC Decision Region (LL:8) to (LL:14)
   |
@@ -34,6 +37,9 @@
    LL|      2|    if a && b {
                           ^1
   ------------------
+  |  Branch (LL:8): [True: 1, False: 1]
+  |  Branch (LL:13): [True: 1, False: 0]
+  ------------------
   |---> MC/DC Decision Region (LL:8) to (LL:14)
   |
   |  Number of Conditions: 2
@@ -59,6 +65,9 @@
    LL|       |
    LL|      2|fn mcdc_check_b(a: bool, b: bool) {
    LL|      2|    if a && b {
+  ------------------
+  |  Branch (LL:8): [True: 2, False: 0]
+  |  Branch (LL:13): [True: 1, False: 1]
   ------------------
   |---> MC/DC Decision Region (LL:8) to (LL:14)
   |
@@ -86,6 +95,9 @@
    LL|      3|fn mcdc_check_both(a: bool, b: bool) {
    LL|      3|    if a && b {
                           ^2
+  ------------------
+  |  Branch (LL:8): [True: 2, False: 1]
+  |  Branch (LL:13): [True: 1, False: 1]
   ------------------
   |---> MC/DC Decision Region (LL:8) to (LL:14)
   |
@@ -116,6 +128,10 @@
    LL|      4|    // where 100% branch coverage indicates 100% mcdc coverage.
    LL|      4|    if a && (b || c) {
                            ^3   ^2
+  ------------------
+  |  Branch (LL:8): [True: 3, False: 1]
+  |  Branch (LL:14): [True: 1, False: 2]
+  |  Branch (LL:19): [True: 1, False: 1]
   ------------------
   |---> MC/DC Decision Region (LL:8) to (LL:21)
   |
@@ -150,6 +166,10 @@
    LL|      4|    if (a || b) && c {
                            ^1
   ------------------
+  |  Branch (LL:9): [True: 3, False: 1]
+  |  Branch (LL:14): [True: 1, False: 0]
+  |  Branch (LL:20): [True: 2, False: 2]
+  ------------------
   |---> MC/DC Decision Region (LL:8) to (LL:21)
   |
   |  Number of Conditions: 3
@@ -180,6 +200,9 @@
    LL|      3|    if a || b {
                           ^0
   ------------------
+  |  Branch (LL:8): [True: 3, False: 0]
+  |  Branch (LL:13): [True: 0, False: 0]
+  ------------------
   |---> MC/DC Decision Region (LL:8) to (LL:14)
   |
   |  Number of Conditions: 2
@@ -199,6 +222,9 @@
    LL|      3|        say("a or b");
    LL|      3|        if b && c {
                               ^2
+  ------------------
+  |  Branch (LL:12): [True: 2, False: 1]
+  |  Branch (LL:17): [True: 1, False: 1]
   ------------------
   |---> MC/DC Decision Region (LL:12) to (LL:18)
   |
@@ -224,6 +250,17 @@
    LL|      0|        say("neither a nor b");
    LL|      0|    }
    LL|      3|}
+   LL|       |
+   LL|      2|fn mcdc_ignore_single_branch(a: bool) {
+   LL|      2|    if a {
+  ------------------
+  |  Branch (LL:8): [True: 1, False: 1]
+  ------------------
+   LL|      1|        say("a");
+   LL|      1|    } else {
+   LL|      1|        say("not a");
+   LL|      1|    }
+   LL|      2|}
    LL|       |
    LL|       |#[coverage(off)]
    LL|       |fn main() {
@@ -253,6 +290,9 @@
    LL|       |    mcdc_nested_if(true, false, true);
    LL|       |    mcdc_nested_if(true, true, true);
    LL|       |    mcdc_nested_if(true, true, false);
+   LL|       |
+   LL|       |    mcdc_ignore_single_branch(true);
+   LL|       |    mcdc_ignore_single_branch(false);
    LL|       |}
    LL|       |
    LL|       |#[coverage(off)]
