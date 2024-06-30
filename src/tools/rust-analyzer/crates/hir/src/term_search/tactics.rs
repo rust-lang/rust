@@ -598,9 +598,8 @@ pub(super) fn famous_types<'a, DB: HirDatabase>(
         Expr::FamousType { ty: Type::new(db, module.id, TyBuilder::unit()), value: "()" },
     ]
     .into_iter()
-    .map(|exprs| {
+    .inspect(|exprs| {
         lookup.insert(exprs.ty(db), std::iter::once(exprs.clone()));
-        exprs
     })
     .filter(|expr| expr.ty(db).could_unify_with_deeply(db, &ctx.goal))
 }

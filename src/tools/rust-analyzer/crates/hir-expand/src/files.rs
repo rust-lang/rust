@@ -1,4 +1,6 @@
 //! Things to wrap other things in file ids.
+use std::borrow::Borrow;
+
 use either::Either;
 use span::{
     AstIdNode, ErasedFileAstId, FileAstId, FileId, FileRange, HirFileId, HirFileIdRepr,
@@ -75,6 +77,13 @@ impl<FileKind: Copy, T> InFileWrapper<FileKind, T> {
 
     pub fn as_ref(&self) -> InFileWrapper<FileKind, &T> {
         self.with_value(&self.value)
+    }
+
+    pub fn borrow<U>(&self) -> InFileWrapper<FileKind, &U>
+    where
+        T: Borrow<U>,
+    {
+        self.with_value(self.value.borrow())
     }
 }
 
@@ -156,8 +165,13 @@ impl<FileId: Copy, N: AstNode> InFileWrapper<FileId, &N> {
 }
 
 // region:specific impls
+impl<SN: Borrow<SyntaxNode>> InRealFile<SN> {
+    pub fn file_range(&self) -> FileRange {
+        FileRange { file_id: self.file_id, range: self.value.borrow().text_range() }
+    }
+}
 
-impl InFile<&SyntaxNode> {
+impl<SN: Borrow<SyntaxNode>> InFile<SN> {
     pub fn parent_ancestors_with_macros(
         self,
         db: &dyn db::ExpandDatabase,
@@ -172,7 +186,7 @@ impl InFile<&SyntaxNode> {
                 .map(|node| node.parent())
                 .transpose(),
         };
-        std::iter::successors(succ(&self.cloned()), succ)
+        std::iter::successors(succ(&self.borrow().cloned()), succ)
     }
 
     pub fn ancestors_with_macros(
@@ -189,7 +203,15 @@ impl InFile<&SyntaxNode> {
                 .map(|node| node.parent())
                 .transpose(),
         };
-        std::iter::successors(Some(self.cloned()), succ)
+        std::iter::successors(Some(self.borrow().cloned()), succ)
+    }
+
+    pub fn kind(&self) -> parser::SyntaxKind {
+        self.value.borrow().kind()
+    }
+
+    pub fn text_range(&self) -> TextRange {
+        self.value.borrow().text_range()
     }
 
     /// Falls back to the macro call range if the node cannot be mapped up fully.
@@ -197,7 +219,7 @@ impl InFile<&SyntaxNode> {
     /// For attributes and derives, this will point back to the attribute only.
     /// For the entire item use [`InFile::original_file_range_full`].
     pub fn original_file_range_rooted(self, db: &dyn db::ExpandDatabase) -> FileRange {
-        self.map(SyntaxNode::text_range).original_node_file_range_rooted(db)
+        self.borrow().map(SyntaxNode::text_range).original_node_file_range_rooted(db)
     }
 
     /// Falls back to the macro call range if the node cannot be mapped up fully.
@@ -205,15 +227,7 @@ impl InFile<&SyntaxNode> {
         self,
         db: &dyn db::ExpandDatabase,
     ) -> FileRange {
-        self.map(SyntaxNode::text_range).original_node_file_range_with_macro_call_body(db)
-    }
-
-    /// Attempts to map the syntax node back up its macro calls.
-    pub fn original_file_range_opt(
-        self,
-        db: &dyn db::ExpandDatabase,
-    ) -> Option<(FileRange, SyntaxContextId)> {
-        self.map(SyntaxNode::text_range).original_node_file_range_opt(db)
+        self.borrow().map(SyntaxNode::text_range).original_node_file_range_with_macro_call_body(db)
     }
 
     pub fn original_syntax_node_rooted(
@@ -224,16 +238,19 @@ impl InFile<&SyntaxNode> {
         // as we don't have node inputs otherwise and therefore can't find an `N` node in the input
         let file_id = match self.file_id.repr() {
             HirFileIdRepr::FileId(file_id) => {
-                return Some(InRealFile { file_id, value: self.value.clone() })
+                return Some(InRealFile { file_id, value: self.value.borrow().clone() })
             }
             HirFileIdRepr::MacroFile(m) if m.is_attr_macro(db) => m,
             _ => return None,
         };
 
-        let FileRange { file_id, range } =
-            map_node_range_up_rooted(db, &db.expansion_span_map(file_id), self.value.text_range())?;
+        let FileRange { file_id, range } = map_node_range_up_rooted(
+            db,
+            &db.expansion_span_map(file_id),
+            self.value.borrow().text_range(),
+        )?;
 
-        let kind = self.value.kind();
+        let kind = self.kind();
         let value = db
             .parse(file_id)
             .syntax_node()
@@ -242,6 +259,16 @@ impl InFile<&SyntaxNode> {
             .take_while(|it| it.text_range() == range)
             .find(|it| it.kind() == kind)?;
         Some(InRealFile::new(file_id, value))
+    }
+}
+
+impl InFile<&SyntaxNode> {
+    /// Attempts to map the syntax node back up its macro calls.
+    pub fn original_file_range_opt(
+        self,
+        db: &dyn db::ExpandDatabase,
+    ) -> Option<(FileRange, SyntaxContextId)> {
+        self.borrow().map(SyntaxNode::text_range).original_node_file_range_opt(db)
     }
 }
 

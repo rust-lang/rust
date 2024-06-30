@@ -96,10 +96,10 @@ impl SourceAnalyzer {
             None => scope_for(db, &scopes, &source_map, node),
             Some(offset) => {
                 debug_assert!(
-                    node.value.text_range().contains_inclusive(offset),
+                    node.text_range().contains_inclusive(offset),
                     "{:?} not in {:?}",
                     offset,
-                    node.value.text_range()
+                    node.text_range()
                 );
                 scope_for_offset(db, &scopes, &source_map, node.file_id, offset)
             }
@@ -966,9 +966,7 @@ fn scope_for(
     node: InFile<&SyntaxNode>,
 ) -> Option<ScopeId> {
     node.ancestors_with_macros(db.upcast())
-        .take_while(|it| {
-            !ast::Item::can_cast(it.value.kind()) || ast::MacroCall::can_cast(it.value.kind())
-        })
+        .take_while(|it| !ast::Item::can_cast(it.kind()) || ast::MacroCall::can_cast(it.kind()))
         .filter_map(|it| it.map(ast::Expr::cast).transpose())
         .filter_map(|it| source_map.node_expr(it.as_ref()))
         .find_map(|it| scopes.scope_for(it))
@@ -996,8 +994,8 @@ fn scope_for_offset(
                     Some(it.file_id.macro_file()?.call_node(db.upcast()))
                 })
                 .find(|it| it.file_id == from_file)
-                .filter(|it| it.value.kind() == SyntaxKind::MACRO_CALL)?;
-            Some((source.value.text_range(), scope))
+                .filter(|it| it.kind() == SyntaxKind::MACRO_CALL)?;
+            Some((source.text_range(), scope))
         })
         .filter(|(expr_range, _scope)| expr_range.start() <= offset && offset <= expr_range.end())
         // find containing scope

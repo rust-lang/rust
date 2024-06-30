@@ -388,9 +388,8 @@ impl Server {
     }
     fn recv(&self) -> Result<Option<Message>, Timeout> {
         let msg = recv_timeout(&self.client.receiver)?;
-        let msg = msg.map(|msg| {
+        let msg = msg.inspect(|msg| {
             self.messages.borrow_mut().push(msg.clone());
-            msg
         });
         Ok(msg)
     }

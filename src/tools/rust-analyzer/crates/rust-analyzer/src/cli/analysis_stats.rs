@@ -651,7 +651,7 @@ impl flags::AnalysisStats {
                     if let Some(src) = source {
                         let original_file = src.file_id.original_file(db);
                         let path = vfs.file_path(original_file);
-                        let syntax_range = src.value.text_range();
+                        let syntax_range = src.text_range();
                         format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
                     } else {
                         format!("processing: {}", full_name())
@@ -945,7 +945,7 @@ impl flags::AnalysisStats {
                     if let Some(src) = source {
                         let original_file = src.file_id.original_file(db);
                         let path = vfs.file_path(original_file);
-                        let syntax_range = src.value.text_range();
+                        let syntax_range = src.text_range();
                         format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
                     } else {
                         format!("processing: {}", full_name())
