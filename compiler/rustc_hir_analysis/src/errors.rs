@@ -1699,3 +1699,9 @@ pub struct InvalidReceiverTy<'tcx> {
     pub span: Span,
     pub receiver_ty: Ty<'tcx>,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_effects_without_next_solver)]
+#[note]
+#[help]
+pub struct EffectsWithoutNextSolver;
