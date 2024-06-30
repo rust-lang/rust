@@ -767,6 +767,8 @@ impl<'tcx> InferCtxt<'tcx> {
             .collect()
     }
 
+    // FIXME(-Znext-solver): Get rid of this method, it's never correct. Either that,
+    // or we need to process the obligations.
     pub fn can_sub<T>(&self, param_env: ty::ParamEnv<'tcx>, expected: T, actual: T) -> bool
     where
         T: at::ToTrace<'tcx>,
@@ -779,6 +781,8 @@ impl<'tcx> InferCtxt<'tcx> {
         })
     }
 
+    // FIXME(-Znext-solver): Get rid of this method, it's never correct. Either that,
+    // or we need to process the obligations.
     pub fn can_eq<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
     where
         T: at::ToTrace<'tcx>,
