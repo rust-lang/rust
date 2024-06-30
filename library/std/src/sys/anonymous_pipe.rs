@@ -1,6 +1,7 @@
 use crate::{io, process::Stdio, sys::pipe::AnonPipe};
 
 /// Create annoymous pipe that is close-on-exec and blocking.
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
 #[inline]
 pub fn pipe() -> io::Result<(PipeReader, PipeWriter)> {
     cfg_if::cfg_if! {
@@ -13,15 +14,18 @@ pub fn pipe() -> io::Result<(PipeReader, PipeWriter)> {
 }
 
 /// Read end of the annoymous pipe.
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
 #[derive(Debug)]
 pub struct PipeReader(AnonPipe);
 
 /// Write end of the annoymous pipe.
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
 #[derive(Debug)]
 pub struct PipeWriter(AnonPipe);
 
 impl PipeReader {
     /// Create a new [`PipeReader`] instance that shares the same underlying file description.
+    #[unstable(feature = "anonymous_pipe", issue = "127154")]
     pub fn try_clone(&self) -> io::Result<Self> {
         self.0.try_clone().map(Self)
     }
@@ -29,6 +33,7 @@ impl PipeReader {
 
 impl PipeWriter {
     /// Create a new [`PipeWriter`] instance that shares the same underlying file description.
+    #[unstable(feature = "anonymous_pipe", issue = "127154")]
     pub fn try_clone(&self) -> io::Result<Self> {
         self.0.try_clone().map(Self)
     }
@@ -36,6 +41,7 @@ impl PipeWriter {
 
 macro_rules! forward_io_read_traits {
     ($name:ty) => {
+        #[unstable(feature = "anonymous_pipe", issue = "127154")]
         impl io::Read for $name {
             fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
                 self.0.read(buf)
@@ -60,6 +66,7 @@ forward_io_read_traits!(&PipeReader);
 
 macro_rules! forward_io_write_traits {
     ($name:ty) => {
+        #[unstable(feature = "anonymous_pipe", issue = "127154")]
         impl io::Write for $name {
             fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
                 self.0.write(buf)
@@ -104,31 +111,37 @@ mod unix {
 
     macro_rules! impl_traits {
         ($name:ty) => {
+            #[unstable(feature = "anonymous_pipe", issue = "127154")]
             impl AsFd for $name {
                 fn as_fd(&self) -> BorrowedFd<'_> {
                     self.0.as_fd()
                 }
             }
+            #[unstable(feature = "anonymous_pipe", issue = "127154")]
             impl AsRawFd for $name {
                 fn as_raw_fd(&self) -> RawFd {
                     self.0.as_raw_fd()
                 }
             }
+            #[unstable(feature = "anonymous_pipe", issue = "127154")]
             impl From<$name> for OwnedFd {
                 fn from(pipe: $name) -> Self {
                     FileDesc::into_inner(AnonPipe::into_inner(pipe.0))
                 }
             }
+            #[unstable(feature = "anonymous_pipe", issue = "127154")]
             impl FromRawFd for $name {
                 unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
                     Self(AnonPipe::from_raw_fd(raw_fd))
                 }
             }
+            #[unstable(feature = "anonymous_pipe", issue = "127154")]
             impl IntoRawFd for $name {
                 fn into_raw_fd(self) -> RawFd {
                     self.0.into_raw_fd()
                 }
             }
+            #[unstable(feature = "anonymous_pipe", issue = "127154")]
             impl From<$name> for Stdio {
                 fn from(pipe: $name) -> Self {
                     Self::from(OwnedFd::from(pipe))
@@ -177,6 +190,7 @@ mod unix {
         }
     }
 
+    #[unstable(feature = "anonymous_pipe", issue = "127154")]
     impl TryFrom<OwnedFd> for PipeReader {
         type Error = io::Error;
 
@@ -187,6 +201,7 @@ mod unix {
         }
     }
 
+    #[unstable(feature = "anonymous_pipe", issue = "127154")]
     impl TryFrom<OwnedFd> for PipeWriter {
         type Error = io::Error;
 
@@ -221,33 +236,39 @@ mod windows {
 
     macro_rules! impl_traits {
         ($name:ty) => {
+            #[unstable(feature = "anonymous_pipe", issue = "127154")]
             impl AsHandle for $name {
                 fn as_handle(&self) -> BorrowedHandle<'_> {
                     self.0.handle().as_handle()
                 }
             }
+            #[unstable(feature = "anonymous_pipe", issue = "127154")]
             impl AsRawHandle for $name {
                 fn as_raw_handle(&self) -> RawHandle {
                     self.0.handle().as_raw_handle()
                 }
             }
 
+            #[unstable(feature = "anonymous_pipe", issue = "127154")]
             impl FromRawHandle for $name {
                 unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
                     Self(AnonPipe::from_inner(Handle::from_raw_handle(raw_handle)))
                 }
             }
+            #[unstable(feature = "anonymous_pipe", issue = "127154")]
             impl IntoRawHandle for $name {
                 fn into_raw_handle(self) -> RawHandle {
                     self.0.into_handle().into_raw_handle()
                 }
             }
 
+            #[unstable(feature = "anonymous_pipe", issue = "127154")]
             impl From<$name> for OwnedHandle {
                 fn from(pipe: $name) -> Self {
                     Handle::into_inner(AnonPipe::into_inner(pipe.0))
                 }
             }
+            #[unstable(feature = "anonymous_pipe", issue = "127154")]
             impl From<$name> for Stdio {
                 fn from(pipe: $name) -> Self {
                     Self::from(OwnedHandle::from(pipe))
@@ -262,6 +283,7 @@ mod windows {
         AnonPipe::from_inner(Handle::from_inner(owned_handle))
     }
 
+    #[unstable(feature = "anonymous_pipe", issue = "127154")]
     impl TryFrom<OwnedHandle> for PipeReader {
         type Error = io::Error;
 
@@ -270,6 +292,7 @@ mod windows {
         }
     }
 
+    #[unstable(feature = "anonymous_pipe", issue = "127154")]
     impl TryFrom<OwnedHandle> for PipeWriter {
         type Error = io::Error;
 
