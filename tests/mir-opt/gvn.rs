@@ -926,6 +926,25 @@ unsafe fn cast_pointer_then_transmute(thin: *mut u32, fat: *mut [u8]) {
     let fat_addr: usize = std::intrinsics::transmute(fat as *const ());
 }
 
+#[custom_mir(dialect = "analysis")]
+fn remove_casts_must_change_both_sides(mut_a: &*mut u8, mut_b: *mut u8) -> bool {
+    // CHECK-LABEL: fn remove_casts_must_change_both_sides(
+    mir! {
+        // We'd like to remove these casts, but we can't change *both* of them
+        // to be locals, so make sure we don't change one without the other, as
+        // that would be a type error.
+        {
+            // CHECK: [[A:_.+]] = (*_1) as *const u8 (PtrToPtr);
+            let a = *mut_a as *const u8;
+            // CHECK: [[B:_.+]] = _2 as *const u8 (PtrToPtr);
+            let b = mut_b as *const u8;
+            // CHECK: _0 = Eq([[A]], [[B]]);
+            RET = a == b;
+            Return()
+        }
+    }
+}
+
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -995,3 +1014,4 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.generic_cast_metadata.GVN.diff
 // EMIT_MIR gvn.cast_pointer_eq.GVN.diff
 // EMIT_MIR gvn.cast_pointer_then_transmute.GVN.diff
+// EMIT_MIR gvn.remove_casts_must_change_both_sides.GVN.diff
