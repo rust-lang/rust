@@ -699,7 +699,7 @@ fn equate(
         (&Type::PrimSigned(32), "__int32" | "const int" | "int") => {}
         (&Type::PrimSigned(64), "__int64" | "long long") => {}
         (&Type::PrimUnsigned(8), "unsigned char") => {}
-        (&Type::PrimUnsigned(16), "unsigned short") => {}
+        (&Type::PrimUnsigned(16), "unsigned short" | "__bfloat16") => {}
         (
             &Type::PrimUnsigned(32),
             "unsigned __int32" | "unsigned int" | "unsigned long" | "const unsigned int",
