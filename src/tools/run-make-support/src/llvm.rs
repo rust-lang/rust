@@ -180,6 +180,13 @@ impl LlvmFilecheck {
         self.cmd.arg(path.as_ref());
         self
     }
+
+    /// `--input-file` option.
+    pub fn input_file<P: AsRef<Path>>(&mut self, input_file: P) -> &mut Self {
+        self.cmd.arg("--input-file");
+        self.cmd.arg(input_file.as_ref());
+        self
+    }
 }
 
 impl LlvmObjdump {
