@@ -22,8 +22,8 @@ fn check_compression(compression: &str, to_find: &str) {
             llvm_readobj().arg("-t").arg("foo.o").run().assert_stdout_contains(to_find);
         } else {
             assert_contains(
-                &stderr,
-                &format!("unknown debuginfo compression algorithm {compression}"),
+                stderr,
+                format!("unknown debuginfo compression algorithm {compression}"),
             );
         }
     });

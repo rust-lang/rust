@@ -28,7 +28,7 @@ fn main() {
         // Run rustc with `-Z temps-dir` set to a directory *inside* the inaccessible one,
         // so that it can't create `tmp`.
         rustc()
-            .target(&target())
+            .target(target())
             .input("program.rs")
             .arg("-Ztemps-dir=inaccessible/tmp")
             .run_fail()
