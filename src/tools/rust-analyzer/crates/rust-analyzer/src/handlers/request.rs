@@ -2294,19 +2294,8 @@ fn to_url(path: VfsPath) -> Option<Url> {
 }
 
 fn resource_ops_supported(config: &Config, kind: ResourceOperationKind) -> anyhow::Result<()> {
-    #[rustfmt::skip]
-    let resops = (|| {
-        config
-            .caps()
-            .workspace
-            .as_ref()?
-            .workspace_edit
-            .as_ref()?
-            .resource_operations
-            .as_ref()
-    })();
-
-    if !matches!(resops, Some(resops) if resops.contains(&kind)) {
+    if !matches!(config.workspace_edit_resource_operations(), Some(resops) if resops.contains(&kind))
+    {
         return Err(LspError::new(
             ErrorCode::RequestFailed as i32,
             format!(
