@@ -18,6 +18,9 @@ pub struct TraitDef {
 
     pub safety: hir::Safety,
 
+    /// Whether this trait has been annotated with `#[const_trait]`.
+    pub constness: hir::Constness,
+
     /// If `true`, then this trait had the `#[rustc_paren_sugar]`
     /// attribute, indicating that it should be used with `Foo()`
     /// sugar. This is a temporary thing -- eventually any trait will
