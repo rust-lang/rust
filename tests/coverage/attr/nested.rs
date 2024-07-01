@@ -4,11 +4,6 @@
 // Demonstrates the interaction between #[coverage(off)] and various kinds of
 // nested function.
 
-// FIXME(#126625): Coverage attributes should apply recursively to nested functions.
-// FIXME(#126626): When an inner (non-closure) function has `#[coverage(off)]`,
-// its lines can still be marked with misleading execution counts from its enclosing
-// function.
-
 #[coverage(off)]
 fn do_stuff() {}
 

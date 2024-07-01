@@ -21,40 +21,38 @@
    LL|       |        ;
    LL|       |
    LL|      1|    black_box(());
-   LL|      1|
-   LL|      1|    fn _unused_fn() {}
-                  ^0
-   LL|      1|
+   LL|       |
+   LL|      0|    fn _unused_fn() {}
+   LL|       |
    LL|      1|    black_box(());
-   LL|      1|
-   LL|      1|    struct MyStruct {
-   LL|      1|        _x: u32,
-   LL|      1|        _y: u32,
-   LL|      1|    }
-   LL|      1|
+   LL|       |
+   LL|       |    struct MyStruct {
+   LL|       |        _x: u32,
+   LL|       |        _y: u32,
+   LL|       |    }
+   LL|       |
    LL|      1|    black_box(());
-   LL|      1|
-   LL|      1|    impl MyStruct {
-   LL|      1|        fn _method(&self) {}
-                      ^0
-   LL|      1|    }
-   LL|      1|
+   LL|       |
+   LL|       |    impl MyStruct {
+   LL|      0|        fn _method(&self) {}
+   LL|       |    }
+   LL|       |
    LL|      1|    black_box(());
-   LL|      1|
-   LL|      1|    macro_rules! _my_macro {
-   LL|      1|        () => {};
-   LL|      1|    }
-   LL|      1|
+   LL|       |
+   LL|       |    macro_rules! _my_macro {
+   LL|       |        () => {};
+   LL|       |    }
+   LL|       |
    LL|      1|    black_box(());
    LL|      1|
    LL|      1|    #[rustfmt::skip]
    LL|      1|    let _const =
-   LL|      1|        const
-   LL|      1|        {
-   LL|      1|            7 + 4
-   LL|      1|        }
-   LL|      1|        ;
-   LL|      1|
+   LL|       |        const
+   LL|       |        {
+   LL|       |            7 + 4
+   LL|       |        }
+   LL|       |        ;
+   LL|       |
    LL|      1|    black_box(());
    LL|      1|
    LL|      1|    #[rustfmt::skip]

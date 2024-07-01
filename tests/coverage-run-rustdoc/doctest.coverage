@@ -34,10 +34,10 @@ $DIR/doctest.rs:
    LL|       |//!
    LL|       |//! doctest returning a result:
    LL|      1|//! ```
-   LL|      1|//! #[derive(Debug, PartialEq)]
-   LL|      1|//! struct SomeError {
-   LL|      1|//!     msg: String,
-   LL|      1|//! }
+   LL|       |//! #[derive(Debug, PartialEq)]
+   LL|       |//! struct SomeError {
+   LL|       |//!     msg: String,
+   LL|       |//! }
    LL|      1|//! let mut res = Err(SomeError { msg: String::from("a message") });
    LL|      1|//! if res.is_ok() {
    LL|      0|//!     res?;
