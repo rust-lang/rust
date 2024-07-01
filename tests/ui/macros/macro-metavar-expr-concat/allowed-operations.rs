@@ -37,6 +37,18 @@ macro_rules! without_dollar_sign_is_an_ident {
     };
 }
 
+macro_rules! literals {
+    ($ident:ident) => {{
+        let ${concat(_a, 'b')}: () = ();
+        let ${concat(_a, 1)}: () = ();
+        let ${concat(_a, "b")}: () = ();
+
+        let ${concat($ident, 'b')}: () = ();
+        let ${concat($ident, 1)}: () = ();
+        let ${concat($ident, "b")}: () = ();
+    }};
+}
+
 fn main() {
     create_things!(behold);
     behold_separated_idents_in_a_fn();
@@ -55,4 +67,6 @@ fn main() {
     without_dollar_sign_is_an_ident!(_123);
     assert_eq!(VARident, 1);
     assert_eq!(VAR_123, 2);
+
+    literals!(_hello);
 }
