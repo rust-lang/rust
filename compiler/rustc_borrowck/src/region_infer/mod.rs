@@ -116,7 +116,9 @@ impl RegionTracker {
             representative_is_existential,
         }
     }
-    fn universe(self) -> UniverseIndex {
+
+    /// The smallest-indexed universe reachable from and/or in this SCC.
+    fn min_universe(self) -> UniverseIndex {
         self.min_reachable_universe
     }
 
@@ -133,7 +135,7 @@ impl RegionTracker {
     /// Returns `true` if during the annotated SCC reaches a placeholder
     /// with a universe larger than the smallest reachable one, `false` otherwise.
     pub(crate) fn has_incompatible_universes(&self) -> bool {
-        self.universe().cannot_name(self.max_placeholder_universe_reached)
+        self.min_universe().cannot_name(self.max_placeholder_universe_reached)
     }
 }
 
@@ -780,7 +782,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // If the member region lives in a higher universe, we currently choose
         // the most conservative option by leaving it unchanged.
 
-        if !self.constraint_sccs().annotation(scc).universe().is_root() {
+        if !self.constraint_sccs().annotation(scc).min_universe().is_root() {
             return;
         }
 
@@ -854,12 +856,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn universe_compatible(&self, scc_b: ConstraintSccIndex, scc_a: ConstraintSccIndex) -> bool {
         let a_annotation = self.constraint_sccs().annotation(scc_a);
         let b_annotation = self.constraint_sccs().annotation(scc_b);
-        let a_universe = a_annotation.universe();
+        let a_universe = a_annotation.min_universe();
 
         // If scc_b's declared universe is a subset of
         // scc_a's declared universe (typically, both are ROOT), then
         // it cannot contain any problematic universe elements.
-        if a_universe.can_name(b_annotation.universe()) {
+        if a_universe.can_name(b_annotation.min_universe()) {
             return true;
         }
 
@@ -973,7 +975,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             "lower_bound = {:?} r_scc={:?} universe={:?}",
             lower_bound,
             r_scc,
-            self.constraint_sccs.annotation(r_scc).universe()
+            self.constraint_sccs.annotation(r_scc).min_universe()
         );
 
         // If the type test requires that `T: 'a` where `'a` is a
@@ -1490,7 +1492,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// The minimum universe of any variable reachable from this
     /// SCC, inside or outside of it.
     fn scc_universe(&self, scc: ConstraintSccIndex) -> UniverseIndex {
-        self.constraint_sccs().annotation(scc).universe()
+        self.constraint_sccs().annotation(scc).min_universe()
     }
     /// Checks the final value for the free region `fr` to see if it
     /// grew too large. In particular, examine what `end(X)` points
