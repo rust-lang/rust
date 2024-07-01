@@ -705,7 +705,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut err = if is_write && let SelfSource::MethodCall(rcvr_expr) = source {
             self.suggest_missing_writer(rcvr_ty, rcvr_expr)
         } else {
-            let mut err = tcx.dcx().create_err(NoAssociatedItem {
+            let mut err = self.dcx().create_err(NoAssociatedItem {
                 span,
                 item_kind,
                 item_name,
@@ -1194,7 +1194,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span: item_span,
                         ..
                     })) => {
-                        tcx.dcx().span_delayed_bug(
+                        self.dcx().span_delayed_bug(
                             *item_span,
                             "auto trait is invoked with no method error, but no error reported?",
                         );
@@ -2361,7 +2361,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     if pick.is_ok() {
                         let range_span = parent_expr.span.with_hi(expr.span.hi());
-                        return Err(tcx.dcx().emit_err(errors::MissingParenthesesInRange {
+                        return Err(self.dcx().emit_err(errors::MissingParenthesesInRange {
                             span,
                             ty_str: ty_str.to_string(),
                             method_name: item_name.as_str().to_string(),
@@ -2420,7 +2420,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let SelfSource::MethodCall(expr) = source
         {
             let mut err = struct_span_code_err!(
-                tcx.dcx(),
+                self.dcx(),
                 span,
                 E0689,
                 "can't call {} `{}` on ambiguous numeric type `{}`",

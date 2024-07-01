@@ -82,8 +82,8 @@ pub fn suggest_new_overflow_limit<'tcx, G: EmissionGuarantee>(
     ));
 }
 
-#[extension(pub trait TypeErrCtxtExt<'tcx>)]
-impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+#[extension(pub trait TypeErrCtxtExt<'a, 'tcx>)]
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn report_fulfillment_errors(
         &self,
         mut errors: Vec<FulfillmentError<'tcx>>,
@@ -228,7 +228,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         cause: OverflowCause<'tcx>,
         span: Span,
         suggest_increasing_limit: bool,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         fn with_short_path<'tcx, T>(tcx: TyCtxt<'tcx>, value: T) -> String
         where
             T: fmt::Display + Print<'tcx, FmtPrinter<'tcx, 'tcx>>,
@@ -1101,7 +1101,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 && let ty::FnPtr(sig) = by_ref_captures.kind()
                 && !sig.skip_binder().output().is_unit()
             {
-                let mut err = self.tcx.dcx().create_err(AsyncClosureNotFn {
+                let mut err = self.dcx().create_err(AsyncClosureNotFn {
                     span: self.tcx.def_span(closure_def_id),
                     kind: expected_kind.as_str(),
                 });
@@ -1351,7 +1351,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         let span = obligation.cause.span;
 
         let mut diag = match ty.kind() {
@@ -1445,8 +1445,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     }
 }
 
-#[extension(pub(super) trait InferCtxtPrivExt<'tcx>)]
-impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+#[extension(pub(super) trait InferCtxtPrivExt<'a, 'tcx>)]
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn can_match_trait(
         &self,
         goal: ty::TraitPredicate<'tcx>,
@@ -2884,7 +2884,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
                 && let Some(mut diag) =
-                    self.tcx.dcx().steal_non_err(span, StashKey::AssociatedTypeSuggestion)
+                    self.dcx().steal_non_err(span, StashKey::AssociatedTypeSuggestion)
                 && let Ok(ref mut s1) = err.suggestions
                 && let Ok(ref mut s2) = diag.suggestions
             {
@@ -3379,7 +3379,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         found_kind: ty::ClosureKind,
         kind: ty::ClosureKind,
         trait_prefix: &'static str,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         let closure_span = self.tcx.def_span(closure_def_id);
 
         let mut err = ClosureKindMismatch {
@@ -3422,7 +3422,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         found_trait_ref: ty::TraitRef<'tcx>,
         expected_trait_ref: ty::TraitRef<'tcx>,
         terr: TypeError<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         let self_ty = found_trait_ref.self_ty();
         let (cause, terr) = if let ty::Closure(def_id, _) = self_ty.kind() {
             (
@@ -3473,7 +3473,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         span: Span,
         found_trait_ref: ty::TraitRef<'tcx>,
         expected_trait_ref: ty::TraitRef<'tcx>,
-    ) -> Result<Diag<'tcx>, ErrorGuaranteed> {
+    ) -> Result<Diag<'a>, ErrorGuaranteed> {
         let found_trait_ref = self.resolve_vars_if_possible(found_trait_ref);
         let expected_trait_ref = self.resolve_vars_if_possible(expected_trait_ref);
 
@@ -3553,7 +3553,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     })
                     .unwrap_or((found_span, None, found));
 
-                self.report_arg_count_mismatch(
+                self.infcx.report_arg_count_mismatch(
                     span,
                     closure_span,
                     expected,
@@ -3569,7 +3569,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         span: Span,
-    ) -> Result<Diag<'tcx>, ErrorGuaranteed> {
+    ) -> Result<Diag<'a>, ErrorGuaranteed> {
         if !self.tcx.features().generic_const_exprs {
             let guar = self
                 .dcx()

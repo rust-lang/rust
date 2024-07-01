@@ -88,7 +88,7 @@ impl<'tcx> InferCtxt<'tcx> {
         found_args: Vec<ArgKind>,
         is_closure: bool,
         closure_arg_span: Option<Span>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'_> {
         let kind = if is_closure { "closure" } else { "function" };
 
         let args_str = |arguments: &[ArgKind], other: &[ArgKind]| {

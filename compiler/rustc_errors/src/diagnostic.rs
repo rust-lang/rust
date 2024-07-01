@@ -510,7 +510,7 @@ pub struct Diag<'a, G: EmissionGuarantee = ErrorGuaranteed> {
 // would be bad.
 impl<G> !Clone for Diag<'_, G> {}
 
-rustc_data_structures::static_assert_size!(Diag<'_, ()>, 2 * std::mem::size_of::<usize>());
+rustc_data_structures::static_assert_size!(Diag<'_, ()>, 3 * std::mem::size_of::<usize>());
 
 impl<G: EmissionGuarantee> Deref for Diag<'_, G> {
     type Target = DiagInner;
@@ -580,6 +580,11 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     #[track_caller]
     pub fn new(dcx: DiagCtxtHandle<'a>, level: Level, message: impl Into<DiagMessage>) -> Self {
         Self::new_diagnostic(dcx, DiagInner::new(level, message))
+    }
+
+    /// Allow moving diagnostics between different error tainting contexts
+    pub fn with_dcx(mut self, dcx: DiagCtxtHandle<'_>) -> Diag<'_, G> {
+        Diag { dcx, diag: self.diag.take(), _marker: PhantomData }
     }
 
     /// Creates a new `Diag` with an already constructed diagnostic.

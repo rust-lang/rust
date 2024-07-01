@@ -139,7 +139,7 @@ pub struct TypeErrCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
-    pub fn dcx(&self) -> DiagCtxtHandle<'tcx> {
+    pub fn dcx(&self) -> DiagCtxtHandle<'a> {
         self.infcx.dcx()
     }
 
@@ -305,16 +305,17 @@ fn label_msg_span(
     }
 }
 
-#[instrument(level = "trace", skip(tcx))]
-pub fn unexpected_hidden_region_diagnostic<'tcx>(
-    tcx: TyCtxt<'tcx>,
+#[instrument(level = "trace", skip(infcx))]
+pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
+    infcx: &'a InferCtxt<'tcx>,
     generic_param_scope: LocalDefId,
     span: Span,
     hidden_ty: Ty<'tcx>,
     hidden_region: ty::Region<'tcx>,
     opaque_ty_key: ty::OpaqueTypeKey<'tcx>,
-) -> Diag<'tcx> {
-    let mut err = tcx.dcx().create_err(errors::OpaqueCapturesLifetime {
+) -> Diag<'a> {
+    let tcx = infcx.tcx;
+    let mut err = infcx.dcx().create_err(errors::OpaqueCapturesLifetime {
         span,
         opaque_ty: Ty::new_opaque(tcx, opaque_ty_key.def_id.to_def_id(), opaque_ty_key.args),
         opaque_ty_span: tcx.def_span(opaque_ty_key.def_id),
@@ -436,7 +437,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn report_region_errors(
         &self,
         generic_param_scope: LocalDefId,
@@ -2206,7 +2207,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         trace: TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
 
         let span = trace.cause.span();
@@ -2215,7 +2216,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             span,
             self.type_error_additional_suggestions(&trace, terr),
         );
-        let mut diag = self.tcx.dcx().create_err(failure_code);
+        let mut diag = self.dcx().create_err(failure_code);
         self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false, false);
         diag
     }
@@ -2357,14 +2358,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         if let Some(SubregionOrigin::CompareImplItemObligation {
             span,
             impl_item_def_id,
             trait_item_def_id,
         }) = origin
         {
-            return self.report_extra_impl_obligation(
+            return self.infcx.report_extra_impl_obligation(
                 span,
                 impl_item_def_id,
                 trait_item_def_id,
@@ -2790,7 +2791,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameTypeModuloInfer<'_, 'tcx> {
 }
 
 impl<'tcx> InferCtxt<'tcx> {
-    fn report_inference_failure(&self, var_origin: RegionVariableOrigin) -> Diag<'tcx> {
+    fn report_inference_failure(&self, var_origin: RegionVariableOrigin) -> Diag<'_> {
         let br_string = |br: ty::BoundRegionKind| {
             let mut s = match br {
                 ty::BrNamed(_, name) => name.to_string(),
@@ -2829,7 +2830,7 @@ impl<'tcx> InferCtxt<'tcx> {
         };
 
         struct_span_code_err!(
-            self.tcx.dcx(),
+            self.dcx(),
             var_origin.span(),
             E0495,
             "cannot infer an appropriate lifetime{} due to conflicting requirements",

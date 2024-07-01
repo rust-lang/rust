@@ -391,7 +391,7 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         arg_data: InferenceDiagnosticsData,
         error_code: TypeAnnotationNeeded,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'_> {
         let source_kind = "other";
         let source_name = "";
         let failure_span = None;
@@ -436,7 +436,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, error_code))]
     pub fn emit_inference_failure_err(
         &self,
@@ -445,7 +445,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         arg: GenericArg<'tcx>,
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
 
@@ -453,7 +453,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // If we don't have any typeck results we're outside
             // of a body, so we won't be able to get better info
             // here.
-            return self.bad_inference_failure_err(failure_span, arg_data, error_code);
+            return self.infcx.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
 
         let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, arg);
@@ -465,7 +465,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let Some(InferSource { span, kind }) = local_visitor.infer_source else {
-            return self.bad_inference_failure_err(failure_span, arg_data, error_code);
+            return self.infcx.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
 
         let (source_kind, name, path) = kind.ty_localized_msg(self);

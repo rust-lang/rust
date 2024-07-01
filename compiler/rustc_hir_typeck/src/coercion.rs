@@ -1797,16 +1797,16 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         err.subdiagnostic(SuggestBoxingForReturnImplTrait::BoxReturnExpr { starts, ends });
     }
 
-    fn report_return_mismatched_types<'a>(
+    fn report_return_mismatched_types<'infcx>(
         &self,
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         ty_err: TypeError<'tcx>,
-        fcx: &FnCtxt<'a, 'tcx>,
+        fcx: &'infcx FnCtxt<'_, 'tcx>,
         block_or_return_id: hir::HirId,
         expression: Option<&'tcx hir::Expr<'tcx>>,
-    ) -> Diag<'a> {
+    ) -> Diag<'infcx> {
         let mut err = fcx.err_ctxt().report_mismatched_types(cause, expected, found, ty_err);
 
         let due_to_block = matches!(fcx.tcx.hir_node(block_or_return_id), hir::Node::Block(..));

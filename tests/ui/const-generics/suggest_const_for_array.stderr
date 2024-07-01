@@ -1,15 +1,40 @@
 error[E0747]: type provided when a constant was expected
-  --> $DIR/suggest_const_for_array.rs:6:13
+  --> $DIR/suggest_const_for_array.rs:6:15
    |
-LL |   example::<[usize; 3]>();
-   |             ^^^^^^^^^^ help: array type provided where a `usize` was expected, try: `{ 3 }`
+LL |     example::<[usize; 3]>();
+   |               ^^^^^^^^^^ help: array type provided where a `usize` was expected, try: `{ 3 }`
 
 error[E0747]: type provided when a constant was expected
-  --> $DIR/suggest_const_for_array.rs:8:13
+  --> $DIR/suggest_const_for_array.rs:9:15
    |
-LL |   example::<[usize; 4+5]>();
-   |             ^^^^^^^^^^^^ help: array type provided where a `usize` was expected, try: `{ 4+5 }`
+LL |     example::<[usize; 4 + 5]>();
+   |               ^^^^^^^^^^^^^^ help: array type provided where a `usize` was expected, try: `{ 4 + 5 }`
 
-error: aborting due to 2 previous errors
+error[E0284]: type annotations needed
+  --> $DIR/suggest_const_for_array.rs:6:5
+   |
+LL |     example::<[usize; 3]>();
+   |     ^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `example`
+   |
+note: required by a const generic parameter in `example`
+  --> $DIR/suggest_const_for_array.rs:3:12
+   |
+LL | fn example<const N: usize>() {}
+   |            ^^^^^^^^^^^^^^ required by this const generic parameter in `example`
 
-For more information about this error, try `rustc --explain E0747`.
+error[E0284]: type annotations needed
+  --> $DIR/suggest_const_for_array.rs:9:5
+   |
+LL |     example::<[usize; 4 + 5]>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `example`
+   |
+note: required by a const generic parameter in `example`
+  --> $DIR/suggest_const_for_array.rs:3:12
+   |
+LL | fn example<const N: usize>() {}
+   |            ^^^^^^^^^^^^^^ required by this const generic parameter in `example`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0284, E0747.
+For more information about an error, try `rustc --explain E0284`.

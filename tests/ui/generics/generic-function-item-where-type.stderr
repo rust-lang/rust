@@ -7,6 +7,13 @@ LL |     foo::<main>()
    = help: `main` is a function item, not a type
    = help: function item types cannot be named directly
 
-error: aborting due to 1 previous error
+error[E0282]: type annotations needed
+  --> $DIR/generic-function-item-where-type.rs:4:5
+   |
+LL |     foo::<main>()
+   |     ^^^^^^^^^^^ cannot infer type of the type parameter `U` declared on the function `foo`
 
-For more information about this error, try `rustc --explain E0747`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0747.
+For more information about an error, try `rustc --explain E0282`.

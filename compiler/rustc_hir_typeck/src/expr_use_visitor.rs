@@ -170,7 +170,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
     }
 
     fn report_error(&self, span: Span, msg: impl ToString) -> Self::Error {
-        self.tcx.dcx().span_delayed_bug(span, msg.to_string())
+        self.dcx().span_delayed_bug(span, msg.to_string())
     }
 
     fn error_reported_in_ty(&self, ty: Ty<'tcx>) -> Result<(), Self::Error> {

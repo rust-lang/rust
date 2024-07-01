@@ -15,7 +15,19 @@ help: if this generic argument was intended as a const parameter, surround it wi
 LL |     bar::<{ <T as Trait>::ASSOC }>();
    |           +                     +
 
-error: aborting due to 2 previous errors
+error[E0284]: type annotations needed
+  --> $DIR/assoc_const_as_type_argument.rs:8:5
+   |
+LL |     bar::<<T as Trait>::ASSOC>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
+   |
+note: required by a const generic parameter in `bar`
+  --> $DIR/assoc_const_as_type_argument.rs:5:8
+   |
+LL | fn bar<const N: usize>() {}
+   |        ^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
 
-Some errors have detailed explanations: E0575, E0747.
-For more information about an error, try `rustc --explain E0575`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0284, E0575, E0747.
+For more information about an error, try `rustc --explain E0284`.

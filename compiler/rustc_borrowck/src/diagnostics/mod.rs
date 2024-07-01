@@ -69,7 +69,7 @@ pub(super) struct DescribePlaceOpt {
 
 pub(super) struct IncludingTupleField(pub(super) bool);
 
-impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     /// Adds a suggestion when a closure is invoked twice with a moved variable or when a closure
     /// is moved after being invoked.
     ///
@@ -86,7 +86,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         &self,
         location: Location,
         place: PlaceRef<'tcx>,
-        diag: &mut Diag<'_>,
+        diag: &mut Diag<'infcx>,
     ) -> bool {
         debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
         let mut target = place.local_or_deref_local();
