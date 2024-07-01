@@ -112,7 +112,9 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
                 }))
                 .take(self.num_calls);
 
-        if !self.replace_ranges.is_empty() {
+        if self.replace_ranges.is_empty() {
+            make_token_stream(tokens, self.break_last_token)
+        } else {
             let mut tokens: Vec<_> = tokens.collect();
             let mut replace_ranges = self.replace_ranges.to_vec();
             replace_ranges.sort_by_key(|(range, _)| range.start);
@@ -165,8 +167,6 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
                 );
             }
             make_token_stream(tokens.into_iter(), self.break_last_token)
-        } else {
-            make_token_stream(tokens, self.break_last_token)
         }
     }
 }
