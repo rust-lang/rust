@@ -130,6 +130,10 @@ impl ProcMacroServer {
             Err(message) => Err(ServerError { message, io: None }),
         }
     }
+
+    pub fn exited(&self) -> Option<&ServerError> {
+        self.process.exited()
+    }
 }
 
 impl ProcMacro {

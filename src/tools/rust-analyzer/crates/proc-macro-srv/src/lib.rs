@@ -204,6 +204,8 @@ fn expand_ra_span(
     let macro_body = macro_body.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table);
     let attributes =
         attributes.map(|it| it.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table));
+    // Note, we spawn a new thread here so that thread locals allocation don't accumulate (this
+    // includes the proc-macro symbol interner)
     let result = thread::scope(|s| {
         let thread = thread::Builder::new()
             .stack_size(EXPANDER_STACK_SIZE)
