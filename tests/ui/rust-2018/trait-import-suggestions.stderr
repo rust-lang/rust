@@ -7,7 +7,7 @@ LL |             fn foobar(&self) { }
 LL |         x.foobar();
    |           ^^^^^^
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `Foobar` which provides `foobar` is implemented but not in scope; perhaps you want to import it
    |
 LL +     use crate::foo::foobar::Foobar;
@@ -26,7 +26,7 @@ LL |         fn bar(&self) { }
 LL |     x.bar();
    |       ^^^
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `Bar` which provides `bar` is implemented but not in scope; perhaps you want to import it
    |
 LL + use crate::foo::Bar;
@@ -53,7 +53,7 @@ error[E0599]: no function or associated item named `from_str` found for type `u3
 LL |     let y = u32::from_str("33");
    |                  ^^^^^^^^ function or associated item not found in `u32`
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `FromStr` which provides `from_str` is implemented but not in scope; perhaps you want to import it
    |
 LL + use std::str::FromStr;

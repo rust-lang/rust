@@ -7,7 +7,7 @@ LL |     pub trait T { fn f(&self) {} }
 LL |     ().f()
    |        ^ method not found in `()`
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `T` which provides `f` is implemented but not in scope; perhaps you want to import it
    |
 LL + use foo::T;

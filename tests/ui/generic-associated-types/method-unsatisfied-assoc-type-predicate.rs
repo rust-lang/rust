@@ -26,6 +26,7 @@ fn f(a: S) {
     a.f();
     //~^ ERROR the method `f` exists for struct `S`, but its trait bounds were not satisfied
     //~| NOTE method cannot be called on `S` due to unsatisfied trait bounds
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
 }
 
 fn main() {}

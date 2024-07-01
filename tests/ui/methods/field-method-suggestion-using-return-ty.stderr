@@ -4,7 +4,11 @@ error[E0599]: no method named `as_mut` found for reference `&Wrapper<Option<i32>
 LL |         self.as_mut()
    |              ^^^^^^ method not found in `&Wrapper<Option<i32>>`
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/field-method-suggestion-using-return-ty.rs:5:14
+   |
+LL |         self.as_mut()
+   |              ^^^^^^
    = note: the following trait defines an item `as_mut`, perhaps you need to implement it:
            candidate #1: `AsMut`
 help: one of the expressions' fields has a method of the same name
@@ -18,7 +22,11 @@ error[E0599]: no method named `as_mut` found for reference `&Wrapper<Option<i32>
 LL |         self.as_mut()
    |              ^^^^^^ method not found in `&Wrapper<Option<i32>>`
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/field-method-suggestion-using-return-ty.rs:12:14
+   |
+LL |         self.as_mut()
+   |              ^^^^^^
    = note: the following trait defines an item `as_mut`, perhaps you need to implement it:
            candidate #1: `AsMut`
 

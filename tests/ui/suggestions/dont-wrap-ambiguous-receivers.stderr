@@ -7,7 +7,7 @@ LL |     pub struct Chaenomeles;
 LL |     banana::Chaenomeles.pick()
    |                         ^^^^ method not found in `Chaenomeles`
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: the following traits which provide `pick` are implemented but not in scope; perhaps you want to import one of them
    |
 LL + use banana::Apple;

@@ -6,7 +6,11 @@ LL | fn test(foo: impl Foo) {
 LL |     foo.hello();
    |         ^^^^^ method not found in `impl Foo`
    |
-   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: items from traits can only be used if the type parameter is bounded by the trait
+  --> $DIR/impl-trait-with-missing-trait-bounds-in-arg.rs:15:9
+   |
+LL |     foo.hello();
+   |         ^^^^^
 help: the following trait defines an item `hello`, perhaps you need to restrict type parameter `impl Foo` with it:
    |
 LL | fn test(foo: impl Foo + Bar) {
@@ -20,7 +24,11 @@ LL | fn test2(f: impl Fn() -> dyn std::fmt::Debug) {
 LL |     f.method();
    |       ^^^^^^ method not found in `impl Fn() -> dyn std::fmt::Debug`
    |
-   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: items from traits can only be used if the type parameter is bounded by the trait
+  --> $DIR/impl-trait-with-missing-trait-bounds-in-arg.rs:26:7
+   |
+LL |     f.method();
+   |       ^^^^^^
 help: the following trait defines an item `method`, perhaps you need to restrict type parameter `impl Fn() -> dyn std::fmt::Debug` with it:
    |
 LL | fn test2(f: impl Fn() -> (dyn std::fmt::Debug) + Trait) {

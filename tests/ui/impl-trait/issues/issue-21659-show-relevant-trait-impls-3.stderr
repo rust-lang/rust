@@ -7,7 +7,11 @@ LL | struct Bar;
 LL |     f1.foo(1usize);
    |        ^^^ method not found in `Bar`
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/issue-21659-show-relevant-trait-impls-3.rs:20:8
+   |
+LL |     f1.foo(1usize);
+   |        ^^^
 note: `Foo` defines an item `foo`, perhaps you need to implement it
   --> $DIR/issue-21659-show-relevant-trait-impls-3.rs:1:1
    |

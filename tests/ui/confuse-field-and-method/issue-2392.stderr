@@ -19,9 +19,13 @@ LL | struct Obj<F> where F: FnOnce() -> u32 {
    | ------------- method `not_closure` not found for this struct
 ...
 LL |     o_closure.not_closure();
-   |               ^^^^^^^^^^^-- help: remove the arguments
-   |               |
-   |               field, not a method
+   |               ^^^^^^^^^^^ field, not a method
+   |
+help: remove the arguments
+   |
+LL -     o_closure.not_closure();
+LL +     o_closure.not_closure;
+   |
 
 error[E0599]: no method named `closure` found for struct `Obj` in the current scope
   --> $DIR/issue-2392.rs:42:12
@@ -86,9 +90,13 @@ LL | struct Obj<F> where F: FnOnce() -> u32 {
    | ------------- method `not_closure` not found for this struct
 ...
 LL |     w.wrap.not_closure();
-   |            ^^^^^^^^^^^-- help: remove the arguments
-   |            |
-   |            field, not a method
+   |            ^^^^^^^^^^^ field, not a method
+   |
+help: remove the arguments
+   |
+LL -     w.wrap.not_closure();
+LL +     w.wrap.not_closure;
+   |
 
 error[E0599]: no method named `closure` found for struct `Obj` in the current scope
   --> $DIR/issue-2392.rs:58:24

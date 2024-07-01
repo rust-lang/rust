@@ -64,7 +64,11 @@ LL | |      .take()
            which is required by `&mut Foo: Iterator`
 note: the trait `Iterator` must be implemented
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/method-call-err-msg.rs:19:7
+   |
+LL |      .take()
+   |       ^^^^
    = note: the following traits define an item `take`, perhaps you need to implement one of them:
            candidate #1: `Iterator`
            candidate #2: `std::io::Read`

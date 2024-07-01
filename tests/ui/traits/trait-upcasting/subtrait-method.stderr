@@ -4,7 +4,11 @@ error[E0599]: no method named `c` found for reference `&dyn Bar` in the current 
 LL |     bar.c();
    |         ^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/subtrait-method.rs:55:9
+   |
+LL |     bar.c();
+   |         ^
 note: `Baz` defines an item `c`, perhaps you need to implement it
   --> $DIR/subtrait-method.rs:27:1
    |
@@ -21,7 +25,11 @@ error[E0599]: no method named `b` found for reference `&dyn Foo` in the current 
 LL |     foo.b();
    |         ^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/subtrait-method.rs:59:9
+   |
+LL |     foo.b();
+   |         ^
 note: `Bar` defines an item `b`, perhaps you need to implement it
   --> $DIR/subtrait-method.rs:17:1
    |
@@ -38,7 +46,11 @@ error[E0599]: no method named `c` found for reference `&dyn Foo` in the current 
 LL |     foo.c();
    |         ^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/subtrait-method.rs:61:9
+   |
+LL |     foo.c();
+   |         ^
 note: `Baz` defines an item `c`, perhaps you need to implement it
   --> $DIR/subtrait-method.rs:27:1
    |
@@ -55,7 +67,11 @@ error[E0599]: no method named `b` found for reference `&dyn Foo` in the current 
 LL |     foo.b();
    |         ^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/subtrait-method.rs:65:9
+   |
+LL |     foo.b();
+   |         ^
 note: `Bar` defines an item `b`, perhaps you need to implement it
   --> $DIR/subtrait-method.rs:17:1
    |
@@ -72,7 +88,11 @@ error[E0599]: no method named `c` found for reference `&dyn Foo` in the current 
 LL |     foo.c();
    |         ^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/subtrait-method.rs:67:9
+   |
+LL |     foo.c();
+   |         ^
 note: `Baz` defines an item `c`, perhaps you need to implement it
   --> $DIR/subtrait-method.rs:27:1
    |
