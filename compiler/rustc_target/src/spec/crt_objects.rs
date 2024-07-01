@@ -7,13 +7,13 @@
 //!
 //! | Pre-link CRT objects | glibc                  | musl                   | bionic           | mingw             | wasi         |
 //! |----------------------|------------------------|------------------------|------------------|-------------------|--------------|
-//! | dynamic-nopic-exe    | crt1, crti, crtbegin   | crt1, crti, crtbegin   | crtbegin_dynamic | crt2, crtbegin    | crt1         |
-//! | dynamic-pic-exe      | Scrt1, crti, crtbeginS | Scrt1, crti, crtbeginS | crtbegin_dynamic | crt2, crtbegin    | crt1         |
-//! | static-nopic-exe     | crt1, crti, crtbeginT  | crt1, crti, crtbegin   | crtbegin_static  | crt2, crtbegin    | crt1         |
-//! | static-pic-exe       | rcrt1, crti, crtbeginS | rcrt1, crti, crtbeginS | crtbegin_dynamic | crt2, crtbegin    | crt1         |
-//! | dynamic-dylib        | crti, crtbeginS        | crti, crtbeginS        | crtbegin_so      | dllcrt2, crtbegin | -            |
+//! | dynamic-nopic-exe    | crt1, crti, crtbegin   | crt1, crti, crtbegin   | crtbegin_dynamic | crt2, crtbegin    | crt1-command |
+//! | dynamic-pic-exe      | Scrt1, crti, crtbeginS | Scrt1, crti, crtbeginS | crtbegin_dynamic | crt2, crtbegin    | crt1-command |
+//! | static-nopic-exe     | crt1, crti, crtbeginT  | crt1, crti, crtbegin   | crtbegin_static  | crt2, crtbegin    | crt1-command |
+//! | static-pic-exe       | rcrt1, crti, crtbeginS | rcrt1, crti, crtbeginS | crtbegin_dynamic | crt2, crtbegin    | crt1-command |
+//! | dynamic-dylib        | crti, crtbeginS        | crti, crtbeginS        | crtbegin_so      | dllcrt2, crtbegin | crt1-reactor |
 //! | static-dylib (gcc)   | crti, crtbeginT        | crti, crtbeginS        | crtbegin_so      | dllcrt2, crtbegin | -            |
-//! | static-dylib (clang) | crti, crtbeginT        | N/A                    | crtbegin_static  | dllcrt2, crtbegin | -            |
+//! | static-dylib (clang) | crti, crtbeginT        | N/A                    | crtbegin_static  | dllcrt2, crtbegin | crt1-reactor |
 //! | wasi-reactor-exe     | N/A                    | N/A                    | N/A              | N/A               | crt1-reactor |
 //!
 //! | Post-link CRT objects | glibc         | musl          | bionic         | mingw  | wasi |
@@ -114,6 +114,8 @@ pub(super) fn pre_wasi_self_contained() -> CrtObjects {
         (LinkOutputKind::DynamicPicExe, &["crt1-command.o"]),
         (LinkOutputKind::StaticNoPicExe, &["crt1-command.o"]),
         (LinkOutputKind::StaticPicExe, &["crt1-command.o"]),
+        (LinkOutputKind::DynamicDylib, &["crt1-reactor.o"]),
+        (LinkOutputKind::StaticDylib, &["crt1-reactor.o"]),
         (LinkOutputKind::WasiReactorExe, &["crt1-reactor.o"]),
     ])
 }
