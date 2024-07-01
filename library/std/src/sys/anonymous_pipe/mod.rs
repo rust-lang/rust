@@ -295,3 +295,6 @@ mod windows {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
