@@ -5,7 +5,8 @@ cfg_if::cfg_if! {
         /// This mitigation is not necessary when running under Miri, so this function does nothing
         /// when running under Miri.
         pub(crate) fn unique_thread_exit() {
-            // Mitigation not required on Miri, where `exit` is thread-safe.
+            // Mitigation not required on Miri, where `atexit` is not supported and
+            // hence `exit` is thread-safe.
         }
     } else if #[cfg(target_os = "linux")] {
         /// Mitigation for <https://github.com/rust-lang/rust/issues/126600>
