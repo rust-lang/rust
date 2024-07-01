@@ -218,16 +218,16 @@ impl<'a> Parser<'a> {
         let start_token = (self.token.clone(), self.token_spacing);
         let cursor_snapshot = self.token_cursor.clone();
         let start_pos = self.num_bump_calls;
-
         let has_outer_attrs = !attrs.attrs.is_empty();
-        let prev_capturing = std::mem::replace(&mut self.capture_state.capturing, Capturing::Yes);
         let replace_ranges_start = self.capture_state.replace_ranges.len();
 
-        let ret = f(self, attrs.attrs);
-
-        self.capture_state.capturing = prev_capturing;
-
-        let (mut ret, trailing) = ret?;
+        let (mut ret, trailing) = {
+            let prev_capturing =
+                std::mem::replace(&mut self.capture_state.capturing, Capturing::Yes);
+            let ret_and_trailing = f(self, attrs.attrs);
+            self.capture_state.capturing = prev_capturing;
+            ret_and_trailing?
+        };
 
         // When we're not in `capture-cfg` mode, then bail out early if:
         // 1. Our target doesn't support tokens at all (e.g we're parsing an `NtIdent`)
