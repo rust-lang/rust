@@ -13,7 +13,7 @@ If you are worried that a pull request might break the Fuchsia builder and want
 to test it out before submitting it to the bors queue, simply add this line to
 your PR description:
 
-> try-job: x86_64-gnu-integration
+> try-job: x86_64-fuchsia
 
 Then when you `@bors try` it will pick the job that builds Fuchsia.
 
@@ -29,7 +29,7 @@ simply run this command from your Rust checkout to download and build Fuchsia
 using your local Rust toolchain.
 
 ```
-src/ci/docker/run.sh x86_64-gnu-integration
+src/ci/docker/run.sh x86_64-fuchsia
 ```
 
 See the [Testing with Docker](docker.md) chapter for more details on how to run
@@ -153,7 +153,7 @@ rustc book][platform-support].
 
 [regressions]: https://gist.github.com/tmandry/7103eba4bd6a6fb0c439b5a90ae355fa
 [build-toolchain]: https://fuchsia.dev/fuchsia-src/development/build/rust_toolchain
-[build-fuchsia.sh]: https://github.com/rust-lang/rust/blob/99f77a2eda555b50b518f74823ab636a20efb87f/src/ci/docker/host-x86_64/x86_64-gnu-integration/build-fuchsia.sh
+[build-fuchsia.sh]: https://github.com/rust-lang/rust/blob/221e2741c39515a5de6da42d8c76ee1e132c2c74/src/ci/docker/host-x86_64/x86_64-fuchsia/build-fuchsia.sh
 [build_fuchsia_from_rust_ci.sh]: https://cs.opensource.google/fuchsia/fuchsia/+/main:scripts/rust/build_fuchsia_from_rust_ci.sh?q=build_fuchsia_from_rust_ci&ss=fuchsia
 [platform-support]: https://doc.rust-lang.org/nightly/rustc/platform-support/fuchsia.html
 [GN]: https://gn.googlesource.com/gn/+/main#gn
