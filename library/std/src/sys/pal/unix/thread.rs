@@ -328,8 +328,9 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 quota = cgroups::quota().max(1);
                 let mut set = mem::MaybeUninit::<libc::cpu_set_t>::uninit();
                 unsafe {
-                    if libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), set.as_mut_ptr()) == 0 {
-                        let set = set.assume_init();
+                    libc::CPU_ZERO(&mut *set.as_mut_ptr());
+                    let mut set = set.assume_init();
+                    if libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), &mut set) == 0 {
                         let count = libc::CPU_COUNT(&set) as usize;
                         let count = count.min(quota);
 
