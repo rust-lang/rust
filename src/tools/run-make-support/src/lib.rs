@@ -409,7 +409,9 @@ pub fn read_dir<F: FnMut(&Path)>(dir: impl AsRef<Path>, mut callback: F) {
 
 /// Check that `actual` is equal to `expected`. Panic otherwise.
 #[track_caller]
-pub fn assert_equals(actual: &str, expected: &str) {
+pub fn assert_equals<S1: AsRef<str>, S2: AsRef<str>>(actual: S1, expected: S2) {
+    let actual = actual.as_ref();
+    let expected = expected.as_ref();
     if actual != expected {
         eprintln!("=== ACTUAL TEXT ===");
         eprintln!("{}", actual);
@@ -421,7 +423,9 @@ pub fn assert_equals(actual: &str, expected: &str) {
 
 /// Check that `haystack` contains `needle`. Panic otherwise.
 #[track_caller]
-pub fn assert_contains(haystack: &str, needle: &str) {
+pub fn assert_contains<S1: AsRef<str>, S2: AsRef<str>>(haystack: S1, needle: S2) {
+    let haystack = haystack.as_ref();
+    let needle = needle.as_ref();
     if !haystack.contains(needle) {
         eprintln!("=== HAYSTACK ===");
         eprintln!("{}", haystack);
@@ -433,7 +437,9 @@ pub fn assert_contains(haystack: &str, needle: &str) {
 
 /// Check that `haystack` does not contain `needle`. Panic otherwise.
 #[track_caller]
-pub fn assert_not_contains(haystack: &str, needle: &str) {
+pub fn assert_not_contains<S1: AsRef<str>, S2: AsRef<str>>(haystack: S1, needle: S2) {
+    let haystack = haystack.as_ref();
+    let needle = needle.as_ref();
     if haystack.contains(needle) {
         eprintln!("=== HAYSTACK ===");
         eprintln!("{}", haystack);
