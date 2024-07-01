@@ -105,9 +105,11 @@ use crate::future::Future;
     message = "`{Self}` is not a future",
     note = "{Self} must be a future or must implement `IntoFuture` to be awaited"
 )]
+#[cfg_attr(not(bootstrap), lang = "into_future")]
 pub trait IntoFuture {
     /// The output that the future will produce on completion.
     #[stable(feature = "into_future", since = "1.64.0")]
+    #[cfg_attr(not(bootstrap), lang = "into_future_output")]
     type Output;
 
     /// Which kind of future are we turning this into?
@@ -130,7 +132,8 @@ pub trait IntoFuture {
     /// # }
     /// ```
     #[stable(feature = "into_future", since = "1.64.0")]
-    #[lang = "into_future"]
+    #[cfg_attr(not(bootstrap), lang = "into_future_into_future")]
+    #[cfg_attr(bootstrap, lang = "into_future")]
     fn into_future(self) -> Self::IntoFuture;
 }
 

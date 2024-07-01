@@ -1042,6 +1042,8 @@ symbols! {
         integral,
         into_async_iter_into_iter,
         into_future,
+        into_future_into_future,
+        into_future_output,
         into_iter,
         intra_doc_pointers,
         intrinsics,

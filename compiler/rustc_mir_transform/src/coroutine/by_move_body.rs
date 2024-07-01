@@ -31,10 +31,10 @@
 //! However, what happens when we call `closure` with `AsyncFnOnce` (or `FnOnce`,
 //! since all async closures implement that too)? Well, recall the signature:
 //! ```
-//! use std::future::Future;
+//! use std::future::IntoFuture;
 //! pub trait AsyncFnOnce<Args>
 //! {
-//!     type CallOnceFuture: Future<Output = Self::Output>;
+//!     type CallOnceFuture: IntoFuture<Output = Self::Output>;
 //!     type Output;
 //!     fn async_call_once(
 //!         self,

@@ -458,7 +458,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         ty::FnDef(..) | ty::FnPtr(..) => {
             let bound_sig = self_ty.fn_sig(cx);
             let sig = bound_sig.skip_binder();
-            let future_trait_def_id = cx.require_lang_item(TraitSolverLangItem::Future);
+            let future_trait_def_id = cx.require_lang_item(TraitSolverLangItem::IntoFuture);
             // `FnDef` and `FnPtr` only implement `AsyncFn*` when their
             // return type implements `Future`.
             let nested = vec![
@@ -466,7 +466,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
                     .rebind(ty::TraitRef::new(cx, future_trait_def_id, [sig.output()]))
                     .upcast(cx),
             ];
-            let future_output_def_id = cx.require_lang_item(TraitSolverLangItem::FutureOutput);
+            let future_output_def_id = cx.require_lang_item(TraitSolverLangItem::IntoFutureOutput);
             let future_output_ty = Ty::new_projection(cx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {
@@ -481,7 +481,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
             let args = args.as_closure();
             let bound_sig = args.sig();
             let sig = bound_sig.skip_binder();
-            let future_trait_def_id = cx.require_lang_item(TraitSolverLangItem::Future);
+            let future_trait_def_id = cx.require_lang_item(TraitSolverLangItem::IntoFuture);
             // `Closure`s only implement `AsyncFn*` when their return type
             // implements `Future`.
             let mut nested = vec![
@@ -517,7 +517,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
                 );
             }
 
-            let future_output_def_id = cx.require_lang_item(TraitSolverLangItem::FutureOutput);
+            let future_output_def_id = cx.require_lang_item(TraitSolverLangItem::IntoFutureOutput);
             let future_output_ty = Ty::new_projection(cx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {

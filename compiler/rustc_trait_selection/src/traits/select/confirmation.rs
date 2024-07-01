@@ -951,7 +951,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // traits expressly allow the user to write. To fix this correctly,
                 // we'd need to instantiate trait bounds before we get to selection,
                 // like the new trait solver does.
-                let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+                let future_trait_def_id = tcx.require_lang_item(LangItem::IntoFuture, None);
                 let placeholder_output_ty = self.infcx.enter_forall_and_leak_universe(sig.output());
                 nested.push(obligation.with(
                     tcx,
@@ -973,7 +973,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // We must additionally check that the return type impls `Future`.
                 // See FIXME in last branch for why we instantiate the binder eagerly.
-                let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+                let future_trait_def_id = tcx.require_lang_item(LangItem::IntoFuture, None);
                 let placeholder_output_ty = self.infcx.enter_forall_and_leak_universe(sig.output());
                 nested.push(obligation.with(
                     tcx,

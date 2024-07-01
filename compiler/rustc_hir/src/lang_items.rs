@@ -241,6 +241,9 @@ language_item_table! {
     FusedIterator,           sym::fused_iterator,      fused_iterator_trait,       Target::Trait,          GenericRequirement::Exact(0);
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);
     FutureOutput,            sym::future_output,       future_output,              Target::AssocTy,        GenericRequirement::Exact(0);
+    IntoFuture,              sym::into_future,         into_future_trait,          Target::Trait,          GenericRequirement::Exact(0);
+    IntoFutureOutput,        sym::into_future_output,  into_future_output,         Target::AssocTy,        GenericRequirement::Exact(0);
+    IntoFutureIntoFuture,    sym::into_future_into_future, into_future_fn,         Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     AsyncIterator,           sym::async_iterator,      async_iterator_trait,       Target::Trait,          GenericRequirement::Exact(0);
 
     CoroutineState,          sym::coroutine_state,     coroutine_state,            Target::Enum,           GenericRequirement::None;
@@ -377,7 +380,6 @@ language_item_table! {
     ControlFlowContinue,     sym::Continue,            cf_continue_variant,        Target::Variant,        GenericRequirement::None;
     ControlFlowBreak,        sym::Break,               cf_break_variant,           Target::Variant,        GenericRequirement::None;
 
-    IntoFutureIntoFuture,    sym::into_future,         into_future_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     IntoIterIntoIter,        sym::into_iter,           into_iter_fn,               Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     IteratorNext,            sym::next,                next_fn,                    Target::Method(MethodKind::Trait { body: false}), GenericRequirement::None;
 

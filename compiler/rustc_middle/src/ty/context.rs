@@ -610,6 +610,8 @@ fn trait_lang_item_to_lang_item(lang_item: TraitSolverLangItem) -> LangItem {
         TraitSolverLangItem::FusedIterator => LangItem::FusedIterator,
         TraitSolverLangItem::Future => LangItem::Future,
         TraitSolverLangItem::FutureOutput => LangItem::FutureOutput,
+        TraitSolverLangItem::IntoFuture => LangItem::IntoFuture,
+        TraitSolverLangItem::IntoFutureOutput => LangItem::IntoFutureOutput,
         TraitSolverLangItem::Iterator => LangItem::Iterator,
         TraitSolverLangItem::Metadata => LangItem::Metadata,
         TraitSolverLangItem::Option => LangItem::Option,

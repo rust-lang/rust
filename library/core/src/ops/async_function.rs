@@ -1,4 +1,4 @@
-use crate::future::Future;
+use crate::future::IntoFuture;
 use crate::marker::Tuple;
 
 /// An async-aware version of the [`Fn`](crate::ops::Fn) trait.
@@ -27,7 +27,7 @@ pub trait AsyncFnMut<Args: Tuple>: AsyncFnOnce<Args> {
     /// Future returned by [`AsyncFnMut::async_call_mut`] and [`AsyncFn::async_call`].
     #[unstable(feature = "async_fn_traits", issue = "none")]
     #[lang = "call_ref_future"]
-    type CallRefFuture<'a>: Future<Output = Self::Output>
+    type CallRefFuture<'a>: IntoFuture<Output = Self::Output>
     where
         Self: 'a;
 
@@ -48,7 +48,7 @@ pub trait AsyncFnOnce<Args: Tuple> {
     /// Future returned by [`AsyncFnOnce::async_call_once`].
     #[unstable(feature = "async_fn_traits", issue = "none")]
     #[lang = "call_once_future"]
-    type CallOnceFuture: Future<Output = Self::Output>;
+    type CallOnceFuture: IntoFuture<Output = Self::Output>;
 
     /// Output type of the called closure's future.
     #[unstable(feature = "async_fn_traits", issue = "none")]
