@@ -30,10 +30,12 @@ macro_rules! arena_types {
                 >,
             [decode] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
             [decode] borrowck_result: rustc_middle::mir::ConcreteOpaqueTypes<'tcx>,
-            [] resolver: rustc_data_structures::steal::Steal<(
+            [] resolver: (
                 rustc_middle::ty::ResolverAstLowering,
-                std::sync::Arc<rustc_ast::Crate>,
-            )>,
+                rustc_data_structures::steal::Steal<
+                    std::sync::Arc<rustc_ast::Crate>
+                >
+            ),
             [] crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
             [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
