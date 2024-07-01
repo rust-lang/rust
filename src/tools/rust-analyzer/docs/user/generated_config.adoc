@@ -594,6 +594,11 @@ Whether to prefer import paths containing a `prelude` module.
 --
 The path structure for newly inserted paths to use.
 --
+[[rust-analyzer.imports.prefixExternPrelude]]rust-analyzer.imports.prefixExternPrelude (default: `false`)::
++
+--
+Whether to prefix external (including std, core) crate imports with `::`. e.g. "use ::std::io::Read;".
+--
 [[rust-analyzer.inlayHints.bindingModeHints.enable]]rust-analyzer.inlayHints.bindingModeHints.enable (default: `false`)::
 +
 --

@@ -253,6 +253,7 @@ pub fn resolve_completion_edits(
     let cfg = ImportPathConfig {
         prefer_no_std: config.prefer_no_std,
         prefer_prelude: config.prefer_prelude,
+        prefer_absolute: config.prefer_absolute,
     };
 
     imports.into_iter().for_each(|(full_import_path, imported_name)| {

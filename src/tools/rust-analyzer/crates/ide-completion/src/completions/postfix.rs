@@ -63,6 +63,7 @@ pub(crate) fn complete_postfix(
     let cfg = ImportPathConfig {
         prefer_no_std: ctx.config.prefer_no_std,
         prefer_prelude: ctx.config.prefer_prelude,
+        prefer_absolute: ctx.config.prefer_absolute,
     };
 
     if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {

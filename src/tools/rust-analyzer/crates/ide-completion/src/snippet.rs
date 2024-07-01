@@ -172,6 +172,7 @@ fn import_edits(ctx: &CompletionContext<'_>, requires: &[GreenNode]) -> Option<V
     let import_cfg = ImportPathConfig {
         prefer_no_std: ctx.config.prefer_no_std,
         prefer_prelude: ctx.config.prefer_prelude,
+        prefer_absolute: ctx.config.prefer_absolute,
     };
 
     let resolve = |import: &GreenNode| {

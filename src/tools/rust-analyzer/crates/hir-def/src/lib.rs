@@ -116,6 +116,8 @@ pub struct ImportPathConfig {
     pub prefer_no_std: bool,
     /// If true, prefer import paths containing a prelude module.
     pub prefer_prelude: bool,
+    /// If true, prefer abs path (starting with `::`) where it is available.
+    pub prefer_absolute: bool,
 }
 
 #[derive(Debug)]
