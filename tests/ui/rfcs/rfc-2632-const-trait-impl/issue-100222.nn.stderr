@@ -1,0 +1,9 @@
+error[E0271]: type mismatch resolving `<() as Index>::Output == &mut <() as Index>::Output`
+  --> $DIR/issue-100222.rs:34:12
+   |
+LL |     fn foo(&mut self, x: <Self as Index>::Output) -> <Self as Index>::Output
+   |            ^^^^^^^^^ types differ
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

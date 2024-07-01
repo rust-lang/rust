@@ -7,6 +7,11 @@ LL | #![feature(const_trait_impl, effects)]
    = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
+error: using `#![feature(effects)]` without enabling next trait solver globally
+   |
+   = note: the next trait solver must be enabled globally for the effects feature to work correctly
+   = help: use `-Znext-solver` to enable
+
 error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/no-explicit-const-params.rs:22:5
    |
@@ -76,7 +81,7 @@ help: replace the generic bound with the associated type
 LL |     <() as Bar< = true>>::bar();
    |                 +
 
-error: aborting due to 5 previous errors; 1 warning emitted
+error: aborting due to 6 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0107, E0308.
 For more information about an error, try `rustc --explain E0107`.

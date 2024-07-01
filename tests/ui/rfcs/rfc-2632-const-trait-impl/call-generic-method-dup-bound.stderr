@@ -7,6 +7,11 @@ LL | #![feature(const_trait_impl, effects)]
    = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
+error: using `#![feature(effects)]` without enabling next trait solver globally
+   |
+   = note: the next trait solver must be enabled globally for the effects feature to work correctly
+   = help: use `-Znext-solver` to enable
+
 error: const `impl` for trait `PartialEq` which is not marked with `#[const_trait]`
   --> $DIR/call-generic-method-dup-bound.rs:8:12
    |
@@ -28,5 +33,5 @@ error: `~const` can only be applied to `#[const_trait]` traits
 LL | const fn equals_self2<T: A + ~const PartialEq>(t: &T) -> bool {
    |                                     ^^^^^^^^^
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors; 1 warning emitted
 

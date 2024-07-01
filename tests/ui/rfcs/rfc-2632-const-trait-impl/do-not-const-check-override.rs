@@ -1,5 +1,7 @@
 //@ check-pass
-#![feature(const_trait_impl, rustc_attrs, effects)] //~ WARN the feature `effects` is incomplete
+//@ compile-flags: -Znext-solver
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, rustc_attrs, effects)]
 
 #[const_trait]
 trait Foo {

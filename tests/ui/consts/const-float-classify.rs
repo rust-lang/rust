@@ -1,4 +1,4 @@
-//@ compile-flags: -Zmir-opt-level=0
+//@ compile-flags: -Zmir-opt-level=0 -Znext-solver
 //@ known-bug: #110395
 // FIXME(effects) run-pass
 

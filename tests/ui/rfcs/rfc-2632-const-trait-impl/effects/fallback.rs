@@ -1,6 +1,7 @@
 //@ check-pass
-
-#![feature(effects)] //~ WARN the feature `effects` is incomplete
+//@ compile-flags: -Znext-solver
+#![allow(incomplete_features)]
+#![feature(effects)]
 
 pub const fn owo() {}
 
