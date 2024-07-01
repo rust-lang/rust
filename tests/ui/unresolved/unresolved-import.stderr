@@ -2,7 +2,7 @@ error[E0432]: unresolved import `foo`
   --> $DIR/unresolved-import.rs:1:5
    |
 LL | use foo::bar;
-   |     ^^^ maybe a missing crate `foo`?
+   |     ^^^ you might be missing a crate named `foo`
    |
    = help: consider adding `extern crate foo` to use the `foo` crate
 

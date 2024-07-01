@@ -1,25 +1,25 @@
 #[derive(
-    core::RustcDecodable, //~ ERROR could not find `RustcDecodable` in `core`
-                          //~| ERROR could not find `RustcDecodable` in `core`
-    core::RustcDecodable, //~ ERROR could not find `RustcDecodable` in `core`
-                          //~| ERROR could not find `RustcDecodable` in `core`
+    core::RustcDecodable, //~ ERROR cannot find macro `RustcDecodable`
+                          //~| ERROR cannot find macro `RustcDecodable`
+    core::RustcDecodable, //~ ERROR cannot find macro `RustcDecodable`
+                          //~| ERROR cannot find macro `RustcDecodable`
 )]
-#[core::bench] //~ ERROR could not find `bench` in `core`
-#[core::global_allocator] //~ ERROR could not find `global_allocator` in `core`
-#[core::test_case] //~ ERROR could not find `test_case` in `core`
-#[core::test] //~ ERROR could not find `test` in `core`
+#[core::bench] //~ ERROR cannot find macro `bench`
+#[core::global_allocator] //~ ERROR cannot find macro `global_allocator`
+#[core::test_case] //~ ERROR cannot find macro `test_case`
+#[core::test] //~ ERROR cannot find macro `test`
 struct Core;
 
 #[derive(
-    std::RustcDecodable, //~ ERROR could not find `RustcDecodable` in `std`
-                         //~| ERROR could not find `RustcDecodable` in `std`
-    std::RustcDecodable, //~ ERROR could not find `RustcDecodable` in `std`
-                         //~| ERROR could not find `RustcDecodable` in `std`
+    std::RustcDecodable, //~ ERROR cannot find macro `RustcDecodable`
+                         //~| ERROR cannot find macro `RustcDecodable`
+    std::RustcDecodable, //~ ERROR cannot find macro `RustcDecodable`
+                         //~| ERROR cannot find macro `RustcDecodable`
 )]
-#[std::bench] //~ ERROR could not find `bench` in `std`
-#[std::global_allocator] //~ ERROR could not find `global_allocator` in `std`
-#[std::test_case] //~ ERROR could not find `test_case` in `std`
-#[std::test] //~ ERROR could not find `test` in `std`
+#[std::bench] //~ ERROR cannot find macro `bench`
+#[std::global_allocator] //~ ERROR cannot find macro `global_allocator`
+#[std::test_case] //~ ERROR cannot find macro `test_case`
+#[std::test] //~ ERROR cannot find macro `test`
 struct Std;
 
 fn main() {}

@@ -2,10 +2,10 @@
 
 mod inner {
     fn global_inner(_: ::nonexistant::Foo) {
-        //~^ ERROR failed to resolve: could not find `nonexistant`
+        //~^ ERROR cannot find item `nonexistant`
     }
     fn crate_inner(_: crate::nonexistant::Foo) {
-        //~^ ERROR failed to resolve: could not find `nonexistant`
+        //~^ ERROR cannot find item `nonexistant`
     }
 
     fn bare_global(_: ::nonexistant) {

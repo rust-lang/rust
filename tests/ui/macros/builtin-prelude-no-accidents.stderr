@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `env`
+error[E0433]: cannot find item `env` in this scope
   --> $DIR/builtin-prelude-no-accidents.rs:5:5
    |
 LL |     env::current_dir;
@@ -9,7 +9,7 @@ help: consider importing this module
 LL + use std::env;
    |
 
-error[E0433]: failed to resolve: use of undeclared crate or module `panic`
+error[E0433]: cannot find item `panic` in this scope
   --> $DIR/builtin-prelude-no-accidents.rs:6:14
    |
 LL |     type A = panic::PanicInfo;
@@ -20,7 +20,7 @@ help: consider importing this module
 LL + use std::panic;
    |
 
-error[E0433]: failed to resolve: use of undeclared crate or module `vec`
+error[E0433]: cannot find item `vec` in this scope
   --> $DIR/builtin-prelude-no-accidents.rs:7:14
    |
 LL |     type B = vec::Vec<u8>;

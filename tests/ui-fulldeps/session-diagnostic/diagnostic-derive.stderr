@@ -524,85 +524,94 @@ LL |     #[suggestion(no_crate_suggestion, code = "")]
    = help: to show a suggestion consisting of multiple parts, use a `Subdiagnostic` annotated with `#[multipart_suggestion(...)]`
    = help: to show a variable set of suggestions, use a `Vec` of `Subdiagnostic`s annotated with `#[suggestion(...)]`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: cannot find item `core` in the crate root
   --> $DIR/diagnostic-derive.rs:58:8
    |
 LL | #[diag = "E0123"]
-   |        ^ maybe a missing crate `core`?
+   |        ^ you might be missing a crate named `core`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: cannot find item `core` in the crate root
   --> $DIR/diagnostic-derive.rs:802:23
    |
 LL |     #[suggestion(code(foo))]
-   |                       ^^^ maybe a missing crate `core`?
+   |                       ^^^ you might be missing a crate named `core`
 
-error[E0433]: failed to resolve: maybe a missing crate `core`?
+error[E0433]: cannot find item `core` in the crate root
   --> $DIR/diagnostic-derive.rs:811:25
    |
 LL |     #[suggestion(code = 3)]
-   |                         ^ maybe a missing crate `core`?
+   |                         ^ you might be missing a crate named `core`
 
 error: cannot find attribute `nonsense` in this scope
   --> $DIR/diagnostic-derive.rs:63:3
    |
 LL | #[nonsense(no_crate_example, code = E0123)]
-   |   ^^^^^^^^
+   |   ^^^^^^^^ not found in this scope
 
 error: cannot find attribute `nonsense` in this scope
   --> $DIR/diagnostic-derive.rs:150:7
    |
 LL |     #[nonsense]
-   |       ^^^^^^^^
+   |       ^^^^^^^^ not found in this scope
 
 error: cannot find attribute `error` in this scope
   --> $DIR/diagnostic-derive.rs:583:3
    |
 LL | #[error(no_crate_example, code = E0123)]
-   |   ^^^^^
+   |   ^^^^^ not found in this scope
 
 error: cannot find attribute `warn_` in this scope
   --> $DIR/diagnostic-derive.rs:590:3
    |
 LL | #[warn_(no_crate_example, code = E0123)]
-   |   ^^^^^ help: a built-in attribute with a similar name exists: `warn`
+   |   ^^^^^
+   |   |
+   |   not found in this scope
+   |   help: a built-in attribute with a similar name exists: `warn`
 
 error: cannot find attribute `lint` in this scope
   --> $DIR/diagnostic-derive.rs:597:3
    |
 LL | #[lint(no_crate_example, code = E0123)]
-   |   ^^^^ help: a built-in attribute with a similar name exists: `link`
+   |   ^^^^
+   |   |
+   |   not found in this scope
+   |   help: a built-in attribute with a similar name exists: `link`
 
 error: cannot find attribute `lint` in this scope
   --> $DIR/diagnostic-derive.rs:604:3
    |
 LL | #[lint(no_crate_example, code = E0123)]
-   |   ^^^^ help: a built-in attribute with a similar name exists: `link`
+   |   ^^^^
+   |   |
+   |   not found in this scope
+   |   help: a built-in attribute with a similar name exists: `link`
 
 error: cannot find attribute `multipart_suggestion` in this scope
   --> $DIR/diagnostic-derive.rs:644:3
    |
 LL | #[multipart_suggestion(no_crate_suggestion)]
-   |   ^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
 error: cannot find attribute `multipart_suggestion` in this scope
   --> $DIR/diagnostic-derive.rs:647:3
    |
 LL | #[multipart_suggestion()]
-   |   ^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
 error: cannot find attribute `multipart_suggestion` in this scope
   --> $DIR/diagnostic-derive.rs:651:7
    |
 LL |     #[multipart_suggestion(no_crate_suggestion)]
-   |       ^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
-error[E0425]: cannot find value `nonsense`
+error[E0425]: cannot find value `nonsense` in module `crate::fluent_generated`
   --> $DIR/diagnostic-derive.rs:75:8
    |
 LL | #[diag(nonsense, code = E0123)]
    |        ^^^^^^^^ not found in module `crate::fluent_generated`
 
-error[E0425]: cannot find value `__code_34`
+error[E0425]: cannot find value `__code_34` in this scope
   --> $DIR/diagnostic-derive.rs:808:10
    |
 LL | #[derive(Diagnostic)]

@@ -7,7 +7,7 @@
 const REF_INTERIOR_MUT: &usize = {
     //~^ HELP consider importing this struct
     static FOO: Sync = AtomicUsize::new(0);
-    //~^ ERROR failed to resolve: use of undeclared type `AtomicUsize`
+    //~^ ERROR cannot find item `AtomicUsize`
     //~| WARN trait objects without an explicit `dyn` are deprecated
     //~| ERROR the size for values of type `(dyn Sync + 'static)` cannot be known at compilation time
     //~| ERROR the size for values of type `(dyn Sync + 'static)` cannot be known at compilation time

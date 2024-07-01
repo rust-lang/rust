@@ -1,8 +1,13 @@
-error[E0433]: failed to resolve: there are too many leading `super` keywords
+error[E0433]: cannot find item `super` in this scope
   --> $DIR/keyword-super.rs:2:9
    |
 LL |     let super: isize;
-   |         ^^^^^ there are too many leading `super` keywords
+   |         ^^^^^ can't use `super` as an identifier
+   |
+help: if you still want to call your identifier `super`, use the raw identifier format
+   |
+LL |     let r#super: isize;
+   |         ++
 
 error: aborting due to 1 previous error
 

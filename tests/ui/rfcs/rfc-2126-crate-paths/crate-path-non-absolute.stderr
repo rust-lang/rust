@@ -1,10 +1,10 @@
-error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+error[E0433]: cannot find module `crate` in module `m`
   --> $DIR/crate-path-non-absolute.rs:5:22
    |
 LL |         let s = ::m::crate::S;
    |                      ^^^^^ `crate` in paths can only be used in start position
 
-error[E0433]: failed to resolve: global paths cannot start with `crate`
+error[E0433]: cannot find module `crate` in the crate root
   --> $DIR/crate-path-non-absolute.rs:6:20
    |
 LL |         let s1 = ::crate::S;

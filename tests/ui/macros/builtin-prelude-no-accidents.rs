@@ -2,7 +2,7 @@
 // because macros with the same names are in prelude.
 
 fn main() {
-    env::current_dir; //~ ERROR use of undeclared crate or module `env`
-    type A = panic::PanicInfo; //~ ERROR use of undeclared crate or module `panic`
-    type B = vec::Vec<u8>; //~ ERROR use of undeclared crate or module `vec`
+    env::current_dir; //~ ERROR cannot find item `env`
+    type A = panic::PanicInfo; //~ ERROR cannot find item `panic`
+    type B = vec::Vec<u8>; //~ ERROR cannot find item `vec`
 }

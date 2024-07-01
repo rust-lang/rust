@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `xyz`
+error[E0433]: cannot find item `xyz` in this scope
   --> $DIR/stashed-diag-issue-121504.rs:7:18
    |
 LL | impl MyTrait for xyz::T {

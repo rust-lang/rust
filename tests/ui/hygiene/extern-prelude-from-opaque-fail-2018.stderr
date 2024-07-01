@@ -15,7 +15,7 @@ LL | a!();
    |
    = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: use of undeclared crate or module `my_core`
+error[E0433]: cannot find item `my_core` in this scope
   --> $DIR/extern-prelude-from-opaque-fail-2018.rs:12:18
    |
 LL |         fn f() { my_core::mem::drop(0); }
@@ -28,7 +28,7 @@ LL | a!();
            std::mem
    = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: use of undeclared crate or module `my_core`
+error[E0433]: cannot find item `my_core` in this scope
   --> $DIR/extern-prelude-from-opaque-fail-2018.rs:25:14
    |
 LL |     fn f() { my_core::mem::drop(0); }

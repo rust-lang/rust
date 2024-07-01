@@ -1,16 +1,16 @@
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
+error[E0433]: cannot find macro `RustcDecodable` in crate `core`
   --> $DIR/builtin-std-paths-fail.rs:2:11
    |
 LL |     core::RustcDecodable,
    |           ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `core`
 
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
+error[E0433]: cannot find macro `RustcDecodable` in crate `core`
   --> $DIR/builtin-std-paths-fail.rs:4:11
    |
 LL |     core::RustcDecodable,
    |           ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `core`
 
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
+error[E0433]: cannot find macro `RustcDecodable` in crate `core`
   --> $DIR/builtin-std-paths-fail.rs:2:11
    |
 LL |     core::RustcDecodable,
@@ -18,7 +18,7 @@ LL |     core::RustcDecodable,
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
+error[E0433]: cannot find macro `RustcDecodable` in crate `core`
   --> $DIR/builtin-std-paths-fail.rs:4:11
    |
 LL |     core::RustcDecodable,
@@ -26,43 +26,43 @@ LL |     core::RustcDecodable,
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0433]: failed to resolve: could not find `bench` in `core`
+error[E0433]: cannot find macro `bench` in crate `core`
   --> $DIR/builtin-std-paths-fail.rs:7:9
    |
 LL | #[core::bench]
    |         ^^^^^ could not find `bench` in `core`
 
-error[E0433]: failed to resolve: could not find `global_allocator` in `core`
+error[E0433]: cannot find macro `global_allocator` in crate `core`
   --> $DIR/builtin-std-paths-fail.rs:8:9
    |
 LL | #[core::global_allocator]
    |         ^^^^^^^^^^^^^^^^ could not find `global_allocator` in `core`
 
-error[E0433]: failed to resolve: could not find `test_case` in `core`
+error[E0433]: cannot find macro `test_case` in crate `core`
   --> $DIR/builtin-std-paths-fail.rs:9:9
    |
 LL | #[core::test_case]
    |         ^^^^^^^^^ could not find `test_case` in `core`
 
-error[E0433]: failed to resolve: could not find `test` in `core`
+error[E0433]: cannot find macro `test` in crate `core`
   --> $DIR/builtin-std-paths-fail.rs:10:9
    |
 LL | #[core::test]
    |         ^^^^ could not find `test` in `core`
 
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
+error[E0433]: cannot find macro `RustcDecodable` in crate `std`
   --> $DIR/builtin-std-paths-fail.rs:14:10
    |
 LL |     std::RustcDecodable,
    |          ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `std`
 
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
+error[E0433]: cannot find macro `RustcDecodable` in crate `std`
   --> $DIR/builtin-std-paths-fail.rs:16:10
    |
 LL |     std::RustcDecodable,
    |          ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `std`
 
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
+error[E0433]: cannot find macro `RustcDecodable` in crate `std`
   --> $DIR/builtin-std-paths-fail.rs:14:10
    |
 LL |     std::RustcDecodable,
@@ -70,7 +70,7 @@ LL |     std::RustcDecodable,
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
+error[E0433]: cannot find macro `RustcDecodable` in crate `std`
   --> $DIR/builtin-std-paths-fail.rs:16:10
    |
 LL |     std::RustcDecodable,
@@ -78,25 +78,25 @@ LL |     std::RustcDecodable,
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0433]: failed to resolve: could not find `bench` in `std`
+error[E0433]: cannot find macro `bench` in crate `std`
   --> $DIR/builtin-std-paths-fail.rs:19:8
    |
 LL | #[std::bench]
    |        ^^^^^ could not find `bench` in `std`
 
-error[E0433]: failed to resolve: could not find `global_allocator` in `std`
+error[E0433]: cannot find macro `global_allocator` in crate `std`
   --> $DIR/builtin-std-paths-fail.rs:20:8
    |
 LL | #[std::global_allocator]
    |        ^^^^^^^^^^^^^^^^ could not find `global_allocator` in `std`
 
-error[E0433]: failed to resolve: could not find `test_case` in `std`
+error[E0433]: cannot find macro `test_case` in crate `std`
   --> $DIR/builtin-std-paths-fail.rs:21:8
    |
 LL | #[std::test_case]
    |        ^^^^^^^^^ could not find `test_case` in `std`
 
-error[E0433]: failed to resolve: could not find `test` in `std`
+error[E0433]: cannot find macro `test` in crate `std`
   --> $DIR/builtin-std-paths-fail.rs:22:8
    |
 LL | #[std::test]

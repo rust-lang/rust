@@ -66,7 +66,8 @@ struct D {
 #[derive(Subdiagnostic)]
 #[foo]
 //~^ ERROR `#[foo]` is not a valid attribute
-//~^^ ERROR cannot find attribute `foo`
+//~| ERROR cannot find attribute `foo`
+//~| NOTE not found in this scope
 struct E {
     #[primary_span]
     span: Span,
@@ -94,8 +95,8 @@ struct G {
 
 #[derive(Subdiagnostic)]
 #[label("...")]
-//~^ ERROR failed to resolve: maybe a missing crate `core`?
-//~| NOTE maybe a missing crate `core`?
+//~^ ERROR cannot find item `core`
+//~| NOTE you might be missing a crate named `core`
 struct H {
     #[primary_span]
     span: Span,
@@ -162,7 +163,8 @@ struct O {
 #[derive(Subdiagnostic)]
 #[foo]
 //~^ ERROR cannot find attribute `foo`
-//~^^ ERROR unsupported type attribute for subdiagnostic enum
+//~| ERROR unsupported type attribute for subdiagnostic enum
+//~| NOTE not found in this scope
 enum P {
     #[label(no_crate_example)]
     A {
@@ -176,7 +178,8 @@ enum P {
 enum Q {
     #[bar]
     //~^ ERROR `#[bar]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar`
+    //~| ERROR cannot find attribute `bar`
+    //~| NOTE not found in this scope
     A {
         #[primary_span]
         span: Span,
@@ -188,7 +191,8 @@ enum Q {
 enum R {
     #[bar = "..."]
     //~^ ERROR `#[bar = ...]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar`
+    //~| ERROR cannot find attribute `bar`
+    //~| NOTE not found in this scope
     A {
         #[primary_span]
         span: Span,
@@ -200,7 +204,8 @@ enum R {
 enum S {
     #[bar = 4]
     //~^ ERROR `#[bar = ...]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar`
+    //~| ERROR cannot find attribute `bar`
+    //~| NOTE not found in this scope
     A {
         #[primary_span]
         span: Span,
@@ -212,7 +217,8 @@ enum S {
 enum T {
     #[bar("...")]
     //~^ ERROR `#[bar(...)]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar`
+    //~| ERROR cannot find attribute `bar`
+    //~| NOTE not found in this scope
     A {
         #[primary_span]
         span: Span,
@@ -273,7 +279,8 @@ struct Y {
     span: Span,
     #[bar]
     //~^ ERROR `#[bar]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar`
+    //~| ERROR cannot find attribute `bar`
+    //~| NOTE not found in this scope
     bar: String,
 }
 
@@ -284,7 +291,8 @@ struct Z {
     span: Span,
     #[bar = "..."]
     //~^ ERROR `#[bar = ...]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar`
+    //~| ERROR cannot find attribute `bar`
+    //~| NOTE not found in this scope
     bar: String,
 }
 
@@ -295,7 +303,8 @@ struct AA {
     span: Span,
     #[bar("...")]
     //~^ ERROR `#[bar(...)]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `bar`
+    //~| ERROR cannot find attribute `bar`
+    //~| NOTE not found in this scope
     bar: String,
 }
 
@@ -310,8 +319,8 @@ struct AB {
 
 #[derive(Subdiagnostic)]
 union AC {
-    //~^ ERROR failed to resolve: maybe a missing crate `core`?
-    //~| NOTE maybe a missing crate `core`?
+    //~^ ERROR cannot find item `core`
+    //~| NOTE you might be missing a crate named `core`
     span: u32,
     b: u64,
 }
@@ -581,8 +590,8 @@ struct BD {
     span2: Span,
     #[suggestion_part(foo = "bar")]
     //~^ ERROR `code` is the only valid nested attribute
-    //~| ERROR failed to resolve: maybe a missing crate `core`?
-    //~| NOTE maybe a missing crate `core`?
+    //~| ERROR cannot find item `core`
+    //~| NOTE you might be missing a crate named `core`
     span4: Span,
     #[suggestion_part(code = "...")]
     //~^ ERROR the `#[suggestion_part(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
@@ -674,8 +683,8 @@ enum BL {
 struct BM {
     #[suggestion_part(code("foo"))]
     //~^ ERROR expected exactly one string literal for `code = ...`
-    //~| ERROR failed to resolve: maybe a missing crate `core`?
-    //~| NOTE maybe a missing crate `core`?
+    //~| ERROR cannot find item `core`
+    //~| NOTE you might be missing a crate named `core`
     span: Span,
     r#type: String,
 }
@@ -685,8 +694,8 @@ struct BM {
 struct BN {
     #[suggestion_part(code("foo", "bar"))]
     //~^ ERROR expected exactly one string literal for `code = ...`
-    //~| ERROR failed to resolve: maybe a missing crate `core`?
-    //~| NOTE maybe a missing crate `core`?
+    //~| ERROR cannot find item `core`
+    //~| NOTE you might be missing a crate named `core`
     span: Span,
     r#type: String,
 }
@@ -696,8 +705,8 @@ struct BN {
 struct BO {
     #[suggestion_part(code(3))]
     //~^ ERROR expected exactly one string literal for `code = ...`
-    //~| ERROR failed to resolve: maybe a missing crate `core`?
-    //~| NOTE maybe a missing crate `core`?
+    //~| ERROR cannot find item `core`
+    //~| NOTE you might be missing a crate named `core`
     span: Span,
     r#type: String,
 }
@@ -718,8 +727,8 @@ struct BP {
 #[multipart_suggestion(no_crate_example)]
 struct BQ {
     #[suggestion_part(code = 3)]
-    //~^ ERROR failed to resolve: maybe a missing crate `core`?
-    //~| NOTE maybe a missing crate `core`?
+    //~^ ERROR cannot find item `core`
+    //~| NOTE you might be missing a crate named `core`
     span: Span,
     r#type: String,
 }
@@ -811,8 +820,8 @@ struct SuggestionStyleInvalid3 {
 #[derive(Subdiagnostic)]
 #[suggestion(no_crate_example, code = "", style("foo"))]
 //~^ ERROR expected `= "xxx"`
-//~| ERROR failed to resolve: maybe a missing crate `core`?
-//~| NOTE maybe a missing crate `core`?
+//~| ERROR cannot find item `core`
+//~| NOTE you might be missing a crate named `core`
 struct SuggestionStyleInvalid4 {
     #[primary_span]
     sub: Span,
