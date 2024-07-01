@@ -1,0 +1,19 @@
+error[E0277]: the size for values of type `[f32]` cannot be known at compilation time
+  --> $DIR/no-fn-trait.rs:10:8
+   |
+LL |     T: Fn(ScalableSimdFloat),
+   |        ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `(ScalableSimdFloat,)`, the trait `Sized` is not implemented for `[f32]`, which is required by `(ScalableSimdFloat,): Sized`
+note: required because it appears within the type `ScalableSimdFloat`
+  --> $DIR/no-fn-trait.rs:4:12
+   |
+LL | pub struct ScalableSimdFloat {
+   |            ^^^^^^^^^^^^^^^^^
+   = note: required because it appears within the type `(ScalableSimdFloat,)`
+note: required by an implicit `Sized` bound in `Fn`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
