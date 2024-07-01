@@ -626,6 +626,18 @@ impl Builder<'_> {
         hostflags.arg("-Zunstable-options");
         hostflags.arg("--check-cfg=cfg(bootstrap)");
 
+        match mode {
+            Mode::Std | Mode::Rustc | Mode::Codegen => {
+                // cfg(bootstrap) unconditionally pass this once the bootstrap compiler understands it
+                if stage != 0 {
+                    // FIXME remove once cargo enables this by default
+                    rustflags.arg("-Zsplit-metadata");
+                }
+            }
+            // Tools may not expect to be compiled with -Zsplit-metadata
+            Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustc => {}
+        }
+
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
         // #71458.

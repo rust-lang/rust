@@ -2050,14 +2050,12 @@ pub fn run_cargo(
                 || filename.ends_with(".a")
                 || is_debug_info(&filename)
                 || is_dylib(Path::new(&*filename))
+                || filename.ends_with(".rmeta")
             {
-                // Always keep native libraries, rust dylibs and debuginfo
+                // Always keep native libraries, rust dylibs, debuginfo and crate metadata
                 keep = true;
             }
-            if is_check && filename.ends_with(".rmeta") {
-                // During check builds we need to keep crate metadata
-                keep = true;
-            } else if rlib_only_metadata {
+            if !is_check && rlib_only_metadata {
                 if filename.contains("jemalloc_sys")
                     || filename.contains("rustc_smir")
                     || filename.contains("stable_mir")
@@ -2069,7 +2067,6 @@ pub fn run_cargo(
                     // Distribute the rest of the rustc crates as rmeta files only to reduce
                     // the tarball sizes by about 50%. The object files are linked into
                     // librustc_driver.so, so it is still possible to link against them.
-                    keep |= filename.ends_with(".rmeta");
                 }
             } else {
                 // In all other cases keep all rlibs
@@ -2115,7 +2112,12 @@ pub fn run_cargo(
             let file_stem = parts.next().unwrap().to_owned();
             let extension = parts.next().unwrap().to_owned();
 
-            toplevel.push((file_stem, extension, expected_len));
+            if extension == "so" || extension == "dylib" {
+                // FIXME workaround for the fact that cargo doesn't understand `-Zsplit-metadata`
+                toplevel.push((file_stem.clone(), "rmeta".to_owned(), None));
+            }
+
+            toplevel.push((file_stem, extension, Some(expected_len)));
         }
     });
 
@@ -2136,7 +2138,7 @@ pub fn run_cargo(
         .collect::<Vec<_>>();
     for (prefix, extension, expected_len) in toplevel {
         let candidates = contents.iter().filter(|&(_, filename, meta)| {
-            meta.len() == expected_len
+            expected_len.is_none_or(|expected_len| meta.len() == expected_len)
                 && filename
                     .strip_prefix(&prefix[..])
                     .map(|s| s.starts_with('-') && s.ends_with(&extension[..]))
@@ -2147,6 +2149,7 @@ pub fn run_cargo(
         });
         let path_to_add = match max {
             Some(triple) => triple.0.to_str().unwrap(),
+            None if extension == "rmeta" => continue, // cfg(not(bootstrap)) remove this once -Zsplit-metadata is passed for all stages
             None => panic!("no output generated for {prefix:?} {extension:?}"),
         };
         if is_dylib(Path::new(path_to_add)) {
