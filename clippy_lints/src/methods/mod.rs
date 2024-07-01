@@ -4121,7 +4121,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let x = Some(0).inspect(|x| println!("{x}"));
     /// ```
-    #[clippy::version = "1.78.0"]
+    #[clippy::version = "1.81.0"]
     pub MANUAL_INSPECT,
     complexity,
     "use of `map` returning the original item"
