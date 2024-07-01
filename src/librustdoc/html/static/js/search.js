@@ -3194,6 +3194,15 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 li.appendChild(description);
                 li.tabIndex = -1;
                 li.onclick = () => {
+                    // allow user to select the description text without navigating
+                    // also, they can select the path itself by starting the selection here
+                    // (a UI feature I got used to from DuckDuckGo)
+                    if (window.getSelection) {
+                        const selection = window.getSelection();
+                        if (selection && !selection.isCollapsed) {
+                            return;
+                        }
+                    }
                     // allow clicking anywhere on the list item to go to the page
                     // even though the link itself is only the name
                     resultName.click();
