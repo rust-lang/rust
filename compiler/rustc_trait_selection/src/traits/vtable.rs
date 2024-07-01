@@ -6,7 +6,7 @@ use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt, Upcast, VtblEntry};
 use rustc_middle::ty::{GenericArgs, TypeVisitableExt};
-use rustc_span::{sym, Span};
+use rustc_span::{sym, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use std::fmt::Debug;
@@ -290,6 +290,7 @@ fn vtable_entries<'tcx>(
                         ty::ParamEnv::reveal_all(),
                         def_id,
                         args,
+                        DUMMY_SP,
                     );
 
                     VtblEntry::Method(instance)
