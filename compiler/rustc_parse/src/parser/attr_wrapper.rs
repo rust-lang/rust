@@ -276,37 +276,32 @@ impl<'a> Parser<'a> {
 
         let replace_ranges_end = self.capture_state.replace_ranges.len();
 
-        let mut end_pos = self.num_bump_calls;
-
-        let mut captured_trailing = false;
-
         // Capture a trailing token if requested by the callback 'f'
-        match trailing {
-            TrailingToken::None => {}
+        let captured_trailing = match trailing {
+            TrailingToken::None => false,
             TrailingToken::Gt => {
                 assert_eq!(self.token.kind, token::Gt);
+                false
             }
             TrailingToken::Semi => {
                 assert_eq!(self.token.kind, token::Semi);
-                end_pos += 1;
-                captured_trailing = true;
+                true
             }
-            TrailingToken::MaybeComma => {
-                if self.token.kind == token::Comma {
-                    end_pos += 1;
-                    captured_trailing = true;
-                }
-            }
-        }
+            TrailingToken::MaybeComma => self.token.kind == token::Comma,
+        };
 
-        // If we 'broke' the last token (e.g. breaking a '>>' token to two '>' tokens),
-        // then extend the range of captured tokens to include it, since the parser
-        // was not actually bumped past it. When the `LazyAttrTokenStream` gets converted
-        // into an `AttrTokenStream`, we will create the proper token.
-        if self.break_last_token {
-            assert!(!captured_trailing, "Cannot set break_last_token and have trailing token");
-            end_pos += 1;
-        }
+        assert!(
+            !(self.break_last_token && captured_trailing),
+            "Cannot set break_last_token and have trailing token"
+        );
+
+        let end_pos = self.num_bump_calls
+            + captured_trailing as usize
+            // If we 'broke' the last token (e.g. breaking a '>>' token to two '>' tokens), then
+            // extend the range of captured tokens to include it, since the parser was not actually
+            // bumped past it. When the `LazyAttrTokenStream` gets converted into an
+            // `AttrTokenStream`, we will create the proper token.
+            + self.break_last_token as usize;
 
         let num_calls = end_pos - start_pos;
 
