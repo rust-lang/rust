@@ -66,18 +66,40 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
         })
     }
 
-    /// This method handles universe errors by rewriting the constraint
+    /// This method handles Universe errors by rewriting the constraint
     /// graph. For each strongly connected component in the constraint
     /// graph such that there is a series of constraints
     ///    A: B: C: ... : X  where
     /// A's universe is smaller than X's and A is a placeholder,
-    /// add A: 'static.
+    /// add a constraint that A: 'static. This is a safe upper bound
+    /// in the face of borrow checker/trait solver limitations that will
+    /// eventually go away.
     ///
     /// For a more precise definition, see the documentation for
     /// [`RegionTracker::has_incompatible_universes()`].
     ///
+    /// This edge case used to be handled during constraint propagation
+    /// by iterating over the strongly connected components in the constraint
+    /// graph while maintaining a set of bookkeeping mappings similar
+    /// to what is stored in `RegionTracker` and manually adding 'sttaic as
+    /// needed.
+    ///
+    /// It was rewritten as part of the Polonius project with the goal of moving
+    /// higher-kindedness concerns out of the path of the borrow checker,
+    /// for two reasons:
+    ///
+    /// 1. Implementing Polonius is difficult enough without also
+    ///     handling them.
+    /// 2. The long-term goal is to handle higher-kinded concerns
+    ///     in the trait solver, where they belong. This avoids
+    ///     logic duplication and allows future trait solvers
+    ///     to compute better bounds than for example our
+    ///     "must outlive 'static" here.
+    ///
+    /// This code is a stop-gap measure in preparation for the future trait solver.
+    ///
     /// Every constraint added by this method is an
-    /// `IllegalUniverse` constraint.
+    /// internal `IllegalUniverse` constraint.
     #[instrument(skip(self, universal_regions, definitions))]
     pub(crate) fn add_outlives_static(
         &mut self,
