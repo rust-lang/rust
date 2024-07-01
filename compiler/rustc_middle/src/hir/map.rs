@@ -1123,11 +1123,8 @@ impl<'tcx> pprust_hir::PpAnn for TyCtxt<'tcx> {
 }
 
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
-    let krate = tcx.hir_crate(());
-    let hir_body_hash = krate.opt_hir_hash.expect("HIR hash missing while computing crate hash");
-
+    let krate = tcx.hir_crate_items(());
     let upstream_crates = upstream_crates(tcx);
-
     let resolutions = tcx.resolutions(());
 
     // We hash the final, remapped names of all local source files so we
@@ -1162,7 +1159,12 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
 
     let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
         let mut stable_hasher = StableHasher::new();
-        hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
+        // hir_body_hash
+        for owner in krate.owners() {
+            if let Some(info) = tcx.lower_to_hir(owner.def_id).as_owner() {
+                info.hash_stable(&mut hcx, &mut stable_hasher);
+            }
+        }
         upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
         source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
         debugger_visualizers.hash_stable(&mut hcx, &mut stable_hasher);

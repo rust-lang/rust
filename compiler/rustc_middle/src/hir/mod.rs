@@ -379,19 +379,18 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
-    providers.local_def_id_to_hir_id = |tcx, def_id| match tcx.hir_crate(()).owners[def_id] {
+    providers.local_def_id_to_hir_id = |tcx, def_id| match tcx.lower_to_hir(def_id) {
         MaybeOwner::Owner(_) => HirId::make_owner(def_id),
         MaybeOwner::NonOwner(hir_id) => hir_id,
-        MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
     };
-    providers.opt_hir_owner_nodes =
-        |tcx, id| tcx.hir_crate(()).owners.get(id)?.as_owner().map(|i| &i.nodes);
+    providers.opt_hir_owner_nodes = |tcx, id| tcx.lower_to_hir(id).as_owner().map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, owner_id| {
         tcx.opt_local_parent(owner_id.def_id).map_or(CRATE_HIR_ID, |parent_def_id| {
             let parent_owner_id = tcx.local_def_id_to_hir_id(parent_def_id).owner;
             HirId {
                 owner: parent_owner_id,
-                local_id: tcx.hir_crate(()).owners[parent_owner_id.def_id]
+                local_id: tcx
+                    .lower_to_hir(parent_owner_id)
                     .unwrap()
                     .parenting
                     .get(&owner_id.def_id)
@@ -400,11 +399,10 @@ pub fn provide(providers: &mut Providers) {
             }
         })
     };
-    providers.hir_attr_map = |tcx, id| {
-        tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
-    };
+    providers.hir_attr_map =
+        |tcx, id| tcx.lower_to_hir(id.def_id).as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs);
     providers.opt_ast_lowering_delayed_lints =
-        |tcx, id| tcx.hir_crate(()).owners[id.def_id].as_owner().map(|o| &o.delayed_lints);
+        |tcx, id| tcx.lower_to_hir(id.def_id).as_owner().map(|o| &o.delayed_lints);
     providers.def_span = |tcx, def_id| tcx.hir_span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
@@ -444,7 +442,6 @@ pub fn provide(providers: &mut Providers) {
         |tcx, trait_id| tcx.resolutions(()).trait_impls.get(&trait_id).map_or(&[], |xs| &xs[..]);
     providers.expn_that_defined =
         |tcx, id| tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root());
-    providers.in_scope_traits_map = |tcx, id| {
-        tcx.hir_crate(()).owners[id.def_id].as_owner().map(|owner_info| &owner_info.trait_map)
-    };
+    providers.in_scope_traits_map =
+        |tcx, id| tcx.lower_to_hir(id.def_id).as_owner().map(|owner_info| &owner_info.trait_map);
 }

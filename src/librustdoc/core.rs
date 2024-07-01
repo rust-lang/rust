@@ -340,7 +340,7 @@ pub(crate) fn run_global_ctxt(
     let expanded_macros = {
         // We need for these variables to be removed to ensure that the `Crate` won't be "stolen"
         // anymore.
-        let krate = &*tcx.resolver_for_lowering().1.borrow();
+        let (_, krate) = &*tcx.resolver_for_lowering();
 
         source_macro_expansion(&krate, &render_options, output_format, tcx.sess.source_map())
     };

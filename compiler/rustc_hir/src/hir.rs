@@ -18,6 +18,7 @@ pub use rustc_ast::{
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::tagged_ptr::TaggedRef;
+use rustc_data_structures::unord::UnordMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -1613,6 +1614,8 @@ pub struct OwnerInfo<'hir> {
     /// Lints delayed during ast lowering to be emitted
     /// after hir has completely built
     pub delayed_lints: DelayedLints,
+    /// Owners generated as side-effect by lowering.
+    pub children: UnordMap<LocalDefId, MaybeOwner<'hir>>,
 }
 
 impl<'tcx> OwnerInfo<'tcx> {
@@ -1626,34 +1629,21 @@ impl<'tcx> OwnerInfo<'tcx> {
 pub enum MaybeOwner<'tcx> {
     Owner(&'tcx OwnerInfo<'tcx>),
     NonOwner(HirId),
-    /// Used as a placeholder for unused LocalDefId.
-    Phantom,
 }
 
 impl<'tcx> MaybeOwner<'tcx> {
+    #[inline]
     pub fn as_owner(self) -> Option<&'tcx OwnerInfo<'tcx>> {
         match self {
             MaybeOwner::Owner(i) => Some(i),
-            MaybeOwner::NonOwner(_) | MaybeOwner::Phantom => None,
+            MaybeOwner::NonOwner(_) => None,
         }
     }
 
+    #[inline]
     pub fn unwrap(self) -> &'tcx OwnerInfo<'tcx> {
         self.as_owner().unwrap_or_else(|| panic!("Not a HIR owner"))
     }
-}
-
-/// The top-level data structure that stores the entire contents of
-/// the crate currently being compiled.
-///
-/// For more details, see the [rustc dev guide].
-///
-/// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
-#[derive(Debug)]
-pub struct Crate<'hir> {
-    pub owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
-    // Only present when incr. comp. is enabled.
-    pub opt_hir_hash: Option<Fingerprint>,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
