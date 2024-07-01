@@ -102,9 +102,9 @@ pub extern "C" fn returns_twou16s() -> TwoU16s {
     // powerpc returns this struct via sret pointer, it doesn't use the cast ABI.
     // The other targets copy the cast ABI type to an alloca.
 
-    // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [4 x i8], align [[ABI_ALIGN:2]]
-    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [4 x i8], align [[ABI_ALIGN:2]]
-    // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [4 x i8], align [[ABI_ALIGN:2]]
+    // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [8 x i8], align [[ABI_ALIGN:2]]
+    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [8 x i8], align [[ABI_ALIGN:2]]
+    // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [8 x i8], align [[ABI_ALIGN:2]]
     // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [4 x i8], align [[ABI_ALIGN:2]]
 
     // aarch64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:i64]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
@@ -145,10 +145,10 @@ pub extern "C" fn returns_fiveu16s() -> FiveU16s {
     // powerpc returns this struct via sret pointer, it doesn't use the cast ABI.
     // The other targets copy the cast ABI type to an alloca.
 
-    // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [10 x i8], align [[ABI_ALIGN:2]]
-    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [10 x i8], align [[ABI_ALIGN:2]]
-    // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [10 x i8], align [[ABI_ALIGN:2]]
-    // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [10 x i8], align [[ABI_ALIGN:2]]
+    // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:2]]
+    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:2]]
+    // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:2]]
+    // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:2]]
 
     // aarch64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
     // loongarch64: [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
@@ -231,10 +231,10 @@ pub extern "C" fn returns_three32s() -> Three32s {
     // powerpc returns this struct via sret pointer, it doesn't use the cast ABI.
     // The other targets copy the cast ABI type to an alloca.
 
-    // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [12 x i8], align [[ABI_ALIGN:4]]
-    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [12 x i8], align [[ABI_ALIGN:4]]
-    // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [12 x i8], align [[ABI_ALIGN:4]]
-    // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [12 x i8], align [[ABI_ALIGN:4]]
+    // aarch64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:4]]
+    // loongarch64: [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:4]]
+    // sparc64:     [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:4]]
+    // x86_64:      [[ABI_ALLOCA:%.+]] = alloca [16 x i8], align [[ABI_ALIGN:4]]
 
     // aarch64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
     // loongarch64: [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
