@@ -245,4 +245,6 @@ features! {
     /// MOVBE (Move Data After Swapping Bytes)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] ermsb: "ermsb";
     /// ERMSB, Enhanced REP MOVSB and STOSB
+    @FEATURE: #[unstable(feature = "xop_target_feature", issue = "127208")] xop: "xop";
+    /// XOP: eXtended Operations (AMD)
 }

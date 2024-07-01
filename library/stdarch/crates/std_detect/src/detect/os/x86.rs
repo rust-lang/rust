@@ -279,6 +279,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
             // These features are available on AMD arch CPUs:
             enable(extended_proc_info_ecx, 6, Feature::sse4a);
             enable(extended_proc_info_ecx, 21, Feature::tbm);
+            enable(extended_proc_info_ecx, 11, Feature::xop);
         }
     }
 

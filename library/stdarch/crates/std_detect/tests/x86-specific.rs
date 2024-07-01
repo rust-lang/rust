@@ -4,7 +4,8 @@
     stdarch_internal,
     avx512_target_feature,
     sha512_sm_x86,
-    x86_amx_intrinsics
+    x86_amx_intrinsics,
+    xop_target_feature
 )]
 
 extern crate cupid;
@@ -92,6 +93,7 @@ fn dump() {
     println!("amx-int8: {:?}", is_x86_feature_detected!("amx-int8"));
     println!("amx-fp16: {:?}", is_x86_feature_detected!("amx-fp16"));
     println!("amx-complex: {:?}", is_x86_feature_detected!("amx-complex"));
+    println!("xop: {:?}", is_x86_feature_detected!("xop"));
 }
 
 #[cfg(feature = "std_detect_env_override")]
