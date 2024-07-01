@@ -376,7 +376,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             ty::ParamEnv::reveal_all(),
             def_id,
             fn_args,
-            Some(source_info.span),
+            source_info.span,
         )
         .polymorphize(fx.tcx);
 
