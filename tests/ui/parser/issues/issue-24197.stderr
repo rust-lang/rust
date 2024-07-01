@@ -2,7 +2,9 @@ error: expected a pattern, found an expression
   --> $DIR/issue-24197.rs:2:9
    |
 LL |     let buf[0] = 0;
-   |         ^^^^^^ arbitrary expressions are not allowed in patterns
+   |     --- ^^^^^^ arbitrary expressions are not allowed in patterns
+   |     |
+   |     help: remove this `let`
 
 error: aborting due to 1 previous error
 

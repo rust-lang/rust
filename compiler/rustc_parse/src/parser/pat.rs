@@ -8,7 +8,9 @@ use crate::errors::{
     TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed,
     UnexpectedExpressionInPattern, UnexpectedExpressionInPatternArmSugg,
     UnexpectedExpressionInPatternConstSugg, UnexpectedExpressionInPatternInlineConstSugg,
-    UnexpectedLifetimeInPattern, UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
+    UnexpectedExpressionInPatternRemoveLetSugg,
+    UnexpectedExpressionInPatternReplaceLetElseWithIfSugg, UnexpectedLifetimeInPattern,
+    UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
     UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern,
 };
 use crate::parser::expr::{could_be_unclosed_char_literal, DestructuredFloat, LhsExpr};
@@ -26,7 +28,7 @@ use rustc_errors::{Applicability, Diag, PResult, StashKey};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{BytePos, ErrorGuaranteed, Span};
 use thin_vec::{thin_vec, ThinVec};
 
 #[derive(PartialEq, Copy, Clone)]
@@ -497,15 +499,38 @@ impl<'a> Parser<'a> {
                             err.span.replace(stash_span, expr_span);
 
                             if let StmtKind::Let(local) = &stmt.kind {
-                                // If we have an `ExprInPat`, the user tried to assign a value to another value,
-                                // which doesn't makes much sense.
                                 match &local.kind {
-                                    LocalKind::Decl => {}
-                                    LocalKind::Init(_) => {}
-                                    LocalKind::InitElse(_, _) => {}
+                                    // help: remove this `let`
+                                    LocalKind::Decl | LocalKind::Init(_) => {
+                                        err.subdiagnostic(
+                                            UnexpectedExpressionInPatternRemoveLetSugg {
+                                                // HACK: retrieves `let`'s span
+                                                span: local
+                                                    .span
+                                                    .shrink_to_lo()
+                                                    .with_hi(local.span.lo() + BytePos(3)),
+                                            },
+                                        );
+                                    }
+                                    // help: replace the `let` with an `if`
+                                    LocalKind::InitElse(init, els) => {
+                                        err.subdiagnostic(
+                                            UnexpectedExpressionInPatternReplaceLetElseWithIfSugg {
+                                                span: local.span.shrink_to_lo().until(els.span),
+                                                init: self
+                                                    .parser
+                                                    .span_to_snippet(init.span)
+                                                    .unwrap(),
+                                                pat: self
+                                                    .parser
+                                                    .span_to_snippet(local.pat.span)
+                                                    .unwrap(),
+                                            },
+                                        );
+                                    }
                                 }
                             } else {
-                                // help: use an arm guard `if val == expr`
+                                // help: check the value in an arm guard
                                 if let Some(arm) = &self.arm {
                                     let (ident, ident_span) = match self.field {
                                         Some(field) => (

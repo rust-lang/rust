@@ -788,6 +788,10 @@ parse_unexpected_expr_in_pat_create_guard_sugg = check the value in an arm guard
 
 parse_unexpected_expr_in_pat_inline_const_sugg = wrap the expression in a inline const (requires `{"#"}![feature(inline_const_pat)]`)
 
+parse_unexpected_expr_in_pat_remove_let_sugg = remove this `let`
+
+parse_unexpected_expr_in_pat_replace_let_else_with_if_sugg = use an `if`
+
 parse_unexpected_expr_in_pat_update_guard_sugg = check the value in the arm guard
 
 parse_unexpected_if_with_if = unexpected `if` in the condition expression

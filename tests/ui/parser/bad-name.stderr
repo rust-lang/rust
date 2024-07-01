@@ -8,7 +8,9 @@ error: expected a pattern, found an expression
   --> $DIR/bad-name.rs:4:7
    |
 LL |   let x.y::<isize>.z foo;
-   |       ^^^^^^^^^^^^^^ arbitrary expressions are not allowed in patterns
+   |   --- ^^^^^^^^^^^^^^ arbitrary expressions are not allowed in patterns
+   |   |
+   |   help: remove this `let`
 
 error: expected one of `(`, `.`, `::`, `:`, `;`, `=`, `?`, `|`, or an operator, found `foo`
   --> $DIR/bad-name.rs:4:22

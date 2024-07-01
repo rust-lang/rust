@@ -554,7 +554,9 @@ error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:71:9
    |
 LL |     let 1 + 1 = 2;
-   |         ^^^^^ arbitrary expressions are not allowed in patterns
+   |     --- ^^^^^ arbitrary expressions are not allowed in patterns
+   |     |
+   |     help: remove this `let`
 
 error: expected one of `)`, `,`, `@`, or `|`, found `*`
   --> $DIR/recover-pat-exprs.rs:74:28

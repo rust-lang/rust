@@ -2492,6 +2492,28 @@ pub(crate) struct UnexpectedExpressionInPatternInlineConstSugg {
     pub end_span: Span,
 }
 
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    parse_unexpected_expr_in_pat_remove_let_sugg,
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UnexpectedExpressionInPatternRemoveLetSugg {
+    #[suggestion_part(code = "")]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    parse_unexpected_expr_in_pat_replace_let_else_with_if_sugg,
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UnexpectedExpressionInPatternReplaceLetElseWithIfSugg {
+    #[suggestion_part(code = "if {init} != {pat}")]
+    pub span: Span,
+    pub init: String,
+    pub pat: String,
+}
+
 #[derive(Diagnostic)]
 #[diag(parse_unexpected_paren_in_range_pat)]
 pub(crate) struct UnexpectedParenInRangePat {
