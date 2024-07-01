@@ -1624,17 +1624,18 @@ impl Step for Sysroot {
         let sysroot_lib_rustlib_src_rust = sysroot_lib_rustlib_src.join("rust");
         if let Err(e) = symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_src_rust) {
             eprintln!(
-                "WARNING: creating symbolic link `{}` to `{}` failed with {}",
+                "ERROR: creating symbolic link `{}` to `{}` failed with {}",
                 sysroot_lib_rustlib_src_rust.display(),
                 builder.src.display(),
                 e,
             );
             if builder.config.rust_remap_debuginfo {
                 eprintln!(
-                    "WARNING: some `tests/ui` tests will fail when lacking `{}`",
+                    "ERROR: some `tests/ui` tests will fail when lacking `{}`",
                     sysroot_lib_rustlib_src_rust.display(),
                 );
             }
+            build_helper::exit!(1);
         }
 
         // Unlike rust-src component, we have to handle rustc-src a bit differently.
@@ -1654,11 +1655,13 @@ impl Step for Sysroot {
                 symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_rustcsrc_rust)
             {
                 eprintln!(
-                "WARNING: creating symbolic link `{}` to `{}` failed with {}",
+                    "ERROR: creating symbolic link `{}` to `{}` failed with {}",
                     sysroot_lib_rustlib_rustcsrc_rust.display(),
                     builder.src.display(),
                     e,
                 );
+                build_helper::exit!(1);
+            }
         }
 
         sysroot
