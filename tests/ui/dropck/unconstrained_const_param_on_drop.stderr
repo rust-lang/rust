@@ -1,212 +1,17 @@
-thread 'rustc' panicked at compiler/rustc_middle/src/ty/sty.rs:360:36:
-called `Option::unwrap()` on a `None` value
-stack backtrace:
-   0: begin_panic_handler
-             at ./library/std/src/panicking.rs:661:5
-   1: panic_fmt
-             at ./library/core/src/panicking.rs:74:14
-   2: panic
-             at ./library/core/src/panicking.rs:148:5
-   3: core::option::unwrap_failed
-             at ./library/core/src/option.rs:2013:5
-   4: unwrap<rustc_middle::ty::Ty>
-             at ./library/core/src/option.rs:963:21
-   5: find_ty_from_env
-             at ./compiler/rustc_middle/src/ty/sty.rs:360:36
-   6: process_obligation
-             at ./compiler/rustc_trait_selection/src/traits/fulfill.rs:472:29
-   7: process_obligations<rustc_trait_selection::traits::fulfill::PendingPredicateObligation, rustc_trait_selection::traits::fulfill::FulfillProcessor>
-             at ./compiler/rustc_data_structures/src/obligation_forest/mod.rs:462:23
-   8: select<rustc_trait_selection::traits::FulfillmentError>
-             at ./compiler/rustc_trait_selection/src/traits/fulfill.rs:107:13
-   9: select_where_possible<rustc_trait_selection::traits::FulfillmentError>
-             at ./compiler/rustc_trait_selection/src/traits/fulfill.rs:160:9
-  10: select_all_or_error<rustc_trait_selection::traits::fulfill::FulfillmentContext<rustc_trait_selection::traits::FulfillmentError>, rustc_trait_selection::traits::FulfillmentError>
-             at ./compiler/rustc_infer/src/traits/engine.rs:82:22
-  11: select_all_or_error<rustc_trait_selection::traits::FulfillmentError>
-             at ./compiler/rustc_trait_selection/src/traits/engine.rs:189:9
-  12: ensure_drop_predicates_are_implied_by_item_defn
-             at ./compiler/rustc_hir_analysis/src/check/dropck.rs:154:18
-  13: check_drop_impl
-             at ./compiler/rustc_hir_analysis/src/check/dropck.rs:60:13
-  14: call<fn(rustc_middle::ty::context::TyCtxt, rustc_span::def_id::DefId) -> core::result::Result<(), rustc_span::ErrorGuaranteed>, (rustc_middle::ty::context::TyCtxt, rustc_span::def_id::DefId)>
-             at ./library/core/src/ops/function.rs:79:5
-  15: {closure#0}<fn(rustc_middle::ty::context::TyCtxt, rustc_span::def_id::DefId) -> core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./compiler/rustc_middle/src/ty/util.rs:360:16
-  16: for_each_relevant_impl<rustc_middle::ty::util::{impl#2}::calculate_dtor::{closure_env#0}<fn(rustc_middle::ty::context::TyCtxt, rustc_span::def_id::DefId) -> core::result::Result<(), rustc_span::ErrorGuaranteed>>>
-             at ./compiler/rustc_middle/src/ty/trait_def.rs:166:21
-  17: calculate_dtor<fn(rustc_middle::ty::context::TyCtxt, rustc_span::def_id::DefId) -> core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./compiler/rustc_middle/src/ty/util.rs:359:9
-  18: rustc_hir_analysis::check::adt_destructor
-             at ./compiler/rustc_hir_analysis/src/check/mod.rs:125:5
-  19: {closure#0}
-             at ./compiler/rustc_query_impl/src/plumbing.rs:285:13
-      [... omitted 22 frames ...]
-  20: query_get_at<rustc_query_system::query::caches::DefIdCache<rustc_middle::query::erase::Erased<[u8; 12]>>>
-             at ./compiler/rustc_middle/src/query/plumbing.rs:145:17
-  21: adt_destructor<rustc_span::def_id::DefId>
-             at ./compiler/rustc_middle/src/query/plumbing.rs:423:31
-  22: adt_destructor<rustc_span::def_id::DefId>
-             at ./compiler/rustc_middle/src/query/plumbing.rs:414:35
-  23: destructor
-             at ./compiler/rustc_middle/src/ty/adt.rs:610:13
-  24: check_struct
-             at ./compiler/rustc_hir_analysis/src/check/check.rs:71:5
-  25: check_item_type
-             at ./compiler/rustc_hir_analysis/src/check/check.rs:730:13
-  26: check_item
-             at ./compiler/rustc_hir_analysis/src/check/wfcheck.rs:335:5
-  27: check_well_formed
-             at ./compiler/rustc_hir_analysis/src/check/wfcheck.rs:192:39
-  28: {closure#0}
-             at ./compiler/rustc_query_impl/src/plumbing.rs:281:9
-      [... omitted 22 frames ...]
-  29: query_ensure_error_guaranteed<rustc_query_system::query::caches::VecCache<rustc_hir::hir_id::OwnerId, rustc_middle::query::erase::Erased<[u8; 1]>>, ()>
-             at ./compiler/rustc_middle/src/query/plumbing.rs:181:9
-  30: check_well_formed
-             at ./compiler/rustc_middle/src/query/plumbing.rs:199:9
-  31: {closure#1}
-             at ./compiler/rustc_hir_analysis/src/check/wfcheck.rs:1995:47
-  32: {closure#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#1}>
-             at ./compiler/rustc_middle/src/hir/mod.rs:89:57
-  33: {closure#0}<&[rustc_hir::hir::ImplItemId], rustc_span::ErrorGuaranteed, rustc_middle::hir::{impl#0}::par_impl_items::{closure_env#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#1}>>
-             at ./compiler/rustc_data_structures/src/sync/parallel.rs:203:50
-  34: call_once<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_data_structures::sync::parallel::enabled::try_par_for_each_in::{closure#0}::{closure#0}::{closure_env#0}<&[rustc_hir::hir::ImplItemId], rustc_span::ErrorGuaranteed, rustc_middle::hir::{impl#0}::par_impl_items::{closure_env#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#1}>>>
-             at ./library/core/src/panic/unwind_safe.rs:272:9
-  35: do_call<core::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures::sync::parallel::enabled::try_par_for_each_in::{closure#0}::{closure#0}::{closure_env#0}<&[rustc_hir::hir::ImplItemId], rustc_span::ErrorGuaranteed, rustc_middle::hir::{impl#0}::par_impl_items::{closure_env#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#1}>>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./library/std/src/panicking.rs:553:40
-  36: try<core::result::Result<(), rustc_span::ErrorGuaranteed>, core::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures::sync::parallel::enabled::try_par_for_each_in::{closure#0}::{closure#0}::{closure_env#0}<&[rustc_hir::hir::ImplItemId], rustc_span::ErrorGuaranteed, rustc_middle::hir::{impl#0}::par_impl_items::{closure_env#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#1}>>>>
-             at ./library/std/src/panicking.rs:517:19
-  37: catch_unwind<core::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures::sync::parallel::enabled::try_par_for_each_in::{closure#0}::{closure#2}::{closure_env#0}<&[rustc_hir::hir::ItemId], rustc_span::ErrorGuaranteed, rustc_middle::hir::{impl#0}::par_items::{closure_env#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#0}>>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./library/std/src/panic.rs:350:14
-  38: run<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_data_structures::sync::parallel::enabled::try_par_for_each_in::{closure#0}::{closure#2}::{closure_env#0}<&[rustc_hir::hir::ItemId], rustc_span::ErrorGuaranteed, rustc_middle::hir::{impl#0}::par_items::{closure_env#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#0}>>>
-             at ./compiler/rustc_data_structures/src/sync/parallel.rs:28:9
-  39: {closure#2}<&[rustc_hir::hir::ItemId], rustc_span::ErrorGuaranteed, rustc_middle::hir::{impl#0}::par_items::{closure_env#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#0}>>
-             at ./compiler/rustc_data_structures/src/sync/parallel.rs:206:46
-  40: {closure#0}<&rustc_hir::hir::ItemId, core::result::Result<(), rustc_span::ErrorGuaranteed>, core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_data_structures::sync::parallel::enabled::try_par_for_each_in::{closure#0}::{closure_env#2}<&[rustc_hir::hir::ItemId], rustc_span::ErrorGuaranteed, rustc_middle::hir::{impl#0}::par_items::{closure_env#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#0}>>, fn(core::result::Result<(), rustc_span::ErrorGuaranteed>, core::result::Result<(), rustc_span::ErrorGuaranteed>) -> core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./library/core/src/iter/adapters/filter_map.rs:39:28
-  41: fold<rustc_hir::hir::ItemId, core::result::Result<(), rustc_span::ErrorGuaranteed>, core::iter::adapters::filter_map::filter_map_fold::{closure_env#0}<&rustc_hir::hir::ItemId, core::result::Result<(), rustc_span::ErrorGuaranteed>, core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_data_structures::sync::parallel::enabled::try_par_for_each_in::{closure#0}::{closure_env#2}<&[rustc_hir::hir::ItemId], rustc_span::ErrorGuaranteed, rustc_middle::hir::{impl#0}::par_items::{closure_env#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#0}>>, fn(core::result::Result<(), rustc_span::ErrorGuaranteed>, core::result::Result<(), rustc_span::ErrorGuaranteed>) -> core::result::Result<(), rustc_span::ErrorGuaranteed>>>
-             at ./library/core/src/slice/iter/macros.rs:232:27
-  42: fold<core::result::Result<(), rustc_span::ErrorGuaranteed>, core::slice::iter::Iter<rustc_hir::hir::ItemId>, rustc_data_structures::sync::parallel::enabled::try_par_for_each_in::{closure#0}::{closure_env#2}<&[rustc_hir::hir::ItemId], rustc_span::ErrorGuaranteed, rustc_middle::hir::{impl#0}::par_items::{closure_env#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#0}>>, core::result::Result<(), rustc_span::ErrorGuaranteed>, fn(core::result::Result<(), rustc_span::ErrorGuaranteed>, core::result::Result<(), rustc_span::ErrorGuaranteed>) -> core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./library/core/src/iter/adapters/filter_map.rs:148:9
-  43: {closure#0}<&[rustc_hir::hir::ItemId], rustc_span::ErrorGuaranteed, rustc_middle::hir::{impl#0}::par_items::{closure_env#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#0}>>
-             at ./compiler/rustc_data_structures/src/sync/parallel.rs:206:73
-  44: parallel_guard<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_data_structures::sync::parallel::enabled::try_par_for_each_in::{closure_env#0}<&[rustc_hir::hir::ItemId], rustc_span::ErrorGuaranteed, rustc_middle::hir::{impl#0}::par_items::{closure_env#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#0}>>>
-             at ./compiler/rustc_data_structures/src/sync/parallel.rs:44:15
-  45: try_par_for_each_in<&[rustc_hir::hir::ItemId], rustc_span::ErrorGuaranteed, rustc_middle::hir::{impl#0}::par_items::{closure_env#0}<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#0}>>
-             at ./compiler/rustc_data_structures/src/sync/parallel.rs:199:9
-  46: par_items<rustc_hir_analysis::check::wfcheck::check_mod_type_wf::{closure_env#0}>
-             at ./compiler/rustc_middle/src/hir/mod.rs:75:9
-  47: check_mod_type_wf
-             at ./compiler/rustc_hir_analysis/src/check/wfcheck.rs:1994:19
-  48: {closure#0}
-             at ./compiler/rustc_query_impl/src/plumbing.rs:281:9
-      [... omitted 22 frames ...]
-  49: query_ensure_error_guaranteed<rustc_query_system::query::caches::DefaultCache<rustc_span::def_id::LocalModDefId, rustc_middle::query::erase::Erased<[u8; 1]>>, ()>
-             at ./compiler/rustc_middle/src/query/plumbing.rs:181:9
-  50: check_mod_type_wf
-             at ./compiler/rustc_middle/src/query/plumbing.rs:199:9
-  51: {closure#0}
-             at ./compiler/rustc_hir_analysis/src/lib.rs:162:21
-  52: {closure#0}<rustc_hir_analysis::check_crate::{closure#0}::{closure_env#0}>
-             at ./compiler/rustc_middle/src/hir/map/mod.rs:463:13
-  53: {closure#0}<&rustc_hir::hir_id::OwnerId, &[rustc_hir::hir_id::OwnerId], rustc_middle::hir::map::{impl#3}::par_for_each_module::{closure_env#0}<rustc_hir_analysis::check_crate::{closure#0}::{closure_env#0}>>
-             at ./compiler/rustc_data_structures/src/sync/parallel.rs:182:34
-  54: call_once<(), rustc_data_structures::sync::parallel::enabled::par_for_each_in::{closure#0}::{closure#0}::{closure_env#0}<&rustc_hir::hir_id::OwnerId, &[rustc_hir::hir_id::OwnerId], rustc_middle::hir::map::{impl#3}::par_for_each_module::{closure_env#0}<rustc_hir_analysis::check_crate::{closure#0}::{closure_env#0}>>>
-             at ./library/core/src/panic/unwind_safe.rs:272:9
-  55: do_call<core::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures::sync::parallel::enabled::par_for_each_in::{closure#0}::{closure#0}::{closure_env#0}<&rustc_hir::hir_id::OwnerId, &[rustc_hir::hir_id::OwnerId], rustc_middle::hir::map::{impl#3}::par_for_each_module::{closure_env#0}<rustc_hir_analysis::check_crate::{closure#0}::{closure_env#0}>>>, ()>
-             at ./library/std/src/panicking.rs:553:40
-  56: try<(), core::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures::sync::parallel::enabled::par_for_each_in::{closure#0}::{closure#0}::{closure_env#0}<&rustc_hir::hir_id::OwnerId, &[rustc_hir::hir_id::OwnerId], rustc_middle::hir::map::{impl#3}::par_for_each_module::{closure_env#0}<rustc_hir_analysis::check_crate::{closure#0}::{closure_env#0}>>>>
-             at ./library/std/src/panicking.rs:517:19
-  57: catch_unwind<core::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures::sync::parallel::enabled::par_for_each_in::{closure#0}::{closure#1}::{closure_env#0}<&rustc_hir::hir_id::OwnerId, &[rustc_hir::hir_id::OwnerId], rustc_middle::hir::map::{impl#3}::par_for_each_module::{closure_env#0}<rustc_hir_analysis::check_crate::{closure#0}::{closure_env#0}>>>, ()>
-             at ./library/std/src/panic.rs:350:14
-  58: run<(), rustc_data_structures::sync::parallel::enabled::par_for_each_in::{closure#0}::{closure#1}::{closure_env#0}<&rustc_hir::hir_id::OwnerId, &[rustc_hir::hir_id::OwnerId], rustc_middle::hir::map::{impl#3}::par_for_each_module::{closure_env#0}<rustc_hir_analysis::check_crate::{closure#0}::{closure_env#0}>>>
-             at ./compiler/rustc_data_structures/src/sync/parallel.rs:28:9
-  59: {closure#1}<&rustc_hir::hir_id::OwnerId, &[rustc_hir::hir_id::OwnerId], rustc_middle::hir::map::{impl#3}::par_for_each_module::{closure_env#0}<rustc_hir_analysis::check_crate::{closure#0}::{closure_env#0}>>
-             at ./compiler/rustc_data_structures/src/sync/parallel.rs:186:21
-  60: for_each<rustc_hir::hir_id::OwnerId, rustc_data_structures::sync::parallel::enabled::par_for_each_in::{closure#0}::{closure_env#1}<&rustc_hir::hir_id::OwnerId, &[rustc_hir::hir_id::OwnerId], rustc_middle::hir::map::{impl#3}::par_for_each_module::{closure_env#0}<rustc_hir_analysis::check_crate::{closure#0}::{closure_env#0}>>>
-             at ./library/core/src/slice/iter/macros.rs:254:21
-  61: {closure#0}<&rustc_hir::hir_id::OwnerId, &[rustc_hir::hir_id::OwnerId], rustc_middle::hir::map::{impl#3}::par_for_each_module::{closure_env#0}<rustc_hir_analysis::check_crate::{closure#0}::{closure_env#0}>>
-             at ./compiler/rustc_data_structures/src/sync/parallel.rs:185:17
-  62: parallel_guard<(), rustc_data_structures::sync::parallel::enabled::par_for_each_in::{closure_env#0}<&rustc_hir::hir_id::OwnerId, &[rustc_hir::hir_id::OwnerId], rustc_middle::hir::map::{impl#3}::par_for_each_module::{closure_env#0}<rustc_hir_analysis::check_crate::{closure#0}::{closure_env#0}>>>
-             at ./compiler/rustc_data_structures/src/sync/parallel.rs:44:15
-  63: par_for_each_in<&rustc_hir::hir_id::OwnerId, &[rustc_hir::hir_id::OwnerId], rustc_middle::hir::map::{impl#3}::par_for_each_module::{closure_env#0}<rustc_hir_analysis::check_crate::{closure#0}::{closure_env#0}>>
-             at ./compiler/rustc_data_structures/src/sync/parallel.rs:178:9
-  64: par_for_each_module<rustc_hir_analysis::check_crate::{closure#0}::{closure_env#0}>
-             at ./compiler/rustc_middle/src/hir/map/mod.rs:462:9
-  65: {closure#0}
-             at ./compiler/rustc_hir_analysis/src/lib.rs:161:9
-  66: run<(), rustc_hir_analysis::check_crate::{closure_env#0}>
-             at ./compiler/rustc_data_structures/src/profiling.rs:754:9
-  67: time<(), rustc_hir_analysis::check_crate::{closure_env#0}>
-             at ./compiler/rustc_session/src/utils.rs:16:9
-  68: check_crate
-             at ./compiler/rustc_hir_analysis/src/lib.rs:160:5
-  69: run_required_analyses
-             at ./compiler/rustc_interface/src/passes.rs:784:5
-  70: analysis
-             at ./compiler/rustc_interface/src/passes.rs:823:5
-  71: {closure#0}
-             at ./compiler/rustc_query_impl/src/plumbing.rs:281:9
-      [... omitted 22 frames ...]
-  72: query_get_at<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>>
-             at ./compiler/rustc_middle/src/query/plumbing.rs:145:17
-  73: analysis
-             at ./compiler/rustc_middle/src/query/plumbing.rs:423:31
-  74: analysis
-             at ./compiler/rustc_middle/src/query/plumbing.rs:414:35
-  75: {closure#5}
-             at ./compiler/rustc_driver_impl/src/lib.rs:445:52
-  76: {closure#1}<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure_env#5}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./compiler/rustc_middle/src/ty/context.rs:1296:37
-  77: {closure#0}<rustc_middle::ty::context::{impl#19}::enter::{closure_env#1}<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure_env#5}, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./compiler/rustc_middle/src/ty/context/tls.rs:82:9
-  78: try_with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_middle::ty::context::{impl#19}::enter::{closure_env#1}<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure_env#5}, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./library/std/src/thread/local.rs:283:12
-  79: with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_middle::ty::context::{impl#19}::enter::{closure_env#1}<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure_env#5}, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./library/std/src/thread/local.rs:260:9
-  80: enter_context<rustc_middle::ty::context::{impl#19}::enter::{closure_env#1}<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure_env#5}, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./compiler/rustc_middle/src/ty/context/tls.rs:79:9
-  81: enter<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure_env#5}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./compiler/rustc_middle/src/ty/context.rs:1296:9
-  82: {closure#1}
-             at ./compiler/rustc_driver_impl/src/lib.rs:445:13
-  83: enter<rustc_driver_impl::run_compiler::{closure#0}::{closure_env#1}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
-             at ./compiler/rustc_interface/src/queries.rs:202:19
-  84: {closure#0}
-             at ./compiler/rustc_driver_impl/src/lib.rs:389:22
-  85: {closure#1}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#0}>
-             at ./compiler/rustc_interface/src/interface.rs:502:27
-  86: {closure#0}<rustc_interface::interface::run_compiler::{closure_env#1}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#0}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./compiler/rustc_interface/src/util.rs:154:13
-  87: {closure#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#1}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#0}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./compiler/rustc_interface/src/util.rs:106:21
-  88: set<rustc_span::SessionGlobals, rustc_interface::util::run_in_thread_with_globals::{closure#0}::{closure#0}::{closure_env#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#1}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#0}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at /home/boxy/.cargo/registry/src/index.crates.io-6f17d22bba15001f/scoped-tls-1.0.1/src/lib.rs:137:9
-  89: create_session_globals_then<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_interface::util::run_in_thread_with_globals::{closure#0}::{closure#0}::{closure_env#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#1}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#0}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>>
-             at ./compiler/rustc_span/src/lib.rs:134:5
-  90: {closure#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#1}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#0}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
-             at ./compiler/rustc_interface/src/util.rs:105:17
-note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+error[E0367]: `Drop` impl requires `the constant `_` has type `usize`` but the struct it is implemented for does not
+  --> $DIR/unconstrained_const_param_on_drop.rs:3:6
+   |
+LL | impl<const UNUSED: usize> Drop for Foo {}
+   |      ^^^^^^^^^^^^^^^^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/unconstrained_const_param_on_drop.rs:1:1
+   |
+LL | struct Foo {}
+   | ^^^^^^^^^^
 
-error: the compiler unexpectedly panicked. this is a bug.
-
-note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
-
-note: please make sure that you have updated to the latest nightly
-
-note: rustc 1.81.0-dev running on x86_64-unknown-linux-gnu
-
-note: compiler flags: -Z threads=1 -Z simulate-remapped-rust-src-base=/rustc/FAKE_PREFIX -Z translate-remapped-path-to-local-path=no -Z ignore-directory-in-diagnostics-source-blocks=/home/boxy/.cargo -Z ignore-directory-in-diagnostics-source-blocks=/media/Nyoomies/Repos/rust/vendor -C codegen-units=1 -Z ui-testing -Z deduplicate-diagnostics=no -Z write-long-types-to-disk=no -C strip=debuginfo -C prefer-dynamic -C rpath -C debuginfo=0
-
-query stack during panic:
-#0 [adt_destructor] computing `Drop` impl for `Foo`
-#1 [check_well_formed] checking that `Foo` is well-formed
-#2 [check_mod_type_wf] checking that types are well-formed in top-level module
-#3 [analysis] running analysis passes on this crate
-end of query stack
 error[E0207]: the const parameter `UNUSED` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/unconstrained_const_param_on_drop.rs:6:6
+  --> $DIR/unconstrained_const_param_on_drop.rs:3:6
    |
 LL | impl<const UNUSED: usize> Drop for Foo {}
    |      ^^^^^^^^^^^^^^^^^^^ unconstrained const parameter
@@ -214,6 +19,7 @@ LL | impl<const UNUSED: usize> Drop for Foo {}
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0207`.
+Some errors have detailed explanations: E0207, E0367.
+For more information about an error, try `rustc --explain E0207`.
