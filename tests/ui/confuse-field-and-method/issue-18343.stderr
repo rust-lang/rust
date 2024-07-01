@@ -5,7 +5,7 @@ LL | struct Obj<F> where F: FnMut() -> u32 {
    | ------------- method `closure` not found for this struct
 ...
 LL |     o.closure();
-   |       ^^^^^^^ field, not a method
+   |       ^^^^^^^ `closure` is a field in the current scope, but is used like a method
    |
 help: to call the function stored in `closure`, surround the field access with parentheses
    |

@@ -2,7 +2,7 @@ error[E0599]: no method named `closure` found for reference `&Obj<{closure@$DIR/
   --> $DIR/issue-33784.rs:27:7
    |
 LL |     p.closure();
-   |       ^^^^^^^ field, not a method
+   |       ^^^^^^^ `closure` is a field in the current scope, but is used like a method
    |
 help: to call the function stored in `closure`, surround the field access with parentheses
    |
@@ -17,7 +17,7 @@ error[E0599]: no method named `fn_ptr` found for reference `&&Obj<{closure@$DIR/
   --> $DIR/issue-33784.rs:29:7
    |
 LL |     q.fn_ptr();
-   |       ^^^^^^ field, not a method
+   |       ^^^^^^ `fn_ptr` is a field in the current scope, but is used like a method
    |
 help: to call the function stored in `fn_ptr`, surround the field access with parentheses
    |
@@ -28,7 +28,7 @@ error[E0599]: no method named `c_fn_ptr` found for reference `&D` in the current
   --> $DIR/issue-33784.rs:32:7
    |
 LL |     s.c_fn_ptr();
-   |       ^^^^^^^^ field, not a method
+   |       ^^^^^^^^ `c_fn_ptr` is a field in the current scope, but is used like a method
    |
 help: to call the function stored in `c_fn_ptr`, surround the field access with parentheses
    |
