@@ -34,7 +34,7 @@ error: defaults for generic parameters are not allowed in `for<...>` binders
 LL |     for<const N: usize = 3, T = u32> [(); COT::BYTES]:,
    |                             ^^^^^^^
 
-error[E0433]: failed to resolve: use of undeclared type `COT`
+error[E0433]: cannot find item `COT` in this scope
   --> $DIR/ice-predicates-of-no-entry-found-for-key-119275.rs:10:43
    |
 LL |     for<const N: usize = 3, T = u32> [(); COT::BYTES]:,

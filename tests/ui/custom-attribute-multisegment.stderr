@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: could not find `nonexistent` in `existent`
+error[E0433]: cannot find macro `nonexistent` in module `existent`
   --> $DIR/custom-attribute-multisegment.rs:5:13
    |
 LL | #[existent::nonexistent]

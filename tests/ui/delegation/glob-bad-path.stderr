@@ -4,7 +4,7 @@ error: expected trait, found struct `S`
 LL |     reuse S::*;
    |           ^ not a trait
 
-error[E0433]: failed to resolve: use of undeclared crate or module `unresolved`
+error[E0433]: cannot find type `unresolved` in this scope
   --> $DIR/glob-bad-path.rs:8:11
    |
 LL |     reuse unresolved::*;

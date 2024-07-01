@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: could not find `hahmap` in `std`
+error[E0433]: cannot find item `hahmap` in crate `std`
   --> $DIR/missing-in-namespace.rs:2:21
    |
 LL |     let _map = std::hahmap::HashMap::new();

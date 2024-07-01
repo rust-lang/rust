@@ -1,9 +1,9 @@
 //@ edition:2018
 
-use st::cell::Cell; //~ ERROR failed to resolve: use of undeclared crate or module `st`
+use st::cell::Cell; //~ ERROR cannot find item `st`
 
 mod bar {
-    pub fn bar() { bar::baz(); } //~ ERROR failed to resolve: function `bar` is not a crate or module
+    pub fn bar() { bar::baz(); } //~ ERROR cannot find item `bar`
 
     fn baz() {}
 }
@@ -11,7 +11,7 @@ mod bar {
 use bas::bar; //~ ERROR unresolved import `bas`
 
 struct Foo {
-    bar: st::cell::Cell<bool> //~ ERROR failed to resolve: use of undeclared crate or module `st`
+    bar: st::cell::Cell<bool> //~ ERROR cannot find item `st`
 }
 
 fn main() {}

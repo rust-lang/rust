@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: could not find `skip` in `rustfmt`
+error[E0433]: cannot find macro `skip` in module `rustfmt`
   --> $DIR/tool-attributes-shadowing.rs:3:12
    |
 LL | #[rustfmt::skip]

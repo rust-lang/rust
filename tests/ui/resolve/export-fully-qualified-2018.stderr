@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `foo`
+error[E0433]: cannot find item `foo` in this scope
   --> $DIR/export-fully-qualified-2018.rs:8:20
    |
 LL |     pub fn bar() { foo::baz(); }

@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `somedep`
+error[E0433]: cannot find item `somedep` in this scope
   --> $DIR/multiple-opts.rs:19:5
    |
 LL |     somedep::somefun();

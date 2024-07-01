@@ -9,18 +9,18 @@ mod foo {
 
 mod u {
     fn _a() {
-        let _: Vec<i32> = super::foo::baf::baz::MyVec::new(); //~ ERROR failed to resolve
+        let _: Vec<i32> = super::foo::baf::baz::MyVec::new(); //~ ERROR cannot find item
     }
 }
 
 mod v {
     fn _b() {
-        let _: Vec<i32> = fox::bar::baz::MyVec::new(); //~ ERROR failed to resolve
+        let _: Vec<i32> = fox::bar::baz::MyVec::new(); //~ ERROR cannot find item
     }
 }
 
 fn main() {
-    let _t: Vec<i32> = vec::new(); //~ ERROR failed to resolve
-    type _B = vec::Vec::<u8>; //~ ERROR failed to resolve
-    let _t = std::sync_error::atomic::AtomicBool::new(true); //~ ERROR failed to resolve
+    let _t: Vec<i32> = vec::new(); //~ ERROR cannot find item
+    type _B = vec::Vec::<u8>; //~ ERROR cannot find item
+    let _t = std::sync_error::atomic::AtomicBool::new(true); //~ ERROR cannot find item
 }

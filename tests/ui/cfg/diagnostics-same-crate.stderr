@@ -22,7 +22,7 @@ note: found an item that was configured out
 LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
 
-error[E0433]: failed to resolve: could not find `doesnt_exist` in `inner`
+error[E0433]: cannot find item `doesnt_exist` in module `inner`
   --> $DIR/diagnostics-same-crate.rs:52:12
    |
 LL |     inner::doesnt_exist::hello();

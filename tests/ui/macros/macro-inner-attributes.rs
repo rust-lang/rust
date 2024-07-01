@@ -15,6 +15,6 @@ test!(b,
 #[rustc_dummy]
 fn main() {
     a::bar();
-    //~^ ERROR failed to resolve: use of undeclared crate or module `a`
+    //~^ ERROR cannot find item `a`
     b::bar();
 }
