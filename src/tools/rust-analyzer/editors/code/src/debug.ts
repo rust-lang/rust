@@ -5,7 +5,7 @@ import type * as ra from "./lsp_ext";
 
 import { Cargo, getRustcId, getSysroot } from "./toolchain";
 import type { Ctx } from "./ctx";
-import { prepareEnv } from "./run";
+import { createCargoArgs, prepareEnv } from "./run";
 import { isCargoRunnableArgs, unwrapUndefinable } from "./util";
 
 const debugOutput = vscode.window.createOutputChannel("Debug");
@@ -180,7 +180,8 @@ async function getDebugExecutable(
     env: Record<string, string>,
 ): Promise<string> {
     const cargo = new Cargo(runnableArgs.workspaceRoot || ".", debugOutput, env);
-    const executable = await cargo.executableFromArgs(runnableArgs.cargoArgs);
+    const args = createCargoArgs(runnableArgs);
+    const executable = await cargo.executableFromArgs(args);
 
     // if we are here, there were no compilation errors.
     return executable;
