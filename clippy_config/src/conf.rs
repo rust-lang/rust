@@ -31,6 +31,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "OCaml",
     "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry",
     "WebGL", "WebGL2", "WebGPU",
+    "WebP", "OpenExr", "YCbCr", "sRGB",
     "TensorFlow",
     "TrueType",
     "iOS", "macOS", "FreeBSD",
