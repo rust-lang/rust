@@ -4,7 +4,7 @@ error[E0599]: no method named `method` found for type `u32` in the current scope
 LL |     1u32.method();
    |          ^^^^^^
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: the following traits which provide `method` are implemented but not in scope; perhaps you want to import one of them
    |
 LL + use foo::Bar;
@@ -26,7 +26,7 @@ error[E0599]: no method named `method` found for struct `Rc<&mut Box<&u32>>` in 
 LL |     std::rc::Rc::new(&mut Box::new(&1u32)).method();
    |                                            ^^^^^^
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: the following traits which provide `method` are implemented but not in scope; perhaps you want to import one of them
    |
 LL + use foo::Bar;
@@ -51,7 +51,7 @@ LL |         fn method(&self) {}
 LL |     'a'.method();
    |         ^^^^^^
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `Bar` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use foo::Bar;
@@ -67,7 +67,7 @@ error[E0599]: no method named `method` found for struct `Rc<&mut Box<&char>>` in
 LL |     std::rc::Rc::new(&mut Box::new(&'a')).method();
    |                                           ^^^^^^
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `Bar` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use foo::Bar;
@@ -88,7 +88,7 @@ LL |     1i32.method();
 LL |         fn method(&self) {}
    |            ------ the method is available for `i32` here
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `PubPub` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use no_method_suggested_traits::foo::PubPub;
@@ -104,7 +104,7 @@ error[E0599]: no method named `method` found for struct `Rc<&mut Box<&i32>>` in 
 LL |     std::rc::Rc::new(&mut Box::new(&1i32)).method();
    |                                            ^^^^^^
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `PubPub` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use no_method_suggested_traits::foo::PubPub;

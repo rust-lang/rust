@@ -26,7 +26,7 @@ LL |         fn b(&self) { }
 LL |     S.b();
    |       ^
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `B` which provides `b` is implemented but not in scope; perhaps you want to import it
    |
 LL + use method::B;
@@ -71,7 +71,7 @@ LL | struct S;
 LL |     S::b(&S);
    |        ^ function or associated item not found in `S`
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: there is an associated constant `B` with a similar name
   --> $DIR/item-privacy.rs:29:9
    |
@@ -116,7 +116,7 @@ LL | struct S;
 LL |     S::B;
    |        ^ associated item not found in `S`
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: there is a method `b` with a similar name
   --> $DIR/item-privacy.rs:11:9
    |

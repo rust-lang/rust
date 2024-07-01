@@ -1,0 +1,20 @@
+error[E0599]: no method named `x` found for struct `S` in the current scope
+  --> $DIR/suggest-traits-to-import-issue-127178.rs:18:23
+   |
+LL | struct S {
+   | -------- method `x` not found for this struct
+...
+LL |     println!("{}", st.x())
+   |                       ^ field, not a method
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = help: trait `m::GetX` which provides `x` is implemented but not reachable
+help: remove the arguments
+   |
+LL -     println!("{}", st.x())
+LL +     println!("{}", st.x)
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -47,7 +47,7 @@ LL |     let _i: i16 = 0_i32.try_into().unwrap();
    |
    = note: the method is available for `i32` here
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
    = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
 help: trait `TryInto` which provides `try_into` is implemented but not in scope; perhaps you want to import it
    |
