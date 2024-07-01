@@ -1118,6 +1118,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
+        TEST, rustc_dump_def_parents, Normal, template!(Word),
+        WarnFollowing, EncodeCrossCrate::No
+    ),
+    rustc_attr!(
         TEST, rustc_object_lifetime_default, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),

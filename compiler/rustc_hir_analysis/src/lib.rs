@@ -175,6 +175,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         tcx.sess.time("variance_dumping", || variance::dump::variances(tcx));
         collect::dump::opaque_hidden_types(tcx);
         collect::dump::predicates_and_item_bounds(tcx);
+        collect::dump::def_parents(tcx);
     }
 
     // Make sure we evaluate all static and (non-associated) const items, even if unused.
