@@ -18,7 +18,6 @@ use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
     SnippetCap,
 };
-use indexmap::IndexMap;
 use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use paths::{Utf8Path, Utf8PathBuf};
@@ -384,8 +383,7 @@ config_data! {
         /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
         completion_privateEditable_enable: bool = false,
         /// Custom completion snippets.
-        // NOTE: we use IndexMap for deterministic serialization ordering
-        completion_snippets_custom: IndexMap<String, SnippetDef> = serde_json::from_str(r#"{
+        completion_snippets_custom: FxHashMap<String, SnippetDef> = serde_json::from_str(r#"{
             "Arc::new": {
                 "postfix": "arc",
                 "body": "Arc::new(${receiver})",
@@ -1245,7 +1243,19 @@ impl Config {
     }
 
     pub fn json_schema() -> serde_json::Value {
-        FullConfigInput::json_schema()
+        let mut s = FullConfigInput::json_schema();
+
+        fn sort_objects_by_field(json: &mut serde_json::Value) {
+            if let serde_json::Value::Object(object) = json {
+                let old = std::mem::take(object);
+                old.into_iter().sorted_by(|(k, _), (k2, _)| k.cmp(k2)).for_each(|(k, mut v)| {
+                    sort_objects_by_field(&mut v);
+                    object.insert(k, v);
+                });
+            }
+        }
+        sort_objects_by_field(&mut s);
+        s
     }
 
     pub fn root_path(&self) -> &AbsPathBuf {
@@ -2644,9 +2654,8 @@ macro_rules! _config_data {
 
         /// All fields `Option<T>`, `None` representing fields not set in a particular JSON/TOML blob.
         #[allow(non_snake_case)]
-        #[derive(Clone, Serialize, Default)]
+        #[derive(Clone, Default)]
         struct $input { $(
-            #[serde(skip_serializing_if = "Option::is_none")]
             $field: Option<$ty>,
         )* }
 
@@ -2729,7 +2738,7 @@ struct DefaultConfigData {
 /// All of the config levels, all fields `Option<T>`, to describe fields that are actually set by
 /// some rust-analyzer.toml file or JSON blob. An empty rust-analyzer.toml corresponds to
 /// all fields being None.
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default)]
 struct FullConfigInput {
     global: GlobalConfigInput,
     local: LocalConfigInput,
@@ -2774,7 +2783,7 @@ impl FullConfigInput {
 /// All of the config levels, all fields `Option<T>`, to describe fields that are actually set by
 /// some rust-analyzer.toml file or JSON blob. An empty rust-analyzer.toml corresponds to
 /// all fields being None.
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default)]
 struct GlobalLocalConfigInput {
     global: GlobalConfigInput,
     local: LocalConfigInput,
@@ -2936,7 +2945,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         "FxHashMap<Box<str>, Box<[Box<str>]>>" => set! {
             "type": "object",
         },
-        "IndexMap<String, SnippetDef>" => set! {
+        "FxHashMap<String, SnippetDef>" => set! {
             "type": "object",
         },
         "FxHashMap<String, String>" => set! {
@@ -3351,6 +3360,7 @@ mod tests {
     #[test]
     fn generate_package_json_config() {
         let s = Config::json_schema();
+
         let schema = format!("{s:#}");
         let mut schema = schema
             .trim_start_matches('[')
