@@ -547,8 +547,14 @@ impl<'tcx> Instance<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-        span: Option<Span>,
+        span: Span,
     ) -> Instance<'tcx> {
+        // We compute the span lazily, to avoid unnecessary query calls.
+        // If `span` is a DUMMY_SP, and the def id is local, then use the
+        // def span of the def id.
+        let span_or_local_def_span =
+            || if span.is_dummy() && def_id.is_local() { tcx.def_span(def_id) } else { span };
+
         match ty::Instance::resolve(tcx, param_env, def_id, args) {
             Ok(Some(instance)) => instance,
             Ok(None) => {
@@ -567,7 +573,7 @@ impl<'tcx> Instance<'tcx> {
                         // We don't use `def_span(def_id)` so that diagnostics point
                         // to the crate root during mono instead of to foreign items.
                         // This is arguably better.
-                        span: span.unwrap_or(DUMMY_SP),
+                        span: span_or_local_def_span(),
                         shrunk,
                         was_written,
                         path,
@@ -575,14 +581,14 @@ impl<'tcx> Instance<'tcx> {
                     });
                 } else {
                     span_bug!(
-                        span.unwrap_or(tcx.def_span(def_id)),
+                        span_or_local_def_span(),
                         "failed to resolve instance for {}",
                         tcx.def_path_str_with_args(def_id, args)
                     )
                 }
             }
             instance => span_bug!(
-                span.unwrap_or(tcx.def_span(def_id)),
+                span_or_local_def_span(),
                 "failed to resolve instance for {}: {instance:#?}",
                 tcx.def_path_str_with_args(def_id, args)
             ),
@@ -642,6 +648,7 @@ impl<'tcx> Instance<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
+        span: Span,
     ) -> Instance<'tcx> {
         debug!("resolve_for_vtable(def_id={:?}, args={:?})", def_id, args);
         let fn_sig = tcx.fn_sig(def_id).instantiate_identity();
@@ -654,7 +661,7 @@ impl<'tcx> Instance<'tcx> {
             return Instance { def: InstanceKind::VTableShim(def_id), args };
         }
 
-        let mut resolved = Instance::expect_resolve(tcx, param_env, def_id, args, None);
+        let mut resolved = Instance::expect_resolve(tcx, param_env, def_id, args, span);
 
         let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::Vtable);
         match resolved.def {
@@ -731,13 +738,13 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
-        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args, None)
+        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args, DUMMY_SP)
     }
 
     pub fn resolve_async_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::AsyncDropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
-        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args, None)
+        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args, DUMMY_SP)
     }
 
     #[instrument(level = "debug", skip(tcx), ret)]

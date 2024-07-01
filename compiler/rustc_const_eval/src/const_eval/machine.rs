@@ -253,7 +253,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
                 ty::ParamEnv::reveal_all(),
                 const_def_id,
                 instance.args,
-                Some(self.find_closest_untracked_caller_location()),
+                self.cur_span(),
             );
 
             return Ok(Some(new_instance));

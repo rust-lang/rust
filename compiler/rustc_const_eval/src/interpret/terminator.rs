@@ -888,6 +888,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         self.param_env,
                         def_id,
                         instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
+                        self.cur_span(),
                     );
                     assert_eq!(fn_inst, concrete_method);
                 }
