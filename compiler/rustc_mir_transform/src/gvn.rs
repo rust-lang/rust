@@ -1074,11 +1074,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         {
             lhs = *lhs_value;
             rhs = *rhs_value;
-            if let Some(op) = self.try_as_operand(lhs, location) {
-                *lhs_operand = op;
-            }
-            if let Some(op) = self.try_as_operand(rhs, location) {
-                *rhs_operand = op;
+            if let Some(lhs_op) = self.try_as_operand(lhs, location)
+                && let Some(rhs_op) = self.try_as_operand(rhs, location)
+            {
+                *lhs_operand = lhs_op;
+                *rhs_operand = rhs_op;
             }
         }
 
