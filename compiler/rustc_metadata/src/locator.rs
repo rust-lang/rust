@@ -575,11 +575,6 @@ impl<'a> CrateLocator<'a> {
             ) {
                 Ok(blob) => {
                     if let Some(h) = self.crate_matches(&blob, &lib) {
-                        if blob.get_header().is_reference {
-                            if slot.is_none() {
-                                todo!("return error");
-                            }
-                        }
                         (h, blob)
                     } else {
                         info!("metadata mismatch");
@@ -654,7 +649,12 @@ impl<'a> CrateLocator<'a> {
                     continue;
                 }
             }
-            *slot = Some((hash, metadata, lib.clone()));
+
+            if !metadata.get_header().is_reference {
+                // FIXME nicer error when only an rlib or dylib with is_reference is found
+                // and no .rmeta?
+                *slot = Some((hash, metadata, lib.clone()));
+            }
             ret = Some((lib, kind));
         }
 
@@ -744,10 +744,12 @@ impl<'a> CrateLocator<'a> {
                 let loc_canon = loc.canonicalized().clone();
                 let loc = loc.original();
                 if loc.file_name().unwrap().to_str().unwrap().ends_with(".rlib") {
+                    rmetas.insert(loc_canon.with_extension("rmeta"), PathKind::ExternFlag);
                     rlibs.insert(loc_canon, PathKind::ExternFlag);
                 } else if loc.file_name().unwrap().to_str().unwrap().ends_with(".rmeta") {
                     rmetas.insert(loc_canon, PathKind::ExternFlag);
                 } else {
+                    rmetas.insert(loc_canon.with_extension("rmeta"), PathKind::ExternFlag);
                     dylibs.insert(loc_canon, PathKind::ExternFlag);
                 }
             } else {
