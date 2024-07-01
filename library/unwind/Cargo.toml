@@ -34,3 +34,13 @@ llvm-libunwind = []
 # If crt-static is enabled, static link to `libunwind.a` provided by system
 # If crt-static is disabled, dynamic link to `libunwind.so` provided by system
 system-llvm-libunwind = []
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    'cfg(target_os, values("rtems"))',
+    # core use #[path] imports to portable-simd `core_simd` crate
+    # and to stdarch `core_arch` crate which messes-up with Cargo list
+    # of declared features, we therefor expect any feature cfg
+    'cfg(feature, values(any()))',
+]
