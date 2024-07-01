@@ -253,12 +253,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let arg = if let Some(block) = block
                     && idx == 0
                 {
-                    let mut self_resolver = SelfResolver {
+                    // TODO
+                    /* let mut self_resolver = SelfResolver {
                         resolver: this.resolver,
                         path_id: delegation.id,
                         self_param_id: pat_node_id,
                     };
-                    self_resolver.visit_block(block);
+                    self_resolver.visit_block(block); */
                     let block = this.lower_block(block, false);
                     this.mk_expr(hir::ExprKind::Block(block, None), block.span)
                 } else {

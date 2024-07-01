@@ -24,7 +24,7 @@ use tracing::instrument;
 
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
-    pub(super) resolver: &'a mut ResolverAstLowering,
+    pub(super) resolver: &'hir ResolverAstLowering,
     pub(super) ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
     pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<'hir>>,
 }
@@ -1575,8 +1575,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .collect();
 
         // Introduce extra lifetimes if late resolution tells us to.
-        let extra_lifetimes = self.resolver.take_extra_lifetime_params(parent_node_id);
-        params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
+        let extra_lifetimes = self.resolver.extra_lifetime_params(parent_node_id);
+        params.extend(extra_lifetimes.iter().filter_map(|&(ident, node_id, res)| {
             self.lifetime_res_to_generic_param(
                 ident,
                 node_id,
