@@ -21,7 +21,7 @@ fn main() {
         .stdin("fn main() {}")
         .emit("link,obj")
         .arg("-Csave-temps")
-        .target(&target)
+        .target(target)
         .run();
 
     // Check linked output has a `.comment` section with the expected content.
