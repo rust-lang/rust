@@ -46,12 +46,14 @@ use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{Asyncness, ResolverAstLowering};
+use rustc_middle::ty::Asyncness;
 use rustc_span::{Ident, Span, Symbol};
 use {rustc_ast as ast, rustc_hir as hir};
 
-use super::{GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode};
-use crate::{AllowReturnTypeNotation, ImplTraitPosition, ResolverAstLoweringExt};
+use super::{
+    AllowReturnTypeNotation, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext,
+    ParamMode,
+};
 
 pub(crate) struct DelegationResults<'hir> {
     pub body_id: hir::BodyId,
@@ -60,7 +62,7 @@ pub(crate) struct DelegationResults<'hir> {
     pub generics: &'hir hir::Generics<'hir>,
 }
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     /// Defines whether the delegatee is an associated function whose first parameter is `self`.
     pub(crate) fn delegatee_is_method(
         &self,
@@ -125,8 +127,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn get_resolution_id(&self, node_id: NodeId, span: Span) -> Result<DefId, ErrorGuaranteed> {
-        let def_id =
-            self.resolver.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id());
+        let def_id = self.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id());
         def_id.ok_or_else(|| {
             self.tcx.dcx().span_delayed_bug(
                 span,
@@ -281,7 +282,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     && idx == 0
                 {
                     let mut self_resolver = SelfResolver {
-                        resolver: this.resolver,
+                        ctxt: this,
                         path_id: delegation.id,
                         self_param_id: pat_node_id,
                     };
@@ -427,25 +428,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 }
 
-struct SelfResolver<'a> {
-    resolver: &'a mut ResolverAstLowering,
+struct SelfResolver<'r, 'hir> {
+    ctxt: &'r mut LoweringContext<'hir>,
     path_id: NodeId,
     self_param_id: NodeId,
 }
 
-impl<'a> SelfResolver<'a> {
+impl SelfResolver<'_, '_> {
     fn try_replace_id(&mut self, id: NodeId) {
-        if let Some(res) = self.resolver.partial_res_map.get(&id)
+        if let Some(res) = self.ctxt.get_partial_res(id)
             && let Some(Res::Local(sig_id)) = res.full_res()
             && sig_id == self.path_id
         {
             let new_res = PartialRes::new(Res::Local(self.self_param_id));
-            self.resolver.partial_res_map.insert(id, new_res);
+            self.ctxt.partial_res_overrides.insert(id, new_res);
         }
     }
 }
 
-impl<'ast, 'a> Visitor<'ast> for SelfResolver<'a> {
+impl<'ast> Visitor<'ast> for SelfResolver<'_, '_> {
     fn visit_id(&mut self, id: NodeId) {
         self.try_replace_id(id);
     }
