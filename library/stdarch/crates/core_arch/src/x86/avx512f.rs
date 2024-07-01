@@ -31571,7 +31571,7 @@ pub unsafe fn _mm512_mask_reduce_max_epi32(k: __mmask16, a: __m512i) -> i32 {
     simd_reduce_max(simd_select_bitmask(
         k,
         a.as_i32x16(),
-        _mm512_undefined_epi32().as_i32x16(),
+        i32x16::splat(i32::MIN),
     ))
 }
 
@@ -31592,11 +31592,7 @@ pub unsafe fn _mm512_reduce_max_epi64(a: __m512i) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_reduce_max_epi64(k: __mmask8, a: __m512i) -> i64 {
-    simd_reduce_max(simd_select_bitmask(
-        k,
-        a.as_i64x8(),
-        _mm512_set1_epi64(0).as_i64x8(),
-    ))
+    simd_reduce_max(simd_select_bitmask(k, a.as_i64x8(), i64x8::splat(i64::MIN)))
 }
 
 /// Reduce the packed unsigned 32-bit integers in a by maximum. Returns the maximum of all elements in a.
@@ -31619,7 +31615,7 @@ pub unsafe fn _mm512_mask_reduce_max_epu32(k: __mmask16, a: __m512i) -> u32 {
     simd_reduce_max(simd_select_bitmask(
         k,
         a.as_u32x16(),
-        _mm512_undefined_epi32().as_u32x16(),
+        _mm512_setzero_si512().as_u32x16(),
     ))
 }
 
@@ -31643,7 +31639,7 @@ pub unsafe fn _mm512_mask_reduce_max_epu64(k: __mmask8, a: __m512i) -> u64 {
     simd_reduce_max(simd_select_bitmask(
         k,
         a.as_u64x8(),
-        _mm512_set1_epi64(0).as_u64x8(),
+        _mm512_setzero_si512().as_u64x8(),
     ))
 }
 
@@ -31718,7 +31714,7 @@ pub unsafe fn _mm512_mask_reduce_min_epi32(k: __mmask16, a: __m512i) -> i32 {
     simd_reduce_min(simd_select_bitmask(
         k,
         a.as_i32x16(),
-        _mm512_undefined_epi32().as_i32x16(),
+        i32x16::splat(i32::MAX),
     ))
 }
 
@@ -31739,11 +31735,7 @@ pub unsafe fn _mm512_reduce_min_epi64(a: __m512i) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_reduce_min_epi64(k: __mmask8, a: __m512i) -> i64 {
-    simd_reduce_min(simd_select_bitmask(
-        k,
-        a.as_i64x8(),
-        _mm512_set1_epi64(0).as_i64x8(),
-    ))
+    simd_reduce_min(simd_select_bitmask(k, a.as_i64x8(), i64x8::splat(i64::MAX)))
 }
 
 /// Reduce the packed unsigned 32-bit integers in a by minimum. Returns the minimum of all elements in a.
@@ -31766,7 +31758,7 @@ pub unsafe fn _mm512_mask_reduce_min_epu32(k: __mmask16, a: __m512i) -> u32 {
     simd_reduce_min(simd_select_bitmask(
         k,
         a.as_u32x16(),
-        _mm512_undefined_epi32().as_u32x16(),
+        u32x16::splat(u32::MAX),
     ))
 }
 
@@ -31787,11 +31779,7 @@ pub unsafe fn _mm512_reduce_min_epu64(a: __m512i) -> u64 {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_reduce_min_epu64(k: __mmask8, a: __m512i) -> u64 {
-    simd_reduce_min(simd_select_bitmask(
-        k,
-        a.as_u64x8(),
-        _mm512_set1_epi64(0).as_u64x8(),
-    ))
+    simd_reduce_min(simd_select_bitmask(k, a.as_u64x8(), u64x8::splat(u64::MAX)))
 }
 
 /// Reduce the packed single-precision (32-bit) floating-point elements in a by minimum. Returns the minimum of all elements in a.
@@ -31862,11 +31850,7 @@ pub unsafe fn _mm512_reduce_and_epi32(a: __m512i) -> i32 {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_reduce_and_epi32(k: __mmask16, a: __m512i) -> i32 {
-    simd_reduce_and(simd_select_bitmask(
-        k,
-        a.as_i32x16(),
-        _mm512_set1_epi32(0xFF).as_i32x16(),
-    ))
+    simd_reduce_and(simd_select_bitmask(k, a.as_i32x16(), i32x16::splat(-1)))
 }
 
 /// Reduce the packed 64-bit integers in a by bitwise AND. Returns the bitwise AND of all elements in a.
@@ -31886,12 +31870,7 @@ pub unsafe fn _mm512_reduce_and_epi64(a: __m512i) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm512_mask_reduce_and_epi64(k: __mmask8, a: __m512i) -> i64 {
-    simd_reduce_and(simd_select_bitmask(
-        k,
-        a.as_i64x8(),
-        _mm512_set1_epi64(1 << 0 | 1 << 1 | 1 << 2 | 1 << 3 | 1 << 4 | 1 << 5 | 1 << 6 | 1 << 7)
-            .as_i64x8(),
-    ))
+    simd_reduce_and(simd_select_bitmask(k, a.as_i64x8(), i64x8::splat(-1)))
 }
 
 /// Reduce the packed 32-bit integers in a by bitwise OR. Returns the bitwise OR of all elements in a.
