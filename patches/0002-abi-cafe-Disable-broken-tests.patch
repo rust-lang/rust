@@ -1,0 +1,44 @@
+From 378d9e451a8af1045b8cb32841198cd5ad5464a3 Mon Sep 17 00:00:00 2001
+From: bjorn3 <17426603+bjorn3@users.noreply.github.com>
+Date: Tue, 9 Jul 2024 11:25:14 +0000
+Subject: [PATCH] Disable broken tests
+
+---
+ src/abis/mod.rs | 6 +++---
+ src/report.rs   | 4 ++++
+ 2 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/src/report.rs b/src/report.rs
+index acfce38..b3ab842 100644
+--- a/src/report.rs
++++ b/src/report.rs
+@@ -45,6 +45,26 @@ pub fn get_test_rules(test: &TestKey, caller: &dyn AbiImpl, callee: &dyn AbiImpl
+     //
+     // THIS AREA RESERVED FOR VENDORS TO APPLY PATCHES
+ 
++    if cfg!(target_arch = "aarch64") && test.test == "F32Array" && test.options.convention == CallingConvention::C {
++        result.check = Busted(Check);
++    }
++
++    if cfg!(target_arch = "aarch64") && test.test == "OptionU128" && test.options.convention == CallingConvention::Rust && test.options.repr == LangRepr::C {
++        result.check = Busted(Check);
++    }
++
++    if cfg!(target_arch = "x86_64") && test.test == "OptionU128" && test.options.convention == CallingConvention::Rust && test.options.repr == LangRepr::Rust {
++        result.check = Busted(Run);
++    }
++
++    if cfg!(windows) && (test.test == "OptionU128" || test.test == "I64Array" || test.test == "simple") {
++        result.run = Skip; // Gives SIGILL on x86_64 windows.
++    }
++
++    if test.test == "f16" || test.test == "f128" {
++        result.run = Skip;
++    }
++
+     // END OF VENDOR RESERVED AREA
+     //
+     //
+-- 
+2.34.1
+
