@@ -16,8 +16,8 @@ pub(crate) fn parse_lazy_static(
         ($method:ident $(,)* $($arg:expr),* $(,)*) => {
             match parser.$method($($arg,)*) {
                 Ok(val) => {
-                    if parser.psess.dcx.has_errors().is_some() {
-                        parser.psess.dcx.reset_err_count();
+                    if parser.psess.dcx().has_errors().is_some() {
+                        parser.psess.dcx().reset_err_count();
                         return None;
                     } else {
                         val
@@ -25,13 +25,12 @@ pub(crate) fn parse_lazy_static(
                 }
                 Err(err) => {
                     err.cancel();
-                    parser.psess.dcx.reset_err_count();
+                    parser.psess.dcx().reset_err_count();
                     return None;
                 }
             }
         }
     }
-
     while parser.token.kind != TokenKind::Eof {
         // Parse a `lazy_static!` item.
         let vis = parse_or!(parse_visibility, rustc_parse::parser::FollowedByType::No);

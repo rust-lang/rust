@@ -210,7 +210,9 @@ impl ParseSess {
             rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
             false,
         );
-        self.raw_psess.dcx.make_silent(fallback_bundle, None, false);
+        self.raw_psess
+            .dcx()
+            .make_silent(fallback_bundle, None, false);
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {
@@ -286,11 +288,11 @@ impl ParseSess {
     }
 
     pub(super) fn has_errors(&self) -> bool {
-        self.raw_psess.dcx.has_errors().is_some()
+        self.raw_psess.dcx().has_errors().is_some()
     }
 
     pub(super) fn reset_errors(&self) {
-        self.raw_psess.dcx.reset_err_count();
+        self.raw_psess.dcx().reset_err_count();
     }
 }
 

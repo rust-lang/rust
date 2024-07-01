@@ -177,6 +177,17 @@ impl<'a> Rewrite for SegmentParam<'a> {
     }
 }
 
+impl Rewrite for ast::PreciseCapturingArg {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        match self {
+            ast::PreciseCapturingArg::Lifetime(lt) => lt.rewrite(context, shape),
+            ast::PreciseCapturingArg::Arg(p, _) => {
+                rewrite_path(context, PathContext::Type, &None, p, shape)
+            }
+        }
+    }
+}
+
 impl Rewrite for ast::AssocItemConstraint {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         use ast::AssocItemConstraintKind::{Bound, Equality};
@@ -564,6 +575,9 @@ impl Rewrite for ast::GenericBound {
                     .map(|s| format!("{constness}{asyncness}{polarity}{s}"))
                     .map(|s| if has_paren { format!("({})", s) } else { s })
             }
+            ast::GenericBound::Use(ref args, span) => {
+                overflow::rewrite_with_angle_brackets(context, "use", args.iter(), shape, span)
+            }
             ast::GenericBound::Outlives(ref lifetime) => lifetime.rewrite(context, shape),
         }
     }
@@ -847,11 +861,7 @@ impl Rewrite for ast::Ty {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
             }
             ast::TyKind::ImplicitSelf => Some(String::from("")),
-            ast::TyKind::ImplTrait(_, ref it, ref captures) => {
-                // FIXME(precise_capturing): Implement formatting.
-                if captures.is_some() {
-                    return None;
-                }
+            ast::TyKind::ImplTrait(_, ref it) => {
                 // Empty trait is not a parser error.
                 if it.is_empty() {
                     return Some("impl".to_owned());
@@ -935,7 +945,7 @@ fn rewrite_bare_fn(
 fn is_generic_bounds_in_order(generic_bounds: &[ast::GenericBound]) -> bool {
     let is_trait = |b: &ast::GenericBound| match b {
         ast::GenericBound::Outlives(..) => false,
-        ast::GenericBound::Trait(..) => true,
+        ast::GenericBound::Trait(..) | ast::GenericBound::Use(..) => true,
     };
     let is_lifetime = |b: &ast::GenericBound| !is_trait(b);
     let last_trait_index = generic_bounds.iter().rposition(is_trait);
@@ -969,7 +979,8 @@ fn join_bounds_inner(
     let generic_bounds_in_order = is_generic_bounds_in_order(items);
     let is_bound_extendable = |s: &str, b: &ast::GenericBound| match b {
         ast::GenericBound::Outlives(..) => true,
-        ast::GenericBound::Trait(..) => last_line_extendable(s),
+        // We treat `use<>` like a trait bound here.
+        ast::GenericBound::Trait(..) | ast::GenericBound::Use(..) => last_line_extendable(s),
     };
 
     // Whether a GenericBound item is a PathSegment segment that includes internal array
@@ -991,6 +1002,7 @@ fn join_bounds_inner(
                 }
             }
         }
+        ast::GenericBound::Use(args, _) => args.len() > 1,
         _ => false,
     };
 
@@ -1114,8 +1126,7 @@ fn join_bounds_inner(
 
 pub(crate) fn opaque_ty(ty: &Option<ptr::P<ast::Ty>>) -> Option<&ast::GenericBounds> {
     ty.as_ref().and_then(|t| match &t.kind {
-        // FIXME(precise_capturing): Implement support here
-        ast::TyKind::ImplTrait(_, bounds, _) => Some(bounds),
+        ast::TyKind::ImplTrait(_, bounds) => Some(bounds),
         _ => None,
     })
 }

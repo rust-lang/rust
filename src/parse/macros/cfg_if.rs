@@ -67,7 +67,7 @@ fn parse_cfg_if_inner<'a>(
                 Ok(None) => continue,
                 Err(err) => {
                     err.cancel();
-                    parser.psess.dcx.reset_err_count();
+                    parser.psess.dcx().reset_err_count();
                     return Err(
                         "Expected item inside cfg_if block, but failed to parse it as an item",
                     );
