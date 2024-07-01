@@ -1008,6 +1008,11 @@ impl flags::AnalysisStats {
                     type_hints: true,
                     discriminant_hints: ide::DiscriminantHints::Always,
                     parameter_hints: true,
+                    generic_parameter_hints: ide::GenericParameterHints {
+                        type_hints: true,
+                        lifetime_hints: true,
+                        const_hints: true,
+                    },
                     chaining_hints: true,
                     adjustment_hints: ide::AdjustmentHints::Always,
                     adjustment_hints_mode: ide::AdjustmentHintsMode::Postfix,

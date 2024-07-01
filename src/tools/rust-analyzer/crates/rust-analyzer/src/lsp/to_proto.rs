@@ -501,7 +501,9 @@ pub(crate) fn inlay_hint(
         padding_left: Some(inlay_hint.pad_left),
         padding_right: Some(inlay_hint.pad_right),
         kind: match inlay_hint.kind {
-            InlayKind::Parameter => Some(lsp_types::InlayHintKind::PARAMETER),
+            InlayKind::Parameter | InlayKind::GenericParameter => {
+                Some(lsp_types::InlayHintKind::PARAMETER)
+            }
             InlayKind::Type | InlayKind::Chaining => Some(lsp_types::InlayHintKind::TYPE),
             _ => None,
         },

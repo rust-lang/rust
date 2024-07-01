@@ -10,9 +10,9 @@ use dirs::config_dir;
 use flycheck::{CargoOptions, FlycheckConfig};
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
-    HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayFieldsToResolve,
-    InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
-    Snippet, SnippetScope, SourceRootId,
+    GenericParameterHints, HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat,
+    InlayFieldsToResolve, InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig,
+    MemoryLayoutHoverRenderKind, Snippet, SnippetScope, SourceRootId,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -509,6 +509,12 @@ config_data! {
         inlayHints_expressionAdjustmentHints_hideOutsideUnsafe: bool = false,
         /// Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
         inlayHints_expressionAdjustmentHints_mode: AdjustmentHintsModeDef = AdjustmentHintsModeDef::Prefix,
+        /// Whether to show const generic parameter name inlay hints.
+        inlayHints_genericParameterHints_const_enable: bool= false,
+        /// Whether to show generic lifetime parameter name inlay hints.
+        inlayHints_genericParameterHints_lifetime_enable: bool = true,
+        /// Whether to show generic type parameter name inlay hints.
+        inlayHints_genericParameterHints_type_enable: bool = false,
         /// Whether to show implicit drop hints.
         inlayHints_implicitDrops_enable: bool                      = false,
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
@@ -1391,6 +1397,11 @@ impl Config {
             render_colons: self.inlayHints_renderColons().to_owned(),
             type_hints: self.inlayHints_typeHints_enable().to_owned(),
             parameter_hints: self.inlayHints_parameterHints_enable().to_owned(),
+            generic_parameter_hints: GenericParameterHints {
+                type_hints: self.inlayHints_genericParameterHints_type_enable().to_owned(),
+                lifetime_hints: self.inlayHints_genericParameterHints_lifetime_enable().to_owned(),
+                const_hints: self.inlayHints_genericParameterHints_const_enable().to_owned(),
+            },
             chaining_hints: self.inlayHints_chainingHints_enable().to_owned(),
             discriminant_hints: match self.inlayHints_discriminantHints_enable() {
                 DiscriminantHintsDef::Always => ide::DiscriminantHints::Always,
@@ -2872,6 +2883,19 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Always show all discriminant hints.",
                 "Never show discriminant hints.",
                 "Only show discriminant hints on fieldless enum variants."
+            ]
+        },
+        "GenericParameterHintsDef" => set! {
+            "type": "string",
+            "enum": [
+                "always",
+                "never",
+                "const_only"
+            ],
+            "enumDescriptions": [
+                "Always show generic parameter hints.",
+                "Never show generic parameter hints.",
+                "Only show const generic parameter hints."
             ]
         },
         "AdjustmentHintsModeDef" => set! {
