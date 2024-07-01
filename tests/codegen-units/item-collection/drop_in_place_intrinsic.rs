@@ -1,6 +1,7 @@
 //
 //@ compile-flags:-Zprint-mono-items=eager
 //@ compile-flags:-Zinline-in-all-cgus
+//@ compile-flags:-Zinline-mir=no
 
 #![feature(start)]
 

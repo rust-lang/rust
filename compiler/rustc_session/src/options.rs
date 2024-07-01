@@ -1766,6 +1766,8 @@ options! {
         "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable MIR inlining (default: no)"),
+    inline_mir_forwarder_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "inlining threshold when the caller is a simple forwarding function (default: 30)"),
     inline_mir_hint_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
         "inlining threshold for functions with inline hint (default: 100)"),
     inline_mir_preserve_debug: Option<bool> = (None, parse_opt_bool, [TRACKED],
