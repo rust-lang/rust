@@ -4,7 +4,7 @@ use rustc_hir as hir;
 
 use smallvec::SmallVec;
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     pub(super) fn lower_block(
         &mut self,
         b: &Block,

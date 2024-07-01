@@ -131,10 +131,16 @@ rustc_queries! {
         desc { "getting the resolver outputs" }
     }
 
-    query resolver_for_lowering_raw(_: ()) -> (&'tcx (ty::ResolverAstLowering, Steal<Lrc<ast::Crate>>), &'tcx ty::ResolverGlobalCtxt) {
+    query resolver_for_lowering_raw(_: ()) -> (&'tcx (ty::ResolverAstLowering, ast::Crate), &'tcx ty::ResolverGlobalCtxt) {
         eval_always
         no_hash
         desc { "getting the resolver for lowering" }
+    }
+
+    query index_ast(_: ()) -> &'tcx IndexVec<LocalDefId, ast::AstOwner<'tcx>> {
+        eval_always
+        no_hash
+        desc { "getting the AST for lowering" }
     }
 
     /// Return the span for a definition.
@@ -145,6 +151,11 @@ rustc_queries! {
         // Accesses untracked data
         eval_always
         desc { "getting the source span" }
+    }
+
+    query lower_to_hir(key: LocalDefId) -> hir::MaybeOwner<'tcx> {
+        eval_always
+        desc { |tcx| "lower HIR for `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
     /// Represents crate as a whole (as distinct from the top-level crate module).

@@ -12,7 +12,7 @@ use rustc_span::{
 };
 use std::borrow::Cow;
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {
         // Never call the const constructor of `fmt::Arguments` if the
         // format_args!() had any arguments _before_ flattening/inlining.
@@ -233,7 +233,7 @@ enum ArgumentType {
 ///     <core::fmt::Argument>::new_…(arg)
 /// ```
 fn make_argument<'hir>(
-    ctx: &mut LoweringContext<'_, 'hir>,
+    ctx: &mut LoweringContext<'hir>,
     sp: Span,
     arg: &'hir hir::Expr<'hir>,
     ty: ArgumentType,
@@ -279,7 +279,7 @@ fn make_argument<'hir>(
 ///     <core::fmt::rt::Count>::Implied
 /// ```
 fn make_count<'hir>(
-    ctx: &mut LoweringContext<'_, 'hir>,
+    ctx: &mut LoweringContext<'hir>,
     sp: Span,
     count: &Option<FormatCount>,
     argmap: &mut FxIndexMap<(usize, ArgumentType), Option<Span>>,
@@ -332,7 +332,7 @@ fn make_count<'hir>(
 ///     )
 /// ```
 fn make_format_spec<'hir>(
-    ctx: &mut LoweringContext<'_, 'hir>,
+    ctx: &mut LoweringContext<'hir>,
     sp: Span,
     placeholder: &FormatPlaceholder,
     argmap: &mut FxIndexMap<(usize, ArgumentType), Option<Span>>,
@@ -391,7 +391,7 @@ fn make_format_spec<'hir>(
 }
 
 fn expand_format_args<'hir>(
-    ctx: &mut LoweringContext<'_, 'hir>,
+    ctx: &mut LoweringContext<'hir>,
     macsp: Span,
     fmt: &FormatArgs,
     allow_const: bool,

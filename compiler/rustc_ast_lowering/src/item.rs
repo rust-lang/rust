@@ -1,18 +1,15 @@
 use super::errors::{InvalidAbi, InvalidAbiReason, InvalidAbiSuggestion, MisplacedRelaxTraitBound};
 use super::ResolverAstLoweringExt;
-use super::{AstOwner, ImplTraitContext, ImplTraitPosition};
+use super::{ImplTraitContext, ImplTraitPosition};
 use super::{FnDeclKind, LoweringContext, ParamMode};
 
 use rustc_ast::ptr::P;
-use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::PredicateOrigin;
-use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, sym, Ident};
@@ -22,11 +19,9 @@ use smallvec::{smallvec, SmallVec};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
-pub(super) struct ItemLowerer<'a, 'hir> {
+pub(super) struct ItemLowerer<'hir> {
     pub(super) tcx: TyCtxt<'hir>,
     pub(super) resolver: &'hir ResolverAstLowering,
-    pub(super) ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
-    pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<'hir>>,
 }
 
 /// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
@@ -50,40 +45,24 @@ fn add_ty_alias_where_clause(
     generics.where_clause.span = where_clause.span;
 }
 
-impl<'a, 'hir> ItemLowerer<'a, 'hir> {
+impl<'hir> ItemLowerer<'hir> {
     fn with_lctx(
         &mut self,
         owner: NodeId,
-        f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
-    ) {
-        let mut lctx = LoweringContext::new(self.tcx, self.resolver, self.ast_index);
-        lctx.with_hir_id_owner(owner, |lctx| f(lctx));
+        f: impl FnOnce(&mut LoweringContext<'hir>) -> hir::OwnerNode<'hir>,
+    ) -> hir::MaybeOwner<'hir> {
+        let mut lctx = LoweringContext::new(self.tcx, self.resolver, owner);
+        
+        let item = f(&mut lctx);
+        debug_assert_eq!(lctx.current_hir_id_owner, item.def_id());
+        
+        let info = lctx.make_owner_info(item);
 
-        for (def_id, info) in lctx.children {
-            let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-            debug_assert!(matches!(owner, hir::MaybeOwner::Phantom));
-            *owner = info;
-        }
-    }
-
-    pub(super) fn lower_node(&mut self, def_id: LocalDefId) -> hir::MaybeOwner<'hir> {
-        let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-        if let hir::MaybeOwner::Phantom = owner {
-            let node = self.ast_index[def_id];
-            match node {
-                AstOwner::NonOwner => {}
-                AstOwner::Crate(c) => self.lower_crate(c),
-                AstOwner::Item(item) => self.lower_item(item),
-                AstOwner::AssocItem(item, ctxt) => self.lower_assoc_item(item, ctxt),
-                AstOwner::ForeignItem(item) => self.lower_foreign_item(item),
-            }
-        }
-
-        self.owners[def_id]
+        hir::MaybeOwner::Owner(self.tcx.hir_arena.alloc(info))
     }
 
     #[instrument(level = "debug", skip(self, c))]
-    fn lower_crate(&mut self, c: &Crate) {
+    pub(super) fn lower_crate(&mut self, c: &Crate) -> hir::MaybeOwner<'hir> {
         debug_assert_eq!(self.resolver.node_id_to_def_id[&CRATE_NODE_ID], CRATE_DEF_ID);
         self.with_lctx(CRATE_NODE_ID, |lctx| {
             let module = lctx.lower_mod(&c.items, &c.spans);
@@ -93,23 +72,24 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn lower_item(&mut self, item: &Item) {
+    pub(super) fn lower_item(&mut self, item: &Item) -> hir::MaybeOwner<'hir> {
         self.with_lctx(item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
     }
 
-    fn lower_assoc_item(&mut self, item: &AssocItem, ctxt: AssocCtxt) {
-        let def_id = self.resolver.node_id_to_def_id[&item.id];
-        let parent_id = self.tcx.local_parent(def_id);
-        let parent_hir = self.lower_node(parent_id).unwrap();
-        self.with_lctx(item.id, |lctx| lctx.lower_assoc_item(item, ctxt, parent_hir))
+    pub(super) fn lower_trait_item(&mut self, item: &AssocItem) -> hir::MaybeOwner<'hir> {
+        self.with_lctx(item.id, |lctx| hir::OwnerNode::TraitItem(lctx.lower_trait_item(item)))
     }
 
-    fn lower_foreign_item(&mut self, item: &ForeignItem) {
+    pub(super) fn lower_impl_item(&mut self, item: &AssocItem) -> hir::MaybeOwner<'hir> {
+        self.with_lctx(item.id, |lctx| hir::OwnerNode::ImplItem(lctx.lower_impl_item(item)))
+    }
+
+    pub(super) fn lower_foreign_item(&mut self, item: &ForeignItem) -> hir::MaybeOwner<'hir> {
         self.with_lctx(item.id, |lctx| hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item)))
     }
 }
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     pub(super) fn lower_mod(
         &mut self,
         items: &[P<Item>],
@@ -598,58 +578,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_assoc_item(
-        &mut self,
-        item: &AssocItem,
-        ctxt: AssocCtxt,
-        parent_hir: &'hir hir::OwnerInfo<'hir>,
-    ) -> hir::OwnerNode<'hir> {
-        // Evaluate with the lifetimes in `params` in-scope.
-        // This is used to track which lifetimes have already been defined,
-        // and which need to be replicated when lowering an async fn.
-
-        let parent_item = parent_hir.node().expect_item();
-        let constness = match parent_item.kind {
-            hir::ItemKind::Impl(impl_) => {
-                self.is_in_trait_impl = impl_.of_trait.is_some();
-                // N.B. the impl should always lower to methods that have `const host: bool` params if the trait
-                // is const. It doesn't matter whether the `impl` itself is const. Disallowing const fn from
-                // calling non-const impls are done through associated types.
-                if let Some(def_id) = impl_.of_trait.and_then(|tr| tr.trait_def_id()) {
-                    if let Some(local_def) = def_id.as_local() {
-                        match &self.ast_index[local_def] {
-                            AstOwner::Item(ast::Item { attrs, .. }) => attrs
-                                .iter()
-                                .find(|attr| attr.has_name(sym::const_trait))
-                                .map_or(Const::No, |attr| Const::Yes(attr.span)),
-                            _ => Const::No,
-                        }
-                    } else {
-                        self.tcx
-                            .get_attr(def_id, sym::const_trait)
-                            .map_or(Const::No, |attr| Const::Yes(attr.span))
-                    }
-                } else {
-                    Const::No
-                }
-            }
-            hir::ItemKind::Trait(_, _, _, _, _) => parent_hir
-                .attrs
-                .get(parent_item.hir_id().local_id)
-                .iter()
-                .find(|attr| attr.has_name(sym::const_trait))
-                .map_or(Const::No, |attr| Const::Yes(attr.span)),
-            kind => {
-                span_bug!(item.span, "assoc item has unexpected kind of parent: {}", kind.descr())
-            }
-        };
-
-        match ctxt {
-            AssocCtxt::Trait => hir::OwnerNode::TraitItem(self.lower_trait_item(item, constness)),
-            AssocCtxt::Impl => hir::OwnerNode::ImplItem(self.lower_impl_item(item, constness)),
-        }
-    }
-
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
         let hir_id = self.lower_node_id(i.id);
         let owner_id = hir_id.expect_owner();
@@ -782,8 +710,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_trait_item(
         &mut self,
         i: &AssocItem,
-        trait_constness: Const,
     ) -> &'hir hir::TraitItem<'hir> {
+        let def_id = self.resolver.node_id_to_def_id[&i.id];
+        let parent_id = self.tcx.local_parent(def_id);
+        let constness = self.tcx.get_attr(parent_id, sym::const_trait).map_or(Const::No, |attr| Const::Yes(attr.span));
+
         let hir_id = self.lower_node_id(i.id);
         self.lower_attrs(hir_id, &i.attrs);
         let trait_item_def_id = hir_id.expect_owner();
@@ -814,7 +745,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_kind,
-                    trait_constness,
+                    constness,
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)), false)
             }
@@ -833,7 +764,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_kind,
-                    trait_constness,
+                    constness,
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)), true)
             }
@@ -919,8 +850,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_impl_item(
         &mut self,
         i: &AssocItem,
-        constness_of_trait: Const,
     ) -> &'hir hir::ImplItem<'hir> {
+        let def_id = self.resolver.node_id_to_def_id[&i.id];
+        let parent_id = self.tcx.local_parent(def_id);
+        let parent_item = self.tcx.hir().expect_item(parent_id);
+        let mut constness_of_trait = Const::No;
+        match parent_item.kind {
+            hir::ItemKind::Impl(impl_) => {
+                self.is_in_trait_impl = impl_.of_trait.is_some();
+                // N.B. the impl should always lower to methods that have `const host: bool` params if the trait
+                // is const. It doesn't matter whether the `impl` itself is const. Disallowing const fn from
+                // calling non-const impls are done through associated types.
+                if let Some(def_id) = impl_.of_trait.and_then(|tr| tr.trait_def_id()) {
+                    constness_of_trait = self.tcx.get_attr(def_id, sym::const_trait).map_or(Const::No, |attr| Const::Yes(attr.span))
+                }
+            }
+            _ => ()
+        }
+
         // Since `default impl` is not yet implemented, this is always true in impls.
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
@@ -1178,7 +1125,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub fn lower_coroutine_body_with_moved_arguments(
         &mut self,
         decl: &FnDecl,
-        lower_body: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::Expr<'hir>,
+        lower_body: impl FnOnce(&mut LoweringContext<'hir>) -> hir::Expr<'hir>,
         fn_decl_span: Span,
         body_span: Span,
         coroutine_kind: CoroutineKind,
@@ -1317,7 +1264,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             parameters.push(new_parameter);
         }
 
-        let mkbody = |this: &mut LoweringContext<'_, 'hir>| {
+        let mkbody = |this: &mut LoweringContext<'hir>| {
             // Create a block from the user's function body:
             let user_body = lower_body(this);
 
@@ -1605,8 +1552,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let const_expr_id = self.next_id();
             let bool_id = self.next_id();
 
-            self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
-            self.children.push((anon_const, hir::MaybeOwner::NonOwner(const_id)));
+            self.children.insert(def_id, hir::MaybeOwner::NonOwner(hir_id));
+            self.children.insert(anon_const, hir::MaybeOwner::NonOwner(const_id));
 
             let const_body = self.lower_body(|this| {
                 (
