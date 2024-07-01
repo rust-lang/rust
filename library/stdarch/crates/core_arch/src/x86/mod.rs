@@ -894,6 +894,9 @@ mod f16c;
 pub use self::f16c::*;
 
 mod avx512bf16;
-
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avx512bf16::*;
+
+mod avxneconvert;
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub use self::avxneconvert::*;

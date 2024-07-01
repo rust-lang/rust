@@ -758,7 +758,7 @@ fn equate(
         (&Type::ConstPtr(&Type::PrimSigned(8)), "char const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(32)), "__int32 const*" | "int const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(64)), "__int64 const*") => {}
-        (&Type::ConstPtr(&Type::PrimUnsigned(16)), "unsigned short const*") => {}
+        (&Type::ConstPtr(&Type::PrimUnsigned(16)), "unsigned short const*" | "__bf16 const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(32)), "unsigned int const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(64)), "unsigned __int64 const*") => {}
 

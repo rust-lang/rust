@@ -1135,79 +1135,17 @@
 </p></details>
 
 
-<details><summary>["AVX_IFMA"]</summary><p>
-
-  * [ ] [`_mm256_madd52hi_avx_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_madd52hi_avx_epu64)
-  * [ ] [`_mm256_madd52lo_avx_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_madd52lo_avx_epu64)
-  * [ ] [`_mm_madd52hi_avx_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_madd52hi_avx_epu64)
-  * [ ] [`_mm_madd52lo_avx_epu64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_madd52lo_avx_epu64)
-</p></details>
-
-
 <details><summary>["AVX_NE_CONVERT"]</summary><p>
 
-  * [ ] [`_mm256_bcstnebf16_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_bcstnebf16_ps)
   * [ ] [`_mm256_bcstnesh_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_bcstnesh_ps)
-  * [ ] [`_mm256_cvtneebf16_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneebf16_ps)
   * [ ] [`_mm256_cvtneeph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneeph_ps)
-  * [ ] [`_mm256_cvtneobf16_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneobf16_ps)
   * [ ] [`_mm256_cvtneoph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneoph_ps)
   * [ ] [`_mm256_cvtneps_avx_pbh`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneps_avx_pbh)
-  * [ ] [`_mm_bcstnebf16_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_bcstnebf16_ps)
   * [ ] [`_mm_bcstnesh_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_bcstnesh_ps)
-  * [ ] [`_mm_cvtneebf16_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneebf16_ps)
   * [ ] [`_mm_cvtneeph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneeph_ps)
-  * [ ] [`_mm_cvtneobf16_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneobf16_ps)
   * [ ] [`_mm_cvtneoph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneoph_ps)
   * [ ] [`_mm_cvtneps_avx_pbh`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneps_avx_pbh)
   * [ ] [`_mm_cvtneps_pbh`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneps_pbh)
-</p></details>
-
-
-<details><summary>["AVX_VNNI"]</summary><p>
-
-  * [ ] [`_mm256_dpbusd_avx_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpbusd_avx_epi32)
-  * [ ] [`_mm256_dpbusds_avx_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpbusds_avx_epi32)
-  * [ ] [`_mm256_dpwssd_avx_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpwssd_avx_epi32)
-  * [ ] [`_mm256_dpwssds_avx_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpwssds_avx_epi32)
-  * [ ] [`_mm_dpbusd_avx_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpbusd_avx_epi32)
-  * [ ] [`_mm_dpbusds_avx_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpbusds_avx_epi32)
-  * [ ] [`_mm_dpwssd_avx_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpwssd_avx_epi32)
-  * [ ] [`_mm_dpwssds_avx_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpwssds_avx_epi32)
-</p></details>
-
-
-<details><summary>["AVX_VNNI_INT16"]</summary><p>
-
-  * [ ] [`_mm256_dpwsud_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpwsud_epi32)
-  * [ ] [`_mm256_dpwsuds_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpwsuds_epi32)
-  * [ ] [`_mm256_dpwusd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpwusd_epi32)
-  * [ ] [`_mm256_dpwusds_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpwusds_epi32)
-  * [ ] [`_mm256_dpwuud_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpwuud_epi32)
-  * [ ] [`_mm256_dpwuuds_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpwuuds_epi32)
-  * [ ] [`_mm_dpwsud_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpwsud_epi32)
-  * [ ] [`_mm_dpwsuds_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpwsuds_epi32)
-  * [ ] [`_mm_dpwusd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpwusd_epi32)
-  * [ ] [`_mm_dpwusds_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpwusds_epi32)
-  * [ ] [`_mm_dpwuud_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpwuud_epi32)
-  * [ ] [`_mm_dpwuuds_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpwuuds_epi32)
-</p></details>
-
-
-<details><summary>["AVX_VNNI_INT8"]</summary><p>
-
-  * [ ] [`_mm256_dpbssd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpbssd_epi32)
-  * [ ] [`_mm256_dpbssds_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpbssds_epi32)
-  * [ ] [`_mm256_dpbsud_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpbsud_epi32)
-  * [ ] [`_mm256_dpbsuds_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpbsuds_epi32)
-  * [ ] [`_mm256_dpbuud_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpbuud_epi32)
-  * [ ] [`_mm256_dpbuuds_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dpbuuds_epi32)
-  * [ ] [`_mm_dpbssd_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpbssd_epi32)
-  * [ ] [`_mm_dpbssds_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpbssds_epi32)
-  * [ ] [`_mm_dpbsud_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpbsud_epi32)
-  * [ ] [`_mm_dpbsuds_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpbsuds_epi32)
-  * [ ] [`_mm_dpbuud_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpbuud_epi32)
-  * [ ] [`_mm_dpbuuds_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dpbuuds_epi32)
 </p></details>
 
 
