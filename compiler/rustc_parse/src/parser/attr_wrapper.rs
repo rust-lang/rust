@@ -233,9 +233,9 @@ impl<'a> Parser<'a> {
         // 1. Our target doesn't support tokens at all (e.g we're parsing an `NtIdent`)
         //    so there's nothing for us to do.
         // 2. Our target already has tokens set (e.g. we've parsed something
-        // like `#[my_attr] $item`. The actual parsing code takes care of prepending
-        // any attributes to the nonterminal, so we don't need to modify the
-        // already captured tokens.
+        //    like `#[my_attr] $item`). The actual parsing code takes care of
+        //    prepending any attributes to the nonterminal, so we don't need to
+        //    modify the already captured tokens.
         // Note that this check is independent of `force_collect`- if we already
         // have tokens, or can't even store them, then there's never a need to
         // force collection of new tokens.
