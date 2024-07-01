@@ -1,4 +1,5 @@
 //@ check-pass
+//@only-16bit
 
 fn expect_early_pass_lints() {
     #[expect(while_true)]

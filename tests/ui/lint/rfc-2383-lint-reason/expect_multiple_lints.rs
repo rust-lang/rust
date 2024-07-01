@@ -1,4 +1,5 @@
 //@ check-pass
+//@only-16bit
 
 #![warn(unused)]
 

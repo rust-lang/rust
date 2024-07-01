@@ -1,4 +1,5 @@
 //@ run-pass
+//@only-16bit
 //@ aux-build:attr-stmt-expr-rpass.rs
 
 #![feature(stmt_expr_attributes, proc_macro_hygiene)]

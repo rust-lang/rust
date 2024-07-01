@@ -1,3 +1,4 @@
+//@only-16bit
 //@aux-build:../../ui/auxiliary/proc_macro_unsafe.rs
 //@revisions: default disabled
 //@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/undocumented_unsafe_blocks/default

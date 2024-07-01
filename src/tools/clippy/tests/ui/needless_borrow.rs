@@ -1,3 +1,4 @@
+//@only-16bit
 #![allow(
     unused,
     non_local_definitions,

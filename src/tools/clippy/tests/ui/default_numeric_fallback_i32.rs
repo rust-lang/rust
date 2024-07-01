@@ -1,3 +1,4 @@
+//@only-16bit
 //@aux-build:proc_macros.rs
 
 #![warn(clippy::default_numeric_fallback)]

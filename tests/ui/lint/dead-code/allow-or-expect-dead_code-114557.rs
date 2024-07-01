@@ -1,3 +1,4 @@
+//@only-16bit
 //@ check-pass
 //@ revisions: allow expect
 

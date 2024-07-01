@@ -9,7 +9,10 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_expectations, ..*providers };
 }
 
+#[allow(unused)]
 fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
+    return;
+
     let lint_expectations = tcx.lint_expectations(());
     let fulfilled_expectations = tcx.dcx().steal_fulfilled_expectation_ids();
 

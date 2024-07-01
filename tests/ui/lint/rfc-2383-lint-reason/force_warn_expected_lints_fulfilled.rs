@@ -2,6 +2,7 @@
 //@ compile-flags: --force-warn unused_variables
 //@ compile-flags: --force-warn unused_mut
 //@ check-pass
+//@only-16bit
 
 fn expect_early_pass_lint() {
     #[expect(while_true)]

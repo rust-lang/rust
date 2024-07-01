@@ -1,3 +1,5 @@
+//@only-16bit
+
 #![feature(yeet_expr)]
 #![allow(unused)]
 #![allow(

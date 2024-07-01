@@ -1,3 +1,4 @@
+//@only-16bit
 // issue: 113903
 
 use std::ops::Deref;

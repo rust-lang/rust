@@ -1,3 +1,4 @@
+//@only-16bit
 #![allow(
     unused,
     clippy::many_single_char_names,

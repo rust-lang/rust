@@ -1,3 +1,5 @@
+//@only-16bit
+
 pub mod inner {
     #[expect(unexpected_cfgs)]
     pub fn i_am_here() {

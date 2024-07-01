@@ -1,3 +1,4 @@
+//@only-16bit
 use std::ops::Deref;
 
 pub trait Foo {

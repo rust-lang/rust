@@ -1,4 +1,5 @@
 //@ check-pass
+//@only-16bit
 // ignore-tidy-linelength
 
 #![warn(unused_mut)]

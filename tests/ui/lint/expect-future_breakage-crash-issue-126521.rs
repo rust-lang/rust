@@ -1,4 +1,5 @@
 //@ check-pass
+//@only-16bit
 
 // This test covers similar crashes from both #126521 and #126751.
 

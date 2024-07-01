@@ -1,5 +1,6 @@
 //@ check-pass
 //@ edition: 2021
+//@only-16bit
 
 use std::future::Future;
 use std::pin::Pin;

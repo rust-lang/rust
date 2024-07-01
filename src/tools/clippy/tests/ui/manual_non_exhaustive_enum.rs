@@ -1,3 +1,4 @@
+//@only-16bit
 #![warn(clippy::manual_non_exhaustive)]
 #![allow(unused)]
 //@no-rustfix

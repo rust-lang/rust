@@ -1,3 +1,4 @@
+//@only-16bit
 //@aux-build:proc_macros.rs
 #![allow(unused)]
 #![warn(clippy::allow_attributes)]

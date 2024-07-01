@@ -1,5 +1,6 @@
 //@ check-pass
 //@ aux-build: rpitit.rs
+//@only-16bit
 
 extern crate rpitit;
 

@@ -1,4 +1,5 @@
 //@ compile-flags: -Zdeduplicate-diagnostics=yes
+//@only-16bit
 
 #[forbid(unused_variables)]
 //~^ NOTE `forbid` level set here

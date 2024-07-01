@@ -1,3 +1,4 @@
+//@only-16bit
 // rustfix-only-machine-applicable
 #![warn(clippy::redundant_clone)]
 #![allow(

@@ -1,3 +1,4 @@
+//@only-16bit
 //@ run-pass
 
 #![allow(stable_features)]

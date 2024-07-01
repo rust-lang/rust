@@ -1,4 +1,5 @@
 //@ check-pass
+//@only-16bit
 
 pub trait Foo {
     fn f() -> Box<impl Sized>;

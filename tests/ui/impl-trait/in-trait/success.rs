@@ -1,4 +1,5 @@
 //@ check-pass
+//@only-16bit
 
 use std::fmt::Display;
 

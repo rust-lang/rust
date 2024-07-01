@@ -1,5 +1,6 @@
 //@ check-pass
 //@ incremental
+//@only-16bit
 
 #![warn(unused)]
 

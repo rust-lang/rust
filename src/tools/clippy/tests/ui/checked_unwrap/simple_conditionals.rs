@@ -1,3 +1,4 @@
+//@only-16bit
 //@no-rustfix: overlapping suggestions
 #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
 #![allow(

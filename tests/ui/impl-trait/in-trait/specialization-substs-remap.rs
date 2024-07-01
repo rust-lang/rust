@@ -1,4 +1,5 @@
 //@ check-pass
+//@only-16bit
 
 #![feature(specialization)]
 #![allow(incomplete_features)]

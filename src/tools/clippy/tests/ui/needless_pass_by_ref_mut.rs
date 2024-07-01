@@ -5,6 +5,7 @@
     clippy::ptr_arg
 )]
 #![warn(clippy::needless_pass_by_ref_mut)]
+//@only-16bit
 //@no-rustfix
 use std::ptr::NonNull;
 

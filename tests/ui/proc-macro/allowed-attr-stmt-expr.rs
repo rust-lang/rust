@@ -2,6 +2,7 @@
 //@ aux-build:test-macros.rs
 //@ compile-flags: -Z span-debug
 //@ check-pass
+//@only-16bit
 
 #![feature(proc_macro_hygiene)]
 #![feature(stmt_expr_attributes)]

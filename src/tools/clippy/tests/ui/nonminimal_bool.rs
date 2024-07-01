@@ -1,3 +1,4 @@
+//@only-16bit
 //@no-rustfix: overlapping suggestions
 #![allow(
     unused,

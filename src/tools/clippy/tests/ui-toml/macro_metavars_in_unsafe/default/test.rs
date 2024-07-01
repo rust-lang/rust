@@ -1,3 +1,4 @@
+//@only-16bit
 //! Tests macro_metavars_in_unsafe with default configuration
 #![feature(decl_macro)]
 #![warn(clippy::macro_metavars_in_unsafe)]

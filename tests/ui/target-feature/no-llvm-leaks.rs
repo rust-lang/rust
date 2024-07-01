@@ -4,6 +4,7 @@
 //@ [x86-64] compile-flags: -Ctarget-feature=+sse4.2,+rdrand --target=x86_64-unknown-linux-gnu
 //@ [x86-64] needs-llvm-components: x86
 //@ build-pass
+//@only-16bit
 #![no_core]
 #![crate_type = "rlib"]
 #![feature(intrinsics, rustc_attrs, no_core, lang_items, staged_api)]

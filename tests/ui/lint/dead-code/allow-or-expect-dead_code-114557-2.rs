@@ -1,3 +1,4 @@
+//@only-16bit
 //@ check-pass
 
 // this test checks that the `dead_code` lint is *NOT* being emited

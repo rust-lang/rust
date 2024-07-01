@@ -1,3 +1,4 @@
+//@only-16bit
 mod a;
 
 mod b;

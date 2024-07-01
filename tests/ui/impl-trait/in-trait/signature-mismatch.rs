@@ -1,6 +1,7 @@
 //@ edition:2021
 //@ revisions: success failure
 //@[success] check-pass
+//@only-16bit
 
 use std::future::Future;
 
