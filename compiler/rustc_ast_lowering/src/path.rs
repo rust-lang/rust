@@ -19,7 +19,7 @@ use super::{
     LifetimeRes, LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn lower_qpath(
         &mut self,
@@ -40,8 +40,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.lower_ty_alloc(&q.ty, ImplTraitContext::Disallowed(ImplTraitPosition::Path))
             });
 
-        let partial_res =
-            self.resolver.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
+        let partial_res = self.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
         let base_res = partial_res.base_res();
         let unresolved_segments = partial_res.unresolved_segments();
 
