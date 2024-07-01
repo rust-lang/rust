@@ -39,7 +39,7 @@ impl WriteDebugInfo for ObjectProduct {
         let section_id = self.object.add_section(
             segment,
             name,
-            if id == SectionId::DebugStr {
+            if id == SectionId::DebugStr || id == SectionId::DebugLineStr {
                 SectionKind::DebugString
             } else if id == SectionId::EhFrame {
                 SectionKind::ReadOnlyData
