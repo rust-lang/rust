@@ -184,14 +184,28 @@ impl GlobalState {
                     message.push_str(err);
                     message.push_str("\n\n");
                 };
-                if let Some(Err(err)) = proc_macro_client {
-                    status.health |= lsp_ext::Health::Warning;
-                    format_to!(
-                        message,
-                        "Failed spawning proc-macro server for workspace `{}`: {err}",
-                        ws.manifest_or_root()
-                    );
-                    message.push_str("\n\n");
+                match proc_macro_client {
+                    Some(Err(err)) => {
+                        status.health |= lsp_ext::Health::Warning;
+                        format_to!(
+                            message,
+                            "Failed spawning proc-macro server for workspace `{}`: {err}",
+                            ws.manifest_or_root()
+                        );
+                        message.push_str("\n\n");
+                    }
+                    Some(Ok(client)) => {
+                        if let Some(err) = client.exited() {
+                            status.health |= lsp_ext::Health::Warning;
+                            format_to!(
+                                message,
+                                "proc-macro server for workspace `{}` exited: {err}",
+                                ws.manifest_or_root()
+                            );
+                            message.push_str("\n\n");
+                        }
+                    }
+                    _ => (),
                 }
             }
         }

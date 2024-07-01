@@ -2,8 +2,9 @@
 
 use std::{
     io::{self, BufRead, BufReader, Read, Write},
+    panic::AssertUnwindSafe,
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, OnceLock},
 };
 
 use paths::AbsPath;
@@ -22,6 +23,8 @@ pub(crate) struct ProcMacroProcessSrv {
     state: Mutex<ProcessSrvState>,
     version: u32,
     mode: SpanMode,
+    /// Populated when the server exits.
+    exited: OnceLock<AssertUnwindSafe<ServerError>>,
 }
 
 #[derive(Debug)]
@@ -29,8 +32,6 @@ struct ProcessSrvState {
     process: Process,
     stdin: ChildStdin,
     stdout: BufReader<ChildStdout>,
-    /// Populated when the server exits.
-    server_exited: Option<ServerError>,
 }
 
 impl ProcMacroProcessSrv {
@@ -44,9 +45,10 @@ impl ProcMacroProcessSrv {
             let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
 
             io::Result::Ok(ProcMacroProcessSrv {
-                state: Mutex::new(ProcessSrvState { process, stdin, stdout, server_exited: None }),
+                state: Mutex::new(ProcessSrvState { process, stdin, stdout }),
                 version: 0,
                 mode: SpanMode::Id,
+                exited: OnceLock::new(),
             })
         };
         let mut srv = create_srv(true)?;
@@ -75,6 +77,10 @@ impl ProcMacroProcessSrv {
                 create_srv(false)
             }
         }
+    }
+
+    pub(crate) fn exited(&self) -> Option<&ServerError> {
+        self.exited.get().map(|it| &it.0)
     }
 
     pub(crate) fn version(&self) -> u32 {
@@ -118,36 +124,52 @@ impl ProcMacroProcessSrv {
     }
 
     pub(crate) fn send_task(&self, req: Request) -> Result<Response, ServerError> {
-        let state = &mut *self.state.lock().unwrap();
-        if let Some(server_error) = &state.server_exited {
-            return Err(server_error.clone());
+        if let Some(server_error) = self.exited.get() {
+            return Err(server_error.0.clone());
         }
 
+        let state = &mut *self.state.lock().unwrap();
         let mut buf = String::new();
-        send_request(&mut state.stdin, &mut state.stdout, req, &mut buf).map_err(|e| {
-            if e.io.as_ref().map(|it| it.kind()) == Some(io::ErrorKind::BrokenPipe) {
-                match state.process.child.try_wait() {
-                    Ok(None) => e,
-                    Ok(Some(status)) => {
-                        let mut msg = String::new();
-                        if !status.success() {
-                            if let Some(stderr) = state.process.child.stderr.as_mut() {
-                                _ = stderr.read_to_string(&mut msg);
-                            }
-                        }
-                        let server_error = ServerError {
-                            message: format!("server exited with {status}: {msg}"),
-                            io: None,
-                        };
-                        state.server_exited = Some(server_error.clone());
-                        server_error
+        send_request(&mut state.stdin, &mut state.stdout, req, &mut buf)
+            .and_then(|res| {
+                res.ok_or_else(|| {
+                    let message = "proc-macro server did not respond with data".to_owned();
+                    ServerError {
+                        io: Some(Arc::new(io::Error::new(
+                            io::ErrorKind::BrokenPipe,
+                            message.clone(),
+                        ))),
+                        message,
                     }
-                    Err(_) => e,
+                })
+            })
+            .map_err(|e| {
+                if e.io.as_ref().map(|it| it.kind()) == Some(io::ErrorKind::BrokenPipe) {
+                    match state.process.child.try_wait() {
+                        Ok(None) | Err(_) => e,
+                        Ok(Some(status)) => {
+                            let mut msg = String::new();
+                            if !status.success() {
+                                if let Some(stderr) = state.process.child.stderr.as_mut() {
+                                    _ = stderr.read_to_string(&mut msg);
+                                }
+                            }
+                            let server_error = ServerError {
+                                message: format!(
+                                    "proc-macro server exited with {status}{}{msg}",
+                                    if msg.is_empty() { "" } else { ": " }
+                                ),
+                                io: None,
+                            };
+                            // `AssertUnwindSafe` is fine here, we already correct initialized
+                            // server_error at this point.
+                            self.exited.get_or_init(|| AssertUnwindSafe(server_error)).0.clone()
+                        }
+                    }
+                } else {
+                    e
                 }
-            } else {
-                e
-            }
-        })
+            })
     }
 }
 
@@ -201,7 +223,7 @@ fn send_request(
     mut reader: &mut impl BufRead,
     req: Request,
     buf: &mut String,
-) -> Result<Response, ServerError> {
+) -> Result<Option<Response>, ServerError> {
     req.write(write_json, &mut writer).map_err(|err| ServerError {
         message: "failed to write request".into(),
         io: Some(Arc::new(err)),
@@ -210,5 +232,5 @@ fn send_request(
         message: "failed to read response".into(),
         io: Some(Arc::new(err)),
     })?;
-    res.ok_or_else(|| ServerError { message: "server exited".into(), io: None })
+    Ok(res)
 }
