@@ -17,7 +17,7 @@ use rustc_middle::ty::{self, SymbolName, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
 use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, OomStrategy};
-use rustc_target::spec::{SanitizerSet, TlsModel};
+use rustc_target::spec::TlsModel;
 use tracing::debug;
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
@@ -267,15 +267,15 @@ fn exported_symbols_provider_local(
         }));
     }
 
-    if tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::MEMORY) {
+    if tcx.sess.is_sanitizer_memory_enabled() {
         let mut msan_weak_symbols = Vec::new();
 
         // Similar to profiling, preserve weak msan symbol during LTO.
-        if tcx.sess.opts.unstable_opts.sanitizer_recover.contains(SanitizerSet::MEMORY) {
+        if tcx.sess.is_sanitizer_memory_recover_enabled() {
             msan_weak_symbols.push("__msan_keep_going");
         }
 
-        if tcx.sess.opts.unstable_opts.sanitizer_memory_track_origins != 0 {
+        if tcx.sess.is_sanitizer_memory_track_origins_enabled() {
             msan_weak_symbols.push("__msan_track_origins");
         }
 

@@ -1,5 +1,5 @@
-// Verifies that `-Zsanitizer-cfi-normalize-integers` requires `-Zsanitizer=cfi` or
-// `-Zsanitizer=kcfi`
+// Verifies that `-Zsanitizer-cfi-normalize-integers` requires `-Csanitizer=cfi` or
+// `-Csanitizer=kcfi`
 //
 //@ needs-sanitizer-cfi
 //@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer-cfi-normalize-integers
