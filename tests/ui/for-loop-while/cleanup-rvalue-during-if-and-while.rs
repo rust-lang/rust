@@ -28,6 +28,7 @@ pub fn main() {
     while borrow().do_stuff() {
         i += 1;
         unsafe { assert_eq!(DROPPED, i) }
+        //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
         if i > 5 {
             break;
         }
@@ -37,5 +38,6 @@ pub fn main() {
     // call it 1 time
     if borrow().do_stuff() {
         unsafe { assert_eq!(DROPPED, i + 1) }
+        //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     }
 }

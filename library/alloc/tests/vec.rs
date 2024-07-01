@@ -1285,6 +1285,8 @@ fn test_from_iter_specialization_panic_during_iteration_drops() {
 
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+// FIXME(obeis): Use `SyncUnsafeCell` instead of allowing `static_mut_ref` lint
+#[cfg_attr(not(bootstrap), allow(static_mut_refs))]
 fn test_from_iter_specialization_panic_during_drop_doesnt_leak() {
     static mut DROP_COUNTER_OLD: [usize; 5] = [0; 5];
     static mut DROP_COUNTER_NEW: [usize; 2] = [0; 2];

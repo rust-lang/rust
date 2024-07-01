@@ -34,6 +34,7 @@ fn main() {
     <dyn T>::bar();
 
     unsafe { assert_eq!(COUNT, 12); }
+    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
 
     // Cross-crait case
     let x: &dyn Bar = &Foo;

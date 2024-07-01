@@ -1,0 +1,63 @@
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/issue-8860.rs:34:23
+   |
+LL |         assert_eq!(1, DROP);
+   |                       ^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: `#[warn(static_mut_refs)]` on by default
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/issue-8860.rs:36:23
+   |
+LL |         assert_eq!(1, DROP_S);
+   |                       ^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/issue-8860.rs:41:28
+   |
+LL |     unsafe { assert_eq!(1, DROP_T); }
+   |                            ^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/issue-8860.rs:48:23
+   |
+LL |         assert_eq!(2, DROP);
+   |                       ^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/issue-8860.rs:50:23
+   |
+LL |         assert_eq!(1, DROP_S);
+   |                       ^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/issue-8860.rs:52:23
+   |
+LL |         assert_eq!(1, DROP_T);
+   |                       ^^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+
+warning: 6 warnings emitted
+

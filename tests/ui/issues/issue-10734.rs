@@ -24,6 +24,7 @@ pub fn main() {
     }
     // Check that we dropped already (as expected from a `{ expr }`).
     unsafe { assert_eq!(drop_count, 1); }
+    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
 
     // An `if false {} else { expr }` statement should compile the same as `{ expr }`.
     if false {
@@ -33,4 +34,5 @@ pub fn main() {
     }
     // Check that we dropped already (as expected from a `{ expr }`).
     unsafe { assert_eq!(drop_count, 2); }
+    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
 }

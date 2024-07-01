@@ -1,0 +1,223 @@
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:14:58
+   |
+LL |                 panic!("Found {}, should have found {}", CHECK, self.0 - 1);
+   |                                                          ^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: `#[warn(static_mut_refs)]` on by default
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(1);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(1);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(0);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(1);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(0);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(0);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(0);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(1);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(0);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(0);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(0);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(1);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(1);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(1);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/repeat-drop.rs:24:29
+   |
+LL |         unsafe { assert_eq!(CHECK, $l) }
+   |                             ^^^^^ shared reference to mutable static
+...
+LL |     check_drops!(2);
+   |     --------------- in this macro invocation
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: this warning originates in the macro `check_drops` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 16 warnings emitted
+

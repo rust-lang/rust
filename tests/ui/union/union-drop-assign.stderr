@@ -1,0 +1,33 @@
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/union-drop-assign.rs:31:20
+   |
+LL |         assert_eq!(CHECK, 0);
+   |                    ^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: `#[warn(static_mut_refs)]` on by default
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/union-drop-assign.rs:34:20
+   |
+LL |         assert_eq!(CHECK, 1); // union itself is assigned, union is dropped, field is not dropped
+   |                    ^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/union-drop-assign.rs:37:20
+   |
+LL |         assert_eq!(CHECK, 11); // union field is assigned, field is dropped
+   |                    ^^^^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+
+warning: 3 warnings emitted
+

@@ -172,6 +172,7 @@ fn issue11371() {
     static mut X: Option<i32> = Some(123);
     unsafe {
         if X.is_some() {
+            //~^ ERROR: creating a shared reference to mutable static is discouraged
             X = None;
             X.unwrap();
         }

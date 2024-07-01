@@ -28,6 +28,7 @@ pub unsafe fn set() -> Option<&'static BB> {
         return None;
     }
     Some(&KEY.inner)
+    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
 }
 
 pub struct Key {

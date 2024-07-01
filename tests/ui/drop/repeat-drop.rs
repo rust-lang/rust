@@ -12,6 +12,7 @@ impl Drop for DropChecker {
         unsafe {
             if CHECK != self.0 - 1 {
                 panic!("Found {}, should have found {}", CHECK, self.0 - 1);
+                //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
             }
             CHECK = self.0;
         }
@@ -21,6 +22,21 @@ impl Drop for DropChecker {
 macro_rules! check_drops {
     ($l:literal) => {
         unsafe { assert_eq!(CHECK, $l) }
+        //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^^^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^^^^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^^^^^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^^^^^^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^^^^^^^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^^^^^^^^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^^^^^^^^^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^^^^^^^^^^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^^^^^^^^^^^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^^^^^^^^^^^^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //~^^^^^^^^^^^^^^^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
     };
 }
 

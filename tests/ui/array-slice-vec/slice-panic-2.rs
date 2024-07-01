@@ -28,4 +28,5 @@ fn foo() {
 fn main() {
     let _ = thread::spawn(move|| foo()).join();
     unsafe { assert_eq!(DTOR_COUNT, 2); }
+    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
 }
