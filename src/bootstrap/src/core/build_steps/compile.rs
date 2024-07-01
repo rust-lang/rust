@@ -161,9 +161,10 @@ impl Step for Std {
             // This check is specific to testing std itself; see `test::Std` for more details.
             && !self.force_recompile
         {
+            let sysroot = builder.ensure(Sysroot { compiler, force_recompile: false });
             cp_rustc_component_to_ci_sysroot(
                 builder,
-                compiler,
+                &sysroot,
                 builder.config.ci_rust_std_contents(),
             );
             return;
@@ -797,12 +798,7 @@ impl Step for StartupObjects {
     }
 }
 
-fn cp_rustc_component_to_ci_sysroot(
-    builder: &Builder<'_>,
-    compiler: Compiler,
-    contents: Vec<String>,
-) {
-    let sysroot = builder.ensure(Sysroot { compiler, force_recompile: false });
+fn cp_rustc_component_to_ci_sysroot(builder: &Builder<'_>, sysroot: &Path, contents: Vec<String>) {
     let ci_rustc_dir = builder.config.ci_rustc_dir();
 
     for file in contents {
@@ -881,13 +877,7 @@ impl Step for Rustc {
         // NOTE: the ABI of the beta compiler is different from the ABI of the downloaded compiler,
         // so its artifacts can't be reused.
         if builder.download_rustc() && compiler.stage != 0 {
-            // Copy the existing artifacts instead of rebuilding them.
-            // NOTE: this path is only taken for tools linking to rustc-dev (including ui-fulldeps tests).
-            cp_rustc_component_to_ci_sysroot(
-                builder,
-                compiler,
-                builder.config.ci_rustc_dev_contents(),
-            );
+            builder.ensure(Sysroot { compiler, force_recompile: false });
             return compiler.stage;
         }
 
@@ -1634,31 +1624,44 @@ impl Step for Sysroot {
         let sysroot_lib_rustlib_src_rust = sysroot_lib_rustlib_src.join("rust");
         if let Err(e) = symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_src_rust) {
             eprintln!(
-                "WARNING: creating symbolic link `{}` to `{}` failed with {}",
+                "ERROR: creating symbolic link `{}` to `{}` failed with {}",
                 sysroot_lib_rustlib_src_rust.display(),
                 builder.src.display(),
                 e,
             );
             if builder.config.rust_remap_debuginfo {
                 eprintln!(
-                    "WARNING: some `tests/ui` tests will fail when lacking `{}`",
+                    "ERROR: some `tests/ui` tests will fail when lacking `{}`",
                     sysroot_lib_rustlib_src_rust.display(),
                 );
             }
+            build_helper::exit!(1);
         }
-        // Same for the rustc-src component.
-        let sysroot_lib_rustlib_rustcsrc = sysroot.join("lib/rustlib/rustc-src");
-        t!(fs::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
-        let sysroot_lib_rustlib_rustcsrc_rust = sysroot_lib_rustlib_rustcsrc.join("rust");
-        if let Err(e) =
-            symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_rustcsrc_rust)
-        {
-            eprintln!(
-                "WARNING: creating symbolic link `{}` to `{}` failed with {}",
-                sysroot_lib_rustlib_rustcsrc_rust.display(),
-                builder.src.display(),
-                e,
+
+        // Unlike rust-src component, we have to handle rustc-src a bit differently.
+        // When using CI rustc, we copy rustc-src component from its sysroot,
+        // otherwise we handle it in a similar way what we do for rust-src above.
+        if builder.download_rustc() {
+            cp_rustc_component_to_ci_sysroot(
+                builder,
+                &sysroot,
+                builder.config.ci_rustc_dev_contents(),
             );
+        } else {
+            let sysroot_lib_rustlib_rustcsrc = sysroot.join("lib/rustlib/rustc-src");
+            t!(fs::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
+            let sysroot_lib_rustlib_rustcsrc_rust = sysroot_lib_rustlib_rustcsrc.join("rust");
+            if let Err(e) =
+                symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_rustcsrc_rust)
+            {
+                eprintln!(
+                    "ERROR: creating symbolic link `{}` to `{}` failed with {}",
+                    sysroot_lib_rustlib_rustcsrc_rust.display(),
+                    builder.src.display(),
+                    e,
+                );
+                build_helper::exit!(1);
+            }
         }
 
         sysroot
