@@ -1687,6 +1687,7 @@ supported_targets! {
 
     ("armebv7r-none-eabi", armebv7r_none_eabi),
     ("armebv7r-none-eabihf", armebv7r_none_eabihf),
+    ("armv7-rtems-eabihf", armv7_rtems_eabihf),
     ("armv7r-none-eabi", armv7r_none_eabi),
     ("armv7r-none-eabihf", armv7r_none_eabihf),
     ("armv8r-none-eabihf", armv8r_none_eabihf),
