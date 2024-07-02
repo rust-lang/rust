@@ -214,7 +214,7 @@ pub fn target_machine_factory(
         sess.opts.unstable_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);
     let emit_stack_size_section = sess.opts.unstable_opts.emit_stack_sizes;
 
-    let asm_comments = sess.opts.unstable_opts.asm_comments;
+    let verbose_asm = sess.opts.unstable_opts.verbose_asm;
     let relax_elf_relocations =
         sess.opts.unstable_opts.relax_elf_relocations.unwrap_or(sess.target.relax_elf_relocations);
 
@@ -289,7 +289,7 @@ pub fn target_machine_factory(
             funique_section_names,
             trap_unreachable,
             singlethread,
-            asm_comments,
+            verbose_asm,
             emit_stack_size_section,
             relax_elf_relocations,
             use_init_array,
