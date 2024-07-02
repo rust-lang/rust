@@ -1,42 +1,42 @@
-error: cannot find derive macro `x3300` in this scope
+error: cannot find derive macro `x3300` in module `derive`
   --> $DIR/issue-43106-gating-of-derive-2.rs:14:14
    |
 LL |     #[derive(x3300)]
-   |              ^^^^^
+   |              ^^^^^ not found in module `derive`
 
-error: cannot find derive macro `x3300` in this scope
+error: cannot find derive macro `x3300` in module `derive`
   --> $DIR/issue-43106-gating-of-derive-2.rs:14:14
    |
 LL |     #[derive(x3300)]
-   |              ^^^^^
+   |              ^^^^^ not found in module `derive`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: cannot find derive macro `x3300` in this scope
+error: cannot find derive macro `x3300` in module `derive`
   --> $DIR/issue-43106-gating-of-derive-2.rs:9:14
    |
 LL |     #[derive(x3300)]
-   |              ^^^^^
+   |              ^^^^^ not found in module `derive`
 
-error: cannot find derive macro `x3300` in this scope
+error: cannot find derive macro `x3300` in module `derive`
   --> $DIR/issue-43106-gating-of-derive-2.rs:9:14
    |
 LL |     #[derive(x3300)]
-   |              ^^^^^
+   |              ^^^^^ not found in module `derive`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: cannot find derive macro `x3300` in this scope
+error: cannot find derive macro `x3300` in module `derive`
   --> $DIR/issue-43106-gating-of-derive-2.rs:4:14
    |
 LL |     #[derive(x3300)]
-   |              ^^^^^
+   |              ^^^^^ not found in module `derive`
 
-error: cannot find derive macro `x3300` in this scope
+error: cannot find derive macro `x3300` in module `derive`
   --> $DIR/issue-43106-gating-of-derive-2.rs:4:14
    |
 LL |     #[derive(x3300)]
-   |              ^^^^^
+   |              ^^^^^ not found in module `derive`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: could not find `abort` in `process`
+error[E0433]: cannot find macro `abort` in module `process`
   --> $DIR/issue-103112.rs:2:19
    |
 LL |     std::process::abort!();

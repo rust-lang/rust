@@ -48,8 +48,8 @@ pub mod foo3 {
 fn test_glob3() {
     use foo3::*;
 
-    Bar();  //~ ERROR cannot find function, tuple struct or tuple variant `Bar` in this scope
-    let _x: Box<Bar>;  //~ ERROR cannot find type `Bar` in this scope
+    Bar();  //~ ERROR cannot find function, tuple struct or tuple variant `Bar`
+    let _x: Box<Bar>;  //~ ERROR cannot find type `Bar`
 }
 
 fn main() {

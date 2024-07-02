@@ -8,11 +8,11 @@ impl Foo {
     }
 
     fn new() -> Foo {
-        field; //~ ERROR cannot find value `field` in this scope
-        Foo { field } //~ ERROR cannot find value `field` in this scope
+        field; //~ ERROR cannot find value `field`
+        Foo { field } //~ ERROR cannot find value `field`
     }
     fn clone(&self) -> Foo {
-        Foo { field } //~ ERROR cannot find value `field` in this scope
+        Foo { field } //~ ERROR cannot find value `field`
     }
 }
 fn main() {}

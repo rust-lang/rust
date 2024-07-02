@@ -4,7 +4,7 @@ type Foo = impl Send;
 struct A;
 
 const VALUE: Foo = value();
-//~^ ERROR cannot find function `value` in this scope
+//~^ ERROR cannot find function `value`
 
 fn test() {
     match VALUE {

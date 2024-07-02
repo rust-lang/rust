@@ -18,11 +18,11 @@ LL |     default do
 LL | }
    | - item list ends here
 
-error: cannot find macro `default` in this scope
+error: cannot find macro `default` in the crate root
   --> $DIR/default-unmatched-extern.rs:4:5
    |
 LL |     default!();
-   |     ^^^^^^^
+   |     ^^^^^^^ not found in the crate root
 
 error: aborting due to 3 previous errors
 

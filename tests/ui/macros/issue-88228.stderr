@@ -2,26 +2,26 @@ error: cannot find macro `bla` in this scope
   --> $DIR/issue-88228.rs:20:5
    |
 LL |     bla!();
-   |     ^^^
+   |     ^^^ not found in this scope
    |
 help: consider importing this macro through its public re-export
    |
 LL + use crate::hey::bla;
    |
 
-error: cannot find derive macro `println` in this scope
+error: cannot find derive macro `println` in the crate root
   --> $DIR/issue-88228.rs:14:10
    |
 LL | #[derive(println)]
-   |          ^^^^^^^
+   |          ^^^^^^^ not found in the crate root
    |
    = note: `println` is in scope, but it is a function-like macro
 
-error: cannot find derive macro `Bla` in this scope
+error: cannot find derive macro `Bla` in the crate root
   --> $DIR/issue-88228.rs:10:10
    |
 LL | #[derive(Bla)]
-   |          ^^^
+   |          ^^^ not found in the crate root
    |
 help: consider importing this derive macro through its public re-export
    |

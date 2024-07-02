@@ -4,7 +4,7 @@ pub struct Opcode(pub u8);
 
 pub struct Opcode2(&'a S);
 //~^ ERROR use of undeclared lifetime name `'a`
-//~^^ ERROR cannot find type `S` in this scope
+//~^^ ERROR cannot find type `S`
 
 impl Opcode2 {
     pub const OP2: Opcode2 = Opcode2(Opcode(0x1));

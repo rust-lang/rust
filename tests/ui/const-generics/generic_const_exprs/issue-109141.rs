@@ -9,6 +9,6 @@ impl EntriesBuffer {
 }
 
 struct EntriesBuffer(Box<[[u8; HashesEntryLEN]; 5]>);
-//~^ ERROR: cannot find value `HashesEntryLEN` in this scope
+//~^ ERROR: cannot find value `HashesEntryLEN`
 
 fn main() {}

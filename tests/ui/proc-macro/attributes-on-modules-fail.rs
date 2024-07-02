@@ -7,11 +7,11 @@ extern crate test_macros;
 mod m {
     pub struct X;
 
-    type A = Y; //~ ERROR cannot find type `Y` in this scope
+    type A = Y; //~ ERROR cannot find type `Y`
 }
 
 struct Y;
-type A = X; //~ ERROR cannot find type `X` in this scope
+type A = X; //~ ERROR cannot find type `X`
 
 #[derive(Copy)] //~ ERROR `derive` may only be applied to `struct`s, `enum`s and `union`s
 mod n {}

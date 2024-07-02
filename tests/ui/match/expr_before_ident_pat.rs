@@ -8,6 +8,6 @@ macro_rules! funny {
 
 fn main() {
     funny!(a, a);
-    //~^ ERROR cannot find value `a` in this scope
+    //~^ ERROR cannot find value `a`
     //~| ERROR arbitrary expressions aren't allowed in patterns
 }

@@ -1,10 +1,10 @@
 #![feature(precise_capturing)]
 
 fn missing() -> impl Sized + use<T> {}
-//~^ ERROR cannot find type `T` in this scope
+//~^ ERROR cannot find type `T`
 
 fn missing_self() -> impl Sized + use<Self> {}
-//~^ ERROR cannot find type `Self` in this scope
+//~^ ERROR cannot find type `Self`
 
 struct MyType;
 impl MyType {

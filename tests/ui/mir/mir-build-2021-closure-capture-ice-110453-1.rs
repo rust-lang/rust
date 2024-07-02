@@ -10,7 +10,7 @@ pub fn a() -> B { B }
 
 mod handlers {
     pub struct C(B);
-    //~^ ERROR cannot find type `B` in this scope
+    //~^ ERROR cannot find type `B`
     pub fn c() -> impl Fn() -> C {
         let a1 = ();
         || C((crate::a(), a1).into())

@@ -15,7 +15,7 @@ impl<T: ?Sized> Mirror for Wrapper<T> {
 fn mirror<W: Mirror>(_: W) -> Box<W::Assoc> { todo!() }
 
 fn type_error() -> TypeError { todo!() }
-//~^ ERROR cannot find type `TypeError` in this scope
+//~^ ERROR cannot find type `TypeError`
 
 fn main() {
     let x = mirror(type_error());

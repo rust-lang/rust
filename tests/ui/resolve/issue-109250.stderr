@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared type `HashMap`
+error[E0433]: cannot find item `HashMap` in this scope
   --> $DIR/issue-109250.rs:2:5
    |
 LL |     HashMap::new;

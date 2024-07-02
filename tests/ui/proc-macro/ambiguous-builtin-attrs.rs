@@ -31,7 +31,7 @@ fn non_macro_expanded_location<#[repr(C)] T>() {
 fn main() {
     Test;
     Bench;
-    NonExistent; //~ ERROR cannot find value `NonExistent` in this scope
+    NonExistent; //~ ERROR cannot find value `NonExistent`
 }
 
 use deny as allow;

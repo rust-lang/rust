@@ -7,6 +7,6 @@ fn main() {
 
     let _ = || {
         let s2 = Oops { a: 2, ..s1 };
-        //~^ ERROR cannot find struct, variant or union type `Oops` in this scope
+        //~^ ERROR cannot find struct, variant or union type `Oops`
     };
 }

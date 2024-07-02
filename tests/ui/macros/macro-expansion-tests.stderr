@@ -1,16 +1,16 @@
-error: cannot find macro `m` in this scope
+error: cannot find macro `m` in module `macros_cant_escape_fns`
   --> $DIR/macro-expansion-tests.rs:7:21
    |
 LL |     fn g() -> i32 { m!() }
-   |                     ^
+   |                     ^ not found in module `macros_cant_escape_fns`
    |
    = help: have you added the `#[macro_use]` on the module/import?
 
-error: cannot find macro `m` in this scope
+error: cannot find macro `m` in module `macros_cant_escape_mods`
   --> $DIR/macro-expansion-tests.rs:15:21
    |
 LL |     fn g() -> i32 { m!() }
-   |                     ^
+   |                     ^ not found in module `macros_cant_escape_mods`
    |
    = help: have you added the `#[macro_use]` on the module/import?
 

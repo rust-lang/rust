@@ -1,28 +1,28 @@
-error: cannot find derive macro `rustfmt` in this scope
+error: cannot find derive macro `rustfmt` in the crate root
   --> $DIR/tool-attributes-misplaced-1.rs:4:10
    |
 LL | #[derive(rustfmt)]
-   |          ^^^^^^^
+   |          ^^^^^^^ not found in the crate root
 
-error: cannot find derive macro `rustfmt` in this scope
+error: cannot find derive macro `rustfmt` in the crate root
   --> $DIR/tool-attributes-misplaced-1.rs:4:10
    |
 LL | #[derive(rustfmt)]
-   |          ^^^^^^^
+   |          ^^^^^^^ not found in the crate root
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: cannot find attribute `rustfmt` in this scope
+error: cannot find attribute `rustfmt` in the crate root
   --> $DIR/tool-attributes-misplaced-1.rs:9:3
    |
 LL | #[rustfmt]
-   |   ^^^^^^^
+   |   ^^^^^^^ not found in the crate root
 
 error: cannot find macro `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:15:5
    |
 LL |     rustfmt!();
-   |     ^^^^^^^
+   |     ^^^^^^^ not found in this scope
 
 error[E0573]: expected type, found tool module `rustfmt`
   --> $DIR/tool-attributes-misplaced-1.rs:1:10

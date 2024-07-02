@@ -154,13 +154,13 @@ error[E0405]: cannot find trait `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:41:23
    |
 LL |     let _: <u8 as Tr::N>::NN;
-   |                       ^ not found in `Tr`
+   |                       ^ not found in trait `Tr`
 
 error[E0405]: cannot find trait `N` in enum `E`
   --> $DIR/ufcs-partially-resolved.rs:42:22
    |
 LL |     let _: <u8 as E::N>::NN;
-   |                      ^ not found in `E`
+   |                      ^ not found in enum `E`
 
 error[E0405]: cannot find trait `N` in `A`
   --> $DIR/ufcs-partially-resolved.rs:43:22
@@ -172,13 +172,13 @@ error[E0405]: cannot find trait `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:44:16
    |
 LL |     <u8 as Tr::N>::NN;
-   |                ^ not found in `Tr`
+   |                ^ not found in trait `Tr`
 
 error[E0405]: cannot find trait `N` in enum `E`
   --> $DIR/ufcs-partially-resolved.rs:45:15
    |
 LL |     <u8 as E::N>::NN;
-   |               ^ not found in `E`
+   |               ^ not found in enum `E`
 
 error[E0405]: cannot find trait `N` in `A`
   --> $DIR/ufcs-partially-resolved.rs:46:15

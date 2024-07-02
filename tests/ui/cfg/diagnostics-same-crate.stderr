@@ -22,7 +22,7 @@ note: found an item that was configured out
 LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
 
-error[E0433]: failed to resolve: could not find `doesnt_exist` in `inner`
+error[E0433]: cannot find item `doesnt_exist` in module `inner`
   --> $DIR/diagnostics-same-crate.rs:52:12
    |
 LL |     inner::doesnt_exist::hello();
@@ -38,7 +38,7 @@ error[E0425]: cannot find function `uwu` in module `inner`
   --> $DIR/diagnostics-same-crate.rs:47:12
    |
 LL |     inner::uwu();
-   |            ^^^ not found in `inner`
+   |            ^^^ not found in module `inner`
    |
 note: found an item that was configured out
   --> $DIR/diagnostics-same-crate.rs:5:12
@@ -50,7 +50,7 @@ error[E0425]: cannot find function `meow` in module `inner::right`
   --> $DIR/diagnostics-same-crate.rs:56:19
    |
 LL |     inner::right::meow();
-   |                   ^^^^ not found in `inner::right`
+   |                   ^^^^ not found in module `inner::right`
    |
 note: found an item that was configured out
   --> $DIR/diagnostics-same-crate.rs:24:16

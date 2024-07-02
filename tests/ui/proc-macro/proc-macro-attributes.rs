@@ -6,7 +6,7 @@ extern crate derive_b;
 #[B] //~ ERROR `B` is ambiguous
      //~| WARN derive helper attribute is used before it is introduced
      //~| WARN this was previously accepted
-#[C] //~ ERROR cannot find attribute `C` in this scope
+#[C] //~ ERROR cannot find attribute `C`
 #[B(D)] //~ ERROR `B` is ambiguous
         //~| WARN derive helper attribute is used before it is introduced
         //~| WARN this was previously accepted

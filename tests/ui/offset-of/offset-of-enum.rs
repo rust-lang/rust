@@ -14,5 +14,5 @@ fn main() {
     offset_of!(Alpha, Two.1); //~ ERROR no field named `1` on enum variant `Alpha::Two`
     offset_of!(Alpha, Two.foo); //~ ERROR no field named `foo` on enum variant `Alpha::Two`
     offset_of!(Alpha, NonExistent); //~ ERROR no variant named `NonExistent` found for enum `Alpha`
-    offset_of!(Beta, One); //~ ERROR cannot find type `Beta` in this scope
+    offset_of!(Beta, One); //~ ERROR cannot find type `Beta`
 }

@@ -10,5 +10,5 @@ macro_rules! fn_expr {
 
 fn main() {
     fn_expr!{ o?.when(|&i| i > 0)?.when(|&i| i%2 == 0) };
-    //~^ ERROR cannot find value `o` in this scope
+    //~^ ERROR cannot find value `o`
 }

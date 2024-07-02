@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+error[E0433]: cannot find item `Self` in this scope
   --> $DIR/issue-62305-self-assoc-ty.rs:1:14
    |
 LL | type Alias = Self::Target;

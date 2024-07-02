@@ -10,7 +10,7 @@ impl Fallback for usize {}
 
 fn main() {
     missing();
-    //~^ ERROR cannot find function `missing` in this scope
+    //~^ ERROR cannot find function `missing`
     0.foo();
     // But then we shouldn't report an inference ambiguity here...
 }

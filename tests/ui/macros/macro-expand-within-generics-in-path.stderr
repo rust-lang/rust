@@ -4,11 +4,11 @@ error: unexpected generic arguments in path
 LL | m!(generic<p!()>);
    |           ^^^^^^
 
-error: cannot find attribute `generic` in this scope
+error: cannot find attribute `generic` in the crate root
   --> $DIR/macro-expand-within-generics-in-path.rs:15:4
    |
 LL | m!(generic<p!()>);
-   |    ^^^^^^^
+   |    ^^^^^^^ not found in the crate root
 
 error: aborting due to 2 previous errors
 

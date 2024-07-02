@@ -4,12 +4,12 @@ impl S {
 
     fn second(&self) {
         first()
-        //~^ ERROR cannot find function `first` in this scope
+        //~^ ERROR cannot find function `first`
     }
 
     fn third(&self) {
         no_method_err()
-        //~^ ERROR cannot find function `no_method_err` in this scope
+        //~^ ERROR cannot find function `no_method_err`
     }
 }
 
@@ -21,7 +21,7 @@ struct Foo {
 impl Foo {
     fn needs_self() {
         this.i
-        //~^ ERROR cannot find value `this` in this scope
+        //~^ ERROR cannot find value `this`
     }
 }
 

@@ -347,7 +347,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     } else {
                         suggestion
                     };
-                (format!("not found in {mod_str}"), override_suggestion)
+                (format!("not found in {mod_prefix}{mod_str}"), override_suggestion)
             };
 
             BaseError {

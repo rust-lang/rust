@@ -8,5 +8,5 @@ extern crate issue_80079;
 use issue_80079::public;
 
 fn main() {
-    let _ = Foo; //~ ERROR cannot find value `Foo` in this scope
+    let _ = Foo; //~ ERROR cannot find value `Foo`
 }

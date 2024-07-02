@@ -6,7 +6,7 @@ fn wrap(self: Wrap<{ fn bar(&self) {} }>) -> &() {
     //~^ ERROR `self` parameter is only allowed in associated functions
     //~| ERROR `self` parameter is only allowed in associated functions
     //~| ERROR missing lifetime specifier
-    //~| ERROR cannot find type `Wrap` in this scope
+    //~| ERROR cannot find type `Wrap`
     &()
 }
 

@@ -1,5 +1,5 @@
 #[diagnostic]
-//~^ERROR cannot find attribute `diagnostic` in this scope
+//~^ERROR cannot find attribute `diagnostic`
 pub struct Bar;
 
 

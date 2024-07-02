@@ -3,5 +3,5 @@
 
 struct S([bool; f as usize]);
 fn f() -> T {}
-//~^ ERROR cannot find type `T` in this scope
+//~^ ERROR cannot find type `T`
 pub fn main() {}

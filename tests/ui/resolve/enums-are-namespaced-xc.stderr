@@ -2,7 +2,7 @@ error[E0425]: cannot find value `A` in crate `namespaced_enums`
   --> $DIR/enums-are-namespaced-xc.rs:5:31
    |
 LL |     let _ = namespaced_enums::A;
-   |                               ^ not found in `namespaced_enums`
+   |                               ^ not found in crate `namespaced_enums`
    |
 help: consider importing this unit variant
    |
@@ -18,7 +18,7 @@ error[E0425]: cannot find function, tuple struct or tuple variant `B` in crate `
   --> $DIR/enums-are-namespaced-xc.rs:7:31
    |
 LL |     let _ = namespaced_enums::B(10);
-   |                               ^ not found in `namespaced_enums`
+   |                               ^ not found in crate `namespaced_enums`
    |
 help: consider importing this tuple variant
    |
@@ -34,7 +34,7 @@ error[E0422]: cannot find struct, variant or union type `C` in crate `namespaced
   --> $DIR/enums-are-namespaced-xc.rs:9:31
    |
 LL |     let _ = namespaced_enums::C { a: 10 };
-   |                               ^ not found in `namespaced_enums`
+   |                               ^ not found in crate `namespaced_enums`
    |
 help: consider importing this variant
    |

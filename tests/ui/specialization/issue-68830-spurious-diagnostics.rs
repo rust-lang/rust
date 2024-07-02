@@ -5,7 +5,7 @@
 #![allow(incomplete_features)]
 
 struct BadStruct {
-    err: MissingType //~ ERROR: cannot find type `MissingType` in this scope
+    err: MissingType //~ ERROR: cannot find type `MissingType`
 }
 
 trait MyTrait<T> {

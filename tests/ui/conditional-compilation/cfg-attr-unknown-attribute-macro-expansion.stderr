@@ -1,8 +1,8 @@
-error: cannot find attribute `unknown` in this scope
+error: cannot find attribute `unknown` in the crate root
   --> $DIR/cfg-attr-unknown-attribute-macro-expansion.rs:3:27
    |
 LL |         #[cfg_attr(all(), unknown)]
-   |                           ^^^^^^^
+   |                           ^^^^^^^ not found in the crate root
 ...
 LL | foo!();
    | ------ in this macro invocation

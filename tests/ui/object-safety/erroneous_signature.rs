@@ -1,11 +1,11 @@
 trait Foo {
     fn err(&self) -> MissingType;
-    //~^ ERROR cannot find type `MissingType` in this scope
+    //~^ ERROR cannot find type `MissingType`
 }
 
 impl Foo for i32 {
     fn err(&self) -> MissingType {
-        //~^ ERROR cannot find type `MissingType` in this scope
+        //~^ ERROR cannot find type `MissingType`
         0
     }
 }

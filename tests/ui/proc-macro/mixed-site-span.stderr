@@ -24,7 +24,7 @@ error[E0412]: cannot find type `ItemUse` in crate `$crate`
   --> $DIR/mixed-site-span.rs:24:1
    |
 LL | pass_dollar_crate!();
-   | ^^^^^^^^^^^^^^^^^^^^ not found in `$crate`
+   | ^^^^^^^^^^^^^^^^^^^^ not found in crate `$crate`
    |
    = note: this error originates in the macro `proc_macro_rules` which comes from the expansion of the macro `pass_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 

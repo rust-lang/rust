@@ -1,8 +1,8 @@
-error: cannot find attribute `diagnostic` in this scope
+error: cannot find attribute `diagnostic` in the crate root
   --> $DIR/requires_path.rs:1:3
    |
 LL | #[diagnostic]
-   |   ^^^^^^^^^^
+   |   ^^^^^^^^^^ not found in the crate root
 
 error: aborting due to 1 previous error
 

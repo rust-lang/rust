@@ -1,14 +1,14 @@
-error: cannot find derive macro `FromPrimitive` in this scope
+error: cannot find derive macro `FromPrimitive` in the crate root
   --> $DIR/deriving-primitive.rs:1:10
    |
 LL | #[derive(FromPrimitive)]
-   |          ^^^^^^^^^^^^^
+   |          ^^^^^^^^^^^^^ not found in the crate root
 
-error: cannot find derive macro `FromPrimitive` in this scope
+error: cannot find derive macro `FromPrimitive` in the crate root
   --> $DIR/deriving-primitive.rs:1:10
    |
 LL | #[derive(FromPrimitive)]
-   |          ^^^^^^^^^^^^^
+   |          ^^^^^^^^^^^^^ not found in the crate root
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

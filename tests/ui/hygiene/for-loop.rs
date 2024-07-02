@@ -3,6 +3,6 @@
 
 fn main() {
     for _ in 0..10 {
-        iter.next();  //~ ERROR cannot find value `iter` in this scope
+        iter.next();  //~ ERROR cannot find value `iter`
     }
 }

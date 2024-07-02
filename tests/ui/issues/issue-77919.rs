@@ -6,8 +6,8 @@ trait TypeVal<T> {
 }
 struct Five;
 struct Multiply<N, M> {
-    _n: PhantomData, //~ ERROR cannot find type `PhantomData` in this scope
+    _n: PhantomData, //~ ERROR cannot find type `PhantomData`
 }
 impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
-//~^ ERROR cannot find type `VAL` in this scope
+//~^ ERROR cannot find type `VAL`
 //~| ERROR not all trait items implemented

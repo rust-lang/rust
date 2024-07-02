@@ -32,7 +32,7 @@ mod placeholder {
     //~| NOTE no `doesnt_exist` in `inner`
     use super::inner::doesnt_exist::hi;
     //~^ ERROR unresolved import `super::inner::doesnt_exist`
-    //~| NOTE could not find `doesnt_exist` in `inner`
+    //~| NOTE could not find `doesnt_exist`
 }
 
 #[cfg(i_dont_exist_and_you_can_do_nothing_about_it)]
@@ -41,25 +41,25 @@ pub fn vanished() {}
 fn main() {
     // There is no uwu at this path - no diagnostic.
     uwu(); //~ ERROR cannot find function
-    //~^ NOTE not found in this scope
+    //~^ NOTE not found
 
     // It does exist here - diagnostic.
     inner::uwu(); //~ ERROR cannot find function
-    //~| NOTE not found in `inner`
+    //~| NOTE not found in module `inner`
 
     // The module isn't found - we would like to get a diagnostic, but currently don't due to
     // the awkward way the resolver diagnostics are currently implemented.
-    inner::doesnt_exist::hello(); //~ ERROR failed to resolve
+    inner::doesnt_exist::hello(); //~ ERROR cannot find item `doesnt_exist`
     //~| NOTE could not find `doesnt_exist` in `inner`
 
     // It should find the one in the right module, not the wrong one.
     inner::right::meow(); //~ ERROR cannot find function
-    //~| NOTE not found in `inner::right
+    //~| NOTE not found in module `inner::right
     //~| NOTE the item is gated behind the `what-a-cool-feature` feature
 
     // Exists in the crate root - we would generally want a diagnostic,
     // but currently don't have one.
     // Not that it matters much though, this is highly unlikely to confuse anyone.
     vanished(); //~ ERROR cannot find function
-    //~^ NOTE not found in this scope
+    //~^ NOTE not found
 }

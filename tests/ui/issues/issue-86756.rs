@@ -3,7 +3,7 @@ trait Foo<T, T = T> {}
 
 fn eq<A, B>() {
     eq::<dyn, Foo>
-    //~^ ERROR cannot find type `dyn` in this scope
+    //~^ ERROR cannot find type `dyn`
     //~| ERROR missing generics for trait `Foo`
     //~| WARN trait objects without an explicit `dyn` are deprecated
     //~| WARN this is accepted in the current edition

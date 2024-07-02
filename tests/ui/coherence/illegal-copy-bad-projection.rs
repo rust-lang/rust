@@ -4,7 +4,7 @@ trait AsPtr {
 
 impl AsPtr for () {
     type Ptr = *const void;
-    //~^ ERROR cannot find type `void` in this scope
+    //~^ ERROR cannot find type `void`
 }
 
 #[derive(Copy, Clone)]

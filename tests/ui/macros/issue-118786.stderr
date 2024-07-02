@@ -24,11 +24,11 @@ LL | make_macro!((meow));
    |
    = note: the usage of `make_macro!` is likely invalid in item context
 
-error: cannot find macro `macro_rules` in this scope
+error: cannot find macro `macro_rules` in the crate root
   --> $DIR/issue-118786.rs:7:9
    |
 LL |         macro_rules! $macro_name {
-   |         ^^^^^^^^^^^
+   |         ^^^^^^^^^^^ not found in the crate root
 ...
 LL | make_macro!((meow));
    | ------------------- in this macro invocation

@@ -1,14 +1,14 @@
-error[E0433]: failed to resolve: maybe a missing crate `Absolute`?
+error[E0433]: cannot find macro `Absolute` in the crate root
   --> $DIR/meta-item-absolute-path.rs:1:12
    |
 LL | #[derive(::Absolute)]
-   |            ^^^^^^^^ maybe a missing crate `Absolute`?
+   |            ^^^^^^^^ you might be missing a crate named `Absolute`
 
-error[E0433]: failed to resolve: maybe a missing crate `Absolute`?
+error[E0433]: cannot find macro `Absolute` in the crate root
   --> $DIR/meta-item-absolute-path.rs:1:12
    |
 LL | #[derive(::Absolute)]
-   |            ^^^^^^^^ maybe a missing crate `Absolute`?
+   |            ^^^^^^^^ you might be missing a crate named `Absolute`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

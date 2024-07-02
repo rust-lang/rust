@@ -3,7 +3,7 @@
 macro_rules! join {
     ($lhs:ident, $rhs:ident) => {
         ${concat($lhs, $rhs)}
-        //~^ ERROR cannot find value `abcdef` in this scope
+        //~^ ERROR cannot find value `abcdef`
     };
 }
 

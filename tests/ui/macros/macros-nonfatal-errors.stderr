@@ -242,7 +242,7 @@ error: cannot find macro `llvm_asm` in this scope
   --> $DIR/macros-nonfatal-errors.rs:99:5
    |
 LL |     llvm_asm!(invalid);
-   |     ^^^^^^^^
+   |     ^^^^^^^^ not found in this scope
 
 error: aborting due to 28 previous errors
 

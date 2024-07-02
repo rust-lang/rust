@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `a`
+error[E0433]: cannot find item `a` in this scope
   --> $DIR/macro-inner-attributes.rs:17:5
    |
 LL |     a::bar();

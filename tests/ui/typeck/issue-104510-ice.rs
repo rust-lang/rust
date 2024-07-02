@@ -2,7 +2,7 @@
 //@ only-x86_64
 
 struct W<T: ?Sized>(Oops);
-//~^ ERROR cannot find type `Oops` in this scope
+//~^ ERROR cannot find type `Oops`
 
 unsafe fn test() {
     let j = W(());
