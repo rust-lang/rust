@@ -382,11 +382,8 @@ fn check_and_apply_linkage<'gcc, 'tcx>(
     let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
     if let Some(linkage) = attrs.import_linkage {
         // Declare a symbol `foo` with the desired linkage.
-        let global1 = cx.declare_global_with_linkage(
-            &sym,
-            cx.type_i8(),
-            base::global_linkage_to_gcc(linkage),
-        );
+        let global1 =
+            cx.declare_global_with_linkage(sym, cx.type_i8(), base::global_linkage_to_gcc(linkage));
 
         // Declare an internal global `extern_with_linkage_foo` which
         // is initialized with the address of `foo`.  If `foo` is
@@ -395,7 +392,7 @@ fn check_and_apply_linkage<'gcc, 'tcx>(
         // `extern_with_linkage_foo` will instead be initialized to
         // zero.
         let mut real_name = "_rust_extern_with_linkage_".to_string();
-        real_name.push_str(&sym);
+        real_name.push_str(sym);
         let global2 = cx.define_global(&real_name, gcc_type, is_tls, attrs.link_section);
         // TODO(antoyo): set linkage.
         let value = cx.const_ptrcast(global1.get_address(None), gcc_type);
@@ -412,6 +409,6 @@ fn check_and_apply_linkage<'gcc, 'tcx>(
         // don't do this then linker errors can be generated where the linker
         // complains that one object files has a thread local version of the
         // symbol and another one doesn't.
-        cx.declare_global(&sym, gcc_type, GlobalKind::Imported, is_tls, attrs.link_section)
+        cx.declare_global(sym, gcc_type, GlobalKind::Imported, is_tls, attrs.link_section)
     }
 }

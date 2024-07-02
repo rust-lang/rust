@@ -22,6 +22,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![deny(clippy::pattern_type_mismatch)]
+#![allow(clippy::needless_lifetimes)]
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;
@@ -84,7 +85,6 @@ use std::sync::Mutex;
 use back::lto::ThinBuffer;
 use back::lto::ThinData;
 use errors::LTONotSupported;
-#[cfg(not(feature = "master"))]
 use gccjit::CType;
 use gccjit::{Context, OptimizationLevel};
 #[cfg(feature = "master")]
@@ -140,6 +140,10 @@ impl TargetInfo {
     fn supports_128bit_int(&self) -> bool {
         self.supports_128bit_integers.load(Ordering::SeqCst)
     }
+
+    fn supports_target_dependent_type(&self, _typ: CType) -> bool {
+        false
+    }
 }
 
 #[derive(Clone)]
@@ -160,6 +164,10 @@ impl LockedTargetInfo {
 
     fn supports_128bit_int(&self) -> bool {
         self.info.lock().expect("lock").supports_128bit_int()
+    }
+
+    fn supports_target_dependent_type(&self, typ: CType) -> bool {
+        self.info.lock().expect("lock").supports_target_dependent_type(typ)
     }
 }
 
@@ -446,7 +454,8 @@ impl WriteBackendMethods for GccCodegenBackend {
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     #[cfg(feature = "master")]
     let info = {
-        // Check whether the target supports 128-bit integers.
+        // Check whether the target supports 128-bit integers, and sized floating point types (like
+        // Float16).
         let context = Context::default();
         Arc::new(Mutex::new(IntoDynSyncSend(context.get_target_info())))
     };
@@ -476,6 +485,7 @@ pub fn target_features(
     allow_unstable: bool,
     target_info: &LockedTargetInfo,
 ) -> Vec<Symbol> {
+    // TODO(antoyo): use global_gcc_features.
     sess.target
         .supported_target_features()
         .iter()
@@ -486,8 +496,12 @@ pub fn target_features(
                 None
             }
         })
-        .filter(|_feature| {
-            target_info.cpu_supports(_feature)
+        .filter(|feature| {
+            // TODO: we disable Neon for now since we don't support the LLVM intrinsics for it.
+            if *feature == "neon" {
+                return false;
+            }
+            target_info.cpu_supports(feature)
             /*
               adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
               avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,

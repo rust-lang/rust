@@ -56,7 +56,7 @@ jobs:
 
     - name: Download artifact
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
-      run: curl -LO https://github.com/antoyo/gcc/releases/latest/download/gcc-13.deb
+      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-13.deb
 
     - name: Setup path to libgccjit
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
@@ -98,3 +98,12 @@ jobs:
       run: |
         ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --clean --build-sysroot --test-failing-rustc ${{ matrix.libgccjit_version.extra }} | tee output_log
         rg --text "test result" output_log >> $GITHUB_STEP_SUMMARY
+
+    - name: Run failing ui pattern tests for ICE
+      id: ui-tests
+      run: |
+        ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --test-failing-ui-pattern-tests ${{ matrix.libgccjit_version.extra }} | tee output_log_ui
+        if grep -q "the compiler unexpectedly panicked" output_log_ui; then
+          echo "Error: 'the compiler unexpectedly panicked' found in output logs. CI Error!!"
+          exit 1
+        fi

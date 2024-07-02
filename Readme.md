@@ -12,6 +12,14 @@ This is a GCC codegen for rustc, which means it can be loaded by the existing ru
 The primary goal of this project is to be able to compile Rust code on platforms unsupported by LLVM.
 A secondary goal is to check if using the gcc backend will provide any run-time speed improvement for the programs compiled using rustc.
 
+### Dependencies
+
+**rustup:** Follow the instructions on the official [website](https://www.rust-lang.org/tools/install)
+
+**DejaGnu:** Consider to install DejaGnu which is necessary for running the libgccjit test suite. [website](https://www.gnu.org/software/dejagnu/#downloading)
+
+
+
 ## Building
 
 **This requires a patched libgccjit in order to work.
@@ -80,7 +88,7 @@ Then you can run commands like this:
 
 ```bash
 $ ./y.sh prepare # download and patch sysroot src and install hyperfine for benchmarking
-$ ./y.sh build --release
+$ ./y.sh build --sysroot --release
 ```
 
 To run the tests:
@@ -91,10 +99,16 @@ $ ./y.sh test --release
 
 ## Usage
 
-`$CG_GCCJIT_DIR` is the directory you cloned this repo into in the following instructions:
+You have to run these commands, in the corresponding order:
 
 ```bash
-export CG_GCCJIT_DIR=[the full path to rustc_codegen_gcc]
+$ ./y.sh prepare
+$ ./y.sh build --sysroot
+```
+To check if all is  working correctly, run:
+
+ ```bash
+$ ./y.sh cargo build --manifest-path tests/hello-world/Cargo.toml
 ```
 
 ### Cargo
@@ -118,7 +132,13 @@ error: failed to copy bitcode to object file: No such file or directory (os erro
 
 ### Rustc
 
-> You should prefer using the Cargo method.
+If you want to run `rustc` directly, you can do so with:
+
+```bash
+$ ./y.sh rustc my_crate.rs
+```
+
+You can do the same manually (although we don't recommend it):
 
 ```bash
 $ LIBRARY_PATH="[gcc-path value]" LD_LIBRARY_PATH="[gcc-path value]" rustc +$(cat $CG_GCCJIT_DIR/rust-toolchain | grep 'channel' | cut -d '=' -f 2 | sed 's/"//g' | sed 's/ //g') -Cpanic=abort -Zcodegen-backend=$CG_GCCJIT_DIR/target/release/librustc_codegen_gcc.so --sysroot $CG_GCCJIT_DIR/build_sysroot/sysroot my_crate.rs
@@ -126,18 +146,19 @@ $ LIBRARY_PATH="[gcc-path value]" LD_LIBRARY_PATH="[gcc-path value]" rustc +$(ca
 
 ## Env vars
 
-<dl>
-    <dt>CG_GCCJIT_INCR_CACHE_DISABLED</dt>
-    <dd>Don't cache object files in the incremental cache. Useful during development of cg_gccjit
-    to make it possible to use incremental mode for all analyses performed by rustc without caching
-    object files when their content should have been changed by a change to cg_gccjit.</dd>
-    <dt>CG_GCCJIT_DISPLAY_CG_TIME</dt>
-    <dd>Display the time it took to perform codegen for a crate</dd>
-    <dt>CG_RUSTFLAGS</dt>
-    <dd>Send additional flags to rustc. Can be used to build the sysroot without unwinding by setting `CG_RUSTFLAGS=-Cpanic=abort`.</dd>
-    <dt>CG_GCCJIT_DUMP_TO_FILE</dt>
-    <dd>Dump a C-like representation to /tmp/gccjit_dumps and enable debug info in order to debug this C-like representation.</dd>
-</dl>
+ * _**CG_GCCJIT_DUMP_ALL_MODULES**_: Enables dumping of all compilation modules. When set to "1", a dump is created for each module during compilation and stored in `/tmp/reproducers/`.
+ * _**CG_GCCJIT_DUMP_MODULE**_: Enables dumping of a specific module. When set with the module name, e.g., `CG_GCCJIT_DUMP_MODULE=module_name`, a dump of that specific module is created in `/tmp/reproducers/`.
+ * _**CG_RUSTFLAGS**_: Send additional flags to rustc. Can be used to build the sysroot without unwinding by setting `CG_RUSTFLAGS=-Cpanic=abort`.
+ * _**CG_GCCJIT_DUMP_TO_FILE**_: Dump a C-like representation to /tmp/gccjit_dumps and enable debug info in order to debug this C-like representation.
+ * _**CG_GCCJIT_DUMP_RTL**_: Dumps RTL (Register Transfer Language) for virtual registers.
+ * _**CG_GCCJIT_DUMP_RTL_ALL**_: Dumps all RTL passes.
+ * _**CG_GCCJIT_DUMP_TREE_ALL**_: Dumps all tree (GIMPLE) passes.
+ * _**CG_GCCJIT_DUMP_IPA_ALL**_: Dumps all Interprocedural Analysis (IPA) passes.
+ * _**CG_GCCJIT_DUMP_CODE**_: Dumps the final generated code.
+ * _**CG_GCCJIT_DUMP_GIMPLE**_: Dumps the initial GIMPLE representation.
+ * _**CG_GCCJIT_DUMP_EVERYTHING**_: Enables dumping of all intermediate representations and passes.
+ * _**CG_GCCJIT_KEEP_INTERMEDIATES**_: Keeps intermediate files generated during the compilation process.
+ * _**CG_GCCJIT_VERBOSE**_: Enables verbose output from the GCC driver.
 
 ## Extra documentation
 
