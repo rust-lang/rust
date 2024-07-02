@@ -7,7 +7,7 @@ use rustc_hir::LangItem;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::def_id::DefId;
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 
 /// Collects together a list of type bounds. These lists of bounds occur in many places
 /// in Rust's syntax:
@@ -80,7 +80,7 @@ impl<'tcx> Bounds<'tcx> {
             }
 
             (_, ty::BoundConstness::NotConst) => {
-                if !tcx.has_attr(bound_trait_ref.def_id(), sym::const_trait) {
+                if !tcx.is_const_trait(bound_trait_ref.def_id()) {
                     return;
                 }
                 tcx.consts.true_
