@@ -2,7 +2,10 @@ error[E0271]: type mismatch resolving `<() as Index>::Output == &mut <() as Inde
   --> $DIR/issue-100222.rs:34:12
    |
 LL |     fn foo(&mut self, x: <Self as Index>::Output) -> <Self as Index>::Output
-   |            ^^^^^^^^^ types differ
+   |            ^^^^^^^^^ expected `()`, found `&mut <() as Index>::Output`
+   |
+   = note:      expected unit type `()`
+           found mutable reference `&mut <() as Index>::Output`
 
 error: aborting due to 1 previous error
 
