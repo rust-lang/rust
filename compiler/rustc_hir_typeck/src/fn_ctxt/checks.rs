@@ -570,6 +570,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     IsSuggestion(true),
                     callee_ty.peel_refs(),
                     callee_expr.unwrap().hir_id,
+                    None,
                     TraitsInScope,
                     |mut ctxt| ctxt.probe_for_similar_candidate(),
                 )

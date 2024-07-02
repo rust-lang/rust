@@ -1588,6 +1588,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         IsSuggestion(true),
                         self_ty,
                         expr.hir_id,
+                        None,
                         ProbeScope::TraitsInScope,
                     )
                 {
