@@ -636,6 +636,7 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
             rustc_span::SourceFileHashAlgorithm::Md5 => llvm::ChecksumKind::MD5,
             rustc_span::SourceFileHashAlgorithm::Sha1 => llvm::ChecksumKind::SHA1,
             rustc_span::SourceFileHashAlgorithm::Sha256 => llvm::ChecksumKind::SHA256,
+            rustc_span::SourceFileHashAlgorithm::XxHash => llvm::ChecksumKind::None,
         };
         let hash_value = hex_encode(source_file.src_hash.hash_bytes());
 

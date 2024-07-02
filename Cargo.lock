@@ -4713,6 +4713,7 @@ dependencies = [
  "sha1",
  "sha2",
  "tracing",
+ "twox-hash",
  "unicode-width",
 ]
 

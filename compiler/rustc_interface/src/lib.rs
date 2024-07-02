@@ -1,5 +1,6 @@
 // tidy-alphabetical-start
 #![feature(decl_macro)]
+#![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(thread_spawn_unchecked)]
 #![feature(try_blocks)]
