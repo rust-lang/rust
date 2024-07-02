@@ -20,7 +20,7 @@ use super::{
     err_inval, err_ub_custom, err_unsup_format, memory::MemoryKind, throw_inval, throw_ub_custom,
     throw_ub_format, util::ensure_monomorphic_enough, Allocation, CheckInAllocMsg, ConstAllocation,
     GlobalId, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, Pointer, PointerArithmetic,
-    Scalar,
+    Provenance, Scalar,
 };
 
 use crate::fluent_generated as fluent;
@@ -259,24 +259,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             // This will always return 0.
                             (a, b)
                         }
-                        (Err(_), _) | (_, Err(_)) => {
-                            // We managed to find a valid allocation for one pointer, but not the other.
-                            // That means they are definitely not pointing to the same allocation.
+                        _ if M::Provenance::OFFSET_IS_ADDR && a.addr() == b.addr() => {
+                            // At least one of the pointers has provenance, but they also point to
+                            // the same address so it doesn't matter; this is fine. `(0, 0)` means
+                            // we pass all the checks below and return 0.
+                            (0, 0)
+                        }
+                        // From here onwards, the pointers are definitely for different addresses
+                        // (or we can't determine their absolute address).
+                        (Ok((a_alloc_id, a_offset, _)), Ok((b_alloc_id, b_offset, _)))
+                            if a_alloc_id == b_alloc_id =>
+                        {
+                            // Found allocation for both, and it's the same.
+                            // Use these offsets for distance calculation.
+                            (a_offset.bytes(), b_offset.bytes())
+                        }
+                        _ => {
+                            // Not into the same allocation -- this is UB.
                             throw_ub_custom!(
                                 fluent::const_eval_offset_from_different_allocations,
                                 name = intrinsic_name,
                             );
-                        }
-                        (Ok((a_alloc_id, a_offset, _)), Ok((b_alloc_id, b_offset, _))) => {
-                            // Found allocation for both. They must be into the same allocation.
-                            if a_alloc_id != b_alloc_id {
-                                throw_ub_custom!(
-                                    fluent::const_eval_offset_from_different_allocations,
-                                    name = intrinsic_name,
-                                );
-                            }
-                            // Use these offsets for distance calculation.
-                            (a_offset.bytes(), b_offset.bytes())
                         }
                     };
 
