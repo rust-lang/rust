@@ -113,7 +113,7 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
                 .take(self.num_calls as usize);
 
         if self.replace_ranges.is_empty() {
-            make_token_stream(tokens, self.break_last_token)
+            make_attr_token_stream(tokens, self.break_last_token)
         } else {
             let mut tokens: Vec<_> = tokens.collect();
             let mut replace_ranges = self.replace_ranges.to_vec();
@@ -166,7 +166,7 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
                     new_tokens.into_iter().chain(filler),
                 );
             }
-            make_token_stream(tokens.into_iter(), self.break_last_token)
+            make_attr_token_stream(tokens.into_iter(), self.break_last_token)
         }
     }
 }
@@ -374,10 +374,10 @@ impl<'a> Parser<'a> {
     }
 }
 
-/// Converts a flattened iterator of tokens (including open and close delimiter tokens)
-/// into a `TokenStream`, creating a `TokenTree::Delimited` for each matching pair
-/// of open and close delims.
-fn make_token_stream(
+/// Converts a flattened iterator of tokens (including open and close delimiter tokens) into an
+/// `AttrTokenStream`, creating an `AttrTokenTree::Delimited` for each matching pair of open and
+/// close delims.
+fn make_attr_token_stream(
     mut iter: impl Iterator<Item = (FlatToken, Spacing)>,
     break_last_token: bool,
 ) -> AttrTokenStream {
