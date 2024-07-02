@@ -19,6 +19,7 @@ use self::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
 use crate::ascii;
 use crate::char::{self, EscapeDebugExtArgs};
 use crate::mem;
+use crate::ops::Range;
 use crate::slice::{self, SliceIndex};
 
 pub mod pattern;
@@ -2720,6 +2721,39 @@ impl str {
     #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_unicode(&self) -> EscapeUnicode<'_> {
         EscapeUnicode { inner: self.chars().flat_map(CharEscapeUnicode) }
+    }
+
+    /// Returns the range that a sub`str` points to.
+    ///
+    /// Returns `None` if `substr` does not point within `self`.
+    ///
+    /// Unlike [`str::find`], **this does not search through the string**.
+    /// Instead, it uses pointer arithmetic to find where in the string
+    /// `substr` is derived from.
+    ///
+    /// This is useful for extending [`str::split`] and similar methods.
+    ///
+    /// Note that this method may return false positives (typically either
+    /// `Some(0..0)` or `Some(self.len()..self.len())`) if `substr` is a
+    /// zero-length `str` that points at the beginning or end of another,
+    /// independent, `str`.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(substr_range)]
+    ///
+    /// let data = "a, b, b, a";
+    /// let mut iter = data.split(", ").map(|s| data.substr_range(s).unwrap());
+    ///
+    /// assert_eq!(iter.next(), Some(0..1));
+    /// assert_eq!(iter.next(), Some(3..4));
+    /// assert_eq!(iter.next(), Some(6..7));
+    /// assert_eq!(iter.next(), Some(9..10));
+    /// ```
+    #[must_use]
+    #[unstable(feature = "substr_range", issue = "126769")]
+    pub fn substr_range(&self, substr: &str) -> Option<Range<usize>> {
+        self.as_bytes().subslice_range(substr.as_bytes())
     }
 }
 
