@@ -82,17 +82,11 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         };
 
         let is_thread_local = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-        let mut global = self.get_static_inner(def_id, val_llty);
+        let global = self.get_static_inner(def_id, val_llty);
 
         #[cfg(feature = "master")]
         if global.to_rvalue().get_type() != val_llty {
-            let instance = Instance::mono(self.tcx, def_id);
-            self.instances.borrow_mut().remove(&instance);
-
-            global.remove();
-            let name = self.tcx.symbol_name(instance).name;
-            self.globals.borrow_mut().remove(name);
-            global = self.get_static_inner(def_id, val_llty);
+            global.to_rvalue().set_type(val_llty);
         }
         set_global_alignment(self, global, alloc.align);
 

@@ -80,7 +80,7 @@ dependencies = [
 [[package]]
 name = "gccjit"
 version = "2.0.0"
-source = "git+https://github.com/rust-lang/gccjit.rs#f1545d7c2c13e42d78eaac8032d49ab8f7d43b6e"
+source = "git+https://github.com/rust-lang/gccjit.rs#328cb1b414f67dfa15162ba7a55ed01931f1b219"
 dependencies = [
  "gccjit_sys",
 ]
@@ -88,7 +88,7 @@ dependencies = [
 [[package]]
 name = "gccjit_sys"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/gccjit.rs#f1545d7c2c13e42d78eaac8032d49ab8f7d43b6e"
+source = "git+https://github.com/rust-lang/gccjit.rs#328cb1b414f67dfa15162ba7a55ed01931f1b219"
 dependencies = [
  "libc",
 ]
