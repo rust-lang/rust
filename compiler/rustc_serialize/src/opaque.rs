@@ -155,7 +155,7 @@ impl FileEncoder {
         if std::intrinsics::unlikely(self.buffered > flush_threshold) {
             self.flush();
         }
-        // SAFETY: We checked above that that N < self.buffer_empty().len(),
+        // SAFETY: We checked above that N < self.buffer_empty().len(),
         // and if isn't, flush ensures that our empty buffer is now BUF_SIZE.
         // We produce a post-mono error if N > BUF_SIZE.
         let buf = unsafe { self.buffer_empty().first_chunk_mut::<N>().unwrap_unchecked() };

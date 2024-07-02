@@ -1296,7 +1296,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     expr = binding_expr;
                 }
                 if let hir::Node::Param(_param) = parent {
-                    // ...and it is a an fn argument.
+                    // ...and it is an fn argument.
                     break;
                 }
             }

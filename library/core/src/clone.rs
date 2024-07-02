@@ -230,7 +230,7 @@ pub struct AssertParamIsCopy<T: Copy + ?Sized> {
 pub unsafe trait CloneToUninit {
     /// Performs copy-assignment from `self` to `dst`.
     ///
-    /// This is analogous to to `std::ptr::write(dst, self.clone())`,
+    /// This is analogous to `std::ptr::write(dst, self.clone())`,
     /// except that `self` may be a dynamically-sized type ([`!Sized`](Sized)).
     ///
     /// Before this function is called, `dst` may point to uninitialized memory.
