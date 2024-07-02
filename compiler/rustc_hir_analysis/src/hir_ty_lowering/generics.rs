@@ -8,10 +8,10 @@ use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{
     codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
 };
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::GenericArg;
+use rustc_hir::{self as hir};
+use rustc_hir::{ConstArgKind, GenericArg};
 use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty, TyCtxt,
 };
@@ -112,8 +112,12 @@ fn generic_arg_mismatch_err(
             }
         }
         (GenericArg::Const(cnst), GenericParamDefKind::Type { .. }) => {
-            let body = tcx.hir().body(cnst.value.body);
-            if let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) = body.value.kind
+            // FIXME(min_generic_const_args): once ConstArgKind::Path is used for non-params too,
+            // this should match against that instead of ::Anon
+            if let ConstArgKind::Anon(anon) = cnst.kind
+                && let body = tcx.hir().body(anon.body)
+                && let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) =
+                    body.value.kind
             {
                 if let Res::Def(DefKind::Fn { .. }, id) = path.res {
                     err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));

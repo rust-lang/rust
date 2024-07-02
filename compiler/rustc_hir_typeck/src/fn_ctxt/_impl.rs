@@ -5,10 +5,10 @@ use crate::rvalue_scopes;
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey};
-use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{self as hir};
 use rustc_hir::{ExprKind, GenericArg, HirId, Node, QPath};
 use rustc_hir_analysis::hir_ty_lowering::errors::GenericsArgsErrExtend;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
@@ -457,22 +457,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn lower_array_length(&self, length: &hir::ArrayLen<'tcx>) -> ty::Const<'tcx> {
         match length {
             hir::ArrayLen::Infer(inf) => self.ct_infer(None, inf.span),
-            hir::ArrayLen::Body(anon_const) => {
-                let span = self.tcx.def_span(anon_const.def_id);
-                let c = ty::Const::from_anon_const(self.tcx, anon_const.def_id);
+            hir::ArrayLen::Body(const_arg) => {
+                let span = const_arg.span();
+                let c = ty::Const::from_const_arg_without_feeding(self.tcx, const_arg);
                 self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
                 self.normalize(span, c)
             }
         }
     }
 
-    pub fn lower_const_arg(&self, hir_ct: &hir::AnonConst, param_def_id: DefId) -> ty::Const<'tcx> {
-        let did = hir_ct.def_id;
-        self.tcx.feed_anon_const_type(did, self.tcx.type_of(param_def_id));
-        let ct = ty::Const::from_anon_const(self.tcx, did);
+    pub fn lower_const_arg(
+        &self,
+        const_arg: &'tcx hir::ConstArg<'tcx>,
+        param_def_id: DefId,
+    ) -> ty::Const<'tcx> {
+        let ct = ty::Const::from_const_arg(self.tcx, const_arg, param_def_id);
         self.register_wf_obligation(
             ct.into(),
-            self.tcx.hir().span(hir_ct.hir_id),
+            self.tcx.hir().span(const_arg.hir_id),
             ObligationCauseCode::WellFormed(None),
         );
         ct
@@ -1298,7 +1300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.fcx.lower_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.fcx.lower_const_arg(&ct.value, param.def_id).into()
+                        self.fcx.lower_const_arg(ct, param.def_id).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ty_infer(Some(param), inf.span).into()

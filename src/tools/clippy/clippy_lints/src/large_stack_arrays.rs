@@ -106,13 +106,12 @@ fn might_be_expanded<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
     ///
     /// This is a fail-safe to a case where even the `is_from_proc_macro` is unable to determain the
     /// correct result.
-    fn repeat_expr_might_be_expanded<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
-        let ExprKind::Repeat(_, ArrayLen::Body(anon_const)) = expr.kind else {
+    fn repeat_expr_might_be_expanded<'tcx>(expr: &Expr<'tcx>) -> bool {
+        let ExprKind::Repeat(_, ArrayLen::Body(len_ct)) = expr.kind else {
             return false;
         };
-        let len_span = cx.tcx.def_span(anon_const.def_id);
-        !expr.span.contains(len_span)
+        !expr.span.contains(len_ct.span())
     }
 
-    expr.span.from_expansion() || is_from_proc_macro(cx, expr) || repeat_expr_might_be_expanded(cx, expr)
+    expr.span.from_expansion() || is_from_proc_macro(cx, expr) || repeat_expr_might_be_expanded(expr)
 }

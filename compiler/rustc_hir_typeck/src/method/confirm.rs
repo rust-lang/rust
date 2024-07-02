@@ -400,7 +400,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         self.cfcx.lower_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.cfcx.lower_const_arg(&ct.value, param.def_id).into()
+                        self.cfcx.lower_const_arg(ct, param.def_id).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.cfcx.ty_infer(Some(param), inf.span).into()

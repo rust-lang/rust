@@ -36,10 +36,10 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_errors::{codes::*, struct_span_code_err, FatalError};
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::PredicateOrigin;
+use rustc_hir::{self as hir, ConstArgKind};
 use rustc_hir_analysis::lower_ty;
 use rustc_middle::metadata::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
@@ -284,10 +284,15 @@ fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> 
 }
 
 pub(crate) fn clean_const<'tcx>(
-    constant: &hir::ConstArg<'_>,
+    constant: &hir::ConstArg<'tcx>,
     _cx: &mut DocContext<'tcx>,
 ) -> Constant {
-    Constant { kind: ConstantKind::Anonymous { body: constant.value.body } }
+    match &constant.kind {
+        ConstArgKind::Path(qpath) => {
+            Constant { kind: ConstantKind::Path { path: qpath_to_string(&qpath).into() } }
+        }
+        ConstArgKind::Anon(anon) => Constant { kind: ConstantKind::Anonymous { body: anon.body } },
+    }
 }
 
 pub(crate) fn clean_middle_const<'tcx>(
@@ -430,7 +435,7 @@ fn clean_hir_term<'tcx>(term: &hir::Term<'tcx>, cx: &mut DocContext<'tcx>) -> Te
     match term {
         hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
         hir::Term::Const(c) => Term::Constant(clean_middle_const(
-            ty::Binder::dummy(ty::Const::from_anon_const(cx.tcx, c.def_id)),
+            ty::Binder::dummy(ty::Const::from_const_arg_without_feeding(cx.tcx, c)),
             cx,
         )),
     }
@@ -632,8 +637,9 @@ fn clean_generic_param<'tcx>(
             param.name.ident().name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
-                default: default
-                    .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
+                default: default.map(|ct| {
+                    Box::new(ty::Const::from_const_arg_without_feeding(cx.tcx, ct).to_string())
+                }),
                 synthetic,
             },
         ),
@@ -1820,7 +1826,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::Array(ty, ref length) => {
             let length = match length {
                 hir::ArrayLen::Infer(..) => "_".to_string(),
-                hir::ArrayLen::Body(anon_const) => {
+                hir::ArrayLen::Body(const_arg) => {
                     // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
                     // as we currently do not supply the parent generics to anonymous constants
                     // but do allow `ConstKind::Param`.
@@ -1828,9 +1834,18 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                     // `const_eval_poly` tries to first substitute generic parameters which
                     // results in an ICE while manually constructing the constant and using `eval`
                     // does nothing for `ConstKind::Param`.
-                    let ct = ty::Const::from_anon_const(cx.tcx, anon_const.def_id);
-                    let param_env = cx.tcx.param_env(anon_const.def_id);
-                    print_const(cx, ct.normalize(cx.tcx, param_env))
+                    let ct = ty::Const::from_const_arg_without_feeding(cx.tcx, const_arg);
+                    let ct = if let hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) =
+                        const_arg.kind
+                    {
+                        // Only anon consts can implicitly capture params.
+                        // FIXME: is this correct behavior?
+                        let param_env = cx.tcx.param_env(*def_id);
+                        ct.normalize(cx.tcx, param_env)
+                    } else {
+                        ct
+                    };
+                    print_const(cx, ct)
                 }
             };
 

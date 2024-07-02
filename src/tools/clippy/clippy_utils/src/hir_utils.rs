@@ -7,9 +7,9 @@ use rustc_data_structures::fx::FxHasher;
 use rustc_hir::def::Res;
 use rustc_hir::MatchSource::TryDesugar;
 use rustc_hir::{
-    ArrayLen, AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, Expr, ExprField, ExprKind, FnRetTy,
-    GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeName, Pat, PatField,
-    PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, Ty, TyKind,
+    ArrayLen, AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr,
+    ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
+    LifetimeName, Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, Ty, TyKind,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
@@ -227,7 +227,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     pub fn eq_array_length(&mut self, left: ArrayLen<'_>, right: ArrayLen<'_>) -> bool {
         match (left, right) {
             (ArrayLen::Infer(..), ArrayLen::Infer(..)) => true,
-            (ArrayLen::Body(l_ct), ArrayLen::Body(r_ct)) => self.eq_body(l_ct.body, r_ct.body),
+            (ArrayLen::Body(l_ct), ArrayLen::Body(r_ct)) => self.eq_const_arg(l_ct, r_ct),
             (_, _) => false,
         }
     }
@@ -411,11 +411,22 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     fn eq_generic_arg(&mut self, left: &GenericArg<'_>, right: &GenericArg<'_>) -> bool {
         match (left, right) {
-            (GenericArg::Const(l), GenericArg::Const(r)) => self.eq_body(l.value.body, r.value.body),
+            (GenericArg::Const(l), GenericArg::Const(r)) => self.eq_const_arg(l, r),
             (GenericArg::Lifetime(l_lt), GenericArg::Lifetime(r_lt)) => Self::eq_lifetime(l_lt, r_lt),
             (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty, r_ty),
             (GenericArg::Infer(l_inf), GenericArg::Infer(r_inf)) => self.eq_ty(&l_inf.to_ty(), &r_inf.to_ty()),
             _ => false,
+        }
+    }
+
+    fn eq_const_arg(&mut self, left: &ConstArg<'_>, right: &ConstArg<'_>) -> bool {
+        match (&left.kind, &right.kind) {
+            (ConstArgKind::Path(l_p), ConstArgKind::Path(r_p)) => self.eq_qpath(l_p, r_p),
+            (ConstArgKind::Anon(l_an), ConstArgKind::Anon(r_an)) => self.eq_body(l_an.body, r_an.body),
+            // Use explicit match for now since ConstArg is undergoing flux.
+            (ConstArgKind::Path(..), ConstArgKind::Anon(..)) | (ConstArgKind::Anon(..), ConstArgKind::Path(..)) => {
+                false
+            },
         }
     }
 
@@ -1123,7 +1134,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_array_length(&mut self, length: ArrayLen<'_>) {
         match length {
             ArrayLen::Infer(..) => {},
-            ArrayLen::Body(anon_const) => self.hash_body(anon_const.body),
+            ArrayLen::Body(ct) => self.hash_const_arg(ct),
         }
     }
 
@@ -1134,12 +1145,19 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
 
+    fn hash_const_arg(&mut self, const_arg: &ConstArg<'_>) {
+        match &const_arg.kind {
+            ConstArgKind::Path(path) => self.hash_qpath(path),
+            ConstArgKind::Anon(anon) => self.hash_body(anon.body),
+        }
+    }
+
     fn hash_generic_args(&mut self, arg_list: &[GenericArg<'_>]) {
         for arg in arg_list {
             match *arg {
                 GenericArg::Lifetime(l) => self.hash_lifetime(l),
                 GenericArg::Type(ty) => self.hash_ty(ty),
-                GenericArg::Const(ref ca) => self.hash_body(ca.value.body),
+                GenericArg::Const(ref ca) => self.hash_const_arg(ca),
                 GenericArg::Infer(ref inf) => self.hash_ty(&inf.to_ty()),
             }
         }

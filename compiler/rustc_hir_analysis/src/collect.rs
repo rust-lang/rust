@@ -295,7 +295,17 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
                     self.tcx.ensure().type_of(param.def_id);
                     if let Some(default) = default {
                         // need to store default and type of default
-                        self.tcx.ensure().type_of(default.def_id);
+                        let default_did = match &default.kind {
+                            hir::ConstArgKind::Path(hir::QPath::Resolved(
+                                None,
+                                hir::Path { res, .. },
+                            )) => res.def_id(),
+                            hir::ConstArgKind::Path(qpath) => {
+                                bug!("invalid path for const arg: {qpath:?}")
+                            }
+                            hir::ConstArgKind::Anon(ac) => ac.def_id.into(),
+                        };
+                        self.tcx.ensure().type_of(default_did);
                         self.tcx.ensure().const_param_default(param.def_id);
                     }
                 }

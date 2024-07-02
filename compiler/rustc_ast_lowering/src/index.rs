@@ -181,7 +181,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         intravisit::walk_generic_param(self, param);
     }
 
-    fn visit_const_param_default(&mut self, param: HirId, ct: &'hir AnonConst) {
+    fn visit_const_param_default(&mut self, param: HirId, ct: &'hir ConstArg<'hir>) {
         self.with_parent(param, |this| {
             intravisit::walk_const_param_default(this, ct);
         })
@@ -229,6 +229,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_anon_const(&mut self, constant: &'hir AnonConst) {
+        // FIXME: use real span?
         self.insert(DUMMY_SP, constant.hir_id, Node::AnonConst(constant));
 
         self.with_parent(constant.hir_id, |this| {
@@ -241,6 +242,15 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
         self.with_parent(constant.hir_id, |this| {
             intravisit::walk_inline_const(this, constant);
+        });
+    }
+
+    fn visit_const_arg(&mut self, const_arg: &'hir ConstArg<'hir>) {
+        // FIXME: use real span?
+        self.insert(DUMMY_SP, const_arg.hir_id, Node::ConstArg(const_arg));
+
+        self.with_parent(const_arg.hir_id, |this| {
+            intravisit::walk_const_arg(this, const_arg);
         });
     }
 

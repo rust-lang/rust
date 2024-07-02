@@ -4,11 +4,11 @@ error[E0308]: mismatched types
 LL |     fn func<const N: u32>() -> [ (); { () }] {
    |                                        ^^ expected `usize`, found `()`
 
-error[E0308]: mismatched types
-  --> $DIR/const-in-impl-fn-return-type.rs:8:38
+error: the constant `N` is not of type `usize`
+  --> $DIR/const-in-impl-fn-return-type.rs:8:32
    |
 LL |     fn func<const N: u32>() -> [ (); N ];
-   |                                      ^ expected `usize`, found `u32`
+   |                                ^^^^^^^^^ expected `usize`, found `u32`
 
 error: aborting due to 2 previous errors
 
