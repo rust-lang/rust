@@ -3,6 +3,7 @@
 #![cfg(reliable_f16)]
 
 use crate::f16::consts;
+use crate::num::FpCategory as Fp;
 use crate::num::*;
 
 // We run out of precision pretty quickly with f16
@@ -58,9 +59,8 @@ fn test_nan() {
     assert!(!nan.is_finite());
     assert!(nan.is_sign_positive());
     assert!(!nan.is_sign_negative());
-    // FIXME(f16_f128): classify
-    // assert!(!nan.is_normal());
-    // assert_eq!(Fp::Nan, nan.classify());
+    assert!(!nan.is_normal());
+    assert_eq!(Fp::Nan, nan.classify());
 }
 
 #[test]
@@ -71,9 +71,8 @@ fn test_infinity() {
     assert!(inf.is_sign_positive());
     assert!(!inf.is_sign_negative());
     assert!(!inf.is_nan());
-    // FIXME(f16_f128): classify
-    // assert!(!inf.is_normal());
-    // assert_eq!(Fp::Infinite, inf.classify());
+    assert!(!inf.is_normal());
+    assert_eq!(Fp::Infinite, inf.classify());
 }
 
 #[test]
@@ -84,9 +83,8 @@ fn test_neg_infinity() {
     assert!(!neg_inf.is_sign_positive());
     assert!(neg_inf.is_sign_negative());
     assert!(!neg_inf.is_nan());
-    // FIXME(f16_f128): classify
-    // assert!(!neg_inf.is_normal());
-    // assert_eq!(Fp::Infinite, neg_inf.classify());
+    assert!(!neg_inf.is_normal());
+    assert_eq!(Fp::Infinite, neg_inf.classify());
 }
 
 #[test]
@@ -98,9 +96,8 @@ fn test_zero() {
     assert!(zero.is_sign_positive());
     assert!(!zero.is_sign_negative());
     assert!(!zero.is_nan());
-    // FIXME(f16_f128): classify
-    // assert!(!zero.is_normal());
-    // assert_eq!(Fp::Zero, zero.classify());
+    assert!(!zero.is_normal());
+    assert_eq!(Fp::Zero, zero.classify());
 }
 
 #[test]
@@ -112,9 +109,8 @@ fn test_neg_zero() {
     assert!(!neg_zero.is_sign_positive());
     assert!(neg_zero.is_sign_negative());
     assert!(!neg_zero.is_nan());
-    // FIXME(f16_f128): classify
-    // assert!(!neg_zero.is_normal());
-    // assert_eq!(Fp::Zero, neg_zero.classify());
+    assert!(!neg_zero.is_normal());
+    assert_eq!(Fp::Zero, neg_zero.classify());
 }
 
 #[test]
@@ -126,9 +122,8 @@ fn test_one() {
     assert!(one.is_sign_positive());
     assert!(!one.is_sign_negative());
     assert!(!one.is_nan());
-    // FIXME(f16_f128): classify
-    // assert!(one.is_normal());
-    // assert_eq!(Fp::Normal, one.classify());
+    assert!(one.is_normal());
+    assert_eq!(Fp::Normal, one.classify());
 }
 
 #[test]
@@ -170,7 +165,40 @@ fn test_is_finite() {
     assert!((-109.2f16).is_finite());
 }
 
-// FIXME(f16_f128): add `test_is_normal` and `test_classify` when classify is working
+#[test]
+fn test_is_normal() {
+    let nan: f16 = f16::NAN;
+    let inf: f16 = f16::INFINITY;
+    let neg_inf: f16 = f16::NEG_INFINITY;
+    let zero: f16 = 0.0f16;
+    let neg_zero: f16 = -0.0;
+    assert!(!nan.is_normal());
+    assert!(!inf.is_normal());
+    assert!(!neg_inf.is_normal());
+    assert!(!zero.is_normal());
+    assert!(!neg_zero.is_normal());
+    assert!(1f16.is_normal());
+    assert!(1e-4f16.is_normal());
+    assert!(!1e-5f16.is_normal());
+}
+
+#[test]
+fn test_classify() {
+    let nan: f16 = f16::NAN;
+    let inf: f16 = f16::INFINITY;
+    let neg_inf: f16 = f16::NEG_INFINITY;
+    let zero: f16 = 0.0f16;
+    let neg_zero: f16 = -0.0;
+    assert_eq!(nan.classify(), Fp::Nan);
+    assert_eq!(inf.classify(), Fp::Infinite);
+    assert_eq!(neg_inf.classify(), Fp::Infinite);
+    assert_eq!(zero.classify(), Fp::Zero);
+    assert_eq!(neg_zero.classify(), Fp::Zero);
+    assert_eq!(1f16.classify(), Fp::Normal);
+    assert_eq!(1e-4f16.classify(), Fp::Normal);
+    assert_eq!(1e-5f16.classify(), Fp::Subnormal);
+}
+
 // FIXME(f16_f128): add missing math functions when available
 
 #[test]
