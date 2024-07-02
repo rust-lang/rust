@@ -1228,6 +1228,69 @@ mod ref_keyword {}
 /// ```
 mod return_keyword {}
 
+#[doc(keyword = "become")]
+//
+/// Perform a tail-call of a function.
+///
+/// A `become` transfers the execution flow to a function in such a way, that
+/// returning from the callee returns to the caller of the current function:
+///
+/// ```
+/// #![feature(explicit_tail_calls)]
+///
+/// fn a() -> u32 {
+///     become b();
+/// }
+///
+/// fn b() -> u32 {
+///     return 2; // this return directly returns to the main ---+
+/// }                  //                                        |
+///                    //                                        |
+/// fn main() {        //                                        |
+///     let res = a(); // <--------------------------------------+
+///     assert_eq!(res, 2);
+/// }
+/// ```
+///
+/// This is an optimization that allows function calls to not exhaust the stack.
+/// This is most useful for (mutually) recursive algorithms, but may be used in
+/// other cases too.
+///
+/// It is guaranteed that the call will not cause unbounded stack growth if it
+/// is part of a recursive cycle in the call graph.
+///
+/// For example note that the functions `halt` and `halt_loop` below are
+/// identical, they both do nothing, forever. However, `stack_overflow` is
+/// different from them, even though it is written almost identically to
+/// `halt`, `stack_overflow` exhausts the stack and so causes a stack
+/// overflow, instead of running forever.
+///
+///
+/// ```
+/// #![feature(explicit_tail_calls)]
+///
+/// # #[allow(unreachable_code)]
+/// fn halt() -> ! {
+///     become halt()
+/// }
+///
+/// fn halt_loop() -> ! {
+///     loop {}
+/// }
+///
+/// # #[allow(unconditional_recursion)]
+/// fn stack_overflow() -> ! {
+///     stack_overflow() // implicit return
+/// }
+/// ```
+///
+/// Note that from an algorithmic standpoint, loops and tail-calls are
+/// interchangeable, you can always rewrite a loop to use tail-calls
+/// instead and vice versa. They are, however, very different in the code
+/// structure, so sometimes one approach can make more sense than the other.
+#[cfg(not(bootstrap))]
+mod become_keyword {}
+
 #[doc(keyword = "self")]
 //
 /// The receiver of a method, or the current module.
