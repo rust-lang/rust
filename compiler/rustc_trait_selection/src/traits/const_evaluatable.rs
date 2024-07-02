@@ -37,13 +37,17 @@ pub fn is_const_evaluatable<'tcx>(
         | ty::ConstKind::Value(_, _)
         | ty::ConstKind::Error(_) => return Ok(()),
         ty::ConstKind::Infer(_) => return Err(NotConstEvaluatable::MentionsInfer),
-    };
+    }
 
     if tcx.features().generic_const_exprs {
         let ct = tcx.expand_abstract_consts(unexpanded_ct);
 
+        if trivially_satisfied_from_param_env(ct, param_env) {
+            return Ok(());
+        }
+
         let is_anon_ct = if let ty::ConstKind::Unevaluated(uv) = ct.kind() {
-            tcx.def_kind(uv.def) == DefKind::AnonConst
+            matches!(tcx.def_kind(uv.def), DefKind::AnonConst)
         } else {
             false
         };
@@ -148,6 +152,23 @@ pub fn is_const_evaluatable<'tcx>(
             Ok(_) => Ok(()),
         }
     }
+}
+
+fn trivially_satisfied_from_param_env<'tcx>(
+    ct: ty::Const<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> bool {
+    for pred in param_env.caller_bounds() {
+        if let ty::ClauseKind::ConstEvaluatable(ce) = pred.kind().skip_binder() {
+            if let ty::ConstKind::Unevaluated(uv_env) = ce.kind()
+                && let ty::ConstKind::Unevaluated(uv) = ct.kind()
+                && uv == uv_env
+            {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 #[instrument(skip(infcx, tcx), level = "debug")]
