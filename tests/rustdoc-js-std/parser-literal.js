@@ -2,13 +2,13 @@ const PARSED = [
     {
         query: 'R<P>',
         elems: [{
-            name: "r",
+            name: "R",
             fullPath: ["r"],
             pathWithoutLast: [],
             pathLast: "r",
             generics: [
                 {
-                    name: "p",
+                    name: "P",
                     fullPath: ["p"],
                     pathWithoutLast: [],
                     pathLast: "p",
@@ -18,9 +18,8 @@ const PARSED = [
             typeFilter: -1,
         }],
         foundElems: 1,
-        original: "R<P>",
+        userQuery: "R<P>",
         returned: [],
-        userQuery: "r<p>",
         error: null,
     }
 ];

@@ -3,7 +3,7 @@ const PARSED = [
         query: 'A<B=C>',
         elems: [
             {
-                name: "a",
+                name: "A",
                 fullPath: ["a"],
                 pathWithoutLast: [],
                 pathLast: "a",
@@ -13,7 +13,7 @@ const PARSED = [
                         'b',
                         [
                             {
-                                name: "c",
+                                name: "C",
                                 fullPath: ["c"],
                                 pathWithoutLast: [],
                                 pathLast: "c",
@@ -27,16 +27,15 @@ const PARSED = [
             },
         ],
         foundElems: 1,
-        original: 'A<B=C>',
+        userQuery: 'A<B=C>',
         returned: [],
-        userQuery: 'a<b=c>',
         error: null,
     },
     {
         query: 'A<B = C>',
         elems: [
             {
-                name: "a",
+                name: "A",
                 fullPath: ["a"],
                 pathWithoutLast: [],
                 pathLast: "a",
@@ -45,7 +44,7 @@ const PARSED = [
                     [
                         'b',
                         [{
-                            name: "c",
+                            name: "C",
                             fullPath: ["c"],
                             pathWithoutLast: [],
                             pathLast: "c",
@@ -58,16 +57,15 @@ const PARSED = [
             },
         ],
         foundElems: 1,
-        original: 'A<B = C>',
+        userQuery: 'A<B = C>',
         returned: [],
-        userQuery: 'a<b = c>',
         error: null,
     },
     {
         query: 'A<B=!>',
         elems: [
             {
-                name: "a",
+                name: "A",
                 fullPath: ["a"],
                 pathWithoutLast: [],
                 pathLast: "a",
@@ -89,16 +87,15 @@ const PARSED = [
             },
         ],
         foundElems: 1,
-        original: 'A<B=!>',
+        userQuery: 'A<B=!>',
         returned: [],
-        userQuery: 'a<b=!>',
         error: null,
     },
     {
         query: 'A<B=[]>',
         elems: [
             {
-                name: "a",
+                name: "A",
                 fullPath: ["a"],
                 pathWithoutLast: [],
                 pathLast: "a",
@@ -120,16 +117,15 @@ const PARSED = [
             },
         ],
         foundElems: 1,
-        original: 'A<B=[]>',
+        userQuery: 'A<B=[]>',
         returned: [],
-        userQuery: 'a<b=[]>',
         error: null,
     },
     {
         query: 'A<B=[!]>',
         elems: [
             {
-                name: "a",
+                name: "A",
                 fullPath: ["a"],
                 pathWithoutLast: [],
                 pathLast: "a",
@@ -160,52 +156,47 @@ const PARSED = [
             },
         ],
         foundElems: 1,
-        original: 'A<B=[!]>',
+        userQuery: 'A<B=[!]>',
         returned: [],
-        userQuery: 'a<b=[!]>',
         error: null,
     },
     {
         query: 'A<B=C=>',
         elems: [],
         foundElems: 0,
-        original: 'A<B=C=>',
+        userQuery: 'A<B=C=>',
         returned: [],
-        userQuery: 'a<b=c=>',
         error: "Cannot write `=` twice in a binding",
     },
     {
         query: 'A<B=>',
         elems: [],
         foundElems: 0,
-        original: 'A<B=>',
+        userQuery: 'A<B=>',
         returned: [],
-        userQuery: 'a<b=>',
         error: "Unexpected `>` after `=`",
     },
     {
         query: 'B=C',
         elems: [],
         foundElems: 0,
-        original: 'B=C',
+        userQuery: 'B=C',
         returned: [],
-        userQuery: 'b=c',
         error: "Type parameter `=` must be within generics list",
     },
     {
         query: '[B=C]',
         elems: [],
         foundElems: 0,
-        original: '[B=C]',
+        userQuery: '[B=C]',
         returned: [],
-        userQuery: '[b=c]',
         error: "Type parameter `=` cannot be within slice `[]`",
     },
     {
         query: 'A<B<X>=C>',
         elems: [
             {
-                name: "a",
+                name: "A",
                 fullPath: ["a"],
                 pathWithoutLast: [],
                 pathLast: "a",
@@ -215,7 +206,7 @@ const PARSED = [
                         'b',
                         [
                             {
-                                name: "c",
+                                name: "C",
                                 fullPath: ["c"],
                                 pathWithoutLast: [],
                                 pathLast: "c",
@@ -223,7 +214,7 @@ const PARSED = [
                                 typeFilter: -1,
                             },
                             {
-                                name: "x",
+                                name: "X",
                                 fullPath: ["x"],
                                 pathWithoutLast: [],
                                 pathLast: "x",
@@ -237,9 +228,8 @@ const PARSED = [
             },
         ],
         foundElems: 1,
-        original: 'A<B<X>=C>',
+        userQuery: 'A<B<X>=C>',
         returned: [],
-        userQuery: 'a<b<x>=c>',
         error: null,
     },
 ];

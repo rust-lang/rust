@@ -11,11 +11,11 @@ press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
 // Check the disambiguated link.
-assert-count: ("a.result-method", 1)
-assert-attribute: ("a.result-method", {
+assert-count: ("li.result-method > a", 1)
+assert-attribute: ("li.result-method > a", {
     "href": "../test_docs/struct.ZyxwvutMethodDisambiguation.html#impl-ZyxwvutMethodDisambiguation/method.method_impl_disambiguation"
 })
-click: "a.result-method"
+click: "li.result-method > a"
 wait-for: "#impl-ZyxwvutMethodDisambiguation"
 assert-document-property: ({
     "URL": "struct.ZyxwvutMethodDisambiguation.html#method.method_impl_disambiguation"
@@ -31,11 +31,11 @@ press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
 // Check the disambiguated link.
-assert-count: ("a.result-method", 1)
-assert-attribute: ("a.result-method", {
+assert-count: ("li.result-method > a", 1)
+assert-attribute: ("li.result-method > a", {
     "href": "../test_docs/struct.ZyxwvutMethodDisambiguation.html#impl-ZyxwvutTrait-for-ZyxwvutMethodDisambiguation/method.method_impl_disambiguation"
 })
-click: "a.result-method"
+click: "li.result-method > a"
 wait-for: "#impl-ZyxwvutMethodDisambiguation"
 assert-document-property: ({
     "URL": "struct.ZyxwvutMethodDisambiguation.html#method.method_impl_disambiguation-1"
