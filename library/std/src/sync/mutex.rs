@@ -183,8 +183,35 @@ pub struct Mutex<T: ?Sized> {
 
 // these are the only places where `T: Send` matters; all other
 // functionality works fine on a single thread.
+
+/// SAFETY
+///
+/// - impl Send for Mutex
+///
+/// Mutex is a container that wraps `T`, so it's necessary for `T` to be `Send`
+/// to safely send `Mutex` to another thread. This ensures that the protected
+/// data can be accessed safely from multiple threads without causing data races
+/// or other unsafe behavior.
+
+///
+/// - impl Sync for Mutex
+///
+/// `Mutex<T>` provides mutable access to `T` to one thread at a time. However, it's essential
+/// for `T` to be `Send` because it's not safe for non-`Send` structures to be accessed in
+/// this manner. For instance, consider `Rc`, a non-atomic reference counted smart pointer,
+/// which is not `Send`. With `Rc`, we can have multiple copies pointing to the same heap
+/// allocation with a non-atomic reference count. If we were to use `Mutex<Rc<_>>`, it would
+/// only protect one instance of `Rc` from shared access, leaving other copies vulnerable
+/// to potential data races.
+
+/// It's important to note that `Mutex` can be `Sync` even if its inner type `T`
+/// is not `Sync` itself. This is because `Mutex` provides a safe interface for
+/// accessing `T` through locking mechanisms, ensuring that only one thread can
+/// access `T` at a time.
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send> Send for Mutex<T> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 
