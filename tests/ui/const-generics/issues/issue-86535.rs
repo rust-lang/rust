@@ -2,6 +2,7 @@
 #![feature(adt_const_params, generic_const_exprs)]
 #![allow(incomplete_features, unused_variables)]
 
+#[allow(dead_code)]
 struct F<const S: &'static str>;
 impl<const S: &'static str> X for F<{ S }> {
     const W: usize = 3;

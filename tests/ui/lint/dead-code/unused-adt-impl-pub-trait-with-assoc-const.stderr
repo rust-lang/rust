@@ -11,16 +11,32 @@ LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
 error: struct `T2` is never constructed
-  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:4:12
+  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:4:8
    |
-LL | pub struct T2(i32);
+LL | struct T2;
+   |        ^^
+
+error: struct `T3` is never constructed
+  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:5:12
+   |
+LL | pub struct T3(i32);
    |            ^^
 
+error: field `0` is never read
+  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:6:15
+   |
+LL | pub struct T4(i32);
+   |            -- ^^^
+   |            |
+   |            field in this struct
+   |
+   = help: consider removing this field
+
 error: trait `Trait1` is never used
-  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:7:7
+  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:8:7
    |
 LL | trait Trait1 {
    |       ^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 5 previous errors
 
