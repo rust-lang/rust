@@ -499,59 +499,59 @@ error[E0433]: cannot find item `core` in the crate root
 LL | #[suggestion(no_crate_example, code = "", style("foo"))]
    |                                                ^ you might be missing a crate named `core`
 
-error: cannot find attribute `foo` in this scope
+error: cannot find attribute `foo` in the crate root
   --> $DIR/subdiagnostic-derive.rs:67:3
    |
 LL | #[foo]
-   |   ^^^ not found in this scope
+   |   ^^^ not found in the crate root
 
-error: cannot find attribute `foo` in this scope
+error: cannot find attribute `foo` in the crate root
   --> $DIR/subdiagnostic-derive.rs:164:3
    |
 LL | #[foo]
-   |   ^^^ not found in this scope
+   |   ^^^ not found in the crate root
 
-error: cannot find attribute `bar` in this scope
+error: cannot find attribute `bar` in enum `Q`
   --> $DIR/subdiagnostic-derive.rs:179:7
    |
 LL |     #[bar]
-   |       ^^^ not found in this scope
+   |       ^^^ not found in enum `Q`
 
-error: cannot find attribute `bar` in this scope
+error: cannot find attribute `bar` in enum `R`
   --> $DIR/subdiagnostic-derive.rs:192:7
    |
 LL |     #[bar = "..."]
-   |       ^^^ not found in this scope
+   |       ^^^ not found in enum `R`
 
-error: cannot find attribute `bar` in this scope
+error: cannot find attribute `bar` in enum `S`
   --> $DIR/subdiagnostic-derive.rs:205:7
    |
 LL |     #[bar = 4]
-   |       ^^^ not found in this scope
+   |       ^^^ not found in enum `S`
 
-error: cannot find attribute `bar` in this scope
+error: cannot find attribute `bar` in enum `T`
   --> $DIR/subdiagnostic-derive.rs:218:7
    |
 LL |     #[bar("...")]
-   |       ^^^ not found in this scope
+   |       ^^^ not found in enum `T`
 
-error: cannot find attribute `bar` in this scope
+error: cannot find attribute `bar` in the crate root
   --> $DIR/subdiagnostic-derive.rs:280:7
    |
 LL |     #[bar]
-   |       ^^^ not found in this scope
+   |       ^^^ not found in the crate root
 
-error: cannot find attribute `bar` in this scope
+error: cannot find attribute `bar` in the crate root
   --> $DIR/subdiagnostic-derive.rs:292:7
    |
 LL |     #[bar = "..."]
-   |       ^^^ not found in this scope
+   |       ^^^ not found in the crate root
 
-error: cannot find attribute `bar` in this scope
+error: cannot find attribute `bar` in the crate root
   --> $DIR/subdiagnostic-derive.rs:304:7
    |
 LL |     #[bar("...")]
-   |       ^^^ not found in this scope
+   |       ^^^ not found in the crate root
 
 error[E0425]: cannot find value `slug` in module `crate::fluent_generated`
   --> $DIR/subdiagnostic-derive.rs:127:9
