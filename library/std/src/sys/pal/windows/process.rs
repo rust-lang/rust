@@ -163,6 +163,7 @@ pub struct Command {
     env: CommandEnv,
     cwd: Option<OsString>,
     flags: u32,
+    show_window: Option<u16>,
     detach: bool, // not currently exposed in std::process
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
@@ -194,6 +195,7 @@ impl Command {
             env: Default::default(),
             cwd: None,
             flags: 0,
+            show_window: None,
             detach: false,
             stdin: None,
             stdout: None,
@@ -223,6 +225,9 @@ impl Command {
     }
     pub fn creation_flags(&mut self, flags: u32) {
         self.flags = flags;
+    }
+    pub fn show_window(&mut self, cmd_show: Option<u16>) {
+        self.show_window = cmd_show;
     }
 
     pub fn force_quotes(&mut self, enabled: bool) {
@@ -335,6 +340,11 @@ impl Command {
             si.hStdInput = stdin.as_raw_handle();
             si.hStdOutput = stdout.as_raw_handle();
             si.hStdError = stderr.as_raw_handle();
+        }
+
+        if let Some(cmd_show) = self.show_window {
+            si.dwFlags |= c::STARTF_USESHOWWINDOW;
+            si.wShowWindow = cmd_show;
         }
 
         let si_ptr: *mut c::STARTUPINFOW;
