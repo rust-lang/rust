@@ -157,7 +157,11 @@ mod c_int_definition {
 
 mod c_long_definition {
     cfg_if! {
-        if #[cfg(all(target_pointer_width = "64", not(windows)))] {
+        // wasm32 for Linux uses 64-bit long as standard
+        if #[cfg(any(
+            all(target_pointer_width = "64", not(windows)),
+            all(target_arch = "wasm32", target_os = "linux", target_env = "musl")
+        ))] {
             pub type c_long = i64;
             pub type c_ulong = u64;
         } else {
