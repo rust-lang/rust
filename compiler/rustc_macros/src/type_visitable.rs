@@ -32,18 +32,29 @@ pub fn type_visitable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
     }
 
     s.add_bounds(synstructure::AddBounds::Generics);
-    let body_visit = s.each(|bind| {
-        quote! {
-            match ::rustc_ast_ir::visit::VisitorResult::branch(
-                ::rustc_middle::ty::visit::TypeVisitable::visit_with(#bind, __visitor)
-            ) {
-                ::core::ops::ControlFlow::Continue(()) => {},
-                ::core::ops::ControlFlow::Break(r) => {
-                    return ::rustc_ast_ir::visit::VisitorResult::from_residual(r);
-                },
+    let body_visit =
+        s.each_variant(|vi| {
+            if let Some((last, rest)) = vi.bindings().split_last() {
+                // Avoid early returning after visiting the final binding, so that LLVM can TCO the call.
+                rest.iter()
+                .map(|bind| quote! {
+                    match ::rustc_ast_ir::visit::VisitorResult::branch(
+                        ::rustc_middle::ty::visit::TypeVisitable::visit_with(#bind, __visitor)
+                    ) {
+                        ::core::ops::ControlFlow::Continue(()) => {},
+                        ::core::ops::ControlFlow::Break(r) => {
+                            return ::rustc_ast_ir::visit::VisitorResult::from_residual(r);
+                        },
+                    }
+                })
+                .chain(std::iter::once(quote! {
+                    ::rustc_middle::ty::visit::TypeVisitable::visit_with(#last, __visitor)
+                }))
+                .collect()
+            } else {
+                quote! { <__V::Result as ::rustc_ast_ir::visit::VisitorResult>::output() }
             }
-        }
-    });
+        });
     s.bind_with(|_| synstructure::BindStyle::Move);
 
     s.bound_impl(
@@ -54,7 +65,6 @@ pub fn type_visitable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
                 __visitor: &mut __V
             ) -> __V::Result {
                 match *self { #body_visit }
-                <__V::Result as ::rustc_ast_ir::visit::VisitorResult>::output()
             }
         },
     )
