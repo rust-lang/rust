@@ -13,8 +13,8 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::{bug, span_bug};
 use tracing::debug;
 
-pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    fx: &FunctionCx<'a, 'tcx, Bx>,
+pub fn non_ssa_locals<'body, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    fx: &FunctionCx<'body, 'a, 'tcx, Bx>,
 ) -> BitSet<mir::Local> {
     let mir = fx.mir;
     let dominators = mir.basic_blocks.dominators();
@@ -69,9 +69,9 @@ enum LocalKind {
     SSA(DefLocation),
 }
 
-struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
-    fx: &'mir FunctionCx<'a, 'tcx, Bx>,
-    dominators: &'mir Dominators<mir::BasicBlock>,
+struct LocalAnalyzer<'body, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
+    fx: &'body FunctionCx<'body, 'a, 'tcx, Bx>,
+    dominators: &'body Dominators<mir::BasicBlock>,
     locals: IndexVec<mir::Local, LocalKind>,
 }
 

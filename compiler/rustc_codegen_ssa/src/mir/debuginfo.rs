@@ -203,7 +203,7 @@ fn calculate_debuginfo_offset<
     DebugInfoOffset { direct_offset, indirect_offsets, result: place }
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'body, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'body, 'a, 'tcx, Bx> {
     pub fn set_debug_loc(&self, bx: &mut Bx, source_info: mir::SourceInfo) {
         bx.set_span(source_info.span);
         if let Some(dbg_loc) = self.dbg_loc(source_info) {

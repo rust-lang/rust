@@ -10,7 +10,7 @@ use rustc_target::abi::Abi;
 
 use super::FunctionCx;
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'body, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'body, 'a, 'tcx, Bx> {
     pub fn eval_mir_constant_to_operand(
         &self,
         bx: &mut Bx,

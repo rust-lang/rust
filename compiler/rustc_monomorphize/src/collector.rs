@@ -1284,8 +1284,8 @@ fn collect_items_of_instance<'tcx>(
     };
 
     if mode == CollectionMode::UsedItems {
-        for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
-            collector.visit_basic_block_data(bb, data)
+        for (bb, data) in traversal::mono_reachable::<false>(body, tcx, instance) {
+            collector.visit_basic_block_data(bb, &data)
         }
     }
 

@@ -289,27 +289,15 @@ pub fn reverse_postorder<'a, 'tcx>(
 /// of `if <T as Trait>::CONST`, as well as [`NullOp::UbChecks`].
 ///
 /// [`NullOp::UbChecks`]: rustc_middle::mir::NullOp::UbChecks
-pub fn mono_reachable<'a, 'tcx>(
+pub fn mono_reachable<'a, 'tcx, const REWRITE: bool>(
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-) -> MonoReachable<'a, 'tcx> {
+) -> MonoReachable<'a, 'tcx, REWRITE> {
     MonoReachable::new(body, tcx, instance)
 }
 
-/// [`MonoReachable`] internally accumulates a [`BitSet`] of visited blocks. This is just a
-/// convenience function to run that traversal then extract its set of reached blocks.
-pub fn mono_reachable_as_bitset<'a, 'tcx>(
-    body: &'a Body<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    instance: Instance<'tcx>,
-) -> BitSet<BasicBlock> {
-    let mut iter = mono_reachable(body, tcx, instance);
-    while let Some(_) = iter.next() {}
-    iter.visited
-}
-
-pub struct MonoReachable<'a, 'tcx> {
+pub struct MonoReachable<'a, 'tcx, const REWRITE: bool> {
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
@@ -320,12 +308,12 @@ pub struct MonoReachable<'a, 'tcx> {
     worklist: BitSet<BasicBlock>,
 }
 
-impl<'a, 'tcx> MonoReachable<'a, 'tcx> {
+impl<'a, 'tcx, const REWRITE: bool> MonoReachable<'a, 'tcx, REWRITE> {
     pub fn new(
         body: &'a Body<'tcx>,
         tcx: TyCtxt<'tcx>,
         instance: Instance<'tcx>,
-    ) -> MonoReachable<'a, 'tcx> {
+    ) -> MonoReachable<'a, 'tcx, REWRITE> {
         let mut worklist = BitSet::new_empty(body.basic_blocks.len());
         worklist.insert(START_BLOCK);
         MonoReachable {
@@ -344,28 +332,57 @@ impl<'a, 'tcx> MonoReachable<'a, 'tcx> {
             }
         }
     }
+
+    pub fn visited(self) -> BitSet<BasicBlock> {
+        self.visited
+    }
 }
 
-impl<'a, 'tcx> Iterator for MonoReachable<'a, 'tcx> {
-    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
+impl<'a, 'tcx, const REWRITE: bool> Iterator for MonoReachable<'a, 'tcx, REWRITE> {
+    type Item = (BasicBlock, Cow<'a, BasicBlockData<'tcx>>);
 
-    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
+    fn next(&mut self) -> Option<Self::Item> {
         while let Some(idx) = self.worklist.iter().next() {
             self.worklist.remove(idx);
             if !self.visited.insert(idx) {
                 continue;
             }
 
-            let data = &self.body[idx];
+            let mut data = Cow::Borrowed(&self.body[idx]);
 
             if let Some((bits, targets)) =
-                Body::try_const_mono_switchint(self.tcx, self.instance, data)
+                Body::try_const_mono_switchint(self.tcx, self.instance, &data)
             {
                 let target = targets.target_for_value(bits);
+                if REWRITE {
+                    let mut block = data.into_owned();
+                    block.terminator_mut().kind = TerminatorKind::Goto { target };
+                    data = Cow::Owned(block);
+                }
                 self.add_work([target]);
-            } else {
-                self.add_work(data.terminator().successors());
+                return Some((idx, data));
             }
+
+            if REWRITE && self.tcx.sess.opts.optimize == rustc_session::config::OptLevel::No {
+                if let TerminatorKind::SwitchInt { discr, targets } = &data.terminator().kind {
+                    let mut it = targets.iter();
+                    if it.len() == 2
+                        && self.body.basic_blocks[targets.otherwise()].is_empty_unreachable()
+                    {
+                        let first = it.next().unwrap();
+                        let second = it.next().unwrap();
+                        let terminator = TerminatorKind::SwitchInt {
+                            discr: discr.clone(),
+                            targets: SwitchTargets::new([first].into_iter(), second.1),
+                        };
+                        let mut block = data.into_owned();
+                        block.terminator_mut().kind = terminator;
+                        data = Cow::Owned(block);
+                    }
+                }
+            }
+
+            self.add_work(data.terminator().successors());
 
             return Some((idx, data));
         }
