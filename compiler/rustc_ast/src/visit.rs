@@ -1070,6 +1070,7 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_contract(FnContract);
             pub fn walk_coroutine_kind(CoroutineKind);
             pub fn walk_crate(Crate);
+            pub fn walk_defaultness(Defaultness);
             pub fn walk_expr(Expr);
             pub fn walk_expr_field(ExprField);
             pub fn walk_field_def(FieldDef);
