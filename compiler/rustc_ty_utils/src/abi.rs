@@ -9,8 +9,8 @@ use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::call::{
-    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
-    RiscvInterruptKind,
+    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, Conv, FnAbi, PassMode, Reg,
+    RegKind, RiscvInterruptKind,
 };
 use rustc_target::abi::*;
 use rustc_target::spec::abi::Abi as SpecAbi;
@@ -787,6 +787,19 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 // an LLVM aggregate type for this leads to bad optimizations,
                 // so we pick an appropriately sized integer type instead.
                 arg.cast_to(Reg { kind: RegKind::Integer, size });
+
+                // Now we see if we are allowed to annotate the small immediate argument with
+                // `noundef`. This is only legal for small aggregates that do not have padding. For
+                // instance, all unions are allowed `undef` so we must not annotate union (or
+                // anything that contain unions) immediates with `noundef`.
+                if can_annotate_small_immediate_argument_with_noundef(cx, arg.layout) {
+                    // Fixup arg attribute with `noundef`.
+                    let PassMode::Cast { ref mut cast, .. } = &mut arg.mode else {
+                        bug!("this cannot fail because of the previous cast_to `Reg`");
+                    };
+                    let box CastTarget { ref mut attrs, .. } = cast;
+                    attrs.set(ArgAttribute::NoUndef);
+                }
             }
 
             // If we deduced that this parameter was read-only, add that to the attribute list now.
@@ -820,6 +833,47 @@ fn fn_abi_adjust_for_abi<'tcx>(
     }
 
     Ok(())
+}
+
+fn can_annotate_small_immediate_argument_with_noundef<'tcx>(
+    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    outermost_layout: TyAndLayout<'tcx>,
+) -> bool {
+    fn eligible_repr(repr: ReprOptions) -> bool {
+        !(repr.simd() || repr.c() || repr.packed() || repr.transparent() || repr.linear())
+    }
+
+    fn eligible_ty<'tcx>(candidate_ty: Ty<'tcx>) -> bool {
+        match candidate_ty.kind() {
+            ty::Adt(def, _) => eligible_repr(def.repr()) && !def.is_union(),
+            ty::Array(elem_ty, _) => eligible_ty(*elem_ty),
+            t => t.is_primitive(),
+        }
+    }
+
+    fn is_transparent_or_rust_wrapper<'tcx>(layout: TyAndLayout<'tcx>) -> bool {
+        return layout.is_transparent::<LayoutCx<'tcx, TyCtxt<'tcx>>>() || eligible_ty(layout.ty);
+    }
+
+    if outermost_layout.ty.is_union() {
+        return false;
+    }
+
+    let mut innermost_layout = outermost_layout;
+    // Recursively peel away wrapper layers.
+    while is_transparent_or_rust_wrapper(innermost_layout) {
+        let Some((_, layout)) = innermost_layout.non_1zst_field(cx) else {
+            break;
+        };
+
+        if layout.ty.is_union() {
+            return false;
+        }
+
+        innermost_layout = layout;
+    }
+
+    eligible_ty(innermost_layout.ty)
 }
 
 #[tracing::instrument(level = "debug", skip(cx))]
