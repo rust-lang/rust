@@ -1,18 +1,33 @@
-error: invalid `struct` delimiters or `fn` call arguments
-  --> $DIR/issue-111416.rs:2:14
+error: expected identifier, found `:`
+  --> $DIR/issue-111416.rs:2:30
    |
 LL |     let my = monad_bind(mx, T: Try);
-   |              ^^^^^^^^^^^^^^^^^^^^^^
+   |                              ^ expected identifier
    |
-help: if `monad_bind` is a struct, use braces as delimiters
-   |
-LL |     let my = monad_bind { mx, T: Try };
-   |                         ~            ~
-help: if `monad_bind` is a function, use the arguments directly
+help: if this is a parameter, remove the name for the parameter
    |
 LL -     let my = monad_bind(mx, T: Try);
 LL +     let my = monad_bind(mx, Try);
    |
 
-error: aborting due to 1 previous error
+error[E0425]: cannot find value `mx` in this scope
+  --> $DIR/issue-111416.rs:2:25
+   |
+LL |     let my = monad_bind(mx, T: Try);
+   |                         ^^ not found in this scope
 
+error[E0425]: cannot find value `Try` in this scope
+  --> $DIR/issue-111416.rs:2:32
+   |
+LL |     let my = monad_bind(mx, T: Try);
+   |                                ^^^ not found in this scope
+
+error[E0425]: cannot find function `monad_bind` in this scope
+  --> $DIR/issue-111416.rs:2:14
+   |
+LL |     let my = monad_bind(mx, T: Try);
+   |              ^^^^^^^^^^ not found in this scope
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
