@@ -15,7 +15,7 @@ pub mod rustc;
 pub mod rustdoc;
 
 use std::env;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
 use std::panic;
@@ -401,10 +401,24 @@ pub fn recursive_diff(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
     });
 }
 
-pub fn read_dir<F: FnMut(&Path)>(dir: impl AsRef<Path>, mut callback: F) {
+pub fn read_dir<F: FnMut(&Path), P: AsRef<Path>>(dir: P, mut callback: F) {
     for entry in fs_wrapper::read_dir(dir) {
         callback(&entry.unwrap().path());
     }
+}
+
+pub fn get_files_with_extension<P: AsRef<Path>, S: AsRef<OsStr>>(
+    dir: P,
+    extension: S,
+) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    let extension = extension.as_ref();
+    read_dir(dir, |path| {
+        if path.is_file() && fs_wrapper::has_extension(path, extension) {
+            files.push(path.to_path_buf());
+        }
+    });
+    files
 }
 
 /// Check that `actual` is equal to `expected`. Panic otherwise.

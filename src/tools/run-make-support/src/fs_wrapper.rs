@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 
@@ -110,4 +111,10 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: fs::Permissions) {
         "the file's permissions in path \"{}\" could not be changed",
         path.as_ref().display()
     ));
+}
+
+/// Checks if the given file path has the expected extension.
+#[track_caller]
+pub fn has_extension<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, extension: S) -> bool {
+    path.as_ref().extension().is_some_and(|ext| ext == extension.as_ref())
 }
