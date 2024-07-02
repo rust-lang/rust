@@ -133,7 +133,10 @@ mod c_char_definition {
 
 mod c_long_definition {
     cfg_if! {
-        if #[cfg(all(target_pointer_width = "64", not(windows)))] {
+        if #[cfg(any(
+            all(target_pointer_width = "64", not(windows)),
+            // wasm32 Linux ABI uses 64-bit long
+            all(target_arch = "wasm32", target_os = "linux")))] {
             pub(super) type c_long = i64;
             pub(super) type c_ulong = u64;
         } else {
