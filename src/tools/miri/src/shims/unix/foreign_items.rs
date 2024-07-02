@@ -115,6 +115,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.fcntl(args)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "dup" => {
+                let [old_fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let old_fd = this.read_scalar(old_fd)?.to_i32()?;
+                let new_fd = this.dup(old_fd)?;
+                this.write_scalar(Scalar::from_i32(new_fd), dest)?;
+            }
+            "dup2" => {
+                let [old_fd, new_fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let old_fd = this.read_scalar(old_fd)?.to_i32()?;
+                let new_fd = this.read_scalar(new_fd)?.to_i32()?;
+                let result = this.dup2(old_fd, new_fd)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
 
             // File and file system access
             "open" | "open64" => {
