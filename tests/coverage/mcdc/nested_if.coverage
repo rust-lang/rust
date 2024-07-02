@@ -2,11 +2,16 @@
    LL|       |//@ edition: 2021
    LL|       |//@ min-llvm-version: 18
    LL|       |//@ compile-flags: -Zcoverage-options=mcdc
-   LL|       |//@ llvm-cov-flags: --show-mcdc
+   LL|       |//@ llvm-cov-flags: --show-branches=count --show-mcdc
    LL|       |
    LL|      4|fn nested_if_in_condition(a: bool, b: bool, c: bool) {
    LL|      4|    if a && if b || c { true } else { false } {
                              ^3   ^2  ^2            ^1
+  ------------------
+  |  Branch (LL:8): [True: 3, False: 1]
+  |  Branch (LL:13): [True: 2, False: 1]
+  |  Branch (LL:16): [True: 1, False: 2]
+  |  Branch (LL:21): [True: 1, False: 1]
   ------------------
   |---> MC/DC Decision Region (LL:8) to (LL:46)
   |
@@ -52,6 +57,13 @@
    LL|      4|fn doubly_nested_if_in_condition(a: bool, b: bool, c: bool, d: bool) {
    LL|      4|    if a && if b || if c && d { true } else { false } { false } else { true } {
                              ^3      ^2   ^1  ^1            ^1        ^2             ^1
+  ------------------
+  |  Branch (LL:8): [True: 3, False: 1]
+  |  Branch (LL:13): [True: 1, False: 2]
+  |  Branch (LL:16): [True: 1, False: 2]
+  |  Branch (LL:21): [True: 1, False: 1]
+  |  Branch (LL:24): [True: 1, False: 1]
+  |  Branch (LL:29): [True: 1, False: 0]
   ------------------
   |---> MC/DC Decision Region (LL:8) to (LL:78)
   |
@@ -117,6 +129,10 @@
    LL|      3|    if a && if b { false } else { true } {
                              ^2  ^1             ^1
   ------------------
+  |  Branch (LL:8): [True: 2, False: 1]
+  |  Branch (LL:13): [True: 1, False: 1]
+  |  Branch (LL:16): [True: 1, False: 1]
+  ------------------
   |---> MC/DC Decision Region (LL:8) to (LL:41)
   |
   |  Number of Conditions: 2
@@ -144,6 +160,13 @@
    LL|      7|fn nested_in_then_block_in_condition(a: bool, b: bool, c: bool, d: bool, e: bool) {
    LL|      7|    if a && if b || c { if d && e { true } else { false } } else { false } {
                              ^6   ^5     ^5   ^2  ^1            ^4               ^1
+  ------------------
+  |  Branch (LL:8): [True: 6, False: 1]
+  |  Branch (LL:13): [True: 1, False: 5]
+  |  Branch (LL:16): [True: 1, False: 5]
+  |  Branch (LL:21): [True: 4, False: 1]
+  |  Branch (LL:28): [True: 2, False: 3]
+  |  Branch (LL:33): [True: 1, False: 1]
   ------------------
   |---> MC/DC Decision Region (LL:8) to (LL:75)
   |
