@@ -15,6 +15,7 @@
 	--desktop-sidebar-width: 200px;
 	--src-sidebar-width: 300px;
 	--desktop-sidebar-z-index: 100;
+	--sidebar-elems-left-padding: 24px;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -559,8 +560,11 @@ ul.block, .block li {
 .sidebar > h2 a {
 	display: block;
 	padding: 0.25rem; /* 4px */
-	margin-left: -0.25rem;
 	margin-right: 0.25rem;
+	/* extend click target to far edge of screen (mile wide bar) */
+	border-left: solid var(--sidebar-elems-left-padding) transparent;
+	margin-left: calc(-0.25rem - var(--sidebar-elems-left-padding));
+	background-clip: padding-box;
 }
 
 .sidebar h2 {
@@ -578,7 +582,7 @@ ul.block, .block li {
 .sidebar-elems,
 .sidebar > .version,
 .sidebar > h2 {
-	padding-left: 24px;
+	padding-left: var(--sidebar-elems-left-padding);
 }
 
 .sidebar a {
@@ -632,13 +636,17 @@ ul.block, .block li {
 .sidebar-crate .logo-container {
 	/* The logo is expected to have 8px "slop" along its edges, so we can optically
 		center it. */
-	margin: 0 -16px 0 -16px;
+	margin: 0 calc(-16px - var(--sidebar-elems-left-padding));
+	padding: 0 var(--sidebar-elems-left-padding);
 	text-align: center;
 }
 
 .sidebar-crate h2 a {
 	display: block;
-	margin: 0 calc(-24px + 0.25rem) 0 -0.2rem;
+	/* extend click target to far edge of screen (mile wide bar) */
+	border-left: solid var(--sidebar-elems-left-padding) transparent;
+	background-clip: padding-box;
+	margin: 0 calc(-24px + 0.25rem) 0 calc(-0.2rem - var(--sidebar-elems-left-padding));
 	/* Align the sidebar crate link with the search bar, which have different
 		font sizes.
 
