@@ -3,9 +3,10 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(async_closure, noop_waker, async_fn_traits)]
+#![allow(unused)]
 
 use std::future::Future;
-use std::ops::{AsyncFnMut, AsyncFnOnce};
+use std::ops::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 use std::pin::pin;
 use std::task::*;
 
@@ -21,6 +22,10 @@ pub fn block_on<T>(fut: impl Future<Output = T>) -> T {
     }
 }
 
+async fn call(f: &mut impl AsyncFn(i32)) {
+    f(0).await;
+}
+
 async fn call_mut(f: &mut impl AsyncFnMut(i32)) {
     f(0).await;
 }
@@ -33,9 +38,15 @@ async fn call_normal<F: Future<Output = ()>>(f: &impl Fn(i32) -> F) {
     f(1).await;
 }
 
+async fn call_normal_mut<F: Future<Output = ()>>(f: &mut impl FnMut(i32) -> F) {
+    f(1).await;
+}
+
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}.coroutine_closure_by_move.0.mir
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}-{closure#0}.coroutine_by_move.0.mir
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}.coroutine_closure_by_ref.0.mir
+// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}.coroutine_closure_by_move.0.mir
+// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#1}-{closure#0}.coroutine_by_move.0.mir
 pub fn main() {
     block_on(async {
         let b = 2i32;
@@ -43,12 +54,17 @@ pub fn main() {
             let a = &a;
             let b = &b;
         };
+        call(&mut async_closure).await;
         call_mut(&mut async_closure).await;
         call_once(async_closure).await;
 
-        let async_closure = async move |a: i32| {
+        let b = 2i32;
+        let mut async_closure = async |a: i32| {
             let a = &a;
+            let b = &b;
         };
         call_normal(&async_closure).await;
+        call_normal_mut(&mut async_closure).await;
+        call_once(async_closure).await;
     });
 }

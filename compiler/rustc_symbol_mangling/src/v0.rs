@@ -49,8 +49,15 @@ pub(super) fn mangle<'tcx>(
         ty::InstanceKind::ReifyShim(_, Some(ReifyReason::FnPtr)) => Some("reify_fnptr"),
         ty::InstanceKind::ReifyShim(_, Some(ReifyReason::Vtable)) => Some("reify_vtable"),
 
-        ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-        | ty::InstanceKind::CoroutineKindShim { .. } => Some("fn_once"),
+        // FIXME(async_closures): This shouldn't be needed when we fix
+        // `Instance::ty`/`Instance::def_id`.
+        ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: true, .. } => {
+            Some("by_move")
+        }
+        ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: false, .. } => {
+            Some("by_ref")
+        }
+        ty::InstanceKind::CoroutineKindShim { .. } => Some("by_move_body"),
 
         _ => None,
     };

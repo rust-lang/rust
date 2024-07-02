@@ -1,18 +1,17 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
-
-use rustc_index::{Idx, IndexVec};
-
 use rustc_span::{source_map::Spanned, Span, DUMMY_SP};
+use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
 
+use std::assert_matches::assert_matches;
 use std::fmt;
 use std::iter;
 
@@ -1020,21 +1019,19 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
     receiver_by_ref: bool,
 ) -> Body<'tcx> {
     let mut self_ty = tcx.type_of(coroutine_closure_def_id).instantiate_identity();
+    let mut self_local: Place<'tcx> = Local::from_usize(1).into();
     let ty::CoroutineClosure(_, args) = *self_ty.kind() else {
         bug!();
     };
 
-    // We use `&mut Self` here because we only need to emit an ABI-compatible shim body,
-    // rather than match the signature exactly (which might take `&self` instead).
+    // We use `&Self` here because we only need to emit an ABI-compatible shim body,
+    // rather than match the signature exactly (which might take `&mut self` instead).
     //
-    // The self type here is a coroutine-closure, not a coroutine, and we never read from
-    // it because it never has any captures, because this is only true in the Fn/FnMut
-    // implementation, not the AsyncFn/AsyncFnMut implementation, which is implemented only
-    // if the coroutine-closure has no captures.
+    // We adjust the `self_local` to be a deref since we want to copy fields out of
+    // a reference to the closure.
     if receiver_by_ref {
-        // Triple-check that there's no captures here.
-        assert_eq!(args.as_coroutine_closure().tupled_upvars_ty(), tcx.types.unit);
-        self_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, self_ty);
+        self_local = tcx.mk_place_deref(self_local);
+        self_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, self_ty);
     }
 
     let poly_sig = args.as_coroutine_closure().coroutine_closure_sig().map_bound(|sig| {
@@ -1067,11 +1064,27 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
         fields.push(Operand::Move(Local::from_usize(idx + 1).into()));
     }
     for (idx, ty) in args.as_coroutine_closure().upvar_tys().iter().enumerate() {
-        fields.push(Operand::Move(tcx.mk_place_field(
-            Local::from_usize(1).into(),
-            FieldIdx::from_usize(idx),
-            ty,
-        )));
+        if receiver_by_ref {
+            // The only situation where it's possible is when we capture immuatable references,
+            // since those don't need to be reborrowed with the closure's env lifetime. Since
+            // references are always `Copy`, just emit a copy.
+            assert_matches!(
+                ty.kind(),
+                ty::Ref(_, _, hir::Mutability::Not),
+                "field should be captured by immutable ref if we have an `Fn` instance"
+            );
+            fields.push(Operand::Copy(tcx.mk_place_field(
+                self_local,
+                FieldIdx::from_usize(idx),
+                ty,
+            )));
+        } else {
+            fields.push(Operand::Move(tcx.mk_place_field(
+                self_local,
+                FieldIdx::from_usize(idx),
+                ty,
+            )));
+        }
     }
 
     let source_info = SourceInfo::outermost(span);
