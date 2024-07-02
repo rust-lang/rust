@@ -297,7 +297,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 attrs: vec![],
                 args_file: PathBuf::new(),
             };
-            let (test, _, _) = doctest::make_test(&test, krate, false, &opts, edition, None);
+            let doctest = doctest::DocTestBuilder::new(&test, krate, edition, false, None, None);
+            let (test, _) = doctest.generate_unique_doctest(&test, false, &opts, krate);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
             let test_escaped = small_url_encode(test);
@@ -871,6 +872,7 @@ pub(crate) struct LangString {
     pub(crate) rust: bool,
     pub(crate) test_harness: bool,
     pub(crate) compile_fail: bool,
+    pub(crate) standalone: bool,
     pub(crate) error_codes: Vec<String>,
     pub(crate) edition: Option<Edition>,
     pub(crate) added_classes: Vec<String>,
@@ -1182,6 +1184,7 @@ impl Default for LangString {
             rust: true,
             test_harness: false,
             compile_fail: false,
+            standalone: false,
             error_codes: Vec::new(),
             edition: None,
             added_classes: Vec::new(),
@@ -1250,6 +1253,10 @@ impl LangString {
                         data.compile_fail = true;
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                         data.no_run = true;
+                    }
+                    LangStringToken::LangToken("standalone") => {
+                        data.standalone = true;
+                        seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     }
                     LangStringToken::LangToken(x) if x.starts_with("edition") => {
                         data.edition = x[7..].parse::<Edition>().ok();

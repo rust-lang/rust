@@ -376,6 +376,57 @@ that the code sample should be compiled using the respective edition of Rust.
 # fn foo() {}
 ```
 
+Starting in the 2024 edition[^edition-note], compatible doctests are merged as one before being
+run. We combine doctests for performance reasons: the slowest part of doctests is to compile them.
+Merging all of them into one file and compiling this new file, then running the doctests is much
+faster. Whether doctests are merged or not, they are run in their own process.
+
+An example of time spent when running doctests:
+
+[sysinfo crate](https://crates.io/crates/sysinfo):
+
+```text
+wall-time duration: 4.59s
+total compile time: 27.067s
+total runtime: 3.969s
+```
+
+Rust core library:
+
+```text
+wall-time duration: 102s
+total compile time: 775.204s
+total runtime: 15.487s
+```
+
+[^edition-note]: This is based on the edition of the whole crate, not the edition of the individual
+test case that may be specified in its code attribute.
+
+In some cases, doctests cannot be merged. For example, if you have:
+
+```rust
+//! ```
+//! let location = std::panic::Location::caller();
+//! assert_eq!(location.line(), 4);
+//! ```
+```
+
+The problem with this code is that, if you change any other doctests, it'll likely break when
+runing `rustdoc --test`, making it tricky to maintain.
+
+This is where the `standalone` attribute comes in: it tells `rustdoc` that a doctest
+should not be merged with the others. So the previous code should use it:
+
+```rust
+//! ```standalone
+//! let location = std::panic::Location::caller();
+//! assert_eq!(location.line(), 4);
+//! ```
+```
+
+In this case, it means that the line information will not change if you add/remove other
+doctests.
+
 ### Custom CSS classes for code blocks
 
 ```rust
