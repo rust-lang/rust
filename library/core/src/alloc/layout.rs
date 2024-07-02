@@ -174,27 +174,35 @@ impl Layout {
     /// allocate backing structure for `T` (which could be a trait
     /// or other unsized type like a slice).
     ///
+    /// This is an unchecked version of [`for_value`][Self::for_value]
+    /// which takes a raw pointer instead of a reference.
+    ///
     /// # Safety
     ///
-    /// This function is only safe to call if the following conditions hold:
+    /// The provided (possibly wide) pointer must describe a valid value layout.
+    /// Specifically:
     ///
-    /// - If `T` is `Sized`, this function is always safe to call.
-    /// - If the unsized tail of `T` is:
-    ///     - a [slice], then the length of the slice tail must be an initialized
-    ///       integer, and the size of the *entire value*
-    ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
-    ///     - a [trait object], then the vtable part of the pointer must point
-    ///       to a valid vtable for the type `T` acquired by an unsizing coercion,
-    ///       and the size of the *entire value*
-    ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
-    ///     - an (unstable) [extern type], then this function is always safe to
-    ///       call, but may panic or otherwise return the wrong value, as the
-    ///       extern type's layout is not known. This is the same behavior as
-    ///       [`Layout::for_value`] on a reference to an extern type tail.
-    ///     - otherwise, it is conservatively not allowed to call this function.
+    /// - If `T` is a `Sized` type, this function is always safe to call and is
+    ///   equivalent to [`new::<T>()`][Self::new]. The pointer is unused.
+    /// - If the unsized tail of `T` is a [slice], then the size of the *entire
+    ///   value* (statically sized prefix plus dynamic tail) must fit in `isize`.
+    ///   The pointer does not need to be [valid](crate::ptr#safety) for access,
+    ///   as only the pointer metadata is used.
+    /// - If the unsized tail of `T` is a [trait object], then the wide pointer
+    ///   metadata (the vtable reference) must originate from an unsizing or trait
+    ///   upcasting coercion to this trait object tail, and the size of the *entire
+    ///   value* (statically sized prefix plus dynamic tail) must fit in `isize`.
+    ///   The pointer does not need to be [valid](crate::ptr#safety) for access,
+    ///   as only the pointer metadata is used.
+    /// - For any other unsized tail kind (for example, unstable [extern types]),
+    ///   it is *undefined behavior* to call this function. Unknown unsized tail
+    ///   kinds may impose arbitrary requirements unknowable to current code.
     ///
     /// [trait object]: ../../book/ch17-02-trait-objects.html
-    /// [extern type]: ../../unstable-book/language-features/extern-types.html
+    /// [extern types]: ../../unstable-book/language-features/extern-types.html
+    ///
+    /// It is important to note that the last point means that it would be *unsound*
+    /// to implement `for_value` as an unconditional call to `for_value_raw`.
     #[unstable(feature = "layout_for_ptr", issue = "69835")]
     #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[must_use]

@@ -346,32 +346,35 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 
 /// Returns the size of the pointed-to value in bytes.
 ///
-/// This is usually the same as [`size_of::<T>()`]. However, when `T` *has* no
-/// statically-known size, e.g., a slice [`[T]`][slice] or a [trait object],
-/// then `size_of_val_raw` can be used to get the dynamically-known size.
+/// This is an unchecked version of [`size_of_val`] which takes a raw pointer
+/// instead of a reference.
 ///
 /// # Safety
 ///
-/// This function is only safe to call if the following conditions hold:
+/// The provided (possibly wide) pointer must describe a valid value layout.
+/// Specifically:
 ///
-/// - If `T` is `Sized`, this function is always safe to call.
-/// - If the unsized tail of `T` is:
-///     - a [slice], then the length of the slice tail must be an initialized
-///       integer, and the size of the *entire value*
-///       (dynamic tail length + statically sized prefix) must fit in `isize`.
-///     - a [trait object], then the vtable part of the pointer must point
-///       to a valid vtable acquired by an unsizing coercion, and the size
-///       of the *entire value* (dynamic tail length + statically sized prefix)
-///       must fit in `isize`.
-///     - an (unstable) [extern type], then this function is always safe to
-///       call, but may panic or otherwise return the wrong value, as the
-///       extern type's layout is not known. This is the same behavior as
-///       [`size_of_val`] on a reference to a type with an extern type tail.
-///     - otherwise, it is conservatively not allowed to call this function.
+/// - If `T` is a `Sized` type, this function is always safe to call and is
+///   equivalent to [`size_of::<T>()`][size_of]. The pointer is unused.
+/// - If the unsized tail of `T` is a [slice], then the size of the *entire
+///   value* (statically sized prefix plus dynamic tail) must fit in `isize`.
+///   The pointer does not need to be [valid](crate::ptr#safety) for access,
+///   as only the pointer metadata is used.
+/// - If the unsized tail of `T` is a [trait object], then the wide pointer
+///   metadata (the vtable reference) must originate from an unsizing or trait
+///   upcasting coercion to this trait object tail, and the size of the *entire
+///   value* (statically sized prefix plus dynamic tail) must fit in `isize`.
+///   The pointer does not need to be [valid](crate::ptr#safety) for access,
+///   as only the pointer metadata is used.
+/// - For any other unsized tail kind (for example, unstable [extern types]),
+///   it is *undefined behavior* to call this function. Unknown unsized tail
+///   kinds may impose arbitrary requirements unknowable to current code.
 ///
-/// [`size_of::<T>()`]: size_of
 /// [trait object]: ../../book/ch17-02-trait-objects.html
-/// [extern type]: ../../unstable-book/language-features/extern-types.html
+/// [extern types]: ../../unstable-book/language-features/extern-types.html
+///
+/// It is important to note that the last point means that it would be *unsound*
+/// to implement `size_of_val` as an unconditional call to `size_of_val_raw`.
 ///
 /// # Examples
 ///
@@ -379,10 +382,8 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// #![feature(layout_for_ptr)]
 /// use std::mem;
 ///
-/// assert_eq!(4, mem::size_of_val(&5i32));
-///
 /// let x: [u8; 13] = [0; 13];
-/// let y: &[u8] = &x;
+/// let y: *const [u8] = &x;
 /// assert_eq!(13, unsafe { mem::size_of_val_raw(y) });
 /// ```
 #[inline]
@@ -493,31 +494,37 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
 /// bytes.
 ///
-/// Every reference to a value of the type `T` must be a multiple of this number.
+/// This is an unchecked version of [`align_of_val`] which takes a raw pointer
+/// instead of a reference.
 ///
 /// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
 ///
 /// # Safety
 ///
-/// This function is only safe to call if the following conditions hold:
+/// The provided (possibly wide) pointer must describe a valid value layout.
+/// Specifically:
 ///
-/// - If `T` is `Sized`, this function is always safe to call.
-/// - If the unsized tail of `T` is:
-///     - a [slice], then the length of the slice tail must be an initialized
-///       integer, and the size of the *entire value*
-///       (dynamic tail length + statically sized prefix) must fit in `isize`.
-///     - a [trait object], then the vtable part of the pointer must point
-///       to a valid vtable acquired by an unsizing coercion, and the size
-///       of the *entire value* (dynamic tail length + statically sized prefix)
-///       must fit in `isize`.
-///     - an (unstable) [extern type], then this function is always safe to
-///       call, but may panic or otherwise return the wrong value, as the
-///       extern type's layout is not known. This is the same behavior as
-///       [`align_of_val`] on a reference to a type with an extern type tail.
-///     - otherwise, it is conservatively not allowed to call this function.
+/// - If `T` is a `Sized` type, this function is always safe to call and is
+///   equivalent to [`size_of::<T>()`][size_of]. The pointer is unused.
+/// - If the unsized tail of `T` is a [slice], then the size of the *entire
+///   value* (statically sized prefix plus dynamic tail) must fit in `isize`.
+///   The pointer does not need to be [valid](crate::ptr#safety) for access,
+///   as only the pointer metadata is used.
+/// - If the unsized tail of `T` is a [trait object], then the wide pointer
+///   metadata (the vtable reference) must originate from an unsizing or trait
+///   upcasting coercion to this trait object tail, and the size of the *entire
+///   value* (statically sized prefix plus dynamic tail) must fit in `isize`.
+///   The pointer does not need to be [valid](crate::ptr#safety) for access,
+///   as only the pointer metadata is used.
+/// - For any other unsized tail kind (for example, unstable [extern types]),
+///   it is *undefined behavior* to call this function. Unknown unsized tail
+///   kinds may impose arbitrary requirements unknowable to current code.
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html
-/// [extern type]: ../../unstable-book/language-features/extern-types.html
+/// [extern types]: ../../unstable-book/language-features/extern-types.html
+///
+/// It is important to note that the last point means that it would be *unsound*
+/// to implement `align_of_val` as an unconditional call to `align_of_val_raw`.
 ///
 /// # Examples
 ///
