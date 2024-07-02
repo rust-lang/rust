@@ -117,6 +117,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-watchos",
     "ignore-windows",
     "ignore-windows-gnu",
+    "ignore-windows-msvc",
     "ignore-x32",
     "ignore-x86",
     "ignore-x86_64",
