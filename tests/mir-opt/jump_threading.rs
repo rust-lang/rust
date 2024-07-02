@@ -506,6 +506,21 @@ fn assume(a: u8, b: bool) -> u8 {
     }
 }
 
+/// Verify that jump threading succeeds seeing through copies of aggregates.
+fn aggregate_copy() -> u32 {
+    // CHECK-LABEL: fn aggregate_copy(
+    // CHECK-NOT: switchInt(
+
+    const Foo: (u32, u32) = (5, 3);
+
+    let a = Foo;
+    // This copies a tuple, we want to ensure that the threading condition on `b.1` propagates to a
+    // condition on `a.1`.
+    let b = a;
+    let c = b.1;
+    if c == 2 { b.0 } else { 13 }
+}
+
 fn main() {
     // CHECK-LABEL: fn main(
     too_complex(Ok(0));
@@ -534,3 +549,4 @@ fn main() {
 // EMIT_MIR jump_threading.disappearing_bb.JumpThreading.diff
 // EMIT_MIR jump_threading.aggregate.JumpThreading.diff
 // EMIT_MIR jump_threading.assume.JumpThreading.diff
+// EMIT_MIR jump_threading.aggregate_copy.JumpThreading.diff
