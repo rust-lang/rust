@@ -1336,15 +1336,13 @@ pub fn get_adt_inherent_method<'a>(cx: &'a LateContext<'_>, ty: Ty<'_>, method_n
             .inherent_impls(ty_did)
             .into_iter()
             .flatten()
-            .map(|&did| {
+            .find_map(|&did| {
                 cx.tcx
                     .associated_items(did)
                     .filter_by_name_unhygienic(method_name)
                     .next()
                     .filter(|item| item.kind == AssocKind::Fn)
             })
-            .next()
-            .flatten()
     } else {
         None
     }
