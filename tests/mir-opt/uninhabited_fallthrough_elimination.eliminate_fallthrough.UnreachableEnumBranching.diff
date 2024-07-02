@@ -8,8 +8,8 @@
   
       bb0: {
           _2 = discriminant(_1);
--         switchInt(move _2) -> [1: bb3, 2: bb2, otherwise: bb1];
-+         switchInt(move _2) -> [1: bb3, 2: bb2, otherwise: bb5];
+-         switchInt(move _2) -> [1: bb2, 2: bb3, otherwise: bb1];
++         switchInt(move _2) -> [1: bb2, 2: bb3, otherwise: bb5];
       }
   
       bb1: {
@@ -18,12 +18,12 @@
       }
   
       bb2: {
-          _0 = const 1_u32;
+          _0 = const 2_u32;
           goto -> bb4;
       }
   
       bb3: {
-          _0 = const 2_u32;
+          _0 = const 1_u32;
           goto -> bb4;
       }
   

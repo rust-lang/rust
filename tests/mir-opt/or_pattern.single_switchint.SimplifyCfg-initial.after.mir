@@ -22,7 +22,7 @@ fn single_switchint() -> () {
     }
 
     bb3: {
-        falseEdge -> [real: bb9, imaginary: bb4];
+        falseEdge -> [real: bb12, imaginary: bb4];
     }
 
     bb4: {
@@ -30,11 +30,11 @@ fn single_switchint() -> () {
     }
 
     bb5: {
-        falseEdge -> [real: bb10, imaginary: bb6];
+        falseEdge -> [real: bb11, imaginary: bb6];
     }
 
     bb6: {
-        falseEdge -> [real: bb11, imaginary: bb1];
+        falseEdge -> [real: bb10, imaginary: bb1];
     }
 
     bb7: {
@@ -43,26 +43,26 @@ fn single_switchint() -> () {
     }
 
     bb8: {
-        falseEdge -> [real: bb12, imaginary: bb7];
+        falseEdge -> [real: bb9, imaginary: bb7];
     }
 
     bb9: {
-        _1 = const 1_i32;
+        _1 = const 4_i32;
         goto -> bb13;
     }
 
     bb10: {
-        _1 = const 2_i32;
-        goto -> bb13;
-    }
-
-    bb11: {
         _1 = const 3_i32;
         goto -> bb13;
     }
 
+    bb11: {
+        _1 = const 2_i32;
+        goto -> bb13;
+    }
+
     bb12: {
-        _1 = const 4_i32;
+        _1 = const 1_i32;
         goto -> bb13;
     }
 
