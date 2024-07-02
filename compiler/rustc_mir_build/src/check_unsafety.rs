@@ -35,6 +35,7 @@ struct UnsafetyVisitor<'a, 'tcx> {
     /// When inside the LHS of an assignment to a field, this is the type
     /// of the LHS and the span of the assignment expression.
     assignment_info: Option<Ty<'tcx>>,
+    in_addr_of: bool,
     in_union_destructure: bool,
     param_env: ParamEnv<'tcx>,
     inside_adt: bool,
@@ -187,6 +188,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 safety_context,
                 body_target_features: self.body_target_features,
                 assignment_info: self.assignment_info,
+                in_addr_of: false,
                 in_union_destructure: false,
                 param_env: self.param_env,
                 inside_adt: false,
@@ -466,11 +468,22 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     }
                 }
             }
+            ExprKind::AddressOf { .. } => {
+                // we want to forgive one deref, so addr_of!(STATIC_MUT) works
+                self.in_addr_of = true;
+            }
             ExprKind::Deref { arg } => {
+                // during HIR -> THIR, we synthesize a pointer to the static and then deref it
+                let allow_implicit_static_deref = self.in_addr_of;
+                // we don't want to accidentally allow addr_of!(*STATIC_MUT)
+                self.in_addr_of = false;
+
                 if let ExprKind::StaticRef { def_id, .. } | ExprKind::ThreadLocalRef(def_id) =
                     self.thir[arg].kind
                 {
-                    if self.tcx.is_mutable_static(def_id) {
+                    if allow_implicit_static_deref {
+                        // it's fine to take the addr of a place expression
+                    } else if self.tcx.is_mutable_static(def_id) {
                         self.requires_unsafe(expr.span, UseOfMutableStatic);
                     } else if self.tcx.is_foreign_item(def_id) {
                         match self.tcx.def_kind(def_id) {
@@ -976,8 +989,9 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
         hir_context: hir_id,
         body_target_features,
         assignment_info: None,
-        in_union_destructure: false,
         param_env: tcx.param_env(def),
+        in_addr_of: false,
+        in_union_destructure: false,
         inside_adt: false,
         warnings: &mut warnings,
         suggest_unsafe_block: true,
