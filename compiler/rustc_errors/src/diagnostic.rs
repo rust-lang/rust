@@ -433,19 +433,28 @@ impl DiagInner {
         &Level,
         &[(DiagMessage, Style)],
         &Option<ErrCode>,
-        &MultiSpan,
-        &[Subdiag],
-        &Suggestions,
+        MultiSpan,
+        Vec<Subdiag>,
+        Suggestions,
         Vec<(&DiagArgName, &DiagArgValue)>,
         &Option<IsLint>,
     ) {
+        let suggestions = match &self.suggestions {
+            Suggestions::Enabled(sugg) => Suggestions::Enabled(
+                sugg.iter().map(CodeSuggestion::clone_ignoring_parents).collect(),
+            ),
+            Suggestions::Sealed(sugg) => Suggestions::Sealed(
+                sugg.iter().map(CodeSuggestion::clone_ignoring_parents).collect(),
+            ),
+            Suggestions::Disabled => Suggestions::Disabled,
+        };
         (
             &self.level,
             &self.messages,
             &self.code,
-            &self.span,
-            &self.children,
-            &self.suggestions,
+            self.span.clone_ignoring_parents(),
+            self.children.iter().map(Subdiag::clone_ignoring_parents).collect(),
+            suggestions,
             self.args.iter().collect(),
             // omit self.sort_span
             &self.is_lint,
@@ -476,6 +485,13 @@ pub struct Subdiag {
     pub level: Level,
     pub messages: Vec<(DiagMessage, Style)>,
     pub span: MultiSpan,
+}
+
+impl Subdiag {
+    fn clone_ignoring_parents(&self) -> Subdiag {
+        let Subdiag { level, messages, span } = self;
+        Subdiag { level: *level, messages: messages.clone(), span: span.clone_ignoring_parents() }
+    }
 }
 
 /// Used for emitting structured error messages and other diagnostic information.
