@@ -371,6 +371,8 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
             return None;
         }
 
+        // For signed comparisons, we need to consider different bit widths,
+        // so we need to transform to i128 for comparison.
         fn int_equal(l: ScalarInt, r: impl Into<u128>, size: Size) -> bool {
             l.to_bits_unchecked() == ScalarInt::try_from_uint(r, size).unwrap().to_bits_unchecked()
         }
@@ -401,7 +403,10 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
                             if ((f_c.const_.ty().is_signed() || discr_ty.is_signed())
                                 && int_equal(f, first_val, discr_size)
                                 && int_equal(s, second_val, discr_size))
-                                || (Some(f) == ScalarInt::try_from_uint(first_val, f.size())
+                                || (!f_c.const_.ty().is_signed()
+                                    && !discr_ty.is_signed()
+                                    && Some(f)
+                                        == ScalarInt::try_from_uint(first_val, f.size())
                                     && Some(s)
                                         == ScalarInt::try_from_uint(second_val, s.size())) =>
                         {
@@ -451,7 +456,10 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
                         {
                             continue;
                         }
-                        if Some(f) == ScalarInt::try_from_uint(other_val, f.size()) {
+                        if !is_signed
+                            && !s_c.const_.ty().is_signed()
+                            && Some(f) == ScalarInt::try_from_uint(other_val, f.size())
+                        {
                             continue;
                         }
                         return None;
