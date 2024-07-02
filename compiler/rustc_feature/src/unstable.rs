@@ -575,6 +575,8 @@ declare_features! (
     (unstable, raw_ref_op, "1.41.0", Some(64490)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
     (incomplete, ref_pat_eat_one_layer_2024, "1.79.0", Some(123076)),
+    /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024—structural variant
+    (incomplete, ref_pat_eat_one_layer_2024_structural, "CURRENT_RUSTC_VERSION", Some(123076)),
     /// Allows using the `#[register_tool]` attribute.
     (unstable, register_tool, "1.41.0", Some(66079)),
     /// Allows the `#[repr(i128)]` attribute for enums.

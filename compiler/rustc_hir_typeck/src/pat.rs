@@ -328,8 +328,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         adjust_mode: AdjustMode,
         max_ref_mutbl: MutblCap,
     ) -> (Ty<'tcx>, ByRef, MutblCap) {
-        if let ByRef::Yes(Mutability::Mut) = def_br {
-            debug_assert!(max_ref_mutbl == MutblCap::Mut);
+        #[cfg(debug_assertions)]
+        if def_br == ByRef::Yes(Mutability::Mut) && max_ref_mutbl != MutblCap::Mut {
+            span_bug!(pat.span, "Pattern mutability cap violated!");
         }
         match adjust_mode {
             AdjustMode::Pass => (expected, def_br, max_ref_mutbl),
@@ -437,7 +438,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
         }
 
-        if self.tcx.features().ref_pat_eat_one_layer_2024 {
+        let features = self.tcx.features();
+        if features.ref_pat_eat_one_layer_2024 || features.ref_pat_eat_one_layer_2024_structural {
             def_br = def_br.cap_ref_mutability(max_ref_mutbl.as_mutbl());
             if def_br == ByRef::Yes(Mutability::Not) {
                 max_ref_mutbl = MutblCap::Not;
@@ -669,7 +671,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Determine the binding mode...
         let bm = match user_bind_annot {
             BindingMode(ByRef::No, Mutability::Mut) if matches!(def_br, ByRef::Yes(_)) => {
-                if pat.span.at_least_rust_2024() && self.tcx.features().ref_pat_eat_one_layer_2024 {
+                if pat.span.at_least_rust_2024()
+                    && (self.tcx.features().ref_pat_eat_one_layer_2024
+                        || self.tcx.features().ref_pat_eat_one_layer_2024_structural)
+                {
                     if !self.tcx.features().mut_ref {
                         feature_err(
                             &self.tcx.sess,
@@ -2123,7 +2128,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mut expected: Ty<'tcx>,
         mut pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
-        let no_ref_mut_behind_and = self.tcx.features().ref_pat_eat_one_layer_2024;
+        let tcx = self.tcx;
+        let features = tcx.features();
+        let ref_pat_eat_one_layer_2024 = features.ref_pat_eat_one_layer_2024;
+        let ref_pat_eat_one_layer_2024_structural = features.ref_pat_eat_one_layer_2024_structural;
+
+        let no_ref_mut_behind_and =
+            ref_pat_eat_one_layer_2024 || ref_pat_eat_one_layer_2024_structural;
         let new_match_ergonomics = pat.span.at_least_rust_2024() && no_ref_mut_behind_and;
 
         let pat_prefix_span =
@@ -2138,32 +2149,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pat_info.max_ref_mutbl = MutblCap::Mut;
         }
 
+        expected = self.try_structurally_resolve_type(pat.span, expected);
         if new_match_ergonomics {
             if let ByRef::Yes(inh_mut) = pat_info.binding_mode {
-                // ref pattern consumes inherited reference
+                if !ref_pat_eat_one_layer_2024 && let ty::Ref(_, _, r_mutbl) = *expected.kind() {
+                    // Don't attempt to consume inherited reference
+                    pat_info.binding_mode = pat_info.binding_mode.cap_ref_mutability(r_mutbl);
+                } else {
+                    // ref pattern attempts to consume inherited reference
+                    if pat_mutbl > inh_mut {
+                        // Tried to match inherited `ref` with `&mut`
+                        if !ref_pat_eat_one_layer_2024_structural {
+                            let err_msg = "mismatched types";
+                            let err = if let Some(span) = pat_prefix_span {
+                                let mut err = self.dcx().struct_span_err(span, err_msg);
+                                err.code(E0308);
+                                err.note("cannot match inherited `&` with `&mut` pattern");
+                                err.span_suggestion_verbose(
+                                    span,
+                                    "replace this `&mut` pattern with `&`",
+                                    "&",
+                                    Applicability::MachineApplicable,
+                                );
+                                err
+                            } else {
+                                self.dcx().struct_span_err(pat.span, err_msg)
+                            };
+                            err.emit();
 
-                if pat_mutbl > inh_mut {
-                    // Tried to match inherited `ref` with `&mut`, which is an error
-                    let err_msg = "cannot match inherited `&` with `&mut` pattern";
-                    let err = if let Some(span) = pat_prefix_span {
-                        let mut err = self.dcx().struct_span_err(span, err_msg);
-                        err.span_suggestion_verbose(
-                            span,
-                            "replace this `&mut` pattern with `&`",
-                            "&",
-                            Applicability::MachineApplicable,
-                        );
-                        err
+                            pat_info.binding_mode = ByRef::No;
+                            self.typeck_results
+                                .borrow_mut()
+                                .skipped_ref_pats_mut()
+                                .insert(pat.hir_id);
+                            self.check_pat(inner, expected, pat_info);
+                            return expected;
+                        }
                     } else {
-                        self.dcx().struct_span_err(pat.span, err_msg)
-                    };
-                    err.emit();
+                        pat_info.binding_mode = ByRef::No;
+                        self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
+                        self.check_pat(inner, expected, pat_info);
+                        return expected;
+                    }
                 }
-
-                pat_info.binding_mode = ByRef::No;
-                self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
-                self.check_pat(inner, expected, pat_info);
-                return expected;
             }
         } else {
             // Reset binding mode on old editions
@@ -2178,8 +2206,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let tcx = self.tcx;
-        expected = self.try_structurally_resolve_type(pat.span, expected);
         let (ref_ty, inner_ty) = match self.check_dereferenceable(pat.span, expected, inner) {
             Ok(()) => {
                 // `demand::subtype` would be good enough, but using `eqtype` turns
