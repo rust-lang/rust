@@ -1,4 +1,4 @@
-//@ compile-flags: -Z print-type-sizes --crate-type lib
+//@ compile-flags: -Z print-type-sizes -Zub-checks=no --crate-type lib
 //@ edition:2021
 //@ build-pass
 //@ ignore-pass
