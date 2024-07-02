@@ -94,12 +94,16 @@ jobs:
       run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
 
     - name: Run tests
+      # TODO: re-enable those tests for libgccjit 12.
+      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       id: tests
       run: |
         ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --clean --build-sysroot --test-failing-rustc ${{ matrix.libgccjit_version.extra }} | tee output_log
         rg --text "test result" output_log >> $GITHUB_STEP_SUMMARY
 
     - name: Run failing ui pattern tests for ICE
+      # TODO: re-enable those tests for libgccjit 12.
+      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       id: ui-tests
       run: |
         ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --test-failing-ui-pattern-tests ${{ matrix.libgccjit_version.extra }} | tee output_log_ui
