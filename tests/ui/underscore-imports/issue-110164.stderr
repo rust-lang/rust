@@ -38,33 +38,25 @@ error[E0432]: unresolved import `_`
   --> $DIR/issue-110164.rs:8:5
    |
 LL | use _::*;
-   |     ^ you might be missing a crate named `_`
-   |
-   = help: consider adding `extern crate _` to use the `_` crate
+   |     ^ `_` is not a valid item name
 
 error[E0432]: unresolved import `_`
   --> $DIR/issue-110164.rs:5:5
    |
 LL | use _::a;
-   |     ^ you might be missing a crate named `_`
-   |
-   = help: consider adding `extern crate _` to use the `_` crate
+   |     ^ `_` is not a valid item name
 
 error[E0432]: unresolved import `_`
   --> $DIR/issue-110164.rs:13:9
    |
 LL |     use _::a;
-   |         ^ you might be missing a crate named `_`
-   |
-   = help: consider adding `extern crate _` to use the `_` crate
+   |         ^ `_` is not a valid item name
 
 error[E0432]: unresolved import `_`
   --> $DIR/issue-110164.rs:16:9
    |
 LL |     use _::*;
-   |         ^ you might be missing a crate named `_`
-   |
-   = help: consider adding `extern crate _` to use the `_` crate
+   |         ^ `_` is not a valid item name
 
 error: aborting due to 10 previous errors
 

@@ -2031,6 +2031,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         Applicability::MaybeIncorrect,
                     )),
                 )
+            } else if ident.is_special() {
+                (format!("`{ident}` is not a valid item name"), None)
             } else if ident.name == sym::core {
                 (
                     format!("you might be missing a crate named `{ident}`"),
