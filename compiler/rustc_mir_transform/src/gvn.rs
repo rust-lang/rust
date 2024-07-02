@@ -138,7 +138,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                     let value = state.simplify_rvalue(rvalue, location);
                     // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark `local` as
                     // reusable if we have an exact type match.
-                    if state.local_decls[local].ty != rvalue.ty(state.local_decls, tcx) {
+                    if state.local_decls[local].ty != rvalue.ty(state.local_decls, state.tcx) {
                         return;
                     }
                     value
@@ -366,6 +366,12 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     fn eval_to_const(&mut self, value: VnIndex) -> Option<OpTy<'tcx>> {
         use Value::*;
+        // LLVM optimizes the load of `sizeof(size_t) * 2` as a single `mov`,
+        // which is cheap. Bigger values make more `mov` instructions generated.
+        // After GVN, it became a single load (`lea`) of an address in `.rodata`.
+        // But to avoid blessing differences between 32-bit and 64-bit target,
+        // let's choose `size_t = u64`.
+        const STACK_THRESHOLD: u64 = std::mem::size_of::<u64>() as u64 * 2;
         let op = match *self.get(value) {
             Opaque(_) => return None,
             // Do not bother evaluating repeat expressions. This would uselessly consume memory.
@@ -382,7 +388,17 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let ty = match kind {
                     AggregateTy::Array => {
                         assert!(fields.len() > 0);
-                        Ty::new_array(self.tcx, fields[0].layout.ty, fields.len() as u64)
+                        let field_ty = fields[0].layout.ty;
+                        // FIXME: Ignore nested arrays, because arrays is large. Nested arrays are rarer and bigger
+                        // while we already process 1-dimension arrays, which is enough?
+                        if field_ty.is_array() {
+                            trace!(
+                                "ignoring nested array of type: [{field_ty}; {len}]",
+                                len = fields.len(),
+                            );
+                            return None;
+                        }
+                        Ty::new_array(self.tcx, field_ty, fields.len() as u64)
                     }
                     AggregateTy::Tuple => {
                         Ty::new_tup_from_iter(self.tcx, fields.iter().map(|f| f.layout.ty))
@@ -406,6 +422,18 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     };
                     let ptr_imm = Immediate::new_pointer_with_meta(data, meta, &self.ecx);
                     ImmTy::from_immediate(ptr_imm, ty).into()
+                } else if matches!(kind, AggregateTy::Array) {
+                    if ty.layout.size().bytes() <= STACK_THRESHOLD {
+                        return None;
+                    }
+                    let dest = self.ecx.allocate(ty, MemoryKind::Stack).ok()?;
+                    // FIXME: Can we speed it up by using `ecx.write_immediate(.ScalarPair(_), dest)`?
+                    for (field_index, op) in fields.iter().copied().enumerate() {
+                        let field_dest = self.ecx.project_field(&dest, field_index).ok()?;
+                        self.ecx.copy_op(op, &field_dest).ok()?;
+                    }
+                    let dest = dest.map_provenance(|prov| prov.as_immutable());
+                    dest.into()
                 } else if matches!(ty.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
                     let dest = self.ecx.allocate(ty, MemoryKind::Stack).ok()?;
                     let variant_dest = if let Some(variant) = variant {
@@ -704,7 +732,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             place.projection = self.tcx.mk_place_elems(&projection);
         }
 
-        trace!(?place);
+        trace!(after_place = ?place);
     }
 
     /// Represent the *value* which would be read from `place`, and point `place` to a preexisting
@@ -777,6 +805,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
                 let value = self.simplify_place_value(place, location)?;
+                // In MIR, the array assignments are previously processed before operands.
+                if let Value::Aggregate(AggregateTy::Array, ..) = self.get(value) {
+                    return None;
+                }
                 if let Some(const_) = self.try_as_constant(value) {
                     *operand = Operand::Constant(Box::new(const_));
                 }
@@ -884,8 +916,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         let (mut ty, variant_index) = match *kind {
-            AggregateKind::Array(..) => {
+            AggregateKind::Array(ty) => {
                 assert!(!field_ops.is_empty());
+                // FIXME: Ignore nested arrays, because arrays is large. Nested arrays are rarer and bigger
+                // while we already process 1-dimension arrays, which is enough?
+                if ty.is_array() {
+                    return None;
+                }
                 (AggregateTy::Array, FIRST_VARIANT)
             }
             AggregateKind::Tuple => {
@@ -1347,6 +1384,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     }
 }
 
+#[instrument(level = "trace", skip(ecx), ret)]
 fn op_to_prop_const<'tcx>(
     ecx: &mut InterpCx<'tcx, DummyMachine>,
     op: &OpTy<'tcx>,
@@ -1361,8 +1399,11 @@ fn op_to_prop_const<'tcx>(
         return Some(ConstValue::ZeroSized);
     }
 
-    // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to avoid.
-    if !matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
+    // Do not synthesize too large constants, except constant arrays.
+    // For arrays, codegen will just memcpy them, but LLVM will optimize out those unneeded memcpy.
+    // For others, we'd prefer in-place initialization over memcpy them.
+    if !(op.layout.ty.is_array() || matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)))
+    {
         return None;
     }
 
@@ -1429,9 +1470,12 @@ impl<'tcx> VnState<'_, 'tcx> {
     }
 
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
+    #[instrument(level = "trace", skip(self, index), ret)]
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
         // This was already constant in MIR, do not change it.
-        if let Value::Constant { value, disambiguator: _ } = *self.get(index)
+        let value = self.get(index);
+        debug!(?index, ?value);
+        if let Value::Constant { value, disambiguator: _ } = *value
             // If the constant is not deterministic, adding an additional mention of it in MIR will
             // not give the same value as the former mention.
             && value.is_deterministic()
@@ -1440,8 +1484,13 @@ impl<'tcx> VnState<'_, 'tcx> {
         }
 
         let op = self.evaluated[index].as_ref()?;
-        if op.layout.is_unsized() {
-            // Do not attempt to propagate unsized locals.
+
+        // Ignore promoted arrays. Promoted arrays are already placed in `.rodata`.
+        // Which is what we try to archive for running gvn on constant local arrays.
+        if let Either::Left(mplace) = op.as_mplace_or_imm()
+            && mplace.layout.ty.is_array()
+            && let Value::Projection(_index, ProjectionElem::Deref) = value
+        {
             return None;
         }
 
@@ -1480,6 +1529,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
         self.simplify_operand(operand, location);
     }
 
+    #[instrument(level = "trace", skip(self, stmt))]
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
         if let StatementKind::Assign(box (ref mut lhs, ref mut rvalue)) = stmt.kind {
             self.simplify_place_projection(lhs, location);
@@ -1495,7 +1545,17 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
                 .or_else(|| self.simplify_rvalue(rvalue, location));
             let Some(value) = value else { return };
 
-            if let Some(const_) = self.try_as_constant(value) {
+            // De-duplicate locals has the same arrays assigned to prevent code bloat.
+            let disallowed_duplicated_array = if rvalue.ty(self.local_decls, self.tcx).is_array()
+                && let Some(locals) = self.rev_locals.get(value).as_deref()
+                && let [first, ..] = locals[..]
+            {
+                first != lhs.local
+            } else {
+                false
+            };
+
+            if !disallowed_duplicated_array && let Some(const_) = self.try_as_constant(value) {
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
             } else if let Some(local) = self.try_as_local(value, location)
                 && *rvalue != Rvalue::Use(Operand::Move(local.into()))
