@@ -400,40 +400,44 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_edge(location, *target, EdgeKind::Normal);
                 self.check_unwind_edge(location, *unwind);
             }
-            TerminatorKind::Call { args, destination, target, unwind, .. } => {
-                if let Some(target) = target {
-                    self.check_edge(location, *target, EdgeKind::Normal);
-                }
-                self.check_unwind_edge(location, *unwind);
+            TerminatorKind::Call { args, .. } | TerminatorKind::TailCall { args, .. } => {
+                // FIXME(explicit_tail_calls): refactor this & add tail-call specific checks
+                if let TerminatorKind::Call { target, unwind, destination, .. } = terminator.kind {
+                    if let Some(target) = target {
+                        self.check_edge(location, target, EdgeKind::Normal);
+                    }
+                    self.check_unwind_edge(location, unwind);
 
-                // The code generation assumes that there are no critical call edges. The assumption
-                // is used to simplify inserting code that should be executed along the return edge
-                // from the call. FIXME(tmiasko): Since this is a strictly code generation concern,
-                // the code generation should be responsible for handling it.
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Optimized)
-                    && self.is_critical_call_edge(*target, *unwind)
-                {
-                    self.fail(
-                        location,
-                        format!(
-                            "encountered critical edge in `Call` terminator {:?}",
-                            terminator.kind,
-                        ),
-                    );
+                    // The code generation assumes that there are no critical call edges. The assumption
+                    // is used to simplify inserting code that should be executed along the return edge
+                    // from the call. FIXME(tmiasko): Since this is a strictly code generation concern,
+                    // the code generation should be responsible for handling it.
+                    if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Optimized)
+                        && self.is_critical_call_edge(target, unwind)
+                    {
+                        self.fail(
+                            location,
+                            format!(
+                                "encountered critical edge in `Call` terminator {:?}",
+                                terminator.kind,
+                            ),
+                        );
+                    }
+
+                    // The call destination place and Operand::Move place used as an argument might be
+                    // passed by a reference to the callee. Consequently they cannot be packed.
+                    if is_within_packed(self.tcx, &self.body.local_decls, destination).is_some() {
+                        // This is bad! The callee will expect the memory to be aligned.
+                        self.fail(
+                            location,
+                            format!(
+                                "encountered packed place in `Call` terminator destination: {:?}",
+                                terminator.kind,
+                            ),
+                        );
+                    }
                 }
 
-                // The call destination place and Operand::Move place used as an argument might be
-                // passed by a reference to the callee. Consequently they cannot be packed.
-                if is_within_packed(self.tcx, &self.body.local_decls, *destination).is_some() {
-                    // This is bad! The callee will expect the memory to be aligned.
-                    self.fail(
-                        location,
-                        format!(
-                            "encountered packed place in `Call` terminator destination: {:?}",
-                            terminator.kind,
-                        ),
-                    );
-                }
                 for arg in args {
                     if let Operand::Move(place) = &arg.node {
                         if is_within_packed(self.tcx, &self.body.local_decls, *place).is_some() {
@@ -1498,14 +1502,21 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Call { func, .. } => {
+            TerminatorKind::Call { func, .. } | TerminatorKind::TailCall { func, .. } => {
                 let func_ty = func.ty(&self.body.local_decls, self.tcx);
                 match func_ty.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
                     _ => self.fail(
                         location,
-                        format!("encountered non-callable type {func_ty} in `Call` terminator"),
+                        format!(
+                            "encountered non-callable type {func_ty} in `{}` terminator",
+                            terminator.kind.name()
+                        ),
                     ),
+                }
+
+                if let TerminatorKind::TailCall { .. } = terminator.kind {
+                    // FIXME(explicit_tail_calls): implement tail-call specific checks here (such as signature matching, forbidding closures, etc)
                 }
             }
             TerminatorKind::Assert { cond, .. } => {

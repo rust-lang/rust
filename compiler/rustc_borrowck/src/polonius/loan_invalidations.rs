@@ -125,6 +125,12 @@ impl<'cx, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'cx, 'tcx> {
                 }
                 self.mutate_place(location, *destination, Deep);
             }
+            TerminatorKind::TailCall { func, args, .. } => {
+                self.consume_operand(location, func);
+                for arg in args {
+                    self.consume_operand(location, &arg.node);
+                }
+            }
             TerminatorKind::Assert { cond, expected: _, msg, target: _, unwind: _ } => {
                 self.consume_operand(location, cond);
                 use rustc_middle::mir::AssertKind;

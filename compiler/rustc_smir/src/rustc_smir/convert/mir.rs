@@ -644,6 +644,7 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
                 target: target.map(|t| t.as_usize()),
                 unwind: unwind.stable(tables),
             },
+            mir::TerminatorKind::TailCall { func: _, args: _, fn_span: _ } => todo!(),
             mir::TerminatorKind::Assert { cond, expected, msg, target, unwind } => {
                 TerminatorKind::Assert {
                     cond: cond.stable(tables),

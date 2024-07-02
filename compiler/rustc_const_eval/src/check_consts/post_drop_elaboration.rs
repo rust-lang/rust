@@ -108,6 +108,7 @@ impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
 
             mir::TerminatorKind::UnwindTerminate(_)
             | mir::TerminatorKind::Call { .. }
+            | mir::TerminatorKind::TailCall { .. }
             | mir::TerminatorKind::Assert { .. }
             | mir::TerminatorKind::FalseEdge { .. }
             | mir::TerminatorKind::FalseUnwind { .. }

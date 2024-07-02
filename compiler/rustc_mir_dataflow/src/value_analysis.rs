@@ -269,6 +269,9 @@ pub trait ValueAnalysis<'tcx> {
             TerminatorKind::SwitchInt { discr, targets } => {
                 return self.handle_switch_int(discr, targets, state);
             }
+            TerminatorKind::TailCall { .. } => {
+                // FIXME(explicit_tail_calls): determine if we need to do something here (probably not)
+            }
             TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)

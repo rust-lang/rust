@@ -204,19 +204,6 @@ LL ~     }) else {
    |
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:153:5
-   |
-LL |     } else {
-   |     ^
-   |
-help: wrap the expression in parentheses
-   |
-LL ~     let 0 = become ({
-LL |         ()
-LL ~     }) else {
-   |
-
-error: right curly brace `}` before `else` in a `let...else` statement not allowed
   --> $DIR/bad-let-else-statement.rs:163:5
    |
 LL |     } else {
@@ -325,5 +312,5 @@ LL | |     } else {
    = note: this pattern will always match, so the `else` clause is useless
    = help: consider removing the `else` clause
 
-error: aborting due to 20 previous errors; 5 warnings emitted
+error: aborting due to 19 previous errors; 5 warnings emitted
 

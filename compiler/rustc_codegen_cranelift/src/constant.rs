@@ -565,6 +565,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                     {
                         return None;
                     }
+                    TerminatorKind::TailCall { .. } => return None,
                     TerminatorKind::Call { .. } => {}
                 }
             }
