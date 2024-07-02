@@ -3,8 +3,7 @@
 //@ check-fail
 //@ edition:2021
 //@ stderr-per-bitwidth
-//@ ignore-endian-big
-//~^^^^^^ ERROR cycle detected when computing layout of `Foo`
+//~^^^^^ ERROR cycle detected when computing layout of `Foo`
 
 // If the inner `Foo` is named through an associated type,
 // the "infinite size" error does not occur.
