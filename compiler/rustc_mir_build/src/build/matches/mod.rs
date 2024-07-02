@@ -1468,6 +1468,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     break;
                 }
             }
+            if expand_until != 0 {
+                expand_until = i + 1;
+            }
         }
         let (candidates_to_expand, remaining_candidates) = candidates.split_at_mut(expand_until);
 
