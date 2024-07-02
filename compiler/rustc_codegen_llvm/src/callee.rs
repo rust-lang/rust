@@ -113,7 +113,9 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
                 // This is a monomorphization. Its expected visibility depends
                 // on whether we are in share-generics mode.
 
-                if cx.tcx.sess.opts.share_generics() {
+                if cx.tcx.sess.opts.share_generics()
+                    || tcx.codegen_fn_attrs(instance_def_id).inline == rustc_attr::InlineAttr::Never
+                {
                     // We are in share_generics mode.
 
                     if let Some(instance_def_id) = instance_def_id.as_local() {
