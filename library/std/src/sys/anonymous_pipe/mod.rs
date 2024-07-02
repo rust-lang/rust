@@ -51,6 +51,7 @@ macro_rules! forward_io_read_traits {
             fn read_vectored(&mut self, bufs: &mut [io::IoSliceMut<'_>]) -> io::Result<usize> {
                 self.0.read_vectored(bufs)
             }
+            #[inline]
             fn is_read_vectored(&self) -> bool {
                 self.0.is_read_vectored()
             }
@@ -73,6 +74,7 @@ macro_rules! forward_io_write_traits {
             fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
                 self.0.write(buf)
             }
+            #[inline]
             fn flush(&mut self) -> io::Result<()> {
                 Ok(())
             }
@@ -80,6 +82,8 @@ macro_rules! forward_io_write_traits {
             fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
                 self.0.write_vectored(bufs)
             }
+
+            #[inline]
             fn is_write_vectored(&self) -> bool {
                 self.0.is_write_vectored()
             }
