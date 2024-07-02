@@ -2,7 +2,9 @@ error: expected a pattern, found an expression
   --> $DIR/pat-lt-bracket-5.rs:2:9
    |
 LL |     let v[0] = v[1];
-   |         ^^^^ arbitrary expressions are not allowed in patterns
+   |     --- ^^^^ arbitrary expressions are not allowed in patterns
+   |     |
+   |     help: remove this `let`
 
 error[E0425]: cannot find value `v` in this scope
   --> $DIR/pat-lt-bracket-5.rs:2:16

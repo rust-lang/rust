@@ -6,25 +6,29 @@ use crate::errors::{
     InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, InvalidMutInPattern,
     PatternOnWrongSideOfAt, RemoveLet, RepeatedMutInPattern, SwitchRefBoxOrder,
     TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed,
-    UnexpectedExpressionInPattern, UnexpectedLifetimeInPattern, UnexpectedParenInRangePat,
-    UnexpectedParenInRangePatSugg, UnexpectedVertVertBeforeFunctionParam,
-    UnexpectedVertVertInPattern,
+    UnexpectedExpressionInPattern, UnexpectedExpressionInPatternArmSugg,
+    UnexpectedExpressionInPatternConstSugg, UnexpectedExpressionInPatternInlineConstSugg,
+    UnexpectedExpressionInPatternRemoveLetSugg,
+    UnexpectedExpressionInPatternReplaceLetElseWithIfSugg, UnexpectedLifetimeInPattern,
+    UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
+    UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern,
 };
-use crate::parser::expr::{could_be_unclosed_char_literal, LhsExpr};
+use crate::parser::expr::{could_be_unclosed_char_literal, DestructuredFloat, LhsExpr};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, Delimiter, Token};
+use rustc_ast::visit::{walk_arm, walk_pat, walk_pat_field, Visitor};
 use rustc_ast::{
-    self as ast, AttrVec, BindingMode, ByRef, Expr, ExprKind, MacCall, Mutability, Pat, PatField,
-    PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
+    self as ast, Arm, AttrVec, BindingMode, ByRef, Expr, ExprKind, LocalKind, MacCall, Mutability,
+    Pat, PatField, PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax, Stmt, StmtKind,
 };
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, Diag, PResult};
+use rustc_errors::{Applicability, Diag, PResult, StashKey};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{BytePos, ErrorGuaranteed, Span};
 use thin_vec::{thin_vec, ThinVec};
 
 #[derive(PartialEq, Copy, Clone)]
@@ -346,37 +350,51 @@ impl<'a> Parser<'a> {
     ///     ^^^^^
     /// ```
     /// Only the end bound is spanned, and this function have no idea if there were a `..=` before `pat_span`, hence the parameter.
+    /// This function returns `Some` if a trailing expression was recovered, and said expression's span.
     #[must_use = "the pattern must be discarded as `PatKind::Err` if this function returns Some"]
     fn maybe_recover_trailing_expr(
         &mut self,
         pat_span: Span,
         is_end_bound: bool,
-    ) -> Option<ErrorGuaranteed> {
+    ) -> Option<(ErrorGuaranteed, Span)> {
         if self.prev_token.is_keyword(kw::Underscore) || !self.may_recover() {
             // Don't recover anything after an `_` or if recovery is disabled.
             return None;
         }
 
-        // Check for `.hello()`, but allow `.Hello()` to be recovered as `, Hello()` in `parse_seq_to_before_tokens()`.
-        let has_trailing_method = self.check_noexpect(&token::Dot)
+        // Returns `true` iff `token` is a `x.y` float
+        let is_float_literal = |that: &Self, token: &Token| -> bool {
+            use token::{Lit, LitKind};
+
+            let token::Literal(Lit { kind: LitKind::Float, symbol, suffix: None }) = token.kind
+            else {
+                return false;
+            };
+
+            matches!(that.break_up_float(symbol, token.span), DestructuredFloat::MiddleDot(..))
+        };
+
+        // Check for `.hello` or `.0`.
+        let has_dot_expr = self.check_noexpect(&token::Dot) // `.`
             && self.look_ahead(1, |tok| {
-                tok.ident()
-                    .and_then(|(ident, _)| ident.name.as_str().chars().next())
-                    .is_some_and(char::is_lowercase)
-            })
-            && self.look_ahead(2, |tok| tok.kind == token::OpenDelim(Delimiter::Parenthesis));
+                tok.is_ident() // `hello`
+                || tok.is_integer_lit() // `0`
+                || is_float_literal(&self, &tok) // `0.0`
+            });
 
         // Check for operators.
         // `|` is excluded as it is used in pattern alternatives and lambdas,
         // `?` is included for error propagation,
         // `[` is included for indexing operations,
-        // `[]` is excluded as `a[]` isn't an expression and should be recovered as `a, []` (cf. `tests/ui/parser/pat-lt-bracket-7.rs`)
+        // `[]` is excluded as `a[]` isn't an expression and should be recovered as `a, []` (cf. `tests/ui/parser/pat-lt-bracket-7.rs`),
+        // `as` is included for type casts
         let has_trailing_operator = matches!(self.token.kind, token::BinOp(op) if op != BinOpToken::Or)
             || self.token.kind == token::Question
             || (self.token.kind == token::OpenDelim(Delimiter::Bracket)
-                && self.look_ahead(1, |tok| tok.kind != token::CloseDelim(Delimiter::Bracket)));
+                && self.look_ahead(1, |tok| tok.kind != token::CloseDelim(Delimiter::Bracket))) // excludes `[]`
+            || self.token.is_keyword(kw::As);
 
-        if !has_trailing_method && !has_trailing_operator {
+        if !has_dot_expr && !has_trailing_operator {
             // Nothing to recover here.
             return None;
         }
@@ -394,8 +412,6 @@ impl<'a> Parser<'a> {
             )
             .map_err(|err| err.cancel())
         {
-            let non_assoc_span = expr.span;
-
             // Parse an associative expression such as `+ expr`, `% expr`, ...
             // Assignements, ranges and `|` are disabled by [`Restrictions::IS_PAT`].
             let lhs = LhsExpr::Parsed { expr, starts_statement: false };
@@ -410,19 +426,199 @@ impl<'a> Parser<'a> {
                     || self.token.kind == token::CloseDelim(Delimiter::Parenthesis)
                         && self.look_ahead(1, Token::is_range_separator);
 
-                // Check that `parse_expr_assoc_with` didn't eat a rhs.
-                let is_method_call = has_trailing_method && non_assoc_span == expr.span;
+                let span = expr.span;
 
-                return Some(self.dcx().emit_err(UnexpectedExpressionInPattern {
-                    span: expr.span,
-                    is_bound,
-                    is_method_call,
-                }));
+                return Some((
+                    self.dcx().stash_err(
+                        span,
+                        StashKey::ExprInPat,
+                        UnexpectedExpressionInPattern { span, is_bound },
+                    ),
+                    span,
+                ));
             }
         }
 
         // We got a trailing method/operator, but we couldn't parse an expression.
         None
+    }
+
+    pub(super) fn maybe_emit_stashed_expr_in_pat(&mut self, stmt: &Stmt) {
+        if self.dcx().has_errors().is_none() {
+            return;
+        }
+
+        // WIP: once a fn body has been parsed, we walk through all its patterns,
+        // and emit now what errors `maybe_recover_trailing_expr()` stashed,
+        // with suggestions depending on which statement the pattern is.
+
+        struct PatVisitor<'a> {
+            /// `self`
+            parser: &'a Parser<'a>,
+            /// The current statement.
+            stmt: &'a Stmt,
+            /// The current match arm.
+            arm: Option<&'a Arm>,
+            /// The current struct field.
+            field: Option<&'a PatField>,
+        }
+
+        impl<'a> Visitor<'a> for PatVisitor<'a> {
+            fn visit_arm(&mut self, a: &'a Arm) -> Self::Result {
+                self.arm = Some(a);
+                walk_arm(self, a);
+                self.arm = None;
+            }
+
+            fn visit_pat_field(&mut self, fp: &'a PatField) -> Self::Result {
+                self.field = Some(fp);
+                walk_pat_field(self, fp);
+                self.field = None;
+            }
+
+            fn visit_pat(&mut self, p: &'a Pat) -> Self::Result {
+                // Looks for stashed `ExprInPat` errors in `stash_span`, and emit them with suggestions.
+                // `stash_span` is contained in `expr_span`, the latter being larger in borrow patterns;
+                // ```txt
+                // &mut x.y
+                // -----^^^ `stash_span`
+                // |
+                // `expr_span`
+                // ```
+                let emit_now = |that: &Self, stash_span: Span, expr_span: Span| -> Self::Result {
+                    that.parser.dcx().try_steal_modify_and_emit_err(
+                        stash_span,
+                        StashKey::ExprInPat,
+                        |err| {
+                            let sm = that.parser.psess.source_map();
+                            let stmt = that.stmt;
+                            let line_lo = sm.span_extend_to_line(stmt.span).shrink_to_lo();
+                            let indentation = sm.indentation_before(stmt.span).unwrap_or_default();
+                            let expr = that.parser.span_to_snippet(expr_span).unwrap();
+
+                            err.span.replace(stash_span, expr_span);
+
+                            if let StmtKind::Let(local) = &stmt.kind {
+                                match &local.kind {
+                                    // help: remove this `let`
+                                    LocalKind::Decl | LocalKind::Init(_) => {
+                                        err.subdiagnostic(
+                                            UnexpectedExpressionInPatternRemoveLetSugg {
+                                                // HACK: retrieves `let`'s span
+                                                span: local
+                                                    .span
+                                                    .shrink_to_lo()
+                                                    .with_hi(local.span.lo() + BytePos(3)),
+                                            },
+                                        );
+                                    }
+                                    // help: replace the `let` with an `if`
+                                    LocalKind::InitElse(init, els) => {
+                                        err.subdiagnostic(
+                                            UnexpectedExpressionInPatternReplaceLetElseWithIfSugg {
+                                                span: local.span.shrink_to_lo().until(els.span),
+                                                init: self
+                                                    .parser
+                                                    .span_to_snippet(init.span)
+                                                    .unwrap(),
+                                                pat: self
+                                                    .parser
+                                                    .span_to_snippet(local.pat.span)
+                                                    .unwrap(),
+                                            },
+                                        );
+                                    }
+                                }
+                            } else {
+                                // help: check the value in an arm guard
+                                if let Some(arm) = &self.arm {
+                                    let (ident, ident_span) = match self.field {
+                                        Some(field) => (
+                                            field.ident.to_string(),
+                                            field.ident.span.to(expr_span),
+                                        ),
+                                        None => ("val".to_owned(), expr_span),
+                                    };
+
+                                    match &arm.guard {
+                                        None => {
+                                            err.subdiagnostic(
+                                                UnexpectedExpressionInPatternArmSugg::CreateGuard {
+                                                    ident_span,
+                                                    pat_hi: arm.pat.span.shrink_to_hi(),
+                                                    ident,
+                                                    expr: expr.clone(),
+                                                },
+                                            );
+                                        }
+                                        Some(guard) => {
+                                            err.subdiagnostic(
+                                                UnexpectedExpressionInPatternArmSugg::UpdateGuard {
+                                                    ident_span,
+                                                    guard_lo: guard.span.shrink_to_lo(),
+                                                    guard_hi: guard.span.shrink_to_hi(),
+                                                    ident,
+                                                    expr: expr.clone(),
+                                                },
+                                            );
+                                        }
+                                    }
+                                }
+
+                                // help: extract the expr into a `const VAL: _ = expr`
+                                let ident = match self.field {
+                                    Some(field) => field.ident.as_str().to_uppercase(),
+                                    None => "VAL".to_owned(),
+                                };
+                                err.subdiagnostic(UnexpectedExpressionInPatternConstSugg {
+                                    stmt_lo: line_lo,
+                                    ident_span: expr_span,
+                                    expr,
+                                    ident,
+                                    indentation,
+                                });
+
+                                // help: wrap the expr in a `const { expr }`
+                                // FIXME(inline_const_pat): once stabilized, remove this check and remove the `(requires #[feature(inline_const_pat)]` note from the message
+                                if that.parser.psess.unstable_features.is_nightly_build() {
+                                    err.subdiagnostic(
+                                        UnexpectedExpressionInPatternInlineConstSugg {
+                                            start_span: expr_span.shrink_to_lo(),
+                                            end_span: expr_span.shrink_to_hi(),
+                                        },
+                                    );
+                                }
+                            }
+                        },
+                    );
+                }; // end of `emit_now` closure, we're back in `visit_pat`
+
+                match &p.kind {
+                    // Base expression
+                    PatKind::Err(_) => emit_now(self, p.span, p.span),
+                    // Sub-patterns
+                    PatKind::Box(subpat) | PatKind::Ref(subpat, _)
+                        if matches!(subpat.kind, PatKind::Err(_)) =>
+                    {
+                        emit_now(self, subpat.span, p.span)
+                    }
+                    // Sub-expressions
+                    PatKind::Range(start, end, _) => {
+                        if let Some(start) = start {
+                            emit_now(self, start.span, start.span);
+                        }
+
+                        if let Some(end) = end {
+                            emit_now(self, end.span, end.span);
+                        }
+                    }
+                    // Walk continuation
+                    _ => walk_pat(self, p),
+                }
+            }
+        } // end of `PatVisitor` impl, we're back in `maybe_emit_stashed_expr_in_pat`
+
+        PatVisitor { parser: self, stmt, arm: None, field: None }.visit_stmt(stmt);
     }
 
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
@@ -534,7 +730,7 @@ impl<'a> Parser<'a> {
                 self.parse_pat_tuple_struct(qself, path)?
             } else {
                 match self.maybe_recover_trailing_expr(span, false) {
-                    Some(guar) => PatKind::Err(guar),
+                    Some((guar, _)) => PatKind::Err(guar),
                     None => PatKind::Path(qself, path),
                 }
             }
@@ -567,14 +763,18 @@ impl<'a> Parser<'a> {
             // Try to parse everything else as literal with optional minus
             match self.parse_literal_maybe_minus() {
                 Ok(begin) => {
-                    let begin = match self.maybe_recover_trailing_expr(begin.span, false) {
-                        Some(guar) => self.mk_expr_err(begin.span, guar),
-                        None => begin,
-                    };
+                    let begin = self
+                        .maybe_recover_trailing_expr(begin.span, false)
+                        .map(|(guar, sp)| self.mk_expr_err(sp, guar))
+                        .unwrap_or(begin);
 
                     match self.parse_range_end() {
                         Some(form) => self.parse_pat_range_begin_with(begin, form)?,
-                        None => PatKind::Lit(begin),
+                        None => match &begin.kind {
+                            // Avoid `PatKind::Lit(ExprKind::Err)`
+                            ExprKind::Err(guar) => PatKind::Err(*guar),
+                            _ => PatKind::Lit(begin),
+                        },
                     }
                 }
                 Err(err) => return self.fatal_unexpected_non_pat(err, expected),
@@ -700,7 +900,8 @@ impl<'a> Parser<'a> {
         // For backward compatibility, `(..)` is a tuple pattern as well.
         let paren_pattern =
             fields.len() == 1 && !(matches!(trailing_comma, Trailing::Yes) || fields[0].is_rest());
-        if paren_pattern {
+
+        let pat = if paren_pattern {
             let pat = fields.into_iter().next().unwrap();
             let close_paren = self.prev_token.span;
 
@@ -718,7 +919,7 @@ impl<'a> Parser<'a> {
                         },
                     });
 
-                    self.parse_pat_range_begin_with(begin.clone(), form)
+                    self.parse_pat_range_begin_with(begin.clone(), form)?
                 }
                 // recover ranges with parentheses around the `(start)..`
                 PatKind::Err(guar)
@@ -733,15 +934,38 @@ impl<'a> Parser<'a> {
                         },
                     });
 
-                    self.parse_pat_range_begin_with(self.mk_expr_err(pat.span, *guar), form)
+                    self.parse_pat_range_begin_with(self.mk_expr_err(pat.span, *guar), form)?
                 }
 
                 // (pat) with optional parentheses
-                _ => Ok(PatKind::Paren(pat)),
+                _ => PatKind::Paren(pat),
             }
         } else {
-            Ok(PatKind::Tuple(fields))
-        }
+            PatKind::Tuple(fields)
+        };
+
+        Ok(match self.maybe_recover_trailing_expr(open_paren.to(self.prev_token.span), false) {
+            None => pat,
+            Some((guar, _)) => {
+                // We just recovered a bigger expression, so cancel its children
+                // (e.g. `(1 + 2) * 3`, cancel “`1 + 2` is not a pattern”).
+                match pat {
+                    PatKind::Paren(pat) => {
+                        self.dcx().steal_err(pat.span, StashKey::ExprInPat, guar);
+                    }
+
+                    PatKind::Tuple(fields) => {
+                        for pat in fields {
+                            self.dcx().steal_err(pat.span, StashKey::ExprInPat, guar);
+                        }
+                    }
+
+                    _ => unreachable!(),
+                }
+
+                PatKind::Err(guar)
+            }
+        })
     }
 
     /// Parse a mutable binding with the `mut` token already eaten.
@@ -991,7 +1215,7 @@ impl<'a> Parser<'a> {
         }
 
         Ok(match recovered {
-            Some(guar) => self.mk_expr_err(bound.span, guar),
+            Some((guar, sp)) => self.mk_expr_err(sp, guar),
             None => bound,
         })
     }
@@ -1060,7 +1284,7 @@ impl<'a> Parser<'a> {
         // but not `ident @ subpat` as `subpat` was already checked and `ident` continues with `@`.
 
         let pat = if sub.is_none()
-            && let Some(guar) = self.maybe_recover_trailing_expr(ident.span, false)
+            && let Some((guar, _)) = self.maybe_recover_trailing_expr(ident.span, false)
         {
             PatKind::Err(guar)
         } else {

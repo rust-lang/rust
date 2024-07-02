@@ -196,15 +196,8 @@ LL |     builtin # offset_of((u8, u8), 1_u8);
 error[E0609]: no field `2` on type `(u8, u16)`
   --> $DIR/offset-of-tuple.rs:31:47
    |
-LL |       offset_of!(((u8, u16), (u32, u16, u8)), 0.2);
-   |  _____------------------------------------------^-
-   | |     |
-   | |     in this macro invocation
-LL | |     offset_of!(((u8, u16), (u32, u16, u8)), 1.2);
-LL | |     offset_of!(((u8, u16), (u32, u16, u8)), 1.2.0);
-...  |
-   |
-   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |     offset_of!(((u8, u16), (u32, u16, u8)), 0.2);
+   |                                               ^
 
 error[E0609]: no field `0` on type `u8`
   --> $DIR/offset-of-tuple.rs:33:49

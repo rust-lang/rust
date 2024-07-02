@@ -2406,6 +2406,7 @@ impl<'a> Parser<'a> {
             }
             (AttrVec::new(), None)
         };
+
         attrs.extend(inner_attrs);
         Ok(body)
     }

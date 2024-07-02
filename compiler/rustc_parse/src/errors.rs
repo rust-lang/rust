@@ -2422,8 +2422,96 @@ pub(crate) struct UnexpectedExpressionInPattern {
     pub span: Span,
     /// Was a `RangePatternBound` expected?
     pub is_bound: bool,
-    /// Was the unexpected expression a `MethodCallExpression`?
-    pub is_method_call: bool,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum UnexpectedExpressionInPatternArmSugg {
+    #[multipart_suggestion(
+        parse_unexpected_expr_in_pat_create_guard_sugg,
+        applicability = "maybe-incorrect"
+    )]
+    CreateGuard {
+        /// The span of the `PatKind:Err` to be transformed into a `PatKind::Ident`.
+        #[suggestion_part(code = "{ident}")]
+        ident_span: Span,
+        /// The end of the match arm's pattern.
+        #[suggestion_part(code = " if {ident} == {expr}")]
+        pat_hi: Span,
+        /// The suggested identifier.
+        ident: String,
+        /// `ident_span`'s snippet.
+        expr: String,
+    },
+    #[multipart_suggestion(
+        parse_unexpected_expr_in_pat_update_guard_sugg,
+        applicability = "maybe-incorrect"
+    )]
+    UpdateGuard {
+        /// The span of the `PatKind:Err` to be transformed into a `PatKind::Ident`.
+        #[suggestion_part(code = "{ident}")]
+        ident_span: Span,
+        /// The beginning of the match arm guard's expression.
+        #[suggestion_part(code = "(")]
+        guard_lo: Span,
+        /// The end of the match arm guard's expression.
+        #[suggestion_part(code = ") && {ident} == {expr}")]
+        guard_hi: Span,
+        /// The suggested identifier.
+        ident: String,
+        /// `ident_span`'s snippet.
+        expr: String,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_unexpected_expr_in_pat_const_sugg, applicability = "has-placeholders")]
+pub(crate) struct UnexpectedExpressionInPatternConstSugg {
+    /// The beginning of statement's line.
+    #[suggestion_part(code = "{indentation}const {ident}: _ = {expr};\n")]
+    pub stmt_lo: Span,
+    /// The span of the `PatKind:Err` to be transformed into a `PatKind::Ident`.
+    #[suggestion_part(code = "{ident}")]
+    pub ident_span: Span,
+    /// The suggested identifier.
+    pub ident: String,
+    /// `ident_span`'s snippet.
+    pub expr: String,
+    /// The statement's block's indentation.
+    pub indentation: String,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    parse_unexpected_expr_in_pat_inline_const_sugg,
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UnexpectedExpressionInPatternInlineConstSugg {
+    #[suggestion_part(code = "const {{ ")]
+    pub start_span: Span,
+    #[suggestion_part(code = " }}")]
+    pub end_span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    parse_unexpected_expr_in_pat_remove_let_sugg,
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UnexpectedExpressionInPatternRemoveLetSugg {
+    #[suggestion_part(code = "")]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    parse_unexpected_expr_in_pat_replace_let_else_with_if_sugg,
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UnexpectedExpressionInPatternReplaceLetElseWithIfSugg {
+    #[suggestion_part(code = "if {init} != {pat}")]
+    pub span: Span,
+    pub init: String,
+    pub pat: String,
 }
 
 #[derive(Diagnostic)]
