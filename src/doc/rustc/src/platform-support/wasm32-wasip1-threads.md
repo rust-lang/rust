@@ -107,7 +107,7 @@ flag, for example:
 
 Users need to install or built wasi-sdk since release 20.0
 https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-20
-and specify path to *wasi-root* `.cargo/config.toml`
+and specify path to *wasi-root* `config.toml`
 
 ```toml
 [target.wasm32-wasip1-threads]
