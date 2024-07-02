@@ -24,34 +24,40 @@ const fn backslash<const N: usize>(a: ascii::Char) -> ([ascii::Char; N], Range<u
 const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], Range<u8>) {
     const { assert!(N >= 4) };
 
-    match byte {
-        b'\t' => backslash(ascii::Char::SmallT),
-        b'\r' => backslash(ascii::Char::SmallR),
-        b'\n' => backslash(ascii::Char::SmallN),
-        b'\\' => backslash(ascii::Char::ReverseSolidus),
-        b'\'' => backslash(ascii::Char::Apostrophe),
-        b'\"' => backslash(ascii::Char::QuotationMark),
-        byte => {
-            let mut output = [ascii::Char::Null; N];
+    let mut output = [ascii::Char::ReverseSolidus; N];
+    output[1] = ascii::Char::SmallX;
+    output[2] = HEX_DIGITS[(byte >> 4) as usize];
+    output[3] = HEX_DIGITS[(byte & 0b1111) as usize];
 
-            if let Some(c) = byte.as_ascii()
-                && !byte.is_ascii_control()
-            {
-                output[0] = c;
-                (output, 0..1)
-            } else {
-                let hi = HEX_DIGITS[(byte >> 4) as usize];
-                let lo = HEX_DIGITS[(byte & 0xf) as usize];
-
-                output[0] = ascii::Char::ReverseSolidus;
-                output[1] = ascii::Char::SmallX;
-                output[2] = hi;
-                output[3] = lo;
-
-                (output, 0..4)
+    let len = if byte < 127 {
+        match byte {
+            c @ b'\"' | c @ b'\'' | c @ b'\\' => {
+                output[1] = c.as_ascii().unwrap();
+                2
             }
+            c @ 0x20..=0x7e => {
+                output[0] = c.as_ascii().unwrap();
+                1
+            }
+            b'\n' => {
+                output[1] = ascii::Char::SmallN;
+                2
+            }
+            b'\r' => {
+                output[1] = ascii::Char::SmallR;
+                2
+            }
+            b'\t' => {
+                output[1] = ascii::Char::SmallT;
+                2
+            }
+            _ => 4,
         }
-    }
+    } else {
+        4
+    };
+
+    (output, 0..len)
 }
 
 /// Escapes a character `\u{NNNN}` representation.
