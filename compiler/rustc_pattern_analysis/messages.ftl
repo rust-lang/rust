@@ -19,6 +19,10 @@ pattern_analysis_overlapping_range_endpoints = multiple patterns overlap on thei
     .label = ... with this range
     .note = you likely meant to write mutually exclusive ranges
 
+pattern_analysis_too_complex = this pattern-match expression is taking a long time to analyze
+    .help = to speed up checking, break it up into smaller `match`es and/or replace some patterns with guards
+    .note = match checking can take exponential time when many different fields of structs/tuples/arrays are involved
+
 pattern_analysis_uncovered = {$count ->
         [1] pattern `{$witness_1}`
         [2] patterns `{$witness_1}` and `{$witness_2}`

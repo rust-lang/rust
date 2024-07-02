@@ -1,14 +1,17 @@
-error: reached pattern complexity limit
-  --> $DIR/complexity_limit.rs:39:5
+warning: this pattern-match expression is taking a long time to analyze
+  --> $DIR/complexity_limit.rs:31:5
    |
 LL | /     match command {
 LL | |         BaseCommand { field01: true, .. } => {}
 LL | |         BaseCommand { field02: true, .. } => {}
 LL | |         BaseCommand { field03: true, .. } => {}
 ...  |
-LL | |         BaseCommand { field30: false, .. } => {}
+LL | |         BaseCommand { field18: false, .. } => {}
 LL | |     }
    | |_____^
+   |
+   = help: to speed up checking, break it up into smaller `match`es and/or replace some patterns with guards
+   = note: match checking can take exponential time when many different fields of structs/tuples/arrays are involved
 
-error: aborting due to 1 previous error
+warning: 1 warning emitted
 
