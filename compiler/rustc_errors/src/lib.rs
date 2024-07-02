@@ -259,6 +259,11 @@ impl SubstitutionPart {
             .map_or(!self.span.is_empty(), |snippet| !snippet.trim().is_empty())
     }
 
+    fn clone_ignoring_parents(&self) -> SubstitutionPart {
+        let SubstitutionPart { span, snippet } = self;
+        SubstitutionPart { span: span.with_parent(None), snippet: snippet.clone() }
+    }
+
     /// Try to turn a replacement into an addition when the span that is being
     /// overwritten matches either the prefix or suffix of the replacement.
     fn trim_trivial_replacements(&mut self, sm: &SourceMap) {
@@ -303,6 +308,21 @@ fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a s
 }
 
 impl CodeSuggestion {
+    pub fn clone_ignoring_parents(&self) -> CodeSuggestion {
+        let CodeSuggestion { substitutions, msg, style, applicability } = self;
+        CodeSuggestion {
+            substitutions: substitutions
+                .iter()
+                .map(|Substitution { parts }| Substitution {
+                    parts: parts.iter().map(SubstitutionPart::clone_ignoring_parents).collect(),
+                })
+                .collect(),
+            msg: msg.clone(),
+            style: *style,
+            applicability: *applicability,
+        }
+    }
+
     /// Returns the assembled code suggestions, whether they should be shown with an underline
     /// and whether the substitution only differs in capitalization.
     pub(crate) fn splice_lines(
@@ -1612,6 +1632,7 @@ impl DiagCtxtInner {
                 let mut hasher = StableHasher::new();
                 diagnostic.hash(&mut hasher);
                 let diagnostic_hash = hasher.finish();
+                debug!(?diagnostic, ?diagnostic_hash);
                 !self.emitted_diagnostics.insert(diagnostic_hash)
             };
 
