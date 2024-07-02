@@ -105,6 +105,7 @@ use crate::future::Future;
     message = "`{Self}` is not a future",
     note = "{Self} must be a future or must implement `IntoFuture` to be awaited"
 )]
+#[cfg_attr(not(bootstrap), lang = "into_future_trait")]
 pub trait IntoFuture {
     /// The output that the future will produce on completion.
     #[stable(feature = "into_future", since = "1.64.0")]
