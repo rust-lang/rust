@@ -170,6 +170,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // Start with an empty prefix.
                 let prefix = Path { segments: ThinVec::new(), span: use_tree.span, tokens: None };
 
+                let vis_span = self.lower_span(vis_span);
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, attrs)
             }
             ItemKind::Static(box ast::StaticItem {
@@ -628,6 +629,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 } else {
                     // For non-empty lists we can just drop all the data, the prefix is already
                     // present in HIR as a part of nested imports.
+                    let span = self.lower_span(span);
                     self.arena.alloc(hir::UsePath { res: PerNS::default(), segments: &[], span })
                 };
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)

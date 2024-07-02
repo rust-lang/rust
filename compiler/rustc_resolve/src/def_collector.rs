@@ -100,6 +100,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 }
 
 impl<'a, 'ra, 'tcx> mut_visit::MutVisitor for DefCollector<'a, 'ra, 'tcx> {
+    fn visit_span(&mut self, span: &mut Span) {
+        if self.resolver.tcx.sess.opts.incremental.is_some() {
+            *span = span.with_parent(Some(self.invocation_parent.parent_def));
+        }
+    }
+
     fn visit_item(&mut self, i: &mut Item) {
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into, the better
