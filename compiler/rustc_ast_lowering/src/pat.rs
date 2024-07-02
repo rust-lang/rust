@@ -76,10 +76,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                             hir::PatField {
                                 hir_id,
-                                ident: self.lower_ident(f.ident),
+                                ident: f.ident,
                                 pat: self.lower_pat(&f.pat),
                                 is_shorthand: f.is_shorthand,
-                                span: self.lower_span(f.span),
+                                span: f.span,
                             }
                         }));
                         break hir::PatKind::Struct(qpath, fs, *etc == ast::PatFieldsRest::Rest);
@@ -258,7 +258,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::PatKind::Binding(
                     annotation,
                     self.lower_node_id(canonical_id),
-                    self.lower_ident(ident),
+                    ident,
                     lower_sub(self),
                 )
             }
@@ -268,11 +268,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::PatKind::Path(hir::QPath::Resolved(
                     None,
                     self.arena.alloc(hir::Path {
-                        span: self.lower_span(ident.span),
+                        span: ident.span,
                         res,
-                        segments: arena_vec![self; hir::PathSegment::new(self.lower_ident(ident), hir_id, res)],
+                        segments: arena_vec![self; hir::PathSegment::new(ident, hir_id, res)],
                     }),
-            ))
+                ))
             }
         }
     }
@@ -286,7 +286,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::Pat {
             hir_id: self.lower_node_id(p.id),
             kind,
-            span: self.lower_span(p.span),
+            span: p.span,
             default_binding_modes: true,
         }
     }

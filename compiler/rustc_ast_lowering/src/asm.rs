@@ -250,7 +250,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         hir::InlineAsmOperand::Label { block: self.lower_block(block, false) }
                     }
                 };
-                (op, self.lower_span(*op_sp))
+                (op, *op_sp)
             })
             .collect();
 
@@ -458,7 +458,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             late: true,
                             expr: None,
                         },
-                        self.lower_span(abi_span),
+                        abi_span,
                     ));
                     clobbered.insert(clobber);
                 }
@@ -468,12 +468,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let operands = self.arena.alloc_from_iter(operands);
         let template = self.arena.alloc_from_iter(asm.template.iter().cloned());
         let template_strs = self.arena.alloc_from_iter(
-            asm.template_strs
-                .iter()
-                .map(|(sym, snippet, span)| (*sym, *snippet, self.lower_span(*span))),
+            asm.template_strs.iter().map(|(sym, snippet, span)| (*sym, *snippet, *span)),
         );
-        let line_spans =
-            self.arena.alloc_from_iter(asm.line_spans.iter().map(|span| self.lower_span(*span)));
+        let line_spans = self.arena.alloc_from_iter(asm.line_spans.iter().copied());
         let hir_asm =
             hir::InlineAsm { template, template_strs, operands, options: asm.options, line_spans };
         self.arena.alloc(hir_asm)
