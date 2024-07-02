@@ -375,7 +375,7 @@ pub fn create_ecx<'tcx>(
             });
             let main_ret_ty = tcx.fn_sig(entry_id).no_bound_vars().unwrap().output();
             let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
-            let start_instance = ty::Instance::resolve(
+            let start_instance = ty::Instance::try_resolve(
                 tcx,
                 ty::ParamEnv::reveal_all(),
                 start_id,

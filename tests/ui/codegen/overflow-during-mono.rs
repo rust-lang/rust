@@ -1,4 +1,5 @@
 //@ build-fail
+//@ error-pattern: reached the type-length limit while instantiating
 
 #![recursion_limit = "32"]
 

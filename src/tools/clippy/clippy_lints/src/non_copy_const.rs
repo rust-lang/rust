@@ -293,7 +293,7 @@ impl<'tcx> NonCopyConst<'tcx> {
         ct: ty::UnevaluatedConst<'tcx>,
         span: Span,
     ) -> EvalToValTreeResult<'tcx> {
-        match ty::Instance::resolve(tcx, param_env, ct.def, ct.args) {
+        match ty::Instance::try_resolve(tcx, param_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
                 let cid = GlobalId {
                     instance,

@@ -73,7 +73,7 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        match ty::Instance::resolve(
+        match ty::Instance::try_resolve(
             self, param_env,
             // FIXME: maybe have a separate version for resolving mir::UnevaluatedConst?
             ct.def, ct.args,
@@ -106,7 +106,7 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        match ty::Instance::resolve(self, param_env, ct.def, ct.args) {
+        match ty::Instance::try_resolve(self, param_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: None };
                 self.const_eval_global_id_for_typeck(param_env, cid, span).inspect(|_| {

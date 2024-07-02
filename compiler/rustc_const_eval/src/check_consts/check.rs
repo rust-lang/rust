@@ -768,7 +768,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         is_trait = true;
 
                         if let Ok(Some(instance)) =
-                            Instance::resolve(tcx, param_env, callee, fn_args)
+                            Instance::try_resolve(tcx, param_env, callee, fn_args)
                             && let InstanceKind::Item(def) = instance.def
                         {
                             // Resolve a trait method call to its concrete implementation, which may be in a

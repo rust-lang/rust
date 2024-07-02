@@ -516,7 +516,7 @@ impl<'tcx> Instance<'tcx> {
     /// from `Ok(None)` to avoid misleading diagnostics when an error
     /// has already been/will be emitted, for the original cause
     #[instrument(level = "debug", skip(tcx), ret)]
-    pub fn resolve(
+    pub fn try_resolve(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
@@ -555,7 +555,7 @@ impl<'tcx> Instance<'tcx> {
         let span_or_local_def_span =
             || if span.is_dummy() && def_id.is_local() { tcx.def_span(def_id) } else { span };
 
-        match ty::Instance::resolve(tcx, param_env, def_id, args) {
+        match ty::Instance::try_resolve(tcx, param_env, def_id, args) {
             Ok(Some(instance)) => instance,
             Ok(None) => {
                 let type_length = type_length(args);
@@ -605,7 +605,7 @@ impl<'tcx> Instance<'tcx> {
         // Use either `resolve_closure` or `resolve_for_vtable`
         assert!(!tcx.is_closure_like(def_id), "Called `resolve_for_fn_ptr` on closure: {def_id:?}");
         let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::FnPtr);
-        Instance::resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
+        Instance::try_resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceKind::Item(def) if resolved.def.requires_caller_location(tcx) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
@@ -738,13 +738,25 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
-        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args, DUMMY_SP)
+        Instance::expect_resolve(
+            tcx,
+            ty::ParamEnv::reveal_all(),
+            def_id,
+            args,
+            ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),
+        )
     }
 
     pub fn resolve_async_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::AsyncDropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
-        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args, DUMMY_SP)
+        Instance::expect_resolve(
+            tcx,
+            ty::ParamEnv::reveal_all(),
+            def_id,
+            args,
+            ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),
+        )
     }
 
     #[instrument(level = "debug", skip(tcx), ret)]

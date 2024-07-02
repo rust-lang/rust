@@ -389,7 +389,7 @@ impl<'tcx> Inliner<'tcx> {
                 // To resolve an instance its args have to be fully normalized.
                 let args = self.tcx.try_normalize_erasing_regions(self.param_env, args).ok()?;
                 let callee =
-                    Instance::resolve(self.tcx, self.param_env, def_id, args).ok().flatten()?;
+                    Instance::try_resolve(self.tcx, self.param_env, def_id, args).ok().flatten()?;
 
                 if let InstanceKind::Virtual(..) | InstanceKind::Intrinsic(_) = callee.def {
                     return None;

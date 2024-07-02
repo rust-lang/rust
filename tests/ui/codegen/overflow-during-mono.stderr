@@ -1,4 +1,4 @@
-error: reached the type-length limit while instantiating `<Filter<Filter<std::array::IntoIter<i32, 11>, {closure@$DIR/overflow-during-mono.rs:12:41: 12:44}>, ...> as Iterator>::try_fold::<..., ..., ...>`
+error: reached the type-length limit while instantiating `<Filter<Filter<std::array::IntoIter<i32, 11>, {closure@$DIR/overflow-during-mono.rs:13:41: 13:44}>, ...> as Iterator>::try_fold::<..., ..., ...>`
   --> $SRC_DIR/core/src/iter/adapters/filter.rs:LL:COL
    |
    = help: consider adding a `#![type_length_limit="20156994"]` attribute to your crate
