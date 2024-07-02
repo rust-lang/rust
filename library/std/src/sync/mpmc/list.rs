@@ -9,7 +9,7 @@ use super::waker::SyncWaker;
 use crate::cell::UnsafeCell;
 use crate::marker::PhantomData;
 use crate::mem::MaybeUninit;
-use crate::ptr;
+use crate::ptr::{self, NonNull};
 use crate::sync::atomic::{self, AtomicPtr, AtomicUsize, Ordering};
 use crate::time::Instant;
 
@@ -42,12 +42,14 @@ struct Slot<T> {
 }
 
 impl<T> Slot<T> {
-    /// Waits until a message is written into the slot.
-    fn wait_write(&self) {
-        let backoff = Backoff::new();
-        while self.state.load(Ordering::Acquire) & WRITE == 0 {
-            backoff.spin_heavy();
-        }
+    const UNINIT: Self =
+        Self { msg: UnsafeCell::new(MaybeUninit::uninit()), state: AtomicUsize::new(0) };
+
+    /// Blocks until a message is written into the slot.
+    fn wait_write(&self, receivers: &SyncWaker, token: &mut Token) {
+        watch_until(receivers, token, || {
+            (self.state.load(Ordering::SeqCst) & WRITE != 0).then_some(())
+        })
     }
 }
 
@@ -65,25 +67,12 @@ struct Block<T> {
 impl<T> Block<T> {
     /// Creates an empty block.
     fn new() -> Block<T> {
-        // SAFETY: This is safe because:
-        //  [1] `Block::next` (AtomicPtr) may be safely zero initialized.
-        //  [2] `Block::slots` (Array) may be safely zero initialized because of [3, 4].
-        //  [3] `Slot::msg` (UnsafeCell) may be safely zero initialized because it
-        //       holds a MaybeUninit.
-        //  [4] `Slot::state` (AtomicUsize) may be safely zero initialized.
-        unsafe { MaybeUninit::zeroed().assume_init() }
+        Block { next: AtomicPtr::new(ptr::null_mut()), slots: [Slot::UNINIT; BLOCK_CAP] }
     }
 
-    /// Waits until the next pointer is set.
-    fn wait_next(&self) -> *mut Block<T> {
-        let backoff = Backoff::new();
-        loop {
-            let next = self.next.load(Ordering::Acquire);
-            if !next.is_null() {
-                return next;
-            }
-            backoff.spin_heavy();
-        }
+    /// Blocks until the next pointer is set.
+    fn wait_next(&self, receivers: &SyncWaker, token: &mut Token) -> *mut Self {
+        watch_until(receivers, token, || NonNull::new(self.next.load(Ordering::SeqCst))).as_ptr()
     }
 
     /// Sets the `DESTROY` bit in slots starting from `start` and destroys the block.
@@ -91,7 +80,7 @@ impl<T> Block<T> {
         // It is not necessary to set the `DESTROY` bit in the last slot because that slot has
         // begun destruction of the block.
         for i in start..BLOCK_CAP - 1 {
-            let slot = (*this).slots.get_unchecked(i);
+            let slot = unsafe { (*this).slots.get_unchecked(i) };
 
             // Mark the `DESTROY` bit if a thread is still using the slot.
             if slot.state.load(Ordering::Acquire) & READ == 0
@@ -103,7 +92,7 @@ impl<T> Block<T> {
         }
 
         // No thread is using the block, now it is safe to destroy it.
-        drop(Box::from_raw(this));
+        drop(unsafe { Box::from_raw(this) });
     }
 }
 
@@ -155,6 +144,18 @@ pub(crate) struct Channel<T> {
     _marker: PhantomData<T>,
 }
 
+/// The status of the channel after calling `start_recv`.
+#[derive(PartialEq, Eq)]
+enum Status {
+    /// The channel has a message ready to read.
+    Ready,
+    /// There is currently a send in progress holding up the queue.
+    /// All operations must block to preserve linearizability.
+    InProgress,
+    /// The channel is empty.
+    Empty,
+}
+
 impl<T> Channel<T> {
     /// Creates a new unbounded channel.
     pub(crate) fn new() -> Self {
@@ -173,7 +174,7 @@ impl<T> Channel<T> {
     }
 
     /// Attempts to reserve a slot for sending a message.
-    fn start_send(&self, token: &mut Token) -> bool {
+    fn start_send(&self, token: &mut Token) -> Status {
         let backoff = Backoff::new();
         let mut tail = self.tail.index.load(Ordering::Acquire);
         let mut block = self.tail.block.load(Ordering::Acquire);
@@ -183,15 +184,19 @@ impl<T> Channel<T> {
             // Check if the channel is disconnected.
             if tail & MARK_BIT != 0 {
                 token.list.block = ptr::null();
-                return true;
+                return Status::Ready;
             }
 
             // Calculate the offset of the index into the block.
             let offset = (tail >> SHIFT) % LAP;
 
             // If we reached the end of the block, wait until the next one is installed.
+            // If we've been waiting for too long, fallback to blocking.
             if offset == BLOCK_CAP {
-                backoff.spin_heavy();
+                if !backoff.try_spin_light() {
+                    return Status::InProgress;
+                }
+
                 tail = self.tail.index.load(Ordering::Acquire);
                 block = self.tail.block.load(Ordering::Acquire);
                 continue;
@@ -239,12 +244,12 @@ impl<T> Channel<T> {
                         let next_block = Box::into_raw(next_block.unwrap());
                         self.tail.block.store(next_block, Ordering::Release);
                         self.tail.index.fetch_add(1 << SHIFT, Ordering::Release);
-                        (*block).next.store(next_block, Ordering::Release);
+                        (*block).next.store(next_block, Ordering::SeqCst);
                     }
 
                     token.list.block = block as *const u8;
                     token.list.offset = offset;
-                    return true;
+                    return Status::Ready;
                 },
                 Err(_) => {
                     backoff.spin_light();
@@ -263,11 +268,11 @@ impl<T> Channel<T> {
         }
 
         // Write the message into the slot.
-        let block = token.list.block as *mut Block<T>;
+        let block = token.list.block.cast::<Block<T>>();
         let offset = token.list.offset;
-        let slot = (*block).slots.get_unchecked(offset);
-        slot.msg.get().write(MaybeUninit::new(msg));
-        slot.state.fetch_or(WRITE, Ordering::Release);
+        let slot = unsafe { (*block).slots.get_unchecked(offset) };
+        unsafe { slot.msg.get().write(MaybeUninit::new(msg)) }
+        slot.state.fetch_or(WRITE, Ordering::SeqCst);
 
         // Wake a sleeping receiver.
         self.receivers.notify();
@@ -275,7 +280,7 @@ impl<T> Channel<T> {
     }
 
     /// Attempts to reserve a slot for receiving a message.
-    fn start_recv(&self, token: &mut Token) -> bool {
+    fn start_recv(&self, token: &mut Token) -> Status {
         let backoff = Backoff::new();
         let mut head = self.head.index.load(Ordering::Acquire);
         let mut block = self.head.block.load(Ordering::Acquire);
@@ -284,9 +289,14 @@ impl<T> Channel<T> {
             // Calculate the offset of the index into the block.
             let offset = (head >> SHIFT) % LAP;
 
-            // If we reached the end of the block, wait until the next one is installed.
+            // We reached the end of the block but the block is not installed yet, meaning
+            // the last send on the previous block is still in progress. The send is likely to
+            // complete soon so we spin here before falling back to blocking.
             if offset == BLOCK_CAP {
-                backoff.spin_heavy();
+                if !backoff.try_spin_light() {
+                    return Status::InProgress;
+                }
+
                 head = self.head.index.load(Ordering::Acquire);
                 block = self.head.block.load(Ordering::Acquire);
                 continue;
@@ -304,10 +314,10 @@ impl<T> Channel<T> {
                     if tail & MARK_BIT != 0 {
                         // ...then receive an error.
                         token.list.block = ptr::null();
-                        return true;
+                        return Status::Ready;
                     } else {
                         // Otherwise, the receive operation is not ready.
-                        return false;
+                        return Status::Empty;
                     }
                 }
 
@@ -317,10 +327,14 @@ impl<T> Channel<T> {
                 }
             }
 
-            // The block can be null here only if the first message is being sent into the channel.
-            // In that case, just wait until it gets initialized.
+            // The block can be null here only if the first message sent into the channel is
+            // in progress. The send is likely to complete soon so we spin here before falling
+            // back to blocking.
             if block.is_null() {
-                backoff.spin_heavy();
+                if !backoff.try_spin_light() {
+                    return Status::InProgress;
+                }
+
                 head = self.head.index.load(Ordering::Acquire);
                 block = self.head.block.load(Ordering::Acquire);
                 continue;
@@ -336,7 +350,7 @@ impl<T> Channel<T> {
                 Ok(_) => unsafe {
                     // If we've reached the end of the block, move to the next one.
                     if offset + 1 == BLOCK_CAP {
-                        let next = (*block).wait_next();
+                        let next = (*block).wait_next(&self.receivers, token);
                         let mut next_index = (new_head & !MARK_BIT).wrapping_add(1 << SHIFT);
                         if !(*next).next.load(Ordering::Relaxed).is_null() {
                             next_index |= MARK_BIT;
@@ -348,7 +362,7 @@ impl<T> Channel<T> {
 
                     token.list.block = block as *const u8;
                     token.list.offset = offset;
-                    return true;
+                    return Status::Ready;
                 },
                 Err(_) => {
                     backoff.spin_light();
@@ -369,16 +383,18 @@ impl<T> Channel<T> {
         // Read the message.
         let block = token.list.block as *mut Block<T>;
         let offset = token.list.offset;
-        let slot = (*block).slots.get_unchecked(offset);
-        slot.wait_write();
-        let msg = slot.msg.get().read().assume_init();
+        let slot = unsafe { (*block).slots.get_unchecked(offset) };
+        slot.wait_write(&self.receivers, token);
+        let msg = unsafe { slot.msg.get().read().assume_init() };
 
         // Destroy the block if we've reached the end, or if another thread wanted to destroy but
         // couldn't because we were busy reading from the slot.
-        if offset + 1 == BLOCK_CAP {
-            Block::destroy(block, 0);
-        } else if slot.state.fetch_or(READ, Ordering::AcqRel) & DESTROY != 0 {
-            Block::destroy(block, offset + 1);
+        unsafe {
+            if offset + 1 == BLOCK_CAP {
+                Block::destroy(block, 0);
+            } else if slot.state.fetch_or(READ, Ordering::AcqRel) & DESTROY != 0 {
+                Block::destroy(block, offset + 1);
+            }
         }
 
         Ok(msg)
@@ -399,28 +415,106 @@ impl<T> Channel<T> {
         _deadline: Option<Instant>,
     ) -> Result<(), SendTimeoutError<T>> {
         let token = &mut Token::default();
-        assert!(self.start_send(token));
-        unsafe { self.write(token, msg).map_err(SendTimeoutError::Disconnected) }
+
+        // It's possible that we can't proceed because of the sender that
+        // is supposed to install the next block lagging, so we might have to
+        // block for a message to be sent.
+        let mut state = self.receivers.start();
+        let mut started = false;
+        loop {
+            // Try sending a message several times.
+            let backoff = Backoff::new();
+            loop {
+                if started || self.start_send(token) == Status::Ready {
+                    return unsafe {
+                        self.write(token, msg).map_err(SendTimeoutError::Disconnected)
+                    };
+                }
+
+                // Spin for a bit before blocking.
+                if !backoff.try_spin_light() {
+                    break;
+                }
+            }
+
+            // Prepare for blocking until a sender wakes us up.
+            Context::with(|cx| {
+                // Register to be notified after any message is sent.
+                let oper = Operation::hook(token);
+                self.receivers.watch(oper, cx, &state);
+
+                // Has the channel become ready just now?
+                if self.start_send(token) == Status::Ready {
+                    let _ = cx.try_select(Selected::Aborted);
+                    started = true;
+                }
+
+                // Block the current thread.
+                let sel = cx.wait_until(None);
+
+                match sel {
+                    Selected::Waiting => unreachable!(),
+                    Selected::Aborted | Selected::Disconnected => {
+                        self.receivers.unwatch(oper);
+                    }
+                    Selected::Operation(_) => {}
+                }
+
+                state.unpark();
+            });
+        }
     }
 
     /// Attempts to receive a message without blocking.
     pub(crate) fn try_recv(&self) -> Result<T, TryRecvError> {
-        let token = &mut Token::default();
-
-        if self.start_recv(token) {
-            unsafe { self.read(token).map_err(|_| TryRecvError::Disconnected) }
-        } else {
-            Err(TryRecvError::Empty)
+        match self.recv_blocking(None, false) {
+            Ok(Some(value)) => Ok(value),
+            Ok(None) => Err(TryRecvError::Empty),
+            Err(RecvTimeoutError::Disconnected) => Err(TryRecvError::Disconnected),
+            Err(RecvTimeoutError::Timeout) => {
+                unreachable!("called recv_blocking with deadline: None")
+            }
         }
     }
 
     /// Receives a message from the channel.
     pub(crate) fn recv(&self, deadline: Option<Instant>) -> Result<T, RecvTimeoutError> {
+        self.recv_blocking(deadline, true)
+            .map(|value| value.expect("called recv_blocking with block: true"))
+    }
+
+    /// Receives a message from the channel.
+    ///
+    /// Blocks until a message is received if `should_block` is `true`. Otherwise, returns `Ok(None)` if
+    /// the channel is full.
+    ///
+    /// Note this may still block when `should_block` is `false` if the channel is in an inconsistent state.
+    pub(crate) fn recv_blocking(
+        &self,
+        deadline: Option<Instant>,
+        should_block: bool,
+    ) -> Result<Option<T>, RecvTimeoutError> {
         let token = &mut Token::default();
+
+        let mut state = self.receivers.start();
         loop {
-            if self.start_recv(token) {
-                unsafe {
-                    return self.read(token).map_err(|_| RecvTimeoutError::Disconnected);
+            // Try receiving a message several times.
+            let backoff = Backoff::new();
+            loop {
+                match self.start_recv(token) {
+                    Status::Ready => {
+                        let res = unsafe { self.read(token) };
+                        return res.map(Some).map_err(|_| RecvTimeoutError::Disconnected);
+                    }
+                    // If the channel is empty, return or block immediately.
+                    Status::Empty if !should_block => return Ok(None),
+                    Status::Empty => break,
+                    // Otherwise spin for a bit before blocking.
+                    Status::InProgress => {}
+                }
+
+                if !backoff.try_spin_light() {
+                    break;
                 }
             }
 
@@ -433,7 +527,7 @@ impl<T> Channel<T> {
             // Prepare for blocking until a sender wakes us up.
             Context::with(|cx| {
                 let oper = Operation::hook(token);
-                self.receivers.register(oper, cx);
+                self.receivers.register(oper, cx, &state);
 
                 // Has the channel become ready just now?
                 if !self.is_empty() || self.is_disconnected() {
@@ -452,6 +546,8 @@ impl<T> Channel<T> {
                     }
                     Selected::Operation(_) => {}
                 }
+
+                state.unpark();
             });
         }
     }
@@ -531,6 +627,7 @@ impl<T> Channel<T> {
     ///
     /// This method should only be called when all receivers are dropped.
     fn discard_all_messages(&self) {
+        let token = &mut Token::default();
         let backoff = Backoff::new();
         let mut tail = self.tail.index.load(Ordering::Acquire);
         loop {
@@ -548,7 +645,7 @@ impl<T> Channel<T> {
 
         let mut head = self.head.index.load(Ordering::Acquire);
         // The channel may be uninitialized, so we have to swap to avoid overwriting any sender's attempts
-        // to initalize the first block before noticing that the receivers disconnected. Late allocations
+        // to initialize the first block before noticing that the receivers disconnected. Late allocations
         // will be deallocated by the sender in Drop.
         let mut block = self.head.block.swap(ptr::null_mut(), Ordering::AcqRel);
 
@@ -572,11 +669,10 @@ impl<T> Channel<T> {
                 if offset < BLOCK_CAP {
                     // Drop the message in the slot.
                     let slot = (*block).slots.get_unchecked(offset);
-                    slot.wait_write();
-                    let p = &mut *slot.msg.get();
-                    p.as_mut_ptr().drop_in_place();
+                    slot.wait_write(&self.receivers, token);
+                    (*slot.msg.get()).assume_init_drop();
                 } else {
-                    (*block).wait_next();
+                    (*block).wait_next(&self.receivers, token);
                     // Deallocate the block and move to the next one.
                     let next = (*block).next.load(Ordering::Acquire);
                     drop(Box::from_raw(block));
@@ -614,11 +710,64 @@ impl<T> Channel<T> {
     }
 }
 
+/// Blocks until a read operation succeeds, returning the value once it does.
+///
+/// Note that the read and corresponding store must be use `SeqCst` ordering to
+/// synchronize with notifications.
+fn watch_until<T>(receivers: &SyncWaker, token: &mut Token, try_read: impl Fn() -> Option<T>) -> T {
+    let mut state = receivers.start();
+    let mut value = None;
+
+    loop {
+        // Try reading several times.
+        let backoff = Backoff::new();
+        loop {
+            if value.is_none() {
+                value = try_read();
+            }
+
+            if let Some(value) = value {
+                return value;
+            }
+
+            if !backoff.try_spin_light() {
+                break;
+            }
+        }
+
+        // Prepare for blocking until a sender wakes us up.
+        Context::with(|cx| {
+            // Register to be notified after any message is sent.
+            let oper = Operation::hook(token);
+            receivers.watch(oper, cx, &state);
+
+            // Was the message just sent?
+            if let Some(read) = try_read() {
+                value = Some(read);
+                let _ = cx.try_select(Selected::Aborted);
+            }
+
+            // Block the current thread.
+            let sel = cx.wait_until(None);
+
+            match sel {
+                Selected::Waiting => unreachable!(),
+                Selected::Aborted | Selected::Disconnected => {
+                    receivers.unwatch(oper);
+                }
+                Selected::Operation(_) => {}
+            }
+
+            state.unpark();
+        });
+    }
+}
+
 impl<T> Drop for Channel<T> {
     fn drop(&mut self) {
-        let mut head = self.head.index.load(Ordering::Relaxed);
-        let mut tail = self.tail.index.load(Ordering::Relaxed);
-        let mut block = self.head.block.load(Ordering::Relaxed);
+        let mut head = *self.head.index.get_mut();
+        let mut tail = *self.tail.index.get_mut();
+        let mut block = *self.head.block.get_mut();
 
         // Erase the lower bits.
         head &= !((1 << SHIFT) - 1);
@@ -632,11 +781,10 @@ impl<T> Drop for Channel<T> {
                 if offset < BLOCK_CAP {
                     // Drop the message in the slot.
                     let slot = (*block).slots.get_unchecked(offset);
-                    let p = &mut *slot.msg.get();
-                    p.as_mut_ptr().drop_in_place();
+                    (*slot.msg.get()).assume_init_drop();
                 } else {
                     // Deallocate the block and move to the next one.
-                    let next = (*block).next.load(Ordering::Relaxed);
+                    let next = *(*block).next.get_mut();
                     drop(Box::from_raw(block));
                     block = next;
                 }
