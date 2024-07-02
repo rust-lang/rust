@@ -1,6 +1,7 @@
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
+use rustc_data_structures::stable_hasher::{Hash64, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -18,6 +19,7 @@ use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 
 use std::fmt::Write;
+use std::hash::Hasher;
 use std::iter;
 use std::ops::Range;
 
@@ -63,6 +65,55 @@ pub(super) fn mangle<'tcx>(
     if let Some(instantiating_crate) = instantiating_crate {
         cx.print_def_path(instantiating_crate.as_def_id(), &[]).unwrap();
     }
+    std::mem::take(&mut cx.out)
+}
+
+pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> String {
+    if item_name == "__rust_no_alloc_shim_is_unstable" {
+        // Temporary back compat hack to give people the chance to migrate to
+        // include #[rustc_std_internal_symbol].
+        return "__rust_no_alloc_shim_is_unstable".to_owned();
+    }
+
+    let prefix = "_R";
+    let mut cx: SymbolMangler<'_> = SymbolMangler {
+        tcx,
+        start_offset: prefix.len(),
+        paths: FxHashMap::default(),
+        types: FxHashMap::default(),
+        consts: FxHashMap::default(),
+        binders: vec![],
+        out: String::from(prefix),
+    };
+
+    cx.path_append_ns(
+        |cx| {
+            cx.push("C");
+            cx.push_disambiguator({
+                let mut hasher = StableHasher::new();
+                // Incorporate the rustc version to ensure #[rustc_std_internal_symbol] functions
+                // get a different symbol name depending on the rustc version.
+                //
+                // RUSTC_FORCE_RUSTC_VERSION is used to inject rustc version information
+                // during testing.
+                if let Some(val) = /* FIXME */ option_env!("RUSTC_FORCE_RUSTC_VERSION") {
+                    hasher.write(val.as_bytes())
+                } else {
+                    hasher.write(tcx.sess.cfg_version.as_bytes())
+                }
+
+                let hash: Hash64 = hasher.finish();
+                hash.as_u64()
+            });
+            cx.push_ident("__rustc");
+            Ok(())
+        },
+        'v',
+        0,
+        item_name,
+    )
+    .unwrap();
+
     std::mem::take(&mut cx.out)
 }
 
