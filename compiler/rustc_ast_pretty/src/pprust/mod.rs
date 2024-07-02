@@ -76,6 +76,14 @@ pub fn attribute_to_string(attr: &ast::Attribute) -> String {
     State::new().attribute_to_string(attr)
 }
 
+pub fn local_to_string(local: &ast::Local) -> String {
+    State::new().local_to_string(local)
+}
+
+pub fn stmt_to_string(stmt: &ast::Stmt) -> String {
+    State::new().stmt_to_string(stmt)
+}
+
 pub fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
     State::to_string(f)
 }

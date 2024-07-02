@@ -2,7 +2,12 @@ error: expected item, found keyword `let`
   --> $DIR/suggest-const-for-global-var.rs:1:1
    |
 LL | let X: i32 = 12;
-   | ^^^ consider using `const` or `static` instead of `let` for global variables
+   | ^^^-------------
+   | |
+   | unexpected `let` binding outside of a function
+   |
+   = help: consider using `const` or `static` instead of `let` for global variables, or put it inside of a function:  fn foo() { let X: i32 = 12; }
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
 
 error: aborting due to 1 previous error
 

@@ -2076,4 +2076,8 @@ impl<'a> State<'a> {
     pub(crate) fn attribute_to_string(&self, attr: &ast::Attribute) -> String {
         Self::to_string(|s| s.print_attribute(attr))
     }
+
+    pub(crate) fn local_to_string(&self, local: &ast::Local) -> String {
+        Self::to_string(|s| s.print_local_decl(local))
+    }
 }
