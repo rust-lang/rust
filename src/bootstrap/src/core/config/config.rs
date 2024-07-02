@@ -1189,7 +1189,19 @@ impl Config {
     pub fn parse(args: &[String]) -> Config {
         #[cfg(test)]
         fn get_toml(_: &Path) -> TomlConfig {
-            TomlConfig::default()
+            let mut default = TomlConfig::default();
+
+            // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
+            // same ones used to call the tests. If we don't do that, bootstrap will use its own
+            // detection logic to find a suitable rustc and Cargo, which doesn't work when the
+            // caller is specìfying a custom local rustc or Cargo in their config.toml.
+            default.build = Some(Build {
+                rustc: std::env::var_os("RUSTC").map(|v| v.into()),
+                cargo: std::env::var_os("CARGO").map(|v| v.into()),
+                ..Build::default()
+            });
+
+            default
         }
 
         #[cfg(not(test))]
