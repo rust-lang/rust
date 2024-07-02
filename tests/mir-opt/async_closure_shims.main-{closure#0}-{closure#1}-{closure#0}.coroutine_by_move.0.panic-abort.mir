@@ -1,11 +1,11 @@
-// MIR for `main::{closure#0}::{closure#0}::{closure#0}` 0 coroutine_by_move
+// MIR for `main::{closure#0}::{closure#1}::{closure#0}` 0 coroutine_by_move
 
-fn main::{closure#0}::{closure#0}::{closure#0}(_1: {async closure body@$DIR/async_closure_shims.rs:53:53: 56:10}, _2: ResumeTy) -> ()
+fn main::{closure#0}::{closure#1}::{closure#0}(_1: {async closure body@$DIR/async_closure_shims.rs:62:48: 65:10}, _2: ResumeTy) -> ()
 yields ()
  {
     debug _task_context => _2;
     debug a => (_1.0: i32);
-    debug b => (_1.1: i32);
+    debug b => (*(_1.1: &i32));
     let mut _0: ();
     let _3: i32;
     scope 1 {
@@ -28,7 +28,7 @@ yields ()
         _4 = &_3;
         FakeRead(ForLet(None), _4);
         StorageLive(_5);
-        _5 = &(_1.1: i32);
+        _5 = &(*(_1.1: &i32));
         FakeRead(ForLet(None), _5);
         _0 = const ();
         StorageDead(_5);

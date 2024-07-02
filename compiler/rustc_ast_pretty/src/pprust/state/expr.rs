@@ -5,6 +5,7 @@ use ast::{ForLoopKind, MatchKind};
 use itertools::{Itertools, Position};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
+use rustc_ast::util::classify;
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::{self as ast, BlockCheckMode};
@@ -610,9 +611,12 @@ impl<'a> State<'a> {
                 }
                 if let Some(expr) = opt_expr {
                     self.space();
-                    self.print_expr_maybe_paren(
+                    self.print_expr_cond_paren(
                         expr,
-                        parser::PREC_JUMP,
+                        // Parenthesize if required by precedence, or in the
+                        // case of `break 'inner: loop { break 'inner 1 } + 1`
+                        expr.precedence().order() < parser::PREC_JUMP
+                            || (opt_label.is_none() && classify::leading_labeled_expr(expr)),
                         fixup.subsequent_subexpression(),
                     );
                 }

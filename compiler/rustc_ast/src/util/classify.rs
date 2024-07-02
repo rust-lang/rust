@@ -1,7 +1,8 @@
 //! Routines the parser and pretty-printer use to classify AST nodes.
 
 use crate::ast::ExprKind::*;
-use crate::{ast, token::Delimiter};
+use crate::ast::{self, MatchKind};
+use crate::token::Delimiter;
 
 /// This classification determines whether various syntactic positions break out
 /// of parsing the current expression (true) or continue parsing more of the
@@ -78,6 +79,82 @@ pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
     match &e.kind {
         MacCall(mac_call) => mac_call.args.delim != Delimiter::Brace,
         _ => !expr_is_complete(e),
+    }
+}
+
+/// Returns whether the leftmost token of the given expression is the label of a
+/// labeled loop or block, such as in `'inner: loop { break 'inner 1 } + 1`.
+///
+/// Such expressions are not allowed as the value of an unlabeled break.
+///
+/// ```ignore (illustrative)
+/// 'outer: {
+///     break 'inner: loop { break 'inner 1 } + 1;  // invalid syntax
+///
+///     break 'outer 'inner: loop { break 'inner 1 } + 1;  // okay
+///
+///     break ('inner: loop { break 'inner 1 } + 1);  // okay
+///
+///     break ('inner: loop { break 'inner 1 }) + 1;  // okay
+/// }
+/// ```
+pub fn leading_labeled_expr(mut expr: &ast::Expr) -> bool {
+    loop {
+        match &expr.kind {
+            Block(_, label) | ForLoop { label, .. } | Loop(_, label, _) | While(_, _, label) => {
+                return label.is_some();
+            }
+
+            Assign(e, _, _)
+            | AssignOp(_, e, _)
+            | Await(e, _)
+            | Binary(_, e, _)
+            | Call(e, _)
+            | Cast(e, _)
+            | Field(e, _)
+            | Index(e, _, _)
+            | Match(e, _, MatchKind::Postfix)
+            | Range(Some(e), _, _)
+            | Try(e) => {
+                expr = e;
+            }
+            MethodCall(method_call) => {
+                expr = &method_call.receiver;
+            }
+
+            AddrOf(..)
+            | Array(..)
+            | Become(..)
+            | Break(..)
+            | Closure(..)
+            | ConstBlock(..)
+            | Continue(..)
+            | FormatArgs(..)
+            | Gen(..)
+            | If(..)
+            | IncludedBytes(..)
+            | InlineAsm(..)
+            | Let(..)
+            | Lit(..)
+            | MacCall(..)
+            | Match(_, _, MatchKind::Prefix)
+            | OffsetOf(..)
+            | Paren(..)
+            | Path(..)
+            | Range(None, _, _)
+            | Repeat(..)
+            | Ret(..)
+            | Struct(..)
+            | TryBlock(..)
+            | Tup(..)
+            | Type(..)
+            | Unary(..)
+            | Underscore
+            | Yeet(..)
+            | Yield(..)
+            | Err(..)
+            | Dummy => return false,
+        }
     }
 }
 

@@ -47,7 +47,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let expected_ty = self.monomorphize(self.mir.local_decls[local].ty);
                     if expected_ty != op.layout.ty {
                         warn!(
-                            "Unexpected initial operand type: expected {expected_ty:?}, found {:?}.\
+                            "Unexpected initial operand type:\nexpected {expected_ty:?},\nfound    {:?}.\n\
                             See <https://github.com/rust-lang/rust/issues/114858>.",
                             op.layout.ty
                         );

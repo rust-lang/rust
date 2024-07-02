@@ -1710,22 +1710,24 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Bool if int == ScalarInt::FALSE => p!("false"),
             ty::Bool if int == ScalarInt::TRUE => p!("true"),
             // Float
-            ty::Float(ty::FloatTy::F16) => {
-                let val = Half::try_from(int).unwrap();
-                p!(write("{}{}f16", val, if val.is_finite() { "" } else { "_" }))
-            }
-            ty::Float(ty::FloatTy::F32) => {
-                let val = Single::try_from(int).unwrap();
-                p!(write("{}{}f32", val, if val.is_finite() { "" } else { "_" }))
-            }
-            ty::Float(ty::FloatTy::F64) => {
-                let val = Double::try_from(int).unwrap();
-                p!(write("{}{}f64", val, if val.is_finite() { "" } else { "_" }))
-            }
-            ty::Float(ty::FloatTy::F128) => {
-                let val = Quad::try_from(int).unwrap();
-                p!(write("{}{}f128", val, if val.is_finite() { "" } else { "_" }))
-            }
+            ty::Float(fty) => match fty {
+                ty::FloatTy::F16 => {
+                    let val = Half::try_from(int).unwrap();
+                    p!(write("{}{}f16", val, if val.is_finite() { "" } else { "_" }))
+                }
+                ty::FloatTy::F32 => {
+                    let val = Single::try_from(int).unwrap();
+                    p!(write("{}{}f32", val, if val.is_finite() { "" } else { "_" }))
+                }
+                ty::FloatTy::F64 => {
+                    let val = Double::try_from(int).unwrap();
+                    p!(write("{}{}f64", val, if val.is_finite() { "" } else { "_" }))
+                }
+                ty::FloatTy::F128 => {
+                    let val = Quad::try_from(int).unwrap();
+                    p!(write("{}{}f128", val, if val.is_finite() { "" } else { "_" }))
+                }
+            },
             // Int
             ty::Uint(_) | ty::Int(_) => {
                 let int =

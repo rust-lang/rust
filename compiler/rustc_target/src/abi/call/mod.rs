@@ -339,7 +339,9 @@ impl CastTarget {
         }
     }
 
-    pub fn size<C: HasDataLayout>(&self, _cx: &C) -> Size {
+    /// When you only access the range containing valid data, you can use this unaligned size;
+    /// otherwise, use the safer `size` method.
+    pub fn unaligned_size<C: HasDataLayout>(&self, _cx: &C) -> Size {
         // Prefix arguments are passed in specific designated registers
         let prefix_size = self
             .prefix
@@ -351,6 +353,10 @@ impl CastTarget {
             self.rest.unit.size * self.rest.total.bytes().div_ceil(self.rest.unit.size.bytes());
 
         prefix_size + rest_size
+    }
+
+    pub fn size<C: HasDataLayout>(&self, cx: &C) -> Size {
+        self.unaligned_size(cx).align_to(self.align(cx))
     }
 
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {

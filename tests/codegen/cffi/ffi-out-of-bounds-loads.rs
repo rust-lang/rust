@@ -1,5 +1,5 @@
 //@ revisions: linux apple
-//@ compile-flags: -C opt-level=0 -C no-prepopulate-passes
+//@ compile-flags: -C opt-level=0 -C no-prepopulate-passes -C passes=lint
 
 //@[linux] compile-flags: --target x86_64-unknown-linux-gnu
 //@[linux] needs-llvm-components: x86
@@ -36,7 +36,7 @@ extern "C" {
 pub fn test() {
     let s = S { f1: 1, f2: 2, f3: 3 };
     unsafe {
-        // CHECK: [[ALLOCA:%.+]] = alloca [12 x i8], align 8
+        // CHECK: [[ALLOCA:%.+]] = alloca [16 x i8], align 8
         // CHECK: [[LOAD:%.+]] = load { i64, i32 }, ptr [[ALLOCA]], align 8
         // CHECK: call void @foo({ i64, i32 } [[LOAD]])
         foo(s);

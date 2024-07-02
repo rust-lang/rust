@@ -1,4 +1,4 @@
-//@ check-pass
+//@ build-pass
 //@ edition: 2021
 
 // Demonstrates that an async closure may implement `FnMut` (not just `async FnMut`!)
@@ -9,9 +9,13 @@
 
 #![feature(async_closure)]
 
-fn main() {}
+fn main() {
+    hello(&Ty);
+}
 
-fn needs_fn_mut<T>(x: impl FnMut() -> T) {}
+fn needs_fn_mut<T>(mut x: impl FnMut() -> T) {
+    x();
+}
 
 fn hello(x: &Ty) {
     needs_fn_mut(async || { x.hello(); });

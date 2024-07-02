@@ -8,7 +8,7 @@
 //! `Value` is interned as a `VnIndex`, which allows us to cheaply compute identical values.
 //!
 //! From those assignments, we construct a mapping `VnIndex -> Vec<(Local, Location)>` of available
-//! values, the locals in which they are stored, and a the assignment location.
+//! values, the locals in which they are stored, and the assignment location.
 //!
 //! In a second pass, we traverse all (non SSA) assignments `x = rvalue` and operands. For each
 //! one, we compute the `VnIndex` of the rvalue. If this `VnIndex` is associated to a constant, we

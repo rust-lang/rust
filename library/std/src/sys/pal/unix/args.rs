@@ -183,7 +183,7 @@ mod imp {
 // Use `_NSGetArgc` and `_NSGetArgv` on Apple platforms.
 //
 // Even though these have underscores in their names, they've been available
-// since since the first versions of both macOS and iOS, and are declared in
+// since the first versions of both macOS and iOS, and are declared in
 // the header `crt_externs.h`.
 //
 // NOTE: This header was added to the iOS 13.0 SDK, which has been the source

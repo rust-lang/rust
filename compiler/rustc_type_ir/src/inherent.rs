@@ -120,6 +120,14 @@ pub trait Ty<I: Interner<Ty = Self>>:
         matches!(self.kind(), ty::Infer(ty::TyVar(_)))
     }
 
+    fn is_floating_point(self) -> bool {
+        matches!(self.kind(), ty::Float(_) | ty::Infer(ty::FloatVar(_)))
+    }
+
+    fn is_integral(self) -> bool {
+        matches!(self.kind(), ty::Infer(ty::IntVar(_)) | ty::Int(_) | ty::Uint(_))
+    }
+
     fn is_fn_ptr(self) -> bool {
         matches!(self.kind(), ty::FnPtr(_))
     }

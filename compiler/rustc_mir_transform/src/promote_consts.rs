@@ -816,7 +816,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     mut func, mut args, call_source: desugar, fn_span, ..
                 } => {
                     // This promoted involves a function call, so it may fail to evaluate.
-                    // Let's make sure it is added to `required_consts` so that that failure cannot get lost.
+                    // Let's make sure it is added to `required_consts` so that failure cannot get lost.
                     self.add_to_required = true;
 
                     self.visit_operand(&mut func, loc);
