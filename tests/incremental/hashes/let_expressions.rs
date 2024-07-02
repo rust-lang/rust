@@ -210,9 +210,9 @@ pub fn change_initializer() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_initializer() {
     let _x = 5u16;

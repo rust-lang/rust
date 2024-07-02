@@ -1,4 +1,5 @@
 //@ known-bug: #79409
+//@ compile-flags: -Cdebuginfo=2
 
 #![feature(extern_types)]
 #![feature(unsized_locals)]

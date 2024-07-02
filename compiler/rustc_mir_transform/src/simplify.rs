@@ -31,6 +31,7 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::config::DebugInfo;
 use smallvec::SmallVec;
 
 pub enum SimplifyCfg {
@@ -580,4 +581,13 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
         *l = self.map[*l].unwrap();
     }
+}
+
+pub(crate) fn preserve_debug_even_if_never_generated(tcx: TyCtxt<'_>) -> bool {
+    tcx.sess.opts.unstable_opts.inline_mir_preserve_debug.unwrap_or_else(|| {
+        match tcx.sess.opts.debuginfo {
+            DebugInfo::None | DebugInfo::LineDirectivesOnly | DebugInfo::LineTablesOnly => false,
+            DebugInfo::Limited | DebugInfo::Full => true,
+        }
+    })
 }

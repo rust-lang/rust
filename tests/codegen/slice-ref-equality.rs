@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Zmerge-functions=disabled
+//@ compile-flags: -O -Zmerge-functions=disabled -Cdebuginfo=0
 #![crate_type = "lib"]
 
 use std::num::NonZero;

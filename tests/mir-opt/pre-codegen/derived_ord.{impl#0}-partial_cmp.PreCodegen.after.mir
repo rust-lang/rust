@@ -6,8 +6,9 @@ fn <impl at $DIR/derived_ord.rs:6:10: 6:20>::partial_cmp(_1: &MultiField, _2: &M
     let mut _0: std::option::Option<std::cmp::Ordering>;
     let mut _6: std::option::Option<std::cmp::Ordering>;
     let mut _7: i8;
+    let _11: std::option::Option<std::cmp::Ordering>;
     scope 1 {
-        debug cmp => _6;
+        debug cmp => _11;
     }
     scope 2 (inlined std::cmp::impls::<impl PartialOrd for char>::partial_cmp) {
         let mut _3: char;
@@ -48,7 +49,9 @@ fn <impl at $DIR/derived_ord.rs:6:10: 6:20>::partial_cmp(_1: &MultiField, _2: &M
     }
 
     bb2: {
+        StorageLive(_11);
         _0 = _6;
+        StorageDead(_11);
         goto -> bb3;
     }
 
