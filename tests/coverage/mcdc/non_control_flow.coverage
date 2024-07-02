@@ -2,7 +2,7 @@
    LL|       |//@ edition: 2021
    LL|       |//@ min-llvm-version: 18
    LL|       |//@ compile-flags: -Zcoverage-options=mcdc
-   LL|       |//@ llvm-cov-flags: --show-mcdc
+   LL|       |//@ llvm-cov-flags: --show-branches=count --show-mcdc
    LL|       |
    LL|       |// This test ensures that boolean expressions that are not inside control flow
    LL|       |// decisions are correctly instrumented.
@@ -12,6 +12,9 @@
    LL|      3|fn assign_and(a: bool, b: bool) {
    LL|      3|    let x = a && b;
                                ^2
+  ------------------
+  |  Branch (LL:13): [True: 2, False: 1]
+  |  Branch (LL:18): [True: 1, False: 1]
   ------------------
   |---> MC/DC Decision Region (LL:13) to (LL:19)
   |
@@ -38,6 +41,9 @@
    LL|      3|    let x = a || b;
                                ^1
   ------------------
+  |  Branch (LL:13): [True: 2, False: 1]
+  |  Branch (LL:18): [True: 0, False: 1]
+  ------------------
   |---> MC/DC Decision Region (LL:13) to (LL:19)
   |
   |  Number of Conditions: 2
@@ -61,6 +67,10 @@
    LL|      4|fn assign_3(a: bool, b: bool, c: bool) {
    LL|      4|    let x = a || b && c;
                                ^2   ^1
+  ------------------
+  |  Branch (LL:13): [True: 2, False: 2]
+  |  Branch (LL:18): [True: 1, False: 1]
+  |  Branch (LL:23): [True: 1, False: 0]
   ------------------
   |---> MC/DC Decision Region (LL:13) to (LL:24)
   |
@@ -89,6 +99,10 @@
    LL|      4|    let x = a && b || c;
                                ^2   ^3
   ------------------
+  |  Branch (LL:13): [True: 2, False: 2]
+  |  Branch (LL:18): [True: 1, False: 1]
+  |  Branch (LL:23): [True: 2, False: 1]
+  ------------------
   |---> MC/DC Decision Region (LL:13) to (LL:24)
   |
   |  Number of Conditions: 3
@@ -115,6 +129,12 @@
    LL|      3|fn right_comb_tree(a: bool, b: bool, c: bool, d: bool, e: bool) {
    LL|      3|    let x = a && (b && (c && (d && (e))));
                                 ^2    ^1    ^1   ^1
+  ------------------
+  |  Branch (LL:13): [True: 2, False: 1]
+  |  Branch (LL:19): [True: 1, False: 1]
+  |  Branch (LL:25): [True: 1, False: 0]
+  |  Branch (LL:31): [True: 1, False: 0]
+  |  Branch (LL:36): [True: 1, False: 0]
   ------------------
   |---> MC/DC Decision Region (LL:13) to (LL:42)
   |
@@ -150,6 +170,9 @@
    LL|      3|fn func_call(a: bool, b: bool) {
    LL|      3|    foo(a && b);
                            ^2
+  ------------------
+  |  Branch (LL:9): [True: 2, False: 1]
+  |  Branch (LL:14): [True: 1, False: 1]
   ------------------
   |---> MC/DC Decision Region (LL:9) to (LL:15)
   |
