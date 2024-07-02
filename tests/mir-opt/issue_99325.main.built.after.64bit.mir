@@ -67,7 +67,7 @@ fn main() -> () {
         StorageLive(_2);
         StorageLive(_3);
         StorageLive(_4);
-        _4 = function_with_bytes::<&*b"AAAA">() -> [return: bb1, unwind: bb25];
+        _4 = function_with_bytes::<&*b"AAAA">() -> [return: bb1, unwind: bb23];
     }
 
     bb1: {
@@ -91,7 +91,7 @@ fn main() -> () {
         _11 = &(*_8);
         StorageLive(_12);
         _12 = &(*_9);
-        _10 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _11, move _12) -> [return: bb4, unwind: bb25];
+        _10 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _11, move _12) -> [return: bb3, unwind: bb23];
     }
 
     bb2: {
@@ -100,24 +100,20 @@ fn main() -> () {
     }
 
     bb3: {
-        goto -> bb2;
+        switchInt(move _10) -> [0: bb5, otherwise: bb4];
     }
 
     bb4: {
-        switchInt(move _10) -> [0: bb6, otherwise: bb5];
+        StorageDead(_12);
+        StorageDead(_11);
+        goto -> bb9;
     }
 
     bb5: {
-        StorageDead(_12);
-        StorageDead(_11);
-        goto -> bb10;
+        goto -> bb6;
     }
 
     bb6: {
-        goto -> bb7;
-    }
-
-    bb7: {
         StorageDead(_12);
         StorageDead(_11);
         StorageLive(_14);
@@ -136,10 +132,10 @@ fn main() -> () {
         _19 = &(*_20);
         StorageLive(_21);
         _21 = Option::<Arguments<'_>>::None;
-        _15 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _16, move _17, move _19, move _21) -> bb25;
+        _15 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _16, move _17, move _19, move _21) -> bb23;
     }
 
-    bb8: {
+    bb7: {
         StorageDead(_21);
         StorageDead(_19);
         StorageDead(_17);
@@ -151,23 +147,23 @@ fn main() -> () {
         unreachable;
     }
 
+    bb8: {
+        goto -> bb10;
+    }
+
     bb9: {
-        goto -> bb11;
+        _1 = const ();
+        goto -> bb10;
     }
 
     bb10: {
-        _1 = const ();
+        StorageDead(_10);
+        StorageDead(_9);
+        StorageDead(_8);
         goto -> bb11;
     }
 
     bb11: {
-        StorageDead(_10);
-        StorageDead(_9);
-        StorageDead(_8);
-        goto -> bb12;
-    }
-
-    bb12: {
         StorageDead(_7);
         StorageDead(_6);
         StorageDead(_4);
@@ -177,10 +173,10 @@ fn main() -> () {
         StorageLive(_23);
         StorageLive(_24);
         StorageLive(_25);
-        _25 = function_with_bytes::<&*b"AAAA">() -> [return: bb13, unwind: bb25];
+        _25 = function_with_bytes::<&*b"AAAA">() -> [return: bb12, unwind: bb23];
     }
 
-    bb13: {
+    bb12: {
         _24 = &_25;
         StorageLive(_26);
         StorageLive(_27);
@@ -199,33 +195,29 @@ fn main() -> () {
         _31 = &(*_28);
         StorageLive(_32);
         _32 = &(*_29);
-        _30 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _31, move _32) -> [return: bb16, unwind: bb25];
+        _30 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _31, move _32) -> [return: bb14, unwind: bb23];
     }
 
-    bb14: {
+    bb13: {
         FakeRead(ForMatchedPlace(None), _23);
         unreachable;
     }
 
+    bb14: {
+        switchInt(move _30) -> [0: bb16, otherwise: bb15];
+    }
+
     bb15: {
-        goto -> bb14;
+        StorageDead(_32);
+        StorageDead(_31);
+        goto -> bb20;
     }
 
     bb16: {
-        switchInt(move _30) -> [0: bb18, otherwise: bb17];
+        goto -> bb17;
     }
 
     bb17: {
-        StorageDead(_32);
-        StorageDead(_31);
-        goto -> bb22;
-    }
-
-    bb18: {
-        goto -> bb19;
-    }
-
-    bb19: {
         StorageDead(_32);
         StorageDead(_31);
         StorageLive(_34);
@@ -244,10 +236,10 @@ fn main() -> () {
         _39 = &(*_40);
         StorageLive(_41);
         _41 = Option::<Arguments<'_>>::None;
-        _35 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _36, move _37, move _39, move _41) -> bb25;
+        _35 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _36, move _37, move _39, move _41) -> bb23;
     }
 
-    bb20: {
+    bb18: {
         StorageDead(_41);
         StorageDead(_39);
         StorageDead(_37);
@@ -259,23 +251,23 @@ fn main() -> () {
         unreachable;
     }
 
-    bb21: {
-        goto -> bb23;
+    bb19: {
+        goto -> bb21;
     }
 
-    bb22: {
+    bb20: {
         _22 = const ();
-        goto -> bb23;
+        goto -> bb21;
     }
 
-    bb23: {
+    bb21: {
         StorageDead(_30);
         StorageDead(_29);
         StorageDead(_28);
-        goto -> bb24;
+        goto -> bb22;
     }
 
-    bb24: {
+    bb22: {
         StorageDead(_27);
         StorageDead(_25);
         StorageDead(_23);
@@ -284,7 +276,7 @@ fn main() -> () {
         return;
     }
 
-    bb25 (cleanup): {
+    bb23 (cleanup): {
         resume;
     }
 }
