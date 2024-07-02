@@ -18,7 +18,9 @@ use rustc_data_structures::sync::{
     AtomicU64, DynSend, DynSync, Lock, Lrc, MappedReadGuard, ReadGuard, RwLock,
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
-use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter, HumanReadableErrorType};
+use rustc_errors::emitter::{
+    stderr_destination, DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme,
+};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
@@ -953,7 +955,8 @@ fn default_emitter(
     };
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable(kind) => {
-            let (short, color_config) = kind.unzip();
+            let short = matches!(kind, HumanReadableErrorType::Short(_));
+            let color_config = kind.color_config();
 
             if let HumanReadableErrorType::AnnotateSnippet(_) = kind {
                 let emitter = AnnotateSnippetEmitter::new(
@@ -974,6 +977,11 @@ fn default_emitter(
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
                     .terminal_url(terminal_url)
+                    .theme(if let HumanReadableErrorType::Unicode(_) = kind {
+                        OutputTheme::Unicode
+                    } else {
+                        OutputTheme::Ascii
+                    })
                     .ignored_directories_in_source_blocks(
                         sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
                     );
@@ -1428,7 +1436,8 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
         fallback_fluent_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
-            let (short, color_config) = kind.unzip();
+            let short = matches!(kind, HumanReadableErrorType::Short(_));
+            let color_config = kind.color_config();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .short_message(short),

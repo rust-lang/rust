@@ -1679,6 +1679,9 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
         for sub_option in option.split(',') {
             match sub_option {
                 "diagnostic-short" => json_rendered = HumanReadableErrorType::Short,
+                "diagnostic-unicode" => {
+                    json_rendered = HumanReadableErrorType::Unicode;
+                }
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
                 "unused-externs" => json_unused_externs = JsonUnusedExterns::Loud,
@@ -1715,6 +1718,9 @@ pub fn parse_error_format(
             }
             Some("human-annotate-rs") => {
                 ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet(color))
+            }
+            Some("human-unicode") => {
+                ErrorOutputType::HumanReadable(HumanReadableErrorType::Unicode(color))
             }
             Some("json") => ErrorOutputType::Json { pretty: false, json_rendered },
             Some("pretty-json") => ErrorOutputType::Json { pretty: true, json_rendered },
@@ -1789,6 +1795,9 @@ fn check_error_format_stability(
             error_format
         {
             early_dcx.early_fatal("`--error-format=human-annotate-rs` is unstable");
+        }
+        if let ErrorOutputType::HumanReadable(HumanReadableErrorType::Unicode(_)) = error_format {
+            early_dcx.early_fatal("`--error-format=human-unicode` is unstable");
         }
     }
 }

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/flag-human.rs:7:17
+  --> $DIR/flag-human.rs:9:17
    |
 LL | ..._: () = 42;
    |       --   ^^ expected `()`, found integer

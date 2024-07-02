@@ -7,6 +7,7 @@ pub(crate) use markdown::test as test_markdown;
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtHandle, ErrorGuaranteed, FatalError};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::CRATE_HIR_ID;
@@ -427,7 +428,8 @@ fn run_test(
         }
     });
     if let ErrorOutputType::HumanReadable(kind) = rustdoc_options.error_format {
-        let (short, color_config) = kind.unzip();
+        let short = matches!(kind, HumanReadableErrorType::Short(_));
+        let color_config = kind.color_config();
 
         if short {
             compiler.arg("--error-format").arg("short");

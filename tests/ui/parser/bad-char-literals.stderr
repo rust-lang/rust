@@ -10,7 +10,7 @@ error: character constant must be escaped: `\n`
 LL |       '
    |  ______^
 LL | | ';
-   | |_ help: escape the character: `\n`
+   | |_^help: escape the character: `\n`
 
 error: character constant must be escaped: `\r`
   --> $DIR/bad-char-literals.rs:15:6

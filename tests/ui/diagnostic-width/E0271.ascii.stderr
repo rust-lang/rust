@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<Result<Result<(), Result<Result<(), Result<Result<(), Option<{integer}>>, ...>>, ...>>, ...> as Future>::Error == Foo`
-  --> $DIR/E0271.rs:18:5
+  --> $DIR/E0271.rs:20:5
    |
 LL | /     Box::new(
 LL | |         Ok::<_, ()>(
@@ -11,7 +11,7 @@ LL | |     )
    | |_____^ type mismatch resolving `<Result<Result<(), Result<Result<(), ...>, ...>>, ...> as Future>::Error == Foo`
    |
 note: expected this to be `Foo`
-  --> $DIR/E0271.rs:8:18
+  --> $DIR/E0271.rs:10:18
    |
 LL |     type Error = E;
    |                  ^

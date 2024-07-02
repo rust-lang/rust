@@ -1,0 +1,22 @@
+error[E0271]: type mismatch resolving `<Result<Result<(), Result<Result<(), Result<Result<(), Option<{integer}>>, ...>>, ...>>, ...> as Future>::Error == Foo`
+   ╭▸ $DIR/E0271.rs:20:5
+   │
+LL │ ┏     Box::new(
+LL │ ┃         Ok::<_, ()>(
+LL │ ┃             Err::<(), _>(
+LL │ ┃                 Ok::<_, ()>(
+   ‡ ┃
+LL │ ┃         )
+LL │ ┃     )
+   │ ┗━━━━━┛ type mismatch resolving `<Result<Result<(), Result<Result<(), ...>, ...>>, ...> as Future>::Error == Foo`
+   ╰╴
+note: expected this to be `Foo`
+   ╭▸ $DIR/E0271.rs:10:18
+   │
+LL │     type Error = E;
+   │                  ━
+   ╰ note: required for the cast from `Box<Result<Result<(), Result<Result<(), Result<Result<(), Option<{integer}>>, ()>>, ()>>, ()>>` to `Box<(dyn Future<Error = Foo> + 'static)>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.
