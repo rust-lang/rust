@@ -1,7 +1,8 @@
 #![feature(async_closure, noop_waker, async_fn_traits)]
+#![allow(unused)]
 
 use std::future::Future;
-use std::ops::{AsyncFnMut, AsyncFnOnce};
+use std::ops::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 use std::pin::pin;
 use std::task::*;
 
@@ -17,6 +18,10 @@ pub fn block_on<T>(fut: impl Future<Output = T>) -> T {
     }
 }
 
+async fn call(f: &mut impl AsyncFn(i32)) {
+    f(0).await;
+}
+
 async fn call_mut(f: &mut impl AsyncFnMut(i32)) {
     f(0).await;
 }
@@ -26,10 +31,10 @@ async fn call_once(f: impl AsyncFnOnce(i32)) {
 }
 
 async fn call_normal<F: Future<Output = ()>>(f: &impl Fn(i32) -> F) {
-    f(0).await;
+    f(1).await;
 }
 
-async fn call_normal_once<F: Future<Output = ()>>(f: impl FnOnce(i32) -> F) {
+async fn call_normal_mut<F: Future<Output = ()>>(f: &mut impl FnMut(i32) -> F) {
     f(1).await;
 }
 
@@ -39,14 +44,16 @@ pub fn main() {
         let mut async_closure = async move |a: i32| {
             println!("{a} {b}");
         };
+        call(&mut async_closure).await;
         call_mut(&mut async_closure).await;
         call_once(async_closure).await;
 
-        // No-capture closures implement `Fn`.
-        let async_closure = async move |a: i32| {
-            println!("{a}");
+        let b = 2i32;
+        let mut async_closure = async |a: i32| {
+            println!("{a} {b}");
         };
         call_normal(&async_closure).await;
-        call_normal_once(async_closure).await;
+        call_normal_mut(&mut async_closure).await;
+        call_once(async_closure).await;
     });
 }

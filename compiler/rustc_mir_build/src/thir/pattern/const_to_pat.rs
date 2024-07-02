@@ -138,7 +138,7 @@ impl<'tcx> ConstToPat<'tcx> {
             // lints, but no errors), double-check that all types in the const implement
             // `PartialEq`. Even if we have a valtree, we may have found something
             // in there with non-structural-equality, meaning we match using `PartialEq`
-            // and we hence have to check that that impl exists.
+            // and we hence have to check if that impl exists.
             // This is all messy but not worth cleaning up: at some point we'll emit
             // a hard error when we don't have a valtree or when we find something in
             // the valtree that is not structural; then this can all be made a lot simpler.

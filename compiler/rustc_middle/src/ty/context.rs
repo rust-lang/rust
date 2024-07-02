@@ -373,17 +373,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             .map(|assoc_item| assoc_item.def_id)
     }
 
-    fn args_may_unify_deep(
-        self,
-        obligation_args: ty::GenericArgsRef<'tcx>,
-        impl_args: ty::GenericArgsRef<'tcx>,
-    ) -> bool {
-        ty::fast_reject::DeepRejectCtxt {
-            treat_obligation_params: ty::fast_reject::TreatParams::ForLookup,
-        }
-        .args_may_unify(obligation_args, impl_args)
-    }
-
     // This implementation is a bit different from `TyCtxt::for_each_relevant_impl`,
     // since we want to skip over blanket impls for non-rigid aliases, and also we
     // only want to consider types that *actually* unify with float/int vars.
