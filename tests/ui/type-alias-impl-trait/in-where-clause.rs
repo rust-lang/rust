@@ -8,7 +8,7 @@ type Bar = impl Sized;
 
 fn foo() -> Bar
 where
-    Bar: Send,
+    Bar: Send, //~ ERROR: cannot satisfy `Bar: Send`
 {
     [0; 1 + 2]
 }
