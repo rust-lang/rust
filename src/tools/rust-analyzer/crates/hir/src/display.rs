@@ -452,7 +452,7 @@ impl HirDisplay for TypeOrConstParam {
 impl HirDisplay for TypeParam {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         let params = f.db.generic_params(self.id.parent());
-        let param_data = &params.type_or_consts[self.id.local_id()];
+        let param_data = &params[self.id.local_id()];
         let substs = TyBuilder::placeholder_subst(f.db, self.id.parent());
         let krate = self.id.parent().krate(f.db).id;
         let ty =
@@ -539,11 +539,10 @@ fn write_generic_params(
     f: &mut HirFormatter<'_>,
 ) -> Result<(), HirDisplayError> {
     let params = f.db.generic_params(def);
-    if params.lifetimes.is_empty()
-        && params.type_or_consts.iter().all(|it| it.1.const_param().is_none())
+    if params.iter_lt().next().is_none()
+        && params.iter_type_or_consts().all(|it| it.1.const_param().is_none())
         && params
-            .type_or_consts
-            .iter()
+            .iter_type_or_consts()
             .filter_map(|it| it.1.type_param())
             .all(|param| !matches!(param.provenance, TypeParamProvenance::TypeParamList))
     {
@@ -560,11 +559,11 @@ fn write_generic_params(
             f.write_str(", ")
         }
     };
-    for (_, lifetime) in params.lifetimes.iter() {
+    for (_, lifetime) in params.iter_lt() {
         delim(f)?;
         write!(f, "{}", lifetime.name.display(f.db.upcast()))?;
     }
-    for (_, ty) in params.type_or_consts.iter() {
+    for (_, ty) in params.iter_type_or_consts() {
         if let Some(name) = &ty.name() {
             match ty {
                 TypeOrConstParamData::TypeParamData(ty) => {
@@ -612,11 +611,11 @@ fn write_where_clause(
 }
 
 fn has_disaplayable_predicates(params: &Interned<GenericParams>) -> bool {
-    params.where_predicates.iter().any(|pred| {
+    params.where_predicates().any(|pred| {
         !matches!(
             pred,
             WherePredicate::TypeBound { target: WherePredicateTypeTarget::TypeOrConstParam(id), .. }
-            if params.type_or_consts[*id].name().is_none()
+            if params[*id].name().is_none()
         )
     })
 }
@@ -631,13 +630,13 @@ fn write_where_predicates(
     let is_unnamed_type_target =
         |params: &Interned<GenericParams>, target: &WherePredicateTypeTarget| {
             matches!(target,
-                WherePredicateTypeTarget::TypeOrConstParam(id) if params.type_or_consts[*id].name().is_none()
+                WherePredicateTypeTarget::TypeOrConstParam(id) if params[*id].name().is_none()
             )
         };
 
     let write_target = |target: &WherePredicateTypeTarget, f: &mut HirFormatter<'_>| match target {
         WherePredicateTypeTarget::TypeRef(ty) => ty.hir_fmt(f),
-        WherePredicateTypeTarget::TypeOrConstParam(id) => match params.type_or_consts[*id].name() {
+        WherePredicateTypeTarget::TypeOrConstParam(id) => match params[*id].name() {
             Some(name) => write!(f, "{}", name.display(f.db.upcast())),
             None => f.write_str("{unnamed}"),
         },
@@ -653,7 +652,7 @@ fn write_where_predicates(
         _ => false,
     };
 
-    let mut iter = params.where_predicates.iter().peekable();
+    let mut iter = params.where_predicates().peekable();
     while let Some(pred) = iter.next() {
         if matches!(pred, TypeBound { target, .. } if is_unnamed_type_target(params, target)) {
             continue;

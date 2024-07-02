@@ -183,7 +183,7 @@ impl MirLowerError {
             },
             MirLowerError::GenericArgNotProvided(id, subst) => {
                 let parent = id.parent;
-                let param = &db.generic_params(parent).type_or_consts[id.local_id];
+                let param = &db.generic_params(parent)[id.local_id];
                 writeln!(
                     f,
                     "Generic arg not provided for {}",

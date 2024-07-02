@@ -532,7 +532,7 @@ impl Printer<'_> {
 
         w!(self, "<");
         let mut first = true;
-        for (idx, lt) in params.lifetimes.iter() {
+        for (idx, lt) in params.iter_lt() {
             if !first {
                 w!(self, ", ");
             }
@@ -540,7 +540,7 @@ impl Printer<'_> {
             self.print_attrs_of(AttrOwner::LifetimeParamData(parent, idx), " ");
             w!(self, "{}", lt.name.display(self.db.upcast()));
         }
-        for (idx, x) in params.type_or_consts.iter() {
+        for (idx, x) in params.iter_type_or_consts() {
             if !first {
                 w!(self, ", ");
             }
@@ -570,13 +570,13 @@ impl Printer<'_> {
     }
 
     fn print_where_clause(&mut self, params: &GenericParams) -> bool {
-        if params.where_predicates.is_empty() {
+        if params.where_predicates().next().is_none() {
             return false;
         }
 
         w!(self, "\nwhere");
         self.indented(|this| {
-            for (i, pred) in params.where_predicates.iter().enumerate() {
+            for (i, pred) in params.where_predicates().enumerate() {
                 if i != 0 {
                     wln!(this, ",");
                 }
@@ -607,12 +607,10 @@ impl Printer<'_> {
 
                 match target {
                     WherePredicateTypeTarget::TypeRef(ty) => this.print_type_ref(ty),
-                    WherePredicateTypeTarget::TypeOrConstParam(id) => {
-                        match &params.type_or_consts[*id].name() {
-                            Some(name) => w!(this, "{}", name.display(self.db.upcast())),
-                            None => w!(this, "_anon_{}", id.into_raw()),
-                        }
-                    }
+                    WherePredicateTypeTarget::TypeOrConstParam(id) => match params[*id].name() {
+                        Some(name) => w!(this, "{}", name.display(self.db.upcast())),
+                        None => w!(this, "_anon_{}", id.into_raw()),
+                    },
                 }
                 w!(this, ": ");
                 this.print_type_bounds(std::slice::from_ref(bound));

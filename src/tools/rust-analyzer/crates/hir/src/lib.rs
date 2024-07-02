@@ -665,7 +665,7 @@ impl Module {
                 }
                 let parent = impl_def.id.into();
                 let generic_params = db.generic_params(parent);
-                let lifetime_params = generic_params.lifetimes.iter().map(|(local_id, _)| {
+                let lifetime_params = generic_params.iter_lt().map(|(local_id, _)| {
                     GenericParamId::LifetimeParamId(LifetimeParamId { parent, local_id })
                 });
                 let type_params = generic_params
@@ -1540,8 +1540,7 @@ impl Adt {
         resolver
             .generic_params()
             .and_then(|gp| {
-                gp.lifetimes
-                    .iter()
+                gp.iter_lt()
                     // there should only be a single lifetime
                     // but `Arena` requires to use an iterator
                     .nth(0)
@@ -2503,8 +2502,7 @@ impl Trait {
         count_required_only: bool,
     ) -> usize {
         db.generic_params(self.id.into())
-            .type_or_consts
-            .iter()
+            .iter_type_or_consts()
             .filter(|(_, ty)| !matches!(ty, TypeOrConstParamData::TypeParamData(ty) if ty.provenance != TypeParamProvenance::TypeParamList))
             .filter(|(_, ty)| !count_required_only || !ty.has_default())
             .count()
@@ -3125,7 +3123,7 @@ impl_from!(
 impl GenericDef {
     pub fn params(self, db: &dyn HirDatabase) -> Vec<GenericParam> {
         let generics = db.generic_params(self.into());
-        let ty_params = generics.type_or_consts.iter().map(|(local_id, _)| {
+        let ty_params = generics.iter_type_or_consts().map(|(local_id, _)| {
             let toc = TypeOrConstParam { id: TypeOrConstParamId { parent: self.into(), local_id } };
             match toc.split(db) {
                 Either::Left(it) => GenericParam::ConstParam(it),
@@ -3142,8 +3140,7 @@ impl GenericDef {
     pub fn lifetime_params(self, db: &dyn HirDatabase) -> Vec<LifetimeParam> {
         let generics = db.generic_params(self.into());
         generics
-            .lifetimes
-            .iter()
+            .iter_lt()
             .map(|(local_id, _)| LifetimeParam {
                 id: LifetimeParamId { parent: self.into(), local_id },
             })
@@ -3153,8 +3150,7 @@ impl GenericDef {
     pub fn type_or_const_params(self, db: &dyn HirDatabase) -> Vec<TypeOrConstParam> {
         let generics = db.generic_params(self.into());
         generics
-            .type_or_consts
-            .iter()
+            .iter_type_or_consts()
             .map(|(local_id, _)| TypeOrConstParam {
                 id: TypeOrConstParamId { parent: self.into(), local_id },
             })
@@ -3496,7 +3492,7 @@ impl TypeParam {
     /// argument)?
     pub fn is_implicit(self, db: &dyn HirDatabase) -> bool {
         let params = db.generic_params(self.id.parent());
-        let data = &params.type_or_consts[self.id.local_id()];
+        let data = &params[self.id.local_id()];
         match data.type_param().unwrap().provenance {
             hir_def::generics::TypeParamProvenance::TypeParamList => false,
             hir_def::generics::TypeParamProvenance::TraitSelf
@@ -3550,7 +3546,7 @@ pub struct LifetimeParam {
 impl LifetimeParam {
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let params = db.generic_params(self.id.parent);
-        params.lifetimes[self.id.local_id].name.clone()
+        params[self.id.local_id].name.clone()
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -3574,7 +3570,7 @@ impl ConstParam {
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let params = db.generic_params(self.id.parent());
-        match params.type_or_consts[self.id.local_id()].name() {
+        match params[self.id.local_id()].name() {
             Some(it) => it.clone(),
             None => {
                 never!();
@@ -3617,7 +3613,7 @@ pub struct TypeOrConstParam {
 impl TypeOrConstParam {
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let params = db.generic_params(self.id.parent);
-        match params.type_or_consts[self.id.local_id].name() {
+        match params[self.id.local_id].name() {
             Some(n) => n.clone(),
             _ => Name::missing(),
         }
@@ -3633,7 +3629,7 @@ impl TypeOrConstParam {
 
     pub fn split(self, db: &dyn HirDatabase) -> Either<ConstParam, TypeParam> {
         let params = db.generic_params(self.id.parent);
-        match &params.type_or_consts[self.id.local_id] {
+        match &params[self.id.local_id] {
             hir_def::generics::TypeOrConstParamData::TypeParamData(_) => {
                 Either::Right(TypeParam { id: TypeParamId::from_unchecked(self.id) })
             }
@@ -3652,7 +3648,7 @@ impl TypeOrConstParam {
 
     pub fn as_type_param(self, db: &dyn HirDatabase) -> Option<TypeParam> {
         let params = db.generic_params(self.id.parent);
-        match &params.type_or_consts[self.id.local_id] {
+        match &params[self.id.local_id] {
             hir_def::generics::TypeOrConstParamData::TypeParamData(_) => {
                 Some(TypeParam { id: TypeParamId::from_unchecked(self.id) })
             }
@@ -3662,7 +3658,7 @@ impl TypeOrConstParam {
 
     pub fn as_const_param(self, db: &dyn HirDatabase) -> Option<ConstParam> {
         let params = db.generic_params(self.id.parent);
-        match &params.type_or_consts[self.id.local_id] {
+        match &params[self.id.local_id] {
             hir_def::generics::TypeOrConstParamData::TypeParamData(_) => None,
             hir_def::generics::TypeOrConstParamData::ConstParamData(_) => {
                 Some(ConstParam { id: ConstParamId::from_unchecked(self.id) })
