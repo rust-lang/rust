@@ -56,7 +56,6 @@ run-make/issue-107094/Makefile
 run-make/issue-109934-lto-debuginfo/Makefile
 run-make/issue-14698/Makefile
 run-make/issue-15460/Makefile
-run-make/issue-18943/Makefile
 run-make/issue-22131/Makefile
 run-make/issue-25581/Makefile
 run-make/issue-26006/Makefile
@@ -97,14 +96,12 @@ run-make/manual-link/Makefile
 run-make/metadata-dep-info/Makefile
 run-make/min-global-align/Makefile
 run-make/missing-crate-dependency/Makefile
-run-make/mixing-libs/Makefile
 run-make/msvc-opt-minsize/Makefile
 run-make/native-link-modifier-bundle/Makefile
 run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
 run-make/no-builtins-attribute/Makefile
 run-make/no-duplicate-libs/Makefile
-run-make/obey-crate-type-flag/Makefile
 run-make/optimization-remarks-dir-pgo/Makefile
 run-make/optimization-remarks-dir/Makefile
 run-make/output-type-permutations/Makefile
@@ -157,7 +154,6 @@ run-make/static-dylib-by-default/Makefile
 run-make/static-extern-type/Makefile
 run-make/staticlib-blank-lib/Makefile
 run-make/staticlib-dylib-linkage/Makefile
-run-make/std-core-cycle/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/symbol-visibility/Makefile
 run-make/symbols-include-type-name/Makefile
