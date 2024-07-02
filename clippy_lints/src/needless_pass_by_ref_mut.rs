@@ -138,6 +138,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             return;
         }
 
+        if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(fn_def_id) {
+            return;
+        }
+
         let hir_id = cx.tcx.local_def_id_to_hir_id(fn_def_id);
         let is_async = match kind {
             FnKind::ItemFn(.., header) => {
@@ -262,11 +266,6 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             .iter()
             .filter(|(def_id, _)| !self.used_fn_def_ids.contains(def_id))
         {
-            let is_exported = cx.effective_visibilities.is_exported(*fn_def_id);
-            if self.avoid_breaking_exported_api && is_exported {
-                continue;
-            }
-
             let mut is_cfged = None;
             for input in unused {
                 // If the argument is never used mutably, we emit the warning.
@@ -286,7 +285,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                                 format!("&{}", snippet(cx, cx.tcx.hir().span(inner_ty.ty.hir_id), "_"),),
                                 Applicability::Unspecified,
                             );
-                            if is_exported {
+                            if cx.effective_visibilities.is_exported(*fn_def_id) {
                                 diag.warn("changing this function will impact semver compatibility");
                             }
                             if *is_cfged {
