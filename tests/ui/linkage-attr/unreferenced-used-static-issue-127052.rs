@@ -1,9 +1,10 @@
-// This is a non-regression test for issue #127052 where unreferenced `#[used]` statics couldn't be
-// removed by the MSVC linker, causing linking errors.
+// This is a non-regression test for issue #127052 where unreferenced `#[used]` statics in the
+// binary crate would be marked as "exported", but not be present in the binary, causing linking
+// errors with the MSVC linker.
 
 //@ build-pass: needs linking
-//@ only-msvc
 
 #[used]
 static FOO: u32 = 0;
+
 fn main() {}
