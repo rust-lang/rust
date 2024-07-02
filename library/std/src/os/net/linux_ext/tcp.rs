@@ -98,6 +98,47 @@ pub trait TcpStreamExt: Sealed {
     #[unstable(feature = "tcp_deferaccept", issue = "119639")]
     #[cfg(target_os = "linux")]
     fn deferaccept(&self) -> io::Result<u32>;
+
+    /// Set the number of `SYN` packets to send before giving up establishing a connection.
+    ///
+    /// In case the server does not repond, a `SYN` packet is sent by the client.
+    /// This option controls the number of attempts, the default system value
+    /// can be seen via the `net.ipv4.tcp_syn_retries` sysctl's OID (usually 5 or 6).
+    /// The maximum valid value is 255.
+    ///
+    /// See [`man 7 tcp`](https://man7.org/linux/man-pages/man7/tcp.7.html)
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(tcp_syncnt)]
+    /// use std::net::TcpStream;
+    /// use std::os::linux::net::TcpStreamExt;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///         .expect("Couldn't connect to the server...");
+    /// stream.set_syncnt(3).expect("set_setcnt call failed");
+    #[unstable(feature = "tcp_syncnt", issue = "123112")]
+    fn set_syncnt(&self, count: u8) -> io::Result<()>;
+
+    /// Get the number of `SYN` packets to send before giving up establishing a connection.
+    ///
+    /// For more information about this option, see [`TcpStreamExt::set_syncnt`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(tcp_syncnt)]
+    /// use std::net::TcpStream;
+    /// use std::os::linux::net::TcpStreamExt;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///         .expect("Couldn't connect to the server...");
+    /// stream.set_syncnt(3).expect("set_syncnt call failed");
+    /// assert_eq!(stream.syncnt().unwrap_or(0), 3);
+    /// ```
+    #[unstable(feature = "tcp_syncnt", issue = "123112")]
+    fn syncnt(&self) -> io::Result<u8>;
 }
 
 #[unstable(feature = "tcp_quickack", issue = "96256")]
@@ -121,5 +162,13 @@ impl TcpStreamExt for net::TcpStream {
     #[cfg(target_os = "linux")]
     fn deferaccept(&self) -> io::Result<u32> {
         self.as_inner().as_inner().deferaccept()
+    }
+
+    fn set_syncnt(&self, count: u8) -> io::Result<()> {
+        self.as_inner().as_inner().set_syncnt(count)
+    }
+
+    fn syncnt(&self) -> io::Result<u8> {
+        self.as_inner().as_inner().syncnt()
     }
 }
