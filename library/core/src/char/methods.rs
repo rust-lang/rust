@@ -223,7 +223,10 @@ impl char {
     /// assert_eq!('❤', c);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
-    #[rustc_const_unstable(feature = "const_char_from_u32_unchecked", issue = "89259")]
+    #[rustc_const_stable(
+        feature = "const_char_from_u32_unchecked",
+        since = "CURRENT_RUSTC_VERSION"
+    )]
     #[must_use]
     #[inline]
     pub const unsafe fn from_u32_unchecked(i: u32) -> char {
