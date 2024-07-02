@@ -542,68 +542,68 @@ error[E0433]: cannot find item `core` in the crate root
 LL |     #[suggestion(code = 3)]
    |                         ^ you might be missing a crate named `core`
 
-error: cannot find attribute `nonsense` in this scope
+error: cannot find attribute `nonsense` in the crate root
   --> $DIR/diagnostic-derive.rs:63:3
    |
 LL | #[nonsense(no_crate_example, code = E0123)]
-   |   ^^^^^^^^ not found in this scope
+   |   ^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `nonsense` in this scope
+error: cannot find attribute `nonsense` in the crate root
   --> $DIR/diagnostic-derive.rs:150:7
    |
 LL |     #[nonsense]
-   |       ^^^^^^^^ not found in this scope
+   |       ^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `error` in this scope
+error: cannot find attribute `error` in the crate root
   --> $DIR/diagnostic-derive.rs:583:3
    |
 LL | #[error(no_crate_example, code = E0123)]
-   |   ^^^^^ not found in this scope
+   |   ^^^^^ not found in the crate root
 
-error: cannot find attribute `warn_` in this scope
+error: cannot find attribute `warn_` in the crate root
   --> $DIR/diagnostic-derive.rs:590:3
    |
 LL | #[warn_(no_crate_example, code = E0123)]
    |   ^^^^^
    |   |
-   |   not found in this scope
+   |   not found in the crate root
    |   help: a built-in attribute with a similar name exists: `warn`
 
-error: cannot find attribute `lint` in this scope
+error: cannot find attribute `lint` in the crate root
   --> $DIR/diagnostic-derive.rs:597:3
    |
 LL | #[lint(no_crate_example, code = E0123)]
    |   ^^^^
    |   |
-   |   not found in this scope
+   |   not found in the crate root
    |   help: a built-in attribute with a similar name exists: `link`
 
-error: cannot find attribute `lint` in this scope
+error: cannot find attribute `lint` in the crate root
   --> $DIR/diagnostic-derive.rs:604:3
    |
 LL | #[lint(no_crate_example, code = E0123)]
    |   ^^^^
    |   |
-   |   not found in this scope
+   |   not found in the crate root
    |   help: a built-in attribute with a similar name exists: `link`
 
-error: cannot find attribute `multipart_suggestion` in this scope
+error: cannot find attribute `multipart_suggestion` in the crate root
   --> $DIR/diagnostic-derive.rs:644:3
    |
 LL | #[multipart_suggestion(no_crate_suggestion)]
-   |   ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^^^^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `multipart_suggestion` in this scope
+error: cannot find attribute `multipart_suggestion` in the crate root
   --> $DIR/diagnostic-derive.rs:647:3
    |
 LL | #[multipart_suggestion()]
-   |   ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^^^^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `multipart_suggestion` in this scope
+error: cannot find attribute `multipart_suggestion` in the crate root
   --> $DIR/diagnostic-derive.rs:651:7
    |
 LL |     #[multipart_suggestion(no_crate_suggestion)]
-   |       ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |       ^^^^^^^^^^^^^^^^^^^^ not found in the crate root
 
 error[E0425]: cannot find value `nonsense` in module `crate::fluent_generated`
   --> $DIR/diagnostic-derive.rs:75:8

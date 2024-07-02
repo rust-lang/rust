@@ -67,7 +67,7 @@ struct D {
 #[foo]
 //~^ ERROR `#[foo]` is not a valid attribute
 //~| ERROR cannot find attribute `foo`
-//~| NOTE not found in this scope
+//~| NOTE not found in
 struct E {
     #[primary_span]
     span: Span,
@@ -164,7 +164,7 @@ struct O {
 #[foo]
 //~^ ERROR cannot find attribute `foo`
 //~| ERROR unsupported type attribute for subdiagnostic enum
-//~| NOTE not found in this scope
+//~| NOTE not found in
 enum P {
     #[label(no_crate_example)]
     A {
@@ -179,7 +179,7 @@ enum Q {
     #[bar]
     //~^ ERROR `#[bar]` is not a valid attribute
     //~| ERROR cannot find attribute `bar`
-    //~| NOTE not found in this scope
+    //~| NOTE not found in
     A {
         #[primary_span]
         span: Span,
@@ -192,7 +192,7 @@ enum R {
     #[bar = "..."]
     //~^ ERROR `#[bar = ...]` is not a valid attribute
     //~| ERROR cannot find attribute `bar`
-    //~| NOTE not found in this scope
+    //~| NOTE not found in
     A {
         #[primary_span]
         span: Span,
@@ -205,7 +205,7 @@ enum S {
     #[bar = 4]
     //~^ ERROR `#[bar = ...]` is not a valid attribute
     //~| ERROR cannot find attribute `bar`
-    //~| NOTE not found in this scope
+    //~| NOTE not found in
     A {
         #[primary_span]
         span: Span,
@@ -218,7 +218,7 @@ enum T {
     #[bar("...")]
     //~^ ERROR `#[bar(...)]` is not a valid attribute
     //~| ERROR cannot find attribute `bar`
-    //~| NOTE not found in this scope
+    //~| NOTE not found in
     A {
         #[primary_span]
         span: Span,
@@ -280,7 +280,7 @@ struct Y {
     #[bar]
     //~^ ERROR `#[bar]` is not a valid attribute
     //~| ERROR cannot find attribute `bar`
-    //~| NOTE not found in this scope
+    //~| NOTE not found in
     bar: String,
 }
 
@@ -292,7 +292,7 @@ struct Z {
     #[bar = "..."]
     //~^ ERROR `#[bar = ...]` is not a valid attribute
     //~| ERROR cannot find attribute `bar`
-    //~| NOTE not found in this scope
+    //~| NOTE not found in
     bar: String,
 }
 
@@ -304,7 +304,7 @@ struct AA {
     #[bar("...")]
     //~^ ERROR `#[bar(...)]` is not a valid attribute
     //~| ERROR cannot find attribute `bar`
-    //~| NOTE not found in this scope
+    //~| NOTE not found in
     bar: String,
 }
 
@@ -723,7 +723,7 @@ struct BP {
 #[derive(Subdiagnostic)]
 //~^ ERROR cannot find value `__code_29`
 //~| NOTE in this expansion
-//~| NOTE not found in this scope
+//~| NOTE not found in
 #[multipart_suggestion(no_crate_example)]
 struct BQ {
     #[suggestion_part(code = 3)]
