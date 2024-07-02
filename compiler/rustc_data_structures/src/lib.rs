@@ -46,6 +46,9 @@ pub use ena::undo_log;
 pub use ena::unify;
 pub use rustc_index::static_assert_size;
 
+#[cfg(parallel_compiler)]
+extern crate hashbrown;
+
 use std::fmt;
 
 pub mod aligned;

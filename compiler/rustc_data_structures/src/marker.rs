@@ -85,6 +85,7 @@ cfg_match! {
             [std::sync::mpsc::Sender<T> where T: DynSend]
             [std::sync::Arc<T> where T: ?Sized + DynSync + DynSend]
             [std::sync::LazyLock<T, F> where T: DynSend, F: DynSend]
+            [hashbrown::HashTable<T> where T: DynSend]
             [std::collections::HashSet<K, S> where K: DynSend, S: DynSend]
             [std::collections::HashMap<K, V, S> where K: DynSend, V: DynSend, S: DynSend]
             [std::collections::BTreeMap<K, V, A> where K: DynSend, V: DynSend, A: std::alloc::Allocator + Clone + DynSend]
