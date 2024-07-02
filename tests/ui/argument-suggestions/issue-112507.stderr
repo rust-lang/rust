@@ -4,12 +4,12 @@ error[E0061]: this enum variant takes 1 argument but 4 arguments were supplied
 LL |     let _a = Value::Float(
    |              ^^^^^^^^^^^^
 LL |         0,
-   |         - unexpected argument of type `{integer}`
+   |         - unexpected #1 argument of type `{integer}`
 LL |         None,
 LL |         None,
-   |         ---- unexpected argument of type `Option<_>`
+   |         ---- unexpected #3 argument of type `Option<_>`
 LL |         0,
-   |         - unexpected argument of type `{integer}`
+   |         - unexpected #4 argument of type `{integer}`
    |
 note: tuple variant defined here
   --> $DIR/issue-112507.rs:2:5

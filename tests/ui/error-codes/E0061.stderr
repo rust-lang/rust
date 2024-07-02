@@ -2,7 +2,7 @@ error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/E0061.rs:6:5
    |
 LL |     f(0);
-   |     ^--- an argument of type `&str` is missing
+   |     ^--- #2 argument of type `&str` is missing
    |
 note: function defined here
   --> $DIR/E0061.rs:1:4
