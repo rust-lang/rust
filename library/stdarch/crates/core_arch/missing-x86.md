@@ -147,15 +147,6 @@
 </p></details>
 
 
-<details><summary>["AVX512_BF16", "AVX512VL"]</summary><p>
-
-  * [ ] [`_mm_cvtneps_pbh`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneps_pbh)
-  * [ ] [`_mm_cvtness_sbh`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtness_sbh)
-  * [ ] [`_mm_mask_cvtneps_pbh`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvtneps_pbh)
-  * [ ] [`_mm_maskz_cvtneps_pbh`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvtneps_pbh)
-</p></details>
-
-
 <details><summary>["AVX512_FP16"]</summary><p>
 
   * [ ] [`_mm256_castpd_ph`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_castpd_ph)
@@ -1125,12 +1116,9 @@
   * [ ] [`_mm256_bcstnesh_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_bcstnesh_ps)
   * [ ] [`_mm256_cvtneeph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneeph_ps)
   * [ ] [`_mm256_cvtneoph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneoph_ps)
-  * [ ] [`_mm256_cvtneps_avx_pbh`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneps_avx_pbh)
   * [ ] [`_mm_bcstnesh_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_bcstnesh_ps)
   * [ ] [`_mm_cvtneeph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneeph_ps)
   * [ ] [`_mm_cvtneoph_ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneoph_ps)
-  * [ ] [`_mm_cvtneps_avx_pbh`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneps_avx_pbh)
-  * [ ] [`_mm_cvtneps_pbh`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneps_pbh)
 </p></details>
 
 

@@ -2,6 +2,7 @@
 //!
 //! [AVX512BF16 intrinsics]: https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769&avx512techs=AVX512_BF16
 
+use crate::arch::asm;
 use crate::core_arch::{simd::*, x86::*};
 use crate::intrinsics::simd::*;
 
@@ -490,9 +491,85 @@ pub unsafe fn _mm_cvtsbh_ss(a: u16) -> f32 {
     f32::from_bits((a as u32) << 16)
 }
 
+/// Converts packed single-precision (32-bit) floating-point elements in a to packed BF16 (16-bit)
+/// floating-point elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneps_pbh)
+#[inline]
+#[target_feature(enable = "avx512bf16,avx512vl,sse")]
+#[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_cvtneps_pbh(a: __m128) -> __m128bh {
+    let mut dst: __m128bh;
+    asm!(
+        "vcvtneps2bf16 {dst}, {src}",
+        dst = lateout(xmm_reg) dst,
+        src = in(xmm_reg) a,
+        options(pure, nomem, nostack, preserves_flags)
+    );
+    dst
+}
+
+/// Converts packed single-precision (32-bit) floating-point elements in a to packed BF16 (16-bit)
+/// floating-point elements, and store the results in dst using writemask k (elements are copied
+/// from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvtneps_pbh)
+#[inline]
+#[target_feature(enable = "avx512bf16,avx512vl,sse,avx512f")]
+#[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_mask_cvtneps_pbh(src: __m128bh, k: __mmask8, a: __m128) -> __m128bh {
+    let mut dst = src;
+    asm!(
+        "vcvtneps2bf16 {dst}{{{k}}},{src}",
+        dst = inlateout(xmm_reg) dst,
+        src = in(xmm_reg) a,
+        k = in(kreg) k,
+        options(pure, nomem, nostack, preserves_flags)
+    );
+    dst
+}
+
+/// Converts packed single-precision (32-bit) floating-point elements in a to packed BF16 (16-bit)
+/// floating-point elements, and store the results in dst using zeromask k (elements are zeroed out
+/// when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvtneps_pbh)
+#[inline]
+#[target_feature(enable = "avx512bf16,avx512vl,sse,avx512f")]
+#[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_maskz_cvtneps_pbh(k: __mmask8, a: __m128) -> __m128bh {
+    let mut dst: __m128bh;
+    asm!(
+        "vcvtneps2bf16 {dst}{{{k}}}{{z}},{src}",
+        dst = lateout(xmm_reg) dst,
+        src = in(xmm_reg) a,
+        k = in(kreg) k,
+        options(pure, nomem, nostack, preserves_flags)
+    );
+    dst
+}
+
+/// Converts a single-precision (32-bit) floating-point element in a to a BF16 (16-bit) floating-point
+/// element, and store the result in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtness_sbh)
+#[inline]
+#[target_feature(enable = "avx512bf16,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_cvtness_sbh(a: f32) -> u16 {
+    simd_extract!(_mm_cvtneps_pbh(_mm_set_ss(a)), 0)
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{core_arch::x86::*, mem::transmute};
+    use crate::core_arch::simd::u16x4;
+    use crate::{
+        core_arch::x86::*,
+        mem::{transmute, transmute_copy},
+    };
     use stdarch_test::simd_test;
 
     #[simd_test(enable = "avx512bf16,avx512vl")]
@@ -1835,5 +1912,38 @@ mod tests {
     unsafe fn test_mm_cvtsbh_ss() {
         let r = _mm_cvtsbh_ss(BF16_ONE);
         assert_eq!(r, 1.);
+    }
+
+    #[simd_test(enable = "avx512bf16,avx512vl")]
+    unsafe fn test_mm_cvtneps_pbh() {
+        let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+        let r: u16x4 = transmute_copy(&_mm_cvtneps_pbh(a));
+        let e = u16x4::new(BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512bf16,avx512vl")]
+    unsafe fn test_mm_mask_cvtneps_pbh() {
+        let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+        let src = __m128bh(5, 6, 7, 8, !0, !0, !0, !0);
+        let k = 0b1010;
+        let r: u16x4 = transmute_copy(&_mm_mask_cvtneps_pbh(src, k, a));
+        let e = u16x4::new(5, BF16_TWO, 7, BF16_FOUR);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512bf16,avx512vl")]
+    unsafe fn test_mm_maskz_cvtneps_pbh() {
+        let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+        let k = 0b1010;
+        let r: u16x4 = transmute_copy(&_mm_maskz_cvtneps_pbh(k, a));
+        let e = u16x4::new(0, BF16_TWO, 0, BF16_FOUR);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512bf16,avx512vl")]
+    unsafe fn test_mm_cvtness_sbh() {
+        let r = _mm_cvtness_sbh(1.);
+        assert_eq!(r, BF16_ONE);
     }
 }

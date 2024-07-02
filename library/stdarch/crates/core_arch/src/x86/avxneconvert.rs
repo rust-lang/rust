@@ -1,3 +1,4 @@
+use crate::arch::asm;
 use crate::core_arch::{simd::*, x86::*};
 
 #[cfg(test)]
@@ -95,6 +96,50 @@ pub unsafe fn _mm256_cvtneobf16_ps(a: *const __m256bh) -> __m256 {
     transmute(cvtneobf162ps_256(a))
 }
 
+/// Convert packed single precision (32-bit) floating-point elements in a to packed BF16 (16-bit) floating-point
+/// elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneps_avx_bf16)
+#[inline]
+#[target_feature(enable = "avxneconvert,sse")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(vcvtneps2bf16)
+)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm_cvtneps_avx_pbh(a: __m128) -> __m128bh {
+    let mut dst: __m128bh;
+    asm!(
+        "{{vex}}vcvtneps2bf16 {dst},{src}",
+        dst = lateout(xmm_reg) dst,
+        src = in(xmm_reg) a,
+        options(pure, nomem, nostack, preserves_flags)
+    );
+    dst
+}
+
+/// Convert packed single precision (32-bit) floating-point elements in a to packed BF16 (16-bit) floating-point
+/// elements, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneps_avx_bf16)
+#[inline]
+#[target_feature(enable = "avxneconvert,sse,avx")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(vcvtneps2bf16)
+)]
+#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+pub unsafe fn _mm256_cvtneps_avx_pbh(a: __m256) -> __m128bh {
+    let mut dst: __m128bh;
+    asm!(
+        "{{vex}}vcvtneps2bf16 {dst},{src}",
+        dst = lateout(xmm_reg) dst,
+        src = in(ymm_reg) a,
+        options(pure, nomem, nostack, preserves_flags)
+    );
+    dst
+}
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.vbcstnebf162ps128"]
@@ -115,7 +160,9 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::simd::{u16x4, u16x8};
     use crate::core_arch::x86::*;
+    use crate::mem::transmute_copy;
     use std::ptr::addr_of;
     use stdarch_test::simd_test;
 
@@ -184,5 +231,23 @@ mod tests {
         let r = _mm256_cvtneobf16_ps(addr_of!(a));
         let e = _mm256_setr_ps(2., 4., 6., 8., 2., 4., 6., 8.);
         assert_eq_m256(r, e);
+    }
+
+    #[simd_test(enable = "avxneconvert")]
+    unsafe fn test_mm_cvtneps_avx_pbh() {
+        let a = _mm_setr_ps(1., 2., 3., 4.);
+        let r: u16x4 = transmute_copy(&_mm_cvtneps_avx_pbh(a));
+        let e = u16x4::new(BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avxneconvert")]
+    unsafe fn test_mm256_cvtneps_avx_pbh() {
+        let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
+        let r: u16x8 = transmute(_mm256_cvtneps_avx_pbh(a));
+        let e = u16x8::new(
+            BF16_ONE, BF16_TWO, BF16_THREE, BF16_FOUR, BF16_FIVE, BF16_SIX, BF16_SEVEN, BF16_EIGHT,
+        );
+        assert_eq!(r, e);
     }
 }
