@@ -2288,7 +2288,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             let field_kind = if is_accessible { "field" } else { "private field" };
-            err.span_label(item_name.span, format!("{field_kind}, not a method"));
+            err.span_label(
+                item_name.span,
+                format!(
+                    "`{item_name}` is a {field_kind} \
+            in the current scope, but is used like a method"
+                ),
+            );
             return true;
         }
         false

@@ -5,7 +5,7 @@ LL | struct Example {
    | -------------- method `example` not found for this struct
 ...
 LL |     demo.example(1);
-   |          ^^^^^^^ field, not a method
+   |          ^^^^^^^ `example` is a field in the current scope, but is used like a method
    |
 help: to call the function stored in `example`, surround the field access with parentheses
    |
