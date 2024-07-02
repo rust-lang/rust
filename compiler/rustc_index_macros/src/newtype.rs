@@ -139,10 +139,6 @@ impl Parse for Newtype {
                         Self::index(start).checked_sub(u).map(Self::from_usize)
                     }
                 }
-
-                // Safety: The implementation of `Step` upholds all invariants.
-                #gate_rustc_only
-                unsafe impl ::std::iter::TrustedStep for #name {}
             }
         } else {
             quote! {}

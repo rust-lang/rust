@@ -34,10 +34,7 @@ mod newtype;
 ///   optimizations. The default max value is 0xFFFF_FF00.
 /// - `#[gate_rustc_only]`: makes parts of the generated code nightly-only.
 #[proc_macro]
-#[cfg_attr(
-    feature = "nightly",
-    allow_internal_unstable(step_trait, rustc_attrs, trusted_step, min_specialization)
-)]
+#[cfg_attr(feature = "nightly", allow_internal_unstable(step_trait, rustc_attrs, trusted_step))]
 pub fn newtype_index(input: TokenStream) -> TokenStream {
     newtype::newtype(input)
 }

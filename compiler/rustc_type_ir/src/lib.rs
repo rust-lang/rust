@@ -2,7 +2,7 @@
 #![allow(rustc::usage_of_ty_tykind)]
 #![cfg_attr(
     feature = "nightly",
-    feature(associated_type_defaults, min_specialization, never_type, rustc_attrs, negative_impls)
+    feature(associated_type_defaults, never_type, rustc_attrs, negative_impls)
 )]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 // tidy-alphabetical-end
