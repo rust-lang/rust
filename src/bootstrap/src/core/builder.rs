@@ -797,6 +797,7 @@ impl<'a> Builder<'a> {
                 clippy::Rustfmt,
                 clippy::RustInstaller,
                 clippy::Tidy,
+                clippy::CI,
             ),
             Kind::Check | Kind::Fix => describe!(
                 check::Std,
