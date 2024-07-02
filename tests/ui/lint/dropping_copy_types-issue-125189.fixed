@@ -3,8 +3,9 @@
 
 #![deny(dropping_copy_types)]
 
+#[allow(unused_variables)]
 fn main() {
     let y = 1;
     let _ = 3.2; //~ ERROR calls to `std::mem::drop`
-    let _ = y; //~ ERROR calls to `std::mem::drop`
+     //~ ERROR calls to `std::mem::drop`
 }

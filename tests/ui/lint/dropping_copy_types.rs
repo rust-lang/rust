@@ -51,6 +51,8 @@ fn main() {
     drop(a3);
     drop(a4); //~ WARN calls to `std::mem::drop`
     drop(a5);
+
+    drop(drop(String::new())); //~ WARN calls to `std::mem::drop`
 }
 
 #[allow(unused)]
