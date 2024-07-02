@@ -163,6 +163,14 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, '_, 'tcx> {
         self.ctxt.param_env()
     }
 
+    fn allow_async_drops(&self) -> bool {
+        true
+    }
+
+    fn terminator_loc(&self, bb: BasicBlock) -> Location {
+        self.ctxt.patch.terminator_loc(self.ctxt.body, bb)
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
     fn drop_style(&self, path: Self::Path, mode: DropFlagMode) -> DropStyle {
         let ((maybe_live, maybe_dead), multipart) = match mode {
@@ -331,7 +339,9 @@ impl<'b, 'mir, 'tcx> ElaborateDropsCtxt<'b, 'mir, 'tcx> {
         // This function should mirror what `collect_drop_flags` does.
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
             let terminator = data.terminator();
-            let TerminatorKind::Drop { place, target, unwind, replace } = terminator.kind else {
+            let TerminatorKind::Drop { place, target, unwind, replace, drop, async_fut: _ } =
+                terminator.kind
+            else {
                 continue;
             };
 
@@ -375,6 +385,7 @@ impl<'b, 'mir, 'tcx> ElaborateDropsCtxt<'b, 'mir, 'tcx> {
                         target,
                         unwind,
                         bb,
+                        drop,
                     )
                 }
                 LookupResult::Parent(None) => {}

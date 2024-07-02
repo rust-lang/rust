@@ -357,6 +357,8 @@ macro_rules! make_mir_visitor {
                         ty::InstanceKind::DropGlue(_def_id, Some(ty)) |
                         ty::InstanceKind::CloneShim(_def_id, ty) |
                         ty::InstanceKind::FnPtrAddrShim(_def_id, ty) |
+                        ty::InstanceKind::FutureDropPollShim(_def_id, ty) |
+                        ty::InstanceKind::AsyncDropGlue(_def_id, ty) |
                         ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, Some(ty)) => {
                             // FIXME(eddyb) use a better `TyContext` here.
                             self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
@@ -512,6 +514,8 @@ macro_rules! make_mir_visitor {
                         target: _,
                         unwind: _,
                         replace: _,
+                        drop: _,
+                        async_fut: _,
                     } => {
                         self.visit_place(
                             place,
@@ -624,7 +628,7 @@ macro_rules! make_mir_visitor {
                     OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
                         self.visit_operand(op, location);
                     }
-                    ResumedAfterReturn(_) | ResumedAfterPanic(_) => {
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | ResumedAfterDrop(_) => {
                         // Nothing to visit
                     }
                     MisalignedPointerDereference { required, found } => {

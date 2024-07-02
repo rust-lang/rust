@@ -20,7 +20,7 @@ use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout};
-use crate::query::Providers;
+use crate::query::{Key, Providers};
 use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::fast_reject::SimplifiedType;
@@ -1741,11 +1741,13 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceKind::ClosureOnceShim { .. }
             | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
             | ty::InstanceKind::CoroutineKindShim { .. }
+            | ty::InstanceKind::FutureDropPollShim(..)
             | ty::InstanceKind::DropGlue(..)
             | ty::InstanceKind::CloneShim(..)
             | ty::InstanceKind::ThreadLocalShim(..)
             | ty::InstanceKind::FnPtrAddrShim(..)
             | ty::InstanceKind::AsyncDropGlueCtorShim(..) => self.mir_shims(instance),
+            ty::InstanceKind::AsyncDropGlue(_, ty) => self.templated_optimized_mir(ty),
         }
     }
 
@@ -1825,16 +1827,17 @@ impl<'tcx> TyCtxt<'tcx> {
         self.def_kind(trait_def_id) == DefKind::TraitAlias
     }
 
-    /// Returns layout of a coroutine. Layout might be unavailable if the
+    /// Returns layout of a non-templated coroutine. Layout might be unavailable if the
     /// coroutine is tainted by errors.
     ///
     /// Takes `coroutine_kind` which can be acquired from the `CoroutineArgs::kind_ty`,
     /// e.g. `args.as_coroutine().kind_ty()`.
-    pub fn coroutine_layout(
+    pub fn ordinary_coroutine_layout(
         self,
         def_id: DefId,
         coroutine_kind_ty: Ty<'tcx>,
     ) -> Option<&'tcx CoroutineLayout<'tcx>> {
+        debug_assert_ne!(Some(def_id), self.lang_items().async_drop_in_place_poll_fn());
         let mir = self.optimized_mir(def_id);
         // Regular coroutine
         if coroutine_kind_ty.is_unit() {
@@ -1860,6 +1863,39 @@ impl<'tcx> TyCtxt<'tcx> {
                 );
                 mir.coroutine_by_move_body().unwrap().coroutine_layout_raw()
             }
+        }
+    }
+
+    /// Returns layout of a templated coroutine. Layout might be unavailable if the
+    /// coroutine is tainted by errors. Atm, the only templated coroutine is
+    /// `async_drop_in_place<T>::{closure}` returned from `async fn async_drop_in_place<T>(..)`.
+    pub fn templated_coroutine_layout(self, ty: Ty<'tcx>) -> Option<&'tcx CoroutineLayout<'tcx>> {
+        debug_assert_eq!(ty.ty_def_id(), self.lang_items().async_drop_in_place_poll_fn());
+        self.templated_optimized_mir(ty).coroutine_layout_raw()
+    }
+
+    /// Returns layout of a templated (or not) coroutine. Layout might be unavailable if the
+    /// coroutine is tainted by errors.
+    pub fn coroutine_layout(
+        self,
+        def_id: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> Option<&'tcx CoroutineLayout<'tcx>> {
+        if Some(def_id) == self.lang_items().async_drop_in_place_poll_fn() {
+            // layout of `async_drop_in_place<T>::{closure}` in case,
+            // when T is a coroutine, is the layout of this internal coroutine
+            let arg_cor_ty = args.first().unwrap().expect_ty();
+            if let ty::Coroutine(child_def_id, _) = arg_cor_ty.kind() {
+                if arg_cor_ty.is_templated_coroutine(self) {
+                    self.templated_coroutine_layout(arg_cor_ty)
+                } else {
+                    self.ordinary_coroutine_layout(*child_def_id, args.as_coroutine().kind_ty())
+                }
+            } else {
+                self.templated_coroutine_layout(Ty::new_coroutine(self, def_id, args))
+            }
+        } else {
+            self.ordinary_coroutine_layout(def_id, args.as_coroutine().kind_ty())
         }
     }
 

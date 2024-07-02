@@ -1,643 +1,210 @@
-use std::iter;
-
-use itertools::Itertools;
-use rustc_ast::Mutability;
-use rustc_const_eval::interpret;
+use super::*;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Safety};
 use rustc_index::{Idx, IndexVec};
+use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::{
-    BasicBlock, BasicBlockData, Body, CallSource, CastKind, Const, ConstOperand, ConstValue, Local,
-    LocalDecl, MirSource, Operand, Place, PlaceElem, Rvalue, SourceInfo, Statement, StatementKind,
-    Terminator, TerminatorKind, UnwindAction, UnwindTerminateReason, RETURN_PLACE,
+    BasicBlock, BasicBlockData, Body, Local, LocalDecl, MirSource, Operand, Place, Rvalue,
+    SourceInfo, Statement, StatementKind, Terminator, TerminatorKind,
 };
-use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::util::{AsyncDropGlueMorphology, Discr};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
-use rustc_span::source_map::respan;
-use rustc_span::{Span, Symbol};
-use rustc_target::abi::{FieldIdx, VariantIdx};
-use rustc_target::spec::PanicStrategy;
+use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
+use rustc_mir_dataflow::elaborate_drops;
 
-use super::{local_decls_for_sig, new_body};
+// For coroutine, its async drop function layout is the coroutine layout itself, so
+// in async destructor ctor function we just return coroutine argument as a return value.
+pub fn build_async_destructor_ctor_shim_for_coroutine<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    ty: Ty<'tcx>,
+) -> Body<'tcx> {
+    const INPUT_COUNT: usize = 1;
+    let first_arg = Local::new(1);
+
+    debug!("build_async_destructor_ctor_shim_for_coroutine(def_id={:?}, ty={:?})", def_id, ty);
+
+    assert!(ty.is_coroutine());
+    let args = tcx.mk_args(&[ty.into()]);
+
+    let sig = tcx.fn_sig(def_id).instantiate(tcx, args);
+    let sig = tcx.instantiate_bound_regions_with_erased(sig);
+    let span = tcx.def_span(def_id);
+    let source_info = SourceInfo::outermost(span);
+
+    debug_assert_eq!(sig.inputs().len(), INPUT_COUNT);
+    let locals = local_decls_for_sig(&sig, span);
+
+    let mut blocks = IndexVec::with_capacity(1);
+    let assign = Statement {
+        source_info,
+        kind: StatementKind::Assign(Box::new((
+            Place::return_place(),
+            Rvalue::Use(Operand::Move(tcx.mk_place_deref(Place::from(first_arg)))),
+        ))),
+    };
+    blocks.push(BasicBlockData {
+        statements: vec![assign],
+        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        is_cleanup: false,
+    });
+
+    let source =
+        MirSource::from_instance(ty::InstanceKind::AsyncDropGlueCtorShim(def_id, Some(ty)));
+    new_body(source, blocks, locals, sig.inputs().len(), span)
+}
 
 pub fn build_async_destructor_ctor_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     ty: Option<Ty<'tcx>>,
 ) -> Body<'tcx> {
-    debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
+    debug!("build_async_destructor_ctor_shim(def_id={:?}, ty={:?})", def_id, ty);
 
-    AsyncDestructorCtorShimBuilder::new(tcx, def_id, ty).build()
+    if matches!(ty, Some(ty) if ty.is_coroutine()) {
+        build_async_destructor_ctor_shim_for_coroutine(tcx, def_id, ty.unwrap())
+    } else {
+        build_async_destructor_ctor_shim_not_coroutine(tcx, def_id, ty)
+    }
 }
 
-/// Builder for async_drop_in_place shim. Functions as a stack machine
-/// to build up an expression using combinators. Stack contains pairs
-/// of locals and types. Combinator is a not yet instantiated pair of a
-/// function and a type, is considered to be an operator which consumes
-/// operands from the stack by instantiating its function and its type
-/// with operand types and moving locals into the function call. Top
-/// pair is considered to be the last operand.
-// FIXME: add mir-opt tests
-struct AsyncDestructorCtorShimBuilder<'tcx> {
+pub fn build_async_destructor_ctor_shim_not_coroutine<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    self_ty: Option<Ty<'tcx>>,
-    span: Span,
-    source_info: SourceInfo,
-    param_env: ty::ParamEnv<'tcx>,
-
-    stack: Vec<Operand<'tcx>>,
-    last_bb: BasicBlock,
-    top_cleanup_bb: Option<BasicBlock>,
-
-    locals: IndexVec<Local, LocalDecl<'tcx>>,
-    bbs: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    ty: Option<Ty<'tcx>>,
+) -> Body<'tcx> {
+    debug_assert_eq!(Some(def_id), tcx.lang_items().async_drop_in_place_fn());
+    let generic_body = tcx.optimized_mir(def_id);
+    let args = if let Some(ty) = ty {
+        tcx.mk_args(&[ty.into()])
+    } else {
+        GenericArgs::identity_for_item(tcx, def_id)
+    };
+    EarlyBinder::bind(generic_body.clone()).instantiate(tcx, args)
 }
 
-#[derive(Clone, Copy)]
-enum SurfaceDropKind {
-    Async,
-    Sync,
-}
+// build_drop_shim analog for async drop glue (for generated coroutine poll function)
+pub fn build_async_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Ty<'tcx>) -> Body<'tcx> {
+    debug!("build_async_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
+    let ty::Coroutine(_, parent_args) = ty.kind() else {
+        bug!();
+    };
+    let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
-impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
-    const SELF_PTR: Local = Local::from_u32(1);
-    const INPUT_COUNT: usize = 1;
-    const MAX_STACK_LEN: usize = 2;
+    let drop_ty = parent_args.first().unwrap().expect_ty();
+    let drop_ptr_ty = Ty::new_mut_ptr(tcx, drop_ty);
 
-    fn new(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Option<Ty<'tcx>>) -> Self {
-        let args = if let Some(ty) = self_ty {
-            tcx.mk_args(&[ty.into()])
-        } else {
-            ty::GenericArgs::identity_for_item(tcx, def_id)
-        };
-        let sig = tcx.fn_sig(def_id).instantiate(tcx, args);
-        let sig = tcx.instantiate_bound_regions_with_erased(sig);
-        let span = tcx.def_span(def_id);
+    assert!(tcx.is_coroutine(def_id));
+    let coroutine_kind = tcx.coroutine_kind(def_id).unwrap();
 
-        let source_info = SourceInfo::outermost(span);
+    assert!(matches!(
+        coroutine_kind,
+        CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Fn)
+    ));
 
-        debug_assert_eq!(sig.inputs().len(), Self::INPUT_COUNT);
-        let locals = local_decls_for_sig(&sig, span);
+    let resume_adt = tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
+    let resume_ty = Ty::new_adt(tcx, resume_adt, ty::List::empty());
 
-        // Usual case: noop() + unwind resume + return
-        let mut bbs = IndexVec::with_capacity(3);
-        let param_env = tcx.param_env_reveal_all_normalized(def_id);
-        AsyncDestructorCtorShimBuilder {
-            tcx,
-            def_id,
-            self_ty,
-            span,
-            source_info,
-            param_env,
+    let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig(
+        [ty, resume_ty],
+        tcx.types.unit,
+        false,
+        Safety::Safe,
+        rustc_target::spec::abi::Abi::Rust,
+    ));
+    let sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
 
-            stack: Vec::with_capacity(Self::MAX_STACK_LEN),
-            last_bb: bbs.push(BasicBlockData::new(None)),
-            top_cleanup_bb: match tcx.sess.panic_strategy() {
-                PanicStrategy::Unwind => {
-                    // Don't drop input arg because it's just a pointer
-                    Some(bbs.push(BasicBlockData {
-                        statements: Vec::new(),
-                        terminator: Some(Terminator {
-                            source_info,
-                            kind: TerminatorKind::UnwindResume,
-                        }),
-                        is_cleanup: true,
-                    }))
-                }
-                PanicStrategy::Abort => None,
-            },
+    assert!(!drop_ty.is_coroutine());
+    let span = tcx.def_span(def_id);
+    let source_info = SourceInfo::outermost(span);
 
-            locals,
-            bbs,
-        }
-    }
-
-    fn build(self) -> Body<'tcx> {
-        let (tcx, Some(self_ty)) = (self.tcx, self.self_ty) else {
-            return self.build_zst_output();
-        };
-        match self_ty.async_drop_glue_morphology(tcx) {
-            AsyncDropGlueMorphology::Noop => span_bug!(
-                self.span,
-                "async drop glue shim generator encountered type with noop async drop glue morphology"
-            ),
-            AsyncDropGlueMorphology::DeferredDropInPlace => {
-                return self.build_deferred_drop_in_place();
-            }
-            AsyncDropGlueMorphology::Custom => (),
-        }
-
-        let surface_drop_kind = || {
-            let adt_def = self_ty.ty_adt_def()?;
-            if adt_def.async_destructor(tcx).is_some() {
-                Some(SurfaceDropKind::Async)
-            } else if adt_def.destructor(tcx).is_some() {
-                Some(SurfaceDropKind::Sync)
-            } else {
-                None
-            }
-        };
-
-        match self_ty.kind() {
-            ty::Array(elem_ty, _) => self.build_slice(true, *elem_ty),
-            ty::Slice(elem_ty) => self.build_slice(false, *elem_ty),
-
-            ty::Tuple(elem_tys) => self.build_chain(None, elem_tys.iter()),
-            ty::Adt(adt_def, args) if adt_def.is_struct() => {
-                let field_tys = adt_def.non_enum_variant().fields.iter().map(|f| f.ty(tcx, args));
-                self.build_chain(surface_drop_kind(), field_tys)
-            }
-            ty::Closure(_, args) => self.build_chain(None, args.as_closure().upvar_tys().iter()),
-            ty::CoroutineClosure(_, args) => {
-                self.build_chain(None, args.as_coroutine_closure().upvar_tys().iter())
-            }
-
-            ty::Adt(adt_def, args) if adt_def.is_enum() => {
-                self.build_enum(*adt_def, *args, surface_drop_kind())
-            }
-
-            ty::Adt(adt_def, _) => {
-                assert!(adt_def.is_union());
-                match surface_drop_kind().unwrap() {
-                    SurfaceDropKind::Async => self.build_fused_async_surface(),
-                    SurfaceDropKind::Sync => self.build_fused_sync_surface(),
-                }
-            }
-
-            ty::Bound(..)
-            | ty::Foreign(_)
-            | ty::Placeholder(_)
-            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) | ty::TyVar(_))
-            | ty::Param(_)
-            | ty::Alias(..) => {
-                bug!("Building async destructor for unexpected type: {self_ty:?}")
-            }
-
-            _ => {
-                bug!(
-                    "Building async destructor constructor shim is not yet implemented for type: {self_ty:?}"
-                )
-            }
-        }
-    }
-
-    fn build_enum(
-        mut self,
-        adt_def: ty::AdtDef<'tcx>,
-        args: ty::GenericArgsRef<'tcx>,
-        surface_drop: Option<SurfaceDropKind>,
-    ) -> Body<'tcx> {
-        let tcx = self.tcx;
-
-        let surface = match surface_drop {
-            None => None,
-            Some(kind) => {
-                self.put_self();
-                Some(match kind {
-                    SurfaceDropKind::Async => self.combine_async_surface(),
-                    SurfaceDropKind::Sync => self.combine_sync_surface(),
-                })
-            }
-        };
-
-        let mut other = None;
-        for (variant_idx, discr) in adt_def.discriminants(tcx) {
-            let variant = adt_def.variant(variant_idx);
-
-            let mut chain = None;
-            for (field_idx, field) in variant.fields.iter_enumerated() {
-                let field_ty = field.ty(tcx, args);
-                self.put_variant_field(variant.name, variant_idx, field_idx, field_ty);
-                let defer = self.combine_defer(field_ty);
-                chain = Some(match chain {
-                    None => defer,
-                    Some(chain) => self.combine_chain(chain, defer),
-                })
-            }
-            let variant_dtor = chain.unwrap_or_else(|| self.put_noop());
-
-            other = Some(match other {
-                None => variant_dtor,
-                Some(other) => {
-                    self.put_self();
-                    self.put_discr(discr);
-                    self.combine_either(other, variant_dtor)
-                }
-            });
-        }
-        let variants_dtor = other.unwrap_or_else(|| self.put_noop());
-
-        let dtor = match surface {
-            None => variants_dtor,
-            Some(surface) => self.combine_chain(surface, variants_dtor),
-        };
-        self.combine_fuse(dtor);
-        self.return_()
-    }
-
-    fn build_chain<I>(mut self, surface_drop: Option<SurfaceDropKind>, elem_tys: I) -> Body<'tcx>
-    where
-        I: Iterator<Item = Ty<'tcx>> + ExactSizeIterator,
-    {
-        let surface = match surface_drop {
-            None => None,
-            Some(kind) => {
-                self.put_self();
-                Some(match kind {
-                    SurfaceDropKind::Async => self.combine_async_surface(),
-                    SurfaceDropKind::Sync => self.combine_sync_surface(),
-                })
-            }
-        };
-
-        let mut chain = None;
-        for (field_idx, field_ty) in elem_tys.enumerate().map(|(i, ty)| (FieldIdx::new(i), ty)) {
-            self.put_field(field_idx, field_ty);
-            let defer = self.combine_defer(field_ty);
-            chain = Some(match chain {
-                None => defer,
-                Some(chain) => self.combine_chain(chain, defer),
-            })
-        }
-        let chain = chain.unwrap_or_else(|| self.put_noop());
-
-        let dtor = match surface {
-            None => chain,
-            Some(surface) => self.combine_chain(surface, chain),
-        };
-        self.combine_fuse(dtor);
-        self.return_()
-    }
-
-    fn build_zst_output(mut self) -> Body<'tcx> {
-        self.put_zst_output();
-        self.return_()
-    }
-
-    fn build_deferred_drop_in_place(mut self) -> Body<'tcx> {
-        self.put_self();
-        let deferred = self.combine_deferred_drop_in_place();
-        self.combine_fuse(deferred);
-        self.return_()
-    }
-
-    fn build_fused_async_surface(mut self) -> Body<'tcx> {
-        self.put_self();
-        let surface = self.combine_async_surface();
-        self.combine_fuse(surface);
-        self.return_()
-    }
-
-    fn build_fused_sync_surface(mut self) -> Body<'tcx> {
-        self.put_self();
-        let surface = self.combine_sync_surface();
-        self.combine_fuse(surface);
-        self.return_()
-    }
-
-    fn build_slice(mut self, is_array: bool, elem_ty: Ty<'tcx>) -> Body<'tcx> {
-        if is_array {
-            self.put_array_as_slice(elem_ty)
-        } else {
-            self.put_self()
-        }
-        let dtor = self.combine_slice(elem_ty);
-        self.combine_fuse(dtor);
-        self.return_()
-    }
-
-    fn put_zst_output(&mut self) {
-        let return_ty = self.locals[RETURN_PLACE].ty;
-        self.put_operand(Operand::Constant(Box::new(ConstOperand {
-            span: self.span,
-            user_ty: None,
-            const_: Const::zero_sized(return_ty),
-        })));
-    }
-
-    /// Puts `to_drop: *mut Self` on top of the stack.
-    fn put_self(&mut self) {
-        self.put_operand(Operand::Copy(Self::SELF_PTR.into()))
-    }
-
-    /// Given that `Self is [ElemTy; N]` puts `to_drop: *mut [ElemTy]`
-    /// on top of the stack.
-    fn put_array_as_slice(&mut self, elem_ty: Ty<'tcx>) {
-        let slice_ptr_ty = Ty::new_mut_ptr(self.tcx, Ty::new_slice(self.tcx, elem_ty));
-        self.put_temp_rvalue(Rvalue::Cast(
-            CastKind::PointerCoercion(PointerCoercion::Unsize),
-            Operand::Copy(Self::SELF_PTR.into()),
-            slice_ptr_ty,
-        ))
-    }
-
-    /// If given Self is a struct puts `to_drop: *mut FieldTy` on top
-    /// of the stack.
-    fn put_field(&mut self, field: FieldIdx, field_ty: Ty<'tcx>) {
-        let place = Place {
-            local: Self::SELF_PTR,
-            projection: self
-                .tcx
-                .mk_place_elems(&[PlaceElem::Deref, PlaceElem::Field(field, field_ty)]),
-        };
-        self.put_temp_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
-    }
-
-    /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of
-    /// the stack.
-    fn put_variant_field(
-        &mut self,
-        variant_sym: Symbol,
-        variant: VariantIdx,
-        field: FieldIdx,
-        field_ty: Ty<'tcx>,
-    ) {
-        let place = Place {
-            local: Self::SELF_PTR,
-            projection: self.tcx.mk_place_elems(&[
-                PlaceElem::Deref,
-                PlaceElem::Downcast(Some(variant_sym), variant),
-                PlaceElem::Field(field, field_ty),
-            ]),
-        };
-        self.put_temp_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
-    }
-
-    /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of
-    /// the stack.
-    fn put_discr(&mut self, discr: Discr<'tcx>) {
-        let (size, _) = discr.ty.int_size_and_signed(self.tcx);
-        self.put_operand(Operand::const_from_scalar(
-            self.tcx,
-            discr.ty,
-            interpret::Scalar::from_uint(discr.val, size),
-            self.span,
-        ));
-    }
-
-    /// Puts `x: RvalueType` on top of the stack.
-    fn put_temp_rvalue(&mut self, rvalue: Rvalue<'tcx>) {
-        let last_bb = &mut self.bbs[self.last_bb];
-        debug_assert!(last_bb.terminator.is_none());
-        let source_info = self.source_info;
-
-        let local_ty = rvalue.ty(&self.locals, self.tcx);
-        // We need to create a new local to be able to "consume" it with
-        // a combinator
-        let local = self.locals.push(LocalDecl::with_source_info(local_ty, source_info));
-        last_bb.statements.extend_from_slice(&[
-            Statement { source_info, kind: StatementKind::StorageLive(local) },
-            Statement {
-                source_info,
-                kind: StatementKind::Assign(Box::new((local.into(), rvalue))),
-            },
-        ]);
-
-        self.put_operand(Operand::Move(local.into()));
-    }
-
-    /// Puts operand on top of the stack.
-    fn put_operand(&mut self, operand: Operand<'tcx>) {
-        if let Some(top_cleanup_bb) = &mut self.top_cleanup_bb {
-            let source_info = self.source_info;
-            match &operand {
-                Operand::Copy(_) | Operand::Constant(_) => {
-                    *top_cleanup_bb = self.bbs.push(BasicBlockData {
-                        statements: Vec::new(),
-                        terminator: Some(Terminator {
-                            source_info,
-                            kind: TerminatorKind::Goto { target: *top_cleanup_bb },
-                        }),
-                        is_cleanup: true,
-                    });
-                }
-                Operand::Move(place) => {
-                    let local = place.as_local().unwrap();
-                    *top_cleanup_bb = self.bbs.push(BasicBlockData {
-                        statements: Vec::new(),
-                        terminator: Some(Terminator {
-                            source_info,
-                            kind: if self.locals[local].ty.needs_drop(self.tcx, self.param_env) {
-                                TerminatorKind::Drop {
-                                    place: local.into(),
-                                    target: *top_cleanup_bb,
-                                    unwind: UnwindAction::Terminate(
-                                        UnwindTerminateReason::InCleanup,
-                                    ),
-                                    replace: false,
-                                }
-                            } else {
-                                TerminatorKind::Goto { target: *top_cleanup_bb }
-                            },
-                        }),
-                        is_cleanup: true,
-                    });
-                }
-            };
-        }
-        self.stack.push(operand);
-    }
-
-    /// Puts `noop: async_drop::Noop` on top of the stack
-    fn put_noop(&mut self) -> Ty<'tcx> {
-        self.apply_combinator(0, LangItem::AsyncDropNoop, &[])
-    }
-
-    fn combine_async_surface(&mut self) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::SurfaceAsyncDropInPlace, &[self.self_ty.unwrap().into()])
-    }
-
-    fn combine_sync_surface(&mut self) -> Ty<'tcx> {
-        self.apply_combinator(
-            1,
-            LangItem::AsyncDropSurfaceDropInPlace,
-            &[self.self_ty.unwrap().into()],
-        )
-    }
-
-    fn combine_deferred_drop_in_place(&mut self) -> Ty<'tcx> {
-        self.apply_combinator(
-            1,
-            LangItem::AsyncDropDeferredDropInPlace,
-            &[self.self_ty.unwrap().into()],
-        )
-    }
-
-    fn combine_fuse(&mut self, inner_future_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::AsyncDropFuse, &[inner_future_ty.into()])
-    }
-
-    fn combine_slice(&mut self, elem_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::AsyncDropSlice, &[elem_ty.into()])
-    }
-
-    fn combine_defer(&mut self, to_drop_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::AsyncDropDefer, &[to_drop_ty.into()])
-    }
-
-    fn combine_chain(&mut self, first: Ty<'tcx>, second: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(2, LangItem::AsyncDropChain, &[first.into(), second.into()])
-    }
-
-    fn combine_either(&mut self, other: Ty<'tcx>, matched: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(
-            4,
-            LangItem::AsyncDropEither,
-            &[other.into(), matched.into(), self.self_ty.unwrap().into()],
-        )
-    }
-
-    fn return_(mut self) -> Body<'tcx> {
-        let last_bb = &mut self.bbs[self.last_bb];
-        debug_assert!(last_bb.terminator.is_none());
-        let source_info = self.source_info;
-
-        let (1, Some(output)) = (self.stack.len(), self.stack.pop()) else {
-            span_bug!(
-                self.span,
-                "async destructor ctor shim builder finished with invalid number of stack items: expected 1 found {}",
-                self.stack.len(),
-            )
-        };
-        #[cfg(debug_assertions)]
-        if let Some(ty) = self.self_ty {
-            debug_assert_eq!(
-                output.ty(&self.locals, self.tcx),
-                ty.async_destructor_ty(self.tcx),
-                "output async destructor types did not match for type: {ty:?}",
-            );
-        }
-
-        let dead_storage = match &output {
-            Operand::Move(place) => Some(Statement {
-                source_info,
-                kind: StatementKind::StorageDead(place.as_local().unwrap()),
-            }),
-            _ => None,
-        };
-
-        last_bb.statements.extend(
-            iter::once(Statement {
-                source_info,
-                kind: StatementKind::Assign(Box::new((RETURN_PLACE.into(), Rvalue::Use(output)))),
-            })
-            .chain(dead_storage),
-        );
-
-        last_bb.terminator = Some(Terminator { source_info, kind: TerminatorKind::Return });
-
-        let source = MirSource::from_instance(ty::InstanceKind::AsyncDropGlueCtorShim(
-            self.def_id,
-            self.self_ty,
-        ));
-        new_body(source, self.bbs, self.locals, Self::INPUT_COUNT, self.span)
-    }
-
-    fn apply_combinator(
-        &mut self,
-        arity: usize,
-        function: LangItem,
-        args: &[ty::GenericArg<'tcx>],
-    ) -> Ty<'tcx> {
-        let function = self.tcx.require_lang_item(function, Some(self.span));
-        let operands_split = self
-            .stack
-            .len()
-            .checked_sub(arity)
-            .expect("async destructor ctor shim combinator tried to consume too many items");
-        let operands = &self.stack[operands_split..];
-
-        let func_ty = Ty::new_fn_def(self.tcx, function, args.iter().copied());
-        let func_sig = func_ty.fn_sig(self.tcx).no_bound_vars().unwrap();
-        #[cfg(debug_assertions)]
-        operands.iter().zip(func_sig.inputs()).for_each(|(operand, expected_ty)| {
-            let operand_ty = operand.ty(&self.locals, self.tcx);
-            if operand_ty == *expected_ty {
-                return;
-            }
-
-            // If projection of Discriminant then compare with `Ty::discriminant_ty`
-            if let ty::Alias(ty::Projection, ty::AliasTy { args, def_id, .. }) = expected_ty.kind()
-                && self.tcx.is_lang_item(*def_id, LangItem::Discriminant)
-                && args.first().unwrap().as_type().unwrap().discriminant_ty(self.tcx) == operand_ty
-            {
-                return;
-            }
-
-            span_bug!(
-                self.span,
-                "Operand type and combinator argument type are not equal.
-    operand_ty: {:?}
-    argument_ty: {:?}
-",
-                operand_ty,
-                expected_ty
-            );
-        });
-
-        let target = self.bbs.push(BasicBlockData {
-            statements: operands
-                .iter()
-                .rev()
-                .filter_map(|o| {
-                    if let Operand::Move(Place { local, projection }) = o {
-                        assert!(projection.is_empty());
-                        Some(Statement {
-                            source_info: self.source_info,
-                            kind: StatementKind::StorageDead(*local),
-                        })
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-            terminator: None,
+    let return_block = BasicBlock::new(1);
+    let mut blocks = IndexVec::with_capacity(2);
+    let block = |blocks: &mut IndexVec<_, _>, kind| {
+        blocks.push(BasicBlockData {
+            statements: vec![],
+            terminator: Some(Terminator { source_info, kind }),
             is_cleanup: false,
-        });
+        })
+    };
+    block(&mut blocks, TerminatorKind::Goto { target: return_block });
+    block(&mut blocks, TerminatorKind::Return);
 
-        let dest_ty = func_sig.output();
-        let dest =
-            self.locals.push(LocalDecl::with_source_info(dest_ty, self.source_info).immutable());
+    let source = MirSource::from_instance(ty::InstanceKind::AsyncDropGlue(def_id, ty));
+    let mut body =
+        new_body(source, blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
 
-        let unwind = if let Some(top_cleanup_bb) = &mut self.top_cleanup_bb {
-            for _ in 0..arity {
-                *top_cleanup_bb =
-                    self.bbs[*top_cleanup_bb].terminator().successors().exactly_one().ok().unwrap();
-            }
-            UnwindAction::Cleanup(*top_cleanup_bb)
-        } else {
-            UnwindAction::Unreachable
-        };
-
-        let last_bb = &mut self.bbs[self.last_bb];
-        debug_assert!(last_bb.terminator.is_none());
-        last_bb.statements.push(Statement {
-            source_info: self.source_info,
-            kind: StatementKind::StorageLive(dest),
-        });
-        last_bb.terminator = Some(Terminator {
-            source_info: self.source_info,
-            kind: TerminatorKind::Call {
-                func: Operand::Constant(Box::new(ConstOperand {
-                    span: self.span,
-                    user_ty: None,
-                    const_: Const::Val(ConstValue::ZeroSized, func_ty),
-                })),
-                destination: dest.into(),
-                target: Some(target),
-                unwind,
-                call_source: CallSource::Misc,
-                fn_span: self.span,
-                args: self.stack.drain(operands_split..).map(|o| respan(self.span, o)).collect(),
-            },
-        });
-
-        self.put_operand(Operand::Move(dest.into()));
-        self.last_bb = target;
-
-        dest_ty
+    body.coroutine = Some(Box::new(CoroutineInfo::initial(
+        coroutine_kind,
+        parent_args.as_coroutine().yield_ty(),
+        parent_args.as_coroutine().resume_ty(),
+    )));
+    if !drop_ty.needs_async_drop(tcx, param_env) {
+        return body; // Returning noop body for types without `need async drop`
     }
+
+    // The first argument (index 0), but add 1 for the return value.
+    let coroutine_layout = Place::from(Local::new(1 + 0));
+    let mut dropee_ptr = Place::from(body.local_decls.push(LocalDecl::new(drop_ptr_ty, span)));
+    let coroutine_layout_dropee =
+        tcx.mk_place_field(coroutine_layout, FieldIdx::new(0), drop_ptr_ty);
+    let st_kind = StatementKind::Assign(Box::new((
+        dropee_ptr,
+        Rvalue::Use(Operand::Move(coroutine_layout_dropee)),
+    )));
+    body.basic_blocks_mut()[START_BLOCK].statements.push(Statement { source_info, kind: st_kind });
+
+    if tcx.sess.opts.unstable_opts.mir_emit_retag {
+        // We want to treat the function argument as if it was passed by `&mut`. As such, we
+        // generate
+        // ```
+        // temp = &mut *arg;
+        // Retag(temp, FnEntry)
+        // ```
+        // It's important that we do this first, before anything that depends on `dropee_ptr`
+        // has been put into the body.
+        let reborrow = Rvalue::Ref(
+            tcx.lifetimes.re_erased,
+            BorrowKind::Mut { kind: MutBorrowKind::Default },
+            tcx.mk_place_deref(dropee_ptr),
+        );
+        let ref_ty = reborrow.ty(&body.local_decls, tcx);
+        dropee_ptr = body.local_decls.push(LocalDecl::new(ref_ty, span)).into();
+        let new_statements = [
+            StatementKind::Assign(Box::new((dropee_ptr, reborrow))),
+            StatementKind::Retag(RetagKind::FnEntry, Box::new(dropee_ptr)),
+        ];
+        for s in new_statements {
+            body.basic_blocks_mut()[START_BLOCK]
+                .statements
+                .push(Statement { source_info, kind: s });
+        }
+    }
+
+    let dropline = body.basic_blocks.last_index();
+
+    let patch = {
+        let mut elaborator = DropShimElaborator {
+            body: &body,
+            patch: MirPatch::new(&body),
+            tcx,
+            param_env,
+            produce_async_drops: true,
+        };
+        let dropee = tcx.mk_place_deref(dropee_ptr);
+        let resume_block = elaborator.patch.resume_block();
+        elaborate_drops::elaborate_drop(
+            &mut elaborator,
+            source_info,
+            dropee,
+            (),
+            return_block,
+            elaborate_drops::Unwind::To(resume_block),
+            START_BLOCK,
+            dropline,
+        );
+        elaborator.patch
+    };
+    patch.apply(&mut body);
+
+    body
 }

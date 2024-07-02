@@ -895,7 +895,7 @@ where
                     i,
                 ),
 
-                ty::Coroutine(def_id, args) => match this.variants {
+                ty::Coroutine(def_id, mut args) => match this.variants {
                     Variants::Single { index } => TyMaybeWithLayout::Ty(
                         args.as_coroutine()
                             .state_tys(def_id, tcx)
@@ -907,6 +907,14 @@ where
                     Variants::Multiple { tag, tag_field, .. } => {
                         if i == tag_field {
                             return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
+                        }
+                        // layout of `async_drop_in_place<T>::{closure}` in case,
+                        // when T is a coroutine, is the layout of this internal coroutine
+                        if tcx.is_templated_coroutine(def_id) {
+                            let arg_cor_ty = args.first().unwrap().expect_ty();
+                            if let ty::Coroutine(_, child_args) = arg_cor_ty.kind() {
+                                args = child_args;
+                            }
                         }
                         TyMaybeWithLayout::Ty(args.as_coroutine().prefix_tys()[i])
                     }

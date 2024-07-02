@@ -810,13 +810,30 @@ fn coroutine_layout<'tcx>(
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     ty: Ty<'tcx>,
     def_id: hir::def_id::DefId,
-    args: GenericArgsRef<'tcx>,
+    mut args: GenericArgsRef<'tcx>,
 ) -> Result<Layout<'tcx>, &'tcx LayoutError<'tcx>> {
     use SavedLocalEligibility::*;
     let tcx = cx.tcx;
+    let layout = if tcx.is_templated_coroutine(def_id) {
+        // layout of `async_drop_in_place<T>::{closure}` in case,
+        // when T is a coroutine, is the layout of this internal coroutine
+        let arg_cor_ty = args.first().unwrap().expect_ty();
+        if let ty::Coroutine(child_def_id, child_args) = arg_cor_ty.kind() {
+            args = child_args;
+            if tcx.is_templated_coroutine(*child_def_id) {
+                tcx.templated_coroutine_layout(arg_cor_ty)
+            } else {
+                tcx.ordinary_coroutine_layout(*child_def_id, args.as_coroutine().kind_ty())
+            }
+        } else {
+            tcx.templated_coroutine_layout(ty)
+        }
+    } else {
+        tcx.ordinary_coroutine_layout(def_id, args.as_coroutine().kind_ty())
+    };
     let instantiate_field = |ty: Ty<'tcx>| EarlyBinder::bind(ty).instantiate(tcx, args);
 
-    let Some(info) = tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty()) else {
+    let Some(info) = layout else {
         return Err(error(cx, LayoutError::Unknown(ty)));
     };
     let (ineligible_locals, assignments) = coroutine_saved_local_eligibility(info);
@@ -1143,7 +1160,7 @@ fn variant_info_for_coroutine<'tcx>(
         return (vec![], None);
     };
 
-    let coroutine = cx.tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty()).unwrap();
+    let coroutine = cx.tcx.coroutine_layout(def_id, args).unwrap();
     let upvar_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
 
     let mut upvars_size = Size::ZERO;

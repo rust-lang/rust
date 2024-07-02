@@ -57,10 +57,17 @@ pub(super) fn mangle<'tcx>(
         .print_def_path(
             def_id,
             if let ty::InstanceKind::DropGlue(_, _)
-            | ty::InstanceKind::AsyncDropGlueCtorShim(_, _) = instance.def
+            | ty::InstanceKind::AsyncDropGlueCtorShim(_, _)
+            | ty::InstanceKind::FutureDropPollShim(_, _) = instance.def
             {
                 // Add the name of the dropped type to the symbol name
                 &*instance.args
+            } else if let ty::InstanceKind::AsyncDropGlue(_, ty) = instance.def {
+                let ty::Coroutine(_, cor_args) = ty.kind() else {
+                    bug!();
+                };
+                let drop_ty = cor_args.first().unwrap().expect_ty();
+                tcx.mk_args(&[GenericArg::from(drop_ty)])
             } else {
                 &[]
             },
@@ -90,6 +97,10 @@ pub(super) fn mangle<'tcx>(
             printer.write_str("{{fn-once-shim}}").unwrap();
         }
         _ => {}
+    }
+
+    if let ty::InstanceKind::FutureDropPollShim(..) = instance.def {
+        let _ = printer.write_str("{{drop-shim}}");
     }
 
     printer.path.finish(hash)

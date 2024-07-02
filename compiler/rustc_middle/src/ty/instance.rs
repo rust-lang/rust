@@ -150,6 +150,9 @@ pub enum InstanceKind<'tcx> {
     /// native support.
     ThreadLocalShim(DefId),
 
+    /// future_drop_poll<T> for async drop of future
+    FutureDropPollShim(DefId, Ty<'tcx>),
+
     /// `core::ptr::drop_in_place::<T>`.
     ///
     /// The `DefId` is for `core::ptr::drop_in_place`.
@@ -176,7 +179,15 @@ pub enum InstanceKind<'tcx> {
     ///
     /// The `DefId` is for `core::future::async_drop::async_drop_in_place`, the `Ty`
     /// is the type `T`.
+    /// `None` option instead of Ty in case when Ty doesn't need async drop,
+    ///  and the shim effectively means `func returning noop future`.
     AsyncDropGlueCtorShim(DefId, Option<Ty<'tcx>>),
+
+    /// `core::future::async_drop::async_drop_in_place::<'_, T>::{closure}`.
+    ///
+    /// async_drop_in_place poll function implementation (for generated coroutine).
+    /// `Ty` here is `async_drop_in_place<T>::{closure}` coroutine type, not just `T`
+    AsyncDropGlue(DefId, Ty<'tcx>),
 }
 
 impl<'tcx> Instance<'tcx> {
@@ -220,6 +231,8 @@ impl<'tcx> Instance<'tcx> {
                 .upstream_monomorphizations_for(def)
                 .and_then(|monos| monos.get(&self.args).cloned()),
             InstanceKind::DropGlue(_, Some(_)) => tcx.upstream_drop_glue_for(self.args),
+            InstanceKind::AsyncDropGlue(_, _) => None,
+            InstanceKind::FutureDropPollShim(_, _) => None,
             InstanceKind::AsyncDropGlueCtorShim(_, Some(_)) => {
                 tcx.upstream_async_drop_glue_for(self.args)
             }
@@ -248,6 +261,8 @@ impl<'tcx> InstanceKind<'tcx> {
             | InstanceKind::DropGlue(def_id, _)
             | InstanceKind::CloneShim(def_id, _)
             | InstanceKind::FnPtrAddrShim(def_id, _)
+            | InstanceKind::FutureDropPollShim(def_id, _)
+            | InstanceKind::AsyncDropGlue(def_id, _)
             | InstanceKind::AsyncDropGlueCtorShim(def_id, _) => def_id,
         }
     }
@@ -258,6 +273,8 @@ impl<'tcx> InstanceKind<'tcx> {
             ty::InstanceKind::Item(def) => Some(def),
             ty::InstanceKind::DropGlue(def_id, Some(_))
             | InstanceKind::AsyncDropGlueCtorShim(def_id, Some(_))
+            | InstanceKind::AsyncDropGlue(def_id, _)
+            | InstanceKind::FutureDropPollShim(def_id, ..)
             | InstanceKind::ThreadLocalShim(def_id) => Some(def_id),
             InstanceKind::VTableShim(..)
             | InstanceKind::ReifyShim(..)
@@ -293,7 +310,9 @@ impl<'tcx> InstanceKind<'tcx> {
         let def_id = match *self {
             ty::InstanceKind::Item(def) => def,
             ty::InstanceKind::DropGlue(_, Some(_)) => return false,
-            ty::InstanceKind::AsyncDropGlueCtorShim(_, Some(_)) => return false,
+            ty::InstanceKind::AsyncDropGlueCtorShim(_, Some(ty)) => return ty.is_coroutine(),
+            ty::InstanceKind::FutureDropPollShim(_, _) => return false,
+            ty::InstanceKind::AsyncDropGlue(_, _) => return false,
             ty::InstanceKind::ThreadLocalShim(_) => return false,
             _ => return true,
         };
@@ -370,7 +389,9 @@ impl<'tcx> InstanceKind<'tcx> {
             | InstanceKind::FnPtrAddrShim(..)
             | InstanceKind::FnPtrShim(..)
             | InstanceKind::DropGlue(_, Some(_))
-            | InstanceKind::AsyncDropGlueCtorShim(_, Some(_)) => false,
+            | InstanceKind::FutureDropPollShim(..)
+            | InstanceKind::AsyncDropGlue(_, _) => false,
+            InstanceKind::AsyncDropGlueCtorShim(_, Some(_)) => false,
             InstanceKind::ClosureOnceShim { .. }
             | InstanceKind::ConstructCoroutineInClosureShim { .. }
             | InstanceKind::CoroutineKindShim { .. }
@@ -420,6 +441,8 @@ fn fmt_instance(
         InstanceKind::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceKind::CloneShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceKind::FnPtrAddrShim(_, ty) => write!(f, " - shim({ty})"),
+        InstanceKind::FutureDropPollShim(_, ty) => write!(f, " - dropshim({ty})"),
+        InstanceKind::AsyncDropGlue(_, ty) => write!(f, " - shim({ty})"),
         InstanceKind::AsyncDropGlueCtorShim(_, None) => write!(f, " - shim(None)"),
         InstanceKind::AsyncDropGlueCtorShim(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
     }
@@ -670,6 +693,18 @@ impl<'tcx> Instance<'tcx> {
         Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
     }
 
+    pub fn resolve_async_drop_in_place_poll(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
+        let def_id = tcx.require_lang_item(LangItem::AsyncDropInPlacePoll, None);
+        let args = tcx.mk_args(&[ty.into()]);
+        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
+    }
+
+    pub fn resolve_future_drop_poll(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
+        let def_id = tcx.require_lang_item(LangItem::FutureDropPoll, None);
+        let args = tcx.mk_args(&[ty.into()]);
+        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
+    }
+
     #[instrument(level = "debug", skip(tcx), ret)]
     pub fn fn_once_adapter_instance(
         tcx: TyCtxt<'tcx>,
@@ -734,6 +769,16 @@ impl<'tcx> Instance<'tcx> {
         };
 
         if tcx.lang_items().get(coroutine_callable_item) == Some(trait_item_id) {
+            if Some(coroutine_def_id) == tcx.lang_items().async_drop_in_place_poll_fn() {
+                let child_ty = args.first().unwrap().expect_ty();
+                let def = if let ty::Coroutine(child_def, _) = child_ty.kind() {
+                    assert!(!child_ty.is_templated_coroutine(tcx));
+                    ty::InstanceKind::FutureDropPollShim(*child_def, child_ty)
+                } else {
+                    ty::InstanceKind::AsyncDropGlue(coroutine_def_id, rcvr_args.type_at(0))
+                };
+                return Some(Instance { def, args });
+            }
             let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
             else {
                 bug!()
@@ -890,6 +935,8 @@ fn polymorphize<'tcx>(
                     }
                 }
                 ty::Coroutine(def_id, args) => {
+                    // Templated coroutine can't be polymorphized
+                    assert!(!ty.is_templated_coroutine(self.tcx));
                     let polymorphized_args =
                         polymorphize(self.tcx, ty::InstanceKind::Item(def_id), args);
                     if args == polymorphized_args {

@@ -2275,7 +2275,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
 
                     match *ty.kind() {
-                        ty::Coroutine(did, ..) | ty::CoroutineWitness(did, _) => {
+                        ty::Coroutine(did, ..) | ty::CoroutineWitness(did, ..) => {
                             coroutine = coroutine.or(Some(did));
                             outer_coroutine = Some(did);
                         }

@@ -243,11 +243,6 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
 
-    fn consider_builtin_async_destruct_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution>;
-
     fn consider_builtin_destruct_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -419,8 +414,6 @@ where
             G::consider_builtin_coroutine_candidate(self, goal)
         } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::DiscriminantKind) {
             G::consider_builtin_discriminant_kind_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::AsyncDestruct) {
-            G::consider_builtin_async_destruct_candidate(self, goal)
         } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Destruct) {
             G::consider_builtin_destruct_candidate(self, goal)
         } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::TransmuteTrait) {

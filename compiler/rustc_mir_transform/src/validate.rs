@@ -396,9 +396,12 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::Drop { target, unwind, .. } => {
+            TerminatorKind::Drop { target, unwind, drop, .. } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
                 self.check_unwind_edge(location, *unwind);
+                if let Some(drop) = drop {
+                    self.check_edge(location, *drop, EdgeKind::Normal);
+                }
             }
             TerminatorKind::Call { args, destination, target, unwind, .. } => {
                 if let Some(target) = target {
@@ -734,7 +737,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 // FIXME: This is not right for async closures.
                                 self.caller_body.coroutine_layout_raw()
                             } else {
-                                self.tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty())
+                                self.tcx.coroutine_layout(def_id, args)
                             };
 
                             let Some(layout) = layout else {

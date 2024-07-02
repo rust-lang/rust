@@ -581,7 +581,6 @@ fn fn_abi_new_uncached<'tcx>(
     force_thin_self_ptr: bool,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let sig = cx.tcx.normalize_erasing_late_bound_regions(cx.param_env, sig);
-
     let conv = conv_from_spec_abi(cx.tcx(), sig.abi, sig.c_variadic);
 
     let mut inputs = sig.inputs();
@@ -621,8 +620,9 @@ fn fn_abi_new_uncached<'tcx>(
     use SpecAbi::*;
     let rust_abi = matches!(sig.abi, RustIntrinsic | Rust | RustCall);
 
-    let is_drop_in_place =
-        fn_def_id.is_some() && fn_def_id == cx.tcx.lang_items().drop_in_place_fn();
+    let is_drop_in_place = fn_def_id.is_some()
+        && (fn_def_id == cx.tcx.lang_items().drop_in_place_fn()
+            || fn_def_id == cx.tcx.lang_items().async_drop_in_place_fn());
 
     let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, &'tcx FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");

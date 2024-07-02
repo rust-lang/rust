@@ -90,6 +90,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{ExprId, LintLevel};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::Level;
 use rustc_span::source_map::Spanned;
@@ -400,6 +401,8 @@ impl DropTree {
                         unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                         place: drop_node.data.local.into(),
                         replace: false,
+                        drop: None,
+                        async_fut: None,
                     };
                     cfg.terminate(block, drop_node.data.source_info, terminator);
                 }
@@ -745,6 +748,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
     }
 
+    fn is_async_drop_impl(
+        tcx: TyCtxt<'tcx>,
+        local_decls: &IndexVec<Local, LocalDecl<'tcx>>,
+        param_env: ty::ParamEnv<'tcx>,
+        local: Local,
+    ) -> bool {
+        let ty = local_decls[local].ty;
+        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) = ty.kind() {
+            if tcx.type_of(def_id).instantiate(tcx, args).is_coroutine() {
+                return true;
+            }
+        }
+        if ty.is_async_drop(tcx, param_env) || ty.is_coroutine() {
+            return true;
+        }
+        ty.needs_async_drop(tcx, param_env)
+    }
+    fn is_async_drop(&self, local: Local) -> bool {
+        Self::is_async_drop_impl(self.tcx, &self.local_decls, self.param_env, local)
+    }
+
     fn leave_top_scope(&mut self, block: BasicBlock) -> BasicBlock {
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
@@ -753,14 +777,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
 
         let scope = self.scopes.scopes.last().expect("leave_top_scope called with no scopes");
+        let has_async_drops = is_coroutine
+            && scope.drops.iter().any(|v| v.kind == DropKind::Value && self.is_async_drop(v.local));
+        let dropline_to = if has_async_drops { Some(self.diverge_dropline()) } else { None };
+        let scope = self.scopes.scopes.last().expect("leave_top_scope called with no scopes");
         unpack!(build_scope_drops(
             &mut self.cfg,
             &mut self.scopes.unwind_drops,
+            &mut self.scopes.coroutine_drops,
             scope,
             block,
             unwind_to,
+            dropline_to,
             is_coroutine && needs_cleanup,
             self.arg_count,
+            |v: Local| Self::is_async_drop_impl(self.tcx, &self.local_decls, self.param_env, v),
         ))
     }
 
@@ -1141,6 +1172,44 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.scopes.unwind_drops.add_entry_point(start, next_drop);
     }
 
+    /// Returns the [DropIdx] for the innermost drop for dropline (coroutine drop path).
+    /// The `DropIdx` will be created if it doesn't already exist.
+    fn diverge_dropline(&mut self) -> DropIdx {
+        // It is okay to use dummy span because the getting scope index on the topmost scope
+        // must always succeed.
+        self.diverge_dropline_target(self.scopes.topmost(), DUMMY_SP)
+    }
+
+    /// Similar to diverge_cleanup_target, but for dropline (coroutine drop path)
+    fn diverge_dropline_target(&mut self, target_scope: region::Scope, span: Span) -> DropIdx {
+        debug_assert!(
+            self.coroutine.is_some(),
+            "diverge_dropline_target is valid only for coroutine"
+        );
+        let target = self.scopes.scope_index(target_scope, span);
+        let (uncached_scope, mut cached_drop) = self.scopes.scopes[..=target]
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(scope_idx, scope)| {
+                scope.cached_coroutine_drop_block.map(|cached_block| (scope_idx + 1, cached_block))
+            })
+            .unwrap_or((0, ROOT_NODE));
+
+        if uncached_scope > target {
+            return cached_drop;
+        }
+
+        for scope in &mut self.scopes.scopes[uncached_scope..=target] {
+            for drop in &scope.drops {
+                cached_drop = self.scopes.coroutine_drops.add_drop(*drop, cached_drop);
+            }
+            scope.cached_coroutine_drop_block = Some(cached_drop);
+        }
+
+        cached_drop
+    }
+
     /// Sets up a path that performs all required cleanup for dropping a
     /// coroutine, starting from the given block that ends in
     /// [TerminatorKind::Yield].
@@ -1154,24 +1223,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ),
             "coroutine_drop_cleanup called on block with non-yield terminator."
         );
-        let (uncached_scope, mut cached_drop) = self
-            .scopes
-            .scopes
-            .iter()
-            .enumerate()
-            .rev()
-            .find_map(|(scope_idx, scope)| {
-                scope.cached_coroutine_drop_block.map(|cached_block| (scope_idx + 1, cached_block))
-            })
-            .unwrap_or((0, ROOT_NODE));
-
-        for scope in &mut self.scopes.scopes[uncached_scope..] {
-            for drop in &scope.drops {
-                cached_drop = self.scopes.coroutine_drops.add_drop(*drop, cached_drop);
-            }
-            scope.cached_coroutine_drop_block = Some(cached_drop);
-        }
-
+        let cached_drop = self.diverge_dropline();
         self.scopes.coroutine_drops.add_entry_point(yield_block, cached_drop);
     }
 
@@ -1202,6 +1254,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 target: assign,
                 unwind: UnwindAction::Cleanup(assign_unwind),
                 replace: true,
+                drop: None,
+                async_fut: None,
             },
         );
         self.diverge_from(block);
@@ -1254,16 +1308,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 }
 
 /// Builds drops for `pop_scope` and `leave_top_scope`.
-fn build_scope_drops<'tcx>(
+fn build_scope_drops<'tcx, F>(
     cfg: &mut CFG<'tcx>,
     unwind_drops: &mut DropTree,
+    coroutine_drops: &mut DropTree,
     scope: &Scope,
     mut block: BasicBlock,
     mut unwind_to: DropIdx,
+    mut dropline_to: Option<DropIdx>,
     storage_dead_on_unwind: bool,
     arg_count: usize,
-) -> BlockAnd<()> {
-    debug!("build_scope_drops({:?} -> {:?})", block, scope);
+    is_async_drop: F,
+) -> BlockAnd<()>
+where
+    F: Fn(Local) -> bool,
+{
+    debug!("build_scope_drops({:?} -> {:?}), dropline_to={:?}", block, scope, dropline_to);
 
     // Build up the drops in evaluation order. The end result will
     // look like:
@@ -1297,6 +1357,12 @@ fn build_scope_drops<'tcx>(
                 debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
                 unwind_to = unwind_drops.drops[unwind_to].next;
 
+                if let Some(idx) = dropline_to {
+                    debug_assert_eq!(coroutine_drops.drops[idx].data.local, drop_data.local);
+                    debug_assert_eq!(coroutine_drops.drops[idx].data.kind, drop_data.kind);
+                    dropline_to = Some(coroutine_drops.drops[idx].next);
+                }
+
                 // If the operand has been moved, and we are not on an unwind
                 // path, then don't generate the drop. (We only take this into
                 // account for non-unwind paths so as not to disturb the
@@ -1306,6 +1372,11 @@ fn build_scope_drops<'tcx>(
                 }
 
                 unwind_drops.add_entry_point(block, unwind_to);
+                if let Some(to) = dropline_to
+                    && is_async_drop(local)
+                {
+                    coroutine_drops.add_entry_point(block, to);
+                }
 
                 let next = cfg.start_new_block();
                 cfg.terminate(
@@ -1316,6 +1387,8 @@ fn build_scope_drops<'tcx>(
                         target: next,
                         unwind: UnwindAction::Continue,
                         replace: false,
+                        drop: None,
+                        async_fut: None,
                     },
                 );
                 block = next;
@@ -1325,6 +1398,11 @@ fn build_scope_drops<'tcx>(
                     debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
                     debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
                     unwind_to = unwind_drops.drops[unwind_to].next;
+                }
+                if let Some(idx) = dropline_to {
+                    debug_assert_eq!(coroutine_drops.drops[idx].data.local, drop_data.local);
+                    debug_assert_eq!(coroutine_drops.drops[idx].data.kind, drop_data.kind);
+                    dropline_to = Some(coroutine_drops.drops[idx].next);
                 }
                 // Only temps and vars need their storage dead.
                 assert!(local.index() > arg_count);
@@ -1384,6 +1462,39 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                 }
             }
         }
+        // Link the exit drop tree to dropline drop tree (coroutine drop path) for async drops
+        if is_coroutine
+            && drops.drops.iter().any(|DropNode { data, next: _ }| {
+                data.kind == DropKind::Value && self.is_async_drop(data.local)
+            })
+        {
+            let dropline_target = self.diverge_dropline_target(else_scope, span);
+            let mut dropline_indices = IndexVec::from_elem_n(dropline_target, 1);
+            for (drop_idx, drop_data) in drops.drops.iter_enumerated().skip(1) {
+                match drop_data.data.kind {
+                    DropKind::Storage => {
+                        let coroutine_drop = self
+                            .scopes
+                            .coroutine_drops
+                            .add_drop(drop_data.data, dropline_indices[drop_data.next]);
+                        dropline_indices.push(coroutine_drop);
+                    }
+                    DropKind::Value => {
+                        let coroutine_drop = self
+                            .scopes
+                            .coroutine_drops
+                            .add_drop(drop_data.data, dropline_indices[drop_data.next]);
+                        if self.is_async_drop(drop_data.data.local) {
+                            self.scopes.coroutine_drops.add_entry_point(
+                                blocks[drop_idx].unwrap(),
+                                dropline_indices[drop_data.next],
+                            );
+                        }
+                        dropline_indices.push(coroutine_drop);
+                    }
+                }
+            }
+        }
         blocks[ROOT_NODE].map(BasicBlock::unit)
     }
 
@@ -1429,9 +1540,11 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         // to be captured by the coroutine. I'm not sure how important this
         // optimization is, but it is here.
         for (drop_idx, drop_node) in drops.drops.iter_enumerated() {
-            if let DropKind::Value = drop_node.data.kind {
+            if let DropKind::Value = drop_node.data.kind
+                && let Some(bb) = blocks[drop_idx]
+            {
                 debug_assert!(drop_node.next < drops.drops.next_index());
-                drops.entry_points.push((drop_node.next, blocks[drop_idx].unwrap()));
+                drops.entry_points.push((drop_node.next, bb));
             }
         }
         Self::build_unwind_tree(cfg, drops, fn_span, resume_block);
@@ -1484,6 +1597,8 @@ impl<'tcx> DropTreeBuilder<'tcx> for CoroutineDrop {
     fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         let term = cfg.block_data_mut(from).terminator_mut();
         if let TerminatorKind::Yield { ref mut drop, .. } = term.kind {
+            *drop = Some(to);
+        } else if let TerminatorKind::Drop { ref mut drop, .. } = term.kind {
             *drop = Some(to);
         } else {
             span_bug!(

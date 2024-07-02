@@ -798,59 +798,6 @@ where
         })
     }
 
-    fn consider_builtin_async_destruct_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
-        let self_ty = goal.predicate.self_ty();
-        let async_destructor_ty = match self_ty.kind() {
-            ty::Bool
-            | ty::Char
-            | ty::Int(..)
-            | ty::Uint(..)
-            | ty::Float(..)
-            | ty::Array(..)
-            | ty::RawPtr(..)
-            | ty::Ref(..)
-            | ty::FnDef(..)
-            | ty::FnPtr(..)
-            | ty::Closure(..)
-            | ty::CoroutineClosure(..)
-            | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
-            | ty::Never
-            | ty::Adt(_, _)
-            | ty::Str
-            | ty::Slice(_)
-            | ty::Tuple(_)
-            | ty::Error(_) => self_ty.async_destructor_ty(ecx.cx()),
-
-            // We do not call `Ty::async_destructor_ty` on alias, param, or placeholder
-            // types, which return `<self_ty as AsyncDestruct>::AsyncDestructor`
-            // (or ICE in the case of placeholders). Projecting a type to itself
-            // is never really productive.
-            ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
-                return Err(NoSolution);
-            }
-
-            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
-            | ty::Foreign(..)
-            | ty::Bound(..) => panic!(
-                "unexpected self ty `{:?}` when normalizing `<T as AsyncDestruct>::AsyncDestructor`",
-                goal.predicate.self_ty()
-            ),
-
-            ty::Pat(..) | ty::Dynamic(..) | ty::Coroutine(..) | ty::CoroutineWitness(..) => panic!(
-                "`consider_builtin_async_destruct_candidate` is not yet implemented for type: {self_ty:?}"
-            ),
-        };
-
-        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.eq(goal.param_env, goal.predicate.term, async_destructor_ty.into())
-                .expect("expected goal term to be fully unconstrained");
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
-    }
-
     fn consider_builtin_destruct_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,

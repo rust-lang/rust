@@ -586,7 +586,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
 fn trait_lang_item_to_lang_item(lang_item: TraitSolverLangItem) -> LangItem {
     match lang_item {
-        TraitSolverLangItem::AsyncDestruct => LangItem::AsyncDestruct,
         TraitSolverLangItem::AsyncFnKindHelper => LangItem::AsyncFnKindHelper,
         TraitSolverLangItem::AsyncFnKindUpvars => LangItem::AsyncFnKindUpvars,
         TraitSolverLangItem::AsyncFnOnceOutput => LangItem::AsyncFnOnceOutput,
@@ -1536,6 +1535,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn is_coroutine(self, def_id: DefId) -> bool {
         self.coroutine_kind(def_id).is_some()
+    }
+
+    pub fn is_templated_coroutine(self, def_id: DefId) -> bool {
+        Some(def_id) == self.lang_items().async_drop_in_place_poll_fn()
     }
 
     /// Returns the movability of the coroutine of `def_id`, or panics
