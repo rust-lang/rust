@@ -120,11 +120,8 @@ pub struct VarsOs {
 /// # Examples
 ///
 /// ```
-/// use std::env;
-///
-/// // We will iterate through the references to the element returned by
-/// // env::vars();
-/// for (key, value) in env::vars() {
+/// // Print all environment variables.
+/// for (key, value) in std::env::vars() {
 ///     println!("{key}: {value}");
 /// }
 /// ```
@@ -150,11 +147,8 @@ pub fn vars() -> Vars {
 /// # Examples
 ///
 /// ```
-/// use std::env;
-///
-/// // We will iterate through the references to the element returned by
-/// // env::vars_os();
-/// for (key, value) in env::vars_os() {
+/// // Print all environment variables.
+/// for (key, value) in std::env::vars_os() {
 ///     println!("{key:?}: {value:?}");
 /// }
 /// ```
