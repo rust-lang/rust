@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::io::{self, Error, ErrorKind};
+use crate::io::{self, ErrorKind};
 use crate::num::NonZero;
 use crate::sys;
 use crate::sys::cvt;
