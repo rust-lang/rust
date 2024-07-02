@@ -88,7 +88,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         delegation: &Delegation,
         item_id: NodeId,
     ) -> DelegationResults<'hir> {
-        let span = self.lower_span(delegation.path.segments.last().unwrap().ident.span);
+        let span = delegation.path.segments.last().unwrap().ident.span;
         let sig_id = self.get_delegation_sig_id(item_id, delegation.id, span);
         match sig_id {
             Ok(sig_id) => {

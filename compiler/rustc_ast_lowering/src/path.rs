@@ -111,11 +111,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     )
                 },
             )),
-            span: self.lower_span(
-                p.segments[..proj_start]
-                    .last()
-                    .map_or(path_span_lo, |segment| path_span_lo.to(segment.span())),
-            ),
+            span: p.segments[..proj_start]
+                .last()
+                .map_or(path_span_lo, |segment| path_span_lo.to(segment.span())),
         });
 
         if let Some(bound_modifier_allowed_features) = bound_modifier_allowed_features {
@@ -207,7 +205,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     None,
                 )
             })),
-            span: self.lower_span(p.span),
+            span: p.span,
         })
     }
 
@@ -305,7 +303,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         );
 
         hir::PathSegment {
-            ident: self.lower_ident(segment.ident),
+            ident: segment.ident,
             hir_id,
             res: self.lower_res(res),
             infer_args,
@@ -478,13 +476,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             parenthesized: hir::GenericArgsParentheses::No,
             span_ext: DUMMY_SP,
         });
-        hir::AssocItemConstraint {
-            hir_id: self.next_id(),
-            gen_args,
-            span: self.lower_span(span),
-            ident,
-            kind,
-        }
+        hir::AssocItemConstraint { hir_id: self.next_id(), gen_args, span, ident, kind }
     }
 
     /// When a bound is annotated with `async`, it signals to lowering that the trait

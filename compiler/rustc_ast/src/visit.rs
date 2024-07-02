@@ -758,7 +758,7 @@ pub fn walk_generic_param<'a, V: Visitor<'a>>(
     match kind {
         GenericParamKind::Lifetime => (),
         GenericParamKind::Type { default } => visit_opt!(visitor, visit_ty, default),
-        GenericParamKind::Const { ty, default, kw_span: _ } => {
+        GenericParamKind::Const { ty, default, span: _ } => {
             try_visit!(visitor.visit_ty(ty));
             visit_opt!(visitor, visit_anon_const, default);
         }

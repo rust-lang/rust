@@ -183,7 +183,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     pub(crate) fn build_reduced_graph(
         &mut self,
-        fragment: &AstFragment,
+        fragment: &mut AstFragment,
         parent_scope: ParentScope<'a>,
     ) -> MacroRulesScopeRef<'a> {
         collect_definitions(self, fragment, parent_scope.expansion);

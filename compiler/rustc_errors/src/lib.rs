@@ -197,9 +197,29 @@ impl SubstitutionPart {
         sm.span_to_snippet(self.span)
             .map_or(!self.span.is_empty(), |snippet| !snippet.trim().is_empty())
     }
+
+    fn clone_ignoring_parents(&self) -> SubstitutionPart {
+        let SubstitutionPart { span, snippet } = self;
+        SubstitutionPart { span: span.with_parent(None), snippet: snippet.clone() }
+    }
 }
 
 impl CodeSuggestion {
+    pub fn clone_ignoring_parents(&self) -> CodeSuggestion {
+        let CodeSuggestion { substitutions, msg, style, applicability } = self;
+        CodeSuggestion {
+            substitutions: substitutions
+                .iter()
+                .map(|Substitution { parts }| Substitution {
+                    parts: parts.iter().map(SubstitutionPart::clone_ignoring_parents).collect(),
+                })
+                .collect(),
+            msg: msg.clone(),
+            style: *style,
+            applicability: *applicability,
+        }
+    }
+
     /// Returns the assembled code suggestions, whether they should be shown with an underline
     /// and whether the substitution only differs in capitalization.
     pub(crate) fn splice_lines(
@@ -1575,6 +1595,7 @@ impl DiagCtxtInner {
                 let mut hasher = StableHasher::new();
                 diagnostic.hash(&mut hasher);
                 let diagnostic_hash = hasher.finish();
+                debug!(?diagnostic, ?diagnostic_hash);
                 !self.emitted_diagnostics.insert(diagnostic_hash)
             };
 
@@ -1584,18 +1605,14 @@ impl DiagCtxtInner {
             // Only emit the diagnostic if we've been asked to deduplicate or
             // haven't already emitted an equivalent diagnostic.
             if !(self.flags.deduplicate_diagnostics && already_emitted) {
-                debug!(?diagnostic);
-                debug!(?self.emitted_diagnostics);
-
                 let already_emitted_sub = |sub: &mut Subdiag| {
-                    debug!(?sub);
                     if sub.level != OnceNote && sub.level != OnceHelp {
                         return false;
                     }
                     let mut hasher = StableHasher::new();
                     sub.hash(&mut hasher);
                     let diagnostic_hash = hasher.finish();
-                    debug!(?diagnostic_hash);
+                    debug!(?sub, ?diagnostic_hash);
                     !self.emitted_diagnostics.insert(diagnostic_hash)
                 };
                 diagnostic.children.extract_if(already_emitted_sub).for_each(|_| {});

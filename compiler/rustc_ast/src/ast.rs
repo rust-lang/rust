@@ -351,7 +351,7 @@ pub enum GenericParamKind {
     Const {
         ty: P<Ty>,
         /// Span of the `const` keyword.
-        kw_span: Span,
+        span: Span,
         /// Optional default value for the const generic param
         default: Option<AnonConst>,
     },
@@ -375,10 +375,7 @@ impl GenericParam {
                 self.ident.span
             }
             GenericParamKind::Type { default: Some(ty) } => self.ident.span.to(ty.span),
-            GenericParamKind::Const { kw_span, default: Some(default), .. } => {
-                kw_span.to(default.value.span)
-            }
-            GenericParamKind::Const { kw_span, default: None, ty } => kw_span.to(ty.span),
+            GenericParamKind::Const { span, .. } => *span,
         }
     }
 }

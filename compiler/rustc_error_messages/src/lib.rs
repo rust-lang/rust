@@ -513,6 +513,17 @@ impl MultiSpan {
     pub fn clone_ignoring_labels(&self) -> Self {
         Self { primary_spans: self.primary_spans.clone(), ..MultiSpan::new() }
     }
+
+    pub fn clone_ignoring_parents(&self) -> Self {
+        Self {
+            primary_spans: self.primary_spans.iter().map(|s| s.with_parent(None)).collect(),
+            span_labels: self
+                .span_labels
+                .iter()
+                .map(|(s, l)| (s.with_parent(None), l.clone()))
+                .collect(),
+        }
+    }
 }
 
 impl From<Span> for MultiSpan {
