@@ -5,6 +5,7 @@ use rustc_ast::visit::Visitor;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
+use rustc_session::config::FmtDebug;
 use rustc_span::{
     sym,
     symbol::{kw, Ident},
@@ -245,7 +246,10 @@ fn make_argument<'hir>(
         hir::LangItem::FormatArgument,
         match ty {
             Format(Display) => sym::new_display,
-            Format(Debug) => sym::new_debug,
+            Format(Debug) => match ctx.tcx.sess.opts.unstable_opts.fmt_debug {
+                FmtDebug::Full | FmtDebug::Shallow => sym::new_debug,
+                FmtDebug::None => sym::new_debug_noop,
+            },
             Format(LowerExp) => sym::new_lower_exp,
             Format(UpperExp) => sym::new_upper_exp,
             Format(Octal) => sym::new_octal,
