@@ -848,6 +848,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(show_span, Some(String::from("abc")));
     tracked!(simulate_remapped_rust_src_base, Some(PathBuf::from("/rustc/abc")));
     tracked!(split_lto_unit, Some(true));
+    tracked!(split_metadata, true);
     tracked!(src_hash_algorithm, Some(SourceFileHashAlgorithm::Sha1));
     tracked!(stack_protector, StackProtector::All);
     tracked!(teach, true);
