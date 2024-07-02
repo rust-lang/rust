@@ -66,7 +66,7 @@ where
 macro_rules! declare_rustdoc_lint {
     (
         $(#[$attr:meta])* $name: ident, $level: ident, $descr: literal $(,)?
-        $(@feature_gate = $gate:expr;)?
+        $(@feature_gate = $gate:ident;)?
     ) => {
         declare_tool_lint! {
             $(#[$attr])* pub rustdoc::$name, $level, $descr
@@ -128,7 +128,7 @@ declare_rustdoc_lint! {
     MISSING_DOC_CODE_EXAMPLES,
     Allow,
     "detects publicly-exported items without code samples in their documentation",
-    @feature_gate = rustc_span::symbol::sym::rustdoc_missing_doc_code_examples;
+    @feature_gate = rustdoc_missing_doc_code_examples;
 }
 
 declare_rustdoc_lint! {
