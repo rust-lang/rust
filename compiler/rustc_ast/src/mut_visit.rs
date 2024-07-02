@@ -367,7 +367,7 @@ where
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-fn visit_attrs<T: MutVisitor>(attrs: &mut AttrVec, vis: &mut T) {
+pub fn visit_attrs<T: MutVisitor>(attrs: &mut AttrVec, vis: &mut T) {
     for attr in attrs.iter_mut() {
         vis.visit_attribute(attr);
     }
@@ -390,7 +390,7 @@ fn visit_bounds<T: MutVisitor>(bounds: &mut GenericBounds, vis: &mut T) {
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-fn visit_fn_sig<T: MutVisitor>(FnSig { header, decl, span }: &mut FnSig, vis: &mut T) {
+pub fn visit_fn_sig<T: MutVisitor>(FnSig { header, decl, span }: &mut FnSig, vis: &mut T) {
     vis.visit_fn_header(header);
     vis.visit_fn_decl(decl);
     vis.visit_span(span);
@@ -637,7 +637,7 @@ fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
     vis.visit_span(span);
 }
 
-fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
+pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
     let Attribute { kind, id: _, style: _, span } = attr;
     match kind {
         AttrKind::Normal(normal) => {
@@ -836,7 +836,7 @@ fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-fn visit_defaultness<T: MutVisitor>(defaultness: &mut Defaultness, vis: &mut T) {
+pub fn visit_defaultness<T: MutVisitor>(defaultness: &mut Defaultness, vis: &mut T) {
     match defaultness {
         Defaultness::Default(span) => vis.visit_span(span),
         Defaultness::Final => {}

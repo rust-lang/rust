@@ -999,7 +999,7 @@ pub trait ResolverExpand {
     fn visit_ast_fragment_with_placeholders(
         &mut self,
         expn_id: LocalExpnId,
-        fragment: &AstFragment,
+        fragment: &mut AstFragment,
     );
     fn register_builtin_macro(&mut self, name: Symbol, ext: SyntaxExtensionKind);
 

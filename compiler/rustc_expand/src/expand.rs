@@ -126,7 +126,7 @@ macro_rules! ast_fragments {
                 T::fragment_to_output(self)
             }
 
-            pub(crate) fn mut_visit_with<F: MutVisitor>(&mut self, vis: &mut F) {
+            pub fn mut_visit_with<F: MutVisitor>(&mut self, vis: &mut F) {
                 match self {
                     AstFragment::OptExpr(opt_expr) => {
                         visit_clobber(opt_expr, |opt_expr| {
@@ -598,7 +598,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         if self.monotonic {
             self.cx
                 .resolver
-                .visit_ast_fragment_with_placeholders(self.cx.current_expansion.id, &fragment);
+                .visit_ast_fragment_with_placeholders(self.cx.current_expansion.id, &mut fragment);
 
             if self.cx.sess.opts.incremental.is_some() {
                 for (invoc, _) in invocations.iter_mut() {

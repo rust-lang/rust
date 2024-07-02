@@ -193,7 +193,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
     fn visit_ast_fragment_with_placeholders(
         &mut self,
         expansion: LocalExpnId,
-        fragment: &AstFragment,
+        fragment: &mut AstFragment,
     ) {
         // Integrate the new AST fragment into all the definition and module structures.
         // We are inside the `expansion` now, but other parent scope components are still the same.
