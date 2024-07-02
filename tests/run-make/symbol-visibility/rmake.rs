@@ -13,11 +13,6 @@ fn main() {
     let mut rdylib_name = dynamic_lib_name("a_rust_dylib");
     let exe_name = bin_name("an_executable");
     let mut combined_cdylib_name = dynamic_lib_name("combined_rlib_dylib");
-    if is_windows() {
-        cdylib_name.push_str(".a");
-        rdylib_name.push_str(".a");
-        combined_cdylib_name.push_str(".a");
-    }
     rustc().arg("-Zshare-generics=no").input("an_rlib.rs").run();
     rustc().arg("-Zshare-generics=no").input("a_cdylib.rs").run();
     rustc().arg("-Zshare-generics=no").input("a_rust_dylib.rs").run();
