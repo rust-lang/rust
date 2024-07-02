@@ -10,6 +10,7 @@ use crate::mem;
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
 use crate::result;
+use crate::slice;
 use crate::str;
 
 mod builders;
@@ -476,6 +477,14 @@ impl Debug for Arguments<'_> {
 impl Display for Arguments<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
         write(fmt.buf, *self)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&'a &'static str> for Arguments<'a> {
+    #[inline]
+    fn from(value: &'a &'static str) -> Self {
+        Self::new_const(slice::from_ref(value))
     }
 }
 
