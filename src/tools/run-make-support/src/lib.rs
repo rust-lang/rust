@@ -295,6 +295,11 @@ pub fn not_contains<P: AsRef<Path>>(path: P, expected: &str) -> bool {
     !path.as_ref().file_name().is_some_and(|name| name.to_str().unwrap().contains(expected))
 }
 
+/// Returns true if the filename at `path` is not in `expected`.
+pub fn name_not_among<P: AsRef<Path>>(path: P, expected: &[&'static str]) -> bool {
+    path.as_ref().file_name().is_some_and(|name| !expected.contains(&name.to_str().unwrap()))
+}
+
 /// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is
 /// available on the platform!
 #[track_caller]

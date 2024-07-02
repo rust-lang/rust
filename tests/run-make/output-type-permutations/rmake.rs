@@ -1,178 +1,291 @@
 // In 2014, rustc's output flags were reworked to be a lot more modular.
 // This test uses these output flags in an expansive variety of combinations
-// and syntax styles, checking that compilation is successful and that no unexpected
-// files are created.
-// The assert_eq! checks that "1 file remains" at the end of each part of the test,
-// because foo.rs counts as a file, and should be the only remaining one.
+// and syntax styles, checking that compilation is successful and that output
+// files are exactly what is expected, no more, no less.
 // See https://github.com/rust-lang/rust/pull/12020
 
 use run_make_support::{
-    bin_name, cwd, dynamic_lib_name, fs_wrapper, rust_lib_name, rustc, static_lib_name,
+    bin_name, cwd, dynamic_lib_name, fs_wrapper, name_not_among, rust_lib_name, rustc,
+    shallow_find_files, static_lib_name,
 };
 
-fn remove_artifacts() {
-    std::fs::remove_file("libbar.ddl.exp").unwrap_or_default();
-    std::fs::remove_file("libbar.dll.lib").unwrap_or_default();
-    std::fs::remove_file("libbar.pdb").unwrap_or_default();
-    std::fs::remove_file("libbar.dll.a").unwrap_or_default();
-    std::fs::remove_file("libbar.exe.a").unwrap_or_default();
-    std::fs::remove_file("bar.ddl.exp").unwrap_or_default();
-    std::fs::remove_file("bar.dll.lib").unwrap_or_default();
-    std::fs::remove_file("bar.pdb").unwrap_or_default();
-    std::fs::remove_file("bar.dll.a").unwrap_or_default();
-    std::fs::remove_file("bar.exe.a").unwrap_or_default();
+// Each test takes 4 arguments:
+// `must_exist`: output files which must be found - if any are absent, the test fails
+// `can_exist`: optional output files which will not trigger a failure
+// `dir`: the name of the directory where the test happens
+// `rustc_invocation`: the rustc command being tested
+// Any unexpected output files not listed in `must_exist` or `can_exist` will cause a failure.
+fn assert_expected_output_files(
+    must_exist: &[&'static str],
+    can_exist: &[&'static str],
+    dir: &str,
+    rustc_invocation: impl Fn(),
+) {
+    fs_wrapper::create_dir(dir);
+    rustc_invocation();
+    for file in must_exist {
+        fs_wrapper::remove_file(dir.to_owned() + "/" + file);
+    }
+    let actual_output_files = shallow_find_files(dir, |path| name_not_among(path, can_exist));
+    if !&actual_output_files.is_empty() {
+        dbg!(&actual_output_files);
+        panic!("unexpected output artifacts detected");
+    }
 }
 
 fn main() {
-    rustc().input("foo.rs").crate_type("rlib,dylib,staticlib").run();
-    fs_wrapper::remove_file(rust_lib_name("bar"));
-    fs_wrapper::remove_file(dynamic_lib_name("bar"));
-    fs_wrapper::remove_file(static_lib_name("bar"));
-    remove_artifacts();
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    let bin_foo = Box::leak(Box::new(bin_name("foo")));
+    let bin_bar = Box::leak(Box::new(bin_name("bar")));
+    let static_bar = Box::leak(Box::new(static_lib_name("bar")));
+    let dynamic_bar = Box::leak(Box::new(dynamic_lib_name("bar")));
+    let rust_bar = Box::leak(Box::new(rust_lib_name("bar")));
 
-    rustc().input("foo.rs").crate_type("bin").run();
-    fs_wrapper::remove_file(bin_name("bar"));
-    std::fs::remove_file("bar.pdb").unwrap_or_default();
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(
+        &[static_bar, dynamic_bar, rust_bar],
+        &[
+            "libbar.ddl.exp",
+            "libbar.dll.lib",
+            "libbar.pdb",
+            "libbar.dll.a",
+            "libbar.exe.a",
+            "bar.ddl.exp",
+            "bar.dll.lib",
+            "bar.pdb",
+            "bar.dll.a",
+            "bar.exe.a",
+        ],
+        "three-crates",
+        || {
+            rustc()
+                .input("foo.rs")
+                .out_dir("three-crates")
+                .crate_type("rlib,dylib,staticlib")
+                .run();
+        },
+    );
 
-    rustc().input("foo.rs").emit("asm,llvm-ir,llvm-bc,obj,link").run();
-    fs_wrapper::remove_file("bar.ll");
-    fs_wrapper::remove_file("bar.bc");
-    fs_wrapper::remove_file("bar.s");
-    fs_wrapper::remove_file("bar.o");
-    fs_wrapper::remove_file(bin_name("bar"));
-    std::fs::remove_file("bar.pdb").unwrap_or_default();
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(&[bin_bar], &["bar.pdb"], "bin-crate", || {
+        rustc().input("foo.rs").crate_type("bin").out_dir("bin-crate").run();
+    });
 
-    rustc().input("foo.rs").emit("asm").output("foo").run();
-    fs_wrapper::remove_file("foo");
-    rustc().input("foo.rs").emit("asm=foo").run();
-    fs_wrapper::remove_file("foo");
-    rustc().input("foo.rs").arg("--emit=asm=foo").run();
-    fs_wrapper::remove_file("foo");
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(
+        &["bar.ll", "bar.bc", "bar.s", "bar.o", bin_bar],
+        &["bar.pdb"],
+        "all-emit",
+        || {
+            rustc().input("foo.rs").emit("asm,llvm-ir,llvm-bc,obj,link").out_dir("all-emit").run();
+        },
+    );
 
-    rustc().input("foo.rs").emit("llvm-bc").output("foo").run();
-    fs_wrapper::remove_file("foo");
-    rustc().input("foo.rs").emit("llvm-bc=foo").run();
-    fs_wrapper::remove_file("foo");
-    rustc().input("foo.rs").arg("--emit=llvm-bc=foo").run();
-    fs_wrapper::remove_file("foo");
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(&["foo"], &[], "asm-emit", || {
+        rustc().input("foo.rs").emit("asm").output("asm-emit/foo").run();
+    });
+    assert_expected_output_files(&["foo"], &[], "asm-emit2", || {
+        rustc().input("foo.rs").emit("asm=asm-emit2/foo").run();
+    });
+    assert_expected_output_files(&["foo"], &[], "asm-emit3", || {
+        rustc().input("foo.rs").arg("--emit=asm=asm-emit3/foo").run();
+    });
 
-    rustc().input("foo.rs").emit("llvm-ir").output("foo").run();
-    fs_wrapper::remove_file("foo");
-    rustc().input("foo.rs").emit("llvm-ir=foo").run();
-    fs_wrapper::remove_file("foo");
-    rustc().input("foo.rs").arg("--emit=llvm-ir=foo").run();
-    fs_wrapper::remove_file("foo");
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(&["foo"], &[], "llvm-ir-emit", || {
+        rustc().input("foo.rs").emit("llvm-ir").output("llvm-ir-emit/foo").run();
+    });
+    assert_expected_output_files(&["foo"], &[], "llvm-ir-emit2", || {
+        rustc().input("foo.rs").emit("llvm-ir=llvm-ir-emit2/foo").run();
+    });
+    assert_expected_output_files(&["foo"], &[], "llvm-ir-emit3", || {
+        rustc().input("foo.rs").arg("--emit=llvm-ir=llvm-ir-emit3/foo").run();
+    });
 
-    rustc().input("foo.rs").emit("obj").output("foo").run();
-    fs_wrapper::remove_file("foo");
-    rustc().input("foo.rs").emit("obj=foo").run();
-    fs_wrapper::remove_file("foo");
-    rustc().input("foo.rs").arg("--emit=obj=foo").run();
-    fs_wrapper::remove_file("foo");
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(&["foo"], &[], "llvm-bc-emit", || {
+        rustc().input("foo.rs").emit("llvm-bc").output("llvm-bc-emit/foo").run();
+    });
+    assert_expected_output_files(&["foo"], &[], "llvm-bc-emit2", || {
+        rustc().input("foo.rs").emit("llvm-bc=llvm-bc-emit2/foo").run();
+    });
+    assert_expected_output_files(&["foo"], &[], "llvm-bc-emit3", || {
+        rustc().input("foo.rs").arg("--emit=llvm-bc=llvm-bc-emit3/foo").run();
+    });
 
-    let bin_foo = bin_name("foo");
-    rustc().input("foo.rs").emit("link").output(&bin_foo).run();
-    fs_wrapper::remove_file(&bin_foo);
-    rustc().input("foo.rs").emit(&format!("link={bin_foo}")).run();
-    fs_wrapper::remove_file(&bin_foo);
-    rustc().input("foo.rs").arg(&format!("--emit=link={bin_foo}")).run();
-    fs_wrapper::remove_file(&bin_foo);
-    std::fs::remove_file("foo.pdb").unwrap_or_default();
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(&["foo"], &[], "obj-emit", || {
+        rustc().input("foo.rs").emit("obj").output("obj-emit/foo").run();
+    });
+    assert_expected_output_files(&["foo"], &[], "obj-emit2", || {
+        rustc().input("foo.rs").emit("obj=obj-emit2/foo").run();
+    });
+    assert_expected_output_files(&["foo"], &[], "obj-emit3", || {
+        rustc().input("foo.rs").arg("--emit=obj=obj-emit3/foo").run();
+    });
 
-    rustc().input("foo.rs").crate_type("rlib").output("foo").run();
-    fs_wrapper::remove_file("foo");
-    rustc().input("foo.rs").crate_type("rlib").emit("link=foo").run();
-    fs_wrapper::remove_file("foo");
-    rustc().input("foo.rs").crate_type("rlib").arg("--emit=link=foo").run();
-    fs_wrapper::remove_file("foo");
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(&[bin_foo], &[], "link-emit", || {
+        rustc().input("foo.rs").emit("link").output("link-emit/".to_owned() + bin_foo).run();
+    });
+    assert_expected_output_files(&[bin_foo], &[], "link-emit2", || {
+        rustc().input("foo.rs").emit(&format!("link=link-emit2/{bin_foo}")).run();
+    });
+    assert_expected_output_files(&[bin_foo], &[], "link-emit3", || {
+        rustc().input("foo.rs").arg(&format!("--emit=link=link-emit3/{bin_foo}")).run();
+    });
 
-    rustc().input("foo.rs").crate_type("dylib").output(&bin_foo).run();
-    fs_wrapper::remove_file(&bin_foo);
-    rustc().input("foo.rs").crate_type("dylib").emit(&format!("link={bin_foo}")).run();
-    fs_wrapper::remove_file(&bin_foo);
-    rustc().input("foo.rs").crate_type("dylib").arg(&format!("--emit=link={bin_foo}")).run();
-    fs_wrapper::remove_file(&bin_foo);
-    remove_artifacts();
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(&["foo"], &[], "rlib", || {
+        rustc().crate_type("rlib").input("foo.rs").output("rlib/foo").run();
+    });
+    assert_expected_output_files(&["foo"], &[], "rlib2", || {
+        rustc().crate_type("rlib").input("foo.rs").emit("link=rlib2/foo").run();
+    });
+    assert_expected_output_files(&["foo"], &[], "rlib3", || {
+        rustc().crate_type("rlib").input("foo.rs").arg("--emit=link=rlib3/foo").run();
+    });
 
-    rustc().input("foo.rs").crate_type("staticlib").emit("link").output("foo").run();
-    fs_wrapper::remove_file("foo");
-    rustc().input("foo.rs").crate_type("staticlib").emit("link=foo").run();
-    fs_wrapper::remove_file("foo");
-    rustc().input("foo.rs").crate_type("staticlib").arg("--emit=link=foo").run();
-    fs_wrapper::remove_file("foo");
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(
+        &[bin_foo],
+        &[
+            "libbar.ddl.exp",
+            "libbar.dll.lib",
+            "libbar.pdb",
+            "libbar.dll.a",
+            "libbar.exe.a",
+            "bar.ddl.exp",
+            "bar.dll.lib",
+            "bar.pdb",
+            "bar.dll.a",
+            "bar.exe.a",
+        ],
+        "dylib",
+        || {
+            rustc().crate_type("dylib").input("foo.rs").output("dylib/".to_owned() + bin_foo).run();
+        },
+    );
+    assert_expected_output_files(
+        &[bin_foo],
+        &[
+            "libbar.ddl.exp",
+            "libbar.dll.lib",
+            "libbar.pdb",
+            "libbar.dll.a",
+            "libbar.exe.a",
+            "bar.ddl.exp",
+            "bar.dll.lib",
+            "bar.pdb",
+            "bar.dll.a",
+            "bar.exe.a",
+        ],
+        "dylib2",
+        || {
+            rustc()
+                .crate_type("dylib")
+                .input("foo.rs")
+                .emit(&format!("link=dylib2/{bin_foo}"))
+                .run();
+        },
+    );
+    assert_expected_output_files(
+        &[bin_foo],
+        &[
+            "libbar.ddl.exp",
+            "libbar.dll.lib",
+            "libbar.pdb",
+            "libbar.dll.a",
+            "libbar.exe.a",
+            "bar.ddl.exp",
+            "bar.dll.lib",
+            "bar.pdb",
+            "bar.dll.a",
+            "bar.exe.a",
+        ],
+        "dylib3",
+        || {
+            rustc()
+                .crate_type("dylib")
+                .input("foo.rs")
+                .arg(&format!("--emit=link=dylib3/{bin_foo}"))
+                .run();
+        },
+    );
 
-    rustc().input("foo.rs").crate_type("bin").output(&bin_foo).run();
-    fs_wrapper::remove_file(&bin_foo);
-    rustc().input("foo.rs").crate_type("bin").emit(&format!("link={bin_foo}")).run();
-    fs_wrapper::remove_file(&bin_foo);
-    rustc().input("foo.rs").crate_type("bin").arg(&format!("--emit=link={bin_foo}")).run();
-    fs_wrapper::remove_file(&bin_foo);
-    std::fs::remove_file("foo.pdb").unwrap_or_default();
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(&["foo"], &[], "staticlib", || {
+        rustc().crate_type("staticlib").input("foo.rs").output("staticlib/foo").run();
+    });
+    assert_expected_output_files(&["foo"], &[], "staticlib2", || {
+        rustc().crate_type("staticlib").input("foo.rs").emit("link=staticlib2/foo").run();
+    });
+    assert_expected_output_files(&["foo"], &[], "staticlib3", || {
+        rustc().crate_type("staticlib").input("foo.rs").arg("--emit=link=staticlib3/foo").run();
+    });
 
-    rustc().input("foo.rs").emit("llvm-ir=ir").emit("link").crate_type("rlib").run();
-    fs_wrapper::remove_file("ir");
-    fs_wrapper::remove_file(rust_lib_name("bar"));
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(&["foo"], &["foo.pdb"], "bincrate", || {
+        rustc().crate_type("bin").input("foo.rs").output("bincrate/".to_owned() + bin_foo).run();
+    });
+    assert_expected_output_files(&["foo"], &["foo.pdb"], "bincrate2", || {
+        rustc().crate_type("bin").input("foo.rs").emit(&format!("link=bincrate2/{bin_foo}")).run();
+    });
+    assert_expected_output_files(&["foo"], &["foo.pdb"], "bincrate3", || {
+        rustc()
+            .crate_type("bin")
+            .input("foo.rs")
+            .arg(&format!("--emit=link=bincrate3/{bin_foo}"))
+            .run();
+    });
 
-    rustc()
-        .input("foo.rs")
-        .emit("asm=asm")
-        .emit("llvm-ir=ir")
-        .emit("llvm-bc=bc")
-        .emit("obj=obj")
-        .emit("link=link")
-        .crate_type("staticlib")
-        .run();
-    fs_wrapper::remove_file("asm");
-    fs_wrapper::remove_file("ir");
-    fs_wrapper::remove_file("bc");
-    fs_wrapper::remove_file("obj");
-    fs_wrapper::remove_file("link");
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(&["ir", rust_bar], &[], "rlib-ir", || {
+        rustc()
+            .input("foo.rs")
+            .emit("llvm-ir=rlib-ir/ir")
+            .emit("link")
+            .crate_type("rlib")
+            .out_dir("rlib-ir")
+            .run();
+    });
 
-    rustc()
-        .input("foo.rs")
-        .arg("--emit=asm=asm")
-        .arg("--emit")
-        .arg("llvm-ir=ir")
-        .arg("--emit=llvm-bc=bc")
-        .arg("--emit")
-        .arg("obj=obj")
-        .arg("--emit=link=link")
-        .crate_type("staticlib")
-        .run();
-    fs_wrapper::remove_file("asm");
-    fs_wrapper::remove_file("ir");
-    fs_wrapper::remove_file("bc");
-    fs_wrapper::remove_file("obj");
-    fs_wrapper::remove_file("link");
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    assert_expected_output_files(&["ir", "asm", "bc", "obj", "link"], &[], "staticlib-all", || {
+        rustc()
+            .input("foo.rs")
+            .emit("asm=staticlib-all/asm")
+            .emit("llvm-ir=staticlib-all/ir")
+            .emit("llvm-bc=staticlib-all/bc")
+            .emit("obj=staticlib-all/obj")
+            .emit("link=staticlib-all/link")
+            .crate_type("staticlib")
+            .run();
+    });
+    assert_expected_output_files(
+        &["ir", "asm", "bc", "obj", "link"],
+        &[],
+        "staticlib-all2",
+        || {
+            rustc()
+                .input("foo.rs")
+                .arg("--emit=asm=staticlib-all2/asm")
+                .arg("--emit")
+                .arg("llvm-ir=staticlib-all2/ir")
+                .arg("--emit=llvm-bc=staticlib-all2/bc")
+                .arg("--emit")
+                .arg("obj=staticlib-all2/obj")
+                .arg("--emit=link=staticlib-all2/link")
+                .crate_type("staticlib")
+                .run();
+        },
+    );
 
-    rustc().input("foo.rs").emit("asm,llvm-ir,llvm-bc,obj,link").crate_type("staticlib").run();
-    fs_wrapper::remove_file("bar.ll");
-    fs_wrapper::remove_file("bar.s");
-    fs_wrapper::remove_file("bar.o");
-    fs_wrapper::remove_file(static_lib_name("bar"));
-    fs_wrapper::rename("bar.bc", "foo.bc");
-    // Don't check that no files except foo.rs remain - we left `foo.bc` for later
-    // comparison.
+    assert_expected_output_files(
+        &["bar.ll", "bar.s", "bar.o", static_bar],
+        &["bar.bc"], // keep this one for the next test
+        "staticlib-all3",
+        || {
+            rustc()
+                .input("foo.rs")
+                .emit("asm,llvm-ir,llvm-bc,obj,link")
+                .crate_type("staticlib")
+                .out_dir("staticlib-all3")
+                .run();
+        },
+    );
 
-    rustc().input("foo.rs").emit("llvm-bc,link").crate_type("rlib").run();
-    assert_eq!(fs_wrapper::read("foo.bc"), fs_wrapper::read("bar.bc"));
-    fs_wrapper::remove_file("bar.bc");
-    fs_wrapper::remove_file("foo.bc");
-    fs_wrapper::remove_file(rust_lib_name("bar"));
-    assert_eq!(fs_wrapper::read_dir(cwd()).count(), 1);
+    // the .bc file from the previous test should be equivalent to this one, despite the difference
+    // in crate type
+    assert_expected_output_files(&["bar.bc", rust_bar, "foo.bc"], &[], "rlib-emits", || {
+        fs_wrapper::rename("staticlib-all3/bar.bc", "rlib-emits/foo.bc");
+        rustc().input("foo.rs").emit("llvm-bc,link").crate_type("rlib").out_dir("rlib-emits").run();
+        assert_eq!(fs_wrapper::read("rlib-emits/foo.bc"), fs_wrapper::read("rlib-emits/bar.bc"));
+    });
 }
