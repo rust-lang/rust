@@ -81,6 +81,9 @@ pub const unwinder_private_data_size: usize = 35;
 #[cfg(target_arch = "loongarch64")]
 pub const unwinder_private_data_size: usize = 2;
 
+#[cfg(target_arch = "wasm32")]
+pub const unwinder_private_data_size: usize = 2;
+
 #[repr(C)]
 pub struct _Unwind_Exception {
     pub exception_class: _Unwind_Exception_Class,
