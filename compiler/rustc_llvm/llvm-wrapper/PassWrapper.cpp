@@ -407,7 +407,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     const char *ABIStr, LLVMRustCodeModel RustCM, LLVMRustRelocModel RustReloc,
     LLVMRustCodeGenOptLevel RustOptLevel, bool UseSoftFloat,
     bool FunctionSections, bool DataSections, bool UniqueSectionNames,
-    bool TrapUnreachable, bool Singlethread, bool AsmComments,
+    bool TrapUnreachable, bool Singlethread, bool VerboseAsm,
     bool EmitStackSizeSection, bool RelaxELFRelocations, bool UseInitArray,
     const char *SplitDwarfFile, const char *OutputObjFile,
     const char *DebugInfoCompression, bool UseEmulatedTls,
@@ -435,8 +435,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Options.DataSections = DataSections;
   Options.FunctionSections = FunctionSections;
   Options.UniqueSectionNames = UniqueSectionNames;
-  Options.MCOptions.AsmVerbose = AsmComments;
-  Options.MCOptions.PreserveAsmComments = AsmComments;
+  Options.MCOptions.AsmVerbose = VerboseAsm;
+  // Always preserve comments that were written by the user
+  Options.MCOptions.PreserveAsmComments = true;
   Options.MCOptions.ABIName = ABIStr;
   if (SplitDwarfFile) {
     Options.MCOptions.SplitDwarfFile = SplitDwarfFile;
