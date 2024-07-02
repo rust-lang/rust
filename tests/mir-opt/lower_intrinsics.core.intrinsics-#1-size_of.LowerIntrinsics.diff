@@ -1,0 +1,23 @@
+- // MIR for `std::intrinsics::size_of` before LowerIntrinsics
++ // MIR for `std::intrinsics::size_of` after LowerIntrinsics
+
+  fn std::intrinsics::size_of() -> usize {
+      let mut _0: usize;                   // return place in scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+
+      bb0: {
+-         _0 = std::intrinsics::size_of::<T>() -> bb1; // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+-                                          // mir::Constant
+-                                          // + span: $SRC_DIR/core/src/intrinsics.rs:LL:COL
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>}, val: Value(Scalar(<ZST>)) }
++         _0 = SizeOf(T);                  // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
++         goto -> bb1;                     // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+      }
+
+      bb1: {
+          return;                          // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+      }
+
+      bb2 (cleanup): {
+          resume;                          // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+      }
+  }

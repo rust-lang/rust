@@ -1,0 +1,23 @@
+- // MIR for `discriminant_value` before LowerIntrinsics
++ // MIR for `discriminant_value` after LowerIntrinsics
+
+  fn discriminant_value(_1: &T) -> <T as DiscriminantKind>::Discriminant {
+      let mut _0: <T as std::marker::DiscriminantKind>::Discriminant; // return place in scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+
+      bb0: {
+-         _0 = discriminant_value::<T>(move _1) -> bb1; // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+-                                          // mir::Constant
+-                                          // + span: $SRC_DIR/core/src/intrinsics.rs:LL:COL
+-                                          // + literal: Const { ty: for<'r> extern "rust-intrinsic" fn(&'r T) -> <T as std::marker::DiscriminantKind>::Discriminant {std::intrinsics::discriminant_value::<T>}, val: Value(Scalar(<ZST>)) }
++         _0 = discriminant((*_1));        // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
++         goto -> bb1;                     // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+      }
+
+      bb1: {
+          return;                          // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+      }
+
+      bb2 (cleanup): {
+          resume;                          // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+      }
+  }
