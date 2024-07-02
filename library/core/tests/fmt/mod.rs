@@ -43,3 +43,27 @@ fn pad_integral_resets() {
 
     assert_eq!(format!("{Bar:<03}"), "1  0051  ");
 }
+
+#[test]
+fn formatting_options_flags() {
+    use core::fmt::*;
+    for sign in [None, Some(Sign::Plus), Some(Sign::Minus)] {
+        for alternate in [true, false] {
+            for sign_aware_zero_pad in [true, false] {
+                for debug_as_hex in [None, Some(DebugAsHex::Lower), Some(DebugAsHex::Upper)] {
+                    let mut formatting_options = FormattingOptions::new();
+                    formatting_options
+                        .sign(sign)
+                        .sign_aware_zero_pad(sign_aware_zero_pad)
+                        .alternate(alternate)
+                        .debug_as_hex(debug_as_hex);
+
+                    assert_eq!(formatting_options.get_sign(), sign);
+                    assert_eq!(formatting_options.get_alternate(), alternate);
+                    assert_eq!(formatting_options.get_sign_aware_zero_pad(), sign_aware_zero_pad);
+                    assert_eq!(formatting_options.get_debug_as_hex(), debug_as_hex);
+                }
+            }
+        }
+    }
+}

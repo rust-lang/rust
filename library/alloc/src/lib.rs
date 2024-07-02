@@ -126,6 +126,7 @@
 #![feature(extend_one)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
+#![feature(formatting_options)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hint_assert_unchecked)]
 #![feature(inplace_iteration)]

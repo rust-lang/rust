@@ -87,7 +87,7 @@ where
         true => flt2dec::Sign::MinusPlus,
     };
 
-    if let Some(precision) = fmt.precision {
+    if let Some(precision) = fmt.options.precision {
         float_to_decimal_common_exact(fmt, num, sign, precision)
     } else {
         let min_precision = 0;
@@ -163,7 +163,7 @@ where
         true => flt2dec::Sign::MinusPlus,
     };
 
-    if let Some(precision) = fmt.precision {
+    if let Some(precision) = fmt.options.precision {
         // 1 integral digit + `precision` fractional digits = `precision + 1` total digits
         float_to_exponential_common_exact(fmt, num, sign, precision + 1, upper)
     } else {
@@ -181,7 +181,7 @@ where
         true => flt2dec::Sign::MinusPlus,
     };
 
-    if let Some(precision) = fmt.precision {
+    if let Some(precision) = fmt.options.precision {
         // this behavior of {:.PREC?} predates exponential formatting for {:?}
         float_to_decimal_common_exact(fmt, num, sign, precision)
     } else {
