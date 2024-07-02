@@ -343,11 +343,13 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             .map(|i| {
                 let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
                 let value = bx.extract_element(vector, index).to_rvalue();
-                if name == sym::simd_ctlz {
-                    bx.count_leading_zeroes(value.get_type().get_size() as u64 * 8, value)
+                let value_type = value.get_type();
+                let element = if name == sym::simd_ctlz {
+                    bx.count_leading_zeroes(value_type.get_size() as u64 * 8, value)
                 } else {
-                    bx.count_trailing_zeroes(value.get_type().get_size() as u64 * 8, value)
-                }
+                    bx.count_trailing_zeroes(value_type.get_size() as u64 * 8, value)
+                };
+                bx.context.new_cast(None, element, value_type)
             })
             .collect();
         return Ok(bx.context.new_rvalue_from_vector(None, vector.get_type(), &elements));
