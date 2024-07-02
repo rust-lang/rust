@@ -30,6 +30,8 @@ where
         use core::arch::arm::{uint8x8_t, vtbl1_u8};
         #[cfg(target_arch = "wasm32")]
         use core::arch::wasm32 as wasm;
+        #[cfg(target_arch = "wasm64")]
+        use core::arch::wasm64 as wasm;
         #[cfg(target_arch = "x86")]
         use core::arch::x86;
         #[cfg(target_arch = "x86_64")]
