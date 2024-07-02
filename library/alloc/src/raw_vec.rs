@@ -300,17 +300,9 @@ impl<T, A: Allocator> RawVec<T, A> {
         if T::IS_ZST || self.cap.0 == 0 {
             None
         } else {
-            // We could use Layout::array here which ensures the absence of isize and usize overflows
-            // and could hypothetically handle differences between stride and size, but this memory
-            // has already been allocated so we know it can't overflow and currently Rust does not
-            // support such types. So we can do better by skipping some checks and avoid an unwrap.
-            const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
-            unsafe {
-                let align = mem::align_of::<T>();
-                let size = mem::size_of::<T>().unchecked_mul(self.cap.0);
-                let layout = Layout::from_size_align_unchecked(size, align);
-                Some((self.ptr.cast().into(), layout))
-            }
+            // SAFETY: This memory has already been allocated so we know it can't overflow
+            let layout = unsafe { Layout::array_unchecked::<T>(self.cap.0) };
+            Some((self.ptr.cast().into(), layout))
         }
     }
 
