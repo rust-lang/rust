@@ -103,7 +103,7 @@ fn extract_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<
             let args = cx.typeck_results().node_args(expr.hir_id);
 
             // If we could not resolve the method, don't apply the lint
-            let Ok(Some(resolved_method)) = Instance::resolve(cx.tcx, cx.param_env, fn_def_id, args) else {
+            let Ok(Some(resolved_method)) = Instance::try_resolve(cx.tcx, cx.param_env, fn_def_id, args) else {
                 return None;
             };
             if is_trait_method(cx, expr, sym::Clone) && path.ident.name == sym::clone {
@@ -119,7 +119,7 @@ fn extract_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<
 
             // If we could not resolve the method, don't apply the lint
             let Ok(Some(resolved_method)) = (match kind {
-                ty::FnDef(_, args) => Instance::resolve(cx.tcx, cx.param_env, fn_def_id, args),
+                ty::FnDef(_, args) => Instance::try_resolve(cx.tcx, cx.param_env, fn_def_id, args),
                 _ => Ok(None),
             }) else {
                 return None;
