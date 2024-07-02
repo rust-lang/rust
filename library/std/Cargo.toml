@@ -31,7 +31,7 @@ miniz_oxide = { version = "0.7.0", optional = true, default-features = false }
 addr2line = { version = "0.22.0", optional = true, default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
-libc = { version = "0.2.153", default-features = false, features = ['rustc-dep-of-std'], public = true }
+libc = { version = "0.2.155", default-features = false, features = ['rustc-dep-of-std'], public = true }
 
 [target.'cfg(all(not(target_os = "aix"), not(all(windows, target_env = "msvc", not(target_vendor = "uwp")))))'.dependencies]
 object = { version = "0.36.0", default-features = false, optional = true, features = ['read_core', 'elf', 'macho', 'pe', 'unaligned', 'archive'] }

@@ -232,7 +232,10 @@ mod imp {
     /// Modern kernels on modern hardware can have dynamic signal stack sizes.
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn sigstack_size() -> usize {
-        // FIXME: reuse const from libc when available?
+        #[cfg(target_os = "linux")]
+        const AT_MINSIGSTKSZ: crate::ffi::c_ulong = libc::AT_MINSIGSTKSZ;
+        // FIXME: reuse const from libc when available ?
+        #[cfg(target_os = "android")]
         const AT_MINSIGSTKSZ: crate::ffi::c_ulong = 51;
         let dynamic_sigstksz = unsafe { libc::getauxval(AT_MINSIGSTKSZ) };
         // If getauxval couldn't find the entry, it returns 0,
