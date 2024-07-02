@@ -6,7 +6,7 @@ use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt, Upcast, VtblEntry};
 use rustc_middle::ty::{GenericArgs, TypeVisitableExt};
-use rustc_span::{sym, Span};
+use rustc_span::{sym, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use std::fmt::Debug;
@@ -285,13 +285,14 @@ fn vtable_entries<'tcx>(
                         return VtblEntry::Vacant;
                     }
 
-                    let instance = ty::Instance::resolve_for_vtable(
+                    let instance = ty::Instance::expect_resolve_for_vtable(
                         tcx,
                         ty::ParamEnv::reveal_all(),
                         def_id,
                         args,
-                    )
-                    .expect("resolution failed during building vtable representation");
+                        DUMMY_SP,
+                    );
+
                     VtblEntry::Method(instance)
                 });
 

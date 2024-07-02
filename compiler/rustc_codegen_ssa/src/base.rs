@@ -37,7 +37,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
-use rustc_span::Symbol;
+use rustc_span::{Symbol, DUMMY_SP};
 use rustc_target::abi::FIRST_VARIANT;
 
 use std::cmp;
@@ -467,6 +467,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 ty::ParamEnv::reveal_all(),
                 start_def_id,
                 cx.tcx().mk_args(&[main_ret_ty.into()]),
+                DUMMY_SP,
             );
             let start_fn = cx.get_fn_addr(start_instance);
 

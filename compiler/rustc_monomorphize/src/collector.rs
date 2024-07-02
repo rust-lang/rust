@@ -222,12 +222,12 @@ use rustc_middle::mir::{self, Location, MentionedItem};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::print::{shrunk_instance_name, with_no_trimmed_paths};
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{
     self, AssocKind, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
     TypeVisitableExt, VtblEntry,
 };
-use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::EntryFnType;
 use rustc_session::Limit;
@@ -238,9 +238,7 @@ use rustc_target::abi::Size;
 use std::path::PathBuf;
 use tracing::{debug, instrument, trace};
 
-use crate::errors::{
-    self, EncounteredErrorWhileInstantiating, NoOptimizedMir, RecursionLimit, TypeLengthLimit,
-};
+use crate::errors::{self, EncounteredErrorWhileInstantiating, NoOptimizedMir, RecursionLimit};
 use move_check::MoveCheckState;
 
 #[derive(PartialEq)]
@@ -443,7 +441,6 @@ fn collect_items_rec<'tcx>(
                 recursion_depths,
                 recursion_limit,
             ));
-            check_type_length_limit(tcx, instance);
 
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
                 collect_items_of_instance(
@@ -554,34 +551,6 @@ fn collect_items_rec<'tcx>(
     }
 }
 
-/// Format instance name that is already known to be too long for rustc.
-/// Show only the first 2 types if it is longer than 32 characters to avoid blasting
-/// the user's terminal with thousands of lines of type-name.
-///
-/// If the type name is longer than before+after, it will be written to a file.
-fn shrunk_instance_name<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    instance: Instance<'tcx>,
-) -> (String, Option<PathBuf>) {
-    let s = instance.to_string();
-
-    // Only use the shrunk version if it's really shorter.
-    // This also avoids the case where before and after slices overlap.
-    if s.chars().nth(33).is_some() {
-        let shrunk = format!("{}", ty::ShortInstance(instance, 4));
-        if shrunk == s {
-            return (s, None);
-        }
-
-        let path = tcx.output_filenames(()).temp_path_ext("long-type.txt", None);
-        let written_to_path = std::fs::write(&path, s).ok().map(|_| path);
-
-        (shrunk, written_to_path)
-    } else {
-        (s, None)
-    }
-}
-
 fn check_recursion_limit<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
@@ -628,38 +597,6 @@ fn check_recursion_limit<'tcx>(
     recursion_depths.insert(def_id, recursion_depth + 1);
 
     (def_id, recursion_depth)
-}
-
-fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
-    let type_length = instance
-        .args
-        .iter()
-        .flat_map(|arg| arg.walk())
-        .filter(|arg| match arg.unpack() {
-            GenericArgKind::Type(_) | GenericArgKind::Const(_) => true,
-            GenericArgKind::Lifetime(_) => false,
-        })
-        .count();
-    debug!(" => type length={}", type_length);
-
-    // Rust code can easily create exponentially-long types using only a
-    // polynomial recursion depth. Even with the default recursion
-    // depth, you can easily get cases that take >2^60 steps to run,
-    // which means that rustc basically hangs.
-    //
-    // Bail out in these cases to avoid that bad user experience.
-    if !tcx.type_length_limit().value_within_limit(type_length) {
-        let (shrunk, written_to_path) = shrunk_instance_name(tcx, instance);
-        let span = tcx.def_span(instance.def_id());
-        let mut path = PathBuf::new();
-        let was_written = if let Some(path2) = written_to_path {
-            path = path2;
-            Some(())
-        } else {
-            None
-        };
-        tcx.dcx().emit_fatal(TypeLengthLimit { span, shrunk, was_written, path, type_length });
-    }
 }
 
 struct MirUsedCollector<'a, 'tcx> {
@@ -916,7 +853,7 @@ fn visit_fn_use<'tcx>(
 ) {
     if let ty::FnDef(def_id, args) = *ty.kind() {
         let instance = if is_direct_call {
-            ty::Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
+            ty::Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args, source)
         } else {
             match ty::Instance::resolve_for_fn_ptr(tcx, ty::ParamEnv::reveal_all(), def_id, args) {
                 Some(instance) => instance,
@@ -1319,7 +1256,7 @@ fn visit_mentioned_item<'tcx>(
         MentionedItem::Fn(ty) => {
             if let ty::FnDef(def_id, args) = *ty.kind() {
                 let instance =
-                    Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args);
+                    Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args, span);
                 // `visit_instance_use` was written for "used" item collection but works just as well
                 // for "mentioned" item collection.
                 // We can set `is_direct_call`; that just means we'll skip a bunch of shims that anyway
@@ -1544,6 +1481,7 @@ impl<'v> RootCollector<'_, 'v> {
             ty::ParamEnv::reveal_all(),
             start_def_id,
             self.tcx.mk_args(&[main_ret_ty.into()]),
+            DUMMY_SP,
         );
 
         self.output.push(create_fn_mono_item(self.tcx, start_instance, DUMMY_SP));
@@ -1612,9 +1550,10 @@ fn create_mono_items_for_default_impls<'tcx>(
         }
 
         // As mentioned above, the method is legal to eagerly instantiate if it
-        // only has lifetime generic parameters. This is validated by
+        // only has lifetime generic parameters. This is validated by calling
+        // `own_requires_monomorphization` on both the impl and method.
         let args = trait_ref.args.extend_to(tcx, method.def_id, only_region_params);
-        let instance = ty::Instance::expect_resolve(tcx, param_env, method.def_id, args);
+        let instance = ty::Instance::expect_resolve(tcx, param_env, method.def_id, args, DUMMY_SP);
 
         let mono_item = create_fn_mono_item(tcx, instance, DUMMY_SP);
         if mono_item.node.is_instantiable(tcx) && should_codegen_locally(tcx, instance) {

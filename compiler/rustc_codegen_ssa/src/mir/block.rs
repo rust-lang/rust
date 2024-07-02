@@ -842,6 +842,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         ty::ParamEnv::reveal_all(),
                         def_id,
                         args,
+                        fn_span,
                     )
                     .polymorphize(bx.tcx()),
                 ),

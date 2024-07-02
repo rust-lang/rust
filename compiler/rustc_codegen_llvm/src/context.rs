@@ -28,7 +28,7 @@ use rustc_session::config::{BranchProtection, CFGuard, CFProtection};
 use rustc_session::config::{CrateType, DebugInfo, PAuthKey, PacRet};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{call::FnAbi, HasDataLayout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 use smallvec::SmallVec;
@@ -580,6 +580,7 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 ty::ParamEnv::reveal_all(),
                 def_id,
                 ty::List::empty(),
+                DUMMY_SP,
             )),
             _ => {
                 let name = name.unwrap_or("rust_eh_personality");

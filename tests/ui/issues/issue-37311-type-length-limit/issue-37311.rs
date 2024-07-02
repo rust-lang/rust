@@ -1,6 +1,5 @@
 //@ build-fail
 //@ normalize-stderr-test: ".nll/" -> "/"
-//@ ignore-compare-mode-next-solver (hangs)
 
 trait Mirror {
     type Image;
@@ -15,7 +14,8 @@ trait Foo {
 impl<T> Foo for T {
     #[allow(unconditional_recursion)]
     fn recurse(&self) {
-        (self, self).recurse(); //~ ERROR reached the recursion limit
+        (self, self).recurse();
+        //~^ ERROR reached the type-length limit
     }
 }
 
