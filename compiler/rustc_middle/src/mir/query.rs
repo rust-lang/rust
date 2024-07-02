@@ -274,6 +274,9 @@ pub enum ConstraintCategory<'tcx> {
 
     /// A constraint that doesn't correspond to anything the user sees.
     Internal,
+
+    /// An internal constraint derived from an illegal universe relation.
+    IllegalUniverse,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
