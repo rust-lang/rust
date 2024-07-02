@@ -1,7 +1,8 @@
 use crate::ImplTraitPosition;
 
 use super::errors::{
-    AsyncBoundNotOnTrait, AsyncBoundOnlyForFnTraits, GenericTypeWithParentheses, UseAngleBrackets,
+    AsyncBoundNotOnTrait, AsyncBoundOnlyForFnTraits, BadReturnTypeNotation,
+    GenericTypeWithParentheses, UseAngleBrackets,
 };
 use super::ResolverAstLoweringExt;
 use super::{GenericArgsCtor, LifetimeRes, ParenthesizedGenericArgs};
@@ -271,6 +272,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         )
                     }
                 },
+                GenericArgs::ParenthesizedElided(span) => {
+                    self.dcx().emit_err(BadReturnTypeNotation::Position { span: *span });
+                    (
+                        GenericArgsCtor {
+                            args: Default::default(),
+                            constraints: &[],
+                            parenthesized: hir::GenericArgsParentheses::ReturnTypeNotation,
+                            span: *span,
+                        },
+                        false,
+                    )
+                }
             }
         } else {
             (

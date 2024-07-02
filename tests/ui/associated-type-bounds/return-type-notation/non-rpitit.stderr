@@ -13,8 +13,8 @@ error: return type notation used on function that is not `async` and does not re
 LL |     fn method() {}
    |     ----------- this function must be `async` or return `impl Trait`
 ...
-LL | fn test<T: Trait<method(): Send>>() {}
-   |                  ^^^^^^^^^^^^^^
+LL | fn test<T: Trait<method(..): Send>>() {}
+   |                  ^^^^^^^^^^^^^^^^
    |
    = note: function returns `()`, which is not compatible with associated type return bounds
 

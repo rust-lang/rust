@@ -609,6 +609,7 @@ where
             walk_list!(visitor, visit_ty, inputs);
             try_visit!(visitor.visit_fn_ret_ty(output));
         }
+        GenericArgs::ParenthesizedElided(_span) => {}
     }
     V::Result::output()
 }

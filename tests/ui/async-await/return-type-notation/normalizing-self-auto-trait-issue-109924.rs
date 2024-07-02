@@ -16,7 +16,7 @@ impl Foo for Bar {
     async fn bar(&self) {}
 }
 
-fn build<T>(_: T) where T: Foo<bar(): Send> {}
+fn build<T>(_: T) where T: Foo<bar(..): Send> {}
 
 fn main() {
     build(Bar);

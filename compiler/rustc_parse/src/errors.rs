@@ -2568,14 +2568,6 @@ pub(crate) struct BadReturnTypeNotationOutput {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_bad_return_type_notation_dotdot)]
-pub(crate) struct BadReturnTypeNotationDotDot {
-    #[primary_span]
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_bad_assoc_type_bounds)]
 pub(crate) struct BadAssocTypeBounds {
     #[primary_span]

@@ -985,20 +985,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.lower_angle_bracketed_parameter_data(data, ParamMode::Explicit, itctx).0
                 }
                 GenericArgs::Parenthesized(data) => {
-                    if data.inputs.is_empty() && matches!(data.output, FnRetTy::Default(..)) {
-                        let parenthesized = if self.tcx.features().return_type_notation {
-                            hir::GenericArgsParentheses::ReturnTypeNotation
-                        } else {
-                            self.emit_bad_parenthesized_trait_in_assoc_ty(data);
-                            hir::GenericArgsParentheses::No
-                        };
-                        GenericArgsCtor {
-                            args: Default::default(),
-                            constraints: &[],
-                            parenthesized,
-                            span: data.inputs_span,
-                        }
-                    } else if let Some(first_char) = constraint.ident.as_str().chars().next()
+                    if let Some(first_char) = constraint.ident.as_str().chars().next()
                         && first_char.is_ascii_lowercase()
                     {
                         let mut err = if !data.inputs.is_empty() {
@@ -1010,7 +997,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 span: data.inputs_span.shrink_to_hi().to(ty.span),
                             })
                         } else {
-                            unreachable!("inputs are empty and return type is not provided")
+                            self.dcx().create_err(errors::BadReturnTypeNotation::NeedsDots {
+                                span: data.inputs_span,
+                            })
                         };
                         if !self.tcx.features().return_type_notation
                             && self.tcx.sess.is_nightly_build()
@@ -1040,6 +1029,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         .0
                     }
                 }
+                GenericArgs::ParenthesizedElided(span) => GenericArgsCtor {
+                    args: Default::default(),
+                    constraints: &[],
+                    parenthesized: hir::GenericArgsParentheses::ReturnTypeNotation,
+                    span: *span,
+                },
             };
             gen_args_ctor.into_generic_args(self)
         } else {

@@ -13,17 +13,17 @@ error: return type notation is not allowed for functions that have type paramete
 LL |     async fn bar<T>() {}
    |                  - type parameter declared here
 ...
-LL |     T: Foo<bar(): Send, baz(): Send>,
-   |            ^^^^^^^^^^^
+LL |     T: Foo<bar(..): Send, baz(..): Send>,
+   |            ^^^^^^^^^^^^^
 
 error: return type notation is not allowed for functions that have const parameters
-  --> $DIR/ty-or-ct-params.rs:14:25
+  --> $DIR/ty-or-ct-params.rs:14:27
    |
 LL |     async fn baz<const N: usize>() {}
    |                  -------------- const parameter declared here
 ...
-LL |     T: Foo<bar(): Send, baz(): Send>,
-   |                         ^^^^^^^^^^^
+LL |     T: Foo<bar(..): Send, baz(..): Send>,
+   |                           ^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

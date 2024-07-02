@@ -484,21 +484,25 @@ fn rewrite_generic_args(
     span: Span,
 ) -> Option<String> {
     match gen_args {
-        ast::GenericArgs::AngleBracketed(ref data) if !data.args.is_empty() => {
-            let args = data
-                .args
-                .iter()
-                .map(|x| match x {
-                    ast::AngleBracketedArg::Arg(generic_arg) => {
-                        SegmentParam::from_generic_arg(generic_arg)
-                    }
-                    ast::AngleBracketedArg::Constraint(constraint) => {
-                        SegmentParam::Binding(constraint)
-                    }
-                })
-                .collect::<Vec<_>>();
+        ast::GenericArgs::AngleBracketed(ref data) => {
+            if data.args.is_empty() {
+                Some("".to_owned())
+            } else {
+                let args = data
+                    .args
+                    .iter()
+                    .map(|x| match x {
+                        ast::AngleBracketedArg::Arg(generic_arg) => {
+                            SegmentParam::from_generic_arg(generic_arg)
+                        }
+                        ast::AngleBracketedArg::Constraint(constraint) => {
+                            SegmentParam::Binding(constraint)
+                        }
+                    })
+                    .collect::<Vec<_>>();
 
-            overflow::rewrite_with_angle_brackets(context, "", args.iter(), shape, span)
+                overflow::rewrite_with_angle_brackets(context, "", args.iter(), shape, span)
+            }
         }
         ast::GenericArgs::Parenthesized(ref data) => format_function_type(
             data.inputs.iter().map(|x| &**x),
@@ -508,7 +512,7 @@ fn rewrite_generic_args(
             context,
             shape,
         ),
-        _ => Some("".to_owned()),
+        ast::GenericArgs::ParenthesizedElided(..) => Some("(..)".to_owned()),
     }
 }
 

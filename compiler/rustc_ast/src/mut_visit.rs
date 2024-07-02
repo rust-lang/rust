@@ -582,6 +582,7 @@ fn noop_visit_generic_args<T: MutVisitor>(generic_args: &mut GenericArgs, vis: &
     match generic_args {
         GenericArgs::AngleBracketed(data) => vis.visit_angle_bracketed_parameter_data(data),
         GenericArgs::Parenthesized(data) => vis.visit_parenthesized_parameter_data(data),
+        GenericArgs::ParenthesizedElided(span) => vis.visit_span(span),
     }
 }
 

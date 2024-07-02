@@ -1060,6 +1060,11 @@ impl<'a> PrintState<'a> for State<'a> {
                 self.word(")");
                 self.print_fn_ret_ty(&data.output);
             }
+            ast::GenericArgs::ParenthesizedElided(_) => {
+                self.word("(");
+                self.word("..");
+                self.word(")");
+            }
         }
     }
 }
