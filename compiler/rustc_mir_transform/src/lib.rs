@@ -565,8 +565,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // Before doing anything, remember which items are being mentioned so that the set of items
             // visited does not depend on the optimization level.
             &mentioned_items::MentionedItems,
-            // Add some UB checks before any UB gets optimized away.
-            &check_alignment::CheckAlignment,
             // Before inlining: trim down MIR with passes to reduce inlining work.
 
             // Has to be done before inlining, otherwise actual call will be almost always inlined.

@@ -197,7 +197,7 @@ impl<O> AssertKind<O> {
                 LangItem::PanicGenFnNonePanic
             }
 
-            BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
+            BoundsCheck { .. } => {
                 bug!("Unexpected AssertKind")
             }
         }
@@ -255,12 +255,6 @@ impl<O> AssertKind<O> {
                 write!(f, "\"attempt to shift left by `{{}}`, which would overflow\", {r:?}")
             }
             Overflow(op, _, _) => bug!("{:?} cannot overflow", op),
-            MisalignedPointerDereference { required, found } => {
-                write!(
-                    f,
-                    "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {required:?}, {found:?}"
-                )
-            }
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
                 write!(f, "\"coroutine resumed after completion\"")
             }
@@ -330,8 +324,6 @@ impl<O> AssertKind<O> {
             ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
                 middle_assert_coroutine_resume_after_panic
             }
-
-            MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
         }
     }
 
@@ -364,10 +356,6 @@ impl<O> AssertKind<O> {
                 add!("right", format!("{right:#?}"));
             }
             ResumedAfterReturn(_) | ResumedAfterPanic(_) => {}
-            MisalignedPointerDereference { required, found } => {
-                add!("required", format!("{required:#?}"));
-                add!("found", format!("{found:#?}"));
-            }
         }
     }
 }

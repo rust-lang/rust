@@ -14,9 +14,6 @@ middle_assert_divide_by_zero =
 
 middle_assert_gen_resume_after_panic = `gen` fn or block cannot be further iterated on after it panicked
 
-middle_assert_misaligned_ptr_deref =
-    misaligned pointer dereference: address must be a multiple of {$required} but is {$found}
-
 middle_assert_op_overflow =
     attempt to compute `{$left} {$op} {$right}`, which would overflow
 

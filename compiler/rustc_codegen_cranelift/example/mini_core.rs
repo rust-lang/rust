@@ -517,6 +517,20 @@ fn panic_cannot_unwind() -> ! {
     }
 }
 
+#[lang = "panic_misaligned_pointer_dereference"]
+#[track_caller]
+fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
+    unsafe {
+        libc::printf(
+            "misaligned pointer dereference: address must be a multiple of %d but is %d\n\0"
+                as *const str as *const i8,
+            required,
+            found,
+        );
+        intrinsics::abort();
+    }
+}
+
 #[lang = "eh_personality"]
 fn eh_personality() -> ! {
     loop {}

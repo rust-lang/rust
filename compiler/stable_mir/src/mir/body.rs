@@ -240,14 +240,21 @@ pub enum UnwindAction {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AssertMessage {
-    BoundsCheck { len: Operand, index: Operand },
+    BoundsCheck {
+        len: Operand,
+        index: Operand,
+    },
     Overflow(BinOp, Operand, Operand),
     OverflowNeg(Operand),
     DivisionByZero(Operand),
     RemainderByZero(Operand),
     ResumedAfterReturn(CoroutineKind),
     ResumedAfterPanic(CoroutineKind),
-    MisalignedPointerDereference { required: Operand, found: Operand },
+    #[deprecated(note = "Alignment checks are now implemented in codegen, not MIR")]
+    MisalignedPointerDereference {
+        required: Operand,
+        found: Operand,
+    },
 }
 
 impl AssertMessage {
@@ -300,6 +307,7 @@ impl AssertMessage {
             )) => Ok("`gen fn` should just keep returning `AssertMessage::None` after panicking"),
 
             AssertMessage::BoundsCheck { .. } => Ok("index out of bounds"),
+            #[allow(deprecated)]
             AssertMessage::MisalignedPointerDereference { .. } => {
                 Ok("misaligned pointer dereference")
             }
