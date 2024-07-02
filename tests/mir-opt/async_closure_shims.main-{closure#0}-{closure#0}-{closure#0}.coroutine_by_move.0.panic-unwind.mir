@@ -1,6 +1,6 @@
 // MIR for `main::{closure#0}::{closure#0}::{closure#0}` 0 coroutine_by_move
 
-fn main::{closure#0}::{closure#0}::{closure#0}(_1: {async closure body@$DIR/async_closure_shims.rs:42:53: 45:10}, _2: ResumeTy) -> ()
+fn main::{closure#0}::{closure#0}::{closure#0}(_1: {async closure body@$DIR/async_closure_shims.rs:53:53: 56:10}, _2: ResumeTy) -> ()
 yields ()
  {
     debug _task_context => _2;
