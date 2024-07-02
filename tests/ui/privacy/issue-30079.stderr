@@ -19,6 +19,11 @@ LL |     struct Priv;
 LL |     impl ::std::ops::Deref for ::SemiPriv {
 LL |         type Target = Priv;
    |         ^^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub(crate)` in front of it
+   |
+LL |     pub(crate);
+   |     ~~~~~~~~~~
 
 error[E0446]: private type `m3::Priv` in public interface
   --> $DIR/issue-30079.rs:34:9
@@ -28,6 +33,11 @@ LL |     struct Priv;
 LL |     impl ::SemiPrivTrait for () {
 LL |         type Assoc = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub(crate)` in front of it
+   |
+LL |     pub(crate);
+   |     ~~~~~~~~~~
 
 error: aborting due to 2 previous errors; 1 warning emitted
 
