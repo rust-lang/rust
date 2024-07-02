@@ -8,6 +8,8 @@ fn val() -> u32 {
 
 // EMIT_MIR union.main.DestinationPropagation.diff
 fn main() {
+    // CHECK-LABEL: fn args(
+    // CHECK: {{_.*}} = Un { us: const 1_u32 };
     union Un {
         us: u32,
     }
