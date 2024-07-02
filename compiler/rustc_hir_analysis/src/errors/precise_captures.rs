@@ -34,6 +34,15 @@ pub struct LifetimeNotCaptured {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_lifetime_implicitly_captured)]
+pub struct LifetimeImplicitlyCaptured {
+    #[primary_span]
+    pub opaque_span: Span,
+    #[label(hir_analysis_param_label)]
+    pub param_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_bad_precise_capture)]
 pub struct BadPreciseCapture {
     #[primary_span]
