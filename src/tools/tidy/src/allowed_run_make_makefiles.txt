@@ -11,7 +11,6 @@ run-make/cat-and-grep-sanity-check/Makefile
 run-make/cdylib-dylib-linkage/Makefile
 run-make/cdylib-fewer-symbols/Makefile
 run-make/compiler-lookup-paths-2/Makefile
-run-make/compiler-lookup-paths/Makefile
 run-make/compiler-rt-works-on-mingw/Makefile
 run-make/crate-hash-rustc-version/Makefile
 run-make/cross-lang-lto-clang/Makefile
@@ -22,7 +21,6 @@ run-make/dep-info-doesnt-run-much/Makefile
 run-make/dep-info-spaces/Makefile
 run-make/dep-info/Makefile
 run-make/dump-ice-to-disk/Makefile
-run-make/dump-mono-stats/Makefile
 run-make/dylib-chain/Makefile
 run-make/emit-path-unhashed/Makefile
 run-make/emit-shared-files/Makefile
@@ -123,7 +121,6 @@ run-make/pointer-auth-link-with-c/Makefile
 run-make/print-calling-conventions/Makefile
 run-make/print-target-list/Makefile
 run-make/profile/Makefile
-run-make/prune-link-args/Makefile
 run-make/raw-dylib-alt-calling-convention/Makefile
 run-make/raw-dylib-c/Makefile
 run-make/raw-dylib-custom-dlltool/Makefile

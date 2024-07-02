@@ -261,6 +261,21 @@ pub fn test_while_readonly<P: AsRef<Path>, F: FnOnce() + std::panic::UnwindSafe>
     success.unwrap();
 }
 
+/// Builds a static lib (`.lib` on Windows MSVC and `.a` for the rest) with the given name.
+#[track_caller]
+pub fn build_native_static_lib(lib_name: &str) -> PathBuf {
+    let obj_file = format!("{lib_name}.o");
+    let src = format!("{lib_name}.c");
+    let lib_path = static_lib_name(lib_name);
+    if is_msvc() {
+        cc().arg("-c").out_exe(&cygpath_windows(&obj_file)).input(src).run();
+    } else {
+        cc().arg("-v").arg("-c").out_exe(&obj_file).input(src).run();
+    };
+    ar(&[obj_file], &lib_path);
+    path(lib_path)
+}
+
 /// Use `cygpath -w` on a path to get a Windows path string back. This assumes that `cygpath` is
 /// available on the platform!
 #[track_caller]
