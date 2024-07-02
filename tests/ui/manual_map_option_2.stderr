@@ -32,7 +32,7 @@ LL | |     };
    | |_____^ help: try: `s.as_ref().map(|x| { if let Some(ref s) = s { (x.clone(), s) } else { panic!() } })`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option_2.rs:58:17
+  --> tests/ui/manual_map_option_2.rs:63:17
    |
 LL |           let _ = match Some(0) {
    |  _________________^
@@ -42,7 +42,7 @@ LL | |         };
    | |_________^ help: try: `Some(0).map(|x| f(x))`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option_2.rs:63:13
+  --> tests/ui/manual_map_option_2.rs:68:13
    |
 LL |       let _ = match Some(0) {
    |  _____________^
@@ -52,7 +52,7 @@ LL | |     };
    | |_____^ help: try: `Some(0).map(|x| unsafe { f(x) })`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option_2.rs:67:13
+  --> tests/ui/manual_map_option_2.rs:72:13
    |
 LL |       let _ = match Some(0) {
    |  _____________^
@@ -61,5 +61,36 @@ LL | |         None => None,
 LL | |     };
    | |_____^ help: try: `Some(0).map(|x| unsafe { f(x) })`
 
-error: aborting due to 5 previous errors
+error: manual implementation of `Option::map`
+  --> tests/ui/manual_map_option_2.rs:109:17
+   |
+LL |           let _ = match Some(0) {
+   |  _________________^
+LL | |             Some(_) => Some(match f() {
+LL | |                 Ok(res) => Ok(Box::new(res)),
+LL | |                 _ => Err(()),
+LL | |             }),
+LL | |             None => None,
+LL | |         };
+   | |_________^
+   |
+help: try
+   |
+LL ~         let _ = Some(0).map(|_| match f() {
+LL +                 Ok(res) => Ok(Box::new(res)),
+LL +                 _ => Err(()),
+LL ~             });
+   |
+
+error: manual implementation of `Option::map`
+  --> tests/ui/manual_map_option_2.rs:132:37
+   |
+LL |           let _: Option<Box<&[u8]>> = match Some(0) {
+   |  _____________________________________^
+LL | |             Some(_) => Some(g(x)),
+LL | |             None => None,
+LL | |         };
+   | |_________^ help: try: `Some(0).map(|_| g(x))`
+
+error: aborting due to 7 previous errors
 
