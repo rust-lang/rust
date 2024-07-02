@@ -7,8 +7,10 @@ pub fn pipe() -> io::Result<(PipeReader, PipeWriter)> {
     cfg_if::cfg_if! {
         if #[cfg(unix)] {
             unix::pipe()
-        } else {
+        } else if #[cfg(windows)] {
             windows::pipe()
+        } else {
+            panic!("Anonymous pipe is not supported on this target!")
         }
     }
 }
