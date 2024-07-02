@@ -1678,7 +1678,7 @@ impl Build {
             return;
         }
         if let Err(e) = fs::remove_file(dst) {
-            if e.kind() != io::ErrorKind::NotFound {
+            if cfg!(windows) && e.kind() != io::ErrorKind::NotFound {
                 // workaround for https://github.com/rust-lang/rust/issues/127126
                 // if removing the file fails, attempt to rename it instead.
                 let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
