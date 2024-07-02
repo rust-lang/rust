@@ -384,14 +384,18 @@ impl<'a> TyLoweringContext<'a> {
                             type_params,
                             const_params,
                             _impl_trait_params,
-                            _lifetime_params,
+                            lifetime_params,
                         ) = self
                             .generics()
                             .expect("variable impl trait lowering must be in a generic def")
                             .provenance_split();
                         TyKind::BoundVar(BoundVar::new(
                             self.in_binders,
-                            idx as usize + self_param as usize + type_params + const_params,
+                            idx as usize
+                                + self_param as usize
+                                + type_params
+                                + const_params
+                                + lifetime_params,
                         ))
                         .intern(Interner)
                     }
@@ -816,8 +820,8 @@ impl<'a> TyLoweringContext<'a> {
 
         // Order is
         // - Optional Self parameter
-        // - Type or Const parameters
         // - Lifetime parameters
+        // - Type or Const parameters
         // - Parent parameters
         let def_generics = generics(self.db.upcast(), def);
         let (
@@ -839,7 +843,6 @@ impl<'a> TyLoweringContext<'a> {
 
         let ty_error = || TyKind::Error.intern(Interner).cast(Interner);
         let mut def_toc_iter = def_generics.iter_self_type_or_consts_id();
-        let mut def_lt_iter = def_generics.iter_self_lt_id();
         let fill_self_param = || {
             if self_param {
                 let self_ty = explicit_self_ty.map(|x| x.cast(Interner)).unwrap_or_else(ty_error);
@@ -852,56 +855,56 @@ impl<'a> TyLoweringContext<'a> {
         };
         let mut had_explicit_args = false;
 
-        let mut lifetimes = SmallVec::<[_; 1]>::new();
         if let Some(&GenericArgs { ref args, has_self_type, .. }) = args_and_bindings {
-            if !has_self_type {
-                fill_self_param();
-            }
-            let expected_num = if has_self_type {
-                self_param as usize + type_params + const_params
+            // Fill in the self param first
+            if has_self_type && self_param {
+                had_explicit_args = true;
+                if let Some(id) = def_toc_iter.next() {
+                    assert!(matches!(id, GenericParamId::TypeParamId(_)));
+                    had_explicit_args = true;
+                    if let GenericArg::Type(ty) = &args[0] {
+                        substs.push(self.lower_ty(ty).cast(Interner));
+                    }
+                }
             } else {
-                type_params + const_params
+                fill_self_param()
             };
-            let skip = if has_self_type && !self_param { 1 } else { 0 };
-            // if non-lifetime args are provided, it should be all of them, but we can't rely on that
+
+            // Then fill in the supplied lifetime args, or error lifetimes if there are too few
+            // (default lifetimes aren't a thing)
             for arg in args
+                .iter()
+                .filter_map(|arg| match arg {
+                    GenericArg::Lifetime(arg) => Some(self.lower_lifetime(arg)),
+                    _ => None,
+                })
+                .chain(iter::repeat(error_lifetime()))
+                .take(lifetime_params)
+            {
+                substs.push(arg.cast(Interner));
+            }
+
+            let skip = if has_self_type { 1 } else { 0 };
+            // Fill in supplied type and const args
+            // Note if non-lifetime args are provided, it should be all of them, but we can't rely on that
+            for (arg, id) in args
                 .iter()
                 .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
                 .skip(skip)
-                .take(expected_num)
+                .take(type_params + const_params)
+                .zip(def_toc_iter)
             {
-                if let Some(id) = def_toc_iter.next() {
-                    had_explicit_args = true;
-                    let arg = generic_arg_to_chalk(
-                        self.db,
-                        id,
-                        arg,
-                        &mut (),
-                        |_, type_ref| self.lower_ty(type_ref),
-                        |_, const_ref, ty| self.lower_const(const_ref, ty),
-                        |_, lifetime_ref| self.lower_lifetime(lifetime_ref),
-                    );
-                    substs.push(arg);
-                }
-            }
-
-            for arg in args
-                .iter()
-                .filter(|arg| matches!(arg, GenericArg::Lifetime(_)))
-                .take(lifetime_params)
-            {
-                if let Some(id) = def_lt_iter.next() {
-                    let arg = generic_arg_to_chalk(
-                        self.db,
-                        id,
-                        arg,
-                        &mut (),
-                        |_, type_ref| self.lower_ty(type_ref),
-                        |_, const_ref, ty| self.lower_const(const_ref, ty),
-                        |_, lifetime_ref| self.lower_lifetime(lifetime_ref),
-                    );
-                    lifetimes.push(arg);
-                }
+                had_explicit_args = true;
+                let arg = generic_arg_to_chalk(
+                    self.db,
+                    id,
+                    arg,
+                    &mut (),
+                    |_, type_ref| self.lower_ty(type_ref),
+                    |_, const_ref, ty| self.lower_const(const_ref, ty),
+                    |_, lifetime_ref| self.lower_lifetime(lifetime_ref),
+                );
+                substs.push(arg);
             }
         } else {
             fill_self_param();
@@ -923,16 +926,16 @@ impl<'a> TyLoweringContext<'a> {
             }
             _ => false,
         };
-        if (!infer_args || had_explicit_args) && !is_assoc_ty() {
+        let fill_defaults = (!infer_args || had_explicit_args) && !is_assoc_ty();
+        if fill_defaults {
             let defaults = &*self.db.generic_defaults(def);
             let (item, _parent) = defaults.split_at(item_len);
-            let (toc, lt) = item.split_at(item_len - lifetime_params);
             let parent_from = item_len - substs.len();
 
             let mut rem =
                 def_generics.iter_id().skip(substs.len()).map(param_to_err).collect::<Vec<_>>();
             // Fill in defaults for type/const params
-            for (idx, default_ty) in toc[substs.len()..].iter().enumerate() {
+            for (idx, default_ty) in item[substs.len()..].iter().enumerate() {
                 // each default can depend on the previous parameters
                 let substs_so_far = Substitution::from_iter(
                     Interner,
@@ -940,20 +943,9 @@ impl<'a> TyLoweringContext<'a> {
                 );
                 substs.push(default_ty.clone().substitute(Interner, &substs_so_far));
             }
-            let n_lifetimes = lifetimes.len();
-            // Fill in deferred lifetimes
-            substs.extend(lifetimes);
-            // Fill in defaults for lifetime params
-            for default_ty in &lt[n_lifetimes..] {
-                // these are always errors so skipping is fine
-                substs.push(default_ty.skip_binders().clone());
-            }
-            // Fill in remaining def params and parent params
+            // Fill in remaining parent params
             substs.extend(rem.drain(parent_from..));
         } else {
-            substs.extend(def_toc_iter.map(param_to_err));
-            // Fill in deferred lifetimes
-            substs.extend(lifetimes);
             // Fill in remaining def params and parent params
             substs.extend(def_generics.iter_id().skip(substs.len()).map(param_to_err));
         }
@@ -1725,8 +1717,8 @@ pub(crate) fn generic_predicates_query(
         })
         .collect::<Vec<_>>();
 
-    let subst = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-    if !subst.is_empty(Interner) {
+    if generics.len() > 0 {
+        let subst = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
         let explicitly_unsized_tys = ctx.unsized_types.into_inner();
         if let Some(implicitly_sized_predicates) =
             implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver)

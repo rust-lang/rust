@@ -249,13 +249,62 @@ impl GenericParams {
         self.lifetimes.iter()
     }
 
+    pub fn find_type_by_name(&self, name: &Name, parent: GenericDefId) -> Option<TypeParamId> {
+        self.type_or_consts.iter().find_map(|(id, p)| {
+            if p.name().as_ref() == Some(&name) && p.type_param().is_some() {
+                Some(TypeParamId::from_unchecked(TypeOrConstParamId { local_id: id, parent }))
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn find_const_by_name(&self, name: &Name, parent: GenericDefId) -> Option<ConstParamId> {
+        self.type_or_consts.iter().find_map(|(id, p)| {
+            if p.name().as_ref() == Some(&name) && p.const_param().is_some() {
+                Some(ConstParamId::from_unchecked(TypeOrConstParamId { local_id: id, parent }))
+            } else {
+                None
+            }
+        })
+    }
+
+    #[inline]
+    pub fn trait_self_param(&self) -> Option<LocalTypeOrConstParamId> {
+        if self.type_or_consts.is_empty() {
+            return None;
+        }
+        matches!(
+            self.type_or_consts[SELF_PARAM_ID_IN_SELF],
+            TypeOrConstParamData::TypeParamData(TypeParamData {
+                provenance: TypeParamProvenance::TraitSelf,
+                ..
+            })
+        )
+        .then(|| SELF_PARAM_ID_IN_SELF)
+    }
+
+    pub fn find_lifetime_by_name(
+        &self,
+        name: &Name,
+        parent: GenericDefId,
+    ) -> Option<LifetimeParamId> {
+        self.lifetimes.iter().find_map(|(id, p)| {
+            if &p.name == name {
+                Some(LifetimeParamId { local_id: id, parent })
+            } else {
+                None
+            }
+        })
+    }
+
     pub(crate) fn generic_params_query(
         db: &dyn DefDatabase,
         def: GenericDefId,
     ) -> Interned<GenericParams> {
         let _p = tracing::info_span!("generic_params_query").entered();
 
-        let krate = def.module(db).krate;
+        let krate = def.krate(db);
         let cfg_options = db.crate_graph();
         let cfg_options = &cfg_options[krate].cfg_options;
 
@@ -367,54 +416,6 @@ impl GenericParams {
                 where_predicates: Default::default(),
             }),
         }
-    }
-
-    pub fn find_type_by_name(&self, name: &Name, parent: GenericDefId) -> Option<TypeParamId> {
-        self.type_or_consts.iter().find_map(|(id, p)| {
-            if p.name().as_ref() == Some(&name) && p.type_param().is_some() {
-                Some(TypeParamId::from_unchecked(TypeOrConstParamId { local_id: id, parent }))
-            } else {
-                None
-            }
-        })
-    }
-
-    pub fn find_const_by_name(&self, name: &Name, parent: GenericDefId) -> Option<ConstParamId> {
-        self.type_or_consts.iter().find_map(|(id, p)| {
-            if p.name().as_ref() == Some(&name) && p.const_param().is_some() {
-                Some(ConstParamId::from_unchecked(TypeOrConstParamId { local_id: id, parent }))
-            } else {
-                None
-            }
-        })
-    }
-
-    pub fn trait_self_param(&self) -> Option<LocalTypeOrConstParamId> {
-        if self.type_or_consts.is_empty() {
-            return None;
-        }
-        matches!(
-            self.type_or_consts[SELF_PARAM_ID_IN_SELF],
-            TypeOrConstParamData::TypeParamData(TypeParamData {
-                provenance: TypeParamProvenance::TraitSelf,
-                ..
-            })
-        )
-        .then(|| SELF_PARAM_ID_IN_SELF)
-    }
-
-    pub fn find_lifetime_by_name(
-        &self,
-        name: &Name,
-        parent: GenericDefId,
-    ) -> Option<LifetimeParamId> {
-        self.lifetimes.iter().find_map(|(id, p)| {
-            if &p.name == name {
-                Some(LifetimeParamId { local_id: id, parent })
-            } else {
-                None
-            }
-        })
     }
 }
 
