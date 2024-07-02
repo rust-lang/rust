@@ -1,0 +1,4 @@
+warning: Large stack allocation (1 GiB) may exceed the stack available and terminate the program
+
+warning: 1 warning emitted
+
