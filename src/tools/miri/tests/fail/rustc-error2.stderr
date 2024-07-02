@@ -1,4 +1,4 @@
-error[E0433]: cannot find item `assert_mem_uninitialized_valid`
+error[E0433]: cannot find item `assert_mem_uninitialized_valid` in this scope
   --> $DIR/rustc-error2.rs:LL:CC
    |
 LL |     fn deref(&self) -> &assert_mem_uninitialized_valid::Target {
