@@ -495,8 +495,14 @@ impl<'ll> CodegenCx<'ll, '_> {
             }
 
             // Wasm statics with custom link sections get special treatment as they
-            // go into custom sections of the wasm executable.
-            if self.tcx.sess.target.is_like_wasm {
+            // go into custom sections of the wasm executable. The exception to this
+            // is the `.init_array` section which are treated specially by the wasm linker.
+            if self.tcx.sess.target.is_like_wasm
+                && attrs
+                    .link_section
+                    .map(|link_section| !link_section.as_str().starts_with(".init_array"))
+                    .unwrap_or(true)
+            {
                 if let Some(section) = attrs.link_section {
                     let section = llvm::LLVMMDStringInContext2(
                         self.llcx,
