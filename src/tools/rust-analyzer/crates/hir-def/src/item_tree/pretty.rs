@@ -570,13 +570,13 @@ impl Printer<'_> {
     }
 
     fn print_where_clause(&mut self, params: &GenericParams) -> bool {
-        if params.where_predicates.is_empty() {
+        if params.where_predicates().next().is_none() {
             return false;
         }
 
         w!(self, "\nwhere");
         self.indented(|this| {
-            for (i, pred) in params.where_predicates.iter().enumerate() {
+            for (i, pred) in params.where_predicates().enumerate() {
                 if i != 0 {
                     wln!(this, ",");
                 }

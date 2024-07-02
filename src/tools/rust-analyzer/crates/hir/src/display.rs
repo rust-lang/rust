@@ -611,7 +611,7 @@ fn write_where_clause(
 }
 
 fn has_disaplayable_predicates(params: &Interned<GenericParams>) -> bool {
-    params.where_predicates.iter().any(|pred| {
+    params.where_predicates().any(|pred| {
         !matches!(
             pred,
             WherePredicate::TypeBound { target: WherePredicateTypeTarget::TypeOrConstParam(id), .. }
@@ -652,7 +652,7 @@ fn write_where_predicates(
         _ => false,
     };
 
-    let mut iter = params.where_predicates.iter().peekable();
+    let mut iter = params.where_predicates().peekable();
     while let Some(pred) = iter.next() {
         if matches!(pred, TypeBound { target, .. } if is_unnamed_type_target(params, target)) {
             continue;

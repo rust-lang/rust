@@ -161,7 +161,7 @@ pub enum GenericParamDataRef<'a> {
 pub struct GenericParams {
     type_or_consts: Arena<TypeOrConstParamData>,
     pub lifetimes: Arena<LifetimeParamData>,
-    pub where_predicates: Box<[WherePredicate]>,
+    where_predicates: Box<[WherePredicate]>,
 }
 
 impl ops::Index<LocalTypeOrConstParamId> for GenericParams {
@@ -226,6 +226,11 @@ impl GenericParams {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    #[inline]
+    pub fn where_predicates(&self) -> std::slice::Iter<'_, WherePredicate> {
+        self.where_predicates.iter()
     }
 
     /// Iterator of type_or_consts field

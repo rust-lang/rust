@@ -596,7 +596,7 @@ impl Resolver {
                 Scope::GenericParams { params, def } => Some((params, def)),
                 _ => None,
             })
-            .flat_map(|(params, def)| params.where_predicates.iter().zip(iter::repeat(def)))
+            .flat_map(|(params, def)| params.where_predicates().zip(iter::repeat(def)))
     }
 
     pub fn generic_def(&self) -> Option<GenericDefId> {
