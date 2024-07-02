@@ -13,13 +13,18 @@
 // use a directory with non-existing parent like `/does-not-exist/output`.
 // See https://github.com/rust-lang/rust/issues/66530
 
+//@ ignore-riscv64
+// FIXME: The riscv build container runs as root, and can always write
+// into `inaccessible/tmp`. Ideally, the riscv64-gnu docker container
+// would use a non-root user, but this leads to issues with
+// `mkfs.ext4 -d`, as well as mounting a loop device for the rootfs.
 //@ ignore-arm
 // Reason: linker error on `armhf-gnu`
 //@ ignore-windows
 // Reason: `set_readonly` has no effect on directories
 // and does not prevent modification.
 
-use run_make_support::{fs_wrapper, rustc, target, test_while_readonly};
+use run_make_support::{fs_wrapper, rustc, test_while_readonly};
 
 fn main() {
     // Create an inaccessible directory.
@@ -28,7 +33,6 @@ fn main() {
         // Run rustc with `-Z temps-dir` set to a directory *inside* the inaccessible one,
         // so that it can't create `tmp`.
         rustc()
-            .target(target())
             .input("program.rs")
             .arg("-Ztemps-dir=inaccessible/tmp")
             .run_fail()
