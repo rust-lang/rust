@@ -1667,7 +1667,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                 Some(GlobalAlloc::Static(def_id)) => {
                                     p!(write("<static({:?})>", def_id))
                                 }
-                                Some(GlobalAlloc::Function(_)) => p!("<function>"),
+                                Some(GlobalAlloc::Function { .. }) => p!("<function>"),
                                 Some(GlobalAlloc::VTable(..)) => p!("<vtable>"),
                                 None => p!("<dangling pointer>"),
                             }
@@ -1679,7 +1679,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::FnPtr(_) => {
                 // FIXME: We should probably have a helper method to share code with the "Byte strings"
                 // printing above (which also has to handle pointers to all sorts of things).
-                if let Some(GlobalAlloc::Function(instance)) =
+                if let Some(GlobalAlloc::Function { instance, .. }) =
                     self.tcx().try_get_global_alloc(prov.alloc_id())
                 {
                     self.typed_value(

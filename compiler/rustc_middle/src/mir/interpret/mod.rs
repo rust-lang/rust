@@ -18,6 +18,7 @@ use smallvec::{smallvec, SmallVec};
 use tracing::{debug, trace};
 
 use rustc_ast::LitKind;
+use rustc_attr::InlineAttr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_errors::ErrorGuaranteed;
@@ -134,10 +135,11 @@ pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>>(
             AllocDiscriminant::Alloc.encode(encoder);
             alloc.encode(encoder);
         }
-        GlobalAlloc::Function(fn_instance) => {
-            trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
+        GlobalAlloc::Function { instance, unique } => {
+            trace!("encoding {:?} with {:#?}", alloc_id, instance);
             AllocDiscriminant::Fn.encode(encoder);
-            fn_instance.encode(encoder);
+            instance.encode(encoder);
+            unique.encode(encoder);
         }
         GlobalAlloc::VTable(ty, poly_trait_ref) => {
             trace!("encoding {:?} with {ty:#?}, {poly_trait_ref:#?}", alloc_id);
@@ -285,7 +287,12 @@ impl<'s> AllocDecodingSession<'s> {
                     trace!("creating fn alloc ID");
                     let instance = ty::Instance::decode(decoder);
                     trace!("decoded fn alloc instance: {:?}", instance);
-                    let alloc_id = decoder.interner().reserve_and_set_fn_alloc(instance);
+                    let unique = bool::decode(decoder);
+                    // Here we cannot call `reserve_and_set_fn_alloc` as that would use a query, which
+                    // is not possible in this context. That's why the allocation stores
+                    // whether it is unique or not.
+                    let alloc_id =
+                        decoder.interner().reserve_and_set_fn_alloc_internal(instance, unique);
                     alloc_id
                 }
                 AllocDiscriminant::VTable => {
@@ -323,7 +330,12 @@ impl<'s> AllocDecodingSession<'s> {
 #[derive(Debug, Clone, Eq, PartialEq, Hash, TyDecodable, TyEncodable, HashStable)]
 pub enum GlobalAlloc<'tcx> {
     /// The alloc ID is used as a function pointer.
-    Function(Instance<'tcx>),
+    Function {
+        instance: Instance<'tcx>,
+        /// Stores whether this instance is unique, i.e. all pointers to this function use the same
+        /// alloc ID.
+        unique: bool,
+    },
     /// This alloc ID points to a symbolic (not-reified) vtable.
     VTable(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
     /// The alloc ID points to a "lazy" static variable that did not get computed (yet).
@@ -349,7 +361,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
     #[inline]
     pub fn unwrap_fn(&self) -> Instance<'tcx> {
         match *self {
-            GlobalAlloc::Function(instance) => instance,
+            GlobalAlloc::Function { instance, .. } => instance,
             _ => bug!("expected function, got {:?}", self),
         }
     }
@@ -368,7 +380,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
     #[inline]
     pub fn address_space(&self, cx: &impl HasDataLayout) -> AddressSpace {
         match self {
-            GlobalAlloc::Function(..) => cx.data_layout().instruction_address_space,
+            GlobalAlloc::Function { .. } => cx.data_layout().instruction_address_space,
             GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::VTable(..) => {
                 AddressSpace::DATA
             }
@@ -426,7 +438,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn reserve_and_set_dedup(self, alloc: GlobalAlloc<'tcx>) -> AllocId {
         let mut alloc_map = self.alloc_map.lock();
         match alloc {
-            GlobalAlloc::Function(..) | GlobalAlloc::Static(..) | GlobalAlloc::VTable(..) => {}
+            GlobalAlloc::Function { .. } | GlobalAlloc::Static(..) | GlobalAlloc::VTable(..) => {}
             GlobalAlloc::Memory(..) => bug!("Trying to dedup-reserve memory with real data!"),
         }
         if let Some(&alloc_id) = alloc_map.dedup.get(&alloc) {
@@ -445,30 +457,45 @@ impl<'tcx> TyCtxt<'tcx> {
         self.reserve_and_set_dedup(GlobalAlloc::Static(static_id))
     }
 
+    /// Generates an `AllocId` for a function. The caller must already have decided whether this
+    /// function obtains a unique AllocId or gets de-duplicated via the cache.
+    fn reserve_and_set_fn_alloc_internal(self, instance: Instance<'tcx>, unique: bool) -> AllocId {
+        let alloc = GlobalAlloc::Function { instance, unique };
+        if unique {
+            // Deduplicate.
+            self.reserve_and_set_dedup(alloc)
+        } else {
+            // Get a fresh ID.
+            let mut alloc_map = self.alloc_map.lock();
+            let id = alloc_map.reserve();
+            alloc_map.alloc_map.insert(id, alloc);
+            id
+        }
+    }
+
     /// Generates an `AllocId` for a function. Depending on the function type,
     /// this might get deduplicated or assigned a new ID each time.
     pub fn reserve_and_set_fn_alloc(self, instance: Instance<'tcx>) -> AllocId {
         // Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
         // by the linker (we set the "unnamed_addr" attribute for LLVM) and functions can be
-        // duplicated across crates.
-        // We thus generate a new `AllocId` for every mention of a function. This means that
-        // `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
-        // However, formatting code relies on function identity (see #58320), so we only do
-        // this for generic functions. Lifetime parameters are ignored.
+        // duplicated across crates. We thus generate a new `AllocId` for every mention of a
+        // function. This means that `main as fn() == main as fn()` is false, while `let x = main as
+        // fn(); x == x` is true. However, as a quality-of-life feature it can be useful to identify
+        // certain functions uniquely, e.g. for backtraces. So we identify whether codegen will
+        // actually emit duplicate functions. It does that when they have non-lifetime generics, or
+        // when they can be inlined. All other functions are given a unique address.
+        // This is not a stable guarantee! The `inline` attribute is a hint and cannot be relied
+        // upon for anything. But if we don't do this, backtraces look terrible.
         let is_generic = instance
             .args
             .into_iter()
             .any(|kind| !matches!(kind.unpack(), GenericArgKind::Lifetime(_)));
-        if is_generic {
-            // Get a fresh ID.
-            let mut alloc_map = self.alloc_map.lock();
-            let id = alloc_map.reserve();
-            alloc_map.alloc_map.insert(id, GlobalAlloc::Function(instance));
-            id
-        } else {
-            // Deduplicate.
-            self.reserve_and_set_dedup(GlobalAlloc::Function(instance))
-        }
+        let can_be_inlined = match self.codegen_fn_attrs(instance.def_id()).inline {
+            InlineAttr::Never => false,
+            _ => true,
+        };
+        let unique = !is_generic && !can_be_inlined;
+        self.reserve_and_set_fn_alloc_internal(instance, unique)
     }
 
     /// Generates an `AllocId` for a (symbolic, not-reified) vtable. Will get deduplicated.

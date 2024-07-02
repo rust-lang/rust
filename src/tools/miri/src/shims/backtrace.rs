@@ -119,7 +119,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (alloc_id, offset, _prov) = this.ptr_get_alloc_id(ptr)?;
 
         // This has to be an actual global fn ptr, not a dlsym function.
-        let fn_instance = if let Some(GlobalAlloc::Function(instance)) =
+        let fn_instance = if let Some(GlobalAlloc::Function { instance, .. }) =
             this.tcx.try_get_global_alloc(alloc_id)
         {
             instance
