@@ -640,6 +640,8 @@ declare_features! (
     (unstable, used_with_arg, "1.60.0", Some(93798)),
     /// Allows `extern "wasm" fn`
     (unstable, wasm_abi, "1.53.0", Some(83788)),
+    /// Allows use of the `xop` target-feature
+    (unstable, xop_target_feature, "CURRENT_RUSTC_VERSION", Some(127208)),
     /// Allows `do yeet` expressions
     (unstable, yeet_expr, "1.62.0", Some(96373)),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
