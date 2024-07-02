@@ -21,6 +21,7 @@ pub mod visit;
 pub mod codec;
 pub mod data_structures;
 pub mod error;
+pub mod fast_reject;
 pub mod fold;
 pub mod inherent;
 pub mod ir_print;

@@ -2129,7 +2129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let target_ty = self
                 .autoderef(sugg_span, rcvr_ty)
                 .find(|(rcvr_ty, _)| {
-                    DeepRejectCtxt { treat_obligation_params: TreatParams::AsCandidateKey }
+                    DeepRejectCtxt::new(self.tcx, TreatParams::ForLookup)
                         .types_may_unify(*rcvr_ty, impl_ty)
                 })
                 .map_or(impl_ty, |(ty, _)| ty)

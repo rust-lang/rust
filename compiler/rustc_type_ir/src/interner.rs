@@ -222,13 +222,6 @@ pub trait Interner:
 
     fn associated_type_def_ids(self, def_id: Self::DefId) -> impl IntoIterator<Item = Self::DefId>;
 
-    // FIXME: move `fast_reject` into `rustc_type_ir`.
-    fn args_may_unify_deep(
-        self,
-        obligation_args: Self::GenericArgs,
-        impl_args: Self::GenericArgs,
-    ) -> bool;
-
     fn for_each_relevant_impl(
         self,
         trait_def_id: Self::DefId,
