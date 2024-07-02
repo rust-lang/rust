@@ -238,7 +238,7 @@
 
 ### Added
 
-- New configuration option (`skip_macro_invocations`)[https://rust-lang.github.io/rustfmt/?version=master&search=#skip_macro_invocations] [#5347](https://github.com/rust-lang/rustfmt/pull/5347) that can be used to globally define a single enumerated list of macro calls that rustfmt should skip formatting. rustfmt [currently also supports this via a custom tool attribute](https://github.com/rust-lang/rustfmt#tips), however, these cannot be used in all contexts because [custom inner attributes are unstable](https://github.com/rust-lang/rust/issues/54726)
+- New configuration option [`skip_macro_invocations`](https://rust-lang.github.io/rustfmt/?version=master&search=#skip_macro_invocations) [#5347](https://github.com/rust-lang/rustfmt/pull/5347) that can be used to globally define a single enumerated list of macro calls that rustfmt should skip formatting. rustfmt [currently also supports this via a custom tool attribute](https://github.com/rust-lang/rustfmt#tips), however, these cannot be used in all contexts because [custom inner attributes are unstable](https://github.com/rust-lang/rust/issues/54726)
 
 ### Misc
 
