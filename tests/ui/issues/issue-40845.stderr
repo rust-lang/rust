@@ -1,14 +1,14 @@
-error: cannot find macro `m` in this scope
+error: cannot find macro `m` in trait `T`
   --> $DIR/issue-40845.rs:1:11
    |
 LL | trait T { m!(); }
-   |           ^ not found in this scope
+   |           ^ not found in trait `T`
 
-error: cannot find macro `m` in this scope
+error: cannot find macro `m` in the crate root
   --> $DIR/issue-40845.rs:4:10
    |
 LL | impl S { m!(); }
-   |          ^ not found in this scope
+   |          ^ not found in the crate root
 
 error: aborting due to 2 previous errors
 

@@ -638,6 +638,7 @@ pub(crate) struct CannotFindIdentInThisScope<'a> {
     #[label]
     pub(crate) span: Span,
     pub(crate) expected: &'a str,
+    pub(crate) scope: &'a str,
     pub(crate) ident: Ident,
 }
 

@@ -950,10 +950,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 Err(..) => {
                     let expected = kind.descr_expected();
-
+                    let scope = match parent_scope.module.kind {
+                        ModuleKind::Def(_, _, name) if name == kw::Empty => "the crate root",
+                        ModuleKind::Def(kind, def_id, name) => {
+                            &format!("{} `{name}`", kind.descr(def_id))
+                        }
+                        ModuleKind::Block => "this scope",
+                    };
                     let mut err = self.dcx().create_err(CannotFindIdentInThisScope {
                         span: ident.span,
                         expected,
+                        scope,
                         ident,
                     });
                     self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident, krate);
@@ -1077,6 +1084,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 None,
             );
             if fallback_binding.ok().and_then(|b| b.res().opt_def_id()) != Some(def_id) {
+                let scope = match parent_scope.module.kind {
+                    ModuleKind::Def(_, _, name) if name == kw::Empty => {
+                        "the crate root".to_string()
+                    }
+                    ModuleKind::Def(kind, def_id, name) => {
+                        format!("{} `{name}`", kind.descr(def_id))
+                    }
+                    ModuleKind::Block => "this scope".to_string(),
+                };
                 self.tcx.sess.psess.buffer_lint(
                     OUT_OF_SCOPE_MACRO_CALLS,
                     path.span,
@@ -1084,6 +1100,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     BuiltinLintDiag::OutOfScopeMacroCalls {
                         span: path.span,
                         path: pprust::path_to_string(path),
+                        scope,
                     },
                 );
             }

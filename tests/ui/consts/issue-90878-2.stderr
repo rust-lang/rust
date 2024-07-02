@@ -4,11 +4,11 @@ error: attribute value must be a literal
 LL |  #![l=|x|[b;x ]]
    |       ^^^^^^^^^
 
-error: cannot find attribute `l` in this scope
+error: cannot find attribute `l` in the crate root
   --> $DIR/issue-90878-2.rs:1:5
    |
 LL |  #![l=|x|[b;x ]]
-   |     ^ not found in this scope
+   |     ^ not found in the crate root
 
 error: aborting due to 2 previous errors
 
