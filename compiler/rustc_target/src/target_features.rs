@@ -192,6 +192,11 @@ const X86_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     // tidy-alphabetical-start
     ("adx", Stable),
     ("aes", Stable),
+    ("amx-bf16", Unstable(sym::x86_amx_intrinsics)),
+    ("amx-complex", Unstable(sym::x86_amx_intrinsics)),
+    ("amx-fp16", Unstable(sym::x86_amx_intrinsics)),
+    ("amx-int8", Unstable(sym::x86_amx_intrinsics)),
+    ("amx-tile", Unstable(sym::x86_amx_intrinsics)),
     ("avx", Stable),
     ("avx2", Stable),
     ("avx512bf16", Unstable(sym::avx512_target_feature)),
