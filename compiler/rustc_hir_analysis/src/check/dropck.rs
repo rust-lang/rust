@@ -6,10 +6,10 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCauseCode;
+use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::util::CheckRegions;
-use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{GenericArgsRef, Ty};
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -115,8 +115,9 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     Err(err.emit())
 }
 
-/// Confirms that every predicate imposed by dtor_predicates is
-/// implied by assuming the predicates attached to self_type_did.
+/// Confirms that all predicates defined on the `Drop` impl (`drop_impl_def_id`) are able to be
+/// proven from within `adt_def_id`'s environment. I.e. all the predicates on the impl are
+/// implied by the ADT being well formed.
 fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     tcx: TyCtxt<'tcx>,
     drop_impl_def_id: LocalDefId,
@@ -125,6 +126,8 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let infcx = tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+
+    let impl_span = tcx.def_span(drop_impl_def_id.to_def_id());
 
     // Take the param-env of the adt and instantiate the args that show up in
     // the implementation's self type. This gives us the assumptions that the
@@ -135,14 +138,27 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // We don't need to normalize this param-env or anything, since we're only
     // instantiating it with free params, so no additional param-env normalization
     // can occur on top of what has been done in the param_env query itself.
-    let param_env =
+    //
+    // Note: Ideally instead of instantiating the `ParamEnv` with the arguments from the impl ty we
+    // could instead use identity args for the adt. Unfortunately this would cause any errors to
+    // reference the params from the ADT instead of from the impl which is bad UX. To resolve
+    // this we "rename" the ADT's params to be the impl's params which should not affect behaviour.
+    let impl_adt_ty = Ty::new_adt(tcx, tcx.adt_def(adt_def_id), adt_to_impl_args);
+    let adt_env =
         ty::EarlyBinder::bind(tcx.param_env(adt_def_id)).instantiate(tcx, adt_to_impl_args);
 
-    for (pred, span) in tcx.predicates_of(drop_impl_def_id).instantiate_identity(tcx) {
+    let fresh_impl_args = infcx.fresh_args_for_item(impl_span, drop_impl_def_id.to_def_id());
+    let fresh_adt_ty =
+        tcx.impl_trait_ref(drop_impl_def_id).unwrap().instantiate(tcx, fresh_impl_args).self_ty();
+
+    ocx.eq(&ObligationCause::dummy_with_span(impl_span), adt_env, fresh_adt_ty, impl_adt_ty)
+        .unwrap();
+
+    for (clause, span) in tcx.predicates_of(drop_impl_def_id).instantiate(tcx, fresh_impl_args) {
         let normalize_cause = traits::ObligationCause::misc(span, adt_def_id);
-        let pred = ocx.normalize(&normalize_cause, param_env, pred);
+        let pred = ocx.normalize(&normalize_cause, adt_env, clause);
         let cause = traits::ObligationCause::new(span, adt_def_id, ObligationCauseCode::DropImpl);
-        ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, pred));
+        ocx.register_obligation(traits::Obligation::new(tcx, cause, adt_env, pred));
     }
 
     // All of the custom error reporting logic is to preserve parity with the old
@@ -176,7 +192,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         return Err(guar.unwrap());
     }
 
-    let errors = ocx.infcx.resolve_regions(&OutlivesEnvironment::new(param_env));
+    let errors = ocx.infcx.resolve_regions(&OutlivesEnvironment::new(adt_env));
     if !errors.is_empty() {
         let mut guar = None;
         for error in errors {
