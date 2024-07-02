@@ -157,7 +157,7 @@ fn compute_product_approx(q: i64, w: u64, precision: usize) -> (u64, u64) {
         // Need to do a second multiplication to get better precision
         // for the lower product. This will always be exact
         // where q is < 55, since 5^55 < 2^128. If this wraps,
-        // then we need to need to round up the hi product.
+        // then we need to round up the hi product.
         let (_, second_hi) = full_multiplication(w, hi5);
         first_lo = first_lo.wrapping_add(second_hi);
         if second_hi > first_lo {

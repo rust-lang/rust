@@ -28,7 +28,7 @@
 //!
 //! # Layout
 //! Tagged values are 64 bits, with the 2 least significant bits used for the
-//! tag. This means there are there are 4 "variants":
+//! tag. This means there are 4 "variants":
 //!
 //! - **Tag 0b00**: The first variant is equivalent to
 //!   `ErrorData::SimpleMessage`, and holds a `&'static SimpleMessage` directly.
