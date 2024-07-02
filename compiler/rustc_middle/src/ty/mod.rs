@@ -43,7 +43,9 @@ use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
+use rustc_hir::def::{
+    CtorKind, CtorOf, DefKind, DocLinkResMap, FreshLifetimeResId, LifetimeRes, Res,
+};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_index::IndexVec;
 use rustc_macros::{
@@ -212,6 +214,8 @@ pub struct ResolverAstLowering {
     pub lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, LifetimeRes)>>,
+    /// Lifetime parameters that resolver did not create `DefId`s for.
+    pub fresh_lifetime_res_info: IndexVec<FreshLifetimeResId, (Span, ast::NodeId)>,
 
     pub next_node_id: ast::NodeId,
 

@@ -7,6 +7,7 @@ use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::{TyAndLayout, ValidityRequirement};
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::{GenericArg, GenericArgsRef};
+use rustc_hir::def::FreshLifetimeResId;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalModDefId, ModDefId, LOCAL_CRATE};
 use rustc_hir::hir_id::{HirId, OwnerId};
 use rustc_query_system::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
@@ -560,6 +561,14 @@ impl Key for HirId {
     #[inline(always)]
     fn key_as_def_id(&self) -> Option<DefId> {
         None
+    }
+}
+
+impl Key for FreshLifetimeResId {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
     }
 }
 

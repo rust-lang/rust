@@ -48,12 +48,11 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
-use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
+use rustc_hir::def::{DefKind, FreshLifetimeResId, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, LOCAL_CRATE};
 use rustc_hir::{self as hir};
 use rustc_hir::{
@@ -156,11 +155,7 @@ struct LoweringContext<'hir> {
 }
 
 impl<'hir> LoweringContext<'hir> {
-    fn new(
-        tcx: TyCtxt<'hir>,
-        resolver: &'hir ResolverAstLowering,
-        owner: NodeId,
-    ) -> Self {
+    fn new(tcx: TyCtxt<'hir>, resolver: &'hir ResolverAstLowering, owner: NodeId) -> Self {
         let current_hir_id_owner = hir::OwnerId { def_id: resolver.node_id_to_def_id[&owner] };
         Self {
             // Pseudo-globals.
@@ -428,7 +423,6 @@ fn index_ast<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx IndexVec<LocalDefId, Stea
             visit::walk_item(self, item);
             self.insert(item.id, AstOwnerRef::Item(item));
         }
-        
 
         fn visit_assoc_item(&mut self, item: &'ast AssocItem, ctxt: visit::AssocCtxt) {
             visit::walk_item(self, item);
@@ -820,6 +814,14 @@ impl<'hir> LoweringContext<'hir> {
         Ident::new(ident.name, self.lower_span(ident.span))
     }
 
+    fn lower_fresh_lifetime_res(&mut self, id: FreshLifetimeResId, node_id: NodeId) -> LocalDefId {
+        let def_id = self.tcx.fresh_lifetime_def_id(id);
+        // make sure that this `NodeId` is known to us.
+        self.node_id_to_def_id.insert(node_id, def_id);
+        trace!(?self.current_hir_id_owner, ?def_id);
+        def_id
+    }
+
     /// Converts a lifetime into a new generic parameter.
     #[instrument(level = "debug", skip(self))]
     fn lifetime_res_to_generic_param(
@@ -833,17 +835,9 @@ impl<'hir> LoweringContext<'hir> {
             LifetimeRes::Param { .. } => {
                 (hir::ParamName::Plain(ident), hir::LifetimeParamKind::Explicit)
             }
-            LifetimeRes::Fresh { param, kind, .. } => {
-                // Late resolution delegates to us the creation of the `LocalDefId`.
-                let _def_id = self.create_def(
-                    self.current_hir_id_owner.def_id,
-                    param,
-                    kw::UnderscoreLifetime,
-                    DefKind::LifetimeParam,
-                    ident.span,
-                );
-                debug!(?_def_id);
-
+            LifetimeRes::Fresh { id, kind, param, .. } => {
+                debug_assert_eq!(param, node_id);
+                self.lower_fresh_lifetime_res(id, node_id);
                 (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided(kind))
             }
             LifetimeRes::Static | LifetimeRes::Error => return None,
@@ -1697,15 +1691,9 @@ impl<'hir> LoweringContext<'hir> {
             let (old_def_id, missing_kind) = match res {
                 LifetimeRes::Param { param: old_def_id, binder: _ } => (old_def_id, None),
 
-                LifetimeRes::Fresh { param, kind, .. } => {
+                LifetimeRes::Fresh { id, kind, param, .. } => {
                     debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
-                    if let Some(old_def_id) = self.orig_opt_local_def_id(param) {
-                        (old_def_id, Some(kind))
-                    } else {
-                        self.dcx()
-                            .span_delayed_bug(lifetime.ident.span, "no def-id for fresh lifetime");
-                        continue;
-                    }
+                    (self.tcx.fresh_lifetime_def_id(id), Some(kind))
                 }
 
                 // Opaques do not capture `'static`
@@ -2117,8 +2105,8 @@ impl<'hir> LoweringContext<'hir> {
                 let param = self.get_remapped_def_id(param);
                 hir::LifetimeName::Param(param)
             }
-            LifetimeRes::Fresh { param, .. } => {
-                let param = self.local_def_id(param);
+            LifetimeRes::Fresh { id, .. } => {
+                let param = self.get_remapped_def_id(self.tcx.fresh_lifetime_def_id(id));
                 hir::LifetimeName::Param(param)
             }
             LifetimeRes::Infer => hir::LifetimeName::Infer,

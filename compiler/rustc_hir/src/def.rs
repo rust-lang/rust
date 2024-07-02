@@ -791,6 +791,15 @@ impl<Id> Res<Id> {
     }
 }
 
+rustc_index::newtype_index! {
+    /// Identifies a fresh lifetime, for example desugared from `'_`.
+    #[encodable]
+    #[orderable]
+    #[debug_format = "FreshLifetimeResId({})"]
+    #[derive(HashStable_Generic)]
+    pub struct FreshLifetimeResId {}
+}
+
 /// Resolution for a lifetime appearing in a type.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum LifetimeRes {
@@ -809,9 +818,9 @@ pub enum LifetimeRes {
     },
     /// Created a generic parameter for an anonymous lifetime.
     Fresh {
-        /// Id of the generic parameter that introduced it.
-        ///
-        /// Creating the associated `LocalDefId` is the responsibility of lowering.
+        /// The id for tracking creating the associated `LocalDefId`
+        id: FreshLifetimeResId,
+        /// The `NodeId` for ast lowering to link to the `LocalDefId`.
         param: NodeId,
         /// Id of the introducing place. See `Param`.
         binder: NodeId,

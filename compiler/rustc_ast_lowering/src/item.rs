@@ -1,7 +1,7 @@
 use super::errors::{InvalidAbi, InvalidAbiReason, InvalidAbiSuggestion, MisplacedRelaxTraitBound};
 use super::ResolverAstLoweringExt;
-use super::{ImplTraitContext, ImplTraitPosition};
 use super::{FnDeclKind, LoweringContext, ParamMode};
+use super::{ImplTraitContext, ImplTraitPosition};
 
 use rustc_ast::ptr::P;
 use rustc_ast::*;
@@ -52,10 +52,10 @@ impl<'hir> ItemLowerer<'hir> {
         f: impl FnOnce(&mut LoweringContext<'hir>) -> hir::OwnerNode<'hir>,
     ) -> hir::MaybeOwner<'hir> {
         let mut lctx = LoweringContext::new(self.tcx, self.resolver, owner);
-        
+
         let item = f(&mut lctx);
         debug_assert_eq!(lctx.current_hir_id_owner, item.def_id());
-        
+
         let info = lctx.make_owner_info(item);
 
         hir::MaybeOwner::Owner(self.tcx.hir_arena.alloc(info))
@@ -707,13 +707,13 @@ impl<'hir> LoweringContext<'hir> {
         }
     }
 
-    fn lower_trait_item(
-        &mut self,
-        i: &AssocItem,
-    ) -> &'hir hir::TraitItem<'hir> {
+    fn lower_trait_item(&mut self, i: &AssocItem) -> &'hir hir::TraitItem<'hir> {
         let def_id = self.resolver.node_id_to_def_id[&i.id];
         let parent_id = self.tcx.local_parent(def_id);
-        let constness = self.tcx.get_attr(parent_id, sym::const_trait).map_or(Const::No, |attr| Const::Yes(attr.span));
+        let constness = self
+            .tcx
+            .get_attr(parent_id, sym::const_trait)
+            .map_or(Const::No, |attr| Const::Yes(attr.span));
 
         let hir_id = self.lower_node_id(i.id);
         self.lower_attrs(hir_id, &i.attrs);
@@ -847,10 +847,7 @@ impl<'hir> LoweringContext<'hir> {
         self.expr(span, hir::ExprKind::Err(guar))
     }
 
-    fn lower_impl_item(
-        &mut self,
-        i: &AssocItem,
-    ) -> &'hir hir::ImplItem<'hir> {
+    fn lower_impl_item(&mut self, i: &AssocItem) -> &'hir hir::ImplItem<'hir> {
         let def_id = self.resolver.node_id_to_def_id[&i.id];
         let parent_id = self.tcx.local_parent(def_id);
         let parent_item = self.tcx.hir().expect_item(parent_id);
@@ -862,10 +859,13 @@ impl<'hir> LoweringContext<'hir> {
                 // is const. It doesn't matter whether the `impl` itself is const. Disallowing const fn from
                 // calling non-const impls are done through associated types.
                 if let Some(def_id) = impl_.of_trait.and_then(|tr| tr.trait_def_id()) {
-                    constness_of_trait = self.tcx.get_attr(def_id, sym::const_trait).map_or(Const::No, |attr| Const::Yes(attr.span))
+                    constness_of_trait = self
+                        .tcx
+                        .get_attr(def_id, sym::const_trait)
+                        .map_or(Const::No, |attr| Const::Yes(attr.span))
                 }
             }
-            _ => ()
+            _ => (),
         }
 
         // Since `default impl` is not yet implemented, this is always true in impls.

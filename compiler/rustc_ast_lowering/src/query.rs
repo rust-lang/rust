@@ -1,6 +1,7 @@
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
+use rustc_hir::def::{DefKind, FreshLifetimeResId};
 use rustc_hir::def_id::{LocalDefId, LocalModDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::*;
@@ -8,6 +9,7 @@ use rustc_middle::hir::{nested_filter, ModuleItems};
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
+use rustc_span::symbol::kw;
 use rustc_span::DUMMY_SP;
 
 use crate::{index_ast, lower_to_hir};
@@ -16,11 +18,23 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         lower_to_hir,
         index_ast,
+        fresh_lifetime_def_id,
         crate_hash,
         hir_module_items,
         hir_crate_items,
         ..*providers
     };
+}
+
+fn fresh_lifetime_def_id(tcx: TyCtxt<'_>, id: FreshLifetimeResId) -> LocalDefId {
+    let (resolver, _) = tcx.resolver_for_lowering();
+    let (span, node_id) = resolver.fresh_lifetime_res_info[id];
+    let parent = *resolver
+        .node_id_to_def_id
+        .get(&node_id)
+        .expect("binder for fresh lifetime is not associated with a DefId?");
+
+    tcx.at(span).create_def(parent, kw::UnderscoreLifetime, DefKind::LifetimeParam).def_id()
 }
 
 fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {

@@ -2080,7 +2080,11 @@ pub fn deny_non_region_late_bound(
 
     for (var, arg) in bound_vars {
         let Node::GenericParam(param) = tcx.hir_node_by_def_id(*var) else {
-            span_bug!(tcx.def_span(*var), "expected bound-var def-id to resolve to param");
+            span_bug!(
+                tcx.def_span(*var),
+                "expected bound-var def-id to resolve to param: {:?}",
+                tcx.hir_node_by_def_id(*var)
+            );
         };
 
         let what = match param.kind {

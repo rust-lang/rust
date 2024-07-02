@@ -153,9 +153,13 @@ rustc_queries! {
         desc { "getting the source span" }
     }
 
+    query fresh_lifetime_def_id(key: rustc_hir::def::FreshLifetimeResId) -> LocalDefId {
+        desc { "getting the DefId for a fresh lifetime created during resolution" }
+    }
+
     query lower_to_hir(key: LocalDefId) -> hir::MaybeOwner<'tcx> {
         eval_always
-        desc { |tcx| "lower HIR for `{}`", tcx.def_path_str(key.to_def_id()) }
+        desc { |tcx| "lowering HIR for `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
     /// All items in the crate.

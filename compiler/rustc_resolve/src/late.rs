@@ -298,7 +298,7 @@ enum LifetimeRibKind {
     /// struct Foo<'a> { x: &'a () }
     /// async fn foo(Foo { x: _ }: Foo<'_>) {}
     /// ```
-    AnonymousCreateParameter { binder: NodeId, report_in_path: bool },
+    AnonymousCreateParameter { binder: NodeId, report_in_path: bool, binder_is_ast_owner: bool },
 
     /// Replace all anonymous lifetimes by provided lifetime.
     Elided(LifetimeRes),
@@ -696,6 +696,8 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
     /// Count the number of places a lifetime is used.
     lifetime_uses: FxHashMap<LocalDefId, LifetimeUseSet>,
+
+    current_ast_owner: Option<NodeId>,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -705,12 +707,14 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
         // as they do not correspond to actual code.
     }
     fn visit_item(&mut self, item: &'ast Item) {
-        let prev = replace(&mut self.diag_metadata.current_item, Some(item));
+        let prev_owner = self.current_ast_owner.replace(item.id);
+        let prev_item = self.diag_metadata.current_item.replace(item);
         // Always report errors in items we just entered.
         let old_ignore = replace(&mut self.in_func_body, false);
         self.with_lifetime_rib(LifetimeRibKind::Item, |this| this.resolve_item(item));
         self.in_func_body = old_ignore;
-        self.diag_metadata.current_item = prev;
+        self.diag_metadata.current_item = prev_item;
+        self.current_ast_owner = prev_owner;
     }
     fn visit_arm(&mut self, arm: &'ast Arm) {
         self.resolve_arm(arm);
@@ -825,6 +829,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                             LifetimeRibKind::AnonymousCreateParameter {
                                 binder: ty.id,
                                 report_in_path: false,
+                                binder_is_ast_owner: false,
                             },
                             |this| {
                                 this.resolve_fn_signature(
@@ -879,6 +884,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
         );
     }
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
+        let prev = self.current_ast_owner.replace(foreign_item.id);
         self.resolve_doc_links(&foreign_item.attrs, MaybeExported::Ok(foreign_item.id));
         let def_kind = self.r.local_def_kind(foreign_item.id);
         match foreign_item.kind {
@@ -913,6 +919,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                 panic!("unexpanded macro in resolve!")
             }
         }
+        self.current_ast_owner = prev;
     }
     fn visit_fn(&mut self, fn_kind: FnKind<'ast>, sp: Span, fn_id: NodeId) {
         let previous_value = self.diag_metadata.current_function;
@@ -927,6 +934,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                     LifetimeRibKind::AnonymousCreateParameter {
                         binder: fn_id,
                         report_in_path: false,
+                        binder_is_ast_owner: true,
                     },
                     |this| {
                         this.resolve_fn_signature(
@@ -973,6 +981,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                             LifetimeRibKind::AnonymousCreateParameter {
                                 binder: fn_id,
                                 report_in_path: coro_node_id.is_some(),
+                                binder_is_ast_owner: true,
                             },
                             |this| {
                                 this.resolve_fn_signature(
@@ -1017,6 +1026,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                                     LifetimeRibKind::AnonymousCreateParameter {
                                         binder: fn_id,
                                         report_in_path: false,
+                                        binder_is_ast_owner: false,
                                     }
                                 }
                                 ClosureBinder::For { .. } => LifetimeRibKind::AnonymousReportError,
@@ -1193,6 +1203,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                                     LifetimeRibKind::AnonymousCreateParameter {
                                         binder,
                                         report_in_path: false,
+                                        binder_is_ast_owner: false,
                                     },
                                     |this| {
                                         this.resolve_fn_signature(
@@ -1332,6 +1343,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             lifetime_ribs: Vec::new(),
             lifetime_elision_candidates: None,
             current_trait_ref: None,
+            current_ast_owner: None,
             diag_metadata: Default::default(),
             // errors at module scope should always be reported
             in_func_body: false,
@@ -1673,8 +1685,15 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         for (i, rib) in self.lifetime_ribs.iter().enumerate().rev() {
             debug!(?rib.kind);
             match rib.kind {
-                LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
-                    let res = self.create_fresh_lifetime(lifetime.ident, binder, kind);
+                LifetimeRibKind::AnonymousCreateParameter {
+                    binder, binder_is_ast_owner, ..
+                } => {
+                    let res = self.create_fresh_lifetime(
+                        lifetime.ident,
+                        binder,
+                        binder_is_ast_owner,
+                        kind,
+                    );
                     self.record_lifetime_res(lifetime.id, res, elision_candidate);
                     return;
                 }
@@ -1803,14 +1822,17 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         &mut self,
         ident: Ident,
         binder: NodeId,
+        binder_is_ast_owner: bool,
         kind: MissingLifetimeKind,
     ) -> LifetimeRes {
         debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
         debug!(?ident.span);
 
-        // Leave the responsibility to create the `LocalDefId` to lowering.
         let param = self.r.next_node_id();
-        let res = LifetimeRes::Fresh { param, binder, kind };
+        let ast_owner = if binder_is_ast_owner { binder } else { self.current_ast_owner.unwrap() };
+        let id = self.r.fresh_lifetime_res_info.push((ident.span, ast_owner));
+        let res = LifetimeRes::Fresh { id, param, binder, kind };
+
         self.record_lifetime_param(param, res);
 
         // Record the created lifetime parameter so lowering can pick it up and add it to HIR.
@@ -1950,11 +1972,20 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         break;
                     }
                     // Do not create a parameter for patterns and expressions.
-                    LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
+                    LifetimeRibKind::AnonymousCreateParameter {
+                        binder,
+                        binder_is_ast_owner,
+                        ..
+                    } => {
                         // Group all suggestions into the first record.
                         let mut candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
                         for id in node_ids {
-                            let res = self.create_fresh_lifetime(ident, binder, kind);
+                            let res = self.create_fresh_lifetime(
+                                ident,
+                                binder,
+                                binder_is_ast_owner,
+                                kind,
+                            );
                             self.record_lifetime_res(
                                 id,
                                 res,
@@ -2847,6 +2878,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             };
 
         for item in trait_items {
+            let prev = self.current_ast_owner.replace(item.id);
             self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
             match &item.kind {
                 AssocItemKind::Const(box ast::ConstItem { generics, ty, expr, .. }) => {
@@ -2906,6 +2938,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     panic!("unexpanded macro in resolve!")
                 }
             };
+            self.current_ast_owner = prev;
         }
 
         self.diag_metadata.current_trait_assoc_items = trait_assoc_items;
@@ -2982,7 +3015,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     this.with_lifetime_rib(
                         LifetimeRibKind::AnonymousCreateParameter {
                             binder: item_id,
-                            report_in_path: true
+                            report_in_path: true,
+                            binder_is_ast_owner: true,
                         },
                         |this| {
                             // Resolve the trait reference, if necessary.
@@ -3045,6 +3079,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         seen_trait_items: &mut FxHashMap<DefId, Span>,
         trait_id: Option<DefId>,
     ) {
+        let prev = self.current_ast_owner.replace(item.id);
         use crate::ResolutionError::*;
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
         match &item.kind {
@@ -3182,6 +3217,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 panic!("unexpanded macro in resolve!")
             }
         }
+        self.current_ast_owner = prev;
     }
 
     fn check_trait_item<F>(
