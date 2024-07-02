@@ -9,6 +9,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Span, DUMMY_SP};
 
 use std::ops::Range;
+use std::{iter, mem};
 
 /// A wrapper type to ensure that the parser handles outer attributes correctly.
 /// When we parse outer attributes, we need to ensure that we capture tokens
@@ -53,7 +54,7 @@ impl AttrWrapper {
     // FIXME: require passing an NT to prevent misuse of this method
     pub(crate) fn prepend_to_nt_inner(self, attrs: &mut AttrVec) {
         let mut self_attrs = self.attrs;
-        std::mem::swap(attrs, &mut self_attrs);
+        mem::swap(attrs, &mut self_attrs);
         attrs.extend(self_attrs);
     }
 
@@ -104,13 +105,12 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
         // produce an empty `TokenStream` if no calls were made, and omit the
         // final token otherwise.
         let mut cursor_snapshot = self.cursor_snapshot.clone();
-        let tokens =
-            std::iter::once((FlatToken::Token(self.start_token.0.clone()), self.start_token.1))
-                .chain(std::iter::repeat_with(|| {
-                    let token = cursor_snapshot.next();
-                    (FlatToken::Token(token.0), token.1)
-                }))
-                .take(self.num_calls as usize);
+        let tokens = iter::once((FlatToken::Token(self.start_token.0.clone()), self.start_token.1))
+            .chain(iter::repeat_with(|| {
+                let token = cursor_snapshot.next();
+                (FlatToken::Token(token.0), token.1)
+            }))
+            .take(self.num_calls as usize);
 
         if self.replace_ranges.is_empty() {
             make_attr_token_stream(tokens, self.break_last_token)
@@ -158,7 +158,7 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
                 // This keeps the total length of `tokens` constant throughout the
                 // replacement process, allowing us to use all of the `ReplaceRanges` entries
                 // without adjusting indices.
-                let filler = std::iter::repeat((FlatToken::Empty, Spacing::Alone))
+                let filler = iter::repeat((FlatToken::Empty, Spacing::Alone))
                     .take(range.len() - new_tokens.len());
 
                 tokens.splice(
@@ -222,8 +222,7 @@ impl<'a> Parser<'a> {
         let replace_ranges_start = self.capture_state.replace_ranges.len();
 
         let (mut ret, trailing) = {
-            let prev_capturing =
-                std::mem::replace(&mut self.capture_state.capturing, Capturing::Yes);
+            let prev_capturing = mem::replace(&mut self.capture_state.capturing, Capturing::Yes);
             let ret_and_trailing = f(self, attrs.attrs);
             self.capture_state.capturing = prev_capturing;
             ret_and_trailing?
