@@ -4,7 +4,6 @@
 //! If it can be reached from `./x.py run` it can go here.
 
 use std::path::PathBuf;
-use std::process::Command;
 
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
@@ -12,7 +11,7 @@ use crate::core::build_steps::tool::{self, SourceType, Tool};
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::flags::get_completion;
 use crate::core::config::TargetSelection;
-use crate::utils::helpers::output;
+use crate::utils::exec::BootstrapCommand;
 use crate::Mode;
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
@@ -41,7 +40,8 @@ impl Step for BuildManifest {
             panic!("\n\nfailed to specify `dist.upload-addr` in `config.toml`\n\n")
         });
 
-        let today = output(Command::new("date").arg("+%Y-%m-%d"));
+        let today =
+            builder.run(BootstrapCommand::new("date").capture_stdout().arg("+%Y-%m-%d")).stdout();
 
         cmd.arg(sign);
         cmd.arg(distdir(builder));
@@ -158,7 +158,7 @@ impl Step for Miri {
         // after another --, so this must be at the end.
         miri.args(builder.config.args());
 
-        builder.run(miri);
+        builder.run(miri.into_cmd());
     }
 }
 
