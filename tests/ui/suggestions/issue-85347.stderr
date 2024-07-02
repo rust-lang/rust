@@ -22,8 +22,9 @@ LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
    |
 help: consider removing this associated item binding
    |
-LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
-   |                                             ~~~~~~~~~~~~~~~
+LL -     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
+LL +     type Bar<'a>: Deref<Target = <Self>::Bar>;
+   |
 
 error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/issue-85347.rs:3:42
@@ -51,8 +52,9 @@ LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider removing this associated item binding
    |
-LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
-   |                                             ~~~~~~~~~~~~~~~
+LL -     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
+LL +     type Bar<'a>: Deref<Target = <Self>::Bar>;
+   |
 
 error: aborting due to 4 previous errors
 

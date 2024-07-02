@@ -1774,7 +1774,10 @@ impl HumanEmitter {
         debug!(?suggestions);
 
         if suggestions.is_empty() {
-            // Suggestions coming from macros can have malformed spans. This is a heavy handed
+            // Here we check if there are suggestions that have actual code changes. We sometimes
+            // suggest the same code that is already there, instead of changing how we produce the
+            // suggestions and filtering there, we just don't emit the suggestion.
+            // Suggestions coming from macros can also have malformed spans. This is a heavy handed
             // approach to avoid ICEs by ignoring the suggestion outright.
             return Ok(());
         }
@@ -2053,7 +2056,9 @@ impl HumanEmitter {
                     assert!(underline_start >= 0 && underline_end >= 0);
                     let padding: usize = max_line_num_len + 3;
                     for p in underline_start..underline_end {
-                        if let DisplaySuggestion::Underline = show_code_change {
+                        if let DisplaySuggestion::Underline = show_code_change
+                            && !is_no_change(sm, &part.snippet, part.span)
+                        {
                             // If this is a replacement, underline with `~`, if this is an addition
                             // underline with `+`.
                             buffer.putc(
@@ -2780,6 +2785,19 @@ impl Style {
         }
         spec
     }
+}
+
+/// Whether the original and suggested code are the same.
+pub fn is_no_change(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
+    // FIXME: this should probably be extended to also account for `FO0` → `FOO` and unicode.
+    let found = match sm.span_to_snippet(sp) {
+        Ok(snippet) => snippet,
+        Err(e) => {
+            warn!(error = ?e, "Invalid span {:?}", sp);
+            return false;
+        }
+    };
+    found == suggested
 }
 
 /// Whether the original and suggested code are visually similar enough to warrant extra wording.

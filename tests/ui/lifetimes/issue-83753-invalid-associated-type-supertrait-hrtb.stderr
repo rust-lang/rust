@@ -6,8 +6,9 @@ LL |     fn bar(foo: Foo<Target = usize>) {}
    |
 help: consider removing this associated item binding
    |
-LL |     fn bar(foo: Foo<Target = usize>) {}
-   |                    ~~~~~~~~~~~~~~~~
+LL -     fn bar(foo: Foo<Target = usize>) {}
+LL +     fn bar(foo: Foo) {}
+   |
 
 error: aborting due to 1 previous error
 

@@ -24,10 +24,6 @@ note: ...and refers to the struct `ParseOptions` which is defined here
    |
 LL |     pub struct ParseOptions {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^ you could import this directly
-help: import `ParseOptions` through the re-export
-   |
-LL | pub use parser::ParseOptions;
-   |         ~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 
