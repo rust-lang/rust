@@ -256,7 +256,7 @@ impl Config {
     /// one.
     pub(super) fn from_resolved_toml_path(dir: &Path) -> Result<(Config, Option<PathBuf>), Error> {
         /// Try to find a project file in the given directory and its parents.
-        /// Returns the path of a the nearest project file if one exists,
+        /// Returns the path of the nearest project file if one exists,
         /// or `None` if no project file was found.
         fn resolve_project_file(dir: &Path) -> Result<Option<PathBuf>, Error> {
             let mut current = if dir.is_relative() {
