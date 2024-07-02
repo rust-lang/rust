@@ -5,6 +5,7 @@
 //@ check-run-results
 //@ exec-env:RUST_BACKTRACE=0
 //@ normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ normalize-stdout-test "(thread '.*') \(\d+\)" -> "$1 (tid)"
 
 //@ ignore-android #120567
 //@ ignore-wasm no panic or subprocess support
