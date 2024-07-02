@@ -44,6 +44,8 @@ impl<'a> Parser<'a> {
                 && !token.is_keyword(kw::Let)
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Const)
+                // FIXME(vincenzopalazzo): query less time the edition
+                && (token.span.edition().at_least_rust_2024() && !token.is_keyword(kw::Underscore) )
             }
             NonterminalKind::Expr(Expr) => {
                 token.can_begin_expr()
