@@ -145,7 +145,7 @@ impl Generics {
     fn find_type_or_const_param(&self, param: TypeOrConstParamId) -> Option<usize> {
         if param.parent == self.def {
             let idx = param.local_id.into_raw().into_u32() as usize;
-            debug_assert!(idx <= self.params.type_or_consts.len());
+            debug_assert!(idx <= self.params.len_type_or_consts());
             Some(idx)
         } else {
             debug_assert_eq!(self.parent_generics().map(|it| it.def), Some(param.parent));
@@ -164,7 +164,7 @@ impl Generics {
         if lifetime.parent == self.def {
             let idx = lifetime.local_id.into_raw().into_u32() as usize;
             debug_assert!(idx <= self.params.lifetimes.len());
-            Some(self.params.type_or_consts.len() + idx)
+            Some(self.params.len_type_or_consts() + idx)
         } else {
             debug_assert_eq!(self.parent_generics().map(|it| it.def), Some(lifetime.parent));
             self.parent_generics()

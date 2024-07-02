@@ -540,7 +540,7 @@ impl Printer<'_> {
             self.print_attrs_of(AttrOwner::LifetimeParamData(parent, idx), " ");
             w!(self, "{}", lt.name.display(self.db.upcast()));
         }
-        for (idx, x) in params.type_or_consts.iter() {
+        for (idx, x) in params.iter_type_or_consts() {
             if !first {
                 w!(self, ", ");
             }
@@ -607,12 +607,10 @@ impl Printer<'_> {
 
                 match target {
                     WherePredicateTypeTarget::TypeRef(ty) => this.print_type_ref(ty),
-                    WherePredicateTypeTarget::TypeOrConstParam(id) => {
-                        match &params.type_or_consts[*id].name() {
-                            Some(name) => w!(this, "{}", name.display(self.db.upcast())),
-                            None => w!(this, "_anon_{}", id.into_raw()),
-                        }
-                    }
+                    WherePredicateTypeTarget::TypeOrConstParam(id) => match params[*id].name() {
+                        Some(name) => w!(this, "{}", name.display(self.db.upcast())),
+                        None => w!(this, "_anon_{}", id.into_raw()),
+                    },
                 }
                 w!(this, ": ");
                 this.print_type_bounds(std::slice::from_ref(bound));

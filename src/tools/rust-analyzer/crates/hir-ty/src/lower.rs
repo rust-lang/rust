@@ -2071,7 +2071,7 @@ pub(crate) fn impl_self_ty_query(db: &dyn HirDatabase, impl_id: ImplId) -> Binde
 // returns None if def is a type arg
 pub(crate) fn const_param_ty_query(db: &dyn HirDatabase, def: ConstParamId) -> Ty {
     let parent_data = db.generic_params(def.parent());
-    let data = &parent_data.type_or_consts[def.local_id()];
+    let data = &parent_data[def.local_id()];
     let resolver = def.parent().resolver(db.upcast());
     let ctx = TyLoweringContext::new(db, &resolver, def.parent().into());
     match data {

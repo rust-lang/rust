@@ -64,7 +64,7 @@ impl HasChildSource<LocalTypeOrConstParamId> for GenericDefId {
         db: &dyn DefDatabase,
     ) -> InFile<ArenaMap<LocalTypeOrConstParamId, Self::Value>> {
         let generic_params = db.generic_params(*self);
-        let mut idx_iter = generic_params.type_or_consts.iter().map(|(idx, _)| idx);
+        let mut idx_iter = generic_params.iter_type_or_consts().map(|(idx, _)| idx);
 
         let (file_id, generic_params_list) = self.file_id_and_params_of(db);
 
