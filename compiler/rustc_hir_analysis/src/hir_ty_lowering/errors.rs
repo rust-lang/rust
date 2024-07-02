@@ -903,8 +903,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     format!("{}, {}>", &snippet[..snippet.len() - 1], types.join(", "))
                 } else {
                     // The user wrote `Iterator`, so we don't have a type we can suggest, but at
-                    // least we can clue them to the correct syntax `Iterator<Item = Type>`.
-                    format!("{}<{}>", snippet, types.join(", "))
+                    // least we can clue them to the correct syntax `Iterator::<Item = Type>`.
+                    format!("{}::<{}>", snippet, types.join(", "))
                 };
                 suggestions.push((*span, code));
             } else if dupes {
