@@ -1801,7 +1801,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Determines whether an item is annotated with an attribute.
     pub fn has_attr(self, did: impl Into<DefId>, attr: Symbol) -> bool {
-        self.get_attrs(did, attr).next().is_some()
+        self.has_attr_query((did.into(), attr))
     }
 
     /// Determines whether an item is annotated with a multi-segement attribute
