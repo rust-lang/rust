@@ -6,6 +6,7 @@ mod check_code_block_syntax;
 mod html_tags;
 mod redundant_explicit_links;
 mod unescaped_backticks;
+mod unportable_markdown;
 
 use super::Pass;
 use crate::clean::*;
@@ -31,6 +32,7 @@ impl<'a, 'tcx> DocVisitor for Linter<'a, 'tcx> {
         html_tags::visit_item(self.cx, item);
         unescaped_backticks::visit_item(self.cx, item);
         redundant_explicit_links::visit_item(self.cx, item);
+        unportable_markdown::visit_item(self.cx, item);
 
         self.visit_item_recur(item)
     }

@@ -35,11 +35,11 @@
 //! |                         |                     |                                 |
 //! | `ParallelIterator`      | `Iterator`          | `rayon::iter::ParallelIterator` |
 //!
-//! [^1] `MTLock` is similar to `Lock`, but the serial version avoids the cost
+//! [^1]: `MTLock` is similar to `Lock`, but the serial version avoids the cost
 //! of a `RefCell`. This is appropriate when interior mutability is not
 //! required.
 //!
-//! [^2] `MTRef`, `MTLockRef` are type aliases.
+//! [^2]: `MTRef`, `MTLockRef` are type aliases.
 
 pub use crate::marker::*;
 use std::collections::HashMap;
