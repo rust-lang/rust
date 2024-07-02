@@ -734,9 +734,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 // struct; however, when EUV is run during typeck, it
                 // may not. This will generate an error earlier in typeck,
                 // so we can just ignore it.
-                if self.cx.tcx().dcx().has_errors().is_none() {
-                    span_bug!(with_expr.span, "with expression doesn't evaluate to a struct");
-                }
+                span_bug!(with_expr.span, "with expression doesn't evaluate to a struct");
             }
         }
 

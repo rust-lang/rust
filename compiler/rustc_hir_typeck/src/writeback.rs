@@ -219,28 +219,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn fix_index_builtin_expr(&mut self, e: &hir::Expr<'_>) {
         if let hir::ExprKind::Index(ref base, ref index, _) = e.kind {
             // All valid indexing looks like this; might encounter non-valid indexes at this point.
-            let base_ty = self.typeck_results.expr_ty_adjusted_opt(base);
-            if base_ty.is_none() {
-                // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
-                // that isn't in the type table. We assume more relevant errors have already been
-                // emitted. (#64638)
-                assert!(self.tcx().dcx().has_errors().is_some(), "bad base: `{base:?}`");
-            }
-            if let Some(base_ty) = base_ty
-                && let ty::Ref(_, base_ty_inner, _) = *base_ty.kind()
-            {
-                let index_ty =
-                    self.typeck_results.expr_ty_adjusted_opt(index).unwrap_or_else(|| {
-                        // When encountering `return [0][0]` outside of a `fn` body we would attempt
-                        // to access an nonexistent index. We assume that more relevant errors will
-                        // already have been emitted, so we only gate on this with an ICE if no
-                        // error has been emitted. (#64638)
-                        Ty::new_error_with_message(
-                            self.fcx.tcx,
-                            e.span,
-                            format!("bad index {index:?} for base: `{base:?}`"),
-                        )
-                    });
+            let base_ty = self.typeck_results.expr_ty_adjusted(base);
+            if let ty::Ref(_, base_ty_inner, _) = *base_ty.kind() {
+                let index_ty = self.typeck_results.expr_ty_adjusted(index);
                 if self.is_builtin_index(e, base_ty_inner, index_ty) {
                     // Remove the method call record
                     self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
