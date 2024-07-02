@@ -180,3 +180,29 @@ pub unsafe fn check_bool_to_ordering(x: bool) -> std::cmp::Ordering {
 
     transmute(x)
 }
+
+// CHECK-LABEL: @check_usize_to_ref(
+#[no_mangle]
+pub unsafe fn check_usize_to_ref(x: usize) -> &'static u32 {
+    // CHECK: %_0 = getelementptr i8, ptr null, i64 %x
+    // OPT: %0 = icmp ne ptr %_0, null
+    // OPT: call void @llvm.assume(i1 %0)
+    // DBG-NOT: icmp
+    // DBG-NOT: assume
+    // CHECK: ret ptr %_0
+
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_ref_to_usize(
+#[no_mangle]
+pub unsafe fn check_ref_to_usize(x: &'static u32) -> usize {
+    // DBG-NOT: icmp
+    // DBG-NOT: assume
+    // OPT: %0 = icmp ne ptr %x, null
+    // OPT: call void @llvm.assume(i1 %0)
+    // CHECK: %_0 = ptrtoint ptr %x to i64
+    // CHECK: ret i64 %_0
+
+    transmute(x)
+}
