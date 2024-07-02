@@ -364,7 +364,8 @@ pub(crate) fn run_thin(
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<(Vec<LtoModuleCodegen<GccCodegenBackend>>, Vec<WorkProduct>), FatalError> {
     let dcx = cgcx.create_dcx();
-    let lto_data = prepare_lto(cgcx, &dcx)?;
+    let dcx = dcx.handle();
+    let lto_data = prepare_lto(cgcx, dcx)?;
     /*let symbols_below_threshold =
     symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();*/
     if cgcx.opts.cg.linker_plugin_lto.enabled() {
@@ -375,7 +376,7 @@ pub(crate) fn run_thin(
     }
     thin_lto(
         cgcx,
-        &dcx,
+        dcx,
         modules,
         lto_data.upstream_modules,
         lto_data.tmp_path,
@@ -425,7 +426,7 @@ pub(crate) fn prepare_thin(
 /// they all go out of scope.
 fn thin_lto(
     cgcx: &CodegenContext<GccCodegenBackend>,
-    _dcx: &DiagCtxt,
+    _dcx: DiagCtxtHandle<'_>,
     modules: Vec<(String, ThinBuffer)>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
