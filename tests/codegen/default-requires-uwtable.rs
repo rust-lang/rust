@@ -1,9 +1,9 @@
-//@ revisions: WINDOWS ANDROID
+//@ revisions: WINDOWS_ ANDROID_
 //@ compile-flags: -C panic=abort -Copt-level=0
-//@ [WINDOWS] compile-flags: --target=x86_64-pc-windows-msvc
-//@ [WINDOWS] needs-llvm-components: x86
-//@ [ANDROID] compile-flags: --target=armv7-linux-androideabi
-//@ [ANDROID] needs-llvm-components: arm
+//@ [WINDOWS_] compile-flags: --target=x86_64-pc-windows-msvc
+//@ [WINDOWS_] needs-llvm-components: x86
+//@ [ANDROID_] compile-flags: --target=armv7-linux-androideabi
+//@ [ANDROID_] needs-llvm-components: arm
 
 #![feature(no_core, lang_items)]
 #![crate_type = "lib"]
