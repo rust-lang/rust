@@ -1519,6 +1519,7 @@ impl Step for Extended {
             tarballs.push(builder.ensure(Mingw { host: target }).expect("missing mingw"));
         }
 
+        // Test
         add_component!("rust-docs" => Docs { host: target });
         add_component!("rust-json-docs" => JsonDocs { host: target });
         add_component!("cargo" => Cargo { compiler, target });
