@@ -18,6 +18,20 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) {
     ));
 }
 
+/// An extension of copy which can copy a directory recursively.
+pub fn copy_dir_all<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) {
+    create_dir_all(&to);
+    for entry in read_dir(from) {
+        let entry = entry.unwrap();
+        let ty = entry.file_type().unwrap();
+        if ty.is_dir() {
+            copy_dir_all(entry.path(), to.as_ref().join(entry.file_name()));
+        } else {
+            copy(entry.path(), to.as_ref().join(entry.file_name()));
+        }
+    }
+}
+
 /// A wrapper around [`std::fs::File::create`] which includes the file path in the panic message..
 #[track_caller]
 pub fn create_file<P: AsRef<Path>>(path: P) {
