@@ -41,13 +41,16 @@ pub mod time;
 #[deny(unsafe_op_in_unsafe_fn)]
 #[allow(unused)]
 mod common;
+
 pub use common::*;
 
 #[path = "../wasi/helpers.rs"]
 mod helpers;
-// These exports are listed individually to work around Rust's glob import
-// conflict rules. If we glob export `helpers` and `common` together, then
-// the compiler complains about conflicts.
+
+// The following exports are listed individually to work around Rust's glob
+// import conflict rules. If we glob export `helpers` and `common` together,
+// then the compiler complains about conflicts.
+
 pub use helpers::abort_internal;
 pub use helpers::decode_error_kind;
 use helpers::err2io;

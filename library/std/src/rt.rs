@@ -16,7 +16,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(unused_macros)]
 
-// Re-export some of our utilities which are expected by other crates.
 pub use crate::panicking::{begin_panic, panic_count};
 pub use core::panicking::{panic_display, panic_fmt};
 

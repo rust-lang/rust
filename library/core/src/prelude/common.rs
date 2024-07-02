@@ -2,6 +2,9 @@
 //!
 //! See the [module-level documentation](super) for more.
 
+// No formatting: this file is nothing but re-exports, and their order is worth preserving.
+#![cfg_attr(rustfmt, rustfmt::skip)]
+
 // Re-exported core operators
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
@@ -33,10 +36,7 @@ pub use crate::convert::{AsMut, AsRef, From, Into};
 pub use crate::default::Default;
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use crate::iter::{DoubleEndedIterator, ExactSizeIterator};
-#[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)]
-pub use crate::iter::{Extend, IntoIterator, Iterator};
+pub use crate::iter::{DoubleEndedIterator, ExactSizeIterator, Extend, IntoIterator, Iterator};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use crate::option::Option::{self, None, Some};

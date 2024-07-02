@@ -2,6 +2,9 @@
 //!
 //! See the [module-level documentation](super) for more.
 
+// No formatting: this file is nothing but re-exports, and their order is worth preserving.
+#![cfg_attr(rustfmt, rustfmt::skip)]
+
 // Re-exported core operators
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
