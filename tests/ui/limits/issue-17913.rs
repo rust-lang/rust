@@ -1,5 +1,5 @@
 //@ build-fail
-//@ normalize-stderr-test "\[&usize; \d+\]" -> "[&usize; usize::MAX]"
+//@ normalize-stderr-test: "\[&usize; \d+\]" -> "[&usize; usize::MAX]"
 //@ error-pattern: too big for the current architecture
 
 #[cfg(target_pointer_width = "64")]

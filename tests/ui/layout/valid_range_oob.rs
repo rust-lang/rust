@@ -1,6 +1,6 @@
 //@ failure-status: 101
-//@ normalize-stderr-test "note: .*\n\n" -> ""
-//@ normalize-stderr-test "thread 'rustc' panicked.*\n" -> ""
+//@ normalize-stderr-test: "note: .*\n\n" -> ""
+//@ normalize-stderr-test: "thread 'rustc' panicked.*\n" -> ""
 //@ rustc-env:RUST_BACKTRACE=0
 
 #![feature(rustc_attrs)]
