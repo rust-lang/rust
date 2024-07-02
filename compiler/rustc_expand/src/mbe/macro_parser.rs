@@ -76,11 +76,10 @@ pub(crate) use ParseResult::*;
 use crate::mbe::{macro_rules::Tracker, KleeneOp, TokenTree};
 
 use rustc_ast::token::{self, DocComment, NonterminalKind, Token};
-use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
-use rustc_parse::parser::{ParseNtResult, Parser};
+use rustc_parse::parser::{token_descr, ParseNtResult, Parser};
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::MacroRulesNormalizedIdent;
 use rustc_span::Span;
@@ -150,7 +149,7 @@ impl Display for MatcherLoc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MatcherLoc::Token { token } | MatcherLoc::SequenceSep { separator: token } => {
-                write!(f, "`{}`", pprust::token_to_string(token))
+                write!(f, "{}", token_descr(token))
             }
             MatcherLoc::MetaVarDecl { bind, kind, .. } => {
                 write!(f, "meta-variable `${bind}")?;
@@ -181,7 +180,7 @@ pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
         for tt in tts {
             match tt {
                 TokenTree::Token(token) => {
-                    locs.push(MatcherLoc::Token { token: token.clone() });
+                    locs.push(MatcherLoc::Token { token: *token });
                 }
                 TokenTree::Delimited(span, _, delimited) => {
                     let open_token = Token::new(token::OpenDelim(delimited.delim), span.open);
@@ -648,7 +647,7 @@ impl TtParser {
                     // There are no possible next positions AND we aren't waiting for the black-box
                     // parser: syntax error.
                     return Failure(T::build_failure(
-                        parser.token.clone(),
+                        parser.token,
                         parser.approx_token_stream_pos(),
                         "no rules expected this token in macro call",
                     ));

@@ -20,19 +20,19 @@ help: escape `async` to use it as an identifier
 LL |     module::r#async();
    |             ++
 
-error: no rules expected the token `r#async`
+error: no rules expected `r#async`
   --> $DIR/edition-keywords-2018-2018-parsing.rs:27:31
    |
 LL |     r#async = consumes_async!(r#async);
    |                               ^^^^^^^ no rules expected this token in macro call
    |
-note: while trying to match `async`
+note: while trying to match keyword `async`
   --> $DIR/auxiliary/edition-kw-macro-2018.rs:17:6
    |
 LL |     (async) => (1)
    |      ^^^^^
 
-error: no rules expected the token `async`
+error: no rules expected keyword `async`
   --> $DIR/edition-keywords-2018-2018-parsing.rs:28:35
    |
 LL |     r#async = consumes_async_raw!(async);

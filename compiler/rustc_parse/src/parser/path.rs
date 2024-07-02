@@ -1,11 +1,11 @@
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
+use crate::errors;
 use crate::errors::PathSingleColon;
 use crate::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
-use crate::{errors, maybe_whole};
 use ast::token::IdentIsRaw;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, MetaVarKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
     AssocItemConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
@@ -193,15 +193,23 @@ impl<'a> Parser<'a> {
             }
         };
 
-        maybe_whole!(self, NtPath, |path| reject_generics_if_mod_style(self, path.into_inner()));
+        if let Some(path) = self.eat_metavar_seq(MetaVarKind::Path, |this| {
+            this.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))
+        }) {
+            return Ok(reject_generics_if_mod_style(self, path));
+        }
 
-        if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtTy(ty) = &**nt {
-                if let ast::TyKind::Path(None, path) = &ty.kind {
-                    let path = path.clone();
-                    self.bump();
-                    return Ok(reject_generics_if_mod_style(self, path));
-                }
+        if let Some(MetaVarKind::Ty) = self.token.is_metavar_seq() {
+            let mut self2 = self.clone();
+            let ty = self2
+                .eat_metavar_seq(MetaVarKind::Ty, |this| {
+                    // No need to collect tokens because we only consult `ty.kind`.
+                    this.parse_ty_no_question_mark_recover()
+                })
+                .expect("metavar seq ty");
+            if let ast::TyKind::Path(None, path) = ty.into_inner().kind {
+                *self = self2;
+                return Ok(reject_generics_if_mod_style(self, path));
             }
         }
 
@@ -382,8 +390,8 @@ impl<'a> Parser<'a> {
                 } else {
                     // `(T, U) -> R`
 
-                    let prev_token_before_parsing = self.prev_token.clone();
-                    let token_before_parsing = self.token.clone();
+                    let prev_token_before_parsing = self.prev_token;
+                    let token_before_parsing = self.token;
                     let mut snapshot = None;
                     if self.may_recover()
                         && prev_token_before_parsing.kind == token::PathSep

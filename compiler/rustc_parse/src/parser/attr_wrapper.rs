@@ -104,13 +104,12 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
         // produce an empty `TokenStream` if no calls were made, and omit the
         // final token otherwise.
         let mut cursor_snapshot = self.cursor_snapshot.clone();
-        let tokens =
-            std::iter::once((FlatToken::Token(self.start_token.0.clone()), self.start_token.1))
-                .chain(std::iter::repeat_with(|| {
-                    let token = cursor_snapshot.next();
-                    (FlatToken::Token(token.0), token.1)
-                }))
-                .take(self.num_calls);
+        let tokens = std::iter::once((FlatToken::Token(self.start_token.0), self.start_token.1))
+            .chain(std::iter::repeat_with(|| {
+                let token = cursor_snapshot.next();
+                (FlatToken::Token(token.0), token.1)
+            }))
+            .take(self.num_calls);
 
         if !self.replace_ranges.is_empty() {
             let mut tokens: Vec<_> = tokens.collect();
@@ -215,7 +214,7 @@ impl<'a> Parser<'a> {
             return Ok(f(self, attrs.attrs)?.0);
         }
 
-        let start_token = (self.token.clone(), self.token_spacing);
+        let start_token = (self.token, self.token_spacing);
         let cursor_snapshot = self.token_cursor.clone();
         let start_pos = self.num_bump_calls;
 
@@ -409,8 +408,8 @@ fn make_token_stream(
                     .unwrap_or_else(|| panic!("Token stack was empty for token: {token:?}"));
 
                 let (open_delim, open_sp, open_spacing) = frame_data.open_delim_sp.unwrap();
-                assert_eq!(
-                    open_delim, delim,
+                assert!(
+                    open_delim.eq_ignoring_invisible_origin(&delim),
                     "Mismatched open/close delims: open={open_delim:?} close={span:?}"
                 );
                 let dspan = DelimSpan::from_pair(open_sp, span);
@@ -464,6 +463,6 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(AttrWrapper, 16);
-    static_assert_size!(LazyAttrTokenStreamImpl, 104);
+    static_assert_size!(LazyAttrTokenStreamImpl, 96);
     // tidy-alphabetical-end
 }

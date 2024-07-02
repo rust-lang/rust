@@ -1,15 +1,15 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
-    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing, TrailingToken,
+    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Recovered, Trailing,
+    TrailingToken,
 };
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
-use crate::maybe_whole;
 use ast::token::IdentIsRaw;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast::{self as ast};
@@ -123,10 +123,13 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Item>> {
-        maybe_whole!(self, NtItem, |item| {
+        if let Some(item) =
+            self.eat_metavar_seq(MetaVarKind::Item, |this| this.parse_item(ForceCollect::Yes))
+        {
+            let mut item = item.expect("an actual item");
             attrs.prepend_to_nt_inner(&mut item.attrs);
-            Some(item.into_inner())
-        });
+            return Ok(Some(item.into_inner()));
+        }
 
         let item =
             self.collect_tokens_trailing_token(attrs, force_collect, |this: &mut Self, attrs| {
@@ -1694,8 +1697,7 @@ impl<'a> Parser<'a> {
             self.expect_semi()?;
             body
         } else {
-            let err =
-                errors::UnexpectedTokenAfterStructName::new(self.token.span, self.token.clone());
+            let err = errors::UnexpectedTokenAfterStructName::new(self.token.span, self.token);
             return Err(self.dcx().create_err(err));
         };
 
@@ -2224,7 +2226,7 @@ impl<'a> Parser<'a> {
             || self.token.is_keyword(kw::Union))
             && self.look_ahead(1, |t| t.is_ident())
         {
-            let kw_token = self.token.clone();
+            let kw_token = self.token;
             let kw_str = pprust::token_to_string(&kw_token);
             let item = self.parse_item(ForceCollect::No)?;
             self.dcx().emit_err(errors::NestedAdt {
@@ -2361,7 +2363,7 @@ impl<'a> Parser<'a> {
             self.expect_semi()?;
             *sig_hi = self.prev_token.span;
             (AttrVec::new(), None)
-        } else if self.check(&token::OpenDelim(Delimiter::Brace)) || self.token.is_whole_block() {
+        } else if self.check(&token::OpenDelim(Delimiter::Brace)) || self.token.is_metavar_block() {
             self.parse_block_common(self.token.span, BlockCheckMode::Default, false)
                 .map(|(attrs, body)| (attrs, Some(body)))?
         } else if self.token.kind == token::Eq {
@@ -2448,12 +2450,17 @@ impl<'a> Parser<'a> {
                 })
             // `extern ABI fn`
             || self.check_keyword_case(kw::Extern, case)
+                // Use `tree_look_ahead` because `ABI` might be a metavariable,
+                // i.e. an invisible-delimited sequence, and `tree_look_ahead`
+                // will consider that a single element when looking ahead.
                 && self.look_ahead(1, |t| t.can_begin_string_literal())
-                && (self.look_ahead(2, |t| t.is_keyword_case(kw::Fn, case)) ||
+                && (self.tree_look_ahead(2, |t| t.is_keyword_case(kw::Fn, case)) == Some(true) ||
                     // this branch is only for better diagnostic in later, `pub` is not allowed here
                     (self.may_recover()
-                        && self.look_ahead(2, |t| t.is_keyword(kw::Pub))
-                        && self.look_ahead(3, |t| t.is_keyword_case(kw::Fn, case))))
+                        && self.tree_look_ahead(2, |t| t.is_keyword(kw::Pub)) == Some(true)
+                        && self.tree_look_ahead(3, |t| t.is_keyword_case(kw::Fn, case)) == Some(true)
+                    )
+                )
     }
 
     /// Parses all the "front matter" (or "qualifiers") for a `fn` declaration,
@@ -2895,8 +2902,10 @@ impl<'a> Parser<'a> {
 
     fn is_named_param(&self) -> bool {
         let offset = match &self.token.kind {
-            token::Interpolated(nt) => match &**nt {
-                token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
+            token::OpenDelim(Delimiter::Invisible(origin)) => match origin {
+                InvisibleOrigin::MetaVar(MetaVarKind::Pat(_)) => {
+                    return self.check_noexpect_past_close_delim(&token::Colon);
+                }
                 _ => 0,
             },
             token::BinOp(token::And) | token::AndAnd => 1,

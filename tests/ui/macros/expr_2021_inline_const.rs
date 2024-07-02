@@ -18,6 +18,6 @@ macro_rules! m2024 {
     };
 }
 fn main() {
-    m2021!(const { 1 }); //~ ERROR: no rules expected the token `const`
-    m2024!(const { 1 }); //[edi2021]~ ERROR: no rules expected the token `const`
+    m2021!(const { 1 }); //~ ERROR: no rules expected keyword `const`
+    m2024!(const { 1 }); //[edi2021]~ ERROR: no rules expected keyword `const`
 }

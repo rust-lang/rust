@@ -4,12 +4,11 @@ use crate::mbe::{
     macro_parser::{MatcherLoc, NamedParseResult, ParseResult::*, TtParser},
     macro_rules::{try_match_macro, Tracker},
 };
-use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_macros::Subdiagnostic;
-use rustc_parse::parser::{Parser, Recovery};
+use rustc_parse::parser::{token_descr, Parser, Recovery};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Ident;
 use rustc_span::{ErrorGuaranteed, Span};
@@ -70,8 +69,8 @@ pub(super) fn failed_to_match_macro<'cx>(
     }
 
     if let MatcherLoc::Token { token: expected_token } = &remaining_matcher
-        && (matches!(expected_token.kind, TokenKind::Interpolated(_))
-            || matches!(token.kind, TokenKind::Interpolated(_)))
+        && (matches!(expected_token.kind, TokenKind::OpenDelim(Delimiter::Invisible(_)))
+            || matches!(token.kind, TokenKind::OpenDelim(Delimiter::Invisible(_))))
     {
         err.note("captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens");
         err.note("see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information");
@@ -165,7 +164,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
                     .map_or(true, |failure| failure.is_better_position(*approx_position))
                 {
                     self.best_failure = Some(BestFailure {
-                        token: token.clone(),
+                        token: *token,
                         position_in_tokenstream: *approx_position,
                         msg,
                         remaining_matcher: self
@@ -338,17 +337,11 @@ pub(super) fn annotate_doc_comment(err: &mut Diag<'_>, sm: &SourceMap, span: Spa
 /// other tokens, this is "unexpected token...".
 pub(super) fn parse_failure_msg(tok: &Token, expected_token: Option<&Token>) -> Cow<'static, str> {
     if let Some(expected_token) = expected_token {
-        Cow::from(format!(
-            "expected `{}`, found `{}`",
-            pprust::token_to_string(expected_token),
-            pprust::token_to_string(tok),
-        ))
+        Cow::from(format!("expected {}, found {}", token_descr(expected_token), token_descr(tok)))
     } else {
         match tok.kind {
             token::Eof => Cow::from("unexpected end of macro invocation"),
-            _ => {
-                Cow::from(format!("no rules expected the token `{}`", pprust::token_to_string(tok)))
-            }
+            _ => Cow::from(format!("no rules expected {}", token_descr(tok))),
         }
     }
 }

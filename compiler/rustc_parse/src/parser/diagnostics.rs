@@ -24,12 +24,11 @@ use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, Token, TokenKind};
-use rustc_ast::tokenstream::AttrTokenTree;
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode, Block,
-    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, HasTokens, Item, ItemKind, Param, Pat,
-    PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
+    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Param, Pat, PatKind,
+    Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -288,7 +287,7 @@ impl<'a> Parser<'a> {
         let mut recovered_ident = None;
         // we take this here so that the correct original token is retained in
         // the diagnostic, regardless of eager recovery.
-        let bad_token = self.token.clone();
+        let bad_token = self.token;
 
         // suggest prepending a keyword in identifier position with `r#`
         let suggest_raw = if let Some((ident, IdentIsRaw::No)) = self.token.ident()
@@ -348,7 +347,7 @@ impl<'a> Parser<'a> {
             // if the previous token is a valid keyword
             // that might use a generic, then suggest a correct
             // generic placement (later on)
-            let maybe_keyword = self.prev_token.clone();
+            let maybe_keyword = self.prev_token;
             if valid_prev_keywords.into_iter().any(|x| maybe_keyword.is_keyword(x)) {
                 // if we have a valid keyword, attempt to parse generics
                 // also obtain the keywords symbol
@@ -464,7 +463,7 @@ impl<'a> Parser<'a> {
                     false
                 }
 
-                if **token != parser::TokenType::Token(self.token.kind.clone()) {
+                if **token != parser::TokenType::Token(self.token.kind) {
                     let eq = is_ident_eq_keyword(&self.token.kind, &token);
                     // If the suggestion is a keyword and the found token is an ident,
                     // the content of which are equal to the suggestion's content,
@@ -528,7 +527,7 @@ impl<'a> Parser<'a> {
                 //   let y = 42;
                 let guar = self.dcx().emit_err(ExpectedSemi {
                     span: self.token.span,
-                    token: self.token.clone(),
+                    token: self.token,
                     unexpected_token_label: None,
                     sugg: ExpectedSemiSugg::ChangeToSemi(self.token.span),
                 });
@@ -553,7 +552,7 @@ impl<'a> Parser<'a> {
                 let span = self.prev_token.span.shrink_to_hi();
                 let guar = self.dcx().emit_err(ExpectedSemi {
                     span,
-                    token: self.token.clone(),
+                    token: self.token,
                     unexpected_token_label: Some(self.token.span),
                     sugg: ExpectedSemiSugg::AddSemi(span),
                 });
@@ -749,7 +748,7 @@ impl<'a> Parser<'a> {
         let span = self.prev_token.span.shrink_to_hi();
         let mut err = self.dcx().create_err(ExpectedSemi {
             span,
-            token: self.token.clone(),
+            token: self.token,
             unexpected_token_label: Some(self.token.span),
             sugg: ExpectedSemiSugg::AddSemi(span),
         });
@@ -2360,52 +2359,6 @@ impl<'a> Parser<'a> {
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
         err.span_label(span, "expected expression");
-
-        // Walk the chain of macro expansions for the current token to point at how the original
-        // code was interpreted. This helps the user realize when a macro argument of one type is
-        // later reinterpreted as a different type, like `$x:expr` being reinterpreted as `$x:pat`
-        // in a subsequent macro invocation (#71039).
-        let mut tok = self.token.clone();
-        let mut labels = vec![];
-        while let TokenKind::Interpolated(nt) = &tok.kind {
-            let tokens = nt.tokens();
-            labels.push(nt.clone());
-            if let Some(tokens) = tokens
-                && let tokens = tokens.to_attr_token_stream()
-                && let tokens = tokens.0.deref()
-                && let [AttrTokenTree::Token(token, _)] = &tokens[..]
-            {
-                tok = token.clone();
-            } else {
-                break;
-            }
-        }
-        let mut iter = labels.into_iter().peekable();
-        let mut show_link = false;
-        while let Some(nt) = iter.next() {
-            let descr = nt.descr();
-            if let Some(next) = iter.peek() {
-                let next_descr = next.descr();
-                if next_descr != descr {
-                    err.span_label(next.use_span(), format!("this is expected to be {next_descr}"));
-                    err.span_label(
-                        nt.use_span(),
-                        format!(
-                            "this is interpreted as {}, but it is expected to be {}",
-                            next_descr, descr,
-                        ),
-                    );
-                    show_link = true;
-                }
-            }
-        }
-        if show_link {
-            err.note(
-                "when forwarding a matched fragment to another macro-by-example, matchers in the \
-                 second macro will see an opaque AST of the fragment type, not the underlying \
-                 tokens",
-            );
-        }
         err
     }
 

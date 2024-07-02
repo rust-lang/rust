@@ -36,7 +36,7 @@ impl FromInternal<token::Delimiter> for Delimiter {
             token::Delimiter::Parenthesis => Delimiter::Parenthesis,
             token::Delimiter::Brace => Delimiter::Brace,
             token::Delimiter::Bracket => Delimiter::Bracket,
-            token::Delimiter::Invisible => Delimiter::None,
+            token::Delimiter::Invisible(_) => Delimiter::None,
         }
     }
 }
@@ -47,7 +47,7 @@ impl ToInternal<token::Delimiter> for Delimiter {
             Delimiter::Parenthesis => token::Delimiter::Parenthesis,
             Delimiter::Brace => token::Delimiter::Brace,
             Delimiter::Bracket => token::Delimiter::Bracket,
-            Delimiter::None => token::Delimiter::Invisible,
+            Delimiter::None => token::Delimiter::Invisible(token::InvisibleOrigin::ProcMacro),
         }
     }
 }
@@ -114,11 +114,25 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
 
         while let Some(tree) = cursor.next() {
             let (Token { kind, span }, joint) = match tree.clone() {
-                tokenstream::TokenTree::Delimited(span, _, delim, tts) => {
-                    let delimiter = pm::Delimiter::from_internal(delim);
+                tokenstream::TokenTree::Delimited(span, _, delim, stream) => {
+                    // We used to have an alternative behaviour for crates that
+                    // needed it: a hack used to pass AST fragments to
+                    // attribute and derive macros as a single nonterminal
+                    // token instead of a token stream. Such token needs to be
+                    // "unwrapped" and not represented as a delimited group. We
+                    // had a lint for a long time, but now we just emit a hard
+                    // error. Eventually we might remove the special case hard
+                    // error check altogether. See #73345.
+                    if let Delimiter::Invisible(InvisibleOrigin::MetaVar(kind)) = delim {
+                        crate::base::stream_pretty_printing_compatibility_hack(
+                            kind,
+                            &stream,
+                            rustc.psess(),
+                        );
+                    }
                     trees.push(TokenTree::Group(Group {
-                        delimiter,
-                        stream: Some(tts),
+                        delimiter: pm::Delimiter::from_internal(delim),
+                        stream: Some(stream),
                         span: DelimSpan {
                             open: span.open,
                             close: span.close,
@@ -273,24 +287,6 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                         stream: Some(stream),
                         span: DelimSpan::from_single(span),
                     }));
-                }
-
-                Interpolated(nt) => {
-                    let stream = TokenStream::from_nonterminal_ast(&nt);
-                    // We used to have an alternative behaviour for crates that
-                    // needed it: a hack used to pass AST fragments to
-                    // attribute and derive macros as a single nonterminal
-                    // token instead of a token stream. Such token needs to be
-                    // "unwrapped" and not represented as a delimited group. We
-                    // had a lint for a long time, but now we just emit a hard
-                    // error. Eventually we might remove the special case hard
-                    // error check altogether. See #73345.
-                    crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.ecx.sess);
-                    trees.push(TokenTree::Group(Group {
-                        delimiter: pm::Delimiter::None,
-                        stream: Some(stream),
-                        span: DelimSpan::from_single(span),
-                    }))
                 }
 
                 OpenDelim(..) | CloseDelim(..) => unreachable!(),
