@@ -1,0 +1,18 @@
+warning: Passing a pointer to asm!() with 'nomem' option
+  --> $DIR/passing-pointer-nomem-readonly.rs:9:50
+   |
+LL |     core::arch::asm!("mov {p}, {p}", p = in(reg) p, options(nomem, nostack, preserves_flags));
+   |                                                  ^
+   |
+   = note: Pointer suggest that this piece of assembly reads the underlying object, consider using usize or checking the options
+
+warning: Passing a mutable pointer to asm!() with 'readonly' option
+  --> $DIR/passing-pointer-nomem-readonly.rs:14:50
+   |
+LL |     core::arch::asm!("mov {p}, {p}", p = in(reg) p, options(readonly, nostack, preserves_flags));
+   |                                                  ^
+   |
+   = note: Mutable pointer suggest that this piece of assembly modifies the underlying object, consider using const pointer or checking the options
+
+warning: 2 warnings emitted
+
