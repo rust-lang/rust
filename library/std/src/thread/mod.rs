@@ -185,6 +185,11 @@ mod scoped;
 #[stable(feature = "scoped_threads", since = "1.63.0")]
 pub use scoped::{scope, Scope, ScopedJoinHandle};
 
+mod spawnhook;
+
+#[unstable(feature = "thread_spawn_hook", issue = "none")]
+pub use spawnhook::add_spawn_hook;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Thread-local storage
 ////////////////////////////////////////////////////////////////////////////////
@@ -492,6 +497,9 @@ impl Builder {
                 CString::new(name).expect("thread name may not contain interior null bytes"),
             )
         });
+
+        let hooks = spawnhook::run_spawn_hooks(&my_thread)?;
+
         let their_thread = my_thread.clone();
 
         let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
@@ -500,9 +508,6 @@ impl Builder {
             _marker: PhantomData,
         });
         let their_packet = my_packet.clone();
-
-        let output_capture = crate::io::set_output_capture(None);
-        crate::io::set_output_capture(output_capture.clone());
 
         // Pass `f` in `MaybeUninit` because actually that closure might *run longer than the lifetime of `F`*.
         // See <https://github.com/rust-lang/rust/issues/101983> for more details.
@@ -534,7 +539,9 @@ impl Builder {
                 imp::Thread::set_name(name);
             }
 
-            crate::io::set_output_capture(output_capture);
+            for hook in hooks {
+                hook();
+            }
 
             let f = f.into_inner();
             set_current(their_thread);
