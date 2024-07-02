@@ -274,6 +274,10 @@ extern "system" {
 }
 #[link(name = "kernel32")]
 extern "system" {
+    pub fn GetFileSizeEx(hfile: HANDLE, lpfilesize: *mut i64) -> BOOL;
+}
+#[link(name = "kernel32")]
+extern "system" {
     pub fn GetFileType(hfile: HANDLE) -> FILE_TYPE;
 }
 #[link(name = "kernel32")]
