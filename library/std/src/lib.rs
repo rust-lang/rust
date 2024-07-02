@@ -317,6 +317,7 @@
 //
 // Library features (core):
 // tidy-alphabetical-start
+#![cfg_attr(not(bootstrap), feature(float_mul_add_fast))]
 #![feature(c_str_module)]
 #![feature(char_internals)]
 #![feature(core_intrinsics)]

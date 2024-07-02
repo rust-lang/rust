@@ -66,6 +66,8 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::log2f64 => "log2",
         sym::fmaf32 => "fmaf",
         sym::fmaf64 => "fma",
+        sym::fmuladdf32 => "fmaf", // NOTE: pessimal without FMA target feature
+        sym::fmuladdf64 => "fma", // NOTE: pessimal without FMA target feature
         sym::fabsf32 => "fabsf",
         sym::fabsf64 => "fabs",
         sym::minnumf32 => "fminf",

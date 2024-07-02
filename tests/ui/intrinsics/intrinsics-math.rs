@@ -1,5 +1,6 @@
 //@ run-pass
 //@ ignore-emscripten fma not implemented in emscripten
+#![feature(float_mul_add_fast)]
 
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => ({
@@ -45,6 +46,9 @@ pub fn main() {
 
     assert_approx_eq!(1.0f32.mul_add(2.0f32, 5.0f32), 7.0f32);
     assert_approx_eq!(0.0f64.mul_add(-2.0f64, f64::consts::E), f64::consts::E);
+
+    assert_approx_eq!(1.0f32.mul_add_fast(2.0f32, 5.0f32), 7.0f32);
+    assert_approx_eq!(0.0f64.mul_add_fast(-2.0f64, f64::consts::E), f64::consts::E);
 
     assert_approx_eq!((-1.0f32).abs(), 1.0f32);
     assert_approx_eq!(34.2f64.abs(), 34.2f64);
