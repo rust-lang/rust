@@ -19,7 +19,7 @@ help: consider further restricting type parameter `T`
    |
 LL |     T::Baa: std::fmt::Debug, T: Foo
    |                            ~~~~~~~~
-help: and also change the associated type name
+help: ...and changing the associated type name
    |
 LL |     T::Bar: std::fmt::Debug,
    |        ~~~
