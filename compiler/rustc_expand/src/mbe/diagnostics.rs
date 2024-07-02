@@ -120,21 +120,21 @@ struct CollectTrackerAndEmitter<'a, 'cx, 'matcher> {
 
 struct BestFailure {
     token: Token,
-    position_in_tokenstream: usize,
+    position_in_tokenstream: u32,
     msg: &'static str,
     remaining_matcher: MatcherLoc,
 }
 
 impl BestFailure {
-    fn is_better_position(&self, position: usize) -> bool {
+    fn is_better_position(&self, position: u32) -> bool {
         position > self.position_in_tokenstream
     }
 }
 
 impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 'matcher> {
-    type Failure = (Token, usize, &'static str);
+    type Failure = (Token, u32, &'static str);
 
-    fn build_failure(tok: Token, position: usize, msg: &'static str) -> Self::Failure {
+    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure {
         (tok, position, msg)
     }
 
@@ -211,9 +211,9 @@ impl<'matcher> FailureForwarder<'matcher> {
 }
 
 impl<'matcher> Tracker<'matcher> for FailureForwarder<'matcher> {
-    type Failure = (Token, usize, &'static str);
+    type Failure = (Token, u32, &'static str);
 
-    fn build_failure(tok: Token, position: usize, msg: &'static str) -> Self::Failure {
+    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure {
         (tok, position, msg)
     }
 

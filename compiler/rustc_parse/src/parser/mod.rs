@@ -153,7 +153,7 @@ pub struct Parser<'a> {
     expected_tokens: Vec<TokenType>,
     token_cursor: TokenCursor,
     // The number of calls to `bump`, i.e. the position in the token stream.
-    num_bump_calls: usize,
+    num_bump_calls: u32,
     // During parsing we may sometimes need to 'unglue' a glued token into two
     // component tokens (e.g. '>>' into '>' and '>), so the parser can consume
     // them one at a time. This process bypasses the normal capturing mechanism
@@ -192,7 +192,7 @@ pub struct Parser<'a> {
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(Parser<'_>, 264);
+rustc_data_structures::static_assert_size!(Parser<'_>, 256);
 
 /// Stores span information about a closure.
 #[derive(Clone, Debug)]
@@ -1572,7 +1572,7 @@ impl<'a> Parser<'a> {
         self.expected_tokens.clear();
     }
 
-    pub fn approx_token_stream_pos(&self) -> usize {
+    pub fn approx_token_stream_pos(&self) -> u32 {
         self.num_bump_calls
     }
 }

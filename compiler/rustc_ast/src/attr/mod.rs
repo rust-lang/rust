@@ -204,12 +204,14 @@ impl Attribute {
 
     pub fn tokens(&self) -> TokenStream {
         match &self.kind {
-            AttrKind::Normal(normal) => normal
-                .tokens
-                .as_ref()
-                .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
-                .to_attr_token_stream()
-                .to_tokenstream(),
+            AttrKind::Normal(normal) => TokenStream::new(
+                normal
+                    .tokens
+                    .as_ref()
+                    .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
+                    .to_attr_token_stream()
+                    .to_token_trees(),
+            ),
             &AttrKind::DocComment(comment_kind, data) => TokenStream::token_alone(
                 token::DocComment(comment_kind, self.style, data),
                 self.span,
