@@ -124,6 +124,7 @@
 #![feature(error_generic_member_access)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
+#![feature(extend_one_unchecked)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(hasher_prefixfree_extras)]
