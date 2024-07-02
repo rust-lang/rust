@@ -1350,9 +1350,10 @@ macro_rules! common_visitor_and_walkers {
             match kind {
                 GenericParamKind::Lifetime => (),
                 GenericParamKind::Type { default } => visit_opt!(vis, visit_ty, default),
-                GenericParamKind::Const { ty, default, kw_span: _ } => {
+                GenericParamKind::Const { ty, default, span } => {
                     try_visit!(vis.visit_ty(ty));
                     visit_opt!(vis, visit_anon_const, default);
+                    try_visit!(visit_span(vis, span));
                 }
             }
             if let Some(sp) = colon_span {
