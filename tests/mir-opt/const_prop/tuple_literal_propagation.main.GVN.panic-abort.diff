@@ -31,9 +31,7 @@
 +         nop;
           return;
       }
-+ }
-+ 
-+ ALLOC0 (size: 8, align: 4) {
-+     01 00 00 00 02 00 00 00                         │ ........
   }
++ 
++ ALLOC0 (size: 8, align: 4) { .. }
   

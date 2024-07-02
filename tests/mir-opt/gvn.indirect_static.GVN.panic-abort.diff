@@ -13,7 +13,5 @@
       }
   }
   
-  ALLOC0 (static: A, size: 2, align: 1) {
-      00 __                                           │ .░
-  }
+  ALLOC0 (static: A, size: 2, align: 1) { .. }
   

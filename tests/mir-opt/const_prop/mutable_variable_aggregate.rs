@@ -1,4 +1,5 @@
 //@ test-mir-pass: GVN
+//@ compile-flags: -Zdump-mir-exclude-alloc-bytes
 
 // EMIT_MIR mutable_variable_aggregate.main.GVN.diff
 fn main() {

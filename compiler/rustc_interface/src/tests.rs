@@ -691,6 +691,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(dump_mir, Some(String::from("abc")));
     untracked!(dump_mir_dataflow, true);
     untracked!(dump_mir_dir, String::from("abc"));
+    untracked!(dump_mir_exclude_alloc_bytes, true);
     untracked!(dump_mir_exclude_pass_number, true);
     untracked!(dump_mir_graphviz, true);
     untracked!(dump_mono_stats, SwitchWithOptPath::Enabled(Some("mono-items-dir/".into())));
