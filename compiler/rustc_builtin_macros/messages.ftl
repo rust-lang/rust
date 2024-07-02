@@ -17,6 +17,9 @@ builtin_macros_asm_expected_other = expected operand, {$is_global_asm ->
     *[false] clobber_abi, options
     }, or additional template string
 
+builtin_macros_asm_expected_string_literal = expected string literal
+    .label = not a string literal
+
 builtin_macros_asm_explicit_register_name = explicit register arguments cannot have names
 
 builtin_macros_asm_mayunwind = asm labels are not allowed with the `may_unwind` option
@@ -24,6 +27,8 @@ builtin_macros_asm_mayunwind = asm labels are not allowed with the `may_unwind` 
 builtin_macros_asm_modifier_invalid = asm template modifier must be a single character
 
 builtin_macros_asm_mutually_exclusive = the `{$opt1}` and `{$opt2}` options are mutually exclusive
+
+builtin_macros_asm_no_matched_argument_name = there is no argument named `{$name}`
 
 builtin_macros_asm_noreturn = asm outputs are not allowed with the `noreturn` option
 
@@ -228,9 +233,15 @@ builtin_macros_only_one_argument = {$name} takes 1 argument
 
 builtin_macros_proc_macro = `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
 
+builtin_macros_proc_macro_attribute_only_be_used_on_bare_functions = the `#[{$path}]` attribute may only be used on bare functions
+
+builtin_macros_proc_macro_attribute_only_usable_with_crate_type = the `#[{$path}]` attribute is only usable with crates of the `proc-macro` crate type
+
 builtin_macros_requires_cfg_pattern =
     macro requires a cfg-pattern as an argument
     .label = cfg-pattern required
+
+builtin_macros_source_uitls_expected_item = expected item, found `{$token}`
 
 builtin_macros_takes_no_arguments = {$name} takes no arguments
 

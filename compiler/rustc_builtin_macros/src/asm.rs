@@ -390,9 +390,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
             }
             Err(opt_lit) => {
                 let span = opt_lit.map_or(p.token.span, |lit| lit.span);
-                let mut err = p.dcx().struct_span_err(span, "expected string literal");
-                err.span_label(span, "not a string literal");
-                return Err(err);
+                return Err(p.dcx().create_err(errors::AsmExpectedStringLiteral { span }));
             }
         };
 
@@ -639,14 +637,13 @@ fn expand_preparsed_asm(
                             match args.named_args.get(&Symbol::intern(name)) {
                                 Some(&idx) => Some(idx),
                                 None => {
-                                    let msg = format!("there is no argument named `{name}`");
                                     let span = arg.position_span;
                                     ecx.dcx()
-                                        .struct_span_err(
-                                            template_span
+                                        .create_err(errors::AsmNoMatchedArgumentName {
+                                            name: name.to_owned(),
+                                            span: template_span
                                                 .from_inner(InnerSpan::new(span.start, span.end)),
-                                            msg,
-                                        )
+                                        })
                                         .emit();
                                     None
                                 }
