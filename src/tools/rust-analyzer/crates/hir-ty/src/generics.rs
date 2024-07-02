@@ -163,7 +163,7 @@ impl Generics {
     fn find_lifetime(&self, lifetime: LifetimeParamId) -> Option<usize> {
         if lifetime.parent == self.def {
             let idx = lifetime.local_id.into_raw().into_u32() as usize;
-            debug_assert!(idx <= self.params.lifetimes.len());
+            debug_assert!(idx <= self.params.len_lifetimes());
             Some(self.params.len_type_or_consts() + idx)
         } else {
             debug_assert_eq!(self.parent_generics().map(|it| it.def), Some(lifetime.parent));

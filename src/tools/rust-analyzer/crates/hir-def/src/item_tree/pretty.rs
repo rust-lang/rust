@@ -532,7 +532,7 @@ impl Printer<'_> {
 
         w!(self, "<");
         let mut first = true;
-        for (idx, lt) in params.lifetimes.iter() {
+        for (idx, lt) in params.iter_lt() {
             if !first {
                 w!(self, ", ");
             }

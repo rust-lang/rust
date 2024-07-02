@@ -160,7 +160,7 @@ pub enum GenericParamDataRef<'a> {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct GenericParams {
     type_or_consts: Arena<TypeOrConstParamData>,
-    pub lifetimes: Arena<LifetimeParamData>,
+    lifetimes: Arena<LifetimeParamData>,
     where_predicates: Box<[WherePredicate]>,
 }
 

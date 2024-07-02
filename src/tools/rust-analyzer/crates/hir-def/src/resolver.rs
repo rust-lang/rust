@@ -775,7 +775,7 @@ impl Scope {
                         );
                     }
                 }
-                for (local_id, param) in params.lifetimes.iter() {
+                for (local_id, param) in params.iter_lt() {
                     let id = LifetimeParamId { parent, local_id };
                     acc.add(&param.name, ScopeDef::GenericParam(id.into()))
                 }

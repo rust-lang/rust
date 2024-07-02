@@ -103,7 +103,7 @@ impl HasChildSource<LocalLifetimeParamId> for GenericDefId {
         db: &dyn DefDatabase,
     ) -> InFile<ArenaMap<LocalLifetimeParamId, Self::Value>> {
         let generic_params = db.generic_params(*self);
-        let idx_iter = generic_params.lifetimes.iter().map(|(idx, _)| idx);
+        let idx_iter = generic_params.iter_lt().map(|(idx, _)| idx);
 
         let (file_id, generic_params_list) = self.file_id_and_params_of(db);
 

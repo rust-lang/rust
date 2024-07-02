@@ -539,7 +539,7 @@ fn write_generic_params(
     f: &mut HirFormatter<'_>,
 ) -> Result<(), HirDisplayError> {
     let params = f.db.generic_params(def);
-    if params.lifetimes.is_empty()
+    if params.iter_lt().next().is_none()
         && params.iter_type_or_consts().all(|it| it.1.const_param().is_none())
         && params
             .iter_type_or_consts()
@@ -559,7 +559,7 @@ fn write_generic_params(
             f.write_str(", ")
         }
     };
-    for (_, lifetime) in params.lifetimes.iter() {
+    for (_, lifetime) in params.iter_lt() {
         delim(f)?;
         write!(f, "{}", lifetime.name.display(f.db.upcast()))?;
     }
