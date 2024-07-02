@@ -8,7 +8,7 @@ use rustc_span::Span;
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 use crate::coverage::mappings;
 use crate::coverage::spans::from_mir::{
-    extract_covspans_and_holes_from_mir, ExtractedCovspans, Hole, SpanFromMir,
+    extract_covspans_from_mir, ExtractedCovspans, Hole, SpanFromMir,
 };
 use crate::coverage::ExtractedHirInfo;
 
@@ -20,8 +20,8 @@ pub(super) fn extract_refined_covspans(
     basic_coverage_blocks: &CoverageGraph,
     code_mappings: &mut impl Extend<mappings::CodeMapping>,
 ) {
-    let ExtractedCovspans { mut covspans, mut holes } =
-        extract_covspans_and_holes_from_mir(mir_body, hir_info, basic_coverage_blocks);
+    let ExtractedCovspans { mut covspans } =
+        extract_covspans_from_mir(mir_body, hir_info, basic_coverage_blocks);
 
     // First, perform the passes that need macro information.
     covspans.sort_by(|a, b| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb));
@@ -45,6 +45,7 @@ pub(super) fn extract_refined_covspans(
     covspans.dedup_by(|b, a| a.span.source_equal(b.span));
 
     // Sort the holes, and merge overlapping/adjacent holes.
+    let mut holes = hir_info.hole_spans.iter().map(|&span| Hole { span }).collect::<Vec<_>>();
     holes.sort_by(|a, b| compare_spans(a.span, b.span));
     holes.dedup_by(|b, a| a.merge_if_overlapping_or_adjacent(b));
 

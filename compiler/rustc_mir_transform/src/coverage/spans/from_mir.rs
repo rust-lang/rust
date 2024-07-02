@@ -1,8 +1,7 @@
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::{
-    self, AggregateKind, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    self, FakeReadCause, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_span::{Span, Symbol};
 
@@ -15,13 +14,12 @@ use crate::coverage::ExtractedHirInfo;
 
 pub(crate) struct ExtractedCovspans {
     pub(crate) covspans: Vec<SpanFromMir>,
-    pub(crate) holes: Vec<Hole>,
 }
 
 /// Traverses the MIR body to produce an initial collection of coverage-relevant
 /// spans, each associated with a node in the coverage graph (BCB) and possibly
 /// other metadata.
-pub(crate) fn extract_covspans_and_holes_from_mir(
+pub(crate) fn extract_covspans_from_mir(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
@@ -29,21 +27,13 @@ pub(crate) fn extract_covspans_and_holes_from_mir(
     let &ExtractedHirInfo { body_span, .. } = hir_info;
 
     let mut covspans = vec![];
-    let mut holes = vec![];
 
     for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
-        bcb_to_initial_coverage_spans(
-            mir_body,
-            body_span,
-            bcb,
-            bcb_data,
-            &mut covspans,
-            &mut holes,
-        );
+        bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data, &mut covspans);
     }
 
     // Only add the signature span if we found at least one span in the body.
-    if !covspans.is_empty() || !holes.is_empty() {
+    if !covspans.is_empty() {
         // If there is no usable signature span, add a fake one (before refinement)
         // to avoid an ugly gap between the body start and the first real span.
         // FIXME: Find a more principled way to solve this problem.
@@ -51,7 +41,7 @@ pub(crate) fn extract_covspans_and_holes_from_mir(
         covspans.push(SpanFromMir::for_fn_sig(fn_sig_span));
     }
 
-    ExtractedCovspans { covspans, holes }
+    ExtractedCovspans { covspans }
 }
 
 // Generate a set of coverage spans from the filtered set of `Statement`s and `Terminator`s of
@@ -65,7 +55,6 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
     bcb: BasicCoverageBlock,
     bcb_data: &'a BasicCoverageBlockData,
     initial_covspans: &mut Vec<SpanFromMir>,
-    holes: &mut Vec<Hole>,
 ) {
     for &bb in &bcb_data.basic_blocks {
         let data = &mir_body[bb];
@@ -81,13 +70,7 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
             let expn_span = filtered_statement_span(statement)?;
             let (span, visible_macro) = unexpand(expn_span)?;
 
-            // A statement that looks like the assignment of a closure expression
-            // is treated as a "hole" span, to be carved out of other spans.
-            if is_closure_like(statement) {
-                holes.push(Hole { span });
-            } else {
-                initial_covspans.push(SpanFromMir::new(span, visible_macro, bcb));
-            }
+            initial_covspans.push(SpanFromMir::new(span, visible_macro, bcb));
             Some(())
         };
         for statement in data.statements.iter() {
@@ -102,18 +85,6 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
             Some(())
         };
         extract_terminator_span(data.terminator());
-    }
-}
-
-fn is_closure_like(statement: &Statement<'_>) -> bool {
-    match statement.kind {
-        StatementKind::Assign(box (_, Rvalue::Aggregate(box ref agg_kind, _))) => match agg_kind {
-            AggregateKind::Closure(_, _)
-            | AggregateKind::Coroutine(_, _)
-            | AggregateKind::CoroutineClosure(..) => true,
-            _ => false,
-        },
-        _ => false,
     }
 }
 
