@@ -316,6 +316,18 @@ impl<I: Iterator> Peekable<I> {
     {
         self.next_if(|next| next == expected)
     }
+
+    pub fn into_inner(self) -> I {
+        self.iter
+    }
+
+    pub fn inner(&self) -> &I {
+        &self.iter
+    }
+
+    pub fn inner_mut(&mut self) -> &mut I {
+        &mut self.iter
+    }
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
