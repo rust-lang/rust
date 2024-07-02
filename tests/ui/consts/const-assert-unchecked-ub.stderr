@@ -1,5 +1,5 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-assert-unchecked-ub.rs:6:5
+  --> $DIR/const-assert-unchecked-ub.rs:3:5
    |
 LL |     std::hint::assert_unchecked(n < 32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `assume` called with `false`
