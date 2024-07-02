@@ -125,6 +125,11 @@
 //! - [`Condvar`]: Condition Variable, providing the ability to block
 //!   a thread while waiting for an event to occur.
 //!
+//! - [`mpmc`]: Multi-producer, multi-consumer queues, used for
+//!   message-based communication. Can provide a lightweight
+//!   inter-thread synchronisation mechanism, at the cost of some
+//!   extra memory.
+//!
 //! - [`mpsc`]: Multi-producer, single-consumer queues, used for
 //!   message-based communication. Can provide a lightweight
 //!   inter-thread synchronisation mechanism, at the cost of some
@@ -150,6 +155,7 @@
 //! [`Arc`]: crate::sync::Arc
 //! [`Barrier`]: crate::sync::Barrier
 //! [`Condvar`]: crate::sync::Condvar
+//! [`mpmc`]: crate::sync::mpmc
 //! [`mpsc`]: crate::sync::mpsc
 //! [`Mutex`]: crate::sync::Mutex
 //! [`Once`]: crate::sync::Once
@@ -191,12 +197,13 @@ pub use self::once_lock::OnceLock;
 #[unstable(feature = "reentrant_lock", issue = "121440")]
 pub use self::reentrant_lock::{ReentrantLock, ReentrantLockGuard};
 
+#[unstable(feature = "mpmc_channel", issue = "125712")]
+pub mod mpmc;
 pub mod mpsc;
 
 mod barrier;
 mod condvar;
 mod lazy_lock;
-mod mpmc;
 mod mutex;
 pub(crate) mod once;
 mod once_lock;

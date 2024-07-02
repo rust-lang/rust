@@ -14,7 +14,7 @@ LL + use std::collections::btree_map::IntoIter;
    |
 LL + use std::collections::btree_set::IntoIter;
    |
-     and 8 other candidates
+     and 9 other candidates
 
 error: aborting due to 1 previous error
 
