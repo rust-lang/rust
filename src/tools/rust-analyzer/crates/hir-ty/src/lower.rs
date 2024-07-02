@@ -812,13 +812,13 @@ impl<'a> TyLoweringContext<'a> {
         infer_args: bool,
         explicit_self_ty: Option<Ty>,
     ) -> Substitution {
-        // Remember that the item's own generic args come before its parent's.
-        let mut substs = Vec::new();
-        let def = if let Some(d) = def {
-            d
-        } else {
-            return Substitution::empty(Interner);
-        };
+        let Some(def) = def else { return Substitution::empty(Interner) };
+
+        // Order is
+        // - Optional Self parameter
+        // - Type or Const parameters
+        // - Lifetime parameters
+        // - Parent parameters
         let def_generics = generics(self.db.upcast(), def);
         let (
             parent_params,
@@ -832,45 +832,46 @@ impl<'a> TyLoweringContext<'a> {
             self_param as usize + type_params + const_params + impl_trait_params + lifetime_params;
         let total_len = parent_params + item_len;
 
-        let ty_error = TyKind::Error.intern(Interner).cast(Interner);
+        let mut substs = Vec::new();
 
-        let mut def_generic_iter = def_generics.iter_id();
+        // we need to iterate the lifetime and type/const params separately as our order of them
+        // differs from the supplied syntax
 
-        let fill_self_params = || {
+        let ty_error = || TyKind::Error.intern(Interner).cast(Interner);
+        let mut def_toc_iter = def_generics.iter_self_type_or_consts_id();
+        let mut def_lt_iter = def_generics.iter_self_lt_id();
+        let fill_self_param = || {
             if self_param {
-                let self_ty =
-                    explicit_self_ty.map(|x| x.cast(Interner)).unwrap_or_else(|| ty_error.clone());
+                let self_ty = explicit_self_ty.map(|x| x.cast(Interner)).unwrap_or_else(ty_error);
 
-                if let Some(id) = def_generic_iter.next() {
-                    assert!(matches!(
-                        id,
-                        GenericParamId::TypeParamId(_) | GenericParamId::LifetimeParamId(_)
-                    ));
+                if let Some(id) = def_toc_iter.next() {
+                    assert!(matches!(id, GenericParamId::TypeParamId(_)));
                     substs.push(self_ty);
                 }
             }
         };
         let mut had_explicit_args = false;
 
-        if let Some(generic_args) = &args_and_bindings {
-            if !generic_args.has_self_type {
-                fill_self_params();
+        let mut lifetimes = SmallVec::<[_; 1]>::new();
+        if let Some(&GenericArgs { ref args, has_self_type, .. }) = args_and_bindings {
+            if !has_self_type {
+                fill_self_param();
             }
-            let expected_num = if generic_args.has_self_type {
+            let expected_num = if has_self_type {
                 self_param as usize + type_params + const_params
             } else {
                 type_params + const_params
             };
-            let skip = if generic_args.has_self_type && !self_param { 1 } else { 0 };
-            // if args are provided, it should be all of them, but we can't rely on that
-            for arg in generic_args
-                .args
+            let skip = if has_self_type && !self_param { 1 } else { 0 };
+            // if non-lifetime args are provided, it should be all of them, but we can't rely on that
+            for arg in args
                 .iter()
                 .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
                 .skip(skip)
                 .take(expected_num)
             {
-                if let Some(id) = def_generic_iter.next() {
+                if let Some(id) = def_toc_iter.next() {
+                    had_explicit_args = true;
                     let arg = generic_arg_to_chalk(
                         self.db,
                         id,
@@ -880,20 +881,16 @@ impl<'a> TyLoweringContext<'a> {
                         |_, const_ref, ty| self.lower_const(const_ref, ty),
                         |_, lifetime_ref| self.lower_lifetime(lifetime_ref),
                     );
-                    had_explicit_args = true;
                     substs.push(arg);
                 }
             }
 
-            for arg in generic_args
-                .args
+            for arg in args
                 .iter()
                 .filter(|arg| matches!(arg, GenericArg::Lifetime(_)))
                 .take(lifetime_params)
             {
-                // Taking into the fact that def_generic_iter will always have lifetimes at the end
-                // Should have some test cases tho to test this behaviour more properly
-                if let Some(id) = def_generic_iter.next() {
+                if let Some(id) = def_lt_iter.next() {
                     let arg = generic_arg_to_chalk(
                         self.db,
                         id,
@@ -903,59 +900,65 @@ impl<'a> TyLoweringContext<'a> {
                         |_, const_ref, ty| self.lower_const(const_ref, ty),
                         |_, lifetime_ref| self.lower_lifetime(lifetime_ref),
                     );
-                    had_explicit_args = true;
-                    substs.push(arg);
+                    lifetimes.push(arg);
                 }
             }
         } else {
-            fill_self_params();
+            fill_self_param();
         }
 
-        // These params include those of parent.
-        let remaining_params: SmallVec<[_; 2]> = def_generic_iter
-            .map(|id| match id {
-                GenericParamId::ConstParamId(x) => {
-                    unknown_const_as_generic(self.db.const_param_ty(x))
-                }
-                GenericParamId::TypeParamId(_) => ty_error.clone(),
-                GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
-            })
-            .collect();
-        assert_eq!(remaining_params.len() + substs.len(), total_len);
-
+        let param_to_err = |id| match id {
+            GenericParamId::ConstParamId(x) => unknown_const_as_generic(self.db.const_param_ty(x)),
+            GenericParamId::TypeParamId(_) => ty_error(),
+            GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
+        };
         // handle defaults. In expression or pattern path segments without
         // explicitly specified type arguments, missing type arguments are inferred
         // (i.e. defaults aren't used).
         // Generic parameters for associated types are not supposed to have defaults, so we just
         // ignore them.
-        let is_assoc_ty = if let GenericDefId::TypeAliasId(id) = def {
-            let container = id.lookup(self.db.upcast()).container;
-            matches!(container, ItemContainerId::TraitId(_))
-        } else {
-            false
+        let is_assoc_ty = || match def {
+            GenericDefId::TypeAliasId(id) => {
+                matches!(id.lookup(self.db.upcast()).container, ItemContainerId::TraitId(_))
+            }
+            _ => false,
         };
-        if !is_assoc_ty && (!infer_args || had_explicit_args) {
-            let defaults = self.db.generic_defaults(def);
-            assert_eq!(total_len, defaults.len());
+        if (!infer_args || had_explicit_args) && !is_assoc_ty() {
+            let defaults = &*self.db.generic_defaults(def);
+            let (item, _parent) = defaults.split_at(item_len);
+            let (toc, lt) = item.split_at(item_len - lifetime_params);
             let parent_from = item_len - substs.len();
 
-            for (idx, default_ty) in defaults[substs.len()..item_len].iter().enumerate() {
+            let mut rem =
+                def_generics.iter_id().skip(substs.len()).map(param_to_err).collect::<Vec<_>>();
+            // Fill in defaults for type/const params
+            for (idx, default_ty) in toc[substs.len()..].iter().enumerate() {
                 // each default can depend on the previous parameters
                 let substs_so_far = Substitution::from_iter(
                     Interner,
-                    substs.iter().cloned().chain(remaining_params[idx..].iter().cloned()),
+                    substs.iter().cloned().chain(rem[idx..].iter().cloned()),
                 );
                 substs.push(default_ty.clone().substitute(Interner, &substs_so_far));
             }
-
-            // Keep parent's params as unknown.
-            let mut remaining_params = remaining_params;
-            substs.extend(remaining_params.drain(parent_from..));
+            let n_lifetimes = lifetimes.len();
+            // Fill in deferred lifetimes
+            substs.extend(lifetimes);
+            // Fill in defaults for lifetime params
+            for default_ty in &lt[n_lifetimes..] {
+                // these are always errors so skipping is fine
+                substs.push(default_ty.skip_binders().clone());
+            }
+            // Fill in remaining def params and parent params
+            substs.extend(rem.drain(parent_from..));
         } else {
-            substs.extend(remaining_params);
+            substs.extend(def_toc_iter.map(param_to_err));
+            // Fill in deferred lifetimes
+            substs.extend(lifetimes);
+            // Fill in remaining def params and parent params
+            substs.extend(def_generics.iter_id().skip(substs.len()).map(param_to_err));
         }
 
-        assert_eq!(substs.len(), total_len);
+        assert_eq!(substs.len(), total_len, "expected {} substs, got {}", total_len, substs.len());
         Substitution::from_iter(Interner, substs)
     }
 

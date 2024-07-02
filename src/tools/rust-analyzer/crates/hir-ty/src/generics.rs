@@ -20,6 +20,7 @@ use hir_def::{
     LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
 };
 use intern::Interned;
+use stdx::TupleExt;
 
 use crate::{db::HirDatabase, lt_to_placeholder_idx, to_placeholder_idx, Interner, Substitution};
 
@@ -57,7 +58,7 @@ impl Generics {
         self.iter_self().map(|(id, _)| id)
     }
 
-    fn iter_parent_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
+    pub(crate) fn iter_parent_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
         self.iter_parent().map(|(id, _)| id)
     }
 
@@ -65,6 +66,16 @@ impl Generics {
         &self,
     ) -> impl DoubleEndedIterator<Item = (LocalTypeOrConstParamId, &TypeOrConstParamData)> {
         self.params.iter_type_or_consts()
+    }
+
+    pub(crate) fn iter_self_type_or_consts_id(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = GenericParamId> + '_ {
+        self.params.iter_type_or_consts().map(from_toc_id(self)).map(TupleExt::head)
+    }
+
+    pub(crate) fn iter_self_lt_id(&self) -> impl DoubleEndedIterator<Item = GenericParamId> + '_ {
+        self.params.iter_lt().map(from_lt_id(self)).map(TupleExt::head)
     }
 
     /// Iterate over the params followed by the parent params.

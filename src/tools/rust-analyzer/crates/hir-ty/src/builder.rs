@@ -63,7 +63,14 @@ impl<D> TyBuilder<D> {
     }
 
     fn build_internal(self) -> (D, Substitution) {
-        assert_eq!(self.vec.len(), self.param_kinds.len(), "{:?}", &self.param_kinds);
+        assert_eq!(
+            self.vec.len(),
+            self.param_kinds.len(),
+            "{} args received, {} expected ({:?})",
+            self.vec.len(),
+            self.param_kinds.len(),
+            &self.param_kinds
+        );
         for (a, e) in self.vec.iter().zip(self.param_kinds.iter()) {
             self.assert_match_kind(a, e);
         }
@@ -297,7 +304,8 @@ impl TyBuilder<hir_def::AdtId> {
     ) -> Self {
         // Note that we're building ADT, so we never have parent generic parameters.
         let defaults = db.generic_defaults(self.data.into());
-        for default_ty in defaults.iter().skip(self.vec.len()) {
+
+        for default_ty in &defaults[self.vec.len()..] {
             // NOTE(skip_binders): we only check if the arg type is error type.
             if let Some(x) = default_ty.skip_binders().ty(Interner) {
                 if x.is_unknown() {
