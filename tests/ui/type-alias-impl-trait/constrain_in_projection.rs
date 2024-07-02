@@ -4,7 +4,7 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-//@[next]check-pass
+//@check-pass
 
 #![feature(type_alias_impl_trait)]
 
@@ -22,7 +22,6 @@ impl Trait<()> for Foo {
 
 fn bop(_: Bar) {
     let x = <Foo as Trait<Bar>>::Assoc::default();
-    //[current]~^ `Foo: Trait<Bar>` is not satisfied
 }
 
 fn main() {}

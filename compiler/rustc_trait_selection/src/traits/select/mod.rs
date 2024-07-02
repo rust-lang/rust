@@ -1719,7 +1719,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         });
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            .eq(DefineOpaqueTypes::No, placeholder_trait_ref, trait_bound)
+            .eq(DefineOpaqueTypes::Yes, placeholder_trait_ref, trait_bound)
             .map(|InferOk { obligations: _, value: () }| {
                 // This method is called within a probe, so we can't have
                 // inference variables and placeholders escape.
@@ -1788,7 +1788,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let is_match = self
             .infcx
             .at(&obligation.cause, obligation.param_env)
-            .eq(DefineOpaqueTypes::No, obligation.predicate, infer_projection)
+            .eq(DefineOpaqueTypes::Yes, obligation.predicate, infer_projection)
             .is_ok_and(|InferOk { obligations, value: () }| {
                 self.evaluate_predicates_recursively(
                     TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
@@ -2564,7 +2564,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let InferOk { obligations, .. } = self
             .infcx
             .at(&cause, obligation.param_env)
-            .eq(DefineOpaqueTypes::No, placeholder_obligation_trait_ref, impl_trait_ref)
+            .eq(DefineOpaqueTypes::Yes, placeholder_obligation_trait_ref, impl_trait_ref)
             .map_err(|e| {
                 debug!("match_impl: failed eq_trait_refs due to `{}`", e.to_string(self.tcx()))
             })?;
@@ -2707,7 +2707,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         );
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            .eq(DefineOpaqueTypes::No, predicate.trait_ref, trait_ref)
+            .eq(DefineOpaqueTypes::Yes, predicate.trait_ref, trait_ref)
             .map(|InferOk { obligations, .. }| obligations)
             .map_err(|_| ())
     }

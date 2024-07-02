@@ -195,7 +195,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligations.extend(
             self.infcx
                 .at(&obligation.cause, obligation.param_env)
-                .eq(DefineOpaqueTypes::No, placeholder_trait_predicate, candidate)
+                .eq(DefineOpaqueTypes::Yes, placeholder_trait_predicate, candidate)
                 .map(|InferOk { obligations, .. }| obligations)
                 .map_err(|_| Unimplemented)?,
         );
