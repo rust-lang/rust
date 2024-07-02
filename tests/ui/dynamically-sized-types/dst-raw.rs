@@ -1,8 +1,8 @@
 //@ run-pass
 // Test DST raw pointers
 
-
 #![feature(unsized_tuple_coercion)]
+#![allow(dangerous_implicit_autorefs)]
 
 trait Trait {
     fn foo(&self) -> isize;

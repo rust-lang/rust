@@ -155,6 +155,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_str_len", since = "1.39.0")]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     #[must_use]
     #[inline]
     pub const fn len(&self) -> usize {
@@ -174,6 +175,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_str_is_empty", since = "1.39.0")]
+    #[cfg_attr(not(bootstrap), rustc_no_implicit_autorefs)]
     #[must_use]
     #[inline]
     pub const fn is_empty(&self) -> bool {
