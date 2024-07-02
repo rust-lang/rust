@@ -1,4 +1,4 @@
-use crate::iter::{adapters::SourceIter, FusedIterator, TrustedLen};
+use crate::iter::{adapters::PeekMap, adapters::SourceIter, FusedIterator, TrustedLen};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator with a `peek()` that returns an optional reference to the next
@@ -315,6 +315,15 @@ impl<I: Iterator> Peekable<I> {
         I::Item: PartialEq<T>,
     {
         self.next_if(|next| next == expected)
+    }
+
+    /// Honestly I'm adding this doc to get rid of the error just to make sure everything else actually works.
+    #[unstable(feature = "peek_map", issue = "118474")]
+    pub fn peek_map<B, F>(self, f: F) -> PeekMap<Self, F>
+    where
+        F: FnMut(I::Item, Option<&I::Item>) -> B,
+    {
+        PeekMap::new(self, f)
     }
 }
 
