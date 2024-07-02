@@ -38,33 +38,10 @@ they will both appear in documentation.
 Rustdoc does not have a magic way to compile documentation 'as-if' you'd run it once for each
 platform (such a magic wand has been called the ['holy grail of rustdoc'][#1998]). Instead,
 it sees *all* of your code at once, the same way the Rust compiler would if you passed it
-`--cfg doc`. However, Rustdoc has a trick up its sleeve to handle platform-specific code if it
-*does* receive it.
-
-To document your crate, Rustdoc only needs to know the public signature of your functions.
-In particular, it doesn't have to know how any of your functions are implemented, so it ignores
-all type errors and name resolution errors with function bodies. Note that this does *not*
-work for anything outside a function body: since Rustdoc documents your types, it has to
-know what those types are! For example, this code will work regardless of the platform:
-
-```rust,ignore (platform-specific,rustdoc-specific-behavior)
-pub fn f() {
-    use std::os::windows::ffi::OsStrExt;
-}
-```
-
-but this will not, because the unknown type is part of the function signature:
-
-```rust,ignore (platform-specific,rustdoc-specific-behavior)
-pub fn f() -> std::os::windows::ffi::EncodeWide<'static> {
-    unimplemented!()
-}
-```
-
-For a more realistic example of code this allows, see [the rustdoc test suite][realistic-async].
+`--cfg doc`. The main difference is that rustdoc doesn't run all the compiler passes, meaning
+that some invalid code won't emit an error.
 
 [#1998]: https://github.com/rust-lang/rust/issues/1998
-[realistic-async]: https://github.com/rust-lang/rust/blob/b146000e910ccd60bdcde89363cb6aa14ecc0d95/src/test/rustdoc-ui/error-in-impl-trait/realistic-async.rs
 
 ## Add aliases for an item in documentation search
 
