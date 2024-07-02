@@ -769,7 +769,18 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             TaskListMarker(_) | Code(_) | Rule => (),
             FootnoteReference(text) | Text(text) => {
                 paragraph_range.end = range.end;
-                ticks_unbalanced |= text.contains('`') && !in_code;
+                let range_ = range.clone();
+                ticks_unbalanced |= text.contains('`')
+                    && !in_code
+                    && doc[range.clone()].bytes().enumerate().any(|(i, c)| {
+                        // scan the markdown source code bytes for backquotes that aren't preceded by backslashes
+                        // - use bytes, instead of chars, to avoid utf8 decoding overhead (special chars are ascii)
+                        // - relevant backquotes are within doc[range], but backslashes are not, because they're not
+                        //   actually part of the rendered text (pulldown-cmark doesn't emit any events for escapes)
+                        // - if `range_.start + i == 0`, then `range_.start + i - 1 == -1`, and since we're working in
+                        //   usize, that would underflow and maybe panic
+                        c == b'`' && (range_.start + i == 0 || doc.as_bytes().get(range_.start + i - 1) != Some(&b'\\'))
+                    });
                 if Some(&text) == in_link.as_ref() || ticks_unbalanced {
                     // Probably a link of the form `<http://example.com>`
                     // Which are represented as a link to "http://example.com" with
