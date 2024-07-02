@@ -29,15 +29,15 @@ pub struct AttrWrapper {
     // The start of the outer attributes in the token cursor.
     // This allows us to create a `ReplaceRange` for the entire attribute
     // target, including outer attributes.
-    start_pos: usize,
+    start_pos: u32,
 }
 
 impl AttrWrapper {
-    pub(super) fn new(attrs: AttrVec, start_pos: usize) -> AttrWrapper {
+    pub(super) fn new(attrs: AttrVec, start_pos: u32) -> AttrWrapper {
         AttrWrapper { attrs, start_pos }
     }
     pub fn empty() -> AttrWrapper {
-        AttrWrapper { attrs: AttrVec::new(), start_pos: usize::MAX }
+        AttrWrapper { attrs: AttrVec::new(), start_pos: u32::MAX }
     }
 
     pub(crate) fn take_for_recovery(self, psess: &ParseSess) -> AttrVec {
@@ -91,7 +91,7 @@ fn has_cfg_or_cfg_attr(attrs: &[Attribute]) -> bool {
 struct LazyAttrTokenStreamImpl {
     start_token: (Token, Spacing),
     cursor_snapshot: TokenCursor,
-    num_calls: usize,
+    num_calls: u32,
     break_last_token: bool,
     replace_ranges: Box<[ReplaceRange]>,
 }
@@ -110,7 +110,7 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
                     let token = cursor_snapshot.next();
                     (FlatToken::Token(token.0), token.1)
                 }))
-                .take(self.num_calls);
+                .take(self.num_calls as usize);
 
         if self.replace_ranges.is_empty() {
             make_token_stream(tokens, self.break_last_token)
@@ -296,12 +296,12 @@ impl<'a> Parser<'a> {
         );
 
         let end_pos = self.num_bump_calls
-            + captured_trailing as usize
+            + captured_trailing as u32
             // If we 'broke' the last token (e.g. breaking a '>>' token to two '>' tokens), then
             // extend the range of captured tokens to include it, since the parser was not actually
             // bumped past it. When the `LazyAttrTokenStream` gets converted into an
             // `AttrTokenStream`, we will create the proper token.
-            + self.break_last_token as usize;
+            + self.break_last_token as u32;
 
         let num_calls = end_pos - start_pos;
 
@@ -313,14 +313,11 @@ impl<'a> Parser<'a> {
             // Grab any replace ranges that occur *inside* the current AST node.
             // We will perform the actual replacement when we convert the `LazyAttrTokenStream`
             // to an `AttrTokenStream`.
-            let start_calls: u32 = start_pos.try_into().unwrap();
             self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end]
                 .iter()
                 .cloned()
                 .chain(inner_attr_replace_ranges.iter().cloned())
-                .map(|(range, tokens)| {
-                    ((range.start - start_calls)..(range.end - start_calls), tokens)
-                })
+                .map(|(range, tokens)| ((range.start - start_pos)..(range.end - start_pos), tokens))
                 .collect()
         };
 
@@ -459,6 +456,6 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(AttrWrapper, 16);
-    static_assert_size!(LazyAttrTokenStreamImpl, 104);
+    static_assert_size!(LazyAttrTokenStreamImpl, 96);
     // tidy-alphabetical-end
 }
