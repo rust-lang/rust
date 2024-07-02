@@ -1,3 +1,12 @@
+error[E0049]: method `a` has 1 const parameter but its trait declaration has 0 const parameters
+  --> $DIR/const-closure-trait-method.rs:5:1
+   |
+LL | #[const_trait]
+   | ^^^^^^^^^^^^^^ found 1 const parameter
+LL | trait Tr {
+LL |     fn a(self) -> i32;
+   |         - expected 0 const parameters
+
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-closure-trait-method.rs:14:39
    |
@@ -20,6 +29,7 @@ help: add `#![feature(effects)]` to the crate attributes to enable
 LL + #![feature(effects)]
    |
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0015`.
+Some errors have detailed explanations: E0015, E0049.
+For more information about an error, try `rustc --explain E0015`.

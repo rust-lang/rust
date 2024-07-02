@@ -35,6 +35,7 @@ mod macros;
 mod binder;
 mod canonical;
 mod const_kind;
+mod effects;
 mod flags;
 mod generic_arg;
 mod interner;
@@ -51,6 +52,7 @@ pub use canonical::*;
 #[cfg(feature = "nightly")]
 pub use codec::*;
 pub use const_kind::*;
+pub use effects::*;
 pub use flags::*;
 pub use generic_arg::*;
 pub use interner::*;

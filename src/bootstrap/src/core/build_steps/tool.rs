@@ -9,6 +9,7 @@ use crate::core::builder;
 use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
+use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::output;
 use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::Compiler;
@@ -336,6 +337,7 @@ bootstrap_tool!(
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
+    RustcPerfWrapper, "src/tools/rustc-perf-wrapper", "rustc-perf-wrapper";
 );
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -432,12 +434,12 @@ pub struct ErrorIndex {
 }
 
 impl ErrorIndex {
-    pub fn command(builder: &Builder<'_>) -> Command {
+    pub fn command(builder: &Builder<'_>) -> BootstrapCommand {
         // Error-index-generator links with the rustdoc library, so we need to add `rustc_lib_paths`
         // for rustc_private and libLLVM.so, and `sysroot_lib` for libstd, etc.
         let host = builder.config.build;
         let compiler = builder.compiler_for(builder.top_stage, host, host);
-        let mut cmd = Command::new(builder.ensure(ErrorIndex { compiler }));
+        let mut cmd = BootstrapCommand::new(builder.ensure(ErrorIndex { compiler }));
         let mut dylib_paths = builder.rustc_lib_paths(compiler);
         dylib_paths.push(PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host)));
         add_dylib_path(dylib_paths, &mut cmd);
@@ -601,7 +603,7 @@ impl Step for Rustdoc {
             &self.compiler.host,
             &target,
         );
-        builder.run(&mut cargo.into());
+        builder.run(cargo);
 
         // Cargo adds a number of paths to the dylib search path on windows, which results in
         // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
@@ -856,7 +858,7 @@ impl Step for LlvmBitcodeLinker {
             &self.extra_features,
         );
 
-        builder.run(&mut cargo.into());
+        builder.run(cargo);
 
         let tool_out = builder
             .cargo_out(self.compiler, Mode::ToolRustc, self.target)
@@ -911,13 +913,13 @@ impl Step for LibcxxVersionTool {
             }
 
             let compiler = builder.cxx(self.target).unwrap();
-            let mut cmd = Command::new(compiler);
+            let mut cmd = BootstrapCommand::new(compiler);
 
             cmd.arg("-o")
                 .arg(&executable)
                 .arg(builder.src.join("src/tools/libcxx-version/main.cpp"));
 
-            builder.run_cmd(&mut cmd);
+            builder.run(cmd);
 
             if !executable.exists() {
                 panic!("Something went wrong. {} is not present", executable.display());
@@ -1045,10 +1047,10 @@ tool_extended!((self, builder),
 );
 
 impl<'a> Builder<'a> {
-    /// Gets a `Command` which is ready to run `tool` in `stage` built for
+    /// Gets a `BootstrapCommand` which is ready to run `tool` in `stage` built for
     /// `host`.
-    pub fn tool_cmd(&self, tool: Tool) -> Command {
-        let mut cmd = Command::new(self.tool_exe(tool));
+    pub fn tool_cmd(&self, tool: Tool) -> BootstrapCommand {
+        let mut cmd = BootstrapCommand::new(self.tool_exe(tool));
         let compiler = self.compiler(0, self.config.build);
         let host = &compiler.host;
         // Prepares the `cmd` provided to be able to run the `compiler` provided.

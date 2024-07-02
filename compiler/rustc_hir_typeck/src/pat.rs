@@ -89,7 +89,7 @@ struct PatInfo<'tcx, 'a> {
     current_depth: u32,
 }
 
-impl<'tcx> FnCtxt<'_, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn pattern_cause(&self, ti: &TopInfo<'tcx>, cause_span: Span) -> ObligationCause<'tcx> {
         let code = ObligationCauseCode::Pattern {
             span: ti.span,
@@ -100,12 +100,12 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     }
 
     fn demand_eqtype_pat_diag(
-        &self,
+        &'a self,
         cause_span: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         ti: &TopInfo<'tcx>,
-    ) -> Result<(), Diag<'tcx>> {
+    ) -> Result<(), Diag<'a>> {
         self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)
             .map_err(|mut diag| {
                 if let Some(expr) = ti.origin_expr {
@@ -698,7 +698,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let MutblCap::WeaklyNot(and_pat_span) = pat_info.max_ref_mutbl
         {
             let mut err = struct_span_code_err!(
-                self.tcx.dcx(),
+                self.dcx(),
                 ident.span,
                 E0596,
                 "cannot borrow as mutable inside an `&` pattern"
@@ -1010,7 +1010,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (res, opt_ty, segments) = path_resolution;
         match res {
             Res::Err => {
-                let e = tcx.dcx().span_delayed_bug(qpath.span(), "`Res::Err` but no error emitted");
+                let e =
+                    self.dcx().span_delayed_bug(qpath.span(), "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
                 return Ty::new_error(tcx, e);
             }
@@ -1191,7 +1192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (res, opt_ty, segments) =
             self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span);
         if res == Res::Err {
-            let e = tcx.dcx().span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
+            let e = self.dcx().span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
             self.set_tainted_by_errors(e);
             on_error(e);
             return Ty::new_error(tcx, e);
@@ -1207,7 +1208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let variant = match res {
             Res::Err => {
-                tcx.dcx().span_bug(pat.span, "`Res::Err` but no error emitted");
+                self.dcx().span_bug(pat.span, "`Res::Err` but no error emitted");
             }
             Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
                 let e = report_unexpected_res(res);
@@ -1549,10 +1550,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Report an error if an incorrect number of fields was specified.
         if adt.is_union() {
             if fields.len() != 1 {
-                tcx.dcx().emit_err(errors::UnionPatMultipleFields { span: pat.span });
+                self.dcx().emit_err(errors::UnionPatMultipleFields { span: pat.span });
             }
             if has_rest_pat {
-                tcx.dcx().emit_err(errors::UnionPatDotDot { span: pat.span });
+                self.dcx().emit_err(errors::UnionPatDotDot { span: pat.span });
             }
         } else if !unmentioned_fields.is_empty() {
             let accessible_unmentioned_fields: Vec<_> = unmentioned_fields
@@ -1690,7 +1691,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         variant: &ty::VariantDef,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         let tcx = self.tcx;
         let (field_names, t, plural) = if let [field] = inexistent_fields {
             (format!("a field named `{}`", field.ident), "this", "")
@@ -1710,7 +1711,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let spans = inexistent_fields.iter().map(|field| field.ident.span).collect::<Vec<_>>();
         let mut err = struct_span_code_err!(
-            tcx.dcx(),
+            self.dcx(),
             spans,
             E0026,
             "{} `{}` does not have {}",
@@ -1881,7 +1882,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         let mut err = self
             .dcx()
             .struct_span_err(pat.span, "pattern requires `..` due to inaccessible fields");
@@ -1973,7 +1974,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
         have_inaccessible_fields: bool,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         let inaccessible = if have_inaccessible_fields { " and inaccessible fields" } else { "" };
         let field_names = if let [(_, field)] = unmentioned_fields {
             format!("field `{field}`{inaccessible}")

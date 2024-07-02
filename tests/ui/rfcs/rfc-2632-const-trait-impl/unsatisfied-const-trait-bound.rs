@@ -1,4 +1,5 @@
 // Ensure that we print unsatisfied always-const trait bounds as `const Trait` in diagnostics.
+//@ compile-flags: -Znext-solver
 
 #![feature(const_trait_impl, effects, generic_const_exprs)]
 #![allow(incomplete_features)]
@@ -17,7 +18,8 @@ impl Trait for Ty {
 }
 
 fn main() {
-    require::<Ty>(); //~ ERROR the trait bound `Ty: const Trait` is not satisfied
+    // FIXME(effects): improve diagnostics on this
+    require::<Ty>(); //~ ERROR the trait bound `Trait::{synthetic#0}: const Compat` is not satisfied
 }
 
 struct Container<const N: u32>;

@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/repeat_expr_hack_gives_right_generics.rs:16:17
+  --> $DIR/repeat_expr_hack_gives_right_generics.rs:20:17
    |
 LL |     bar::<{ [1; N] }>();
    |                 ^ cannot perform const operation using `N`

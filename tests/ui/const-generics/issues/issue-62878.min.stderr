@@ -30,7 +30,31 @@ help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
 LL + #![feature(generic_arg_infer)]
    |
 
-error: aborting due to 3 previous errors
+error[E0284]: type annotations needed
+  --> $DIR/issue-62878.rs:10:5
+   |
+LL |     foo::<_, { [1] }>();
+   |     ^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `foo`
+  --> $DIR/issue-62878.rs:5:8
+   |
+LL | fn foo<const N: usize, const A: [u8; N]>() {}
+   |        ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
 
-Some errors have detailed explanations: E0747, E0770.
-For more information about an error, try `rustc --explain E0747`.
+error[E0284]: type annotations needed
+  --> $DIR/issue-62878.rs:10:5
+   |
+LL |     foo::<_, { [1] }>();
+   |     ^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `A` declared on the function `foo`
+   |
+note: required by a const generic parameter in `foo`
+  --> $DIR/issue-62878.rs:5:24
+   |
+LL | fn foo<const N: usize, const A: [u8; N]>() {}
+   |                        ^^^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0284, E0747, E0770.
+For more information about an error, try `rustc --explain E0284`.

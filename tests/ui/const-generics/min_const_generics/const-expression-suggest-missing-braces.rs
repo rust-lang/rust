@@ -12,6 +12,7 @@ fn b() {
     //~^ ERROR expected trait, found constant `BAR`
     //~| ERROR expected trait, found constant `BAR`
     //~| ERROR type provided when a constant was expected
+    //~| ERROR type annotations needed
 }
 fn c() {
     foo::<3 + 3>(); //~ ERROR expressions must be enclosed in braces

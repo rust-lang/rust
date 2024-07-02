@@ -1,31 +1,36 @@
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/specializing-constness-2.rs:1:30
+error[E0049]: method `a` has 1 const parameter but its trait declaration has 0 const parameters
+  --> $DIR/specializing-constness-2.rs:9:1
    |
-LL | #![feature(const_trait_impl, effects, min_specialization, rustc_attrs)]
-   |                              ^^^^^^^
-   |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
+LL | #[const_trait]
+   | ^^^^^^^^^^^^^^ found 1 const parameter
+LL | pub trait A {
+LL |     fn a() -> u32;
+   |         - expected 0 const parameters
 
-error[E0119]: conflicting implementations of trait `A`
-  --> $DIR/specializing-constness-2.rs:20:1
+error[E0049]: method `a` has 1 const parameter but its trait declaration has 0 const parameters
+  --> $DIR/specializing-constness-2.rs:9:1
    |
-LL | impl<T: Default> A for T {
-   | ------------------------ first implementation here
-...
-LL | impl<T: Default + ~const Sup> const A for T {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+LL | #[const_trait]
+   | ^^^^^^^^^^^^^^ found 1 const parameter
+LL | pub trait A {
+LL |     fn a() -> u32;
+   |         - expected 0 const parameters
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0308]: mismatched types
+error[E0015]: cannot call non-const fn `<T as A>::a` in constant functions
   --> $DIR/specializing-constness-2.rs:27:5
    |
 LL |     <T as A>::a();
-   |     ^^^^^^^^^^^^^ expected `host`, found `true`
+   |     ^^^^^^^^^^^^^
    |
-   = note: expected constant `host`
-              found constant `true`
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+help: add `#![feature(effects)]` to the crate attributes to enable
+   |
+LL + #![feature(effects)]
+   |
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0119, E0308.
-For more information about an error, try `rustc --explain E0119`.
+Some errors have detailed explanations: E0015, E0049.
+For more information about an error, try `rustc --explain E0015`.

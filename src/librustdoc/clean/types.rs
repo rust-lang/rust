@@ -1321,7 +1321,7 @@ pub(crate) enum GenericParamDefKind {
     Lifetime { outlives: ThinVec<Lifetime> },
     Type { bounds: ThinVec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
     // Option<Box<String>> makes this type smaller than `Option<String>` would.
-    Const { ty: Box<Type>, default: Option<Box<String>>, is_host_effect: bool },
+    Const { ty: Box<Type>, default: Option<Box<String>>, synthetic: bool },
 }
 
 impl GenericParamDefKind {
@@ -1345,7 +1345,7 @@ impl GenericParamDef {
     pub(crate) fn is_synthetic_param(&self) -> bool {
         match self.kind {
             GenericParamDefKind::Lifetime { .. } => false,
-            GenericParamDefKind::Const { is_host_effect, .. } => is_host_effect,
+            GenericParamDefKind::Const { synthetic: is_host_effect, .. } => is_host_effect,
             GenericParamDefKind::Type { synthetic, .. } => synthetic,
         }
     }

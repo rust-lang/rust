@@ -70,10 +70,10 @@ pub fn provide(providers: &mut Providers) {
         predicates_of: predicates_of::predicates_of,
         predicates_defined_on,
         explicit_predicates_of: predicates_of::explicit_predicates_of,
-        super_predicates_of: predicates_of::super_predicates_of,
-        implied_predicates_of: predicates_of::implied_predicates_of,
-        super_predicates_that_define_assoc_item:
-            predicates_of::super_predicates_that_define_assoc_item,
+        explicit_super_predicates_of: predicates_of::explicit_super_predicates_of,
+        explicit_implied_predicates_of: predicates_of::explicit_implied_predicates_of,
+        explicit_supertraits_containing_assoc_item:
+            predicates_of::explicit_supertraits_containing_assoc_item,
         trait_explicit_predicates_and_bounds: predicates_of::trait_explicit_predicates_and_bounds,
         type_param_predicates: predicates_of::type_param_predicates,
         trait_def,
@@ -691,14 +691,14 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         hir::ItemKind::Trait(..) => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().trait_def(def_id);
-            tcx.at(it.span).super_predicates_of(def_id);
+            tcx.at(it.span).explicit_super_predicates_of(def_id);
             tcx.ensure().predicates_of(def_id);
             tcx.ensure().associated_items(def_id);
         }
         hir::ItemKind::TraitAlias(..) => {
             tcx.ensure().generics_of(def_id);
-            tcx.at(it.span).implied_predicates_of(def_id);
-            tcx.at(it.span).super_predicates_of(def_id);
+            tcx.at(it.span).explicit_implied_predicates_of(def_id);
+            tcx.at(it.span).explicit_super_predicates_of(def_id);
             tcx.ensure().predicates_of(def_id);
         }
         hir::ItemKind::Struct(struct_def, _) | hir::ItemKind::Union(struct_def, _) => {
@@ -1459,8 +1459,25 @@ fn infer_return_ty_for_fn_sig<'tcx>(
         Some(ty) => {
             let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
             // Typeck doesn't expect erased regions to be returned from `type_of`.
+            // This is a heuristic approach. If the scope has region paramters,
+            // we should change fn_sig's lifetime from `ReErased` to `ReError`,
+            // otherwise to `ReStatic`.
+            let has_region_params = generics.params.iter().any(|param| match param.kind {
+                GenericParamKind::Lifetime { .. } => true,
+                _ => false,
+            });
             let fn_sig = tcx.fold_regions(fn_sig, |r, _| match *r {
-                ty::ReErased => tcx.lifetimes.re_static,
+                ty::ReErased => {
+                    if has_region_params {
+                        ty::Region::new_error_with_message(
+                            tcx,
+                            DUMMY_SP,
+                            "erased region is not allowed here in return type",
+                        )
+                    } else {
+                        tcx.lifetimes.re_static
+                    }
+                }
                 _ => r,
             });
 
@@ -1638,44 +1655,19 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
     let icx = ItemCtxt::new(tcx, def_id);
     let item = tcx.hir().expect_item(def_id);
     let impl_ = item.expect_impl();
-    impl_
-        .of_trait
-        .as_ref()
-        .map(|hir_trait_ref| {
-            let self_ty = tcx.type_of(def_id).instantiate_identity();
+    impl_.of_trait.as_ref().map(|ast_trait_ref| {
+        let selfty = tcx.type_of(def_id).instantiate_identity();
 
-            let trait_ref = if let Some(ErrorGuaranteed { .. }) = check_impl_constness(
-                tcx,
-                tcx.is_const_trait_impl_raw(def_id.to_def_id()),
-                hir_trait_ref,
-            ) {
-                // we have a const impl, but for a trait without `#[const_trait]`, so
-                // without the host param. If we continue with the HIR trait ref, we get
-                // ICEs for generic arg count mismatch. We do a little HIR editing to
-                // make HIR ty lowering happy.
-                let mut path_segments = hir_trait_ref.path.segments.to_vec();
-                let last_segment = path_segments.len() - 1;
-                let mut args = *path_segments[last_segment].args();
-                let last_arg = args.args.len() - 1;
-                assert!(matches!(args.args[last_arg], hir::GenericArg::Const(anon_const) if anon_const.is_desugared_from_effects));
-                args.args = &args.args[..args.args.len() - 1];
-                path_segments[last_segment].args = Some(tcx.hir_arena.alloc(args));
-                let path = hir::Path {
-                    span: hir_trait_ref.path.span,
-                    res: hir_trait_ref.path.res,
-                    segments: tcx.hir_arena.alloc_slice(&path_segments),
-                };
-                let trait_ref = tcx.hir_arena.alloc(hir::TraitRef { path: tcx.hir_arena.alloc(path), hir_ref_id: hir_trait_ref.hir_ref_id });
-                icx.lowerer().lower_impl_trait_ref(trait_ref, self_ty)
-            } else {
-                icx.lowerer().lower_impl_trait_ref(hir_trait_ref, self_ty)
-            };
-            ty::ImplTraitHeader {
-                trait_ref: ty::EarlyBinder::bind(trait_ref),
-                safety: impl_.safety,
-                polarity: polarity_of_impl(tcx, def_id, impl_, item.span)
-            }
-        })
+        check_impl_constness(tcx, tcx.is_const_trait_impl_raw(def_id.to_def_id()), ast_trait_ref);
+
+        let trait_ref = icx.lowerer().lower_impl_trait_ref(ast_trait_ref, selfty);
+
+        ty::ImplTraitHeader {
+            trait_ref: ty::EarlyBinder::bind(trait_ref),
+            safety: impl_.safety,
+            polarity: polarity_of_impl(tcx, def_id, impl_, item.span),
+        }
+    })
 }
 
 fn check_impl_constness(

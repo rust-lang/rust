@@ -55,10 +55,6 @@ jobs:
       if: matrix.os == 'macos-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-apple-darwin'
       run: rustup set default-host x86_64-apple-darwin
 
-    - name: Select XCode version
-      if: matrix.os == 'macos-latest'
-      run: sudo xcode-select -s /Applications/Xcode_14.3.1.app
-
     - name: Prepare dependencies
       run: ./y.sh prepare
 

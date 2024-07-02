@@ -19,6 +19,11 @@ error[E0635]: unknown feature `const_default_impls`
 LL | #![feature(const_trait_impl, const_cmp, const_default_impls, derive_const, effects)]
    |                                         ^^^^^^^^^^^^^^^^^^^
 
+error: using `#![feature(effects)]` without enabling next trait solver globally
+   |
+   = note: the next trait solver must be enabled globally for the effects feature to work correctly
+   = help: use `-Znext-solver` to enable
+
 error: const `impl` for trait `Default` which is not marked with `#[const_trait]`
   --> $DIR/derive-const-use.rs:7:12
    |
@@ -27,33 +32,6 @@ LL | impl const Default for A {
    |
    = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
    = note: adding a non-const method body in the future would be a breaking change
-
-error[E0207]: the const parameter `host` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/derive-const-use.rs:7:6
-   |
-LL | impl const Default for A {
-   |      ^^^^^ unconstrained const parameter
-   |
-   = note: expressions using a const parameter must map each value to a distinct output value
-   = note: proving the result of expressions other than the parameter are unique is not supported
-
-error: const `impl` for trait `PartialEq` which is not marked with `#[const_trait]`
-  --> $DIR/derive-const-use.rs:11:12
-   |
-LL | impl const PartialEq for A {
-   |            ^^^^^^^^^
-   |
-   = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
-   = note: adding a non-const method body in the future would be a breaking change
-
-error[E0207]: the const parameter `host` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/derive-const-use.rs:11:6
-   |
-LL | impl const PartialEq for A {
-   |      ^^^^^ unconstrained const parameter
-   |
-   = note: expressions using a const parameter must map each value to a distinct output value
-   = note: proving the result of expressions other than the parameter are unique is not supported
 
 error: const `impl` for trait `Default` which is not marked with `#[const_trait]`
   --> $DIR/derive-const-use.rs:15:16
@@ -65,10 +43,14 @@ LL | #[derive_const(Default, PartialEq)]
    = note: adding a non-const method body in the future would be a breaking change
    = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0207]: the const parameter `host` is not constrained by the impl trait, self type, or predicates
+error: const `impl` for trait `PartialEq` which is not marked with `#[const_trait]`
+  --> $DIR/derive-const-use.rs:11:12
    |
-   = note: expressions using a const parameter must map each value to a distinct output value
-   = note: proving the result of expressions other than the parameter are unique is not supported
+LL | impl const PartialEq for A {
+   |            ^^^^^^^^^
+   |
+   = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
+   = note: adding a non-const method body in the future would be a breaking change
 
 error: const `impl` for trait `PartialEq` which is not marked with `#[const_trait]`
   --> $DIR/derive-const-use.rs:15:25
@@ -80,73 +62,29 @@ LL | #[derive_const(Default, PartialEq)]
    = note: adding a non-const method body in the future would be a breaking change
    = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0207]: the const parameter `host` is not constrained by the impl trait, self type, or predicates
-   |
-   = note: expressions using a const parameter must map each value to a distinct output value
-   = note: proving the result of expressions other than the parameter are unique is not supported
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0284]: type annotations needed
-  --> $DIR/derive-const-use.rs:18:35
-   |
-LL | const _: () = assert!(S((), A) == S::default());
-   |                                   ^^^^^^^^^^^^ cannot infer the value of the constant `_`
-   |
-note: required for `S` to implement `Default`
-  --> $DIR/derive-const-use.rs:15:16
-   |
-LL | #[derive_const(Default, PartialEq)]
-   |                ^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
-   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0284]: type annotations needed
-  --> $DIR/derive-const-use.rs:18:23
-   |
-LL | const _: () = assert!(S((), A) == S::default());
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the constant `_`
-   |
-note: required for `S` to implement `PartialEq`
-  --> $DIR/derive-const-use.rs:15:25
-   |
-LL | #[derive_const(Default, PartialEq)]
-   |                         ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
-   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0284]: type annotations needed
-  --> $DIR/derive-const-use.rs:16:18
+error[E0080]: evaluation of constant value failed
+  --> $DIR/derive-const-use.rs:16:14
    |
 LL | #[derive_const(Default, PartialEq)]
    |                ------- in this derive macro expansion
 LL | pub struct S((), A);
-   |                  ^ cannot infer the value of the constant `_`
+   |              ^^ calling non-const function `<() as Default>::default`
    |
-note: required for `A` to implement `Default`
-  --> $DIR/derive-const-use.rs:7:12
-   |
-LL | impl const Default for A {
-   |      ----- ^^^^^^^     ^
-   |      |
-   |      unsatisfied trait bound introduced here
-   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0284]: type annotations needed
-  --> $DIR/derive-const-use.rs:16:18
+note: inside `<S as Default>::default`
+  --> $DIR/derive-const-use.rs:16:14
    |
 LL | #[derive_const(Default, PartialEq)]
-   |                         --------- in this derive macro expansion
+   |                ------- in this derive macro expansion
 LL | pub struct S((), A);
-   |                  ^ cannot infer the value of the constant `_`
+   |              ^^
+note: inside `_`
+  --> $DIR/derive-const-use.rs:18:35
    |
-note: required for `A` to implement `PartialEq`
-  --> $DIR/derive-const-use.rs:11:12
-   |
-LL | impl const PartialEq for A {
-   |      ----- ^^^^^^^^^     ^
-   |      |
-   |      unsatisfied trait bound introduced here
-   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | const _: () = assert!(S((), A) == S::default());
+   |                                   ^^^^^^^^^^^^
+   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 14 previous errors; 1 warning emitted
+error: aborting due to 8 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0207, E0284, E0635.
-For more information about an error, try `rustc --explain E0207`.
+Some errors have detailed explanations: E0080, E0635.
+For more information about an error, try `rustc --explain E0080`.

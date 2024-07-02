@@ -85,7 +85,7 @@ macro_rules! clean_crate_tree {
 
                 // NOTE: doesn't use `run_cargo` because we don't want to save a stamp file,
                 // and doesn't use `stream_cargo` to avoid passing `--message-format` which `clean` doesn't accept.
-                builder.run(&mut cargo);
+                builder.run(cargo);
             }
         }
     )+ }

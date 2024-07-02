@@ -43,7 +43,7 @@ pub(super) fn trace<'mir, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
     elements: &Rc<DenseLocationMap>,
-    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'_, 'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
     relevant_live_locals: Vec<Local>,
     boring_locals: Vec<Local>,
@@ -101,7 +101,7 @@ pub(super) fn trace<'mir, 'tcx>(
 }
 
 /// Contextual state for the type-liveness coroutine.
-struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
+struct LivenessContext<'a, 'me, 'typeck, 'flow, 'tcx> {
     /// Current type-checker, giving us our inference context etc.
     typeck: &'me mut TypeChecker<'typeck, 'tcx>,
 
@@ -119,7 +119,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
-    flow_inits: &'me mut ResultsCursor<'flow, 'tcx, MaybeInitializedPlaces<'flow, 'tcx>>,
+    flow_inits: &'me mut ResultsCursor<'flow, 'tcx, MaybeInitializedPlaces<'a, 'flow, 'tcx>>,
 
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
@@ -131,8 +131,8 @@ struct DropData<'tcx> {
     region_constraint_data: Option<&'tcx QueryRegionConstraints<'tcx>>,
 }
 
-struct LivenessResults<'me, 'typeck, 'flow, 'tcx> {
-    cx: LivenessContext<'me, 'typeck, 'flow, 'tcx>,
+struct LivenessResults<'a, 'me, 'typeck, 'flow, 'tcx> {
+    cx: LivenessContext<'a, 'me, 'typeck, 'flow, 'tcx>,
 
     /// Set of points that define the current local.
     defs: BitSet<PointIndex>,
@@ -153,8 +153,8 @@ struct LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     stack: Vec<PointIndex>,
 }
 
-impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
-    fn new(cx: LivenessContext<'me, 'typeck, 'flow, 'tcx>) -> Self {
+impl<'a, 'me, 'typeck, 'flow, 'tcx> LivenessResults<'a, 'me, 'typeck, 'flow, 'tcx> {
+    fn new(cx: LivenessContext<'a, 'me, 'typeck, 'flow, 'tcx>) -> Self {
         let num_points = cx.elements.num_points();
         LivenessResults {
             cx,
@@ -507,7 +507,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     }
 }
 
-impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
+impl<'tcx> LivenessContext<'_, '_, '_, '_, 'tcx> {
     /// Returns `true` if the local variable (or some part of it) is initialized at the current
     /// cursor position. Callers should call one of the `seek` methods immediately before to point
     /// the cursor to the desired location.

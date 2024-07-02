@@ -11,7 +11,7 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs}
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt, TypeFlags};
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
@@ -85,13 +85,18 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     }
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
+    let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
 
     let mut this = Inliner {
         tcx,
         param_env,
-        codegen_fn_attrs: tcx.codegen_fn_attrs(def_id),
+        codegen_fn_attrs,
         history: Vec::new(),
         changed: false,
+        caller_is_inline_forwarder: matches!(
+            codegen_fn_attrs.inline,
+            InlineAttr::Hint | InlineAttr::Always
+        ) && body_is_forwarder(body),
     };
     let blocks = START_BLOCK..body.basic_blocks.next_index();
     this.process_blocks(body, blocks);
@@ -111,6 +116,9 @@ struct Inliner<'tcx> {
     history: Vec<DefId>,
     /// Indicates that the caller body has been modified.
     changed: bool,
+    /// Indicates that the caller is #[inline] and just calls another function,
+    /// and thus we can inline less into it as it'll be inlined itself.
+    caller_is_inline_forwarder: bool,
 }
 
 impl<'tcx> Inliner<'tcx> {
@@ -306,6 +314,16 @@ impl<'tcx> Inliner<'tcx> {
             InstanceKind::Intrinsic(_) | InstanceKind::Virtual(..) => {
                 return Err("instance without MIR (intrinsic / virtual)");
             }
+
+            // FIXME(#127030): `ConstParamHasTy` has bad interactions with
+            // the drop shim builder, which does not evaluate predicates in
+            // the correct param-env for types being dropped. Stall resolving
+            // the MIR for this instance until all of its const params are
+            // substituted.
+            InstanceKind::DropGlue(_, Some(ty)) if ty.has_type_flags(TypeFlags::HAS_CT_PARAM) => {
+                return Err("still needs substitution");
+            }
+
             // This cannot result in an immediate cycle since the callee MIR is a shim, which does
             // not get any optimizations run on it. Any subsequent inlining may cause cycles, but we
             // do not need to catch this here, we can wait until the inliner decides to continue
@@ -475,7 +493,9 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Result<(), &'static str> {
         let tcx = self.tcx;
 
-        let mut threshold = if cross_crate_inlinable {
+        let mut threshold = if self.caller_is_inline_forwarder {
+            self.tcx.sess.opts.unstable_opts.inline_mir_forwarder_threshold.unwrap_or(30)
+        } else if cross_crate_inlinable {
             self.tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
         } else {
             self.tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(50)
@@ -493,6 +513,8 @@ impl<'tcx> Inliner<'tcx> {
 
         let mut checker =
             CostChecker::new(self.tcx, self.param_env, Some(callsite.callee), callee_body);
+
+        checker.add_function_level_costs();
 
         // Traverse the MIR manually so we can account for the effects of inlining on the CFG.
         let mut work_list = vec![START_BLOCK];
@@ -1080,4 +1102,38 @@ fn try_instance_mir<'tcx>(
         }
     }
     Ok(tcx.instance_mir(instance))
+}
+
+fn body_is_forwarder(body: &Body<'_>) -> bool {
+    let TerminatorKind::Call { target, .. } = body.basic_blocks[START_BLOCK].terminator().kind
+    else {
+        return false;
+    };
+    if let Some(target) = target {
+        let TerminatorKind::Return = body.basic_blocks[target].terminator().kind else {
+            return false;
+        };
+    }
+
+    let max_blocks = if !body.is_polymorphic {
+        2
+    } else if target.is_none() {
+        3
+    } else {
+        4
+    };
+    if body.basic_blocks.len() > max_blocks {
+        return false;
+    }
+
+    body.basic_blocks.iter_enumerated().all(|(bb, bb_data)| {
+        bb == START_BLOCK
+            || matches!(
+                bb_data.terminator().kind,
+                TerminatorKind::Return
+                    | TerminatorKind::Drop { .. }
+                    | TerminatorKind::UnwindResume
+                    | TerminatorKind::UnwindTerminate(_)
+            )
+    })
 }

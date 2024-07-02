@@ -63,6 +63,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{Loc, Span, DUMMY_SP};
 use std::backtrace::{Backtrace, BacktraceStatus};
 use std::borrow::Cow;
+use std::cell::Cell;
 use std::error::Report;
 use std::fmt;
 use std::hash::Hash;
@@ -98,9 +99,9 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(PResult<'_, ()>, 16);
+rustc_data_structures::static_assert_size!(PResult<'_, ()>, 24);
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(PResult<'_, bool>, 16);
+rustc_data_structures::static_assert_size!(PResult<'_, bool>, 24);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Encodable, Decodable)]
 pub enum SuggestionStyle {
@@ -417,6 +418,9 @@ pub struct DiagCtxt {
 #[derive(Copy, Clone)]
 pub struct DiagCtxtHandle<'a> {
     dcx: &'a DiagCtxt,
+    /// Some contexts create `DiagCtxtHandle` with this field set, and thus all
+    /// errors emitted with it will automatically taint when emitting errors.
+    tainted_with_errors: Option<&'a Cell<Option<ErrorGuaranteed>>>,
 }
 
 impl<'a> std::ops::Deref for DiagCtxtHandle<'a> {
@@ -752,7 +756,17 @@ impl DiagCtxt {
     }
 
     pub fn handle<'a>(&'a self) -> DiagCtxtHandle<'a> {
-        DiagCtxtHandle { dcx: self }
+        DiagCtxtHandle { dcx: self, tainted_with_errors: None }
+    }
+
+    /// Link this to a taintable context so that emitting errors will automatically set
+    /// the `Option<ErrorGuaranteed>` instead of having to do that manually at every error
+    /// emission site.
+    pub fn taintable_handle<'a>(
+        &'a self,
+        tainted_with_errors: &'a Cell<Option<ErrorGuaranteed>>,
+    ) -> DiagCtxtHandle<'a> {
+        DiagCtxtHandle { dcx: self, tainted_with_errors: Some(tainted_with_errors) }
     }
 }
 
@@ -795,7 +809,9 @@ impl<'a> DiagCtxtHandle<'a> {
             // can be used to create a backtrace at the stashing site insted of whenever the
             // diagnostic context is dropped and thus delayed bugs are emitted.
             Error => Some(self.span_delayed_bug(span, format!("stashing {key:?}"))),
-            DelayedBug => return self.inner.borrow_mut().emit_diagnostic(diag),
+            DelayedBug => {
+                return self.inner.borrow_mut().emit_diagnostic(diag, self.tainted_with_errors);
+            }
             ForceWarning(_) | Warning | Note | OnceNote | Help | OnceHelp | FailureNote | Allow
             | Expect(_) => None,
         };
@@ -947,16 +963,19 @@ impl<'a> DiagCtxtHandle<'a> {
             (0, _) => {
                 // Use `ForceWarning` rather than `Warning` to guarantee emission, e.g. with a
                 // configuration like `--cap-lints allow --force-warn bare_trait_objects`.
-                inner.emit_diagnostic(DiagInner::new(
-                    ForceWarning(None),
-                    DiagMessage::Str(warnings),
-                ));
+                inner.emit_diagnostic(
+                    DiagInner::new(ForceWarning(None), DiagMessage::Str(warnings)),
+                    None,
+                );
             }
             (_, 0) => {
-                inner.emit_diagnostic(DiagInner::new(Error, errors));
+                inner.emit_diagnostic(DiagInner::new(Error, errors), self.tainted_with_errors);
             }
             (_, _) => {
-                inner.emit_diagnostic(DiagInner::new(Error, format!("{errors}; {warnings}")));
+                inner.emit_diagnostic(
+                    DiagInner::new(Error, format!("{errors}; {warnings}")),
+                    self.tainted_with_errors,
+                );
             }
         }
 
@@ -987,14 +1006,14 @@ impl<'a> DiagCtxtHandle<'a> {
                         "For more information about an error, try `rustc --explain {}`.",
                         &error_codes[0]
                     );
-                    inner.emit_diagnostic(DiagInner::new(FailureNote, msg1));
-                    inner.emit_diagnostic(DiagInner::new(FailureNote, msg2));
+                    inner.emit_diagnostic(DiagInner::new(FailureNote, msg1), None);
+                    inner.emit_diagnostic(DiagInner::new(FailureNote, msg2), None);
                 } else {
                     let msg = format!(
                         "For more information about this error, try `rustc --explain {}`.",
                         &error_codes[0]
                     );
-                    inner.emit_diagnostic(DiagInner::new(FailureNote, msg));
+                    inner.emit_diagnostic(DiagInner::new(FailureNote, msg), None);
                 }
             }
         }
@@ -1020,7 +1039,7 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     pub fn emit_diagnostic(&self, diagnostic: DiagInner) -> Option<ErrorGuaranteed> {
-        self.inner.borrow_mut().emit_diagnostic(diagnostic)
+        self.inner.borrow_mut().emit_diagnostic(diagnostic, self.tainted_with_errors)
     }
 
     pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {
@@ -1080,7 +1099,7 @@ impl<'a> DiagCtxtHandle<'a> {
                 // Here the diagnostic is given back to `emit_diagnostic` where it was first
                 // intercepted. Now it should be processed as usual, since the unstable expectation
                 // id is now stable.
-                inner.emit_diagnostic(diag);
+                inner.emit_diagnostic(diag, self.tainted_with_errors);
             }
         }
 
@@ -1430,13 +1449,17 @@ impl DiagCtxtInner {
                     continue;
                 }
             }
-            guar = guar.or(self.emit_diagnostic(diag));
+            guar = guar.or(self.emit_diagnostic(diag, None));
         }
         guar
     }
 
     // Return value is only `Some` if the level is `Error` or `DelayedBug`.
-    fn emit_diagnostic(&mut self, mut diagnostic: DiagInner) -> Option<ErrorGuaranteed> {
+    fn emit_diagnostic(
+        &mut self,
+        mut diagnostic: DiagInner,
+        taint: Option<&Cell<Option<ErrorGuaranteed>>>,
+    ) -> Option<ErrorGuaranteed> {
         match diagnostic.level {
             Expect(expect_id) | ForceWarning(Some(expect_id)) => {
                 // The `LintExpectationId` can be stable or unstable depending on when it was
@@ -1609,6 +1632,9 @@ impl DiagCtxtInner {
                 if is_lint {
                     self.lint_err_guars.push(guar);
                 } else {
+                    if let Some(taint) = taint {
+                        taint.set(Some(guar));
+                    }
                     self.err_guars.push(guar);
                 }
                 self.panic_if_treat_err_as_bug();
@@ -1718,8 +1744,8 @@ impl DiagCtxtInner {
         // `-Ztreat-err-as-bug`, which we don't want.
         let note1 = "no errors encountered even though delayed bugs were created";
         let note2 = "those delayed bugs will now be shown as internal compiler errors";
-        self.emit_diagnostic(DiagInner::new(Note, note1));
-        self.emit_diagnostic(DiagInner::new(Note, note2));
+        self.emit_diagnostic(DiagInner::new(Note, note1), None);
+        self.emit_diagnostic(DiagInner::new(Note, note2), None);
 
         for bug in bugs {
             if let Some(out) = &mut out {
@@ -1752,7 +1778,7 @@ impl DiagCtxtInner {
             }
             bug.level = Bug;
 
-            self.emit_diagnostic(bug);
+            self.emit_diagnostic(bug, None);
         }
 
         // Panic with `DelayedBugPanic` to avoid "unexpected panic" messages.

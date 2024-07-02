@@ -9,7 +9,7 @@ use std::fs;
 
 fn main() {
     rustc().input("foo.rs").run();
-    cc().input("bar.c").input(static_lib_name("foo")).out_exe("bar").args(&extra_c_flags()).run();
+    cc().input("bar.c").input(static_lib_name("foo")).out_exe("bar").args(extra_c_flags()).run();
     run("bar");
     remove_file(static_lib_name("foo"));
     run("bar");

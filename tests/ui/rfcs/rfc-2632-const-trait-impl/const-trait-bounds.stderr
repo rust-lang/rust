@@ -1,0 +1,30 @@
+error[E0284]: type annotations needed: cannot normalize `process<T>::{constant#0}`
+  --> $DIR/const-trait-bounds.rs:12:35
+   |
+LL | fn process<T: const Trait>(input: [(); T::make(2)]) -> [(); T::make(2)] {
+   |                                   ^^^^^^^^^^^^^^^^ cannot normalize `process<T>::{constant#0}`
+
+error[E0284]: type annotations needed: cannot satisfy `the constant `T::make(P)` can be evaluated`
+  --> $DIR/const-trait-bounds.rs:18:5
+   |
+LL |     [u32; T::make(P)]:,
+   |     ^^^^^^^^^^^^^^^^^ cannot satisfy `the constant `T::make(P)` can be evaluated`
+   |
+note: required by a bound in `Struct`
+  --> $DIR/const-trait-bounds.rs:18:11
+   |
+LL | struct Struct<T: const Trait, const P: usize>
+   |        ------ required by a bound in this struct
+LL | where
+LL |     [u32; T::make(P)]:,
+   |           ^^^^^^^^^^ required by this bound in `Struct`
+
+error[E0284]: type annotations needed: cannot normalize `process<T>::{constant#1}`
+  --> $DIR/const-trait-bounds.rs:13:5
+   |
+LL |     input
+   |     ^^^^^ cannot normalize `process<T>::{constant#1}`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

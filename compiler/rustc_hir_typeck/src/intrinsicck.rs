@@ -52,7 +52,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Note: this path is currently not reached in any test, so any
             // example that triggers this would be worth minimizing and
             // converting into a test.
-            tcx.dcx().span_bug(span, "argument to transmute has inference variables");
+            self.dcx().span_bug(span, "argument to transmute has inference variables");
         }
         // Transmutes that are only changing lifetimes are always ok.
         if from == to {
@@ -76,7 +76,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let (&ty::FnDef(..), SizeSkeleton::Known(size_to, _)) = (from.kind(), sk_to)
                 && size_to == Pointer(dl.instruction_address_space).size(&tcx)
             {
-                struct_span_code_err!(tcx.dcx(), span, E0591, "can't transmute zero-sized type")
+                struct_span_code_err!(self.dcx(), span, E0591, "can't transmute zero-sized type")
                     .with_note(format!("source type: {from}"))
                     .with_note(format!("target type: {to}"))
                     .with_help("cast with `as` to a pointer instead")
@@ -116,7 +116,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let mut err = struct_span_code_err!(
-            tcx.dcx(),
+            self.dcx(),
             span,
             E0512,
             "cannot transmute between types of different sizes, \

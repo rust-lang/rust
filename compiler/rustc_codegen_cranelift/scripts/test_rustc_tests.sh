@@ -36,9 +36,8 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 rm tests/ui/asm/x86_64/evex512-implicit-feature.rs # unimplemented AVX512 x86 vendor intrinsic
 
 # exotic linkages
-rm tests/ui/issues/issue-33992.rs # unsupported linkages
-rm tests/incremental/hashes/function_interfaces.rs # same
-rm tests/incremental/hashes/statics.rs # same
+rm tests/incremental/hashes/function_interfaces.rs
+rm tests/incremental/hashes/statics.rs
 
 # variadic arguments
 rm tests/ui/abi/mir/mir_codegen_calls_variadic.rs # requires float varargs
@@ -60,13 +59,20 @@ rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 
 # requires LTO
 rm -r tests/run-make/cdylib
-rm -r tests/run-make/issue-14500
-rm -r tests/run-make/issue-64153
 rm -r tests/run-make/codegen-options-parsing
 rm -r tests/run-make/lto-*
 rm -r tests/run-make/reproducible-build-2
 rm -r tests/run-make/issue-109934-lto-debuginfo
 rm -r tests/run-make/no-builtins-lto
+rm -r tests/run-make/reachable-extern-fn-available-lto
+
+# coverage instrumentation
+rm tests/ui/consts/precise-drop-with-coverage.rs
+rm tests/ui/issues/issue-85461.rs
+rm -r tests/ui/instrument-coverage/
+
+# missing f16/f128 support
+rm tests/ui/half-open-range-patterns/half-open-range-pats-semantics.rs
 
 # optimization tests
 # ==================
@@ -74,6 +80,7 @@ rm tests/ui/codegen/issue-28950.rs # depends on stack size optimizations
 rm tests/ui/codegen/init-large-type.rs # same
 rm tests/ui/issues/issue-40883.rs # same
 rm -r tests/run-make/fmt-write-bloat/ # tests an optimization
+rm tests/ui/statics/const_generics.rs # same
 
 # backend specific tests
 # ======================
@@ -85,6 +92,7 @@ rm -r tests/run-make/sepcomp-cci-copies # same
 rm -r tests/run-make/volatile-intrinsics # same
 rm -r tests/run-make/llvm-ident # same
 rm -r tests/run-make/no-builtins-attribute # same
+rm -r tests/run-make/pgo-gen-no-imp-symbols # same
 rm tests/ui/abi/stack-protector.rs # requires stack protector support
 rm -r tests/run-make/emit-stack-sizes # requires support for -Z emit-stack-sizes
 rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
@@ -93,13 +101,14 @@ rm -r tests/run-make/print-to-output # requires --print relocation-models
 # requires asm, llvm-ir and/or llvm-bc emit support
 # =============================================
 rm -r tests/run-make/emit-named-files
-rm -r tests/run-make/issue-30063
 rm -r tests/run-make/multiple-emits
 rm -r tests/run-make/output-type-permutations
 rm -r tests/run-make/emit-to-stdout
 rm -r tests/run-make/compressed-debuginfo
 rm -r tests/run-make/symbols-include-type-name
-
+rm -r tests/run-make/notify-all-emit-artifacts
+rm -r tests/run-make/reset-codegen-1
+rm -r tests/run-make/inline-always-many-cgu
 
 # giving different but possibly correct results
 # =============================================
@@ -118,6 +127,7 @@ rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contain
 # ============
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
 rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
+rm tests/ui/deprecation/deprecated_inline_threshold.rs # missing deprecation warning for -Cinline-threshold
 
 # bugs in the test suite
 # ======================
@@ -148,12 +158,12 @@ index 9607ff02f96..b7d97caf9a2 100644
 --- a/src/tools/run-make-support/src/rustdoc.rs
 +++ b/src/tools/run-make-support/src/rustdoc.rs
 @@ -34,8 +34,6 @@ pub fn bare() -> Self {
-     /// Construct a \`rustdoc\` invocation with \`-L \$(TARGET_RPATH_DIR)\` set.
+     #[track_caller]
      pub fn new() -> Self {
          let mut cmd = setup_common();
--        let target_rpath_dir = env::var_os("TARGET_RPATH_DIR").unwrap();
+-        let target_rpath_dir = env_var_os("TARGET_RPATH_DIR");
 -        cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
-         Self { cmd, stdin: None }
+         Self { cmd }
      }
 
 EOF

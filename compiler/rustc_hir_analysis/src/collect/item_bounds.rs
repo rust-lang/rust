@@ -8,6 +8,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFold
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
+use rustc_type_ir::Upcast;
 
 /// For associated types we include both bounds written on the type
 /// (`type X: Trait`) and predicates from the trait: `where Self::X: Trait`.
@@ -46,7 +47,7 @@ fn associated_type_bounds<'tcx>(
         }
     });
 
-    let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses().chain(bounds_from_parent));
+    let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses(tcx).chain(bounds_from_parent));
     debug!(
         "associated_type_bounds({}) = {:?}",
         tcx.def_path_str(assoc_item_def_id.to_def_id()),
@@ -75,7 +76,7 @@ fn opaque_type_bounds<'tcx>(
         icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
         debug!(?bounds);
 
-        tcx.arena.alloc_from_iter(bounds.clauses())
+        tcx.arena.alloc_from_iter(bounds.clauses(tcx))
     })
 }
 
@@ -122,6 +123,32 @@ pub(super) fn explicit_item_bounds_with_filter(
             "item bounds for RPITIT in impl to be fed on def-id creation"
         ),
         None => {}
+    }
+
+    if tcx.is_effects_desugared_assoc_ty(def_id.to_def_id()) {
+        let mut predicates = Vec::new();
+
+        let parent = tcx.local_parent(def_id);
+
+        let preds = tcx.explicit_predicates_of(parent);
+
+        if let ty::AssocItemContainer::TraitContainer = tcx.associated_item(def_id).container {
+            // for traits, emit `type Effects: TyCompat<<(T1::Effects, ..) as Min>::Output>`
+            let tup = Ty::new(tcx, ty::Tuple(preds.effects_min_tys));
+            // FIXME(effects) span
+            let span = tcx.def_span(def_id);
+            let assoc = tcx.require_lang_item(hir::LangItem::EffectsIntersectionOutput, Some(span));
+            let proj = Ty::new_projection(tcx, assoc, [tup]);
+            let self_proj = Ty::new_projection(
+                tcx,
+                def_id.to_def_id(),
+                ty::GenericArgs::identity_for_item(tcx, def_id),
+            );
+            let trait_ = tcx.require_lang_item(hir::LangItem::EffectsTyCompat, Some(span));
+            let trait_ref = ty::TraitRef::new(tcx, trait_, [self_proj, proj]);
+            predicates.push((ty::Binder::dummy(trait_ref).upcast(tcx), span));
+        }
+        return ty::EarlyBinder::bind(tcx.arena.alloc_from_iter(predicates));
     }
 
     let bounds = match tcx.hir_node_by_def_id(def_id) {

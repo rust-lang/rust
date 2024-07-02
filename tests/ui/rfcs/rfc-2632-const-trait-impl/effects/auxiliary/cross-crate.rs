@@ -1,4 +1,6 @@
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+//@ compile-flags: -Znext-solver
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, effects)]
 
 pub const fn foo() {}
 

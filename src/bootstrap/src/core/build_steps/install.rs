@@ -6,11 +6,11 @@
 use std::env;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
-use std::process::Command;
 
 use crate::core::build_steps::dist;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
+use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::t;
 use crate::utils::tarball::GeneratedTarball;
 use crate::{Compiler, Kind};
@@ -102,7 +102,7 @@ fn install_sh(
     let empty_dir = builder.out.join("tmp/empty_dir");
     t!(fs::create_dir_all(&empty_dir));
 
-    let mut cmd = Command::new(SHELL);
+    let mut cmd = BootstrapCommand::new(SHELL);
     cmd.current_dir(&empty_dir)
         .arg(sanitize_sh(&tarball.decompressed_output().join("install.sh")))
         .arg(format!("--prefix={}", prepare_dir(&destdir_env, prefix)))
@@ -113,7 +113,7 @@ fn install_sh(
         .arg(format!("--libdir={}", prepare_dir(&destdir_env, libdir)))
         .arg(format!("--mandir={}", prepare_dir(&destdir_env, mandir)))
         .arg("--disable-ldconfig");
-    builder.run(&mut cmd);
+    builder.run(cmd);
     t!(fs::remove_dir_all(&empty_dir));
 }
 

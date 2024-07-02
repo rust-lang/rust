@@ -1985,10 +1985,10 @@ pub(super) fn check_type_bounds<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
-    // A synthetic impl Trait for RPITIT desugaring has no HIR, which we currently use to get the
-    // span for an impl's associated type. Instead, for these, use the def_span for the synthesized
-    // associated type.
-    let impl_ty_span = if impl_ty.is_impl_trait_in_trait() {
+    // A synthetic impl Trait for RPITIT desugaring or assoc type for effects desugaring has no HIR,
+    // which we currently use to get the span for an impl's associated type. Instead, for these,
+    // use the def_span for the synthesized  associated type.
+    let impl_ty_span = if impl_ty.is_impl_trait_in_trait() || impl_ty.is_effects_desugaring {
         tcx.def_span(impl_ty_def_id)
     } else {
         match tcx.hir_node_by_def_id(impl_ty_def_id) {

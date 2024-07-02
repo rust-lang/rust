@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 #![feature(staged_api)]
 #![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
 #![stable(feature = "stable", since = "1.0.0")]

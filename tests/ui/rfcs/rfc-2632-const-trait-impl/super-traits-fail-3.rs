@@ -1,7 +1,9 @@
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+//@ compile-flags: -Znext-solver
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, effects)]
 
 //@ revisions: yy yn ny nn
-//@[yy] check-pass
+//@[yy] known-bug: #110395
 
 #[cfg_attr(any(yy, yn), const_trait)]
 trait Foo {
@@ -18,7 +20,7 @@ trait Bar: ~const Foo {}
 const fn foo<T: ~const Bar>(x: &T) {
     //[yn,nn]~^ ERROR: `~const` can only be applied to `#[const_trait]`
     x.a();
-    //[yn]~^ ERROR: mismatched types
+    //[yn]~^ ERROR: the trait bound
 }
 
 fn main() {}

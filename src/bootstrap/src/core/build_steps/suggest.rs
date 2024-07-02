@@ -16,6 +16,7 @@ pub fn suggest(builder: &Builder<'_>, run: bool) {
         .tool_cmd(Tool::SuggestTests)
         .env("SUGGEST_TESTS_GIT_REPOSITORY", git_config.git_repository)
         .env("SUGGEST_TESTS_NIGHTLY_BRANCH", git_config.nightly_branch)
+        .command
         .output()
         .expect("failed to run `suggest-tests` tool");
 

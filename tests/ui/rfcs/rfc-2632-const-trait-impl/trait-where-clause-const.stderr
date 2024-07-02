@@ -1,44 +1,60 @@
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/trait-where-clause-const.rs:7:30
-   |
-LL | #![feature(const_trait_impl, effects)]
-   |                              ^^^^^^^
-   |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
-error[E0277]: the trait bound `T: ~const Bar` is not satisfied
-  --> $DIR/trait-where-clause-const.rs:21:5
+error[E0277]: the trait bound `Foo::{synthetic#0}: Compat` is not satisfied
+  --> $DIR/trait-where-clause-const.rs:22:5
    |
 LL |     T::b();
-   |     ^ the trait `~const Bar` is not implemented for `T`
+   |     ^ the trait `Compat` is not implemented for `Foo::{synthetic#0}`
    |
 note: required by a bound in `Foo::b`
-  --> $DIR/trait-where-clause-const.rs:15:24
+  --> $DIR/trait-where-clause-const.rs:13:1
    |
+LL | #[const_trait]
+   | ^^^^^^^^^^^^^^ required by this bound in `Foo::b`
+...
 LL |     fn b() where Self: ~const Bar;
-   |                        ^^^^^^^^^^ required by this bound in `Foo::b`
-help: consider further restricting this bound
+   |        - required by a bound in this associated function
+help: consider further restricting the associated type
    |
-LL | const fn test1<T: ~const Foo + Bar + ~const Bar>() {
-   |                                    ++++++++++++
+LL | const fn test1<T: ~const Foo + Bar>() where Foo::{synthetic#0}: Compat {
+   |                                       ++++++++++++++++++++++++++++++++
 
-error[E0277]: the trait bound `T: ~const Bar` is not satisfied
-  --> $DIR/trait-where-clause-const.rs:23:12
+error[E0308]: mismatched types
+  --> $DIR/trait-where-clause-const.rs:22:5
+   |
+LL |     T::b();
+   |     ^^^^^^ expected `host`, found `true`
+   |
+   = note: expected constant `host`
+              found constant `true`
+
+error[E0277]: the trait bound `Foo::{synthetic#0}: Compat` is not satisfied
+  --> $DIR/trait-where-clause-const.rs:25:5
    |
 LL |     T::c::<T>();
-   |            ^ the trait `~const Bar` is not implemented for `T`
+   |     ^ the trait `Compat` is not implemented for `Foo::{synthetic#0}`
    |
 note: required by a bound in `Foo::c`
-  --> $DIR/trait-where-clause-const.rs:16:13
+  --> $DIR/trait-where-clause-const.rs:13:1
    |
+LL | #[const_trait]
+   | ^^^^^^^^^^^^^^ required by this bound in `Foo::c`
+...
 LL |     fn c<T: ~const Bar>();
-   |             ^^^^^^^^^^ required by this bound in `Foo::c`
-help: consider further restricting this bound
+   |        - required by a bound in this associated function
+help: consider further restricting the associated type
    |
-LL | const fn test1<T: ~const Foo + Bar + ~const Bar>() {
-   |                                    ++++++++++++
+LL | const fn test1<T: ~const Foo + Bar>() where Foo::{synthetic#0}: Compat {
+   |                                       ++++++++++++++++++++++++++++++++
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error[E0308]: mismatched types
+  --> $DIR/trait-where-clause-const.rs:25:5
+   |
+LL |     T::c::<T>();
+   |     ^^^^^^^^^^^ expected `host`, found `true`
+   |
+   = note: expected constant `host`
+              found constant `true`
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

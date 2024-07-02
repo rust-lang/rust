@@ -48,7 +48,7 @@ complete -c x.py -n "__fish_use_subcommand" -f -a "run" -d 'Run tools contained 
 complete -c x.py -n "__fish_use_subcommand" -f -a "setup" -d 'Set up the environment for development'
 complete -c x.py -n "__fish_use_subcommand" -f -a "suggest" -d 'Suggest a subset of tests to run, based on modified files'
 complete -c x.py -n "__fish_use_subcommand" -f -a "vendor" -d 'Vendor dependencies'
-complete -c x.py -n "__fish_use_subcommand" -f -a "perf" -d 'Perform profiling and benchmarking of the compiler using the `rustc-perf` benchmark suite'
+complete -c x.py -n "__fish_use_subcommand" -f -a "perf" -d 'Perform profiling and benchmarking of the compiler using the `rustc-perf-wrapper` tool'
 complete -c x.py -n "__fish_seen_subcommand_from build" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from build" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from build" -l build -d 'build target of the stage0 compiler' -r -f

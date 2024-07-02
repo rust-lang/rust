@@ -1,15 +1,13 @@
+#![allow(internal_features)]
 #![feature(rustc_attrs)]
 #![deny(warnings)]
 
-use std::env;
 use std::thread;
 
 fn main() {
-    let should_fail = env::args().nth(1) == Some("bad".to_string());
-
-    assert_eq!(thread::spawn(debug_assert_eq).join().is_err(), should_fail);
-    assert_eq!(thread::spawn(debug_assert).join().is_err(), should_fail);
-    assert_eq!(thread::spawn(overflow).join().is_err(), should_fail);
+    assert!(thread::spawn(debug_assert_eq).join().is_ok());
+    assert!(thread::spawn(debug_assert).join().is_ok());
+    assert!(thread::spawn(overflow).join().is_ok());
 }
 
 fn debug_assert_eq() {

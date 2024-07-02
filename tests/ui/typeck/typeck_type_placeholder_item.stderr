@@ -158,7 +158,7 @@ LL | fn test11(x: &usize) -> &_ {
    |                         -^
    |                         ||
    |                         |not allowed in type signatures
-   |                         help: replace with the correct return type: `&'static &'static usize`
+   |                         help: replace with the correct return type: `&&usize`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/typeck_type_placeholder_item.rs:53:52
@@ -687,13 +687,7 @@ help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 LL + #![feature(const_trait_impl)]
    |
 
-error[E0515]: cannot return reference to function parameter `x`
-  --> $DIR/typeck_type_placeholder_item.rs:50:5
-   |
-LL |     &x
-   |     ^^ returns a reference to data owned by the current function
+error: aborting due to 74 previous errors
 
-error: aborting due to 75 previous errors
-
-Some errors have detailed explanations: E0015, E0046, E0121, E0282, E0403, E0515.
+Some errors have detailed explanations: E0015, E0046, E0121, E0282, E0403.
 For more information about an error, try `rustc --explain E0015`.

@@ -1,5 +1,6 @@
 //@ known-bug: #110395
-
+//@ compile-flags: -Znext-solver
+#![allow(incomplete_features)]
 #![feature(staged_api)]
 #![feature(const_trait_impl, effects)]
 #![feature(const_t_try)]

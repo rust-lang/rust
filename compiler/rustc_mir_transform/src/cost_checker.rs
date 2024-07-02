@@ -31,6 +31,37 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
         CostChecker { tcx, param_env, callee_body, instance, penalty: 0, bonus: 0 }
     }
 
+    /// Add function-level costs not well-represented by the block-level costs.
+    ///
+    /// Needed because the `CostChecker` is used sometimes for just blocks,
+    /// and even the full `Inline` doesn't call `visit_body`, so there's nowhere
+    /// to put this logic in the visitor.
+    pub fn add_function_level_costs(&mut self) {
+        fn is_call_like(bbd: &BasicBlockData<'_>) -> bool {
+            use TerminatorKind::*;
+            match bbd.terminator().kind {
+                Call { .. } | Drop { .. } | Assert { .. } | InlineAsm { .. } => true,
+
+                Goto { .. }
+                | SwitchInt { .. }
+                | UnwindResume
+                | UnwindTerminate(_)
+                | Return
+                | Unreachable => false,
+
+                Yield { .. } | CoroutineDrop | FalseEdge { .. } | FalseUnwind { .. } => {
+                    unreachable!()
+                }
+            }
+        }
+
+        // If the only has one Call (or similar), inlining isn't increasing the total
+        // number of calls, so give extra encouragement to inlining that.
+        if self.callee_body.basic_blocks.iter().filter(|bbd| is_call_like(bbd)).count() == 1 {
+            self.bonus += CALL_PENALTY;
+        }
+    }
+
     pub fn cost(&self) -> usize {
         usize::saturating_sub(self.penalty, self.bonus)
     }

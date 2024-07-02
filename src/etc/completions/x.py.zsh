@@ -856,7 +856,7 @@ _x.py_commands() {
 'setup:Set up the environment for development' \
 'suggest:Suggest a subset of tests to run, based on modified files' \
 'vendor:Vendor dependencies' \
-'perf:Perform profiling and benchmarking of the compiler using the \`rustc-perf\` benchmark suite' \
+'perf:Perform profiling and benchmarking of the compiler using the \`rustc-perf-wrapper\` tool' \
     )
     _describe -t commands 'x.py commands' commands "$@"
 }

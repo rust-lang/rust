@@ -1,11 +1,11 @@
 //@ check-pass
-
+//@ compile-flags: -Znext-solver
 // gate-test-effects
 // ^ effects doesn't have a gate so we will trick tidy into thinking this is a gate test
-
+#![allow(incomplete_features)]
 #![feature(
     const_trait_impl,
-    effects, //~ WARN the feature `effects` is incomplete
+    effects,
     core_intrinsics,
     const_eval_select
 )]

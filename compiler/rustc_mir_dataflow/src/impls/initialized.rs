@@ -50,15 +50,19 @@ use crate::{lattice, AnalysisDomain, GenKill, GenKillAnalysis, MaybeReachable};
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeUninitializedPlaces` yields the set of
 /// places that would require a dynamic drop-flag at that statement.
-pub struct MaybeInitializedPlaces<'a, 'tcx> {
+pub struct MaybeInitializedPlaces<'a, 'mir, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
+    body: &'mir Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
     skip_unreachable_unwind: bool,
 }
 
-impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
+impl<'a, 'mir, 'tcx> MaybeInitializedPlaces<'a, 'mir, 'tcx> {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        body: &'mir Body<'tcx>,
+        mdpe: &'a MoveDataParamEnv<'tcx>,
+    ) -> Self {
         MaybeInitializedPlaces { tcx, body, mdpe, skip_unreachable_unwind: false }
     }
 
@@ -84,7 +88,7 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
+impl<'a, 'mir, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'mir, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> {
         &self.mdpe.move_data
     }
@@ -125,17 +129,21 @@ impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeInitializedPlaces` yields the set of
 /// places that would require a dynamic drop-flag at that statement.
-pub struct MaybeUninitializedPlaces<'a, 'tcx> {
+pub struct MaybeUninitializedPlaces<'a, 'mir, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
+    body: &'mir Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
 
     mark_inactive_variants_as_uninit: bool,
     skip_unreachable_unwind: BitSet<mir::BasicBlock>,
 }
 
-impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
+impl<'a, 'mir, 'tcx> MaybeUninitializedPlaces<'a, 'mir, 'tcx> {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        body: &'mir Body<'tcx>,
+        mdpe: &'a MoveDataParamEnv<'tcx>,
+    ) -> Self {
         MaybeUninitializedPlaces {
             tcx,
             body,
@@ -164,7 +172,7 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'tcx> {
+impl<'a, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, '_, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> {
         &self.mdpe.move_data
     }
@@ -250,24 +258,24 @@ impl<'a, 'tcx> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
 ///     c = S;                                  // {a, b, c, d }
 /// }
 /// ```
-pub struct EverInitializedPlaces<'a, 'tcx> {
-    body: &'a Body<'tcx>,
+pub struct EverInitializedPlaces<'a, 'mir, 'tcx> {
+    body: &'mir Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
 }
 
-impl<'a, 'tcx> EverInitializedPlaces<'a, 'tcx> {
-    pub fn new(body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
+impl<'a, 'mir, 'tcx> EverInitializedPlaces<'a, 'mir, 'tcx> {
+    pub fn new(body: &'mir Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
         EverInitializedPlaces { body, mdpe }
     }
 }
 
-impl<'a, 'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'a, 'tcx> {
+impl<'a, 'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'a, '_, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> {
         &self.mdpe.move_data
     }
 }
 
-impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
+impl<'a, 'mir, 'tcx> MaybeInitializedPlaces<'a, 'mir, 'tcx> {
     fn update_bits(
         trans: &mut impl GenKill<MovePathIndex>,
         path: MovePathIndex,
@@ -280,7 +288,7 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
+impl<'a, 'tcx> MaybeUninitializedPlaces<'a, '_, 'tcx> {
     fn update_bits(
         trans: &mut impl GenKill<MovePathIndex>,
         path: MovePathIndex,
@@ -306,7 +314,7 @@ impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
     }
 }
 
-impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
+impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, '_, 'tcx> {
     /// There can be many more `MovePathIndex` than there are locals in a MIR body.
     /// We use a chunked bitset to avoid paying too high a memory footprint.
     type Domain = MaybeReachable<ChunkedBitSet<MovePathIndex>>;
@@ -328,7 +336,7 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
+impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, '_, 'tcx> {
     type Idx = MovePathIndex;
 
     fn domain_size(&self, _: &Body<'tcx>) -> usize {
@@ -441,7 +449,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
+impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, '_, 'tcx> {
     /// There can be many more `MovePathIndex` than there are locals in a MIR body.
     /// We use a chunked bitset to avoid paying too high a memory footprint.
     type Domain = ChunkedBitSet<MovePathIndex>;
@@ -465,7 +473,7 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
+impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, '_, 'tcx> {
     type Idx = MovePathIndex;
 
     fn domain_size(&self, _: &Body<'tcx>) -> usize {
@@ -642,7 +650,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
+impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, '_, 'tcx> {
     /// There can be many more `InitIndex` than there are locals in a MIR body.
     /// We use a chunked bitset to avoid paying too high a memory footprint.
     type Domain = ChunkedBitSet<InitIndex>;
@@ -661,7 +669,7 @@ impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     }
 }
 
-impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
+impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, '_, 'tcx> {
     type Idx = InitIndex;
 
     fn domain_size(&self, _: &Body<'tcx>) -> usize {

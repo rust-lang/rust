@@ -81,7 +81,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
-    flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'_, 'cx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     upvars: &[&ty::CapturedPlace<'tcx>],
@@ -262,13 +262,13 @@ pub(super) fn dump_mir_results<'tcx>(
 
 #[allow(rustc::diagnostic_outside_of_impl)]
 #[allow(rustc::untranslatable_diagnostic)]
-pub(super) fn dump_annotation<'tcx>(
-    infcx: &BorrowckInferCtxt<'tcx>,
+pub(super) fn dump_annotation<'tcx, 'cx>(
+    infcx: &'cx BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     opaque_type_values: &FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
-    diags: &mut crate::diags::BorrowckDiags<'tcx>,
+    diags: &mut crate::diags::BorrowckDiags<'cx, 'tcx>,
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.typeck_root_def_id(body.source.def_id());
@@ -285,7 +285,7 @@ pub(super) fn dump_annotation<'tcx>(
 
     let def_span = tcx.def_span(body.source.def_id());
     let mut err = if let Some(closure_region_requirements) = closure_region_requirements {
-        let mut err = tcx.dcx().struct_span_note(def_span, "external requirements");
+        let mut err = infcx.dcx().struct_span_note(def_span, "external requirements");
 
         regioncx.annotate(tcx, &mut err);
 
@@ -304,7 +304,7 @@ pub(super) fn dump_annotation<'tcx>(
 
         err
     } else {
-        let mut err = tcx.dcx().struct_span_note(def_span, "no external requirements");
+        let mut err = infcx.dcx().struct_span_note(def_span, "no external requirements");
         regioncx.annotate(tcx, &mut err);
 
         err

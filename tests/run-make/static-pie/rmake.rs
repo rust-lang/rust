@@ -51,7 +51,7 @@ fn test(compiler: &str) {
 
     rustc()
         .input("test-aslr.rs")
-        .target(&target())
+        .target(target())
         .linker(compiler)
         .arg("-Clinker-flavor=gcc")
         .arg("-Ctarget-feature=+crt-static")

@@ -5,7 +5,7 @@
 
 // FIXME: This test isn't comprehensive and isn't covering all possible combinations.
 
-use run_make_support::{assert_contains, cmd, run_in_tmpdir, rustc};
+use run_make_support::{assert_contains, cmd, llvm_readobj, run_in_tmpdir, rustc};
 
 fn check_compression(compression: &str, to_find: &str) {
     run_in_tmpdir(|| {
@@ -19,12 +19,11 @@ fn check_compression(compression: &str, to_find: &str) {
             .run();
         let stderr = out.stderr_utf8();
         if stderr.is_empty() {
-            // FIXME: `readelf` might need to be replaced with `llvm-readelf`.
-            cmd("readelf").arg("-t").arg("foo.o").run().assert_stdout_contains(to_find);
+            llvm_readobj().arg("-t").arg("foo.o").run().assert_stdout_contains(to_find);
         } else {
             assert_contains(
-                &stderr,
-                &format!("unknown debuginfo compression algorithm {compression}"),
+                stderr,
+                format!("unknown debuginfo compression algorithm {compression}"),
             );
         }
     });

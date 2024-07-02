@@ -93,7 +93,7 @@ enum GroupedMoveError<'tcx> {
     },
 }
 
-impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     pub(crate) fn report_move_errors(&mut self) {
         let grouped_errors = self.group_move_errors();
         for error in grouped_errors {
@@ -291,7 +291,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         self.buffer_error(err);
     }
 
-    fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'tcx> {
+    fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'infcx> {
         let description = if place.projection.len() == 1 {
             format!("static item {}", self.describe_any_place(place.as_ref()))
         } else {
@@ -428,7 +428,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let tcx = self.infcx.tcx;
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
@@ -639,12 +639,27 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
     fn add_borrow_suggestions(&self, err: &mut Diag<'_>, span: Span) {
         match self.infcx.tcx.sess.source_map().span_to_snippet(span) {
             Ok(snippet) if snippet.starts_with('*') => {
-                err.span_suggestion_verbose(
-                    span.with_hi(span.lo() + BytePos(1)),
-                    "consider removing the dereference here",
-                    String::new(),
-                    Applicability::MaybeIncorrect,
-                );
+                let sp = span.with_lo(span.lo() + BytePos(1));
+                let inner = self.find_expr(sp);
+                let mut is_raw_ptr = false;
+                if let Some(inner) = inner {
+                    let typck_result = self.infcx.tcx.typeck(self.mir_def_id());
+                    if let Some(inner_type) = typck_result.node_type_opt(inner.hir_id) {
+                        if matches!(inner_type.kind(), ty::RawPtr(..)) {
+                            is_raw_ptr = true;
+                        }
+                    }
+                }
+                // If the `inner` is a raw pointer, do not suggest removing the "*", see #126863
+                // FIXME: need to check whether the assigned object can be a raw pointer, see `tests/ui/borrowck/issue-20801.rs`.
+                if !is_raw_ptr {
+                    err.span_suggestion_verbose(
+                        span.with_hi(span.lo() + BytePos(1)),
+                        "consider removing the dereference here",
+                        String::new(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
             _ => {
                 err.span_suggestion_verbose(

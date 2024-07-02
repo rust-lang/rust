@@ -331,6 +331,7 @@ trigger_files = [
     "src/tools/tidy",
     "src/tools/rustdoc-gui-test",
     "src/tools/libcxx-version",
+    "src/tools/rustc-perf-wrapper",
 ]
 
 [autolabel."T-infra"]
