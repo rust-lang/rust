@@ -1,8 +1,8 @@
-error: cannot find derive macro `Sync` in this scope
+error: cannot find derive macro `Sync` in the crate root
   --> $DIR/deriving-bounds.rs:6:10
    |
 LL | #[derive(Sync)]
-   |          ^^^^ not found in this scope
+   |          ^^^^ not found in the crate root
    |
 note: unsafe traits like `Sync` should be implemented explicitly
   --> $DIR/deriving-bounds.rs:6:10
@@ -10,11 +10,11 @@ note: unsafe traits like `Sync` should be implemented explicitly
 LL | #[derive(Sync)]
    |          ^^^^
 
-error: cannot find derive macro `Sync` in this scope
+error: cannot find derive macro `Sync` in the crate root
   --> $DIR/deriving-bounds.rs:6:10
    |
 LL | #[derive(Sync)]
-   |          ^^^^ not found in this scope
+   |          ^^^^ not found in the crate root
    |
 note: unsafe traits like `Sync` should be implemented explicitly
   --> $DIR/deriving-bounds.rs:6:10
@@ -23,11 +23,11 @@ LL | #[derive(Sync)]
    |          ^^^^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: cannot find derive macro `Send` in this scope
+error: cannot find derive macro `Send` in the crate root
   --> $DIR/deriving-bounds.rs:1:10
    |
 LL | #[derive(Send)]
-   |          ^^^^ not found in this scope
+   |          ^^^^ not found in the crate root
    |
 note: unsafe traits like `Send` should be implemented explicitly
   --> $DIR/deriving-bounds.rs:1:10
@@ -35,11 +35,11 @@ note: unsafe traits like `Send` should be implemented explicitly
 LL | #[derive(Send)]
    |          ^^^^
 
-error: cannot find derive macro `Send` in this scope
+error: cannot find derive macro `Send` in the crate root
   --> $DIR/deriving-bounds.rs:1:10
    |
 LL | #[derive(Send)]
-   |          ^^^^ not found in this scope
+   |          ^^^^ not found in the crate root
    |
 note: unsafe traits like `Send` should be implemented explicitly
   --> $DIR/deriving-bounds.rs:1:10

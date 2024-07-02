@@ -44,11 +44,11 @@ help: alternatively, consider surrounding the expression with a block
 LL |     { [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>() }
    |     +                                                             +
 
-error: cannot find attribute `attr` in this scope
+error: cannot find attribute `attr` in the crate root
   --> $DIR/multiple-tail-expr-behind-cfg.rs:13:7
    |
 LL |     #[attr]
-   |       ^^^^ not found in this scope
+   |       ^^^^ not found in the crate root
 
 error: aborting due to 3 previous errors
 

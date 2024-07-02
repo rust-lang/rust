@@ -2919,4 +2919,5 @@ pub struct OutOfScopeMacroCalls {
     #[label]
     pub span: Span,
     pub path: String,
+    pub scope: String,
 }

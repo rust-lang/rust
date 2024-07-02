@@ -54,11 +54,11 @@ error: lifetimes cannot use keyword names
 LL | struct Bar<'Self>;
    |            ^^^^^
 
-error: cannot find macro `Self` in this scope
+error: cannot find macro `Self` in the crate root
   --> $DIR/self_type_keyword.rs:21:9
    |
 LL |         Self!() => (),
-   |         ^^^^ not found in this scope
+   |         ^^^^ not found in the crate root
 
 error[E0531]: cannot find unit struct, unit variant or constant `Self` in this scope
   --> $DIR/self_type_keyword.rs:16:13

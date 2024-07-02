@@ -1,8 +1,8 @@
-error: cannot find attribute `foo` in this scope
+error: cannot find attribute `foo` in the crate root
   --> $DIR/custom_attribute.rs:3:3
    |
 LL | #[foo]
-   |   ^^^ not found in this scope
+   |   ^^^ not found in the crate root
 
 error: cannot find attribute `foo` in this scope
   --> $DIR/custom_attribute.rs:5:7

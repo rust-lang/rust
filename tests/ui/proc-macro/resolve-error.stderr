@@ -42,27 +42,27 @@ LL |     FooWithLongNama!();
    |     not found in this scope
    |     help: a macro with a similar name exists: `FooWithLongNam`
 
-error: cannot find derive macro `attr_proc_macra` in this scope
+error: cannot find derive macro `attr_proc_macra` in the crate root
   --> $DIR/resolve-error.rs:45:10
    |
 LL | #[derive(attr_proc_macra)]
-   |          ^^^^^^^^^^^^^^^ not found in this scope
+   |          ^^^^^^^^^^^^^^^ not found in the crate root
 
-error: cannot find derive macro `attr_proc_macra` in this scope
+error: cannot find derive macro `attr_proc_macra` in the crate root
   --> $DIR/resolve-error.rs:45:10
    |
 LL | #[derive(attr_proc_macra)]
-   |          ^^^^^^^^^^^^^^^ not found in this scope
+   |          ^^^^^^^^^^^^^^^ not found in the crate root
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: cannot find derive macro `Dlona` in this scope
+error: cannot find derive macro `Dlona` in the crate root
   --> $DIR/resolve-error.rs:40:10
    |
 LL | #[derive(Dlona)]
    |          ^^^^^
    |          |
-   |          not found in this scope
+   |          not found in the crate root
    |          help: a derive macro with a similar name exists: `Clona`
    |
   ::: $DIR/auxiliary/derive-clona.rs:11:1
@@ -70,13 +70,13 @@ LL | #[derive(Dlona)]
 LL | pub fn derive_clonea(input: TokenStream) -> TokenStream {
    | ------------------------------------------------------- similarly named derive macro `Clona` defined here
 
-error: cannot find derive macro `Dlona` in this scope
+error: cannot find derive macro `Dlona` in the crate root
   --> $DIR/resolve-error.rs:40:10
    |
 LL | #[derive(Dlona)]
    |          ^^^^^
    |          |
-   |          not found in this scope
+   |          not found in the crate root
    |          help: a derive macro with a similar name exists: `Clona`
    |
   ::: $DIR/auxiliary/derive-clona.rs:11:1
@@ -86,25 +86,25 @@ LL | pub fn derive_clonea(input: TokenStream) -> TokenStream {
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: cannot find derive macro `Dlone` in this scope
+error: cannot find derive macro `Dlone` in the crate root
   --> $DIR/resolve-error.rs:35:10
    |
 LL | #[derive(Dlone)]
    |          ^^^^^
    |          |
-   |          not found in this scope
+   |          not found in the crate root
    |          help: a derive macro with a similar name exists: `Clone`
   --> $SRC_DIR/core/src/clone.rs:LL:COL
    |
    = note: similarly named derive macro `Clone` defined here
 
-error: cannot find derive macro `Dlone` in this scope
+error: cannot find derive macro `Dlone` in the crate root
   --> $DIR/resolve-error.rs:35:10
    |
 LL | #[derive(Dlone)]
    |          ^^^^^
    |          |
-   |          not found in this scope
+   |          not found in the crate root
    |          help: a derive macro with a similar name exists: `Clone`
   --> $SRC_DIR/core/src/clone.rs:LL:COL
    |
@@ -112,19 +112,19 @@ LL | #[derive(Dlone)]
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: cannot find attribute `FooWithLongNan` in this scope
+error: cannot find attribute `FooWithLongNan` in the crate root
   --> $DIR/resolve-error.rs:32:3
    |
 LL | #[FooWithLongNan]
-   |   ^^^^^^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `attr_proc_macra` in this scope
+error: cannot find attribute `attr_proc_macra` in the crate root
   --> $DIR/resolve-error.rs:28:3
    |
 LL | #[attr_proc_macra]
    |   ^^^^^^^^^^^^^^^
    |   |
-   |   not found in this scope
+   |   not found in the crate root
    |   help: an attribute macro with a similar name exists: `attr_proc_macro`
    |
   ::: $DIR/auxiliary/test-macros.rs:20:1
@@ -132,13 +132,13 @@ LL | #[attr_proc_macra]
 LL | pub fn empty_attr(_: TokenStream, _: TokenStream) -> TokenStream {
    | ---------------------------------------------------------------- similarly named attribute macro `attr_proc_macro` defined here
 
-error: cannot find derive macro `FooWithLongNan` in this scope
+error: cannot find derive macro `FooWithLongNan` in the crate root
   --> $DIR/resolve-error.rs:22:10
    |
 LL | #[derive(FooWithLongNan)]
    |          ^^^^^^^^^^^^^^
    |          |
-   |          not found in this scope
+   |          not found in the crate root
    |          help: a derive macro with a similar name exists: `FooWithLongName`
    |
   ::: $DIR/auxiliary/derive-foo.rs:11:1
@@ -146,13 +146,13 @@ LL | #[derive(FooWithLongNan)]
 LL | pub fn derive_foo(input: TokenStream) -> TokenStream {
    | ---------------------------------------------------- similarly named derive macro `FooWithLongName` defined here
 
-error: cannot find derive macro `FooWithLongNan` in this scope
+error: cannot find derive macro `FooWithLongNan` in the crate root
   --> $DIR/resolve-error.rs:22:10
    |
 LL | #[derive(FooWithLongNan)]
    |          ^^^^^^^^^^^^^^
    |          |
-   |          not found in this scope
+   |          not found in the crate root
    |          help: a derive macro with a similar name exists: `FooWithLongName`
    |
   ::: $DIR/auxiliary/derive-foo.rs:11:1

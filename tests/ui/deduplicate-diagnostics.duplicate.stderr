@@ -4,17 +4,17 @@ error[E0452]: malformed lint attribute input
 LL | #[deny("literal")]
    |        ^^^^^^^^^ bad attribute argument
 
-error: cannot find derive macro `Unresolved` in this scope
+error: cannot find derive macro `Unresolved` in the crate root
   --> $DIR/deduplicate-diagnostics.rs:4:10
    |
 LL | #[derive(Unresolved)]
-   |          ^^^^^^^^^^ not found in this scope
+   |          ^^^^^^^^^^ not found in the crate root
 
-error: cannot find derive macro `Unresolved` in this scope
+error: cannot find derive macro `Unresolved` in the crate root
   --> $DIR/deduplicate-diagnostics.rs:4:10
    |
 LL | #[derive(Unresolved)]
-   |          ^^^^^^^^^^ not found in this scope
+   |          ^^^^^^^^^^ not found in the crate root
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

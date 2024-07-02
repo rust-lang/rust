@@ -1,80 +1,80 @@
-error: cannot find attribute `fake_attr` in this scope
+error: cannot find attribute `fake_attr` in the crate root
   --> $DIR/feature-gate-custom_attribute.rs:3:3
    |
 LL | #[fake_attr]
-   |   ^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `fake_attr` in this scope
+error: cannot find attribute `fake_attr` in the crate root
   --> $DIR/feature-gate-custom_attribute.rs:4:3
    |
 LL | #[fake_attr(100)]
-   |   ^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `fake_attr` in this scope
+error: cannot find attribute `fake_attr` in the crate root
   --> $DIR/feature-gate-custom_attribute.rs:5:3
    |
 LL | #[fake_attr(1, 2, 3)]
-   |   ^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `fake_attr` in this scope
+error: cannot find attribute `fake_attr` in the crate root
   --> $DIR/feature-gate-custom_attribute.rs:6:3
    |
 LL | #[fake_attr("hello")]
-   |   ^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `fake_attr` in this scope
+error: cannot find attribute `fake_attr` in the crate root
   --> $DIR/feature-gate-custom_attribute.rs:7:3
    |
 LL | #[fake_attr(name = "hello")]
-   |   ^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `fake_attr` in this scope
+error: cannot find attribute `fake_attr` in the crate root
   --> $DIR/feature-gate-custom_attribute.rs:8:3
    |
 LL | #[fake_attr(1, "hi", key = 12, true, false)]
-   |   ^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `fake_attr` in this scope
+error: cannot find attribute `fake_attr` in the crate root
   --> $DIR/feature-gate-custom_attribute.rs:9:3
    |
 LL | #[fake_attr(key = "hello", val = 10)]
-   |   ^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `fake_attr` in this scope
+error: cannot find attribute `fake_attr` in the crate root
   --> $DIR/feature-gate-custom_attribute.rs:10:3
    |
 LL | #[fake_attr(key("hello"), val(10))]
-   |   ^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `fake_attr` in this scope
+error: cannot find attribute `fake_attr` in the crate root
   --> $DIR/feature-gate-custom_attribute.rs:11:3
    |
 LL | #[fake_attr(enabled = true, disabled = false)]
-   |   ^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `fake_attr` in this scope
+error: cannot find attribute `fake_attr` in the crate root
   --> $DIR/feature-gate-custom_attribute.rs:12:3
    |
 LL | #[fake_attr(true)]
-   |   ^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `fake_attr` in this scope
+error: cannot find attribute `fake_attr` in the crate root
   --> $DIR/feature-gate-custom_attribute.rs:13:3
    |
 LL | #[fake_attr(pi = 3.14159)]
-   |   ^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `fake_attr` in this scope
+error: cannot find attribute `fake_attr` in the crate root
   --> $DIR/feature-gate-custom_attribute.rs:14:3
    |
 LL | #[fake_attr(b"hi")]
-   |   ^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^ not found in the crate root
 
-error: cannot find attribute `fake_doc` in this scope
+error: cannot find attribute `fake_doc` in the crate root
   --> $DIR/feature-gate-custom_attribute.rs:15:3
    |
 LL | #[fake_doc(r"doc")]
-   |   ^^^^^^^^ not found in this scope
+   |   ^^^^^^^^ not found in the crate root
 
 error: aborting due to 13 previous errors
 

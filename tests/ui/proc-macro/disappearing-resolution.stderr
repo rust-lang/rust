@@ -1,8 +1,8 @@
-error: cannot find attribute `empty_helper` in this scope
+error: cannot find attribute `empty_helper` in the crate root
   --> $DIR/disappearing-resolution.rs:18:3
    |
 LL | #[empty_helper]
-   |   ^^^^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^^^^ not found in the crate root
 
 error[E0603]: derive macro import `Empty` is private
   --> $DIR/disappearing-resolution.rs:11:8

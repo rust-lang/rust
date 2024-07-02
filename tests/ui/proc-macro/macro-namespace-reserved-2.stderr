@@ -120,27 +120,27 @@ LL |     MyTrait!();
    |
    = note: `MyTrait` is in scope, but it is a derive macro: `#[derive(MyTrait)]`
 
-error: cannot find attribute `my_macro` in this scope
+error: cannot find attribute `my_macro` in the crate root
   --> $DIR/macro-namespace-reserved-2.rs:38:3
    |
 LL | #[my_macro]
-   |   ^^^^^^^^ not found in this scope
+   |   ^^^^^^^^ not found in the crate root
    |
    = note: `my_macro` is in scope, but it is a function-like macro
 
-error: cannot find derive macro `my_macro` in this scope
+error: cannot find derive macro `my_macro` in the crate root
   --> $DIR/macro-namespace-reserved-2.rs:48:10
    |
 LL | #[derive(my_macro)]
-   |          ^^^^^^^^ not found in this scope
+   |          ^^^^^^^^ not found in the crate root
    |
    = note: `my_macro` is in scope, but it is a function-like macro
 
-error: cannot find derive macro `my_macro` in this scope
+error: cannot find derive macro `my_macro` in the crate root
   --> $DIR/macro-namespace-reserved-2.rs:48:10
    |
 LL | #[derive(my_macro)]
-   |          ^^^^^^^^ not found in this scope
+   |          ^^^^^^^^ not found in the crate root
    |
    = note: `my_macro` is in scope, but it is a function-like macro
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`

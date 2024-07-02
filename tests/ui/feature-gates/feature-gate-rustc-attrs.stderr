@@ -28,11 +28,11 @@ error: attributes starting with `rustc` are reserved for use by the `rustc` comp
 LL | #[rustc_unknown]
    |   ^^^^^^^^^^^^^
 
-error: cannot find attribute `rustc_unknown` in this scope
+error: cannot find attribute `rustc_unknown` in the crate root
   --> $DIR/feature-gate-rustc-attrs.rs:20:3
    |
 LL | #[rustc_unknown]
-   |   ^^^^^^^^^^^^^ not found in this scope
+   |   ^^^^^^^^^^^^^ not found in the crate root
 
 error[E0658]: the `#[rustc_dummy]` attribute is just used for rustc unit tests and will never be stable
   --> $DIR/feature-gate-rustc-attrs.rs:18:1

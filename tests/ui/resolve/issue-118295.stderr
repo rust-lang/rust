@@ -1,8 +1,8 @@
-error: cannot find macro `macro_rules` in this scope
+error: cannot find macro `macro_rules` in the crate root
   --> $DIR/issue-118295.rs:1:1
    |
 LL | macro_rules! {}
-   | ^^^^^^^^^^^ not found in this scope
+   | ^^^^^^^^^^^ not found in the crate root
    |
 note: maybe you have forgotten to define a name for this `macro_rules!`
   --> $DIR/issue-118295.rs:1:1
