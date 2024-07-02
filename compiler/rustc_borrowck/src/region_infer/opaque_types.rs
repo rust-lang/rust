@@ -285,7 +285,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         if let Err(guar) =
-            check_opaque_type_parameter_valid(self.tcx, opaque_type_key, instantiated_ty.span)
+            check_opaque_type_parameter_valid(self, opaque_type_key, instantiated_ty.span)
         {
             return Ty::new_error(self.tcx, guar);
         }
@@ -293,6 +293,10 @@ impl<'tcx> InferCtxt<'tcx> {
         let definition_ty = instantiated_ty
             .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false)
             .ty;
+
+        if let Err(e) = definition_ty.error_reported() {
+            return Ty::new_error(self.tcx, e);
+        }
 
         // `definition_ty` does not live in of the current inference context,
         // so lets make sure that we don't accidentally misuse our current `infcx`.
@@ -387,10 +391,11 @@ fn check_opaque_type_well_formed<'tcx>(
 /// [rustc-dev-guide chapter]:
 /// https://rustc-dev-guide.rust-lang.org/opaque-types-region-infer-restrictions.html
 fn check_opaque_type_parameter_valid<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
     opaque_type_key: OpaqueTypeKey<'tcx>,
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
+    let tcx = infcx.tcx;
     let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
     let opaque_env = LazyOpaqueTyEnv::new(tcx, opaque_type_key.def_id);
     let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
@@ -420,7 +425,7 @@ fn check_opaque_type_parameter_valid<'tcx>(
 
             opaque_env.param_is_error(i)?;
 
-            return Err(tcx.dcx().emit_err(NonGenericOpaqueTypeParam {
+            return Err(infcx.dcx().emit_err(NonGenericOpaqueTypeParam {
                 ty: arg,
                 kind,
                 span,
@@ -438,7 +443,7 @@ fn check_opaque_type_parameter_valid<'tcx>(
                 .collect();
             #[allow(rustc::diagnostic_outside_of_impl)]
             #[allow(rustc::untranslatable_diagnostic)]
-            return Err(tcx
+            return Err(infcx
                 .dcx()
                 .struct_span_err(span, "non-defining opaque type use in defining scope")
                 .with_span_note(spans, format!("{descr} used multiple times"))

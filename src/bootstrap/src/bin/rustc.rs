@@ -20,26 +20,24 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::time::Instant;
 
-use dylib_util::{dylib_path, dylib_path_var, exe};
+use shared_helpers::{
+    dylib_path, dylib_path_var, exe, maybe_dump, parse_rustc_stage, parse_rustc_verbose,
+    parse_value_from_args,
+};
 
-#[path = "../utils/bin_helpers.rs"]
-mod bin_helpers;
-
-#[path = "../utils/dylib.rs"]
-mod dylib_util;
+#[path = "../utils/shared_helpers.rs"]
+mod shared_helpers;
 
 fn main() {
     let orig_args = env::args_os().skip(1).collect::<Vec<_>>();
     let mut args = orig_args.clone();
-    let arg =
-        |name| orig_args.windows(2).find(|args| args[0] == name).and_then(|args| args[1].to_str());
 
-    let stage = bin_helpers::parse_rustc_stage();
-    let verbose = bin_helpers::parse_rustc_verbose();
+    let stage = parse_rustc_stage();
+    let verbose = parse_rustc_verbose();
 
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
-    let target = arg("--target");
+    let target = parse_value_from_args(&orig_args, "--target");
     let version = args.iter().find(|w| &**w == "-vV");
 
     // Use a different compiler for build scripts, since there may not yet be a
@@ -102,7 +100,7 @@ fn main() {
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
     // Get the name of the crate we're compiling, if any.
-    let crate_name = arg("--crate-name");
+    let crate_name = parse_value_from_args(&orig_args, "--crate-name");
 
     if let Some(crate_name) = crate_name {
         if let Some(target) = env::var_os("RUSTC_TIME") {
@@ -143,10 +141,11 @@ fn main() {
             cmd.arg("-C").arg("panic=abort");
         }
 
+        let crate_type = parse_value_from_args(&orig_args, "--crate-type");
         // `-Ztls-model=initial-exec` must not be applied to proc-macros, see
         // issue https://github.com/rust-lang/rust/issues/100530
         if env::var("RUSTC_TLS_MODEL_INITIAL_EXEC").is_ok()
-            && arg("--crate-type") != Some("proc-macro")
+            && crate_type != Some("proc-macro")
             && !matches!(crate_name, Some("proc_macro2" | "quote" | "syn" | "synstructure"))
         {
             cmd.arg("-Ztls-model=initial-exec");
@@ -251,7 +250,7 @@ fn main() {
         eprintln!("{prefix} libdir: {libdir:?}");
     }
 
-    bin_helpers::maybe_dump(format!("stage{stage}-rustc"), &cmd);
+    maybe_dump(format!("stage{stage}-rustc"), &cmd);
 
     let start = Instant::now();
     let (child, status) = {

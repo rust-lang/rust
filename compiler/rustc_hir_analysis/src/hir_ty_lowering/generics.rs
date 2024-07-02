@@ -256,6 +256,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                             | GenericParamDefKind::Lifetime,
                             _,
                         ) => {
+                            // FIXME(effects): this should be removed
                             // SPECIAL CASE FOR DESUGARED EFFECT PARAMS
                             // This comes from the following example:
                             //
@@ -445,7 +446,7 @@ pub(crate) fn check_generic_arg_count(
         .own_params
         .iter()
         .filter(|param| {
-            matches!(param.kind, ty::GenericParamDefKind::Const { is_host_effect: true, .. })
+            matches!(param.kind, ty::GenericParamDefKind::Const { synthetic: true, .. })
         })
         .count();
     let named_const_param_count = param_counts.consts - synth_const_param_count;

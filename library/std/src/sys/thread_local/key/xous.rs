@@ -30,7 +30,7 @@
 //! really.
 //!
 //! Perhaps one day we can fold the `Box` here into a static allocation,
-//! expanding the `StaticKey` structure to contain not only a slot for the TLS
+//! expanding the `LazyKey` structure to contain not only a slot for the TLS
 //! key but also a slot for the destructor queue on windows. An optimization for
 //! another day!
 

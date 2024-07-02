@@ -1,11 +1,22 @@
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/super-traits-fail-3.rs:1:30
+error[E0277]: the trait bound `Foo::{synthetic#0}: ~const Compat` is not satisfied
+  --> $DIR/super-traits-fail-3.rs:22:7
    |
-LL | #![feature(const_trait_impl, effects)]
-   |                              ^^^^^^^
+LL |     x.a();
+   |       ^ the trait `~const Compat` is not implemented for `Foo::{synthetic#0}`
    |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
+note: required by a bound in `Foo::a`
+  --> $DIR/super-traits-fail-3.rs:8:25
+   |
+LL | #[cfg_attr(any(yy, yn), const_trait)]
+   |                         ^^^^^^^^^^^ required by this bound in `Foo::a`
+LL | trait Foo {
+LL |     fn a(&self);
+   |        - required by a bound in this associated function
+help: consider further restricting the associated type
+   |
+LL | const fn foo<T: ~const Bar>(x: &T) where Foo::{synthetic#0}: ~const Compat {
+   |                                    +++++++++++++++++++++++++++++++++++++++
 
-warning: 1 warning emitted
+error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0277`.

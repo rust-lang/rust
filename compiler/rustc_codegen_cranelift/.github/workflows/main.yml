@@ -66,6 +66,9 @@ jobs:
             env:
               TARGET_TRIPLE: aarch64-unknown-linux-gnu
             apt_deps: gcc-aarch64-linux-gnu qemu-user
+          - os: macos-latest
+            env:
+              TARGET_TRIPLE: aarch64-apple-darwin
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: s390x-unknown-linux-gnu
@@ -107,10 +110,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y ${{ matrix.apt_deps }}
-
-    - name: Select XCode version
-      if: matrix.os == 'macos-latest'
-      run: sudo xcode-select -s /Applications/Xcode_14.3.1.app
 
     - name: Prepare dependencies
       run: ./y.sh prepare
@@ -214,6 +213,9 @@ jobs:
           - os: macos-latest
             env:
               TARGET_TRIPLE: x86_64-apple-darwin
+          - os: macos-latest
+            env:
+              TARGET_TRIPLE: aarch64-apple-darwin
           # cross-compile from Linux to Windows using mingw
           - os: ubuntu-latest
             env:
@@ -248,10 +250,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y gcc-mingw-w64-x86-64
 
-    - name: Select XCode version
-      if: matrix.os == 'macos-latest'
-      run: sudo xcode-select -s /Applications/Xcode_14.3.1.app
-
     - name: Prepare dependencies
       run: ./y.sh prepare
 
@@ -282,7 +280,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: ${{ github.ref == 'refs/heads/master' }}
-    needs: [rustfmt, test, bench, dist]
+    # FIXME add the bench job back to the dependency list once rust-lang/rust#125493 gets merged
+    needs: [rustfmt, test, dist]
 
     permissions:
       contents: write # for creating the dev tag and release

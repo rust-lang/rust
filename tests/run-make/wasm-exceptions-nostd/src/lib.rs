@@ -5,7 +5,6 @@
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
-#![feature(panic_info_message)]
 
 extern crate alloc;
 

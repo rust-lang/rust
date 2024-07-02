@@ -91,7 +91,7 @@ fn path_to_sized_bound(cx: &LateContext<'_>, trait_bound: &PolyTraitRef<'_>) -> 
             return true;
         }
 
-        for &(predicate, _) in cx.tcx.super_predicates_of(trait_def_id).predicates {
+        for &(predicate, _) in cx.tcx.explicit_super_predicates_of(trait_def_id).predicates {
             if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
                 && trait_predicate.polarity == PredicatePolarity::Positive
                 && !path.contains(&trait_predicate.def_id())

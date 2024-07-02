@@ -1,5 +1,5 @@
 warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/missing-const-stability.rs:2:30
+  --> $DIR/missing-const-stability.rs:3:30
    |
 LL | #![feature(const_trait_impl, effects)]
    |                              ^^^^^^^
@@ -8,13 +8,13 @@ LL | #![feature(const_trait_impl, effects)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error: function has missing const stability attribute
-  --> $DIR/missing-const-stability.rs:6:1
+  --> $DIR/missing-const-stability.rs:7:1
    |
 LL | pub const fn foo() {}
    | ^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation has missing const stability attribute
-  --> $DIR/missing-const-stability.rs:28:1
+  --> $DIR/missing-const-stability.rs:29:1
    |
 LL | / impl const Bar for Foo {
 LL | |
@@ -23,7 +23,7 @@ LL | | }
    | |_^
 
 error: associated function has missing const stability attribute
-  --> $DIR/missing-const-stability.rs:15:5
+  --> $DIR/missing-const-stability.rs:16:5
    |
 LL |     pub const fn foo() {}
    |     ^^^^^^^^^^^^^^^^^^^^^

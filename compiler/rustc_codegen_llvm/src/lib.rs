@@ -274,10 +274,11 @@ impl CodegenBackend for LlvmCodegenBackend {
             |tcx, ()| llvm_util::global_llvm_features(tcx.sess, true)
     }
 
-    fn print(&self, req: &PrintRequest, out: &mut dyn PrintBackendInfo, sess: &Session) {
+    fn print(&self, req: &PrintRequest, out: &mut String, sess: &Session) {
+        use std::fmt::Write;
         match req.kind {
             PrintKind::RelocationModels => {
-                writeln!(out, "Available relocation models:");
+                writeln!(out, "Available relocation models:").unwrap();
                 for name in &[
                     "static",
                     "pic",
@@ -288,25 +289,25 @@ impl CodegenBackend for LlvmCodegenBackend {
                     "ropi-rwpi",
                     "default",
                 ] {
-                    writeln!(out, "    {name}");
+                    writeln!(out, "    {name}").unwrap();
                 }
-                writeln!(out);
+                writeln!(out).unwrap();
             }
             PrintKind::CodeModels => {
-                writeln!(out, "Available code models:");
+                writeln!(out, "Available code models:").unwrap();
                 for name in &["tiny", "small", "kernel", "medium", "large"] {
-                    writeln!(out, "    {name}");
+                    writeln!(out, "    {name}").unwrap();
                 }
-                writeln!(out);
+                writeln!(out).unwrap();
             }
             PrintKind::TlsModels => {
-                writeln!(out, "Available TLS models:");
+                writeln!(out, "Available TLS models:").unwrap();
                 for name in
                     &["global-dynamic", "local-dynamic", "initial-exec", "local-exec", "emulated"]
                 {
-                    writeln!(out, "    {name}");
+                    writeln!(out, "    {name}").unwrap();
                 }
-                writeln!(out);
+                writeln!(out).unwrap();
             }
             PrintKind::StackProtectorStrategies => {
                 writeln!(
@@ -332,7 +333,8 @@ impl CodegenBackend for LlvmCodegenBackend {
     none
         Do not generate stack canaries.
 "#
-                );
+                )
+                .unwrap();
             }
             _other => llvm_util::print(req, out, sess),
         }

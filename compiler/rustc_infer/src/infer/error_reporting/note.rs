@@ -14,7 +14,7 @@ use rustc_span::symbol::kw;
 
 use super::ObligationCauseAsDiagArg;
 
-impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(&self, err: &mut Diag<'_>, origin: &SubregionOrigin<'tcx>) {
         match *origin {
             infer::Subtype(ref trace) => RegionOriginNote::WithRequirement {
@@ -79,7 +79,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
         sup: Region<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         let mut err = match origin {
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
@@ -245,7 +245,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 })
             }
             infer::CompareImplItemObligation { span, impl_item_def_id, trait_item_def_id } => {
-                let mut err = self.report_extra_impl_obligation(
+                let mut err = self.infcx.report_extra_impl_obligation(
                     span,
                     impl_item_def_id,
                     trait_item_def_id,
@@ -378,7 +378,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         placeholder_origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
         sup: Region<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         // I can't think how to do better than this right now. -nikomatsakis
         debug!(?placeholder_origin, ?sub, ?sup, "report_placeholder_failure");
         match placeholder_origin {

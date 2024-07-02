@@ -2484,8 +2484,7 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        // Cast is needed here because `.expose_provenance()` requires `T: Sized`.
-        pointer_fmt_inner((*self as *const ()).expose_provenance(), f)
+        pointer_fmt_inner(self.expose_provenance(), f)
     }
 }
 

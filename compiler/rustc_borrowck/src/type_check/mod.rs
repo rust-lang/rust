@@ -129,7 +129,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
     all_facts: &mut Option<AllFacts>,
-    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'_, 'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<DenseLocationMap>,
     upvars: &[&ty::CapturedPlace<'tcx>],

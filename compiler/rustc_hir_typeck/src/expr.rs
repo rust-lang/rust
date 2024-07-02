@@ -638,7 +638,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Set expectation to error in that case and set tainted
                 // by error (#114529)
                 let coerce_to = opt_coerce_to.unwrap_or_else(|| {
-                    let guar = tcx.dcx().span_delayed_bug(
+                    let guar = self.dcx().span_delayed_bug(
                         expr.span,
                         "illegal break with value found but no error reported",
                     );
@@ -1716,7 +1716,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 error_happened = true;
                 let guar = if let Some(prev_span) = seen_fields.get(&ident) {
-                    tcx.dcx().emit_err(FieldMultiplySpecifiedInInitializer {
+                    self.dcx().emit_err(FieldMultiplySpecifiedInInitializer {
                         span: field.ident.span,
                         prev_span: *prev_span,
                         ident,
@@ -1757,7 +1757,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if adt_kind == AdtKind::Union {
             if hir_fields.len() != 1 {
                 struct_span_code_err!(
-                    tcx.dcx(),
+                    self.dcx(),
                     span,
                     E0784,
                     "union expressions should have exactly one field",

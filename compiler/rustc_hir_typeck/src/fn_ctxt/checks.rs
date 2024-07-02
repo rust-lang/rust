@@ -238,7 +238,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Otherwise, there's a mismatch, so clear out what we're expecting, and set
                     // our input types to err_args so we don't blow up the error messages
                     let guar = struct_span_code_err!(
-                        tcx.dcx(),
+                        self.dcx(),
                         call_span,
                         E0059,
                         "cannot use call notation; the first type parameter \
@@ -453,7 +453,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .map(|vars| self.resolve_vars_if_possible(vars)),
             );
 
-            self.set_tainted_by_errors(self.report_arg_errors(
+            self.report_arg_errors(
                 compatibility_diagonal,
                 formal_and_expected_inputs,
                 provided_args,
@@ -462,7 +462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 fn_def_id,
                 call_span,
                 call_expr,
-            ));
+            );
         }
     }
 
@@ -788,7 +788,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!("arguments to this {call_name} are incorrect"),
                         );
                     } else {
-                        err = tcx.dcx().struct_span_err(
+                        err = self.dcx().struct_span_err(
                             full_call_span,
                             format!(
                                 "{call_name} takes {}{} but {} {} supplied",
@@ -848,7 +848,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span_bug!(error_span, "expected errors from argument matrix");
             } else {
                 let mut err =
-                    tcx.dcx().create_err(errors::ArgMismatchIndeterminate { span: error_span });
+                    self.dcx().create_err(errors::ArgMismatchIndeterminate { span: error_span });
                 suggest_confusable(&mut err);
                 return err.emit();
             }
@@ -951,16 +951,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return err.emit();
         }
 
+        // Special case, we found an extra argument is provided, which is very common in practice.
+        // but there is a obviously better removing suggestion compared to the current one,
+        // try to find the argument with Error type, if we removed it all the types will become good,
+        // then we will replace the current suggestion.
+        if let [Error::Extra(provided_idx)] = &errors[..] {
+            let remove_idx_is_perfect = |idx: usize| -> bool {
+                let removed_arg_tys = provided_arg_tys
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(j, arg)| if idx == j { None } else { Some(arg) })
+                    .collect::<IndexVec<ProvidedIdx, _>>();
+                std::iter::zip(formal_and_expected_inputs.iter(), removed_arg_tys.iter()).all(
+                    |((expected_ty, _), (provided_ty, _))| {
+                        !provided_ty.references_error()
+                            && self.can_coerce(*provided_ty, *expected_ty)
+                    },
+                )
+            };
+
+            if !remove_idx_is_perfect(provided_idx.as_usize()) {
+                if let Some(i) = (0..provided_args.len()).find(|&i| remove_idx_is_perfect(i)) {
+                    errors = vec![Error::Extra(ProvidedIdx::from_usize(i))];
+                }
+            }
+        }
+
         let mut err = if formal_and_expected_inputs.len() == provided_args.len() {
             struct_span_code_err!(
-                tcx.dcx(),
+                self.dcx(),
                 full_call_span,
                 E0308,
                 "arguments to this {} are incorrect",
                 call_name,
             )
         } else {
-            tcx.dcx()
+            self.dcx()
                 .struct_span_err(
                     full_call_span,
                     format!(
@@ -1424,7 +1450,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         provided_ty: Ty<'tcx>,
         arg: &hir::Expr<'tcx>,
-        err: &mut Diag<'tcx>,
+        err: &mut Diag<'_>,
     ) {
         if let ty::RawPtr(_, hir::Mutability::Mut) = expected_ty.kind()
             && let ty::RawPtr(_, hir::Mutability::Not) = provided_ty.kind()
@@ -2042,7 +2068,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     if block_num > 1 && found_semi {
                         err.span_suggestion_verbose(
-                            span.shrink_to_lo(),
+                            // use the span of the *whole* expr
+                            self.tcx.hir().span(binding_hir_id).shrink_to_lo(),
                             "you might have meant to return this to infer its type parameters",
                             "return ",
                             Applicability::MaybeIncorrect,

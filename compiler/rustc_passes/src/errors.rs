@@ -551,7 +551,10 @@ pub struct ReprConflictingLint;
 #[diag(passes_used_static)]
 pub struct UsedStatic {
     #[primary_span]
+    pub attr_span: Span,
+    #[label]
     pub span: Span,
+    pub target: &'static str,
 }
 
 #[derive(Diagnostic)]

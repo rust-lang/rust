@@ -668,8 +668,9 @@ where
 {
     let cx = ecx.cx();
     let mut requirements = vec![];
-    requirements
-        .extend(cx.super_predicates_of(trait_ref.def_id).iter_instantiated(cx, trait_ref.args));
+    requirements.extend(
+        cx.explicit_super_predicates_of(trait_ref.def_id).iter_instantiated(cx, trait_ref.args),
+    );
 
     // FIXME(associated_const_equality): Also add associated consts to
     // the requirements here.

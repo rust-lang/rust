@@ -17,7 +17,7 @@ LL |     let _: [u8; bar::<N>()];
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:18:23
+  --> $DIR/const-arg-in-const-arg.rs:19:23
    |
 LL |     let _: [u8; faz::<'a>(&())];
    |                       ^^ cannot perform const operation using `'a`
@@ -26,7 +26,7 @@ LL |     let _: [u8; faz::<'a>(&())];
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:20:23
+  --> $DIR/const-arg-in-const-arg.rs:21:23
    |
 LL |     let _: [u8; baz::<'a>(&())];
    |                       ^^ cannot perform const operation using `'a`
@@ -35,7 +35,7 @@ LL |     let _: [u8; baz::<'a>(&())];
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:21:23
+  --> $DIR/const-arg-in-const-arg.rs:22:23
    |
 LL |     let _: [u8; faz::<'b>(&())];
    |                       ^^ cannot perform const operation using `'b`
@@ -44,7 +44,7 @@ LL |     let _: [u8; faz::<'b>(&())];
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:23:23
+  --> $DIR/const-arg-in-const-arg.rs:24:23
    |
 LL |     let _: [u8; baz::<'b>(&())];
    |                       ^^ cannot perform const operation using `'b`
@@ -53,7 +53,7 @@ LL |     let _: [u8; baz::<'b>(&())];
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:26:23
+  --> $DIR/const-arg-in-const-arg.rs:27:23
    |
 LL |     let _ = [0; bar::<N>()];
    |                       ^ cannot perform const operation using `N`
@@ -62,7 +62,7 @@ LL |     let _ = [0; bar::<N>()];
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:28:23
+  --> $DIR/const-arg-in-const-arg.rs:30:23
    |
 LL |     let _ = [0; faz::<'a>(&())];
    |                       ^^ cannot perform const operation using `'a`
@@ -71,7 +71,7 @@ LL |     let _ = [0; faz::<'a>(&())];
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:30:23
+  --> $DIR/const-arg-in-const-arg.rs:32:23
    |
 LL |     let _ = [0; baz::<'a>(&())];
    |                       ^^ cannot perform const operation using `'a`
@@ -80,7 +80,7 @@ LL |     let _ = [0; baz::<'a>(&())];
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:31:23
+  --> $DIR/const-arg-in-const-arg.rs:33:23
    |
 LL |     let _ = [0; faz::<'b>(&())];
    |                       ^^ cannot perform const operation using `'b`
@@ -89,7 +89,7 @@ LL |     let _ = [0; faz::<'b>(&())];
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:33:23
+  --> $DIR/const-arg-in-const-arg.rs:35:23
    |
 LL |     let _ = [0; baz::<'b>(&())];
    |                       ^^ cannot perform const operation using `'b`
@@ -98,7 +98,7 @@ LL |     let _ = [0; baz::<'b>(&())];
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:34:24
+  --> $DIR/const-arg-in-const-arg.rs:36:24
    |
 LL |     let _: Foo<{ foo::<T>() }>;
    |                        ^ cannot perform const operation using `T`
@@ -107,7 +107,7 @@ LL |     let _: Foo<{ foo::<T>() }>;
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:35:24
+  --> $DIR/const-arg-in-const-arg.rs:37:24
    |
 LL |     let _: Foo<{ bar::<N>() }>;
    |                        ^ cannot perform const operation using `N`
@@ -116,7 +116,7 @@ LL |     let _: Foo<{ bar::<N>() }>;
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:37:24
+  --> $DIR/const-arg-in-const-arg.rs:40:24
    |
 LL |     let _: Foo<{ faz::<'a>(&()) }>;
    |                        ^^ cannot perform const operation using `'a`
@@ -125,7 +125,7 @@ LL |     let _: Foo<{ faz::<'a>(&()) }>;
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:39:24
+  --> $DIR/const-arg-in-const-arg.rs:42:24
    |
 LL |     let _: Foo<{ baz::<'a>(&()) }>;
    |                        ^^ cannot perform const operation using `'a`
@@ -134,7 +134,7 @@ LL |     let _: Foo<{ baz::<'a>(&()) }>;
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:40:24
+  --> $DIR/const-arg-in-const-arg.rs:43:24
    |
 LL |     let _: Foo<{ faz::<'b>(&()) }>;
    |                        ^^ cannot perform const operation using `'b`
@@ -143,7 +143,7 @@ LL |     let _: Foo<{ faz::<'b>(&()) }>;
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:42:24
+  --> $DIR/const-arg-in-const-arg.rs:45:24
    |
 LL |     let _: Foo<{ baz::<'b>(&()) }>;
    |                        ^^ cannot perform const operation using `'b`
@@ -152,7 +152,7 @@ LL |     let _: Foo<{ baz::<'b>(&()) }>;
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:43:27
+  --> $DIR/const-arg-in-const-arg.rs:46:27
    |
 LL |     let _ = Foo::<{ foo::<T>() }>;
    |                           ^ cannot perform const operation using `T`
@@ -161,7 +161,7 @@ LL |     let _ = Foo::<{ foo::<T>() }>;
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:44:27
+  --> $DIR/const-arg-in-const-arg.rs:47:27
    |
 LL |     let _ = Foo::<{ bar::<N>() }>;
    |                           ^ cannot perform const operation using `N`
@@ -170,7 +170,7 @@ LL |     let _ = Foo::<{ bar::<N>() }>;
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:46:27
+  --> $DIR/const-arg-in-const-arg.rs:50:27
    |
 LL |     let _ = Foo::<{ faz::<'a>(&()) }>;
    |                           ^^ cannot perform const operation using `'a`
@@ -179,7 +179,7 @@ LL |     let _ = Foo::<{ faz::<'a>(&()) }>;
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:48:27
+  --> $DIR/const-arg-in-const-arg.rs:52:27
    |
 LL |     let _ = Foo::<{ baz::<'a>(&()) }>;
    |                           ^^ cannot perform const operation using `'a`
@@ -188,7 +188,7 @@ LL |     let _ = Foo::<{ baz::<'a>(&()) }>;
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:49:27
+  --> $DIR/const-arg-in-const-arg.rs:53:27
    |
 LL |     let _ = Foo::<{ faz::<'b>(&()) }>;
    |                           ^^ cannot perform const operation using `'b`
@@ -197,7 +197,7 @@ LL |     let _ = Foo::<{ faz::<'b>(&()) }>;
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:51:27
+  --> $DIR/const-arg-in-const-arg.rs:55:27
    |
 LL |     let _ = Foo::<{ baz::<'b>(&()) }>;
    |                           ^^ cannot perform const operation using `'b`
@@ -216,8 +216,20 @@ help: if this generic argument was intended as a const parameter, surround it wi
 LL |     let _: [u8; bar::<{ N }>()];
    |                       +   +
 
+error[E0284]: type annotations needed
+  --> $DIR/const-arg-in-const-arg.rs:16:17
+   |
+LL |     let _: [u8; bar::<N>()];
+   |                 ^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
+   |
+note: required by a const generic parameter in `bar`
+  --> $DIR/const-arg-in-const-arg.rs:9:14
+   |
+LL | const fn bar<const N: usize>() -> usize { N }
+   |              ^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
+
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/const-arg-in-const-arg.rs:18:23
+  --> $DIR/const-arg-in-const-arg.rs:19:23
    |
 LL |     let _: [u8; faz::<'a>(&())];
    |                       ^^
@@ -229,7 +241,7 @@ LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/const-arg-in-const-arg.rs:21:23
+  --> $DIR/const-arg-in-const-arg.rs:22:23
    |
 LL |     let _: [u8; faz::<'b>(&())];
    |                       ^^
@@ -241,7 +253,7 @@ LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
 error[E0747]: unresolved item provided when a constant was expected
-  --> $DIR/const-arg-in-const-arg.rs:35:24
+  --> $DIR/const-arg-in-const-arg.rs:37:24
    |
 LL |     let _: Foo<{ bar::<N>() }>;
    |                        ^
@@ -251,8 +263,20 @@ help: if this generic argument was intended as a const parameter, surround it wi
 LL |     let _: Foo<{ bar::<{ N }>() }>;
    |                        +   +
 
+error[E0284]: type annotations needed
+  --> $DIR/const-arg-in-const-arg.rs:37:18
+   |
+LL |     let _: Foo<{ bar::<N>() }>;
+   |                  ^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
+   |
+note: required by a const generic parameter in `bar`
+  --> $DIR/const-arg-in-const-arg.rs:9:14
+   |
+LL | const fn bar<const N: usize>() -> usize { N }
+   |              ^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
+
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/const-arg-in-const-arg.rs:37:24
+  --> $DIR/const-arg-in-const-arg.rs:40:24
    |
 LL |     let _: Foo<{ faz::<'a>(&()) }>;
    |                        ^^
@@ -264,7 +288,7 @@ LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/const-arg-in-const-arg.rs:40:24
+  --> $DIR/const-arg-in-const-arg.rs:43:24
    |
 LL |     let _: Foo<{ faz::<'b>(&()) }>;
    |                        ^^
@@ -276,7 +300,7 @@ LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
 error: constant expression depends on a generic parameter
-  --> $DIR/const-arg-in-const-arg.rs:25:17
+  --> $DIR/const-arg-in-const-arg.rs:26:17
    |
 LL |     let _ = [0; foo::<T>()];
    |                 ^^^^^^^^^^
@@ -284,7 +308,7 @@ LL |     let _ = [0; foo::<T>()];
    = note: this may fail depending on what value the parameter takes
 
 error[E0747]: unresolved item provided when a constant was expected
-  --> $DIR/const-arg-in-const-arg.rs:26:23
+  --> $DIR/const-arg-in-const-arg.rs:27:23
    |
 LL |     let _ = [0; bar::<N>()];
    |                       ^
@@ -294,8 +318,20 @@ help: if this generic argument was intended as a const parameter, surround it wi
 LL |     let _ = [0; bar::<{ N }>()];
    |                       +   +
 
+error[E0284]: type annotations needed
+  --> $DIR/const-arg-in-const-arg.rs:27:17
+   |
+LL |     let _ = [0; bar::<N>()];
+   |                 ^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
+   |
+note: required by a const generic parameter in `bar`
+  --> $DIR/const-arg-in-const-arg.rs:9:14
+   |
+LL | const fn bar<const N: usize>() -> usize { N }
+   |              ^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
+
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/const-arg-in-const-arg.rs:28:23
+  --> $DIR/const-arg-in-const-arg.rs:30:23
    |
 LL |     let _ = [0; faz::<'a>(&())];
    |                       ^^
@@ -307,7 +343,7 @@ LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/const-arg-in-const-arg.rs:31:23
+  --> $DIR/const-arg-in-const-arg.rs:33:23
    |
 LL |     let _ = [0; faz::<'b>(&())];
    |                       ^^
@@ -319,7 +355,7 @@ LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
 error[E0747]: unresolved item provided when a constant was expected
-  --> $DIR/const-arg-in-const-arg.rs:44:27
+  --> $DIR/const-arg-in-const-arg.rs:47:27
    |
 LL |     let _ = Foo::<{ bar::<N>() }>;
    |                           ^
@@ -329,8 +365,20 @@ help: if this generic argument was intended as a const parameter, surround it wi
 LL |     let _ = Foo::<{ bar::<{ N }>() }>;
    |                           +   +
 
+error[E0284]: type annotations needed
+  --> $DIR/const-arg-in-const-arg.rs:47:21
+   |
+LL |     let _ = Foo::<{ bar::<N>() }>;
+   |                     ^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
+   |
+note: required by a const generic parameter in `bar`
+  --> $DIR/const-arg-in-const-arg.rs:9:14
+   |
+LL | const fn bar<const N: usize>() -> usize { N }
+   |              ^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
+
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/const-arg-in-const-arg.rs:46:27
+  --> $DIR/const-arg-in-const-arg.rs:50:27
    |
 LL |     let _ = Foo::<{ faz::<'a>(&()) }>;
    |                           ^^
@@ -342,7 +390,7 @@ LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/const-arg-in-const-arg.rs:49:27
+  --> $DIR/const-arg-in-const-arg.rs:53:27
    |
 LL |     let _ = Foo::<{ faz::<'b>(&()) }>;
    |                           ^^
@@ -353,7 +401,7 @@ note: the late bound lifetime parameter is introduced here
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
-error: aborting due to 36 previous errors
+error: aborting due to 40 previous errors
 
-Some errors have detailed explanations: E0747, E0794.
-For more information about an error, try `rustc --explain E0747`.
+Some errors have detailed explanations: E0284, E0747, E0794.
+For more information about an error, try `rustc --explain E0284`.

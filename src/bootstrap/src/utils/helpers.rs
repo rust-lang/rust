@@ -18,7 +18,7 @@ use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
 use crate::LldMode;
 
-pub use crate::utils::dylib::{dylib_path, dylib_path_var};
+pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
 
 #[cfg(test)]
 mod tests;
@@ -47,10 +47,11 @@ macro_rules! t {
         }
     };
 }
+use crate::utils::exec::BootstrapCommand;
 pub use t;
 
 pub fn exe(name: &str, target: TargetSelection) -> String {
-    crate::utils::dylib::exe(name, &target.triple)
+    crate::utils::shared_helpers::exe(name, &target.triple)
 }
 
 /// Returns `true` if the file name given looks like a dynamic library.
@@ -72,7 +73,7 @@ pub fn libdir(target: TargetSelection) -> &'static str {
 
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.
 /// If the dylib_path_var is already set for this cmd, the old value will be overwritten!
-pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut Command) {
+pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
     let mut list = dylib_path();
     for path in path {
         list.insert(0, path);
@@ -81,7 +82,7 @@ pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut Command) {
 }
 
 /// Adds a list of lookup paths to `cmd`'s link library lookup path.
-pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut Command) {
+pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
     let mut list = link_lib_path();
     for path in path {
         list.insert(0, path);
@@ -241,8 +242,9 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     }
 }
 
-pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
-    let status = match cmd.status() {
+// FIXME: get rid of this function
+pub fn check_run(cmd: &mut BootstrapCommand, print_cmd_on_fail: bool) -> bool {
+    let status = match cmd.command.status() {
         Ok(status) => status,
         Err(e) => {
             println!("failed to execute command: {cmd:?}\nERROR: {e}");
@@ -437,7 +439,7 @@ pub fn linker_flags(
 }
 
 pub fn add_rustdoc_cargo_linker_args(
-    cmd: &mut Command,
+    cmd: &mut BootstrapCommand,
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,

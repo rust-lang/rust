@@ -833,6 +833,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_const_panic_str, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
     ),
+    rustc_attr!(
+        rustc_runtime, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::No, INTERNAL_UNSTABLE
+    ),
 
     // ==========================================================================
     // Internal attributes, Layout related:
@@ -1111,6 +1115,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         TEST, rustc_dump_predicates, Normal, template!(Word),
+        WarnFollowing, EncodeCrossCrate::No
+    ),
+    rustc_attr!(
+        TEST, rustc_dump_def_parents, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(

@@ -2327,7 +2327,7 @@ impl<'a> Parser<'a> {
         let before = self.prev_token.clone();
         let binder = if self.check_keyword(kw::For) {
             let lo = self.token.span;
-            let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
+            let (lifetime_defs, _) = self.parse_late_bound_lifetime_defs()?;
             let span = lo.to(self.prev_token.span);
 
             self.psess.gated_spans.gate(sym::closure_lifetime_binder, span);

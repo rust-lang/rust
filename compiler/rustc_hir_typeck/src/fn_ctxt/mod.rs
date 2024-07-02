@@ -144,8 +144,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn dcx(&self) -> DiagCtxtHandle<'tcx> {
-        self.infcx.dcx()
+    pub(crate) fn dcx(&self) -> DiagCtxtHandle<'a> {
+        self.root_ctxt.infcx.dcx()
     }
 
     pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {
@@ -274,6 +274,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                     }
                 }),
             ),
+            effects_min_tys: ty::List::empty(),
         }
     }
 

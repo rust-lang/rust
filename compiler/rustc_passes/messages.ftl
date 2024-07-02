@@ -782,6 +782,7 @@ passes_used_compiler_linker =
 
 passes_used_static =
     attribute must be applied to a `static` variable
+    .label = but this is a {$target}
 
 passes_useless_assignment =
     useless assignment of {$is_field_assign ->

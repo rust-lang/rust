@@ -117,7 +117,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
             let &(inner_most_trait_ref, _, _) = stack.last().unwrap();
 
             let mut direct_super_traits_iter = tcx
-                .super_predicates_of(inner_most_trait_ref.def_id())
+                .explicit_super_predicates_of(inner_most_trait_ref.def_id())
                 .predicates
                 .into_iter()
                 .filter_map(move |(pred, _)| {

@@ -263,9 +263,6 @@ extern "rust-intrinsic" {
     ///
     /// `V` must be a vector of integers with the same length as `T` (but any element size).
     ///
-    /// `idx` must be a constant: either naming a constant item, or an inline
-    /// `const {}` expression.
-    ///
     /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, read the pointer.
     /// Otherwise if the corresponding value in `mask` is `0`, return the corresponding value from
     /// `val`.

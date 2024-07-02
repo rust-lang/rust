@@ -329,10 +329,6 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         const_alloc_to_llvm(self, alloc, /*static*/ false)
     }
 
-    fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        self.const_bitcast(val, ty)
-    }
-
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {
         unsafe {
             llvm::LLVMConstInBoundsGEP2(

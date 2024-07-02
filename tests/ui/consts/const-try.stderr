@@ -1,37 +1,25 @@
-error[E0015]: `?` cannot determine the branch of `TryMe` in constant functions
-  --> $DIR/const-try.rs:33:5
+error: using `#![feature(effects)]` without enabling next trait solver globally
    |
-LL |     TryMe?;
-   |     ^^^^^^
-   |
-note: impl defined here, but it is not `const`
-  --> $DIR/const-try.rs:21:1
-   |
-LL | impl const Try for TryMe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
+   = note: the next trait solver must be enabled globally for the effects feature to work correctly
+   = help: use `-Znext-solver` to enable
 
-error[E0015]: `?` cannot convert from residual of `TryMe` in constant functions
-  --> $DIR/const-try.rs:33:5
-   |
-LL |     TryMe?;
-   |     ^^^^^^
-   |
-note: impl defined here, but it is not `const`
-  --> $DIR/const-try.rs:15:1
+error: const `impl` for trait `FromResidual` which is not marked with `#[const_trait]`
+  --> $DIR/const-try.rs:16:12
    |
 LL | impl const FromResidual<Error> for TryMe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(effects)]` to the crate attributes to enable
+   |            ^^^^^^^^^^^^^^^^^^^
    |
-LL + #![feature(effects)]
+   = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
+   = note: adding a non-const method body in the future would be a breaking change
+
+error: const `impl` for trait `Try` which is not marked with `#[const_trait]`
+  --> $DIR/const-try.rs:22:12
    |
+LL | impl const Try for TryMe {
+   |            ^^^
+   |
+   = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
+   = note: adding a non-const method body in the future would be a breaking change
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0015`.

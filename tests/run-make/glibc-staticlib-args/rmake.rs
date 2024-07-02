@@ -11,8 +11,8 @@ fn main() {
     cc().input("program.c")
         .arg(static_lib_name("library"))
         .out_exe("program")
-        .args(&extra_c_flags())
-        .args(&extra_cxx_flags())
+        .args(extra_c_flags())
+        .args(extra_cxx_flags())
         .run();
     run(&bin_name("program"));
 }

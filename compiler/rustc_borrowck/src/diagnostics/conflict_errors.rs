@@ -73,7 +73,7 @@ enum StorageDeadOrDrop<'tcx> {
     Destructor(Ty<'tcx>),
 }
 
-impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     pub(crate) fn report_use_of_moved_or_uninitialized(
         &mut self,
         location: Location,
@@ -341,7 +341,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
     fn suggest_ref_or_clone(
         &self,
         mpi: MovePathIndex,
-        err: &mut Diag<'tcx>,
+        err: &mut Diag<'infcx>,
         in_pattern: &mut bool,
         move_spans: UseSpans<'tcx>,
     ) {
@@ -517,7 +517,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         desired_action: InitializationRequiringAction,
         span: Span,
         use_spans: UseSpans<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         // We need all statements in the body where the binding was assigned to later find all
         // the branching code paths where the binding *wasn't* assigned to.
         let inits = &self.move_data.init_path_map[mpi];
@@ -1288,7 +1288,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             return false;
         }
         // Try to find predicates on *generic params* that would allow copying `ty`
-        let suggestion =
+        let mut suggestion =
             if let Some(symbol) = tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
                 format!(": {symbol}.clone()")
             } else {
@@ -1296,6 +1296,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             };
         let mut sugg = Vec::with_capacity(2);
         let mut inner_expr = expr;
+        let mut is_raw_ptr = false;
+        let typeck_result = self.infcx.tcx.typeck(self.mir_def_id());
         // Remove uses of `&` and `*` when suggesting `.clone()`.
         while let hir::ExprKind::AddrOf(.., inner) | hir::ExprKind::Unary(hir::UnOp::Deref, inner) =
             &inner_expr.kind
@@ -1306,14 +1308,32 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                 return false;
             }
             inner_expr = inner;
+            if let Some(inner_type) = typeck_result.node_type_opt(inner.hir_id) {
+                if matches!(inner_type.kind(), ty::RawPtr(..)) {
+                    is_raw_ptr = true;
+                    break;
+                }
+            }
         }
-        if inner_expr.span.lo() != expr.span.lo() {
+        // Cloning the raw pointer doesn't make sense in some cases and would cause a type mismatch error. (see #126863)
+        if inner_expr.span.lo() != expr.span.lo() && !is_raw_ptr {
+            // Remove "(*" or "(&"
             sugg.push((expr.span.with_hi(inner_expr.span.lo()), String::new()));
         }
+        // Check whether `expr` is surrounded by parentheses or not.
         let span = if inner_expr.span.hi() != expr.span.hi() {
             // Account for `(*x)` to suggest `x.clone()`.
-            expr.span.with_lo(inner_expr.span.hi())
+            if is_raw_ptr {
+                expr.span.shrink_to_hi()
+            } else {
+                // Remove the close parenthesis ")"
+                expr.span.with_lo(inner_expr.span.hi())
+            }
         } else {
+            if is_raw_ptr {
+                sugg.push((expr.span.shrink_to_lo(), "(".to_string()));
+                suggestion = ").clone()".to_string();
+            }
             expr.span.shrink_to_hi()
         };
         sugg.push((span, suggestion));
@@ -1441,7 +1461,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         location: Location,
         (place, _span): (Place<'tcx>, Span),
         borrow: &BorrowData<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let borrow_spans = self.retrieve_borrow_spans(borrow);
         let borrow_span = borrow_spans.args_or_use();
 
@@ -1491,7 +1511,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         (place, span): (Place<'tcx>, Span),
         gen_borrow_kind: BorrowKind,
         issued_borrow: &BorrowData<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let issued_spans = self.retrieve_borrow_spans(issued_borrow);
         let issued_span = issued_spans.args_or_use();
 
@@ -1782,7 +1802,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         err
     }
 
-    fn suggest_copy_for_type_in_cloned_ref(&self, err: &mut Diag<'tcx>, place: Place<'tcx>) {
+    fn suggest_copy_for_type_in_cloned_ref(&self, err: &mut Diag<'infcx>, place: Place<'tcx>) {
         let tcx = self.infcx.tcx;
         let hir = tcx.hir();
         let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
@@ -2841,7 +2861,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         drop_span: Span,
         borrow_spans: UseSpans<'tcx>,
         explanation: BorrowExplanation<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         debug!(
             "report_local_value_does_not_live_long_enough(\
              {:?}, {:?}, {:?}, {:?}, {:?}\
@@ -3016,7 +3036,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         &self,
         drop_span: Span,
         borrow_span: Span,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         debug!(
             "report_thread_local_value_does_not_live_long_enough(\
              {:?}, {:?}\
@@ -3041,7 +3061,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         borrow_spans: UseSpans<'tcx>,
         proper_span: Span,
         explanation: BorrowExplanation<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
             explanation
         {
@@ -3206,7 +3226,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         return_span: Span,
         category: ConstraintCategory<'tcx>,
         opt_place_desc: Option<&String>,
-    ) -> Result<(), Diag<'tcx>> {
+    ) -> Result<(), Diag<'infcx>> {
         let return_kind = match category {
             ConstraintCategory::Return(_) => "return",
             ConstraintCategory::Yield => "yield",
@@ -3299,7 +3319,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         constraint_span: Span,
         captured_var: &str,
         scope: &str,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let tcx = self.infcx.tcx;
         let args_span = use_span.args_or_use();
 
@@ -3411,7 +3431,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         upvar_span: Span,
         upvar_name: Symbol,
         escape_span: Span,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let tcx = self.infcx.tcx;
 
         let escapes_from = tcx.def_descr(self.mir_def_id().to_def_id());

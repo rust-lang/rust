@@ -37,7 +37,6 @@ fn test_rpath_relative() {
     if cfg!(target_os = "macos") {
         let config = &mut RPathConfig {
             libs: &[],
-            has_rpath: true,
             is_like_osx: true,
             linker_is_gnu: false,
             out_filename: PathBuf::from("bin/rustc"),
@@ -48,7 +47,6 @@ fn test_rpath_relative() {
         let config = &mut RPathConfig {
             libs: &[],
             out_filename: PathBuf::from("bin/rustc"),
-            has_rpath: true,
             is_like_osx: false,
             linker_is_gnu: true,
         };
@@ -62,7 +60,6 @@ fn test_rpath_relative_issue_119571() {
     let config = &mut RPathConfig {
         libs: &[],
         out_filename: PathBuf::from("rustc"),
-        has_rpath: true,
         is_like_osx: false,
         linker_is_gnu: true,
     };

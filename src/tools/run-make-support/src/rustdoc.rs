@@ -104,7 +104,8 @@ impl Rustdoc {
     }
 
     /// Specify the target triple, or a path to a custom target json spec file.
-    pub fn target(&mut self, target: &str) -> &mut Self {
+    pub fn target<S: AsRef<str>>(&mut self, target: S) -> &mut Self {
+        let target = target.as_ref();
         self.cmd.arg(format!("--target={target}"));
         self
     }

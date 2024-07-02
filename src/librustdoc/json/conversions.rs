@@ -466,7 +466,7 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
                 default: default.map(|x| (*x).into_tcx(tcx)),
                 synthetic,
             },
-            Const { ty, default, is_host_effect: _ } => GenericParamDefKind::Const {
+            Const { ty, default, synthetic: _ } => GenericParamDefKind::Const {
                 type_: (*ty).into_tcx(tcx),
                 default: default.map(|x| *x),
             },
@@ -501,14 +501,12 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
                                     synthetic,
                                 }
                             }
-                            clean::GenericParamDefKind::Const {
-                                ty,
-                                default,
-                                is_host_effect: _,
-                            } => GenericParamDefKind::Const {
-                                type_: (*ty).into_tcx(tcx),
-                                default: default.map(|d| *d),
-                            },
+                            clean::GenericParamDefKind::Const { ty, default, synthetic: _ } => {
+                                GenericParamDefKind::Const {
+                                    type_: (*ty).into_tcx(tcx),
+                                    default: default.map(|d| *d),
+                                }
+                            }
                         };
                         GenericParamDef { name, kind }
                     })

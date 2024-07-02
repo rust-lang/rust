@@ -1,14 +1,5 @@
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/staged-api.rs:4:30
-   |
-LL | #![feature(const_trait_impl, effects)]
-   |                              ^^^^^^^
-   |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error: trait implementations cannot be const stable yet
-  --> $DIR/staged-api.rs:19:1
+  --> $DIR/staged-api.rs:21:1
    |
 LL | / impl const MyTrait for Foo {
 LL | |
@@ -19,7 +10,7 @@ LL | | }
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
 
 error: function has missing const stability attribute
-  --> $DIR/staged-api.rs:41:1
+  --> $DIR/staged-api.rs:43:1
    |
 LL | / pub const fn const_context_not_const_stable() {
 LL | |
@@ -31,7 +22,7 @@ LL | | }
    | |_^
 
 error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:32:5
+  --> $DIR/staged-api.rs:34:5
    |
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
@@ -39,7 +30,7 @@ LL |     Unstable::func();
    = help: add `#![feature(unstable)]` to the crate attributes to enable
 
 error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:43:5
+  --> $DIR/staged-api.rs:45:5
    |
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
@@ -47,12 +38,12 @@ LL |     Unstable::func();
    = help: add `#![feature(unstable)]` to the crate attributes to enable
 
 error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:53:5
+  --> $DIR/staged-api.rs:55:5
    |
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
    = help: const-stable functions can only call other const-stable functions
 
-error: aborting due to 5 previous errors; 1 warning emitted
+error: aborting due to 5 previous errors
 

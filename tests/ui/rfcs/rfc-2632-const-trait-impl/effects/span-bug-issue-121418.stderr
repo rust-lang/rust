@@ -17,17 +17,13 @@ LL | #![feature(effects)]
    = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0207]: the const parameter `host` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/span-bug-issue-121418.rs:7:6
+error: using `#![feature(effects)]` without enabling next trait solver globally
    |
-LL | impl const dyn T {
-   |      ^^^^^ unconstrained const parameter
-   |
-   = note: expressions using a const parameter must map each value to a distinct output value
-   = note: proving the result of expressions other than the parameter are unique is not supported
+   = note: the next trait solver must be enabled globally for the effects feature to work correctly
+   = help: use `-Znext-solver` to enable
 
 error[E0308]: mismatched types
-  --> $DIR/span-bug-issue-121418.rs:10:27
+  --> $DIR/span-bug-issue-121418.rs:9:27
    |
 LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
    |                  ---      ^^^^^^^^^^^^^^^^^^^^^^^ expected `Mutex<dyn T>`, found `()`
@@ -38,7 +34,7 @@ LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
            found unit type `()`
 
 error[E0277]: the size for values of type `(dyn T + 'static)` cannot be known at compilation time
-  --> $DIR/span-bug-issue-121418.rs:10:27
+  --> $DIR/span-bug-issue-121418.rs:9:27
    |
 LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -50,5 +46,5 @@ note: required because it appears within the type `Mutex<(dyn T + 'static)>`
 
 error: aborting due to 4 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0207, E0277, E0308.
-For more information about an error, try `rustc --explain E0207`.
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

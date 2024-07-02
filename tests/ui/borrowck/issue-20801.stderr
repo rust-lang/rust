@@ -67,11 +67,6 @@ LL | struct T(u8);
 ...
 LL |     let c = unsafe { *mut_ptr() };
    |                      ---------- you could clone this value
-help: consider removing the dereference here
-   |
-LL -     let c = unsafe { *mut_ptr() };
-LL +     let c = unsafe { mut_ptr() };
-   |
 
 error[E0507]: cannot move out of a raw pointer
   --> $DIR/issue-20801.rs:36:22
@@ -87,11 +82,6 @@ LL | struct T(u8);
 ...
 LL |     let d = unsafe { *const_ptr() };
    |                      ------------ you could clone this value
-help: consider removing the dereference here
-   |
-LL -     let d = unsafe { *const_ptr() };
-LL +     let d = unsafe { const_ptr() };
-   |
 
 error: aborting due to 4 previous errors; 1 warning emitted
 

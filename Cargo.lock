@@ -3401,6 +3401,7 @@ name = "run_make_support"
 version = "0.2.0"
 dependencies = [
  "ar",
+ "bstr",
  "gimli 0.28.1",
  "object 0.34.0",
  "regex",
@@ -3458,6 +3459,13 @@ dependencies = [
  "rustc_driver_impl",
  "rustc_smir",
  "stable_mir",
+]
+
+[[package]]
+name = "rustc-perf-wrapper"
+version = "0.1.0"
+dependencies = [
+ "clap",
 ]
 
 [[package]]
@@ -4752,8 +4760,6 @@ checksum = "8ba09476327c4b70ccefb6180f046ef588c26a24cf5d269a9feba316eb4f029f"
 name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
- "bitflags 2.5.0",
- "derivative",
  "itertools",
  "rustc_ast",
  "rustc_ast_ir",
@@ -4762,7 +4768,6 @@ dependencies = [
  "rustc_errors",
  "rustc_fluent_macro",
  "rustc_hir",
- "rustc_index",
  "rustc_infer",
  "rustc_macros",
  "rustc_middle",
@@ -4775,7 +4780,6 @@ dependencies = [
  "rustc_target",
  "rustc_transmute",
  "rustc_type_ir",
- "rustc_type_ir_macros",
  "smallvec",
  "tracing",
 ]

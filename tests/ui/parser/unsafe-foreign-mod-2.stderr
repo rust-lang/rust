@@ -9,17 +9,16 @@ error: extern block cannot be declared unsafe
    |
 LL | extern "C" unsafe {
    |            ^^^^^^
+   |
+   = note: see issue #123743 <https://github.com/rust-lang/rust/issues/123743> for more information
+   = help: add `#![feature(unsafe_extern_blocks)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: items in unadorned `extern` blocks cannot have safety qualifiers
   --> $DIR/unsafe-foreign-mod-2.rs:4:5
    |
 LL |     unsafe fn foo();
    |     ^^^^^^^^^^^^^^^^
-   |
-help: add unsafe to this `extern` block
-   |
-LL | unsafe extern "C" unsafe {
-   | ++++++
 
 error: aborting due to 3 previous errors
 

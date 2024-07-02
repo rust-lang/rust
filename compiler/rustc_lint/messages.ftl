@@ -56,8 +56,6 @@ lint_builtin_asm_labels = avoid using named labels in inline assembly
     .help = only local labels of the form `<number>:` should be used in inline asm
     .note = see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
-lint_builtin_box_pointers = type uses owned (Box type) pointers: {$ty}
-
 lint_builtin_clashing_extern_diff_name = `{$this}` redeclares `{$orig}` with a different signature
     .previous_decl_label = `{$orig}` previously declared here
     .mismatch_label = this signature doesn't match the previous declaration

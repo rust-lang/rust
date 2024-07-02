@@ -1,5 +1,5 @@
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/generics.rs:9:5
+  --> $DIR/generics.rs:11:5
    |
 LL |     impl<T: Local> Global for Vec<T> { }
    |     ^^^^^^^^^^^^^^^------^^^^^---^^^
@@ -10,17 +10,21 @@ LL |     impl<T: Local> Global for Vec<T> { }
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 help: move the `impl` block outside of this function `main`
-  --> $DIR/generics.rs:6:1
+  --> $DIR/generics.rs:8:1
    |
 LL | fn main() {
    | ^^^^^^^^^
 LL |     trait Local {};
    |     ----------- may need to be moved as well
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
-   = note: `#[warn(non_local_definitions)]` on by default
+note: the lint level is defined here
+  --> $DIR/generics.rs:4:9
+   |
+LL | #![warn(non_local_definitions)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/generics.rs:20:5
+  --> $DIR/generics.rs:22:5
    |
 LL |     impl Uto7 for Test where Local: std::any::Any {}
    |     ^^^^^----^^^^^----
@@ -31,7 +35,7 @@ LL |     impl Uto7 for Test where Local: std::any::Any {}
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 help: move the `impl` block outside of this function `bad`
-  --> $DIR/generics.rs:18:1
+  --> $DIR/generics.rs:20:1
    |
 LL | fn bad() {
    | ^^^^^^^^
@@ -40,7 +44,7 @@ LL |     struct Local;
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/generics.rs:23:5
+  --> $DIR/generics.rs:25:5
    |
 LL | fn bad() {
    | -------- move the `impl` block outside of this function `bad`
@@ -56,7 +60,7 @@ LL |     impl<T> Uto8 for T {}
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/generics.rs:32:5
+  --> $DIR/generics.rs:34:5
    |
 LL |     impl Default for UwU<OwO> {
    |     ^^^^^-------^^^^^---^^^^^
@@ -67,7 +71,7 @@ LL |     impl Default for UwU<OwO> {
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 help: move the `impl` block outside of this function `fun`
-  --> $DIR/generics.rs:29:1
+  --> $DIR/generics.rs:31:1
    |
 LL | fn fun() {
    | ^^^^^^^^
@@ -77,7 +81,7 @@ LL |     struct OwO;
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/generics.rs:43:5
+  --> $DIR/generics.rs:45:5
    |
 LL |     impl AsRef<Cat> for () {
    |     ^^^^^-----^^^^^^^^^^--
@@ -88,7 +92,7 @@ LL |     impl AsRef<Cat> for () {
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 help: move the `impl` block outside of this function `meow`
-  --> $DIR/generics.rs:40:1
+  --> $DIR/generics.rs:42:1
    |
 LL | fn meow() {
    | ^^^^^^^^^
@@ -98,7 +102,7 @@ LL |     struct Cat;
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/generics.rs:54:5
+  --> $DIR/generics.rs:56:5
    |
 LL |     impl PartialEq<B> for G {
    |     ^^^^^---------^^^^^^^^-
@@ -109,7 +113,7 @@ LL |     impl PartialEq<B> for G {
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 help: move the `impl` block outside of this function `fun2`
-  --> $DIR/generics.rs:51:1
+  --> $DIR/generics.rs:53:1
    |
 LL | fn fun2() {
    | ^^^^^^^^^
@@ -119,7 +123,7 @@ LL |     struct B;
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/generics.rs:69:5
+  --> $DIR/generics.rs:71:5
    |
 LL |     impl From<Wrap<Wrap<Lion>>> for () {
    |     ^^^^^----^^^^^^^^^^^^^^^^^^^^^^^--
@@ -129,7 +133,7 @@ LL |     impl From<Wrap<Wrap<Lion>>> for () {
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 help: move the `impl` block outside of this function `rawr`
-  --> $DIR/generics.rs:66:1
+  --> $DIR/generics.rs:68:1
    |
 LL | fn rawr() {
    | ^^^^^^^^^
@@ -138,7 +142,7 @@ LL |     struct Lion;
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/generics.rs:76:5
+  --> $DIR/generics.rs:78:5
    |
 LL |     impl From<()> for Wrap<Lion> {
    |     ^^^^^----^^^^^^^^^----^^^^^^
@@ -149,7 +153,7 @@ LL |     impl From<()> for Wrap<Lion> {
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 help: move the `impl` block outside of this function `rawr`
-  --> $DIR/generics.rs:66:1
+  --> $DIR/generics.rs:68:1
    |
 LL | fn rawr() {
    | ^^^^^^^^^

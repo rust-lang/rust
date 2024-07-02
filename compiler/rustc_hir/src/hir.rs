@@ -526,6 +526,7 @@ pub enum GenericParamKind<'hir> {
         /// Optional default value for the const generic param
         default: Option<&'hir AnonConst>,
         is_host_effect: bool,
+        synthetic: bool,
     },
 }
 
@@ -3364,6 +3365,7 @@ pub enum ItemKind<'hir> {
 /// Refer to [`ImplItem`] for an associated item within an impl block.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Impl<'hir> {
+    pub constness: Constness,
     pub safety: Safety,
     pub polarity: ImplPolarity,
     pub defaultness: Defaultness,

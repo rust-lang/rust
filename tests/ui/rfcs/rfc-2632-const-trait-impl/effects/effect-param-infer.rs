@@ -2,8 +2,9 @@
 // at the end of generic args when the generics have defaulted params.
 //
 //@ check-pass
-
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+//@ compile-flags: -Znext-solver
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 pub trait Foo<Rhs: ?Sized = Self> {

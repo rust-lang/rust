@@ -34,12 +34,9 @@
 //!   Rust user code is to call the functions provided by this library instead (such as
 //!   `ptr::copy`).
 //!
-//! * `rust_begin_panic` - This function takes four arguments, a
-//!   `fmt::Arguments`, a `&'static str`, and two `u32`'s. These four arguments
-//!   dictate the panic message, the file at which panic was invoked, and the
-//!   line and column inside the file. It is up to consumers of this core
+//! * Panic handler - This function takes one argument, a `&panic::PanicInfo`. It is up to consumers of this core
 //!   library to define this panic function; it is only required to never
-//!   return. This requires a `lang` attribute named `panic_impl`.
+//!   return. You should mark your implementation using `#[panic_handler]`.
 //!
 //! * `rust_eh_personality` - is used by the failure mechanisms of the
 //!    compiler. This is often mapped to GCC's personality function, but crates
@@ -231,6 +228,7 @@
 #![feature(let_chains)]
 #![feature(link_llvm_intrinsics)]
 #![feature(macro_metavar_expr)]
+#![feature(marker_trait_attr)]
 #![feature(min_exhaustive_patterns)]
 #![feature(min_specialization)]
 #![feature(multiple_supertrait_upcastable)]

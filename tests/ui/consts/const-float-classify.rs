@@ -1,10 +1,11 @@
-//@ compile-flags: -Zmir-opt-level=0
+//@ compile-flags: -Zmir-opt-level=0 -Znext-solver
 //@ known-bug: #110395
 // FIXME(effects) run-pass
 
 #![feature(const_float_bits_conv)]
 #![feature(const_float_classify)]
 #![feature(const_trait_impl, effects)]
+#![allow(incomplete_features)]
 
 // Don't promote
 const fn nop<T>(x: T) -> T { x }

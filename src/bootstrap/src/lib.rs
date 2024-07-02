@@ -26,6 +26,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str;
 use std::sync::OnceLock;
+use std::time::SystemTime;
 
 use build_helper::ci::{gha, CiEnv};
 use build_helper::exit;
@@ -74,7 +75,7 @@ const LLVM_TOOLS: &[&str] = &[
 /// LLD file names for all flavors.
 const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 
-/// Extra --check-cfg to add when building
+/// Extra `--check-cfg` to add when building the compiler or tools
 /// (Mode restriction, config name, config values (if any))
 #[allow(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
 const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
@@ -84,38 +85,9 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::ToolRustc), "rust_analyzer", None),
     (Some(Mode::ToolStd), "rust_analyzer", None),
     (Some(Mode::Codegen), "parallel_compiler", None),
-    // NOTE: consider updating `check-cfg` entries in `std/Cargo.toml` too.
-    // cfg(bootstrap) remove these once the bootstrap compiler supports
-    // `lints.rust.unexpected_cfgs.check-cfg`
-    (Some(Mode::Std), "stdarch_intel_sde", None),
-    (Some(Mode::Std), "no_fp_fmt_parse", None),
-    (Some(Mode::Std), "no_global_oom_handling", None),
-    (Some(Mode::Std), "no_rc", None),
-    (Some(Mode::Std), "no_sync", None),
-    /* Extra values not defined in the built-in targets yet, but used in std */
-    (Some(Mode::Std), "target_env", Some(&["libnx", "p2"])),
-    (Some(Mode::Std), "target_os", Some(&["visionos"])),
-    (Some(Mode::Std), "target_arch", Some(&["arm64ec", "spirv", "nvptx", "xtensa"])),
-    (Some(Mode::ToolStd), "target_os", Some(&["visionos"])),
-    /* Extra names used by dependencies */
-    // FIXME: Used by serde_json, but we should not be triggering on external dependencies.
-    (Some(Mode::Rustc), "no_btreemap_remove_entry", None),
-    (Some(Mode::ToolRustc), "no_btreemap_remove_entry", None),
-    // FIXME: Used by crossbeam-utils, but we should not be triggering on external dependencies.
-    (Some(Mode::Rustc), "crossbeam_loom", None),
-    (Some(Mode::ToolRustc), "crossbeam_loom", None),
-    // FIXME: Used by proc-macro2, but we should not be triggering on external dependencies.
-    (Some(Mode::Rustc), "span_locations", None),
-    (Some(Mode::ToolRustc), "span_locations", None),
-    // FIXME: Used by rustix, but we should not be triggering on external dependencies.
-    (Some(Mode::Rustc), "rustix_use_libc", None),
-    (Some(Mode::ToolRustc), "rustix_use_libc", None),
-    // FIXME: Used by filetime, but we should not be triggering on external dependencies.
-    (Some(Mode::Rustc), "emulate_second_only_system", None),
-    (Some(Mode::ToolRustc), "emulate_second_only_system", None),
-    // Needed to avoid the need to copy windows.lib into the sysroot.
-    (Some(Mode::Rustc), "windows_raw_dylib", None),
-    (Some(Mode::ToolRustc), "windows_raw_dylib", None),
+    // Any library specific cfgs like `target_os`, `target_arch` should be put in
+    // priority the `[lints.rust.unexpected_cfgs.check-cfg]` table
+    // in the appropriate `library/{std,alloc,core}/Cargo.toml`
 ];
 
 /// A structure representing a Rust compiler.
@@ -575,19 +547,17 @@ impl Build {
         };
         // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
         if !update(true).status().map_or(false, |status| status.success()) {
-            self.run(&mut update(false));
+            self.run(update(false));
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
-        let has_local_modifications = !self.run_cmd(
-            BootstrapCommand::from(submodule_git().args(["diff-index", "--quiet", "HEAD"]))
-                .allow_failure()
-                .output_mode(match self.is_verbose() {
-                    true => OutputMode::All,
-                    false => OutputMode::OnlyOutput,
-                }),
-        );
+        let has_local_modifications = self
+            .run(
+                BootstrapCommand::from(submodule_git().args(["diff-index", "--quiet", "HEAD"]))
+                    .allow_failure(),
+            )
+            .is_failure();
         if has_local_modifications {
             self.run(submodule_git().args(["stash", "push"]));
         }
@@ -939,7 +909,7 @@ impl Build {
     }
 
     /// Adds the `RUST_TEST_THREADS` env var if necessary
-    fn add_rust_test_threads(&self, cmd: &mut Command) {
+    fn add_rust_test_threads(&self, cmd: &mut BootstrapCommand) {
         if env::var_os("RUST_TEST_THREADS").is_none() {
             cmd.env("RUST_TEST_THREADS", self.jobs().to_string());
         }
@@ -961,10 +931,13 @@ impl Build {
     }
 
     /// Execute a command and return its output.
-    fn run_tracked(&self, command: BootstrapCommand<'_>) -> CommandOutput {
+    /// This method should be used for all command executions in bootstrap.
+    fn run<C: Into<BootstrapCommand>>(&self, command: C) -> CommandOutput {
         if self.config.dry_run() {
             return CommandOutput::default();
         }
+
+        let mut command = command.into();
 
         self.verbose(|| println!("running: {command:?}"));
 
@@ -1022,22 +995,6 @@ impl Build {
             }
         }
         output
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
-    fn run(&self, cmd: &mut Command) {
-        self.run_cmd(BootstrapCommand::from(cmd).fail_fast().output_mode(
-            match self.is_verbose() {
-                true => OutputMode::All,
-                false => OutputMode::OnlyOutput,
-            },
-        ));
-    }
-
-    /// A centralized function for running commands that do not return output.
-    pub(crate) fn run_cmd<'a, C: Into<BootstrapCommand<'a>>>(&self, cmd: C) -> bool {
-        let command = cmd.into();
-        self.run_tracked(command).is_success()
     }
 
     /// Check if verbosity is greater than the `level`
@@ -1691,7 +1648,14 @@ impl Build {
         if src == dst {
             return;
         }
-        let _ = fs::remove_file(dst);
+        if let Err(e) = fs::remove_file(dst) {
+            if cfg!(windows) && e.kind() != io::ErrorKind::NotFound {
+                // workaround for https://github.com/rust-lang/rust/issues/127126
+                // if removing the file fails, attempt to rename it instead.
+                let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
+                let _ = fs::rename(dst, format!("{}-{}", dst.display(), now.as_nanos()));
+            }
+        }
         let metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
         let mut src = src.to_path_buf();
         if metadata.file_type().is_symlink() {

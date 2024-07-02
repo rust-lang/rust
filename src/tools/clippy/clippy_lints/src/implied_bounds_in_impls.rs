@@ -246,7 +246,7 @@ fn collect_supertrait_bounds<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds
                 && let [.., path] = poly_trait.trait_ref.path.segments
                 && poly_trait.bound_generic_params.is_empty()
                 && let Some(trait_def_id) = path.res.opt_def_id()
-                && let predicates = cx.tcx.super_predicates_of(trait_def_id).predicates
+                && let predicates = cx.tcx.explicit_super_predicates_of(trait_def_id).predicates
                 // If the trait has no supertrait, there is no need to collect anything from that bound
                 && !predicates.is_empty()
             {

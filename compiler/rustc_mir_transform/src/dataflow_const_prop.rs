@@ -181,11 +181,6 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                         state.insert_value_idx(value_target, val, self.map());
                     }
                     if let Some(overflow_target) = overflow_target {
-                        let overflow = match overflow {
-                            FlatSet::Top => FlatSet::Top,
-                            FlatSet::Elem(overflow) => FlatSet::Elem(overflow),
-                            FlatSet::Bottom => FlatSet::Bottom,
-                        };
                         // We have flooded `target` earlier.
                         state.insert_value_idx(overflow_target, overflow, self.map());
                     }
