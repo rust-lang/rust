@@ -75,11 +75,12 @@ impl Command {
     /// Generic command arguments provider. Prefer specific helper methods if possible.
     /// Note that for some executables, arguments might be platform specific. For C/C++
     /// compilers, arguments might be platform *and* compiler specific.
-    pub fn args<S>(&mut self, args: &[S]) -> &mut Self
+    pub fn args<S, V>(&mut self, args: V) -> &mut Self
     where
         S: AsRef<ffi::OsStr>,
+        V: AsRef<[S]>,
     {
-        self.cmd.args(args);
+        self.cmd.args(args.as_ref());
         self
     }
 
