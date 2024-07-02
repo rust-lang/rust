@@ -322,7 +322,7 @@ const WASM_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("mutable-globals", Stable),
     ("nontrapping-fptoint", Stable),
     ("reference-types", Unstable(sym::wasm_target_feature)),
-    ("relaxed-simd", Unstable(sym::wasm_target_feature)),
+    ("relaxed-simd", Stable),
     ("sign-ext", Stable),
     ("simd128", Stable),
     // tidy-alphabetical-end
