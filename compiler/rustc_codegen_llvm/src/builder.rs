@@ -1029,6 +1029,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn set_personality_fn(&mut self, personality: &'ll Value) {
+        // Work around for https://github.com/rust-lang/rust/issues/123733
+        // add the UWTable attribute to every function with a personality function.
+        let uwtable = attributes::uwtable_attr(self.llcx, None);
+        attributes::apply_to_llfn(self.llfn(), llvm::AttributePlace::Function, &[uwtable]);
+
         unsafe {
             llvm::LLVMSetPersonalityFn(self.llfn(), personality);
         }
