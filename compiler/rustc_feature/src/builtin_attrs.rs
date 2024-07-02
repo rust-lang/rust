@@ -432,6 +432,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(unsafe no_mangle, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing, EncodeCrossCrate::No),
     ungated!(link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding, EncodeCrossCrate::Yes),
+    gated!(
+        externally_constructed, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::Yes, externally_constructed_attr, experimental!(mark_externally_constructed)
+    ),
 
     // Limits:
     ungated!(
