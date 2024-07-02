@@ -1,0 +1,23 @@
+error[E0637]: `'_` cannot be used here
+  --> $DIR/partial-anonymous-lifetime-in-impl-trait.rs:26:42
+   |
+LL |     fn foo0(_: impl LendingIterator<Item<'_> = &u32>) {}
+   |                                          ^^ `'_` is a reserved lifetime name
+
+error[E0658]: anonymous lifetimes in `impl Trait` are unstable
+  --> $DIR/partial-anonymous-lifetime-in-impl-trait.rs:26:49
+   |
+LL |     fn foo0(_: impl LendingIterator<Item<'_> = &u32>) {}
+   |                                                 ^ expected named lifetime parameter
+   |
+   = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+help: consider introducing a named lifetime parameter
+   |
+LL |     fn foo0<'a>(_: impl LendingIterator<Item<'_> = &'a u32>) {}
+   |            ++++                                     ++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0637, E0658.
+For more information about an error, try `rustc --explain E0637`.
