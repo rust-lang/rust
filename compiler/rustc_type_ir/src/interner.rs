@@ -220,6 +220,8 @@ pub trait Interner:
 
     fn is_lang_item(self, def_id: Self::DefId, lang_item: TraitSolverLangItem) -> bool;
 
+    fn as_lang_item(self, def_id: Self::DefId) -> Option<TraitSolverLangItem>;
+
     fn associated_type_def_ids(self, def_id: Self::DefId) -> impl IntoIterator<Item = Self::DefId>;
 
     // FIXME: move `fast_reject` into `rustc_type_ir`.
@@ -251,10 +253,6 @@ pub trait Interner:
     fn trait_is_object_safe(self, trait_def_id: Self::DefId) -> bool;
 
     fn trait_may_be_implemented_via_object(self, trait_def_id: Self::DefId) -> bool;
-
-    fn fn_trait_kind_from_def_id(self, trait_def_id: Self::DefId) -> Option<ty::ClosureKind>;
-
-    fn async_fn_trait_kind_from_def_id(self, trait_def_id: Self::DefId) -> Option<ty::ClosureKind>;
 
     fn supertrait_def_ids(self, trait_def_id: Self::DefId)
     -> impl IntoIterator<Item = Self::DefId>;
