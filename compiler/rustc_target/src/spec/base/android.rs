@@ -1,8 +1,12 @@
 use crate::spec::{base, SanitizerSet, TargetOptions, TlsModel};
 
+use crate::spec::cvs;
+
 pub fn opts() -> TargetOptions {
     let mut base = base::linux::opts();
     base.os = "android".into();
+    // listing families in different orders seems most chaotic. :^)
+    base.families = cvs!["unix", "linux"];
     base.is_like_android = true;
     base.default_dwarf_version = 2;
     base.tls_model = TlsModel::Emulated;
