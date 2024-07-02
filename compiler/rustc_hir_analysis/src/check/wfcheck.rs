@@ -29,7 +29,6 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::misc::{
@@ -40,6 +39,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use rustc_trait_selection::traits::{
     self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt, WellFormedLoc,
 };
+use rustc_type_ir::solve::NoSolution;
 use rustc_type_ir::TypeFlags;
 
 use std::cell::LazyCell;
@@ -1713,13 +1713,12 @@ fn receiver_is_valid<'tcx>(
     let cause =
         ObligationCause::new(span, wfcx.body_def_id, traits::ObligationCauseCode::MethodReceiver);
 
-    let can_eq_self = |ty| infcx.can_eq(wfcx.param_env, self_ty, ty);
-
-    // `self: Self` is always valid.
-    if can_eq_self(receiver_ty) {
-        if let Err(err) = wfcx.eq(&cause, wfcx.param_env, self_ty, receiver_ty) {
-            infcx.err_ctxt().report_mismatched_types(&cause, self_ty, receiver_ty, err).emit();
-        }
+    // Special case `receiver == self_ty`, which doesn't necessarily require the `Receiver` lang item.
+    if let Ok(()) = wfcx.infcx.commit_if_ok(|_| {
+        let ocx = ObligationCtxt::new(wfcx.infcx);
+        ocx.eq(&cause, wfcx.param_env, self_ty, receiver_ty)?;
+        if ocx.select_all_or_error().is_empty() { Ok(()) } else { Err(NoSolution) }
+    }) {
         return true;
     }
 
@@ -1730,58 +1729,51 @@ fn receiver_is_valid<'tcx>(
         autoderef = autoderef.include_raw_pointers();
     }
 
-    // The first type is `receiver_ty`, which we know its not equal to `self_ty`; skip it.
-    autoderef.next();
-
     let receiver_trait_def_id = tcx.require_lang_item(LangItem::Receiver, Some(span));
 
     // Keep dereferencing `receiver_ty` until we get to `self_ty`.
-    loop {
-        if let Some((potential_self_ty, _)) = autoderef.next() {
-            debug!(
-                "receiver_is_valid: potential self type `{:?}` to match `{:?}`",
-                potential_self_ty, self_ty
-            );
+    while let Some((potential_self_ty, _)) = autoderef.next() {
+        debug!(
+            "receiver_is_valid: potential self type `{:?}` to match `{:?}`",
+            potential_self_ty, self_ty
+        );
 
-            if can_eq_self(potential_self_ty) {
-                wfcx.register_obligations(autoderef.into_obligations());
+        // Check if the self type unifies. If it does, then commit the result
+        // since it may have region side-effects.
+        if let Ok(()) = wfcx.infcx.commit_if_ok(|_| {
+            let ocx = ObligationCtxt::new(wfcx.infcx);
+            ocx.eq(&cause, wfcx.param_env, self_ty, potential_self_ty)?;
+            if ocx.select_all_or_error().is_empty() { Ok(()) } else { Err(NoSolution) }
+        }) {
+            wfcx.register_obligations(autoderef.into_obligations());
+            return true;
+        }
 
-                if let Err(err) = wfcx.eq(&cause, wfcx.param_env, self_ty, potential_self_ty) {
-                    infcx
-                        .err_ctxt()
-                        .report_mismatched_types(&cause, self_ty, potential_self_ty, err)
-                        .emit();
-                }
-
+        // Without `feature(arbitrary_self_types)`, we require that each step in the
+        // deref chain implement `receiver`.
+        if !arbitrary_self_types_enabled {
+            if !receiver_is_implemented(
+                wfcx,
+                receiver_trait_def_id,
+                cause.clone(),
+                potential_self_ty,
+            ) {
+                // We cannot proceed.
                 break;
-            } else {
-                // Without `feature(arbitrary_self_types)`, we require that each step in the
-                // deref chain implement `receiver`
-                if !arbitrary_self_types_enabled
-                    && !receiver_is_implemented(
-                        wfcx,
-                        receiver_trait_def_id,
-                        cause.clone(),
-                        potential_self_ty,
-                    )
-                {
-                    return false;
-                }
             }
-        } else {
-            debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`", receiver_ty, self_ty);
-            return false;
+
+            // Register the bound, in case it has any region side-effects.
+            wfcx.register_bound(
+                cause.clone(),
+                wfcx.param_env,
+                potential_self_ty,
+                receiver_trait_def_id,
+            );
         }
     }
 
-    // Without `feature(arbitrary_self_types)`, we require that `receiver_ty` implements `Receiver`.
-    if !arbitrary_self_types_enabled
-        && !receiver_is_implemented(wfcx, receiver_trait_def_id, cause.clone(), receiver_ty)
-    {
-        return false;
-    }
-
-    true
+    debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`", receiver_ty, self_ty);
+    false
 }
 
 fn receiver_is_implemented<'tcx>(
