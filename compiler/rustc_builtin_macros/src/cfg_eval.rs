@@ -38,16 +38,14 @@ pub(crate) fn cfg_eval(
     lint_node_id: NodeId,
 ) -> Annotatable {
     let features = Some(features);
-    CfgEval { cfg: &mut StripUnconfigured { sess, features, config_tokens: true, lint_node_id } }
+    CfgEval(StripUnconfigured { sess, features, config_tokens: true, lint_node_id })
         .configure_annotatable(annotatable)
         // Since the item itself has already been configured by the `InvocationCollector`,
         // we know that fold result vector will contain exactly one element.
         .unwrap()
 }
 
-struct CfgEval<'a, 'b> {
-    cfg: &'a mut StripUnconfigured<'b>,
-}
+struct CfgEval<'a>(StripUnconfigured<'a>);
 
 fn flat_map_annotatable(
     vis: &mut impl MutVisitor,
@@ -125,9 +123,9 @@ fn has_cfg_or_cfg_attr(annotatable: &Annotatable) -> bool {
     res.is_break()
 }
 
-impl CfgEval<'_, '_> {
+impl CfgEval<'_> {
     fn configure<T: HasAttrs + HasTokens>(&mut self, node: T) -> Option<T> {
-        self.cfg.configure(node)
+        self.0.configure(node)
     }
 
     fn configure_annotatable(&mut self, mut annotatable: Annotatable) -> Option<Annotatable> {
@@ -196,7 +194,7 @@ impl CfgEval<'_, '_> {
         // Re-parse the tokens, setting the `capture_cfg` flag to save extra information
         // to the captured `AttrTokenStream` (specifically, we capture
         // `AttrTokenTree::AttributesData` for all occurrences of `#[cfg]` and `#[cfg_attr]`)
-        let mut parser = Parser::new(&self.cfg.sess.psess, orig_tokens, None);
+        let mut parser = Parser::new(&self.0.sess.psess, orig_tokens, None);
         parser.capture_cfg = true;
         match parse_annotatable_with(&mut parser) {
             Ok(a) => annotatable = a,
@@ -212,16 +210,16 @@ impl CfgEval<'_, '_> {
     }
 }
 
-impl MutVisitor for CfgEval<'_, '_> {
+impl MutVisitor for CfgEval<'_> {
     #[instrument(level = "trace", skip(self))]
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
-        self.cfg.configure_expr(expr, false);
+        self.0.configure_expr(expr, false);
         mut_visit::noop_visit_expr(expr, self);
     }
 
     #[instrument(level = "trace", skip(self))]
     fn visit_method_receiver_expr(&mut self, expr: &mut P<ast::Expr>) {
-        self.cfg.configure_expr(expr, true);
+        self.0.configure_expr(expr, true);
         mut_visit::noop_visit_expr(expr, self);
     }
 
