@@ -244,7 +244,13 @@ impl f16 {
 
     /// Sign bit
     #[cfg(not(bootstrap))]
-    const SIGN_MASK: u16 = 0x8000;
+    pub(crate) const SIGN_MASK: u16 = 0x8000;
+
+    #[cfg(not(bootstrap))]
+    pub(crate) const EXP_MASK: u16 = 0x7c00;
+
+    #[cfg(not(bootstrap))]
+    pub(crate) const MAN_MASK: u16 = 0x03ff;
 
     /// Minimum representable positive value (min subnormal)
     #[cfg(not(bootstrap))]
