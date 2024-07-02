@@ -403,7 +403,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             //
             // Why only in unoptimized builds?
             // - In unoptimized builds LLVM uses FastISel which does not support switches, so it
-            //   must fall back to the to the slower SelectionDAG isel. Therefore, using `br` gives
+            //   must fall back to the slower SelectionDAG isel. Therefore, using `br` gives
             //   significant compile time speedups for unoptimized builds.
             // - In optimized builds the above doesn't hold, and using `br` sometimes results in
             //   worse generated code because LLVM can no longer tell that the value being switched

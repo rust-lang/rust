@@ -519,7 +519,7 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &add_subtyping_projections::Subtyper, // calling this after reveal_all ensures that we don't deal with opaque types
         &elaborate_drops::ElaborateDrops,
         // This will remove extraneous landing pads which are no longer
-        // necessary as well as well as forcing any call in a non-unwinding
+        // necessary as well as forcing any call in a non-unwinding
         // function calling a possibly-unwinding function to abort the process.
         &abort_unwinding_calls::AbortUnwindingCalls,
         // AddMovesForPackedDrops needs to run after drop

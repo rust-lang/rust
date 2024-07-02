@@ -4114,7 +4114,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     expr = binding_expr;
                 }
                 if let hir::Node::Param(param) = parent {
-                    // ...and it is a an fn argument.
+                    // ...and it is an fn argument.
                     let prev_ty = self.resolve_vars_if_possible(
                         typeck_results
                             .node_type_opt(param.hir_id)

@@ -245,7 +245,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // The tag of a `Single` enum is like the tag of the niched
                 // variant: there's no tag as the discriminant is encoded
                 // entirely implicitly. If `write_discriminant` ever hits this
-                // case, we do a "validation read" to ensure the the right
+                // case, we do a "validation read" to ensure the right
                 // discriminant is encoded implicitly, so any attempt to write
                 // the wrong discriminant for a `Single` enum will reliably
                 // result in UB.

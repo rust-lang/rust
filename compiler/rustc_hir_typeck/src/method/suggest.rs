@@ -499,7 +499,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                // If the shadowed binding has an an itializer expression,
+                // If the shadowed binding has an itializer expression,
                 // use the initializer expression'ty to try to find the method again.
                 // For example like:  `let mut x = Vec::new();`,
                 // `Vec::new()` is the itializer expression.
@@ -968,7 +968,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // Make sure that, if any traits other than the found ones were involved,
-            // we don't don't report an unimplemented trait.
+            // we don't report an unimplemented trait.
             // We don't want to say that `iter::Cloned` is not an iterator, just
             // because of some non-Clone item being iterated over.
             for (predicate, _parent_pred, _cause) in unsatisfied_predicates {

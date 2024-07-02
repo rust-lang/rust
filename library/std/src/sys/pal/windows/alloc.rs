@@ -190,7 +190,7 @@ unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
         // it, it is safe to write a header directly before it.
         unsafe { ptr::write((aligned as *mut Header).sub(1), Header(ptr)) };
 
-        // SAFETY: The returned pointer does not point to the to the start of an allocated block,
+        // SAFETY: The returned pointer does not point to the start of an allocated block,
         // but there is a header readable directly before it containing the location of the start
         // of the block.
         aligned
