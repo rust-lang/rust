@@ -1,5 +1,5 @@
 use crate::spec::Target;
-use crate::{abi::Size, spec::RelocModel};
+use crate::{abi::Endian, abi::Size, spec::RelocModel};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
@@ -890,6 +890,7 @@ pub enum InlineAsmClobberAbi {
     AArch64NoX18,
     RiscV,
     LoongArch,
+    PowerPC64ElfV2,
 }
 
 impl InlineAsmClobberAbi {
@@ -937,6 +938,12 @@ impl InlineAsmClobberAbi {
             },
             InlineAsmArch::LoongArch64 => match name {
                 "C" | "system" => Ok(InlineAsmClobberAbi::LoongArch),
+                _ => Err(&["C", "system"]),
+            },
+            InlineAsmArch::PowerPC64 => match name {
+                "C" | "system" if target.endian == Endian::Little => {
+                    Ok(InlineAsmClobberAbi::PowerPC64ElfV2)
+                }
                 _ => Err(&["C", "system"]),
             },
             _ => Err(&[]),
@@ -1094,6 +1101,13 @@ impl InlineAsmClobberAbi {
                     // ft0-ft15
                     f8, f9, f10, f11, f12, f13, f14, f15,
                     f16, f17, f18, f19, f20, f21, f22, f23,
+                }
+            },
+            InlineAsmClobberAbi::PowerPC64ElfV2 => clobbered_regs! {
+                PowerPC PowerPCInlineAsmReg {
+                    r0, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12,
+                    xer, cr0, cr1, cr5, cr6, cr7,
+                    f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13,
                 }
             },
         }
