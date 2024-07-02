@@ -1,5 +1,5 @@
 //@ check-pass
-#![warn(unused_imports)]
+#![warn(redundant_imports)]
 
 pub mod bar {
     pub struct Foo(pub Bar);
@@ -9,7 +9,7 @@ pub mod bar {
 use bar::*;
 
 pub fn warning() -> Foo {
-    use bar::Foo; //FIXME(unused_imports): ~ WARNING imported redundantly
+    use bar::Foo; //~ WARNING imported redundantly
     Foo(Bar('a'))
 }
 

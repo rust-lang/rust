@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![warn(unused_imports)]
+#![warn(redundant_imports)]
 
 mod foo {
     use std::fmt;
@@ -23,8 +23,7 @@ mod foo {
 fn main() {
 
     {
-        use std::string::String;
-        //FIXME(unused_imports): ~^ WARNING the item `String` is imported redundantly
+        use std::string::String; //~ WARNING the item `String` is imported redundantly
         // 'String' from 'std::string::String'.
         let s = String::new();
         println!("{}", s);

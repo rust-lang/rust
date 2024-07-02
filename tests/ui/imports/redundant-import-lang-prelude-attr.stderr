@@ -1,0 +1,14 @@
+error: the item `allow` is imported redundantly
+  --> $DIR/redundant-import-lang-prelude-attr.rs:15:5
+   |
+LL | use allow;
+   |     ^^^^^ the item `allow` is already defined by the extern prelude
+   |
+note: the lint level is defined here
+  --> $DIR/redundant-import-lang-prelude-attr.rs:12:9
+   |
+LL | #![deny(redundant_imports)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
