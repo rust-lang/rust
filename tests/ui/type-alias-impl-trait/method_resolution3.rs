@@ -14,13 +14,11 @@ struct Bar<T>(T);
 
 impl Bar<Foo> {
     fn bar(self: Bar<u32>) {
-        //[current]~^ ERROR: invalid `self` parameter
-        //[next]~^^ ERROR: type mismatch resolving `Foo == u32`
+        //~^ ERROR: invalid `self` parameter
         self.foo()
     }
     fn baz(self: &Bar<u32>) {
-        //[current]~^ ERROR: invalid `self` parameter
-        //[next]~^^ ERROR: type mismatch resolving `Foo == u32`
+        //~^ ERROR: invalid `self` parameter
         self.foo()
     }
 }

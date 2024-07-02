@@ -33,6 +33,7 @@ use rustc_span::edit_distance::{
 };
 use rustc_span::symbol::sym;
 use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
+use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy;
 use rustc_trait_selection::traits::query::method_autoderef::{
@@ -857,7 +858,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let args = self.fresh_args_for_item(self.span, method.def_id);
                 let fty = self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args);
                 let fty = self.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, fty);
-                self.can_sub(self.param_env, fty.output(), expected)
+                self.can_eq(self.param_env, fty.output(), expected)
             }),
             _ => false,
         }
