@@ -1705,14 +1705,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn zext(&mut self, value: RValue<'gcc>, dest_typ: Type<'gcc>) -> RValue<'gcc> {
         // FIXME(antoyo): this does not zero-extend.
-<<<<<<< HEAD
-=======
-        if value.get_type().is_bool() && dest_typ.is_i8(self.cx) {
-            // FIXME(antoyo): hack because base::from_immediate converts i1 to i8.
-            // Fix the code in codegen_ssa::base::from_immediate.
-            return value;
-        }
->>>>>>> master
         self.gcc_int_cast(value, dest_typ)
     }
 
