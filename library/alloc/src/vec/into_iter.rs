@@ -136,7 +136,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
         // struct and then overwriting &mut self.
         // this creates less assembly
         self.cap = 0;
-        self.buf = RawVec::NEW.non_null();
+        self.buf = RawVec::new::<T>().non_null();
         self.ptr = self.buf;
         self.end = self.buf.as_ptr();
 
@@ -486,8 +486,8 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
                 unsafe {
                     // `IntoIter::alloc` is not used anymore after this and will be dropped by RawVec
                     let alloc = ManuallyDrop::take(&mut self.0.alloc);
-                    // RawVec handles deallocation
-                    let _ = RawVec::from_nonnull_in(self.0.buf, self.0.cap, alloc);
+                    let mut buf = RawVec::from_nonnull_in(self.0.buf, self.0.cap, alloc);
+                    buf.drop(T::LAYOUT);
                 }
             }
         }

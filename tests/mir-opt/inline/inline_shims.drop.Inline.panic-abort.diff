@@ -25,7 +25,7 @@
 +         StorageLive(_6);
 +         StorageLive(_7);
 +         _6 = &mut (*_4);
-+         _7 = <Vec<A> as Drop>::drop(move _6) -> [return: bb2, unwind unreachable];
++         _7 = <Vec<A> as Drop>::drop(move _6) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
@@ -39,22 +39,18 @@
 +         StorageLive(_8);
 +         StorageLive(_9);
 +         _8 = discriminant((*_5));
-+         switchInt(move _8) -> [0: bb3, otherwise: bb4];
++         switchInt(move _8) -> [0: bb2, otherwise: bb3];
       }
   
       bb2: {
-+         drop(((*_4).0: alloc::raw_vec::RawVec<A>)) -> [return: bb1, unwind unreachable];
-+     }
-+ 
-+     bb3: {
 +         StorageDead(_9);
 +         StorageDead(_8);
           StorageDead(_5);
           return;
 +     }
 + 
-+     bb4: {
-+         drop((((*_5) as Some).0: B)) -> [return: bb3, unwind unreachable];
++     bb3: {
++         drop((((*_5) as Some).0: B)) -> [return: bb2, unwind unreachable];
       }
   }
   

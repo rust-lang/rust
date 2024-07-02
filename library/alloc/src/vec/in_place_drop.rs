@@ -1,4 +1,5 @@
 use core::marker::PhantomData;
+use core::mem::SizedTypeProperties;
 use core::ptr::NonNull;
 use core::ptr::{self, drop_in_place};
 use core::slice::{self};
@@ -42,9 +43,9 @@ impl<Src, Dest> Drop for InPlaceDstDataSrcBufDrop<Src, Dest> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            let _drop_allocation =
-                RawVec::<Src>::from_nonnull_in(self.ptr.cast::<Src>(), self.src_cap, Global);
+            let mut buf = RawVec::from_nonnull_in(self.ptr.cast::<Src>(), self.src_cap, Global);
             drop_in_place(core::ptr::slice_from_raw_parts_mut::<Dest>(self.ptr.as_ptr(), self.len));
+            buf.drop(Src::LAYOUT);
         };
     }
 }
