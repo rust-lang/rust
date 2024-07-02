@@ -305,10 +305,13 @@ macro_rules! impl_is_minus_one {
 
 impl_is_minus_one! { i8 i16 i32 i64 isize }
 
+/// Convert native return values to Result using the *-1 means error is in `errno`*  convention.
+/// Non-error values are `Ok`-wrapped.
 pub fn cvt<T: IsMinusOne>(t: T) -> crate::io::Result<T> {
     if t.is_minus_one() { Err(crate::io::Error::last_os_error()) } else { Ok(t) }
 }
 
+/// `-1` → look at `errno` → retry on `EINTR`. Otherwise `Ok()`-wrap the closure return value.
 pub fn cvt_r<T, F>(mut f: F) -> crate::io::Result<T>
 where
     T: IsMinusOne,
@@ -323,6 +326,7 @@ where
 }
 
 #[allow(dead_code)] // Not used on all platforms.
+/// Zero means `Ok()`, all other values are treated as raw OS errors. Does not look at `errno`.
 pub fn cvt_nz(error: libc::c_int) -> crate::io::Result<()> {
     if error == 0 { Ok(()) } else { Err(crate::io::Error::from_raw_os_error(error)) }
 }
