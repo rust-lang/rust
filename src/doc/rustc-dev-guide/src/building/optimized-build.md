@@ -2,7 +2,7 @@
 
 <!-- toc -->
 
-There are multiple additional build configuration options and techniques that can used to compile a
+There are multiple additional build configuration options and techniques that can be used to compile a
 build of `rustc` that is as optimized as possible (for example when building `rustc` for a Linux
 distribution). The status of these configuration options for various Rust targets is tracked [here].
 This page describes how you can use these approaches when building `rustc` yourself.
