@@ -1,3 +1,4 @@
+#![allow(clippy::map_with_unused_argument_over_ranges)]
 #![warn(clippy::suspicious_map)]
 
 fn main() {

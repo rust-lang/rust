@@ -710,6 +710,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`manual_try_fold`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_try_fold)
 * [`map_clone`](https://rust-lang.github.io/rust-clippy/master/index.html#map_clone)
 * [`map_unwrap_or`](https://rust-lang.github.io/rust-clippy/master/index.html#map_unwrap_or)
+* [`map_with_unused_argument_over_ranges`](https://rust-lang.github.io/rust-clippy/master/index.html#map_with_unused_argument_over_ranges)
 * [`match_like_matches_macro`](https://rust-lang.github.io/rust-clippy/master/index.html#match_like_matches_macro)
 * [`mem_replace_with_default`](https://rust-lang.github.io/rust-clippy/master/index.html#mem_replace_with_default)
 * [`missing_const_for_fn`](https://rust-lang.github.io/rust-clippy/master/index.html#missing_const_for_fn)

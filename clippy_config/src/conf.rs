@@ -573,6 +573,7 @@ define_Conf! {
         manual_try_fold,
         map_clone,
         map_unwrap_or,
+        map_with_unused_argument_over_ranges,
         match_like_matches_macro,
         mem_replace_with_default,
         missing_const_for_fn,
