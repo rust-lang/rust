@@ -1,12 +1,8 @@
 #![allow(non_snake_case)]
 
-pub use self::AtomicRmwBinOp::*;
-pub use self::CallConv::*;
-pub use self::CodeGenOptSize::*;
-pub use self::IntPredicate::*;
-pub use self::Linkage::*;
-pub use self::MetadataType::*;
-pub use self::RealPredicate::*;
+pub(crate) use self::CallConv::*;
+pub(crate) use self::CodeGenOptSize::*;
+pub(crate) use self::MetadataType::*;
 
 use libc::c_uint;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -21,7 +17,7 @@ pub mod archive_ro;
 pub mod diagnostic;
 mod ffi;
 
-pub use self::ffi::*;
+pub(crate) use self::ffi::*;
 
 impl LLVMRustResult {
     pub fn into_result(self) -> Result<(), ()> {

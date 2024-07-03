@@ -1,7 +1,7 @@
 //! Code that is useful in various codegen modules.
 
 use crate::consts::const_alloc_to_llvm;
-pub use crate::context::CodegenCx;
+pub(crate) use crate::context::CodegenCx;
 use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, True};
 use crate::type_::Type;
 use crate::value::Value;

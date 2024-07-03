@@ -15,7 +15,7 @@ use crate::errors::{MissingFeatures, SanitizerMemtagRequiresMte, TargetFeatureDi
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects};
 use crate::llvm_util;
-pub use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+pub(crate) use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 
 use crate::context::CodegenCx;
 use crate::value::Value;

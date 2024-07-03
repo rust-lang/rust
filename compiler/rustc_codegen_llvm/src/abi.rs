@@ -13,12 +13,12 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutOf;
-pub use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
+pub(crate) use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::Ty;
 use rustc_session::config;
-pub use rustc_target::abi::call::*;
+pub(crate) use rustc_target::abi::call::*;
 use rustc_target::abi::{self, HasDataLayout, Int, Size};
-pub use rustc_target::spec::abi::Abi;
+pub(crate) use rustc_target::spec::abi::Abi;
 use rustc_target::spec::SanitizerSet;
 
 use libc::c_uint;

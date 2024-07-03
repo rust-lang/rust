@@ -14,6 +14,7 @@
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
+#![feature(lint_reasons)]
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
@@ -21,7 +22,7 @@ use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
 
 use errors::ParseTargetMachineConfig;
-pub use llvm_util::target_features;
+pub(crate) use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{

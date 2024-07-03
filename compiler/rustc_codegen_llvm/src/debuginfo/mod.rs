@@ -50,8 +50,8 @@ pub mod metadata;
 mod namespace;
 mod utils;
 
-pub use self::create_scope_map::compute_mir_scopes;
-pub use self::metadata::build_global_var_di_node;
+pub(crate) use self::create_scope_map::compute_mir_scopes;
+pub(crate) use self::metadata::build_global_var_di_node;
 
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;

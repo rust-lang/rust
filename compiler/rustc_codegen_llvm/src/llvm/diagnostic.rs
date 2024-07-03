@@ -1,7 +1,7 @@
 //! LLVM diagnostic reports.
 
-pub use self::Diagnostic::*;
-pub use self::OptimizationDiagnosticKind::*;
+pub(crate) use self::Diagnostic::*;
+pub(crate) use self::OptimizationDiagnosticKind::*;
 
 use crate::value::Value;
 use libc::c_uint;
