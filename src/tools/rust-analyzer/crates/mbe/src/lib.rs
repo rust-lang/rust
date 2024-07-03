@@ -156,7 +156,7 @@ impl DeclarativeMacro {
         let mut err = None;
 
         while src.len() > 0 {
-            let rule = match Rule::parse(edition, &mut src, true, new_meta_vars) {
+            let rule = match Rule::parse(edition, &mut src, new_meta_vars) {
                 Ok(it) => it,
                 Err(e) => {
                     err = Some(Box::new(e));
@@ -184,19 +184,34 @@ impl DeclarativeMacro {
 
     /// The new, unstable `macro m {}` flavor.
     pub fn parse_macro2(
-        tt: &tt::Subtree<Span>,
+        args: Option<&tt::Subtree<Span>>,
+        body: &tt::Subtree<Span>,
         edition: impl Copy + Fn(SyntaxContextId) -> Edition,
         // FIXME: Remove this once we drop support for rust 1.76 (defaults to true then)
         new_meta_vars: bool,
     ) -> DeclarativeMacro {
-        let mut src = TtIter::new(tt);
         let mut rules = Vec::new();
         let mut err = None;
 
-        if tt::DelimiterKind::Brace == tt.delimiter.kind {
+        if let Some(args) = args {
+            cov_mark::hit!(parse_macro_def_simple);
+
+            let rule = (|| {
+                let lhs = MetaTemplate::parse_pattern(edition, args)?;
+                let rhs = MetaTemplate::parse_template(edition, body, new_meta_vars)?;
+
+                Ok(crate::Rule { lhs, rhs })
+            })();
+
+            match rule {
+                Ok(rule) => rules.push(rule),
+                Err(e) => err = Some(Box::new(e)),
+            }
+        } else {
             cov_mark::hit!(parse_macro_def_rules);
+            let mut src = TtIter::new(body);
             while src.len() > 0 {
-                let rule = match Rule::parse(edition, &mut src, true, new_meta_vars) {
+                let rule = match Rule::parse(edition, &mut src, new_meta_vars) {
                     Ok(it) => it,
                     Err(e) => {
                         err = Some(Box::new(e));
@@ -211,19 +226,6 @@ impl DeclarativeMacro {
                         )));
                     }
                     break;
-                }
-            }
-        } else {
-            cov_mark::hit!(parse_macro_def_simple);
-            match Rule::parse(edition, &mut src, false, new_meta_vars) {
-                Ok(rule) => {
-                    if src.len() != 0 {
-                        err = Some(Box::new(ParseError::expected("remaining tokens in macro def")));
-                    }
-                    rules.push(rule);
-                }
-                Err(e) => {
-                    err = Some(Box::new(e));
                 }
             }
         }
@@ -262,14 +264,11 @@ impl Rule {
     fn parse(
         edition: impl Copy + Fn(SyntaxContextId) -> Edition,
         src: &mut TtIter<'_, Span>,
-        expect_arrow: bool,
         new_meta_vars: bool,
     ) -> Result<Self, ParseError> {
         let lhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
-        if expect_arrow {
-            src.expect_char('=').map_err(|()| ParseError::expected("expected `=`"))?;
-            src.expect_char('>').map_err(|()| ParseError::expected("expected `>`"))?;
-        }
+        src.expect_char('=').map_err(|()| ParseError::expected("expected `=`"))?;
+        src.expect_char('>').map_err(|()| ParseError::expected("expected `>`"))?;
         let rhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
 
         let lhs = MetaTemplate::parse_pattern(edition, lhs)?;
