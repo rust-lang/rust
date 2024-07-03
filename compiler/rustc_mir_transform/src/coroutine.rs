@@ -208,11 +208,8 @@ const UNRESUMED: usize = CoroutineArgs::UNRESUMED;
 const RETURNED: usize = CoroutineArgs::RETURNED;
 /// Coroutine has panicked and is poisoned.
 const POISONED: usize = CoroutineArgs::POISONED;
-
-/// Number of variants to reserve in coroutine state. Corresponds to
-/// `UNRESUMED` (beginning of a coroutine) and `RETURNED`/`POISONED`
-/// (end of a coroutine) states.
-const RESERVED_VARIANTS: usize = 3;
+/// Number of reserved variants of coroutine state.
+const RESERVED_VARIANTS: usize = CoroutineArgs::RESERVED_VARIANTS;
 
 /// A `yield` point in the coroutine.
 struct SuspensionPoint<'tcx> {

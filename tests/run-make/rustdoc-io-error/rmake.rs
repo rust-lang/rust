@@ -6,8 +6,13 @@
 // permissions so that it is not writable. We have to take special care to set
 // the permissions back to normal so that it's able to be deleted later.
 
+//@ ignore-riscv64
+//@ ignore-arm
+// FIXME: The riscv64gc-gnu and armhf-gnu build containers run as root,
+// and can always write into `inaccessible/tmp`. Ideally, these docker
+// containers would use a non-root user, but this leads to issues with
+// `mkfs.ext4 -d`, as well as mounting a loop device for the rootfs.
 //@ ignore-windows - the `set_readonly` functions doesn't work on folders.
-//@ ignore-arm - weird file perms on armhf-gnu
 
 use run_make_support::{path, rustdoc};
 use std::fs;
