@@ -66,7 +66,8 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             ConstraintCategory::Predicate(_)
             | ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
-            | ConstraintCategory::Internal => "",
+            | ConstraintCategory::Internal
+            | ConstraintCategory::IllegalUniverse => "",
         }
     }
 }
