@@ -4,10 +4,10 @@ error[E0223]: ambiguous associated type
 LL |     let _: Identity<T::Project>::Project;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: if there were a trait named `Example` with associated type `Project` implemented for `Identity<<T as Trait>::Project>`, you could use the fully-qualified path
+help: if there were a trait named `Example` with associated type `Project` implemented for `<T as Trait>::Project`, you could use the fully-qualified path
    |
-LL |     let _: <Identity<<T as Trait>::Project> as Example>::Project;
-   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let _: <<T as Trait>::Project as Example>::Project;
+   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 
