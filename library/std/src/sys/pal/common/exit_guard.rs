@@ -10,9 +10,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "linux")] {
         /// Mitigation for <https://github.com/rust-lang/rust/issues/126600>
         ///
-        /// On `unix` (where `libc::exit` may not be thread-safe), ensure that only one Rust thread
-        /// calls `libc::exit` (or returns from `main`) by calling this function before calling
-        /// `libc::exit` (or returning from `main`).
+        /// On UNIX-like platforms (where `libc::exit` may not be thread-safe), ensure that only one
+        /// Rust thread calls `libc::exit` (or returns from `main`) by calling this function before
+        /// calling `libc::exit` (or returning from `main`).
         ///
         /// Technically not enough to ensure soundness, since other code directly calling
         /// libc::exit will still race with this.
@@ -23,7 +23,7 @@ cfg_if::cfg_if! {
         /// This function will return only the first time it is called in a process.
         ///
         /// * If it is called again on the same thread as the first call, it will abort.
-        /// * If it is called again on a different thread, it will `thread::park()` in a loop
+        /// * If it is called again on a different thread, it will wait in a loop
         ///   (waiting for the process to exit).
         pub(crate) fn unique_thread_exit() {
             let this_thread_id = unsafe { libc::gettid() };
@@ -52,9 +52,10 @@ cfg_if::cfg_if! {
                     }
                     Err(_) => {
                         // This is not the first thread to call `unique_thread_exit`.
-                        // Park until the process exits.
+                        // Pause until the process exits.
                         loop {
-                            crate::thread::park();
+                            // Safety: libc::pause is safe to call.
+                            unsafe { libc::pause(); }
                         }
                     }
                 }
@@ -77,10 +78,12 @@ cfg_if::cfg_if! {
                     core::panicking::panic_nounwind("std::process::exit called re-entrantly")
                 } else {
                     // This is not the first thread to call `unique_thread_exit`.
+                    // Pause until the process exits.
                     // Park until the process exits.
                     drop(exiting_thread_id);
                     loop {
-                        crate::thread::park();
+                        // Safety: libc::pause is safe to call.
+                        unsafe { libc::pause(); }
                     }
                 }
             }
