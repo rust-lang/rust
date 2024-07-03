@@ -629,7 +629,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let def_id = def.0.internal(&mut *tables, tcx);
         let args_ref = args.internal(&mut *tables, tcx);
-        match Instance::resolve(tables.tcx, ParamEnv::reveal_all(), def_id, args_ref) {
+        match Instance::try_resolve(tables.tcx, ParamEnv::reveal_all(), def_id, args_ref) {
             Ok(Some(instance)) => Some(instance.stable(&mut *tables)),
             Ok(None) | Err(_) => None,
         }

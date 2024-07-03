@@ -558,7 +558,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let args = self
             .tcx
             .normalize_erasing_regions(param_env_reveal_all, self.typeck_results.node_args(id));
-        let instance = match ty::Instance::resolve(self.tcx, param_env_reveal_all, def_id, args) {
+        let instance = match ty::Instance::try_resolve(self.tcx, param_env_reveal_all, def_id, args)
+        {
             Ok(Some(i)) => i,
             Ok(None) => {
                 // It should be assoc consts if there's no error but we cannot resolve it.

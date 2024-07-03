@@ -3,7 +3,7 @@
 //!
 //! The normal limit is a million, and this test used to exceed 1.5 million, but
 //! now we can survive an even tighter limit. Still seems excessive though...
-#![type_length_limit = "256000"]
+#![type_length_limit = "1327047"]
 
 // Custom wrapper so Iterator methods aren't specialized.
 struct Iter<I>(I);

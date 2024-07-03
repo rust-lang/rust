@@ -17,7 +17,7 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
-use rustc_span::{source_map::respan, Span};
+use rustc_span::{source_map::respan, Span, DUMMY_SP};
 use rustc_target::abi::{
     call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx,
 };
@@ -479,6 +479,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     ty::ParamEnv::reveal_all(),
                     def_id,
                     ty::List::empty(),
+                    DUMMY_SP,
                 );
 
                 let symbol_name = tcx.symbol_name(instance).name;

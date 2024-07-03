@@ -3733,7 +3733,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             if tcx.is_diagnostic_item(sym::deref_method, method_did) {
                 let deref_target =
                     tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
-                        Instance::resolve(tcx, self.param_env, deref_target, method_args)
+                        Instance::try_resolve(tcx, self.param_env, deref_target, method_args)
                             .transpose()
                     });
                 if let Some(Ok(instance)) = deref_target {
