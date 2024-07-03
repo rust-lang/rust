@@ -3109,7 +3109,7 @@ impl Hash for Path {
                     bytes_hashed += to_hash.len();
                 }
 
-                // skip over separator and optionally a following CurDir item
+                // Skip over separators and, optionally, a following CurDir item
                 // since components() would normalize these away.
                 component_start = i + 1;
 
@@ -3117,9 +3117,22 @@ impl Hash for Path {
 
                 if !verbatim {
                     component_start += match tail {
+                        // At the end of the path, e.g. `foo/`
+                        [] => 0,
+                        // At the end of the path followed by a CurDir component, e.g. `foo/.`
                         [b'.'] => 1,
+                        // Followed by a CurDir component, another separator, and a component e.g. `foo/./bar`
                         [b'.', sep @ _, ..] if is_sep_byte(*sep) => 1,
-                        _ => 0,
+                        // Followed by another separator and a component, e.g. `foo//bar`
+                        [sep @ _, ..] if is_sep_byte(*sep) => 1,
+                        // Otherwise, it's a separator followed by a new component, e.g. `foo/bar`
+                        // and we should hash the separator to distinguish from `foobar`
+                        _ => {
+                            let to_hash = &[b'/' as u8];
+                            h.write(to_hash);
+                            bytes_hashed += to_hash.len();
+                            0
+                        }
                     };
                 }
             }
