@@ -123,17 +123,15 @@ impl CanonicalizedPath {
 /// (and the users don't always report them).
 pub fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
     const ICE_REPORT_COMPILER_FLAGS: &[&str] = &["-Z", "-C", "--crate-type"];
-
     const ICE_REPORT_COMPILER_FLAGS_EXCLUDE: &[&str] = &["metadata", "extra-filename"];
-
     const ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE: &[&str] = &["incremental"];
 
     let mut args = std::env::args_os().map(|arg| arg.to_string_lossy().to_string());
-
     let mut result = Vec::new();
     let mut excluded_cargo_defaults = false;
+
     while let Some(arg) = args.next() {
-        if let Some(a) = ICE_REPORT_COMPILER_FLAGS.iter().find(|a| arg.starts_with(*a)) {
+        if let Some(a) = ICE_REPORT_COMPILER_FLAGS.iter().find(|&a| arg.starts_with(a)) {
             let content = if arg.len() == a.len() {
                 // A space-separated option, like `-C incremental=foo` or `--crate-type rlib`
                 match args.next() {
@@ -147,31 +145,38 @@ pub fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
                 // A non-space option, like `-Cincremental=foo`
                 arg[a.len()..].to_string()
             };
-            let option = content.split_once('=').map(|s| s.0).unwrap_or(&content);
-            if ICE_REPORT_COMPILER_FLAGS_EXCLUDE.iter().any(|exc| option == *exc) {
+
+            let option = content.split_once('=').map(|(s, _)| s).unwrap_or(&content);
+
+            if ICE_REPORT_COMPILER_FLAGS_EXCLUDE.iter().any(|&exc| option == exc) {
                 excluded_cargo_defaults = true;
             } else {
                 result.push(a.to_string());
-                match ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.iter().find(|s| option == **s) {
-                    Some(s) => result.push(format!("{s}=[REDACTED]")),
-                    None => result.push(content),
+
+                if let Some(s) = ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.iter().find(|&s| option == *s) {
+                    result.push(format!("{s}=[REDACTED]"));
+                } else {
+                    result.push(content.clone()); // Push original content
                 }
+
                 match a {
                     "--crate-type" => {
                         let valid_values = &["bin", "lib", "rlib", "dylib", "cdylib", "staticlib", "proc-macro"];
                         if !valid_values.contains(&option) {
                             println!("error: unknown crate type: `{}` - expected one of: `{}`", option, valid_values.join(", "));
-                        } else {
-                            result.push(content);
                         }
                     }
-                    _ => result.push(content),
+                    _ => {}
                 }
             }
         }
     }
 
-    if !result.is_empty() { Some((result, excluded_cargo_defaults)) } else { None }
+    if !result.is_empty() {
+        Some((result, excluded_cargo_defaults))
+    } else {
+        None
+    }
 }
 
 /// Returns whenever rustc was launched by Cargo as opposed to another build system.
