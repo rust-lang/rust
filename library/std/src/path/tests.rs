@@ -1566,6 +1566,13 @@ pub fn test_compare() {
     relative_from: Some("bar")
     );
 
+    tc!("foo/bar", "foobar",
+    eq: false,
+    starts_with: false,
+    ends_with: false,
+    relative_from: None
+    );
+
     tc!("foo/bar/baz", "foo/bar",
     eq: false,
     starts_with: true,
