@@ -86,7 +86,8 @@ impl Rustc {
     }
 
     /// Specify type(s) of output files to generate.
-    pub fn emit(&mut self, kinds: &str) -> &mut Self {
+    pub fn emit<S: AsRef<str>>(&mut self, kinds: S) -> &mut Self {
+        let kinds = kinds.as_ref();
         self.cmd.arg(format!("--emit={kinds}"));
         self
     }
