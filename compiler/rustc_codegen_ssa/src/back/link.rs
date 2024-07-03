@@ -2817,6 +2817,15 @@ fn rehome_sysroot_lib_dir(sess: &Session, lib_dir: &Path) -> PathBuf {
     }
 }
 
+fn rehome_lib_path(sess: &Session, path: &Path) -> PathBuf {
+    if let Some(dir) = path.parent() {
+        let file_name = path.file_name().expect("library path has no file name component");
+        rehome_sysroot_lib_dir(sess, dir).join(file_name)
+    } else {
+        fix_windows_verbatim_for_gcc(path)
+    }
+}
+
 // Adds the static "rlib" versions of all crates to the command line.
 // There's a bit of magic which happens here specifically related to LTO,
 // namely that we remove upstream object files.
@@ -2847,15 +2856,8 @@ fn add_static_crate(
     let src = &codegen_results.crate_info.used_crate_source[&cnum];
     let cratepath = &src.rlib.as_ref().unwrap().0;
 
-    let mut link_upstream = |path: &Path| {
-        let rlib_path = if let Some(dir) = path.parent() {
-            let file_name = path.file_name().expect("rlib path has no file name path component");
-            rehome_sysroot_lib_dir(sess, dir).join(file_name)
-        } else {
-            fix_windows_verbatim_for_gcc(path)
-        };
-        cmd.link_staticlib_by_path(&rlib_path, false);
-    };
+    let mut link_upstream =
+        |path: &Path| cmd.link_staticlib_by_path(&rehome_lib_path(sess, path), false);
 
     if !are_upstream_rust_objects_already_included(sess)
         || ignored_for_lto(sess, &codegen_results.crate_info, cnum)
@@ -2919,27 +2921,7 @@ fn add_static_crate(
 
 // Same thing as above, but for dynamic crates instead of static crates.
 fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
-    // Just need to tell the linker about where the library lives and
-    // what its name is
-    let parent = cratepath.parent();
-    // When producing a dll, the MSVC linker may not actually emit a
-    // `foo.lib` file if the dll doesn't actually export any symbols, so we
-    // check to see if the file is there and just omit linking to it if it's
-    // not present.
-    if sess.target.is_like_msvc && !cratepath.with_extension("dll.lib").exists() {
-        return;
-    }
-    if let Some(dir) = parent {
-        cmd.include_path(&rehome_sysroot_lib_dir(sess, dir));
-    }
-    // "<dir>/name.dll -> name.dll" on windows-msvc
-    // "<dir>/name.dll -> name" on windows-gnu
-    // "<dir>/libname.<ext> -> name" elsewhere
-    let stem = if sess.target.is_like_msvc { cratepath.file_name() } else { cratepath.file_stem() };
-    let stem = stem.unwrap().to_str().unwrap();
-    // Convert library file-stem into a cc -l argument.
-    let prefix = if stem.starts_with("lib") && !sess.target.is_like_windows { 3 } else { 0 };
-    cmd.link_dylib_by_name(&stem[prefix..], false, true);
+    cmd.link_dylib_by_path(&rehome_lib_path(sess, cratepath), true);
 }
 
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
