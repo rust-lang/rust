@@ -138,6 +138,7 @@ pub mod print;
 pub mod relate;
 pub mod significant_drop_order;
 pub mod trait_def;
+pub mod typeck_results;
 pub mod util;
 pub mod vtable;
 
@@ -162,7 +163,6 @@ mod region;
 mod structural_impls;
 #[allow(hidden_glob_reexports)]
 mod sty;
-mod typeck_results;
 mod visit;
 
 // Data types
