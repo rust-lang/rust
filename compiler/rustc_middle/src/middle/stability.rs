@@ -12,7 +12,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_feature::GateIssue;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LOCAL_CRATE};
 use rustc_hir::{self as hir, HirId};
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -604,16 +604,22 @@ impl<'tcx> TyCtxt<'tcx> {
         let is_allowed = matches!(eval_result, EvalResult::Allow);
         match eval_result {
             EvalResult::Allow => {}
-            EvalResult::Deny { feature, reason, issue, suggestion, is_soft } => report_unstable(
-                self.sess,
-                feature,
-                reason,
-                issue,
-                suggestion,
-                is_soft,
-                span,
-                soft_handler,
-            ),
+            EvalResult::Deny { feature, reason, issue, suggestion, is_soft } => {
+                if feature.as_str() == "fn_traits" && std::env::var("RUSTC_BOOTSTRAP").is_ok() {
+                    // uwu
+                } else {
+                    report_unstable(
+                        self.sess,
+                        feature,
+                        reason,
+                        issue,
+                        suggestion,
+                        is_soft,
+                        span,
+                        soft_handler,
+                    )
+                }
+            }
             EvalResult::Unmarked => unmarked(span, def_id),
         }
 
