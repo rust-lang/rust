@@ -3,14 +3,7 @@
 
 #![crate_type = "lib"]
 #![allow(incomplete_features, internal_features, improper_ctypes)]
-#![feature(
-    repr_simd,
-    repr_scalable,
-    simd_ffi,
-    unsized_locals,
-    unsized_fn_params,
-    link_llvm_intrinsics
-)]
+#![feature(repr_simd, repr_scalable, simd_ffi, link_llvm_intrinsics)]
 
 #[repr(simd, scalable(4))]
 #[allow(non_camel_case_types)]

@@ -1599,7 +1599,11 @@ fn check_field_tys_sized<'tcx>(
 ) {
     // No need to check if unsized_locals/unsized_fn_params is disabled,
     // since we will error during typeck.
-    if !tcx.features().unsized_locals && !tcx.features().unsized_fn_params {
+    // repr scalable will also allow unsized locals so if that's enabled we also have to check.
+    if !tcx.features().unsized_locals
+        && !tcx.features().unsized_fn_params
+        && !tcx.features().repr_scalable
+    {
         return;
     }
 

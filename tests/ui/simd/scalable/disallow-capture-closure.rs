@@ -1,3 +1,5 @@
+//@ only-aarch64
+
 #![allow(incomplete_features, internal_features, improper_ctypes)]
 #![feature(
     repr_simd,
@@ -40,8 +42,10 @@ fn run(f: impl Fn() -> ()) {
 }
 
 fn main() {
-    let a = svdup_n_s32(42);
-    run(move || {
-        svxar_n_s32::<2>(a, a); //~ ERROR E0277
-    });
+    unsafe {
+        let a = svdup_n_s32(42);
+        run(move || {
+            svxar_n_s32::<2>(a, a); //~ ERROR E0277
+        });
+    }
 }

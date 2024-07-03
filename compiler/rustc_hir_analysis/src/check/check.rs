@@ -1740,6 +1740,7 @@ pub(super) fn check_coroutine_obligations(
     }
 
     let errors = ocx.select_all_or_error();
+
     debug!(?errors);
     if !errors.is_empty() {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
