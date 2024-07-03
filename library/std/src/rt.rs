@@ -144,6 +144,10 @@ fn lang_start_internal(
             rtabort!("drop of the panic payload panicked");
         });
     panic::catch_unwind(cleanup).map_err(rt_abort)?;
+    // Guard against multple threads calling `libc::exit` concurrently.
+    // See the documentation for `unique_thread_exit` for more information.
+    panic::catch_unwind(|| crate::sys::common::exit_guard::unique_thread_exit())
+        .map_err(rt_abort)?;
     ret_code
 }
 
@@ -161,8 +165,5 @@ fn lang_start<T: crate::process::Termination + 'static>(
         argv,
         sigpipe,
     );
-    // Guard against multple threads calling `libc::exit` concurrently.
-    // See the documentation for `unique_thread_exit` for more information.
-    crate::sys::common::exit_guard::unique_thread_exit();
     v
 }
