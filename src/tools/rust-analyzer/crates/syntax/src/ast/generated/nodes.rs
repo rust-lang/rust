@@ -20,7 +20,6 @@ pub struct ArgList {
     pub(crate) syntax: SyntaxNode,
 }
 impl ArgList {
-    pub fn args(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
@@ -191,7 +190,6 @@ pub struct ClosureExpr {
 }
 impl ast::HasAttrs for ClosureExpr {}
 impl ClosureExpr {
-    pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
@@ -211,7 +209,6 @@ impl ast::HasDocComments for Const {}
 impl ast::HasName for Const {}
 impl ast::HasVisibility for Const {}
 impl Const {
-    pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
@@ -356,7 +353,6 @@ impl ast::HasName for Fn {}
 impl ast::HasVisibility for Fn {}
 impl Fn {
     pub fn abi(&self) -> Option<Abi> { support::child(&self.syntax) }
-    pub fn body(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
@@ -418,7 +414,6 @@ pub struct FormatArgsExpr {
 }
 impl ast::HasAttrs for FormatArgsExpr {}
 impl FormatArgsExpr {
-    pub fn args(&self) -> AstChildren<FormatArgsArg> { support::children(&self.syntax) }
     pub fn template(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
@@ -652,8 +647,6 @@ impl ast::HasDocComments for MacroDef {}
 impl ast::HasName for MacroDef {}
 impl ast::HasVisibility for MacroDef {}
 impl MacroDef {
-    pub fn args(&self) -> Option<TokenTree> { support::child(&self.syntax) }
-    pub fn body(&self) -> Option<TokenTree> { support::child(&self.syntax) }
     pub fn macro_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![macro]) }
 }
 
@@ -1224,7 +1217,6 @@ impl ast::HasDocComments for Static {}
 impl ast::HasName for Static {}
 impl ast::HasVisibility for Static {}
 impl Static {
-    pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
