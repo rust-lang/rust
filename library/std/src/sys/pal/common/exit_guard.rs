@@ -26,60 +26,27 @@ cfg_if::cfg_if! {
         /// * If it is called again on a different thread, it will wait in a loop
         ///   (waiting for the process to exit).
         pub(crate) fn unique_thread_exit() {
-            let this_thread_id = unsafe { libc::gettid() };
-            debug_assert_ne!(this_thread_id, 0, "thread ID cannot be zero");
-            #[cfg(target_has_atomic = "32")]
-            {
-                use crate::sync::atomic::{AtomicI32, Ordering};
-                static EXITING_THREAD_ID: AtomicI32 = AtomicI32::new(0);
-                match EXITING_THREAD_ID.compare_exchange(
-                    0,
-                    this_thread_id,
-                    Ordering::Relaxed,
-                    Ordering::Relaxed,
-                ) {
-                    Ok(_zero) => {
-                        // This is the first thread to call `unique_thread_exit`,
-                        // and this is the first time it is called.
-                        // Set EXITING_THREAD_ID to this thread's ID (done by the
-                        // compare_exchange) and return.
-                    }
-                    Err(id) if id == this_thread_id => {
-                        // This is the first thread to call `unique_thread_exit`,
-                        // but this is the second time it is called.
-                        // Abort the process.
-                        core::panicking::panic_nounwind("std::process::exit called re-entrantly")
-                    }
-                    Err(_) => {
-                        // This is not the first thread to call `unique_thread_exit`.
-                        // Pause until the process exits.
-                        loop {
-                            // Safety: libc::pause is safe to call.
-                            unsafe { libc::pause(); }
-                        }
-                    }
-                }
-            }
-            #[cfg(not(target_has_atomic = "32"))]
-            {
-                use crate::sync::{Mutex, PoisonError};
-                static EXITING_THREAD_ID: Mutex<i32> = Mutex::new(0);
-                let mut exiting_thread_id =
-                    EXITING_THREAD_ID.lock().unwrap_or_else(PoisonError::into_inner);
-                if *exiting_thread_id == 0 {
+            let this_thread_id = unsafe { libc::pthread_self() };
+            use crate::sync::{Mutex, PoisonError};
+            static EXITING_THREAD_ID: Mutex<Option<libc::pthread_t>> = Mutex::new(None);
+            let mut exiting_thread_id =
+                EXITING_THREAD_ID.lock().unwrap_or_else(PoisonError::into_inner);
+            match *exiting_thread_id {
+                None => {
                     // This is the first thread to call `unique_thread_exit`,
                     // and this is the first time it is called.
                     // Set EXITING_THREAD_ID to this thread's ID and return.
-                    *exiting_thread_id = this_thread_id;
-                } else if *exiting_thread_id == this_thread_id {
+                    *exiting_thread_id = Some(this_thread_id);
+                },
+                Some(exiting_thread_id) if exiting_thread_id == this_thread_id => {
                     // This is the first thread to call `unique_thread_exit`,
                     // but this is the second time it is called.
                     // Abort the process.
                     core::panicking::panic_nounwind("std::process::exit called re-entrantly")
-                } else {
+                }
+                Some(_) => {
                     // This is not the first thread to call `unique_thread_exit`.
                     // Pause until the process exits.
-                    // Park until the process exits.
                     drop(exiting_thread_id);
                     loop {
                         // Safety: libc::pause is safe to call.
