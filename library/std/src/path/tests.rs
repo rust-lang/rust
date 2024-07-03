@@ -1545,6 +1545,20 @@ pub fn test_compare() {
     relative_from: Some("")
     );
 
+    tc!("foo//", "foo",
+    eq: true,
+    starts_with: true,
+    ends_with: true,
+    relative_from: Some("")
+    );
+
+    tc!("foo///", "foo",
+    eq: true,
+    starts_with: true,
+    ends_with: true,
+    relative_from: Some("")
+    );
+
     tc!("foo/.", "foo",
     eq: true,
     starts_with: true,
@@ -1553,6 +1567,20 @@ pub fn test_compare() {
     );
 
     tc!("foo/./bar", "foo/bar",
+    eq: true,
+    starts_with: true,
+    ends_with: true,
+    relative_from: Some("")
+    );
+
+    tc!("foo/.//bar", "foo/bar",
+    eq: true,
+    starts_with: true,
+    ends_with: true,
+    relative_from: Some("")
+    );
+
+    tc!("foo//./bar", "foo/bar",
     eq: true,
     starts_with: true,
     ends_with: true,
