@@ -213,19 +213,11 @@ impl Socket {
                 }
                 0 => {}
                 _ => {
-                    // linux returns POLLOUT|POLLERR|POLLHUP for refused connections (!), so look
-                    // for POLLHUP rather than read readiness
-                    if pollfd.revents & libc::POLLHUP != 0 {
-                        let e = self.take_error()?.unwrap_or_else(|| {
-                            io::const_io_error!(
-                                io::ErrorKind::Uncategorized,
-                                "no error set after POLLHUP",
-                            )
-                        });
-                        return Err(e);
-                    }
-
-                    return Ok(());
+                    //Check if the socket connection is actually valid and did not raise any errors.
+                    match self.take_error()?{
+                        None => return Ok(()),
+                        Some(e) => return Err(e)
+                    };
                 }
             }
         }
