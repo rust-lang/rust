@@ -310,12 +310,11 @@ impl<'a> StripUnconfigured<'a> {
         else {
             panic!("Bad tokens for attribute {attr:?}");
         };
-        let pound_span = pound_token.span;
 
         // We don't really have a good span to use for the synthesized `[]`
         // in `#[attr]`, so just use the span of the `#` token.
         let bracket_group = AttrTokenTree::Delimited(
-            DelimSpan::from_single(pound_span),
+            DelimSpan::from_single(pound_token.span),
             DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
             Delimiter::Bracket,
             item.tokens
