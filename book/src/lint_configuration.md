@@ -348,6 +348,7 @@ Suppress lints whenever the suggested change would cause breakage for other crat
 * [`enum_variant_names`](https://rust-lang.github.io/rust-clippy/master/index.html#enum_variant_names)
 * [`large_types_passed_by_value`](https://rust-lang.github.io/rust-clippy/master/index.html#large_types_passed_by_value)
 * [`linkedlist`](https://rust-lang.github.io/rust-clippy/master/index.html#linkedlist)
+* [`needless_pass_by_ref_mut`](https://rust-lang.github.io/rust-clippy/master/index.html#needless_pass_by_ref_mut)
 * [`option_option`](https://rust-lang.github.io/rust-clippy/master/index.html#option_option)
 * [`rc_buffer`](https://rust-lang.github.io/rust-clippy/master/index.html#rc_buffer)
 * [`rc_mutex`](https://rust-lang.github.io/rust-clippy/master/index.html#rc_mutex)
