@@ -403,11 +403,12 @@ impl AtHwcap {
             enable_feature(Feature::crc, self.crc32);
             enable_feature(Feature::lse, self.atomics);
             enable_feature(Feature::lse2, self.uscat);
-            enable_feature(Feature::lse128, self.lse128);
+            enable_feature(Feature::lse128, self.lse128 && self.atomics);
             enable_feature(Feature::rcpc, self.lrcpc);
             // RCPC2 (rcpc-immo in LLVM) requires RCPC support
-            enable_feature(Feature::rcpc2, self.ilrcpc && self.lrcpc);
-            enable_feature(Feature::rcpc3, self.lrcpc3);
+            let rcpc2 = self.ilrcpc && self.lrcpc;
+            enable_feature(Feature::rcpc2, rcpc2);
+            enable_feature(Feature::rcpc3, self.lrcpc3 && rcpc2);
             enable_feature(Feature::dit, self.dit);
             enable_feature(Feature::flagm, self.flagm);
             enable_feature(Feature::flagm2, self.flagm2);
@@ -456,7 +457,7 @@ impl AtHwcap {
             // SVE2 requires SVE
             let sve2 = self.sve2 && self.sve && asimd;
             enable_feature(Feature::sve2, sve2);
-            enable_feature(Feature::sve2p1, self.sve2p1);
+            enable_feature(Feature::sve2p1, self.sve2p1 && sve2);
             // SVE2 extensions require SVE2 and crypto features
             enable_feature(
                 Feature::sve2_aes,
@@ -483,30 +484,32 @@ impl AtHwcap {
             enable_feature(Feature::cssc, self.cssc);
             enable_feature(Feature::fpmr, self.fpmr);
             enable_feature(Feature::faminmax, self.faminmax);
-            enable_feature(Feature::fp8, self.f8cvt);
-            enable_feature(Feature::fp8fma, self.f8fma);
-            enable_feature(Feature::fp8dot4, self.f8dp4);
-            enable_feature(Feature::fp8dot2, self.f8dp2);
+            let fp8 = self.f8cvt && self.faminmax && self.lut && self.bf16;
+            enable_feature(Feature::fp8, fp8);
+            let fp8fma = self.f8fma && fp8;
+            enable_feature(Feature::fp8fma, fp8fma);
+            let fp8dot4 = self.f8dp4 && fp8fma;
+            enable_feature(Feature::fp8dot4, fp8dot4);
+            enable_feature(Feature::fp8dot2, self.f8dp2 && fp8dot4);
             enable_feature(Feature::wfxt, self.wfxt);
-            enable_feature(Feature::sme, self.sme && self.bf16);
-            enable_feature(Feature::sme_i16i64, self.smei16i64 && self.sme);
-            enable_feature(Feature::sme_f64f64, self.smef64f64 && self.sme);
-            // enable_feature(Feature::sme_i8i32, self.smei8i32);
-            // enable_feature(Feature::sme_f16f32, self.smef16f32);
-            // enable_feature(Feature::sme_b16f32, self.smeb16f32);
-            // enable_feature(Feature::sme_f32f32, self.smef32f32);
-            enable_feature(Feature::sme_fa64, self.smefa64 && self.sme && sve2);
-            enable_feature(Feature::sme2, self.sme2 && self.sme);
-            enable_feature(Feature::sme2p1, self.sme2p1 && self.sme2 && self.sme);
-            // enable_feature(Feature::sme_i16i32, self.smei16i32);
-            // enable_feature(Feature::sme_bi32i32, self.smebi32i32);
-            enable_feature(Feature::sme_f16f16, self.smef16f16);
+            let sme = self.sme && self.bf16;
+            enable_feature(Feature::sme, sme);
+            enable_feature(Feature::sme_i16i64, self.smei16i64 && sme);
+            enable_feature(Feature::sme_f64f64, self.smef64f64 && sme);
+            enable_feature(Feature::sme_fa64, self.smefa64 && sme && sve2);
+            let sme2 = self.sme2 && sme;
+            enable_feature(Feature::sme2, sme2);
+            enable_feature(Feature::sme2p1, self.sme2p1 && sme2);
+            enable_feature(Feature::sme_f16f16, self.smef16f16 && sme2);
             enable_feature(Feature::sme_lutv2, self.smelutv2);
-            enable_feature(Feature::sme_f8f16, self.smef8f16 && self.sme2 && self.f8cvt);
-            enable_feature(Feature::sme_f8f32, self.smef8f32 && self.sme2 && self.f8cvt);
-            enable_feature(Feature::ssve_fp8fma, self.smesf8fma && self.sme2);
-            enable_feature(Feature::ssve_fp8dot4, self.smesf8dp4 && self.sme2);
-            enable_feature(Feature::ssve_fp8dot2, self.smesf8dp2 && self.sme2);
+            let sme_f8f32 = self.smef8f32 && sme2 && fp8;
+            enable_feature(Feature::sme_f8f32, sme_f8f32);
+            enable_feature(Feature::sme_f8f16, self.smef8f16 && sme_f8f32);
+            let ssve_fp8fma = self.smesf8fma && sme2 && fp8;
+            enable_feature(Feature::ssve_fp8fma, ssve_fp8fma);
+            let ssve_fp8dot4 = self.smesf8dp4 && ssve_fp8fma;
+            enable_feature(Feature::ssve_fp8dot4, ssve_fp8dot4);
+            enable_feature(Feature::ssve_fp8dot2, self.smesf8dp2 && ssve_fp8dot4);
         }
         value
     }
