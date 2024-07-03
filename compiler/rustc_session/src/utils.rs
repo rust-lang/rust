@@ -156,6 +156,17 @@ pub fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
                     Some(s) => result.push(format!("{s}=[REDACTED]")),
                     None => result.push(content),
                 }
+                match a {
+                    "--crate-type" => {
+                        let valid_values = &["bin", "lib", "rlib", "dylib", "cdylib", "staticlib", "proc-macro"];
+                        if !valid_values.contains(&option) {
+                            println!("error: unknown crate type: `{}` - expected one of: `{}`", option, valid_values.join(", "));
+                        } else {
+                            result.push(content);
+                        }
+                    }
+                    _ => result.push(content),
+                }
             }
         }
     }
