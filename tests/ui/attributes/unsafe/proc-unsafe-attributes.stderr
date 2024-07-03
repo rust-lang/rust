@@ -1,0 +1,58 @@
+error: `proc_macro` is not an unsafe attribute
+  --> $DIR/proc-unsafe-attributes.rs:3:3
+   |
+LL | #[unsafe(proc_macro)]
+   |   ^^^^^^
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `proc_macro_derive` is not an unsafe attribute
+  --> $DIR/proc-unsafe-attributes.rs:9:3
+   |
+LL | #[unsafe(proc_macro_derive(Foo))]
+   |   ^^^^^^
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `proc_macro_attribute` is not an unsafe attribute
+  --> $DIR/proc-unsafe-attributes.rs:18:3
+   |
+LL | #[unsafe(proc_macro_attribute)]
+   |   ^^^^^^
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `allow` is not an unsafe attribute
+  --> $DIR/proc-unsafe-attributes.rs:23:3
+   |
+LL | #[unsafe(allow(dead_code))]
+   |   ^^^^^^
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/proc-unsafe-attributes.rs:3:1
+   |
+LL | #[unsafe(proc_macro)]
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/proc-unsafe-attributes.rs:9:1
+   |
+LL | #[unsafe(proc_macro_derive(Foo))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/proc-unsafe-attributes.rs:14:1
+   |
+LL | #[proc_macro_derive(unsafe(Foo))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `#[proc_macro_attribute]` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/proc-unsafe-attributes.rs:18:1
+   |
+LL | #[unsafe(proc_macro_attribute)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
