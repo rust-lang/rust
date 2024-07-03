@@ -19,7 +19,7 @@ pub enum AccessCause {
     Explicit(AccessKind),
     Reborrow,
     Dealloc,
-    FnExit,
+    FnExit(AccessKind),
 }
 
 impl fmt::Display for AccessCause {
@@ -28,7 +28,8 @@ impl fmt::Display for AccessCause {
             Self::Explicit(kind) => write!(f, "{kind}"),
             Self::Reborrow => write!(f, "reborrow"),
             Self::Dealloc => write!(f, "deallocation"),
-            Self::FnExit => write!(f, "protector release"),
+            Self::FnExit(AccessKind::Read) => write!(f, "protector release read"),
+            Self::FnExit(AccessKind::Write) => write!(f, "protector release write"),
         }
     }
 }
@@ -40,7 +41,7 @@ impl AccessCause {
             Self::Explicit(kind) => format!("{rel} {kind}"),
             Self::Reborrow => format!("reborrow (acting as a {rel} read access)"),
             Self::Dealloc => format!("deallocation (acting as a {rel} write access)"),
-            Self::FnExit => format!("protector release (acting as a {rel} read access)"),
+            Self::FnExit(kind) => format!("protector release (acting as a {rel} {kind})"),
         }
     }
 }
