@@ -68,6 +68,10 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
     const RETURNED: usize = 1;
     /// Coroutine has been poisoned.
     const POISONED: usize = 2;
+    /// Number of variants to reserve in coroutine state. Corresponds to
+    /// `UNRESUMED` (beginning of a coroutine) and `RETURNED`/`POISONED`
+    /// (end of a coroutine) states.
+    const RESERVED_VARIANTS: usize = 3;
 
     const UNRESUMED_NAME: &'static str = "Unresumed";
     const RETURNED_NAME: &'static str = "Returned";
@@ -116,7 +120,7 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
             Self::UNRESUMED => Cow::from(Self::UNRESUMED_NAME),
             Self::RETURNED => Cow::from(Self::RETURNED_NAME),
             Self::POISONED => Cow::from(Self::POISONED_NAME),
-            _ => Cow::from(format!("Suspend{}", v.as_usize() - 3)),
+            _ => Cow::from(format!("Suspend{}", v.as_usize() - Self::RESERVED_VARIANTS)),
         }
     }
 
