@@ -227,7 +227,7 @@ impl AttrTokenStream {
 
                                 let mut stream = TokenStream::default();
                                 for inner_attr in inner_attrs {
-                                    stream.push_stream(inner_attr.tokens());
+                                    stream.push_stream(inner_attr.get_tokens());
                                 }
                                 stream.push_stream(delim_tokens.clone());
                                 *tree = TokenTree::Delimited(*span, *spacing, *delim, stream);
@@ -242,7 +242,7 @@ impl AttrTokenStream {
                         );
                     }
                     for attr in outer_attrs {
-                        res.extend(attr.tokens().0.iter().cloned());
+                        res.extend(attr.get_tokens().0.iter().cloned());
                     }
                     res.extend(target_tokens);
                 }
