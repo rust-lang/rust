@@ -20,7 +20,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// In case the value that wants to be inserted is borrowed and also expensive or impossible
-    /// to clone. In such scenario, the developer might want to check with `contain` before inserting,
+    /// to clone. In such a scenario, the developer might want to check with `contains` before inserting,
     /// to avoid the clone. In this case, it will report a false positive.
     ///
     /// ### Example
