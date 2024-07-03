@@ -311,9 +311,13 @@ pub fn diagnostics(
             FileRange { file_id, range: err.range() },
         )
     }));
+    let parse_errors = res.len();
 
     let parse = sema.parse(file_id);
 
+    // FIXME: This iterates the entire file which is a rather expensive operation.
+    // We should implement these differently in some form?
+    // Salsa caching + incremental re-parse would be better here
     for node in parse.syntax().descendants() {
         handlers::useless_braces::useless_braces(&mut res, file_id, &node);
         handlers::field_shorthand::field_shorthand(&mut res, file_id, &node);
@@ -326,7 +330,10 @@ pub fn diagnostics(
 
     let mut diags = Vec::new();
     match module {
-        Some(m) => m.diagnostics(db, &mut diags, config.style_lints),
+        // A bunch of parse errors in a file indicate some bigger structural parse changes in the
+        // file, so we skip semantic diagnostics so we can show these faster.
+        Some(m) if parse_errors < 16 => m.diagnostics(db, &mut diags, config.style_lints),
+        Some(_) => (),
         None => handlers::unlinked_file::unlinked_file(&ctx, &mut res, file_id),
     }
 
