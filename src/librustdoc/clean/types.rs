@@ -1286,7 +1286,7 @@ impl GenericBound {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct Lifetime(pub Symbol);
 
 impl Lifetime {
