@@ -34,8 +34,7 @@ pub enum OutputMode {
 /// If you want to allow failures, use [allow_failure].
 /// If you want to delay failures until the end of bootstrap, use [delay_failure].
 ///
-/// By default, the command will print its stdout/stderr to stdout/stderr of bootstrap
-/// ([OutputMode::Print]).
+/// By default, the command will print its stdout/stderr to stdout/stderr of bootstrap ([OutputMode::Print]).
 /// If you want to handle the output programmatically, use [BootstrapCommand::capture].
 ///
 /// Bootstrap will print a debug log to stdout if the command fails and failure is not allowed.
@@ -144,8 +143,8 @@ impl From<Command> for BootstrapCommand {
     }
 }
 
-/// Represents the outcome of starting a command.
-enum CommandOutcome {
+/// Represents the current status of `BootstrapCommand`.
+enum CommandStatus {
     /// The command has started and finished with some status.
     Finished(ExitStatus),
     /// It was not even possible to start the command.
@@ -155,20 +154,20 @@ enum CommandOutcome {
 /// Represents the output of an executed process.
 #[allow(unused)]
 pub struct CommandOutput {
-    outcome: CommandOutcome,
+    status: CommandStatus,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
 }
 
 impl CommandOutput {
     pub fn did_not_start() -> Self {
-        Self { outcome: CommandOutcome::DidNotStart, stdout: vec![], stderr: vec![] }
+        Self { status: CommandStatus::DidNotStart, stdout: vec![], stderr: vec![] }
     }
 
     pub fn is_success(&self) -> bool {
-        match self.outcome {
-            CommandOutcome::Finished(status) => status.success(),
-            CommandOutcome::DidNotStart => false,
+        match self.status {
+            CommandStatus::Finished(status) => status.success(),
+            CommandStatus::DidNotStart => false,
         }
     }
 
@@ -177,9 +176,9 @@ impl CommandOutput {
     }
 
     pub fn status(&self) -> Option<ExitStatus> {
-        match self.outcome {
-            CommandOutcome::Finished(status) => Some(status),
-            CommandOutcome::DidNotStart => None,
+        match self.status {
+            CommandStatus::Finished(status) => Some(status),
+            CommandStatus::DidNotStart => None,
         }
     }
 
@@ -199,7 +198,7 @@ impl CommandOutput {
 impl Default for CommandOutput {
     fn default() -> Self {
         Self {
-            outcome: CommandOutcome::Finished(ExitStatus::default()),
+            status: CommandStatus::Finished(ExitStatus::default()),
             stdout: vec![],
             stderr: vec![],
         }
@@ -209,7 +208,7 @@ impl Default for CommandOutput {
 impl From<Output> for CommandOutput {
     fn from(output: Output) -> Self {
         Self {
-            outcome: CommandOutcome::Finished(output.status),
+            status: CommandStatus::Finished(output.status),
             stdout: output.stdout,
             stderr: output.stderr,
         }
