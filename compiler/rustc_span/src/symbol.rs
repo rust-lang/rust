@@ -898,6 +898,7 @@ symbols! {
         fn_once_output,
         fn_ptr_addr,
         fn_ptr_trait,
+        fn_traits,
         forbid,
         forget,
         format,

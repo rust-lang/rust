@@ -440,14 +440,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // If we have a bound like `async Fn() -> T`, make sure that we mark the
         // `Output = T` associated type bound with the right feature gates.
-        let mut output_span = output_ty.span;
-        if let Some(bound_modifier_allowed_features) = bound_modifier_allowed_features {
-            output_span = self.mark_span_with_reason(
-                DesugaringKind::BoundModifier,
-                output_span,
-                Some(bound_modifier_allowed_features),
-            );
-        }
+        let output_span  = self.mark_span_with_reason(
+            DesugaringKind::BoundModifier,
+            output_ty.span,
+            Some(bound_modifier_allowed_features.unwrap_or_else(|| self.allow_fn_once_output.clone())),
+        );
         let constraint = self.assoc_ty_binding(sym::Output, output_span, output_ty);
 
         (

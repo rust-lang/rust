@@ -242,7 +242,8 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
 pub trait FnOnce<Args: Tuple> {
     /// The returned type after the call operator is used.
     #[lang = "fn_once_output"]
-    #[stable(feature = "fn_once_output", since = "1.12.0")]
+    #[cfg_attr(bootstrap, stable(feature = "fn_once_output", since = "1.12.0"))]
+    #[cfg_attr(not(bootstrap), unstable(feature = "fn_traits", issue = "29625"))]
     type Output;
 
     /// Performs the call operation.
