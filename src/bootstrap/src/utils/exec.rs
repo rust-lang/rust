@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
 use std::path::Path;
-use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output};
+use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
 
 /// What should be done when the command fails.
 #[derive(Debug, Copy, Clone)]
@@ -13,19 +13,30 @@ pub enum BehaviorOnFailure {
     Ignore,
 }
 
-/// How should the output of the command be handled (whether it should be captured or printed).
+/// How should the output of a specific stream of the command (stdout/stderr) be handled
+/// (whether it should be captured or printed).
 #[derive(Debug, Copy, Clone)]
 pub enum OutputMode {
-    /// Prints the stdout/stderr of the command to stdout/stderr of bootstrap (by inheriting these
-    /// streams).
-    /// Corresponds to calling `cmd.status()`.
+    /// Prints the stream by inheriting it from the bootstrap process.
     Print,
-    /// Captures the stdout and stderr of the command into memory.
-    /// Corresponds to calling `cmd.output()`.
-    CaptureAll,
-    /// Captures the stdout of the command into memory, inherits stderr.
-    /// Corresponds to calling `cmd.output()`.
-    CaptureStdout,
+    /// Captures the stream into memory.
+    Capture,
+}
+
+impl OutputMode {
+    pub fn captures(&self) -> bool {
+        match self {
+            OutputMode::Print => false,
+            OutputMode::Capture => true,
+        }
+    }
+
+    pub fn stdio(&self) -> Stdio {
+        match self {
+            OutputMode::Print => Stdio::inherit(),
+            OutputMode::Capture => Stdio::piped(),
+        }
+    }
 }
 
 /// Wrapper around `std::process::Command`.
@@ -45,7 +56,8 @@ pub enum OutputMode {
 pub struct BootstrapCommand {
     pub command: Command,
     pub failure_behavior: BehaviorOnFailure,
-    pub output_mode: OutputMode,
+    pub stdout: OutputMode,
+    pub stderr: OutputMode,
     // Run the command even during dry run
     pub run_always: bool,
 }
@@ -113,14 +125,14 @@ impl BootstrapCommand {
         self
     }
 
-    /// Capture the output of the command, do not print it.
+    /// Capture all output of the command, do not print it.
     pub fn capture(self) -> Self {
-        Self { output_mode: OutputMode::CaptureAll, ..self }
+        Self { stdout: OutputMode::Capture, stderr: OutputMode::Capture, ..self }
     }
 
     /// Capture stdout of the command, do not print it.
     pub fn capture_stdout(self) -> Self {
-        Self { output_mode: OutputMode::CaptureStdout, ..self }
+        Self { stdout: OutputMode::Capture, ..self }
     }
 }
 
@@ -137,7 +149,8 @@ impl From<Command> for BootstrapCommand {
         Self {
             command,
             failure_behavior: BehaviorOnFailure::Exit,
-            output_mode: OutputMode::Print,
+            stdout: OutputMode::Print,
+            stderr: OutputMode::Print,
             run_always: false,
         }
     }

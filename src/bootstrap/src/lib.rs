@@ -23,7 +23,7 @@ use std::fmt::Display;
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::{Command, Stdio};
 use std::str;
 use std::sync::OnceLock;
 use std::time::SystemTime;
@@ -41,7 +41,7 @@ use crate::core::builder::Kind;
 use crate::core::config::{flags, LldMode};
 use crate::core::config::{DryRun, Target};
 use crate::core::config::{LlvmLibunwind, TargetSelection};
-use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode};
+use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
 
 mod core;
@@ -943,18 +943,10 @@ impl Build {
 
         self.verbose(|| println!("running: {command:?}"));
 
-        let output: io::Result<Output> = match command.output_mode {
-            OutputMode::Print => command.command.status().map(|status| Output {
-                status,
-                stdout: vec![],
-                stderr: vec![],
-            }),
-            OutputMode::CaptureAll => command.command.output(),
-            OutputMode::CaptureStdout => {
-                command.command.stderr(Stdio::inherit());
-                command.command.output()
-            }
-        };
+        command.command.stdout(command.stdout.stdio());
+        command.command.stderr(command.stderr.stdio());
+
+        let output = command.command.output();
 
         use std::fmt::Write;
 
@@ -973,16 +965,15 @@ impl Build {
                 .unwrap();
 
                 let output: CommandOutput = output.into();
-                // If the output mode is OutputMode::Print, the output has already been printed to
-                // stdout/stderr, and we thus don't have anything captured to print anyway.
-                if matches!(command.output_mode, OutputMode::CaptureAll | OutputMode::CaptureStdout)
-                {
-                    writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
 
-                    // Stderr is added to the message only if it was captured
-                    if matches!(command.output_mode, OutputMode::CaptureAll) {
-                        writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
-                    }
+                // If the output mode is OutputMode::Capture, we can now print the output.
+                // If it is OutputMode::Print, then the output has already been printed to
+                // stdout/stderr, and we thus don't have anything captured to print anyway.
+                if command.stdout.captures() {
+                    writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
+                }
+                if command.stderr.captures() {
+                    writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
                 }
                 output
             }
