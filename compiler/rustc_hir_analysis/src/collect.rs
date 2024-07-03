@@ -14,7 +14,7 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::ops::ControlFlow;
 use std::{assert_matches, iter};
 
@@ -32,6 +32,10 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::typeck_results::{
+    HasTypeDependentDefs, LocalTableInContext, LocalTableInContextMut, TypeDependentDef,
+    TypeDependentDefs,
+};
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
     self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
@@ -130,6 +134,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 pub(crate) struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
+    type_dependent_defs: RefCell<TypeDependentDefs>,
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
     lowering_delegation_segment: bool,
 }
@@ -254,6 +259,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             tcx,
             item_def_id,
             tainted_by_errors: Cell::new(None),
+            type_dependent_defs: Default::default(),
             lowering_delegation_segment: delegation,
         }
     }
@@ -541,6 +547,14 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         // There's no place to record types from signatures?
     }
 
+    fn record_res(&self, hir_id: hir::HirId, result: TypeDependentDef) {
+        LocalTableInContextMut::new(
+            self.hir_id().owner,
+            &mut self.type_dependent_defs.borrow_mut(),
+        )
+        .insert(hir_id, result);
+    }
+
     fn infcx(&self) -> Option<&InferCtxt<'tcx>> {
         None
     }
@@ -596,6 +610,15 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
 
     fn dyn_compatibility_violations(&self, trait_def_id: DefId) -> Vec<DynCompatibilityViolation> {
         hir_ty_lowering_dyn_compatibility_violations(self.tcx, trait_def_id)
+    }
+}
+
+impl HasTypeDependentDefs for ItemCtxt<'_> {
+    fn type_dependent_def(&self, id: hir::HirId) -> Option<(DefKind, DefId)> {
+        LocalTableInContext::new(self.hir_id().owner, &self.type_dependent_defs.borrow())
+            .get(id)
+            .copied()
+            .and_then(|result| result.ok())
     }
 }
 

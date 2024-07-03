@@ -408,7 +408,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bound1: ty::PolyTraitRef<'tcx>,
         bound2: ty::PolyTraitRef<'tcx>,
         matching_candidates: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-        qself: AssocItemQSelf,
+        qself: AssocItemQSelf<'tcx>,
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
         span: Span,

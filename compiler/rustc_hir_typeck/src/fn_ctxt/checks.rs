@@ -1271,8 +1271,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     result.map(|res: Res| (self.tcx().def_kind(res.def_id()), res.def_id()));
 
                 // Write back the new resolution.
+                // FIXME(fmease): Why is this still necessary?
                 self.write_resolution(hir_id, resolution);
-
                 (result.unwrap_or(Res::Err), ty)
             }
         }

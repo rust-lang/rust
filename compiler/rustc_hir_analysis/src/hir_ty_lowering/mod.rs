@@ -36,6 +36,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
+use rustc_middle::ty::typeck_results::{HasTypeDependentDefs, TypeDependentDef};
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
     Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
@@ -127,7 +128,7 @@ pub struct ResolvedStructPath<'tcx> {
 /// the [`rustc_middle::ty`] representation.
 ///
 /// This trait used to be called `AstConv`.
-pub trait HirTyLowerer<'tcx> {
+pub trait HirTyLowerer<'tcx>: HasTypeDependentDefs {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
     fn dcx(&self) -> DiagCtxtHandle<'_>;
@@ -217,6 +218,9 @@ pub trait HirTyLowerer<'tcx> {
 
     /// Record the lowered type of a HIR node in this context.
     fn record_ty(&self, hir_id: HirId, ty: Ty<'tcx>, span: Span);
+
+    /// Record the resolution of a HIR node corresponding to a type-dependent definition in this context.
+    fn record_res(&self, hir_id: hir::HirId, result: TypeDependentDef);
 
     /// The inference context of the lowering context if applicable.
     fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
@@ -1336,6 +1340,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///
     /// [#22519]: https://github.com/rust-lang/rust/issues/22519
     /// [iat]: https://github.com/rust-lang/rust/issues/8995#issuecomment-1569208403
+    // FIXME(fmease): Update docs
     //
     // NOTE: When this function starts resolving `Trait::AssocTy` successfully
     // it should also start reporting the `BARE_TRAIT_OBJECTS` lint.
@@ -1366,7 +1371,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 let ty = Ty::new_alias(tcx, alias_ty);
                 let ty = self.check_param_uses_if_mcg(ty, span, false);
-                Ok((ty, tcx.def_kind(def_id), def_id))
+                let kind = tcx.def_kind(def_id);
+                self.record_res(qpath_hir_id, Ok((kind, def_id)));
+                Ok((ty, kind, def_id))
             }
             TypeRelativePath::Variant { adt, variant_did } => {
                 let adt = self.check_param_uses_if_mcg(adt, span, false);
@@ -1548,7 +1555,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         let self_ty_res = match hir_self_ty.kind {
-            hir::TyKind::Path(hir::QPath::Resolved(_, path)) => path.res,
+            hir::TyKind::Path(qpath) => self.qpath_res(&qpath, hir_self_ty.hir_id),
             _ => Res::Err,
         };
 
@@ -1583,16 +1590,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 segment.ident,
                 span,
             )?,
-            // FIXME(fmease):
-            // Require the pre-lowered projectee (the HIR QSelf) to have `DefKind::AssocTy`. Rephrased,
-            // `T::Assoc::Assoc` typeck'ing shouldn't imply `Identity<T::Assoc>::Assoc` typeck'ing where
-            // `Identity` is an eager (i.e., non-lazy) type alias. We should do this
-            // * for consistency with lazy type aliases (`ty::Weak`)
-            // * for consistency with the fact that `T::Assoc` typeck'ing doesn't imply `Identity<T>::Assoc`
-            //   typeck'ing
-            (ty::Alias(ty::Projection, alias_ty), _ /* Res::Def(DefKind::AssocTy, _) */) => {
+            (
+                ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. }),
+                Res::Def(DefKind::AssocTy, _),
+            ) => {
                 // FIXME: Utilizing `item_bounds` for this is cycle-prone.
-                let predicates = tcx.item_bounds(alias_ty.def_id).instantiate(tcx, alias_ty.args);
+                let predicates =
+                    tcx.item_bounds(*def_id).instantiate(tcx, args).skip_normalization();
 
                 self.probe_single_bound_for_assoc_item(
                     || {
