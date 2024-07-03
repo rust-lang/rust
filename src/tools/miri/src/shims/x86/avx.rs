@@ -338,6 +338,17 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 this.write_scalar(Scalar::from_i32(res.into()), dest)?;
             }
+            // Used to implement the `_mm256_zeroupper` and `_mm256_zeroall` functions.
+            // These function clear out the upper 128 bits of all avx registers or
+            // zero out all avx registers respectively.
+            "vzeroupper" | "vzeroall" => {
+                // These functions are purely a performance hint for the CPU.
+                // Any registers currently in use will be saved beforehand by the
+                // compiler, making these functions no-ops.
+
+                // The only thing that needs to be ensured is the correct calling convention.
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+            }
             _ => return Ok(EmulateItemResult::NotSupported),
         }
         Ok(EmulateItemResult::NeedsReturn)
