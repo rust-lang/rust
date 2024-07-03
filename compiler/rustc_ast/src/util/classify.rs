@@ -311,6 +311,6 @@ fn path_return_type(path: &ast::Path) -> Option<&ast::Ty> {
             ast::FnRetTy::Default(_) => None,
             ast::FnRetTy::Ty(ret) => Some(ret),
         },
-        ast::GenericArgs::AngleBracketed(_) => None,
+        ast::GenericArgs::AngleBracketed(_) | ast::GenericArgs::ParenthesizedElided(_) => None,
     }
 }
