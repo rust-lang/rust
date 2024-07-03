@@ -2735,10 +2735,6 @@ fn clean_maybe_renamed_item<'tcx>(
                 Box::new(clean_ty(ty, cx)),
                 Constant { kind: ConstantKind::Local { body: body_id, def_id } },
             ),
-            ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
-                bounds: ty.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
-                generics: clean_generics(ty.generics, cx),
-            }),
             ItemKind::TyAlias(hir_ty, generics) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
                 let rustdoc_ty = clean_ty(hir_ty, cx);

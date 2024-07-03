@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 31;
+pub const FORMAT_VERSION: u32 = 32;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -214,7 +214,6 @@ pub enum ItemKind {
     Variant,
     Function,
     TypeAlias,
-    OpaqueTy,
     Constant,
     Trait,
     TraitAlias,
@@ -253,7 +252,6 @@ pub enum ItemEnum {
     Impl(Impl),
 
     TypeAlias(TypeAlias),
-    OpaqueTy(OpaqueTy),
     Constant {
         #[serde(rename = "type")]
         type_: Type,
@@ -722,12 +720,6 @@ pub enum MacroKind {
 pub struct TypeAlias {
     #[serde(rename = "type")]
     pub type_: Type,
-    pub generics: Generics,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct OpaqueTy {
-    pub bounds: Vec<GenericBound>,
     pub generics: Generics,
 }
 
