@@ -345,3 +345,39 @@ fn main() {
         let _ = &mut ({ *x.u }).x;
     }
 }
+
+mod issue_12969 {
+    use std::ops::Deref;
+
+    struct Wrapper<T>(T);
+
+    impl<T> Deref for Wrapper<T> {
+        type Target = T;
+
+        fn deref(&self) -> &T {
+            &self.0
+        }
+    }
+
+    fn foo(_bar: &str) {}
+
+    fn bar() {
+        let wrapped_bar = Wrapper("");
+
+        foo(&*wrapped_bar);
+    }
+}
+
+mod issue_9841 {
+    fn takes_array_ref<T, const N: usize>(array: &&[T; N]) {
+        takes_slice(*array)
+    }
+
+    fn takes_array_ref_ref<T, const N: usize>(array: &&&[T; N]) {
+        takes_slice(**array)
+    }
+
+    fn takes_slice<T>(slice: &[T]) {
+        todo!()
+    }
+}
