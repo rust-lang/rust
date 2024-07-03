@@ -1691,7 +1691,7 @@ impl<'hir> LoweringContext<'hir> {
             let (old_def_id, missing_kind) = match res {
                 LifetimeRes::Param { param: old_def_id, binder: _ } => (old_def_id, None),
 
-                LifetimeRes::Fresh { id, kind, param, .. } => {
+                LifetimeRes::Fresh { id, kind, .. } => {
                     debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
                     (self.tcx.fresh_lifetime_def_id(id), Some(kind))
                 }

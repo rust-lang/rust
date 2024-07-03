@@ -343,6 +343,7 @@ impl<'hir> LoweringContext<'hir> {
     }
 }
 
+#[allow(unused)] // TODO
 struct SelfResolver<'a> {
     resolver: &'a mut ResolverAstLowering,
     path_id: NodeId,
@@ -350,6 +351,7 @@ struct SelfResolver<'a> {
 }
 
 impl<'a> SelfResolver<'a> {
+    #[allow(unused)]
     fn try_replace_id(&mut self, id: NodeId) {
         if let Some(res) = self.resolver.partial_res_map.get(&id)
             && let Some(Res::Local(sig_id)) = res.full_res()
