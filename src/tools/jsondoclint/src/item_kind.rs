@@ -13,7 +13,6 @@ pub(crate) enum Kind {
     Variant,
     Function,
     TypeAlias,
-    OpaqueTy,
     Constant,
     Trait,
     TraitAlias,
@@ -55,7 +54,6 @@ impl Kind {
 
             // FIXME(adotinthevoid): I'm not sure if these are correct
             Keyword => false,
-            OpaqueTy => false,
             ProcAttribute => false,
             ProcDerive => false,
 
@@ -99,7 +97,6 @@ impl Kind {
             Kind::Enum => false,
             Kind::Variant => false,
             Kind::TypeAlias => false,
-            Kind::OpaqueTy => false,
             Kind::Constant => false,
             Kind::Trait => false,
             Kind::TraitAlias => false,
@@ -149,7 +146,6 @@ impl Kind {
             ItemEnum::TraitAlias(_) => TraitAlias,
             ItemEnum::Impl(_) => Impl,
             ItemEnum::TypeAlias(_) => TypeAlias,
-            ItemEnum::OpaqueTy(_) => OpaqueTy,
             ItemEnum::Constant { .. } => Constant,
             ItemEnum::Static(_) => Static,
             ItemEnum::Macro(_) => Macro,
@@ -177,7 +173,6 @@ impl Kind {
             ItemKind::Keyword => Keyword,
             ItemKind::Macro => Macro,
             ItemKind::Module => Module,
-            ItemKind::OpaqueTy => OpaqueTy,
             ItemKind::Primitive => Primitive,
             ItemKind::ProcAttribute => ProcAttribute,
             ItemKind::ProcDerive => ProcDerive,
