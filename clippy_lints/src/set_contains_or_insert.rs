@@ -112,7 +112,7 @@ fn find_insert_calls<'tcx>(
     contains_expr: &OpExpr<'tcx>,
     expr: &'tcx Expr<'_>,
 ) -> Option<OpExpr<'tcx>> {
-    for_each_expr(expr, |e| {
+    for_each_expr(cx, expr, |e| {
         if let Some(insert_expr) = try_parse_op_call(cx, e, sym!(insert))
             && SpanlessEq::new(cx).eq_expr(contains_expr.receiver, insert_expr.receiver)
             && SpanlessEq::new(cx).eq_expr(contains_expr.value, insert_expr.value)
