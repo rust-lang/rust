@@ -160,7 +160,7 @@ decl_derive!(
         multipart_suggestion,
         multipart_suggestion_short,
         multipart_suggestion_hidden,
-        multipart_suggestion_verbose,
+        multipart_suggestion,
         // field attributes
         skip_arg,
         primary_span,

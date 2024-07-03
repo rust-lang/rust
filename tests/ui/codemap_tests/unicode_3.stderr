@@ -2,9 +2,13 @@ warning: denote infinite loops with `loop { ... }`
   --> $DIR/unicode_3.rs:4:45
    |
 LL |     let s = "ZͨA͑ͦ͒͋ͤ͑̚L̄͑͋Ĝͨͥ̿͒̽̈́Oͥ͛ͭ!̏"; while true { break; }
-   |                       ^^^^^^^^^^ help: use `loop`
+   |                       ^^^^^^^^^^
    |
    = note: `#[warn(while_true)]` on by default
+help: use `loop`
+   |
+LL |     let s = "ZͨA͑ͦ͒͋ͤ͑̚L̄͑͋Ĝͨͥ̿͒̽̈́Oͥ͛ͭ!̏"; loop { break; }
+   |                       ~~~~
 
 warning: 1 warning emitted
 

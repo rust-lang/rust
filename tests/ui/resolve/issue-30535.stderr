@@ -2,10 +2,12 @@ error[E0573]: expected type, found variant `foo::Foo::FooV`
   --> $DIR/issue-30535.rs:6:8
    |
 LL |     _: foo::Foo::FooV
-   |        ^^^^^^^^^^^^^^
-   |        |
-   |        not a type
-   |        help: try using the variant's enum: `foo::Foo`
+   |        ^^^^^^^^^^^^^^ not a type
+   |
+help: try using the variant's enum
+   |
+LL |     _: foo::Foo
+   |        ~~~~~~~~
 
 error: aborting due to 1 previous error
 

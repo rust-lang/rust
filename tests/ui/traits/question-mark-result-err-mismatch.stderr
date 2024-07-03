@@ -7,7 +7,6 @@ LL |   fn foo() -> Result<String, String> {
 LL |           .map_err(|e| {
    |  __________-
 LL | |             e;
-   | |              - help: remove this semicolon
 LL | |         })
    | |__________- this can't be annotated with `?` because it has type `Result<_, ()>`
 LL |           .map(|()| "")?;
@@ -15,6 +14,11 @@ LL |           .map(|()| "")?;
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = note: required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
+help: remove this semicolon
+   |
+LL -             e;
+LL +             e
+   |
 
 error[E0277]: `?` couldn't convert the error to `String`
   --> $DIR/question-mark-result-err-mismatch.rs:28:25
@@ -48,7 +52,6 @@ LL |   fn baz() -> Result<String, String> {
 LL |           .ok_or_else(|| {
    |  __________-
 LL | |             "Couldn't split the test string";
-   | |                                             - help: remove this semicolon
 LL | |         })?;
    | |          -^ the trait `From<()>` is not implemented for `String`, which is required by `Result<String, String>: FromResidual<Result<Infallible, ()>>`
    | |__________|
@@ -56,6 +59,11 @@ LL | |         })?;
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = note: required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
+help: remove this semicolon
+   |
+LL -             "Couldn't split the test string";
+LL +             "Couldn't split the test string"
+   |
 
 error: aborting due to 3 previous errors
 

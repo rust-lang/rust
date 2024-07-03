@@ -2,10 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/return-impl-trait.rs:15:5
    |
 LL | fn bar<T: Trait + std::marker::Sync>() -> T
-   |        -                                  -
-   |        |                                  |
-   |        |                                  expected `T` because of return type
-   |        expected this type parameter       help: consider using an impl return type: `impl Trait + std::marker::Sync + Send`
+   |        - expected this type parameter     - expected `T` because of return type
 ...
 LL |     ()
    |     ^^ expected type parameter `T`, found `()`
@@ -13,15 +10,17 @@ LL |     ()
    = note: expected type parameter `T`
                    found unit type `()`
    = note: the caller chooses a type for `T` which can be different from `()`
+help: consider using an impl return type
+   |
+LL | fn bar<T: Trait + std::marker::Sync>() -> impl Trait + std::marker::Sync + Send
+   |                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/return-impl-trait.rs:23:5
    |
 LL | fn other_bounds<T>() -> T
-   |                 -       -
-   |                 |       |
-   |                 |       expected `T` because of return type
-   |                 |       help: consider using an impl return type: `impl Trait`
+   |                 -       - expected `T` because of return type
+   |                 |
    |                 expected this type parameter
 ...
 LL |     ()
@@ -30,6 +29,10 @@ LL |     ()
    = note: expected type parameter `T`
                    found unit type `()`
    = note: the caller chooses a type for `T` which can be different from `()`
+help: consider using an impl return type
+   |
+LL | fn other_bounds<T>() -> impl Trait
+   |                         ~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

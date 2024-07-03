@@ -5,7 +5,12 @@ LL |     Tuple(i32),
    |     ---------- `MyEnum::Tuple` defined here
 ...
 LL |         MyEnum::Tuple => "",
-   |         ^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `MyEnum::Tuple(_)`
+   |         ^^^^^^^^^^^^^
+   |
+help: use the tuple variant pattern syntax instead
+   |
+LL |         MyEnum::Tuple(_) => "",
+   |         ~~~~~~~~~~~~~~~~
 
 error[E0533]: expected unit struct, unit variant or constant, found struct variant `MyEnum::Struct`
   --> $DIR/issue-63983.rs:10:9

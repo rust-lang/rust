@@ -13,7 +13,12 @@ error: missing type for `const` item
   --> $DIR/assoc-const-missing-type.rs:12:15
    |
 LL |     const K<T> = ();
-   |               ^ help: provide a type for the associated constant: `()`
+   |               ^
+   |
+help: provide a type for the associated constant
+   |
+LL |     const K<T> () = ();
+   |                ++
 
 error[E0195]: lifetime parameters or bounds on const `Q` do not match the trait declaration
   --> $DIR/assoc-const-missing-type.rs:16:12
@@ -28,7 +33,12 @@ error: missing type for `const` item
   --> $DIR/assoc-const-missing-type.rs:16:12
    |
 LL |     const Q = "";
-   |            ^ help: provide a type for the associated constant: `: &str`
+   |            ^
+   |
+help: provide a type for the associated constant
+   |
+LL |     const Q: &str = "";
+   |            ++++++
 
 error[E0308]: mismatched types
   --> $DIR/assoc-const-missing-type.rs:12:18

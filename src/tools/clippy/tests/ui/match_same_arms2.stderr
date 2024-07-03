@@ -8,7 +8,7 @@ LL | |             if true {
 ...  |
 LL | |         },
 LL | |         _ => {
-   | |________^ help: try removing the arm
+   | |________^
    |
    = help: or try changing either arm body
 note: `_` wildcard arm here
@@ -24,6 +24,18 @@ LL | |         },
    | |_________^
    = note: `-D clippy::match-same-arms` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
+help: try removing the arm
+   |
+LL -         42 => {
+LL -             foo();
+LL -             let mut a = 42 + [23].len() as i32;
+LL -             if true {
+LL -                 a += 7;
+LL -             }
+LL -             a = -31 - a;
+LL -             a
+LL -         },
+   |
 
 error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms2.rs:39:9

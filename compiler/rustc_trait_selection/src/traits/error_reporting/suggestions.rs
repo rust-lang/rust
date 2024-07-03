@@ -232,7 +232,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
             ),
         };
 
-        err.span_suggestion_verbose(
+        err.span_suggestion(
             sp,
             format!("consider further restricting {msg}"),
             suggestion,
@@ -518,7 +518,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }) = self.tcx.hir_node(*arg_hir_id)
                             {
                                 let derefs = "*".repeat(steps);
-                                err.span_suggestion_verbose(
+                                err.span_suggestion(
                                     expr.span.shrink_to_lo(),
                                     "consider dereferencing here",
                                     derefs,
@@ -565,7 +565,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 if receiver_expr.hir_id == *arg_hir_id
                             );
                             if is_receiver {
-                                err.multipart_suggestion_verbose(
+                                err.multipart_suggestion(
                                     msg,
                                     vec![
                                         (span.shrink_to_lo(), "(*".to_string()),
@@ -574,7 +574,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     Applicability::MachineApplicable,
                                 )
                             } else {
-                                err.span_suggestion_verbose(
+                                err.span_suggestion(
                                     span.shrink_to_lo(),
                                     msg,
                                     '*',
@@ -712,7 +712,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 {
                     let mut suggestion = make_sugg(lhs, lsteps).1;
                     suggestion.append(&mut make_sugg(rhs, rsteps).1);
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         "consider dereferencing both sides of the expression",
                         suggestion,
                         Applicability::MachineApplicable,
@@ -722,21 +722,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && lsteps > 0
                 {
                     let (msg, suggestion) = make_sugg(lhs, lsteps);
-                    err.multipart_suggestion_verbose(
-                        msg,
-                        suggestion,
-                        Applicability::MachineApplicable,
-                    );
+                    err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
                     return true;
                 } else if let Some(rsteps) = rsteps
                     && rsteps > 0
                 {
                     let (msg, suggestion) = make_sugg(rhs, rsteps);
-                    err.multipart_suggestion_verbose(
-                        msg,
-                        suggestion,
-                        Applicability::MachineApplicable,
-                    );
+                    err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
                     return true;
                 }
             }
@@ -859,7 +851,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // an argument, the `obligation.cause.span` points at the expression
             // of the argument, so we can provide a suggestion. Otherwise, we give
             // a more general note.
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 obligation.cause.span.shrink_to_hi(),
                 msg,
                 format!("({args})"),
@@ -961,7 +953,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let new_obligation =
             self.mk_trait_obligation_with_new_self_ty(obligation.param_env, trait_pred_and_self);
         if self.predicate_must_hold_modulo_regions(&new_obligation) {
-            err.span_suggestion_short(
+            err.span_suggestion(
                 stmt.span.with_lo(tail_expr.span.hi()),
                 "remove this semicolon",
                 "",
@@ -1056,7 +1048,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         ),
                     );
                 } else {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         obligation.cause.span.shrink_to_hi(),
                         "consider using clone here",
                         ".clone()".to_string(),
@@ -1355,7 +1347,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let Some(_) =
                             self.tcx.sess.source_map().span_look_ahead(span, ".", Some(50))
                         {
-                            err.multipart_suggestion_verbose(
+                            err.multipart_suggestion(
                                 sugg_msg,
                                 vec![
                                     (span.shrink_to_lo(), format!("({sugg_prefix}")),
@@ -1396,7 +1388,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 (span.shrink_to_hi(), ")".to_string()),
                             ]
                         };
-                        err.multipart_suggestion_verbose(
+                        err.multipart_suggestion(
                             sugg_msg,
                             suggestions,
                             Applicability::MaybeIncorrect,
@@ -1496,11 +1488,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     format!("consider removing {count} leading `&`-references")
                 };
 
-                err.multipart_suggestion_verbose(
-                    msg,
-                    suggestions,
-                    Applicability::MachineApplicable,
-                );
+                err.multipart_suggestion(msg, suggestions, Applicability::MachineApplicable);
                 true
             } else {
                 false
@@ -1621,14 +1609,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 {
                     let msg = format!("alternatively, consider making `fn {ident}` asynchronous");
                     if vis_span.is_empty() {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             span.shrink_to_lo(),
                             msg,
                             "async ",
                             Applicability::MaybeIncorrect,
                         );
                     } else {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             vis_span.shrink_to_hi(),
                             msg,
                             " async",
@@ -1699,7 +1687,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         {
                             return;
                         }
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             sp,
                             "consider changing this borrow's mutability",
                             "&mut ",
@@ -2817,7 +2805,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     } else {
                                         (generics.span.shrink_to_hi(), ":")
                                     };
-                                    err.span_suggestion_verbose(
+                                    err.span_suggestion(
                                         span,
                                         "consider relaxing the implicit `Sized` restriction",
                                         format!("{separator} ?Sized"),
@@ -2951,7 +2939,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 match tcx.parent_hir_node(hir_id) {
                     Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }) => {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             ty.span.shrink_to_lo(),
                             "consider borrowing here",
                             "&",
@@ -2966,7 +2954,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // When encountering an assignment of an unsized trait, like
                         // `let x = ""[..];`, provide a suggestion to borrow the initializer in
                         // order to use have a slice instead.
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             span.shrink_to_lo(),
                             "consider borrowing here",
                             "&",
@@ -2975,7 +2963,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         err.note("all local variables must have a statically known size");
                     }
                     Node::Param(param) => {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             param.ty_span.shrink_to_lo(),
                             "function arguments must have a statically known size, borrowed types \
                             always have a known size",
@@ -3025,7 +3013,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 [] => span_bug!(ty.span, "trait object with no traits: {ty:?}"),
                             };
                             let needs_parens = traits.len() != 1;
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 span,
                                 "you can use `impl Trait` as the argument type",
                                 "impl ",
@@ -3039,14 +3027,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     (ty.span.shrink_to_hi(), ")".to_string()),
                                 ]
                             };
-                            err.multipart_suggestion_verbose(
+                            err.multipart_suggestion(
                                 borrowed_msg,
                                 sugg,
                                 Applicability::MachineApplicable,
                             );
                         }
                         hir::TyKind::Slice(_ty) => {
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 ty.span.shrink_to_lo(),
                                 "function arguments must have a statically known size, borrowed \
                                  slices always have a known size",
@@ -3055,7 +3043,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             );
                         }
                         hir::TyKind::Path(_) => {
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 ty.span.shrink_to_lo(),
                                 borrowed_msg,
                                 "&",
@@ -3575,7 +3563,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
                 && snippet.ends_with('?')
             {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     span.with_hi(span.hi() - BytePos(1)).shrink_to_hi(),
                     "consider `await`ing on the `Future`",
                     ".await",
@@ -3600,7 +3588,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if let ty::Float(_) = trait_ref.skip_binder().self_ty().kind()
             && let ty::Infer(InferTy::IntVar(_)) = trait_ref.skip_binder().args.type_at(1).kind()
         {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 rhs_span.shrink_to_hi(),
                 "consider using a floating-point literal by writing it with `.0`",
                 ".0",
@@ -3661,7 +3649,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
         };
         if can_derive {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 self.tcx.def_span(adt.did()).shrink_to_lo(),
                 format!(
                     "consider annotating `{}` with `#[derive({})]`",
@@ -3689,7 +3677,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let ty::Ref(_, inner_ty, _) = trait_pred.skip_binder().self_ty().kind()
             && let ty::Uint(ty::UintTy::Usize) = inner_ty.kind()
         {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 obligation.cause.span.shrink_to_lo(),
                 "dereference this index",
                 '*',
@@ -3720,7 +3708,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     tcx, expr.span, body_id, param_env, pred,
                 ))
             {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     expr.span.with_lo(rcvr.span.hi()),
                     format!(
                         "consider removing this method call, as the receiver has type `{ty}` and \
@@ -3776,7 +3764,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             );
                         } else {
                             // Maybe the bare block was meant to be a closure.
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 expr.span.shrink_to_lo(),
                                 "you might have meant to create the closure instead of a block",
                                 format!(
@@ -3996,7 +3984,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // && let Some(tail_ty) = typeck_results.expr_ty_opt(expr)
                         && expected_found.found.is_unit()
                     {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             expr.span.shrink_to_hi().with_hi(stmt.span.hi()),
                             "consider removing this semicolon",
                             String::new(),
@@ -4361,7 +4349,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     suggestions.push((span.shrink_to_lo(), "&".into()));
                 }
                 suggestions.push((span.shrink_to_hi(), "[..]".into()));
-                err.multipart_suggestion_verbose(msg, suggestions, Applicability::MaybeIncorrect);
+                err.multipart_suggestion(msg, suggestions, Applicability::MaybeIncorrect);
             } else {
                 err.span_help(span, msg);
             }
@@ -4612,7 +4600,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "\n    Ok(())\n}".to_string(),
                 ));
             }
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 format!("consider adding return type"),
                 sugg_spans,
                 Applicability::MaybeIncorrect,
@@ -5058,7 +5046,7 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
                     pred.span
                 };
 
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     span,
                     "associated type for the current `impl` cannot be restricted in `where` \
                      clauses, remove this bound",
@@ -5089,7 +5077,7 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
                 let mut visitor = SelfVisitor { paths: vec![], name: Some(name) };
                 visitor.visit_trait_ref(trait_ref);
                 for path in visitor.paths {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         path.span,
                         "replace the associated type with the type specified in this `impl`",
                         tcx.type_of(new.def_id).skip_binder(),

@@ -39,7 +39,10 @@ error[E0046]: not all trait items implemented, missing: `call`
 LL | impl async Fn<()> for F {}
    | ^^^^^^^^^^^^^^^^^^^^^^^ missing `call` in implementation
    |
-   = help: implement the missing item: `fn call(&self, _: ()) -> <Self as FnOnce<()>>::Output { todo!() }`
+help: implement the missing item
+   |
+LL | impl async Fn<()> for F {fn call(&self, _: ()) -> <Self as FnOnce<()>>::Output { todo!() }
+   |                          +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 5 previous errors
 

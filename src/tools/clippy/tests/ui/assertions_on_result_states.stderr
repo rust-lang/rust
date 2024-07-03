@@ -2,46 +2,80 @@ error: called `assert!` with `Result::is_ok`
   --> tests/ui/assertions_on_result_states.rs:24:5
    |
 LL |     assert!(r.is_ok());
-   |     ^^^^^^^^^^^^^^^^^^ help: replace with: `r.unwrap()`
+   |     ^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::assertions-on-result-states` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::assertions_on_result_states)]`
+help: replace with
+   |
+LL |     r.unwrap();
+   |     ~~~~~~~~~~
 
 error: called `assert!` with `Result::is_ok`
   --> tests/ui/assertions_on_result_states.rs:42:5
    |
 LL |     assert!(get_ok().is_ok());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `get_ok().unwrap()`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace with
+   |
+LL |     get_ok().unwrap();
+   |     ~~~~~~~~~~~~~~~~~
 
 error: called `assert!` with `Result::is_ok`
   --> tests/ui/assertions_on_result_states.rs:45:5
    |
 LL |     assert!(get_ok_macro!().is_ok());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `get_ok_macro!().unwrap()`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace with
+   |
+LL |     get_ok_macro!().unwrap();
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: called `assert!` with `Result::is_ok`
   --> tests/ui/assertions_on_result_states.rs:58:5
    |
 LL |     assert!(r.is_ok());
-   |     ^^^^^^^^^^^^^^^^^^ help: replace with: `r.unwrap()`
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+help: replace with
+   |
+LL |     r.unwrap();
+   |     ~~~~~~~~~~
 
 error: called `assert!` with `Result::is_ok`
   --> tests/ui/assertions_on_result_states.rs:64:9
    |
 LL |         assert!(r.is_ok());
-   |         ^^^^^^^^^^^^^^^^^^ help: replace with: `r.unwrap()`
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+help: replace with
+   |
+LL |         r.unwrap();
+   |         ~~~~~~~~~~
 
 error: called `assert!` with `Result::is_err`
   --> tests/ui/assertions_on_result_states.rs:72:5
    |
 LL |     assert!(r.is_err());
-   |     ^^^^^^^^^^^^^^^^^^^ help: replace with: `r.unwrap_err()`
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: replace with
+   |
+LL |     r.unwrap_err();
+   |     ~~~~~~~~~~~~~~
 
 error: called `assert!` with `Result::is_err`
   --> tests/ui/assertions_on_result_states.rs:82:5
    |
 LL |     assert!(res.is_err())
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: replace with: `res.unwrap_err();`
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace with
+   |
+LL |     res.unwrap_err();
+   |
 
 error: aborting due to 7 previous errors
 

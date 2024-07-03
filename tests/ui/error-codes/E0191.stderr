@@ -5,7 +5,12 @@ LL |     type Bar;
    |     -------- `Bar` defined here
 ...
 LL | type Foo = dyn Trait;
-   |                ^^^^^ help: specify the associated type: `Trait<Bar = Type>`
+   |                ^^^^^
+   |
+help: specify the associated type
+   |
+LL | type Foo = dyn Trait<Bar = Type>;
+   |                ~~~~~~~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

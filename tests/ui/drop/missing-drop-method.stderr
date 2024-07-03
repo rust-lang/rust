@@ -4,7 +4,10 @@ error[E0046]: not all trait items implemented, missing: `drop`
 LL | impl Drop for DropNoMethod {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `drop` in implementation
    |
-   = help: implement the missing item: `fn drop(&mut self) { todo!() }`
+help: implement the missing item
+   |
+LL | impl Drop for DropNoMethod {fn drop(&mut self) { todo!() }
+   |                             ++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

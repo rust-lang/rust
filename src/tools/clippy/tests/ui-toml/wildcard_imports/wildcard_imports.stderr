@@ -2,22 +2,36 @@ error: usage of wildcard import
   --> tests/ui-toml/wildcard_imports/wildcard_imports.rs:18:5
    |
 LL | use utils::*;
-   |     ^^^^^^^^ help: try: `utils::{BAR, print}`
+   |     ^^^^^^^^
    |
    = note: `-D clippy::wildcard-imports` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::wildcard_imports)]`
+help: try
+   |
+LL | use utils::{BAR, print};
+   |     ~~~~~~~~~~~~~~~~~~~
 
 error: usage of wildcard import
   --> tests/ui-toml/wildcard_imports/wildcard_imports.rs:20:5
    |
 LL | use my_crate::utils::*;
-   |     ^^^^^^^^^^^^^^^^^^ help: try: `my_crate::utils::my_util_fn`
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | use my_crate::utils::my_util_fn;
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: usage of wildcard import
   --> tests/ui-toml/wildcard_imports/wildcard_imports.rs:22:5
    |
 LL | use prelude::*;
-   |     ^^^^^^^^^^ help: try: `prelude::FOO`
+   |     ^^^^^^^^^^
+   |
+help: try
+   |
+LL | use prelude::FOO;
+   |     ~~~~~~~~~~~~
 
 error: aborting due to 3 previous errors
 

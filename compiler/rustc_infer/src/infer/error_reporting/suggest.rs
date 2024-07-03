@@ -349,14 +349,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) -> bool {
         if let Some((span_semi, boxed)) = self.could_remove_semicolon(blk, expected_ty) {
             if let StatementAsExpression::NeedsBoxing = boxed {
-                diag.span_suggestion_verbose(
+                diag.span_suggestion(
                     span_semi,
                     "consider removing this semicolon and boxing the expression",
                     "",
                     Applicability::HasPlaceholders,
                 );
             } else {
-                diag.span_suggestion_short(
+                diag.span_suggestion(
                     span_semi,
                     "remove this semicolon to return this value",
                     "",
@@ -679,7 +679,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             suggestion += "|";
 
             if has_suggestion {
-                diag.span_suggestion_verbose(
+                diag.span_suggestion(
                     span,
                     "consider specifying the type of the closure parameters",
                     suggestion,

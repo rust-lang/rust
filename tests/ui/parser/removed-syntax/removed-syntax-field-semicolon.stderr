@@ -4,7 +4,12 @@ error: struct fields are separated by `,`
 LL | struct S {
    |        - while parsing this struct
 LL |     bar: ();
-   |            ^ help: replace `;` with `,`
+   |            ^
+   |
+help: replace `;` with `,`
+   |
+LL |     bar: (),
+   |            ~
 
 error: aborting due to 1 previous error
 

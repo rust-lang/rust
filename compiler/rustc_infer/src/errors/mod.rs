@@ -118,7 +118,6 @@ pub struct InferenceBadError<'a> {
 pub enum SourceKindSubdiag<'a> {
     #[suggestion(
         infer_source_kind_subdiag_let,
-        style = "verbose",
         code = ": {type_name}",
         applicability = "has-placeholders"
     )]
@@ -145,7 +144,6 @@ pub enum SourceKindSubdiag<'a> {
     },
     #[suggestion(
         infer_source_kind_subdiag_generic_suggestion,
-        style = "verbose",
         code = "::<{args}>",
         applicability = "has-placeholders"
     )]
@@ -159,11 +157,7 @@ pub enum SourceKindSubdiag<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum SourceKindMultiSuggestion<'a> {
-    #[multipart_suggestion(
-        infer_source_kind_fully_qualified,
-        style = "verbose",
-        applicability = "has-placeholders"
-    )]
+    #[multipart_suggestion(infer_source_kind_fully_qualified, applicability = "has-placeholders")]
     FullyQualified {
         #[suggestion_part(code = "{def_path}({adjustment}")]
         span_lo: Span,
@@ -173,11 +167,7 @@ pub enum SourceKindMultiSuggestion<'a> {
         adjustment: &'a str,
         successor_pos: &'a str,
     },
-    #[multipart_suggestion(
-        infer_source_kind_closure_return,
-        style = "verbose",
-        applicability = "has-placeholders"
-    )]
+    #[multipart_suggestion(infer_source_kind_closure_return, applicability = "has-placeholders")]
     ClosureReturn {
         #[suggestion_part(code = "{start_span_code}")]
         start_span: Span,
@@ -514,7 +504,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
 
                 visitor.suggestions.push(new_param_suggestion);
             }
-            diag.multipart_suggestion_verbose(
+            diag.multipart_suggestion(
                 fluent::infer_lifetime_param_suggestion,
                 visitor.suggestions,
                 Applicability::MaybeIncorrect,
@@ -579,7 +569,6 @@ pub enum ImplicitStaticLifetimeSubdiag {
     },
     #[suggestion(
         infer_implicit_static_lifetime_suggestion,
-        style = "verbose",
         code = " + '_",
         applicability = "maybe-incorrect"
     )]
@@ -922,12 +911,7 @@ impl Subdiagnostic for DynTraitConstraintSuggestion {
         let msg = f(diag, fluent::infer_dtcs_has_req_note.into());
         diag.span_note(multi_span, msg);
         let msg = f(diag, fluent::infer_dtcs_suggestion.into());
-        diag.span_suggestion_verbose(
-            self.span.shrink_to_hi(),
-            msg,
-            " + '_",
-            Applicability::MaybeIncorrect,
-        );
+        diag.span_suggestion(self.span.shrink_to_hi(), msg, " + '_", Applicability::MaybeIncorrect);
     }
 }
 
@@ -1067,12 +1051,7 @@ pub struct RefLongerThanData<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum WhereClauseSuggestions {
-    #[suggestion(
-        infer_where_remove,
-        code = "",
-        applicability = "machine-applicable",
-        style = "verbose"
-    )]
+    #[suggestion(infer_where_remove, code = "", applicability = "machine-applicable")]
     Remove {
         #[primary_span]
         span: Span,
@@ -1080,8 +1059,7 @@ pub enum WhereClauseSuggestions {
     #[suggestion(
         infer_where_copy_predicates,
         code = "{space}where {trait_predicates}",
-        applicability = "machine-applicable",
-        style = "verbose"
+        applicability = "machine-applicable"
     )]
     CopyPredicates {
         #[primary_span]
@@ -1106,22 +1084,12 @@ pub enum SuggestRemoveSemiOrReturnBinding {
         #[suggestion_part(code = "")]
         sp: Span,
     },
-    #[suggestion(
-        infer_srs_remove,
-        style = "short",
-        code = "",
-        applicability = "machine-applicable"
-    )]
+    #[suggestion(infer_srs_remove, code = "", applicability = "machine-applicable")]
     Remove {
         #[primary_span]
         sp: Span,
     },
-    #[suggestion(
-        infer_srs_add,
-        style = "verbose",
-        code = "{code}",
-        applicability = "maybe-incorrect"
-    )]
+    #[suggestion(infer_srs_add, code = "{code}", applicability = "maybe-incorrect")]
     Add {
         #[primary_span]
         sp: Span,
@@ -1146,12 +1114,7 @@ pub enum ConsiderAddingAwait {
         #[suggestion_part(code = ".await")]
         second: Span,
     },
-    #[suggestion(
-        infer_await_future,
-        code = ".await",
-        style = "verbose",
-        applicability = "maybe-incorrect"
-    )]
+    #[suggestion(infer_await_future, code = ".await", applicability = "maybe-incorrect")]
     FutureSugg {
         #[primary_span]
         span: Span,
@@ -1161,11 +1124,7 @@ pub enum ConsiderAddingAwait {
         #[primary_span]
         span: Span,
     },
-    #[multipart_suggestion(
-        infer_await_future,
-        style = "verbose",
-        applicability = "maybe-incorrect"
-    )]
+    #[multipart_suggestion(infer_await_future, applicability = "maybe-incorrect")]
     FutureSuggMultiple {
         #[suggestion_part(code = ".await")]
         spans: Vec<Span>,
@@ -1243,24 +1202,14 @@ pub struct OpaqueCapturesLifetime<'tcx> {
 
 #[derive(Subdiagnostic)]
 pub enum FunctionPointerSuggestion<'a> {
-    #[suggestion(
-        infer_fps_use_ref,
-        code = "&{fn_name}",
-        style = "verbose",
-        applicability = "maybe-incorrect"
-    )]
+    #[suggestion(infer_fps_use_ref, code = "&{fn_name}", applicability = "maybe-incorrect")]
     UseRef {
         #[primary_span]
         span: Span,
         #[skip_arg]
         fn_name: String,
     },
-    #[suggestion(
-        infer_fps_remove_ref,
-        code = "{fn_name}",
-        style = "verbose",
-        applicability = "maybe-incorrect"
-    )]
+    #[suggestion(infer_fps_remove_ref, code = "{fn_name}", applicability = "maybe-incorrect")]
     RemoveRef {
         #[primary_span]
         span: Span,
@@ -1270,7 +1219,6 @@ pub enum FunctionPointerSuggestion<'a> {
     #[suggestion(
         infer_fps_cast,
         code = "&({fn_name} as {sig})",
-        style = "verbose",
         applicability = "maybe-incorrect"
     )]
     CastRef {
@@ -1281,12 +1229,7 @@ pub enum FunctionPointerSuggestion<'a> {
         #[skip_arg]
         sig: Binder<'a, FnSig<'a>>,
     },
-    #[suggestion(
-        infer_fps_cast,
-        code = "{fn_name} as {sig}",
-        style = "verbose",
-        applicability = "maybe-incorrect"
-    )]
+    #[suggestion(infer_fps_cast, code = "{fn_name} as {sig}", applicability = "maybe-incorrect")]
     Cast {
         #[primary_span]
         span: Span,
@@ -1298,7 +1241,6 @@ pub enum FunctionPointerSuggestion<'a> {
     #[suggestion(
         infer_fps_cast_both,
         code = "{fn_name} as {found_sig}",
-        style = "hidden",
         applicability = "maybe-incorrect"
     )]
     CastBoth {
@@ -1313,7 +1255,6 @@ pub enum FunctionPointerSuggestion<'a> {
     #[suggestion(
         infer_fps_cast_both,
         code = "&({fn_name} as {found_sig})",
-        style = "hidden",
         applicability = "maybe-incorrect"
     )]
     CastBothRef {
@@ -1461,7 +1402,6 @@ pub enum TypeErrorAdditionalDiags {
     },
     #[suggestion(
         infer_suggest_add_let_for_letchains,
-        style = "verbose",
         applicability = "machine-applicable",
         code = "let "
     )]

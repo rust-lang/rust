@@ -2,9 +2,13 @@ warning: lint `single_use_lifetime` has been renamed to `single_use_lifetimes`
   --> $DIR/renamed-lints-still-apply.rs:2:9
    |
 LL | #![deny(single_use_lifetime)]
-   |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `single_use_lifetimes`
+   |         ^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(renamed_and_removed_lints)]` on by default
+help: use the new name
+   |
+LL | #![deny(single_use_lifetimes)]
+   |         ~~~~~~~~~~~~~~~~~~~~
 
 error: lifetime parameter `'a` only used once
   --> $DIR/renamed-lints-still-apply.rs:6:9

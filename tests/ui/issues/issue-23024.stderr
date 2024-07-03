@@ -2,11 +2,15 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
   --> $DIR/issue-23024.rs:8:39
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
-   |                                       ^^ help: use parenthetical notation instead: `Fn() -> ()`
+   |                                       ^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+help: use parenthetical notation instead
+   |
+LL |     println!("{:?}",(vfnfer[0] as dyn Fn() -> ())(3));
+   |                                       ~~~~~~~~~~
 
 error[E0107]: missing generics for trait `Fn`
   --> $DIR/issue-23024.rs:8:39
@@ -23,7 +27,12 @@ error[E0191]: the value of the associated type `Output` in `FnOnce` must be spec
   --> $DIR/issue-23024.rs:8:39
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
-   |                                       ^^ help: specify the associated type: `Fn<Output = Type>`
+   |                                       ^^
+   |
+help: specify the associated type
+   |
+LL |     println!("{:?}",(vfnfer[0] as dyn Fn<Output = Type>)(3));
+   |                                       ~~~~~~~~~~~~~~~~~
 
 error: aborting due to 3 previous errors
 

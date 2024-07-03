@@ -1039,7 +1039,7 @@ impl<'a> Parser<'a> {
                     _ => return Err(err),
                 };
 
-                err.span_suggestion_verbose(span, message, sugg, applicability);
+                err.span_suggestion(span, message, sugg, applicability);
 
                 path.clone()
             } else {

@@ -3,7 +3,7 @@ error: this match arm has an identical body to the `_` wildcard arm
    |
 LL | /         Ordering::AcqRel | Ordering::SeqCst => repeat(),
 LL | |
-   | |________^ help: try removing the arm
+   | |________^
    |
    = help: or try changing either arm body
 note: `_` wildcard arm here
@@ -13,13 +13,17 @@ LL |         _ => repeat(),
    |         ^^^^^^^^^^^^^
    = note: `-D clippy::match-same-arms` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
+help: try removing the arm
+   |
+LL -         Ordering::AcqRel | Ordering::SeqCst => repeat(),
+   |
 
 error: this match arm has an identical body to the `_` wildcard arm
   --> tests/ui/match_same_arms_non_exhaustive.rs:58:13
    |
 LL | /             Ordering::AcqRel | Ordering::SeqCst => repeat(),
 LL | |
-   | |____________^ help: try removing the arm
+   | |____________^
    |
    = help: or try changing either arm body
 note: `_` wildcard arm here
@@ -27,6 +31,10 @@ note: `_` wildcard arm here
    |
 LL |             _ => repeat(),
    |             ^^^^^^^^^^^^^
+help: try removing the arm
+   |
+LL -             Ordering::AcqRel | Ordering::SeqCst => repeat(),
+   |
 
 error: aborting due to 2 previous errors
 

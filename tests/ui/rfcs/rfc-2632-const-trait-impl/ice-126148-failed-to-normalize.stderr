@@ -18,7 +18,10 @@ error[E0046]: not all trait items implemented, missing: `from_residual`
 LL | impl const FromResidual<Error> for TryMe {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `from_residual` in implementation
    |
-   = help: implement the missing item: `fn from_residual(_: Error) -> Self { todo!() }`
+help: implement the missing item
+   |
+LL | impl const FromResidual<Error> for TryMe {fn from_residual(_: Error) -> Self { todo!() }
+   |                                           ++++++++++++++++++++++++++++++++++++++++++++++
 
 error: const `impl` for trait `Try` which is not marked with `#[const_trait]`
   --> $DIR/ice-126148-failed-to-normalize.rs:12:12
@@ -35,8 +38,14 @@ error[E0046]: not all trait items implemented, missing: `from_output`, `branch`
 LL | impl const Try for TryMe {
    | ^^^^^^^^^^^^^^^^^^^^^^^^ missing `from_output`, `branch` in implementation
    |
-   = help: implement the missing item: `fn from_output(_: <Self as Try>::Output) -> Self { todo!() }`
-   = help: implement the missing item: `fn branch(self) -> ControlFlow<<Self as Try>::Residual, <Self as Try>::Output> { todo!() }`
+help: implement the missing item
+   |
+LL + fn from_output(_: <Self as Try>::Output) -> Self { todo!() }
+   |
+help: implement the missing item
+   |
+LL + fn branch(self) -> ControlFlow<<Self as Try>::Residual, <Self as Try>::Output> { todo!() }
+   |
 
 error: aborting due to 5 previous errors
 

@@ -381,7 +381,7 @@ pub struct ExpectedLifetimeParameter {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(errors_indicate_anonymous_lifetime, code = "{suggestion}", style = "verbose")]
+#[suggestion(errors_indicate_anonymous_lifetime, code = "{suggestion}")]
 pub struct IndicateAnonymousLifetime {
     #[primary_span]
     pub span: Span,

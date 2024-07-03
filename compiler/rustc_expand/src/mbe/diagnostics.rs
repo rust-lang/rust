@@ -93,7 +93,7 @@ pub(super) fn failed_to_match_macro<'cx>(
                 if comma_span.is_dummy() {
                     err.note("you might be missing a comma");
                 } else {
-                    err.span_suggestion_short(
+                    err.span_suggestion(
                         comma_span,
                         "missing comma here",
                         ", ",
@@ -276,7 +276,7 @@ pub(super) fn emit_frag_parse_err(
 
                 if parser.token == token::Semi {
                     if let Ok(snippet) = parser.psess.source_map().span_to_snippet(site_span) {
-                        e.span_suggestion_verbose(
+                        e.span_suggestion(
                             site_span,
                             "surround the macro invocation with `{}` to interpret the expansion as a statement",
                             format!("{{ {snippet}; }}"),
@@ -284,7 +284,7 @@ pub(super) fn emit_frag_parse_err(
                         );
                     }
                 } else {
-                    e.span_suggestion_verbose(
+                    e.span_suggestion(
                         site_span.shrink_to_hi(),
                         "add `;` to interpret the expansion as a statement",
                         ";",

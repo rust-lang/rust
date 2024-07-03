@@ -2,34 +2,58 @@ error: (e.pow(x) - 1) can be computed more accurately
   --> tests/ui/floating_point_exp.rs:8:13
    |
 LL |     let _ = x.exp() - 1.0;
-   |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
+   |             ^^^^^^^^^^^^^
    |
    = note: `-D clippy::imprecise-flops` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::imprecise_flops)]`
+help: consider using
+   |
+LL |     let _ = x.exp_m1();
+   |             ~~~~~~~~~~
 
 error: (e.pow(x) - 1) can be computed more accurately
   --> tests/ui/floating_point_exp.rs:9:13
    |
 LL |     let _ = x.exp() - 1.0 + 2.0;
-   |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
+   |             ^^^^^^^^^^^^^
+   |
+help: consider using
+   |
+LL |     let _ = x.exp_m1() + 2.0;
+   |             ~~~~~~~~~~
 
 error: (e.pow(x) - 1) can be computed more accurately
   --> tests/ui/floating_point_exp.rs:10:13
    |
 LL |     let _ = (x as f32).exp() - 1.0 + 2.0;
-   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x as f32).exp_m1()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using
+   |
+LL |     let _ = (x as f32).exp_m1() + 2.0;
+   |             ~~~~~~~~~~~~~~~~~~~
 
 error: (e.pow(x) - 1) can be computed more accurately
   --> tests/ui/floating_point_exp.rs:16:13
    |
 LL |     let _ = x.exp() - 1.0;
-   |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
+   |             ^^^^^^^^^^^^^
+   |
+help: consider using
+   |
+LL |     let _ = x.exp_m1();
+   |             ~~~~~~~~~~
 
 error: (e.pow(x) - 1) can be computed more accurately
   --> tests/ui/floating_point_exp.rs:17:13
    |
 LL |     let _ = x.exp() - 1.0 + 2.0;
-   |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
+   |             ^^^^^^^^^^^^^
+   |
+help: consider using
+   |
+LL |     let _ = x.exp_m1() + 2.0;
+   |             ~~~~~~~~~~
 
 error: aborting due to 5 previous errors
 

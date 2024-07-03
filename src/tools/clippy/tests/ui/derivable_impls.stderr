@@ -12,7 +12,27 @@ LL | | }
    |
    = note: `-D clippy::derivable-impls` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::derivable_impls)]`
-   = help: remove the manual implementation...
+help: remove the manual implementation...
+   |
+LL - impl std::default::Default for FooDefault<'_> {
+LL -     fn default() -> Self {
+LL -         Self {
+LL -             a: false,
+LL -             b: 0,
+LL -             c: 0u64,
+LL -             d: vec![],
+LL -             e: Default::default(),
+LL -             f: FooND2::default(),
+LL -             g: HashMap::new(),
+LL -             h: (0, vec![]),
+LL -             i: [vec![], vec![], vec![]],
+LL -             j: [0; 5],
+LL -             k: None,
+LL -             l: &[],
+LL -         }
+LL -     }
+LL - }
+   |
 help: ...and instead derive it
    |
 LL + #[derive(Default)]
@@ -29,7 +49,14 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: remove the manual implementation...
+help: remove the manual implementation...
+   |
+LL - impl std::default::Default for TupleDefault {
+LL -     fn default() -> Self {
+LL -         Self(false, 0, 0u64)
+LL -     }
+LL - }
+   |
 help: ...and instead derive it
    |
 LL + #[derive(Default)]
@@ -46,7 +73,14 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: remove the manual implementation...
+help: remove the manual implementation...
+   |
+LL - impl Default for StrDefault<'_> {
+LL -     fn default() -> Self {
+LL -         Self("")
+LL -     }
+LL - }
+   |
 help: ...and instead derive it
    |
 LL + #[derive(Default)]
@@ -63,7 +97,14 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: remove the manual implementation...
+help: remove the manual implementation...
+   |
+LL - impl Default for Y {
+LL -     fn default() -> Self {
+LL -         Self(mac!())
+LL -     }
+LL - }
+   |
 help: ...and instead derive it
    |
 LL + #[derive(Default)]
@@ -80,7 +121,14 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: remove the manual implementation...
+help: remove the manual implementation...
+   |
+LL - impl Default for WithoutSelfCurly {
+LL -     fn default() -> Self {
+LL -         WithoutSelfCurly { a: false }
+LL -     }
+LL - }
+   |
 help: ...and instead derive it
    |
 LL + #[derive(Default)]
@@ -97,7 +145,14 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: remove the manual implementation...
+help: remove the manual implementation...
+   |
+LL - impl Default for WithoutSelfParan {
+LL -     fn default() -> Self {
+LL -         WithoutSelfParan(false)
+LL -     }
+LL - }
+   |
 help: ...and instead derive it
    |
 LL + #[derive(Default)]
@@ -114,7 +169,14 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: remove the manual implementation...
+help: remove the manual implementation...
+   |
+LL - impl Default for RepeatDefault1 {
+LL -     fn default() -> Self {
+LL -         RepeatDefault1 { a: [0; 32] }
+LL -     }
+LL - }
+   |
 help: ...and instead derive it
    |
 LL + #[derive(Default)]
@@ -131,7 +193,14 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: remove the manual implementation...
+help: remove the manual implementation...
+   |
+LL - impl Default for SimpleEnum {
+LL -     fn default() -> Self {
+LL -         SimpleEnum::Bar
+LL -     }
+LL - }
+   |
 help: ...and instead derive it...
    |
 LL + #[derive(Default)]

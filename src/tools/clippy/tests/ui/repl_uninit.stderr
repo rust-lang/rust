@@ -2,16 +2,25 @@ error: replacing with `mem::uninitialized()`
   --> tests/ui/repl_uninit.rs:15:23
    |
 LL |         let taken_v = mem::replace(&mut v, mem::uninitialized());
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::ptr::read(&mut v)`
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::mem-replace-with-uninit` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mem_replace_with_uninit)]`
+help: consider using
+   |
+LL |         let taken_v = std::ptr::read(&mut v);
+   |                       ~~~~~~~~~~~~~~~~~~~~~~
 
 error: replacing with `mem::MaybeUninit::uninit().assume_init()`
   --> tests/ui/repl_uninit.rs:23:23
    |
 LL |         let taken_v = mem::replace(&mut v, mem::MaybeUninit::uninit().assume_init());
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::ptr::read(&mut v)`
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using
+   |
+LL |         let taken_v = std::ptr::read(&mut v);
+   |                       ~~~~~~~~~~~~~~~~~~~~~~
 
 error: replacing with `mem::zeroed()`
   --> tests/ui/repl_uninit.rs:30:23
@@ -25,7 +34,12 @@ error: replacing with `mem::uninitialized()`
   --> tests/ui/repl_uninit.rs:43:28
    |
 LL |     let taken_u = unsafe { mem::replace(uref, mem::uninitialized()) };
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::ptr::read(uref)`
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using
+   |
+LL |     let taken_u = unsafe { std::ptr::read(uref) };
+   |                            ~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 4 previous errors
 

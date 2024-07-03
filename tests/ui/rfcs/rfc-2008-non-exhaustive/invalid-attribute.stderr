@@ -2,7 +2,12 @@ error: malformed `non_exhaustive` attribute input
   --> $DIR/invalid-attribute.rs:1:1
    |
 LL | #[non_exhaustive(anything)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[non_exhaustive]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: must be of the form
+   |
+LL | #[non_exhaustive]
+   |
 
 error[E0701]: attribute should be applied to a struct or enum
   --> $DIR/invalid-attribute.rs:5:1

@@ -2,13 +2,23 @@ error: malformed loop label
   --> $DIR/label_misspelled_2.rs:10:5
    |
 LL |     c: for _ in 0..1 {
-   |     ^ help: use the correct loop label format: `'c`
+   |     ^
+   |
+help: use the correct loop label format
+   |
+LL |     'c: for _ in 0..1 {
+   |     ~~
 
 error: malformed loop label
   --> $DIR/label_misspelled_2.rs:13:5
    |
 LL |     d: for _ in 0..1 {
-   |     ^ help: use the correct loop label format: `'d`
+   |     ^
+   |
+help: use the correct loop label format
+   |
+LL |     'd: for _ in 0..1 {
+   |     ~~
 
 error[E0425]: cannot find value `b` in this scope
   --> $DIR/label_misspelled_2.rs:8:15
@@ -16,10 +26,12 @@ error[E0425]: cannot find value `b` in this scope
 LL |     'b: for _ in 0..1 {
    |     -- a label with a similar name exists
 LL |         break b;
-   |               ^
-   |               |
-   |               not found in this scope
-   |               help: use the similarly named label: `'b`
+   |               ^ not found in this scope
+   |
+help: use the similarly named label
+   |
+LL |         break 'b;
+   |               ~~
 
 error[E0425]: cannot find value `d` in this scope
   --> $DIR/label_misspelled_2.rs:14:15
@@ -27,10 +39,12 @@ error[E0425]: cannot find value `d` in this scope
 LL |     d: for _ in 0..1 {
    |     - a label with a similar name exists
 LL |         break d;
-   |               ^
-   |               |
-   |               not found in this scope
-   |               help: use the similarly named label: `'d`
+   |               ^ not found in this scope
+   |
+help: use the similarly named label
+   |
+LL |         break 'd;
+   |               ~~
 
 error: aborting due to 4 previous errors
 

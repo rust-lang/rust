@@ -2,13 +2,23 @@ error[E0747]: type provided when a constant was expected
   --> $DIR/suggest_const_for_array.rs:6:15
    |
 LL |     example::<[usize; 3]>();
-   |               ^^^^^^^^^^ help: array type provided where a `usize` was expected, try: `{ 3 }`
+   |               ^^^^^^^^^^
+   |
+help: array type provided where a `usize` was expected, try
+   |
+LL |     example::<{ 3 }>();
+   |               ~~~~~
 
 error[E0747]: type provided when a constant was expected
   --> $DIR/suggest_const_for_array.rs:9:15
    |
 LL |     example::<[usize; 4 + 5]>();
-   |               ^^^^^^^^^^^^^^ help: array type provided where a `usize` was expected, try: `{ 4 + 5 }`
+   |               ^^^^^^^^^^^^^^
+   |
+help: array type provided where a `usize` was expected, try
+   |
+LL |     example::<{ 4 + 5 }>();
+   |               ~~~~~~~~~
 
 error[E0284]: type annotations needed
   --> $DIR/suggest_const_for_array.rs:6:5

@@ -65,7 +65,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 && !self.maybe_suggest_impl_trait(self_ty, &mut diag)
             {
                 // FIXME: Only emit this suggestion if the trait is object safe.
-                diag.multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable);
+                diag.multipart_suggestion(label, sugg, Applicability::MachineApplicable);
             }
             // Check if the impl trait that we are considering is an impl of a local trait.
             self.maybe_suggest_blanket_trait_impl(self_ty, &mut diag);
@@ -75,7 +75,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, |lint| {
                 lint.primary_message("trait objects without an explicit `dyn` are deprecated");
                 if self_ty.span.can_be_used_for_suggestions() {
-                    lint.multipart_suggestion_verbose(
+                    lint.multipart_suggestion(
                         "if this is an object-safe trait, use `dyn`",
                         sugg,
                         Applicability::MachineApplicable,
@@ -201,9 +201,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 "{pre}use `impl {trait_name}` to return an opaque type, as long as you return a \
                  single underlying type",
             );
-            diag.multipart_suggestion_verbose(msg, impl_sugg, Applicability::MachineApplicable);
+            diag.multipart_suggestion(msg, impl_sugg, Applicability::MachineApplicable);
             if is_object_safe {
-                diag.multipart_suggestion_verbose(
+                diag.multipart_suggestion(
                     "alternatively, you can return an owned trait object",
                     vec![
                         (ty.span.shrink_to_lo(), "Box<dyn ".to_string()),
@@ -223,12 +223,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             let sugg = self.add_generic_param_suggestion(generics, self_ty.span, &trait_name);
             if !sugg.is_empty() {
-                diag.multipart_suggestion_verbose(
+                diag.multipart_suggestion(
                     format!("use a new generic type parameter, constrained by `{trait_name}`"),
                     sugg,
                     Applicability::MachineApplicable,
                 );
-                diag.multipart_suggestion_verbose(
+                diag.multipart_suggestion(
                     "you can also use an opaque type, but users won't be able to specify the type \
                      parameter when calling the `fn`, having to rely exclusively on type inference",
                     impl_sugg,
@@ -251,7 +251,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 } else {
                     vec![(self_ty.span.shrink_to_lo(), "&dyn ".to_string())]
                 };
-                diag.multipart_suggestion_verbose(
+                diag.multipart_suggestion(
                     format!(
                         "alternatively, use a trait object to accept any type that implements \
                          `{trait_name}`, accessing its methods at runtime using dynamic dispatch",
@@ -290,7 +290,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 return;
             }
 
-            diag.span_suggestion_verbose(
+            diag.span_suggestion(
                 lo.between(hi),
                 "you might have meant to write a bound here",
                 ": ",

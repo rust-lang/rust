@@ -2,7 +2,12 @@ error: expected `,`, or `}`, found `#`
   --> $DIR/struct-filed-with-attr.rs:5:14
    |
 LL |     owo: bool
-   |              ^ help: try adding a comma: `,`
+   |              ^
+   |
+help: try adding a comma
+   |
+LL |     owo: bool,
+   |              +
 
 error: aborting due to 1 previous error
 

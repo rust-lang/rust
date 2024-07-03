@@ -13,18 +13,27 @@ error[E0425]: cannot find value `local_use` in this scope
   --> $DIR/gen-macro-rules-hygiene.rs:12:1
    |
 LL | gen_macro_rules!();
-   | ^^^^^^^^^^^^^^^^^^ help: a local variable with a similar name exists: `local_def`
+   | ^^^^^^^^^^^^^^^^^^
 ...
 LL |         generated!();
    |         ------------ in this macro invocation
    |
    = note: this error originates in the macro `generated` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: a local variable with a similar name exists
+   |
+LL | local_def;
+   | ~~~~~~~~~
 
 error[E0425]: cannot find value `local_def` in this scope
   --> $DIR/gen-macro-rules-hygiene.rs:21:9
    |
 LL |         local_def;
-   |         ^^^^^^^^^ help: a local variable with a similar name exists: `local_use`
+   |         ^^^^^^^^^
+   |
+help: a local variable with a similar name exists
+   |
+LL |         local_use;
+   |         ~~~~~~~~~
 
 error: aborting due to 3 previous errors
 

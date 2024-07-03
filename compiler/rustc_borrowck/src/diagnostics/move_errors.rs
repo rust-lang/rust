@@ -377,7 +377,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     .source_map()
                     .indentation_before(stmt.span)
                     .unwrap_or_else(|| "    ".to_string());
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "clone the value before moving it into the closure",
                     vec![
                         (
@@ -407,7 +407,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 .source_map()
                 .indentation_before(closure_expr.span)
                 .unwrap_or_else(|| "    ".to_string());
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 "clone the value before moving it into the closure",
                 vec![
                     (
@@ -653,7 +653,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 // If the `inner` is a raw pointer, do not suggest removing the "*", see #126863
                 // FIXME: need to check whether the assigned object can be a raw pointer, see `tests/ui/borrowck/issue-20801.rs`.
                 if !is_raw_ptr {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span.with_hi(span.lo() + BytePos(1)),
                         "consider removing the dereference here",
                         String::new(),
@@ -662,7 +662,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 }
             }
             _ => {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     span.shrink_to_lo(),
                     "consider borrowing here",
                     '&',
@@ -720,7 +720,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         suggestions.sort_unstable_by_key(|&(span, _, _)| span);
         suggestions.dedup_by_key(|&mut (span, _, _)| span);
         for (span, msg, suggestion) in suggestions {
-            err.span_suggestion_verbose(span, msg, suggestion, Applicability::MachineApplicable);
+            err.span_suggestion(span, msg, suggestion, Applicability::MachineApplicable);
         }
     }
 

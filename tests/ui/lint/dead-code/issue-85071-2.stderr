@@ -22,13 +22,17 @@ warning: unused variable: `x`
   --> $DIR/issue-85071-2.rs:18:9
    |
 LL |     let x = s.f();
-   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |         ^
    |
 note: the lint level is defined here
   --> $DIR/issue-85071-2.rs:7:9
    |
 LL | #![warn(unused_variables,unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
+help: if this is intentional, prefix it with an underscore
+   |
+LL |     let _x = s.f();
+   |         ~~
 
 warning: 2 warnings emitted
 

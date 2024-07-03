@@ -177,7 +177,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
             };
 
             if suggest_display {
-                lint.span_suggestion_verbose(
+                lint.span_suggestion(
                     arg_span.shrink_to_lo(),
                     fluent::lint_display_suggestion,
                     "\"{}\", ",
@@ -185,7 +185,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 );
             } else if suggest_debug {
                 lint.arg("ty", ty);
-                lint.span_suggestion_verbose(
+                lint.span_suggestion(
                     arg_span.shrink_to_lo(),
                     fluent::lint_debug_suggestion,
                     "\"{:?}\", ",

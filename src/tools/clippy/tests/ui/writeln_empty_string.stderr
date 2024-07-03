@@ -2,20 +2,27 @@ error: empty string literal in `writeln!`
   --> tests/ui/writeln_empty_string.rs:9:5
    |
 LL |     writeln!(v, "");
-   |     ^^^^^^^^^^----^
-   |               |
-   |               help: remove the empty string
+   |     ^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::writeln-empty-string` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::writeln_empty_string)]`
+help: remove the empty string
+   |
+LL -     writeln!(v, "");
+LL +     writeln!(v);
+   |
 
 error: empty string literal in `writeln!`
   --> tests/ui/writeln_empty_string.rs:12:5
    |
 LL |     writeln!(suggestion, "");
-   |     ^^^^^^^^^^^^^^^^^^^----^
-   |                        |
-   |                        help: remove the empty string
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the empty string
+   |
+LL -     writeln!(suggestion, "");
+LL +     writeln!(suggestion);
+   |
 
 error: aborting due to 2 previous errors
 

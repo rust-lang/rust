@@ -2,19 +2,26 @@ warning: all possible in-scope parameters are already captured, so `use<...>` sy
   --> $DIR/redundant.rs:7:19
    |
 LL | fn hello<'a>() -> impl Sized + use<'a> {}
-   |                   ^^^^^^^^^^^^^-------
-   |                                |
-   |                                help: remove the `use<...>` syntax
+   |                   ^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(impl_trait_redundant_captures)]` on by default
+help: remove the `use<...>` syntax
+   |
+LL - fn hello<'a>() -> impl Sized + use<'a> {}
+LL + fn hello<'a>() -> impl Sized +  {}
+   |
 
 warning: all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
   --> $DIR/redundant.rs:12:27
    |
 LL |     fn inherent(&self) -> impl Sized + use<'_> {}
-   |                           ^^^^^^^^^^^^^-------
-   |                                        |
-   |                                        help: remove the `use<...>` syntax
+   |                           ^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `use<...>` syntax
+   |
+LL -     fn inherent(&self) -> impl Sized + use<'_> {}
+LL +     fn inherent(&self) -> impl Sized +  {}
+   |
 
 warning: 2 warnings emitted
 

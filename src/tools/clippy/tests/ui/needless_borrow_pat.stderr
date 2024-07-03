@@ -2,10 +2,14 @@ error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:59:14
    |
 LL |         Some(ref x) => x,
-   |              ^^^^^ help: try: `x`
+   |              ^^^^^
    |
    = note: `-D clippy::needless-borrow` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
+help: try
+   |
+LL |         Some(x) => x,
+   |              ~
 
 error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:67:14
@@ -36,13 +40,23 @@ error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:85:14
    |
 LL |         Some(ref x) => m1!(x),
-   |              ^^^^^ help: try: `x`
+   |              ^^^^^
+   |
+help: try
+   |
+LL |         Some(x) => m1!(x),
+   |              ~
 
 error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:91:15
    |
 LL |     let _ = |&ref x: &&String| {
-   |               ^^^^^ help: try: `x`
+   |               ^^^^^
+   |
+help: try
+   |
+LL |     let _ = |&x: &&String| {
+   |               ~
 
 error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:97:10
@@ -61,7 +75,12 @@ error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:108:14
    |
 LL |         Some(ref x) => x.0,
-   |              ^^^^^ help: try: `x`
+   |              ^^^^^
+   |
+help: try
+   |
+LL |         Some(x) => x.0,
+   |              ~
 
 error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:119:14
@@ -78,7 +97,12 @@ error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:126:21
    |
 LL |         if let Some(ref x) = Some(&String::new());
-   |                     ^^^^^ help: try: `x`
+   |                     ^^^^^
+   |
+help: try
+   |
+LL |         if let Some(x) = Some(&String::new());
+   |                     ~
 
 error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:135:12
@@ -98,7 +122,12 @@ error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:143:11
    |
 LL |     fn f(&ref x: &&String) {
-   |           ^^^^^ help: try: `x`
+   |           ^^^^^
+   |
+help: try
+   |
+LL |     fn f(&x: &&String) {
+   |           ~
 
 error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:152:11

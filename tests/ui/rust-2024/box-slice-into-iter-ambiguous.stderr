@@ -2,7 +2,7 @@ warning: trait method `into_iter` will become ambiguous in Rust 2024
   --> $DIR/box-slice-into-iter-ambiguous.rs:24:13
    |
 LL |     let y = points.into_iter();
-   |             ^^^^^^^^^^^^^^^^^^ help: disambiguate the associated function: `MyIntoIter::into_iter(points)`
+   |             ^^^^^^^^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
 note: the lint level is defined here
@@ -10,6 +10,10 @@ note: the lint level is defined here
    |
 LL | #![warn(boxed_slice_into_iter)]
    |         ^^^^^^^^^^^^^^^^^^^^^
+help: disambiguate the associated function
+   |
+LL |     let y = MyIntoIter::into_iter(points);
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 warning: 1 warning emitted
 

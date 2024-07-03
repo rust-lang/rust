@@ -40,10 +40,12 @@ error[E0425]: cannot find value `LOOP` in this scope
 LL |     'LOOP: loop {
    |     ----- a label with a similar name exists
 LL |         break LOOP;
-   |               ^^^^
-   |               |
-   |               not found in this scope
-   |               help: use the similarly named label: `'LOOP`
+   |               ^^^^ not found in this scope
+   |
+help: use the similarly named label
+   |
+LL |         break 'LOOP;
+   |               ~~~~~
 
 error[E0425]: cannot find value `while_loop` in this scope
   --> $DIR/label_misspelled.rs:32:15
@@ -51,10 +53,12 @@ error[E0425]: cannot find value `while_loop` in this scope
 LL |     'while_loop: while true {
    |     ----------- a label with a similar name exists
 LL |         break while_loop;
-   |               ^^^^^^^^^^
-   |               |
-   |               not found in this scope
-   |               help: use the similarly named label: `'while_loop`
+   |               ^^^^^^^^^^ not found in this scope
+   |
+help: use the similarly named label
+   |
+LL |         break 'while_loop;
+   |               ~~~~~~~~~~~
 
 error[E0425]: cannot find value `while_let` in this scope
   --> $DIR/label_misspelled.rs:36:15
@@ -62,10 +66,12 @@ error[E0425]: cannot find value `while_let` in this scope
 LL |     'while_let: while let Some(_) = Some(()) {
    |     ---------- a label with a similar name exists
 LL |         break while_let;
-   |               ^^^^^^^^^
-   |               |
-   |               not found in this scope
-   |               help: use the similarly named label: `'while_let`
+   |               ^^^^^^^^^ not found in this scope
+   |
+help: use the similarly named label
+   |
+LL |         break 'while_let;
+   |               ~~~~~~~~~~
 
 error[E0425]: cannot find value `for_loop` in this scope
   --> $DIR/label_misspelled.rs:40:15
@@ -73,10 +79,12 @@ error[E0425]: cannot find value `for_loop` in this scope
 LL |     'for_loop: for _ in 0..3 {
    |     --------- a label with a similar name exists
 LL |         break for_loop;
-   |               ^^^^^^^^
-   |               |
-   |               not found in this scope
-   |               help: use the similarly named label: `'for_loop`
+   |               ^^^^^^^^ not found in this scope
+   |
+help: use the similarly named label
+   |
+LL |         break 'for_loop;
+   |               ~~~~~~~~~
 
 warning: unused label
   --> $DIR/label_misspelled.rs:4:5
@@ -94,9 +102,13 @@ warning: denote infinite loops with `loop { ... }`
   --> $DIR/label_misspelled.rs:4:5
    |
 LL |     'while_loop: while true {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(while_true)]` on by default
+help: use `loop`
+   |
+LL |     'while_loop: loop {
+   |     ~~~~~~~~~~~~~~~~~
 
 warning: unused label
   --> $DIR/label_misspelled.rs:9:5
@@ -120,7 +132,12 @@ warning: denote infinite loops with `loop { ... }`
   --> $DIR/label_misspelled.rs:31:5
    |
 LL |     'while_loop: while true {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `loop`
+   |
+LL |     'while_loop: loop {
+   |     ~~~~~~~~~~~~~~~~~
 
 warning: unused label
   --> $DIR/label_misspelled.rs:47:5
@@ -132,7 +149,12 @@ warning: denote infinite loops with `loop { ... }`
   --> $DIR/label_misspelled.rs:47:5
    |
 LL |     'while_loop: while true {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `loop`
+   |
+LL |     'while_loop: loop {
+   |     ~~~~~~~~~~~~~~~~~
 
 warning: unused label
   --> $DIR/label_misspelled.rs:52:5

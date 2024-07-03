@@ -2,19 +2,23 @@ error: expected one of `)`, `,`, `.`, `?`, or an operator, found `é`
   --> $DIR/multibyte-char-use-seperator-issue-80134.rs:4:8
    |
 LL |     (()é);
-   |        ^
-   |        |
-   |        expected one of `)`, `,`, `.`, `?`, or an operator
-   |        help: missing `,`
+   |        ^ expected one of `)`, `,`, `.`, `?`, or an operator
+   |
+help: missing `,`
+   |
+LL |     ((),é);
+   |        +
 
 error: expected one of `)`, `,`, `.`, `?`, or an operator, found `氷`
   --> $DIR/multibyte-char-use-seperator-issue-80134.rs:7:8
    |
 LL |     (()氷);
-   |        -^
-   |        |
-   |        expected one of `)`, `,`, `.`, `?`, or an operator
-   |        help: missing `,`
+   |        ^^ expected one of `)`, `,`, `.`, `?`, or an operator
+   |
+help: missing `,`
+   |
+LL |     ((),氷);
+   |        +
 
 error[E0425]: cannot find value `é` in this scope
   --> $DIR/multibyte-char-use-seperator-issue-80134.rs:4:8

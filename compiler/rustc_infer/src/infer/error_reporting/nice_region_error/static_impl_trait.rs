@@ -301,7 +301,7 @@ pub fn suggest_new_region_bound(
                     _ => None,
                 }) {
                     if let Some(explicit_static) = &explicit_static {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             span,
                             format!("{consider} `{ty}`'s {explicit_static}"),
                             &lifetime_name,
@@ -309,7 +309,7 @@ pub fn suggest_new_region_bound(
                         );
                     }
                     if let Some((param_span, ref param_ty)) = param {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             param_span,
                             add_static_bound,
                             param_ty,
@@ -368,13 +368,13 @@ pub fn suggest_new_region_bound(
                             format!("you can use the named lifetime parameter `{name}`")
                         };
                         spans_suggs.push((fn_return.span.shrink_to_hi(), format!(" + {name} ")));
-                        err.multipart_suggestion_verbose(
+                        err.multipart_suggestion(
                             format!("{declare} `{ty}` {captures}, {use_lt}",),
                             spans_suggs,
                             Applicability::MaybeIncorrect,
                         );
                     } else {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             fn_return.span.shrink_to_hi(),
                             format!("{declare} `{ty}` {captures}, {explicit}",),
                             &plus_lt,
@@ -385,7 +385,7 @@ pub fn suggest_new_region_bound(
             }
             TyKind::TraitObject(_, lt, _) => {
                 if let LifetimeName::ImplicitObjectLifetimeDefault = lt.res {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         fn_return.span.shrink_to_hi(),
                         format!("{declare} the trait object {captures}, {explicit}",),
                         &plus_lt,
@@ -397,7 +397,7 @@ pub fn suggest_new_region_bound(
                     // one of them has the bound we'd suggest already there, like
                     // in `impl Foo<X = dyn Bar> + '_`.
                     if let Some(explicit_static) = &explicit_static {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             lt.ident.span,
                             format!("{consider} the trait object's {explicit_static}"),
                             &lifetime_name,
@@ -405,7 +405,7 @@ pub fn suggest_new_region_bound(
                         );
                     }
                     if let Some((param_span, param_ty)) = param.clone() {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             param_span,
                             add_static_bound,
                             param_ty,

@@ -28,10 +28,12 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/issue-77179.rs:18:25
    |
 LL |     fn bar() -> Pointer<_>;
-   |                         ^
-   |                         |
-   |                         not allowed in type signatures
-   |                         help: use type parameters instead: `T`
+   |                         ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL |     fn bar() -> Pointer<T>;
+   |                         ~
 
 error: aborting due to 3 previous errors
 

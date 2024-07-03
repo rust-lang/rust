@@ -20,13 +20,17 @@ error: denote infinite loops with `loop { ... }`
   --> $DIR/expect_with_forbid.rs:20:5
    |
 LL |     while true {}
-   |     ^^^^^^^^^^ help: use `loop`
+   |     ^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/expect_with_forbid.rs:10:10
    |
 LL | #[forbid(while_true)]
    |          ^^^^^^^^^^
+help: use `loop`
+   |
+LL |     loop {}
+   |     ~~~~
 
 error: aborting due to 3 previous errors
 

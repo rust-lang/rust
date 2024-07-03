@@ -10,13 +10,23 @@ error: malformed `rustc_legacy_const_generics` attribute input
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:37:1
    |
 LL | #[rustc_legacy_const_generics]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_legacy_const_generics(N)]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: must be of the form
+   |
+LL | #[rustc_legacy_const_generics(N)]
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: malformed `rustc_legacy_const_generics` attribute input
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:40:1
    |
 LL | #[rustc_legacy_const_generics = 1]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_legacy_const_generics(N)]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: must be of the form
+   |
+LL | #[rustc_legacy_const_generics(N)]
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: #[rustc_legacy_const_generics] must have one index for each generic parameter
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:3:1

@@ -2,16 +2,25 @@ error: called `.err().expect()` on a `Result` value
   --> tests/ui/err_expect.rs:10:16
    |
 LL |     test_debug.err().expect("Testing debug type");
-   |                ^^^^^^^^^^^^ help: try: `expect_err`
+   |                ^^^^^^^^^^^^
    |
    = note: `-D clippy::err-expect` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::err_expect)]`
+help: try
+   |
+LL |     test_debug.expect_err("Testing debug type");
+   |                ~~~~~~~~~~
 
 error: called `.err().expect()` on a `Result` value
   --> tests/ui/err_expect.rs:25:7
    |
 LL |     x.err().expect("17");
-   |       ^^^^^^^^^^^^ help: try: `expect_err`
+   |       ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     x.expect_err("17");
+   |       ~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

@@ -188,7 +188,13 @@ error: unrecognized meta-variable expression
   --> $DIR/syntax-errors.rs:140:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
-   |                                 ^^^^^^^^^^^^^^ help: supported expressions are count, ignore, index and len
+   |                                 ^^^^^^^^^^^^^^
+   |
+help: supported expressions are count, ignore, index and len
+   |
+LL -     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
+LL +     ( $( $i:ident ),* ) => { ${ (i) } };
+   |
 
 error: expected identifier
   --> $DIR/syntax-errors.rs:118:33

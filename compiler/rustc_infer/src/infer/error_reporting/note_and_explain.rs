@@ -52,7 +52,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         ) = tcx.sess.source_map().span_to_snippet(sp) =>
                     {
                         if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
-                            diag.span_suggestion_verbose(
+                            diag.span_suggestion(
                                 sp.shrink_to_hi(),
                                 "use a float literal",
                                 ".0",
@@ -925,7 +925,7 @@ fn foo(&self) -> Self::T { String::new() }
                 let item_args = self.format_generic_args(assoc_args);
                 (span.shrink_to_hi(), format!("<{}{} = {}>", assoc.ident(tcx), item_args, ty))
             };
-            diag.span_suggestion_verbose(span, msg(), sugg, MaybeIncorrect);
+            diag.span_suggestion(span, msg(), sugg, MaybeIncorrect);
             return true;
         }
         false

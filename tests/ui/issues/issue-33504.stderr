@@ -9,7 +9,11 @@ LL |         let Test = 1;
    |             |
    |             expected integer, found `Test`
    |             `Test` is interpreted as a unit struct, not a new binding
-   |             help: introduce a new binding instead: `other_test`
+   |
+help: introduce a new binding instead
+   |
+LL |         let other_test = 1;
+   |             ~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

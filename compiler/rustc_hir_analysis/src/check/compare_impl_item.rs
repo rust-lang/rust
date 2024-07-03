@@ -1001,7 +1001,7 @@ fn report_trait_method_mismatch<'tcx>(
                     match sig.decl.output {
                         hir::FnRetTy::DefaultReturn(sp) => {
                             let sugg = format!(" -> {}", trait_sig.output());
-                            diag.span_suggestion_verbose(sp, msg, sugg, ap);
+                            diag.span_suggestion(sp, msg, sugg, ap);
                         }
                         hir::FnRetTy::Return(hir_ty) => {
                             let sugg = trait_sig.output();

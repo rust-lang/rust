@@ -732,21 +732,21 @@ struct SuggestionStyleDefault {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(no_crate_example, code = "", style = "short")]
+#[suggestion(no_crate_example, code = "")]
 struct SuggestionStyleShort {
     #[primary_span]
     sub: Span,
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(no_crate_example, code = "", style = "hidden")]
+#[suggestion(no_crate_example, code = "")]
 struct SuggestionStyleHidden {
     #[primary_span]
     sub: Span,
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(no_crate_example, code = "", style = "verbose")]
+#[suggestion(no_crate_example, code = "")]
 struct SuggestionStyleVerbose {
     #[primary_span]
     sub: Span,
@@ -760,7 +760,7 @@ struct SuggestionStyleToolOnly {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(no_crate_example, code = "", style = "hidden", style = "normal")]
+#[suggestion(no_crate_example, code = "", style = "normal", style = "tool-only")]
 //~^ ERROR specified multiple times
 //~| NOTE previously specified here
 struct SuggestionStyleTwice {

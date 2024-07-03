@@ -217,9 +217,9 @@ struct LabelOnNonSpan {
 struct Suggest {
     #[suggestion(no_crate_suggestion, code = "This is the suggested code")]
     #[suggestion(no_crate_suggestion, code = "This is the suggested code", style = "normal")]
-    #[suggestion(no_crate_suggestion, code = "This is the suggested code", style = "short")]
-    #[suggestion(no_crate_suggestion, code = "This is the suggested code", style = "hidden")]
-    #[suggestion(no_crate_suggestion, code = "This is the suggested code", style = "verbose")]
+    #[suggestion(no_crate_suggestion, code = "This is the suggested code")]
+    #[suggestion(no_crate_suggestion, code = "This is the suggested code")]
+    #[suggestion(no_crate_suggestion, code = "This is the suggested code")]
     suggestion: (Span, Applicability),
 }
 
@@ -816,7 +816,7 @@ struct SuggestionsInvalidLiteral {
 #[derive(Diagnostic)]
 #[diag(no_crate_example)]
 struct SuggestionStyleGood {
-    #[suggestion(code = "", style = "hidden")]
+    #[suggestion(code = "")]
     sub: Span,
 }
 

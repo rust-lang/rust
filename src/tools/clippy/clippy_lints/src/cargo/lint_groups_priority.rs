@@ -133,7 +133,7 @@ fn check_table(cx: &LateContext<'_>, table: LintTable, known_groups: &FxHashSet<
                         toml::ser::ValueSerializer::new(&mut suggestion),
                     )
                     .unwrap();
-                    diag.span_suggestion_verbose(
+                    diag.span_suggestion(
                         config_span,
                         format!(
                             "to have lints override the group set `{}` to a lower priority",

@@ -35,8 +35,13 @@ LL |     let Point { .., } = p;
    |                 --^
    |                 | |
    |                 | expected `}`
-   |                 | help: remove this comma
    |                 `..` must be at the end and cannot have a trailing comma
+   |
+help: remove this comma
+   |
+LL -     let Point { .., } = p;
+LL +     let Point { .. } = p;
+   |
 
 error: aborting due to 3 previous errors
 

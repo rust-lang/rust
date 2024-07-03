@@ -102,7 +102,7 @@ pub struct MisplacedImplTrait<'a> {
 pub struct MisplacedAssocTyBinding {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " = impl", applicability = "maybe-incorrect", style = "verbose")]
+    #[suggestion(code = " = impl", applicability = "maybe-incorrect")]
     pub suggestion: Option<Span>,
 }
 
@@ -118,7 +118,7 @@ pub struct UnderscoreExprLhsAssign {
 #[diag(ast_lowering_base_expression_double_dot, code = E0797)]
 pub struct BaseExpressionDoubleDot {
     #[primary_span]
-    #[suggestion(code = "/* expr */", applicability = "has-placeholders", style = "verbose")]
+    #[suggestion(code = "/* expr */", applicability = "has-placeholders")]
     pub span: Span,
 }
 
@@ -301,7 +301,6 @@ pub struct SubTupleBinding<'a> {
     #[label]
     #[suggestion(
         ast_lowering_sub_tuple_binding_suggestion,
-        style = "verbose",
         code = "..",
         applicability = "maybe-incorrect"
     )]
@@ -448,6 +447,6 @@ pub(crate) struct NoPreciseCapturesOnRpitit {
 pub(crate) struct YieldInClosure {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = "#[coroutine] ", applicability = "maybe-incorrect", style = "verbose")]
+    #[suggestion(code = "#[coroutine] ", applicability = "maybe-incorrect")]
     pub suggestion: Option<Span>,
 }

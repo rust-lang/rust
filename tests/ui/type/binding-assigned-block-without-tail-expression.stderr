@@ -1,15 +1,17 @@
 error[E0277]: `()` doesn't implement `std::fmt::Display`
   --> $DIR/binding-assigned-block-without-tail-expression.rs:14:20
    |
-LL |         42;
-   |           - help: remove this semicolon
-...
 LL |     println!("{}", x);
    |                    ^ `()` cannot be formatted with the default formatter
    |
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove this semicolon
+   |
+LL -         42;
+LL +         42
+   |
 
 error[E0277]: `()` doesn't implement `std::fmt::Display`
   --> $DIR/binding-assigned-block-without-tail-expression.rs:15:20
@@ -27,15 +29,17 @@ LL |     println!("{}", y);
 error[E0277]: `()` doesn't implement `std::fmt::Display`
   --> $DIR/binding-assigned-block-without-tail-expression.rs:16:20
    |
-LL |         "hi";
-   |             - help: remove this semicolon
-...
 LL |     println!("{}", z);
    |                    ^ `()` cannot be formatted with the default formatter
    |
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove this semicolon
+   |
+LL -         "hi";
+LL +         "hi"
+   |
 
 error[E0277]: `()` doesn't implement `std::fmt::Display`
   --> $DIR/binding-assigned-block-without-tail-expression.rs:17:20
@@ -56,13 +60,16 @@ LL |       println!("{}", s);
 error[E0308]: mismatched types
   --> $DIR/binding-assigned-block-without-tail-expression.rs:18:18
    |
-LL |         42;
-   |           - help: remove this semicolon
-...
 LL |     let _: i32 = x;
    |            ---   ^ expected `i32`, found `()`
    |            |
    |            expected due to this
+   |
+help: remove this semicolon
+   |
+LL -         42;
+LL +         42
+   |
 
 error[E0308]: mismatched types
   --> $DIR/binding-assigned-block-without-tail-expression.rs:19:18

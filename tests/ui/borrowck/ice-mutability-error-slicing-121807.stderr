@@ -17,11 +17,15 @@ warning: anonymous parameters are deprecated and will be removed in the next edi
   --> $DIR/ice-mutability-error-slicing-121807.rs:7:30
    |
 LL |     extern "C" fn read_dword(Self::Assoc<'_>) -> u16;
-   |                              ^^^^^^^^^^^^^^^ help: try naming the parameter or explicitly ignoring it: `_: Self::Assoc<'_>`
+   |                              ^^^^^^^^^^^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
    = note: `#[warn(anonymous_parameters)]` on by default
+help: try naming the parameter or explicitly ignoring it
+   |
+LL |     extern "C" fn read_dword(_: Self::Assoc<'_>) -> u16;
+   |                              ~~~~~~~~~~~~~~~~~~
 
 error[E0220]: associated type `Assoc` not found for `Self`
   --> $DIR/ice-mutability-error-slicing-121807.rs:7:36

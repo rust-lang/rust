@@ -139,10 +139,14 @@ error: manual implementation of an assign operation
   --> tests/ui/assign_ops2.rs:63:5
    |
 LL |     buf = buf + cows.clone();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `buf += cows.clone()`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::assign-op-pattern` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::assign_op_pattern)]`
+help: replace it with
+   |
+LL |     buf += cows.clone();
+   |     ~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 10 previous errors
 

@@ -212,81 +212,6 @@ pub trait Emitter: Translate {
 
     fn source_map(&self) -> Option<&Lrc<SourceMap>>;
 
-    /// Formats the substitutions of the primary_span
-    ///
-    /// There are a lot of conditions to this method, but in short:
-    ///
-    /// * If the current `DiagInner` has only one visible `CodeSuggestion`,
-    ///   we format the `help` suggestion depending on the content of the
-    ///   substitutions. In that case, we modify the span and clear the
-    ///   suggestions.
-    ///
-    /// * If the current `DiagInner` has multiple suggestions,
-    ///   we leave `primary_span` and the suggestions untouched.
-    fn primary_span_formatted(
-        &mut self,
-        primary_span: &mut MultiSpan,
-        suggestions: &mut Vec<CodeSuggestion>,
-        fluent_args: &FluentArgs<'_>,
-    ) {
-        if let Some((sugg, rest)) = suggestions.split_first() {
-            let msg = self.translate_message(&sugg.msg, fluent_args).map_err(Report::new).unwrap();
-            if rest.is_empty() &&
-               // ^ if there is only one suggestion
-               // don't display multi-suggestions as labels
-               sugg.substitutions.len() == 1 &&
-               // don't display multipart suggestions as labels
-               sugg.substitutions[0].parts.len() == 1 &&
-               // don't display long messages as labels
-               msg.split_whitespace().count() < 10 &&
-               // don't display multiline suggestions as labels
-               !sugg.substitutions[0].parts[0].snippet.contains('\n') &&
-               ![
-                    // when this style is set we want the suggestion to be a message, not inline
-                    SuggestionStyle::HideCodeAlways,
-                    // trivial suggestion for tooling's sake, never shown
-                    SuggestionStyle::CompletelyHidden,
-                    // subtle suggestion, never shown inline
-                    SuggestionStyle::ShowAlways,
-               ].contains(&sugg.style)
-            {
-                let substitution = &sugg.substitutions[0].parts[0].snippet.trim();
-                let msg = if substitution.is_empty() || sugg.style.hide_inline() {
-                    // This substitution is only removal OR we explicitly don't want to show the
-                    // code inline (`hide_inline`). Therefore, we don't show the substitution.
-                    format!("help: {msg}")
-                } else {
-                    // Show the default suggestion text with the substitution
-                    format!(
-                        "help: {}{}: `{}`",
-                        msg,
-                        if self.source_map().is_some_and(|sm| is_case_difference(
-                            sm,
-                            substitution,
-                            sugg.substitutions[0].parts[0].span,
-                        )) {
-                            " (notice the capitalization)"
-                        } else {
-                            ""
-                        },
-                        substitution,
-                    )
-                };
-                primary_span.push_span_label(sugg.substitutions[0].parts[0].span, msg);
-
-                // We return only the modified primary_span
-                suggestions.clear();
-            } else {
-                // if there are multiple suggestions, print them all in full
-                // to be consistent. We could try to figure out if we can
-                // make one (or the first one) inline, but that would give
-                // undue importance to a semi-random suggestion
-            }
-        } else {
-            // do nothing
-        }
-    }
-
     fn fix_multispans_in_extern_macros_and_render_macro_backtrace(
         &self,
         span: &mut MultiSpan,
@@ -504,8 +429,7 @@ impl Emitter for HumanEmitter {
     fn emit_diagnostic(&mut self, mut diag: DiagInner) {
         let fluent_args = to_fluent_args(diag.args.iter());
 
-        let mut suggestions = diag.suggestions.unwrap_or(vec![]);
-        self.primary_span_formatted(&mut diag.span, &mut suggestions, &fluent_args);
+        let suggestions = diag.suggestions.unwrap_or(vec![]);
 
         self.fix_multispans_in_extern_macros_and_render_macro_backtrace(
             &mut diag.span,
@@ -2177,23 +2101,7 @@ impl HumanEmitter {
                             SuggestionStyle::CompletelyHidden => {
                                 // do not display this suggestion, it is meant only for tools
                             }
-                            SuggestionStyle::HideCodeAlways => {
-                                if let Err(e) = self.emit_messages_default_inner(
-                                    &MultiSpan::new(),
-                                    &[(sugg.msg.to_owned(), Style::HeaderMsg)],
-                                    args,
-                                    &None,
-                                    &Level::Help,
-                                    max_line_num_len,
-                                    true,
-                                    None,
-                                ) {
-                                    panic!("failed to emit error: {e}");
-                                }
-                            }
-                            SuggestionStyle::HideCodeInline
-                            | SuggestionStyle::ShowCode
-                            | SuggestionStyle::ShowAlways => {
+                            SuggestionStyle::ShowAlways => {
                                 if let Err(e) = self.emit_suggestion_default(
                                     span,
                                     sugg,

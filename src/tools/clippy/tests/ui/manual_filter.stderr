@@ -8,10 +8,14 @@ LL | |             if x > 0 {
 ...  |
 LL | |         },
 LL | |     };
-   | |_____^ help: try: `Some(0).filter(|&x| x <= 0)`
+   | |_____^
    |
    = note: `-D clippy::manual-filter` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_filter)]`
+help: try
+   |
+LL |     Some(0).filter(|&x| x <= 0);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:16:5
@@ -23,7 +27,12 @@ LL | |                 None
 ...  |
 LL | |         None => None,
 LL | |     };
-   | |_____^ help: try: `Some(1).filter(|&x| x <= 0)`
+   | |_____^
+   |
+help: try
+   |
+LL |     Some(1).filter(|&x| x <= 0);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:27:5
@@ -35,7 +44,12 @@ LL | |                 None
 ...  |
 LL | |         _ => None,
 LL | |     };
-   | |_____^ help: try: `Some(2).filter(|&x| x <= 0)`
+   | |_____^
+   |
+help: try
+   |
+LL |     Some(2).filter(|&x| x <= 0);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:38:5
@@ -47,7 +61,12 @@ LL | |                 Some(x)
 ...  |
 LL | |         None => None,
 LL | |     };
-   | |_____^ help: try: `Some(3).filter(|&x| x > 0)`
+   | |_____^
+   |
+help: try
+   |
+LL |     Some(3).filter(|&x| x > 0);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:50:5
@@ -59,7 +78,12 @@ LL | |         Some(x) => {
 ...  |
 LL | |         },
 LL | |     };
-   | |_____^ help: try: `y.filter(|&x| x <= 0)`
+   | |_____^
+   |
+help: try
+   |
+LL |     y.filter(|&x| x <= 0);
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:62:5
@@ -71,7 +95,12 @@ LL | |                 Some(x)
 ...  |
 LL | |         _ => None,
 LL | |     };
-   | |_____^ help: try: `Some(5).filter(|&x| x > 0)`
+   | |_____^
+   |
+help: try
+   |
+LL |     Some(5).filter(|&x| x > 0);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:73:5
@@ -83,7 +112,12 @@ LL | |                 Some(x)
 ...  |
 LL | |         _ => None,
 LL | |     };
-   | |_____^ help: try: `Some(6).as_ref().filter(|&x| x > &0)`
+   | |_____^
+   |
+help: try
+   |
+LL |     Some(6).as_ref().filter(|&x| x > &0);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:85:5
@@ -95,7 +129,12 @@ LL | |                 Some(x)
 ...  |
 LL | |         _ => None,
 LL | |     };
-   | |_____^ help: try: `Some(String::new()).filter(|x| external_cond)`
+   | |_____^
+   |
+help: try
+   |
+LL |     Some(String::new()).filter(|x| external_cond);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:96:5
@@ -105,7 +144,12 @@ LL | |         if external_cond { Some(x) } else { None }
 LL | |     } else {
 LL | |         None
 LL | |     };
-   | |_____^ help: try: `Some(7).filter(|&x| external_cond)`
+   | |_____^
+   |
+help: try
+   |
+LL |     Some(7).filter(|&x| external_cond);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:102:5
@@ -117,7 +161,12 @@ LL | |                 Some(x)
 ...  |
 LL | |         _ => None,
 LL | |     };
-   | |_____^ help: try: `Some(8).filter(|&x| x != 0)`
+   | |_____^
+   |
+help: try
+   |
+LL |     Some(8).filter(|&x| x != 0);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:113:5
@@ -129,7 +178,12 @@ LL | |                 Some(x)
 ...  |
 LL | |         None => None,
 LL | |     };
-   | |_____^ help: try: `Some(9).filter(|&x| x > 10 && x < 100)`
+   | |_____^
+   |
+help: try
+   |
+LL |     Some(9).filter(|&x| x > 10 && x < 100);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:139:5
@@ -162,7 +216,12 @@ LL | |                 Some(x)
 ...  |
 LL | |         None => None,
 LL | |     };
-   | |_____^ help: try: `Some(14).filter(|&x| unsafe { f(x) })`
+   | |_____^
+   |
+help: try
+   |
+LL |     let _ = Some(14).filter(|&x| unsafe { f(x) });
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:193:13
@@ -172,7 +231,12 @@ LL |       let _ = match Some(15) {
 LL | |         Some(x) => unsafe { if f(x) { Some(x) } else { None } },
 LL | |         None => None,
 LL | |     };
-   | |_____^ help: try: `Some(15).filter(|&x| unsafe { f(x) })`
+   | |_____^
+   |
+help: try
+   |
+LL |     let _ = Some(15).filter(|&x| unsafe { f(x) });
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:201:12
@@ -184,7 +248,12 @@ LL | |         if x % 2 == 0 { Some(x) } else { None }
 LL | |     } else {
 LL | |         None
 LL | |     };
-   | |_____^ help: try: `{ Some(16).filter(|&x| x % 2 == 0) }`
+   | |_____^
+   |
+help: try
+   |
+LL |     } else { Some(16).filter(|&x| x % 2 == 0) };
+   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 15 previous errors
 

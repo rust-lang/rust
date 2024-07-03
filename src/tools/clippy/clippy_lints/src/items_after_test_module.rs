@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::{fulfill_or_allowed, is_cfg_test, is_from_proc_macro};
-use rustc_errors::{Applicability, SuggestionStyle};
+use rustc_errors::Applicability;
 use rustc_hir::{HirId, Item, ItemKind, Mod};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -95,11 +95,10 @@ impl LateLintPass<'_> for ItemsAfterTestModule {
                         && let items_span = last.span.with_lo(test_mod.span.hi())
                         && let Some(items) = snippet_opt(cx, items_span)
                     {
-                        diag.multipart_suggestion_with_style(
+                        diag.multipart_suggestion(
                             "move the items to before the test module was defined",
                             vec![(prev.span.shrink_to_hi(), items), (items_span, String::new())],
                             Applicability::MachineApplicable,
-                            SuggestionStyle::HideCodeAlways,
                         );
                     }
                 },

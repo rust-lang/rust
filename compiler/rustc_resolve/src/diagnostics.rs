@@ -187,7 +187,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 );
                 err.emit();
             } else if let Some((span, msg, sugg, appl)) = suggestion {
-                err.span_suggestion_verbose(span, msg, sugg, appl);
+                err.span_suggestion(span, msg, sugg, appl);
                 err.emit();
             } else if let [segment] = path.as_slice()
                 && is_call
@@ -2906,7 +2906,7 @@ fn show_candidates(
                 // Our suggestion is empty, so make sure the span is not empty (or we'd ICE).
                 // Can happen for derive-generated spans.
                 if sp.can_be_used_for_suggestions() && !sp.is_empty() {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         sp,
                         format!("if you import `{}`, refer to it directly", last.ident),
                         "",

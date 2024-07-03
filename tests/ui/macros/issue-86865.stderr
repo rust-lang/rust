@@ -2,17 +2,25 @@ error: format argument must be a string literal
   --> $DIR/issue-86865.rs:4:14
    |
 LL |     println!(b"foo");
-   |              -^^^^^
-   |              |
-   |              help: consider removing the leading `b`
+   |              ^^^^^^
+   |
+help: consider removing the leading `b`
+   |
+LL -     println!(b"foo");
+LL +     println!("foo");
+   |
 
 error: format argument must be a string literal
   --> $DIR/issue-86865.rs:8:15
    |
 LL |     write!(s, b"foo{}", "bar");
-   |               -^^^^^^^
-   |               |
-   |               help: consider removing the leading `b`
+   |               ^^^^^^^^
+   |
+help: consider removing the leading `b`
+   |
+LL -     write!(s, b"foo{}", "bar");
+LL +     write!(s, "foo{}", "bar");
+   |
 
 error: aborting due to 2 previous errors
 

@@ -29,9 +29,12 @@ error: expected one of `)`, `+`, or `,`, found `Sized`
   --> $DIR/issue-102598.rs:1:23
    |
 LL | fn foo<'a>(_: impl 'a Sized) {}
-   |                      -^^^^^ expected one of `)`, `+`, or `,`
-   |                      |
-   |                      help: missing `,`
+   |                       ^^^^^ expected one of `)`, `+`, or `,`
+   |
+help: missing `,`
+   |
+LL | fn foo<'a>(_: impl 'a, Sized) {}
+   |                      +
 
 error: at least one trait must be specified
   --> $DIR/issue-102598.rs:1:15

@@ -2,11 +2,13 @@ error[E0308]: mismatched types
   --> $DIR/issue-81943.rs:7:9
    |
 LL |   f(|x| lib::d!(x));
-   |        -^^^^^^^^^^ expected `()`, found `i32`
-   |        |
-   |        help: try adding a return type: `-> i32`
+   |         ^^^^^^^^^^ expected `()`, found `i32`
    |
    = note: this error originates in the macro `lib::d` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: try adding a return type
+   |
+LL |   f(|x| -> i32 lib::d!(x));
+   |         ++++++
 
 error[E0308]: mismatched types
   --> $DIR/issue-81943.rs:8:28

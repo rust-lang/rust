@@ -2,28 +2,34 @@ error[E0573]: expected type, found variant `CompileFlag::A`
   --> $DIR/invalid-enum.rs:23:12
    |
 LL |   test_1::<CompileFlag::A>();
-   |            ^^^^^^^^^^^^^^
-   |            |
-   |            not a type
-   |            help: try using the variant's enum: `CompileFlag`
+   |            ^^^^^^^^^^^^^^ not a type
+   |
+help: try using the variant's enum
+   |
+LL |   test_1::<CompileFlag>();
+   |            ~~~~~~~~~~~
 
 error[E0573]: expected type, found variant `CompileFlag::A`
   --> $DIR/invalid-enum.rs:27:15
    |
 LL |   test_2::<_, CompileFlag::A>(0);
-   |               ^^^^^^^^^^^^^^
-   |               |
-   |               not a type
-   |               help: try using the variant's enum: `CompileFlag`
+   |               ^^^^^^^^^^^^^^ not a type
+   |
+help: try using the variant's enum
+   |
+LL |   test_2::<_, CompileFlag>(0);
+   |               ~~~~~~~~~~~
 
 error[E0573]: expected type, found variant `CompileFlag::A`
   --> $DIR/invalid-enum.rs:31:18
    |
 LL |   let _: Example<CompileFlag::A, _> = Example { x: 0 };
-   |                  ^^^^^^^^^^^^^^
-   |                  |
-   |                  not a type
-   |                  help: try using the variant's enum: `CompileFlag`
+   |                  ^^^^^^^^^^^^^^ not a type
+   |
+help: try using the variant's enum
+   |
+LL |   let _: Example<CompileFlag, _> = Example { x: 0 };
+   |                  ~~~~~~~~~~~
 
 error[E0747]: unresolved item provided when a constant was expected
   --> $DIR/invalid-enum.rs:31:18

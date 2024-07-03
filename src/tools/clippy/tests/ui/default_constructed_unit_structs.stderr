@@ -2,40 +2,75 @@ error: use of `default` to create a unit struct
   --> tests/ui/default_constructed_unit_structs.rs:11:13
    |
 LL |         Self::default()
-   |             ^^^^^^^^^^^ help: remove this call to `default`
+   |             ^^^^^^^^^^^
    |
    = note: `-D clippy::default-constructed-unit-structs` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::default_constructed_unit_structs)]`
+help: remove this call to `default`
+   |
+LL -         Self::default()
+LL +         Self
+   |
 
 error: use of `default` to create a unit struct
   --> tests/ui/default_constructed_unit_structs.rs:53:31
    |
 LL |             inner: PhantomData::default(),
-   |                               ^^^^^^^^^^^ help: remove this call to `default`
+   |                               ^^^^^^^^^^^
+   |
+help: remove this call to `default`
+   |
+LL -             inner: PhantomData::default(),
+LL +             inner: PhantomData,
+   |
 
 error: use of `default` to create a unit struct
   --> tests/ui/default_constructed_unit_structs.rs:126:33
    |
 LL |     let _ = PhantomData::<usize>::default();
-   |                                 ^^^^^^^^^^^ help: remove this call to `default`
+   |                                 ^^^^^^^^^^^
+   |
+help: remove this call to `default`
+   |
+LL -     let _ = PhantomData::<usize>::default();
+LL +     let _ = PhantomData::<usize>;
+   |
 
 error: use of `default` to create a unit struct
   --> tests/ui/default_constructed_unit_structs.rs:127:42
    |
 LL |     let _: PhantomData<i32> = PhantomData::default();
-   |                                          ^^^^^^^^^^^ help: remove this call to `default`
+   |                                          ^^^^^^^^^^^
+   |
+help: remove this call to `default`
+   |
+LL -     let _: PhantomData<i32> = PhantomData::default();
+LL +     let _: PhantomData<i32> = PhantomData;
+   |
 
 error: use of `default` to create a unit struct
   --> tests/ui/default_constructed_unit_structs.rs:128:55
    |
 LL |     let _: PhantomData<i32> = std::marker::PhantomData::default();
-   |                                                       ^^^^^^^^^^^ help: remove this call to `default`
+   |                                                       ^^^^^^^^^^^
+   |
+help: remove this call to `default`
+   |
+LL -     let _: PhantomData<i32> = std::marker::PhantomData::default();
+LL +     let _: PhantomData<i32> = std::marker::PhantomData;
+   |
 
 error: use of `default` to create a unit struct
   --> tests/ui/default_constructed_unit_structs.rs:129:23
    |
 LL |     let _ = UnitStruct::default();
-   |                       ^^^^^^^^^^^ help: remove this call to `default`
+   |                       ^^^^^^^^^^^
+   |
+help: remove this call to `default`
+   |
+LL -     let _ = UnitStruct::default();
+LL +     let _ = UnitStruct;
+   |
 
 error: aborting due to 6 previous errors
 

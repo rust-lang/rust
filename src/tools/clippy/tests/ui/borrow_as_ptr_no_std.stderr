@@ -2,16 +2,25 @@ error: borrow as raw pointer
   --> tests/ui/borrow_as_ptr_no_std.rs:9:14
    |
 LL |     let _p = &val as *const i32;
-   |              ^^^^^^^^^^^^^^^^^^ help: try: `core::ptr::addr_of!(val)`
+   |              ^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::borrow-as-ptr` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::borrow_as_ptr)]`
+help: try
+   |
+LL |     let _p = core::ptr::addr_of!(val);
+   |              ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: borrow as raw pointer
   --> tests/ui/borrow_as_ptr_no_std.rs:12:18
    |
 LL |     let _p_mut = &mut val_mut as *mut i32;
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `core::ptr::addr_of_mut!(val_mut)`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let _p_mut = core::ptr::addr_of_mut!(val_mut);
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

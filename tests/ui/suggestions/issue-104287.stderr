@@ -2,15 +2,18 @@ error[E0107]: method takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/issue-104287.rs:10:5
    |
 LL |     foo::<()>(x);
-   |     ^^^------ help: remove these generics
-   |     |
-   |     expected 0 generic arguments
+   |     ^^^ expected 0 generic arguments
    |
 note: method defined here, with 0 generic parameters
   --> $DIR/issue-104287.rs:6:8
    |
 LL |     fn foo(&self) {}
    |        ^^^
+help: remove these generics
+   |
+LL -     foo::<()>(x);
+LL +     foo(x);
+   |
 
 error[E0425]: cannot find function `foo` in this scope
   --> $DIR/issue-104287.rs:10:5

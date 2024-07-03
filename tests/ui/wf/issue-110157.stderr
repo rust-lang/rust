@@ -21,8 +21,14 @@ LL | |
 LL | |     I: Iterator<Item = Missing>,
    | |________________________________^ missing `Item`, `next` in implementation
    |
-   = help: implement the missing item: `type Item = /* Type */;`
-   = help: implement the missing item: `fn next(&mut self) -> Option<<Self as Iterator>::Item> { todo!() }`
+help: implement the missing item
+   |
+LL | {type Item = /* Type */;
+   |  +++++++++++++++++++++++
+help: implement the missing item
+   |
+LL | {fn next(&mut self) -> Option<<Self as Iterator>::Item> { todo!() }
+   |  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 3 previous errors
 

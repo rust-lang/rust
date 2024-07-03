@@ -1184,7 +1184,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                         {
                             // If we are in a loop this will be suggested later.
                             if !is_loop_move {
-                                err.span_suggestion_verbose(
+                                err.span_suggestion(
                                     move_span.shrink_to_lo(),
                                     format!(
                                         "consider creating a fresh reborrow of {} here",
@@ -1286,11 +1286,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                                         )
                                     }
                                 };
-                                err.multipart_suggestion_verbose(
-                                    msg,
-                                    sugg,
-                                    Applicability::MaybeIncorrect,
-                                );
+                                err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
                                 for error in errors {
                                     if let FulfillmentErrorCode::Select(
                                         SelectionError::Unimplemented,

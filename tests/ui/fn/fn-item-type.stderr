@@ -18,7 +18,10 @@ LL | fn eq<T>(x: T, y: T) {}
    |       |  |
    |       |  `y` needs to match the fn item type of this parameter
    |       `x` and `y` all reference this parameter T
-   = help: consider casting both fn items to fn pointers using `as fn(isize) -> isize`
+help: consider casting both fn items to fn pointers using `as fn(isize) -> isize`
+   |
+LL |     eq(foo::<u8>, bar::<u8> as fn(isize) -> isize);
+   |                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/fn-item-type.rs:29:19
@@ -40,7 +43,10 @@ LL | fn eq<T>(x: T, y: T) {}
    |       |  |
    |       |  `y` needs to match the fn item type of this parameter
    |       `x` and `y` all reference this parameter T
-   = help: consider casting both fn items to fn pointers using `as fn(isize) -> isize`
+help: consider casting both fn items to fn pointers using `as fn(isize) -> isize`
+   |
+LL |     eq(foo::<u8>, foo::<i8> as fn(isize) -> isize);
+   |                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/fn-item-type.rs:34:23
@@ -62,7 +68,10 @@ LL | fn eq<T>(x: T, y: T) {}
    |       |  |
    |       |  `y` needs to match the fn item type of this parameter
    |       `x` and `y` all reference this parameter T
-   = help: consider casting both fn items to fn pointers using `as fn(isize) -> isize`
+help: consider casting both fn items to fn pointers using `as fn(isize) -> isize`
+   |
+LL |     eq(bar::<String>, bar::<Vec<u8>> as fn(isize) -> isize);
+   |                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/fn-item-type.rs:40:26
@@ -84,7 +93,10 @@ LL | fn eq<T>(x: T, y: T) {}
    |       |  |
    |       |  `y` needs to match the fn item type of this parameter
    |       `x` and `y` all reference this parameter T
-   = help: consider casting both fn items to fn pointers using `as fn()`
+help: consider casting both fn items to fn pointers using `as fn()`
+   |
+LL |     eq(<u8 as Foo>::foo, <u16 as Foo>::foo as fn());
+   |                          ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/fn-item-type.rs:45:19

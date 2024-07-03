@@ -2,22 +2,36 @@ error: renamed function parameter of trait impl
   --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:30:18
    |
 LL |     fn eq(&self, rhs: &Self) -> bool {
-   |                  ^^^ help: consider using the default name: `other`
+   |                  ^^^
    |
    = note: `-D clippy::renamed-function-params` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::renamed_function_params)]`
+help: consider using the default name
+   |
+LL |     fn eq(&self, other: &Self) -> bool {
+   |                  ~~~~~
 
 error: renamed function parameter of trait impl
   --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:34:18
    |
 LL |     fn ne(&self, rhs: &Self) -> bool {
-   |                  ^^^ help: consider using the default name: `other`
+   |                  ^^^
+   |
+help: consider using the default name
+   |
+LL |     fn ne(&self, other: &Self) -> bool {
+   |                  ~~~~~
 
 error: renamed function parameter of trait impl
   --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:55:31
    |
 LL |     fn hash<H: Hasher>(&self, states: &mut H) {
-   |                               ^^^^^^ help: consider using the default name: `state`
+   |                               ^^^^^^
+   |
+help: consider using the default name
+   |
+LL |     fn hash<H: Hasher>(&self, state: &mut H) {
+   |                               ~~~~~
 
 error: renamed function parameters of trait impl
   --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:59:30

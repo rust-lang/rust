@@ -503,7 +503,7 @@ impl<'a> Parser<'a> {
         if end.is_doc_comment() {
             err.span_label(end.span, "this doc comment doesn't document anything");
         } else if self.token.kind == TokenKind::Semi {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 self.token.span,
                 "consider removing this semicolon",
                 "",
@@ -1519,7 +1519,7 @@ impl<'a> Parser<'a> {
                         self.bump();
                         match self.parse_ty() {
                             Ok(_) => {
-                                err.span_suggestion_verbose(
+                                err.span_suggestion(
                                     prev_span,
                                     "perhaps you meant to use `struct` here",
                                     "struct",
@@ -1854,12 +1854,7 @@ impl<'a> Parser<'a> {
             let sp = self.prev_token.span;
             let mut err =
                 self.dcx().struct_span_err(sp, format!("{adt_ty} fields are separated by `,`"));
-            err.span_suggestion_short(
-                sp,
-                "replace `;` with `,`",
-                ",",
-                Applicability::MachineApplicable,
-            );
+            err.span_suggestion(sp, "replace `;` with `,`", ",", Applicability::MachineApplicable);
             return Err(err);
         }
         match self.token.kind {
@@ -1954,7 +1949,7 @@ impl<'a> Parser<'a> {
             if eq_typo || semi_typo {
                 self.bump();
                 // Gracefully handle small typos.
-                err.with_span_suggestion_short(
+                err.with_span_suggestion(
                     self.prev_token.span,
                     "field names and their types are separated with `:`",
                     ":",

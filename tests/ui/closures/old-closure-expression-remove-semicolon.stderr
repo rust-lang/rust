@@ -5,9 +5,14 @@ LL |       let _x: i32 = {
    |  ___________________^
 LL | |
 LL | |         foo();
-   | |              - help: remove this semicolon to return this value
 LL | |     };
    | |_____^ expected `i32`, found `()`
+   |
+help: remove this semicolon to return this value
+   |
+LL -         foo();
+LL +         foo()
+   |
 
 error: aborting due to 1 previous error
 

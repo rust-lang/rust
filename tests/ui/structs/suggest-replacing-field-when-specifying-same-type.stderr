@@ -2,10 +2,12 @@ error[E0026]: variant `Foo::Bar` does not have a field named `aa`
   --> $DIR/suggest-replacing-field-when-specifying-same-type.rs:10:23
    |
 LL |         Foo::Bar { a, aa: 1, c } => (),
-   |                       ^^
-   |                       |
-   |                       variant `Foo::Bar` does not have this field
-   |                       help: `Foo::Bar` has a field named `b`
+   |                       ^^ variant `Foo::Bar` does not have this field
+   |
+help: `Foo::Bar` has a field named `b`
+   |
+LL |         Foo::Bar { a, b: 1, c } => (),
+   |                       ~
 
 error[E0027]: pattern does not mention field `b`
   --> $DIR/suggest-replacing-field-when-specifying-same-type.rs:10:9
@@ -26,10 +28,12 @@ error[E0026]: variant `Foo::Baz` does not have a field named `bb`
   --> $DIR/suggest-replacing-field-when-specifying-same-type.rs:13:20
    |
 LL |         Foo::Baz { bb: 1.0 } => (),
-   |                    ^^
-   |                    |
-   |                    variant `Foo::Baz` does not have this field
-   |                    help: `Foo::Baz` has a field named `a`
+   |                    ^^ variant `Foo::Baz` does not have this field
+   |
+help: `Foo::Baz` has a field named `a`
+   |
+LL |         Foo::Baz { a: 1.0 } => (),
+   |                    ~
 
 error[E0027]: pattern does not mention field `a`
   --> $DIR/suggest-replacing-field-when-specifying-same-type.rs:13:9

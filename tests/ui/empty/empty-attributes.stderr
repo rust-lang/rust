@@ -2,7 +2,7 @@ error: unused attribute
   --> $DIR/empty-attributes.rs:9:1
    |
 LL | #[repr()]
-   | ^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^
    |
    = note: attribute `repr` with an empty list has no effect
 note: the lint level is defined here
@@ -10,62 +10,102 @@ note: the lint level is defined here
    |
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
+help: remove this attribute
+   |
+LL - #[repr()]
+LL +
+   |
 
 error: unused attribute
   --> $DIR/empty-attributes.rs:12:1
    |
 LL | #[target_feature()]
-   | ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^
    |
    = note: attribute `target_feature` with an empty list has no effect
+help: remove this attribute
+   |
+LL - #[target_feature()]
+LL +
+   |
 
 error: unused attribute
   --> $DIR/empty-attributes.rs:2:1
    |
 LL | #![allow()]
-   | ^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^
    |
    = note: attribute `allow` with an empty list has no effect
+help: remove this attribute
+   |
+LL - #![allow()]
+LL +
+   |
 
 error: unused attribute
   --> $DIR/empty-attributes.rs:3:1
    |
 LL | #![expect()]
-   | ^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^
    |
    = note: attribute `expect` with an empty list has no effect
+help: remove this attribute
+   |
+LL - #![expect()]
+LL +
+   |
 
 error: unused attribute
   --> $DIR/empty-attributes.rs:4:1
    |
 LL | #![warn()]
-   | ^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^
    |
    = note: attribute `warn` with an empty list has no effect
+help: remove this attribute
+   |
+LL - #![warn()]
+LL +
+   |
 
 error: unused attribute
   --> $DIR/empty-attributes.rs:5:1
    |
 LL | #![deny()]
-   | ^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^
    |
    = note: attribute `deny` with an empty list has no effect
+help: remove this attribute
+   |
+LL - #![deny()]
+LL +
+   |
 
 error: unused attribute
   --> $DIR/empty-attributes.rs:6:1
    |
 LL | #![forbid()]
-   | ^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^
    |
    = note: attribute `forbid` with an empty list has no effect
+help: remove this attribute
+   |
+LL - #![forbid()]
+LL +
+   |
 
 error: unused attribute
   --> $DIR/empty-attributes.rs:7:1
    |
 LL | #![feature()]
-   | ^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^
    |
    = note: attribute `feature` with an empty list has no effect
+help: remove this attribute
+   |
+LL - #![feature()]
+LL +
+   |
 
 error: aborting due to 8 previous errors
 

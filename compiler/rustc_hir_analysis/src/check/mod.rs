@@ -239,17 +239,10 @@ fn missing_items_err(
         if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
             missing_trait_item_label
                 .push(errors::MissingTraitItemLabel { span, item: trait_item.name });
-            missing_trait_item.push(errors::MissingTraitItemSuggestion {
-                span: sugg_sp,
-                code,
-                snippet,
-            });
+            missing_trait_item.push(errors::MissingTraitItemSuggestion { span: sugg_sp, code });
         } else {
-            missing_trait_item_none.push(errors::MissingTraitItemSuggestionNone {
-                span: sugg_sp,
-                code,
-                snippet,
-            })
+            missing_trait_item_none
+                .push(errors::MissingTraitItemSuggestionNone { span: sugg_sp, code })
         }
     }
 

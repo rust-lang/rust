@@ -5,7 +5,12 @@ LL |         NoColor,
    |         ------- `Color::NoColor` defined here
 ...
 LL |           Color::NoColor(_) => { }
-   |           ^^^^^^^^^^^^^^^^^ help: use this syntax instead: `Color::NoColor`
+   |           ^^^^^^^^^^^^^^^^^
+   |
+help: use this syntax instead
+   |
+LL |           Color::NoColor => { }
+   |           ~~~~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

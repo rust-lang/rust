@@ -11,19 +11,35 @@ error: argument types not allowed with return type notation
   --> $DIR/bad-inputs-and-output.rs:10:23
    |
 LL | fn foo<T: Trait<method(i32): Send>>() {}
-   |                       ^^^^^ help: remove the input types: `()`
+   |                       ^^^^^
+   |
+help: remove the input types
+   |
+LL | fn foo<T: Trait<method(): Send>>() {}
+   |                       ~~
 
 error: return type not allowed with return type notation
   --> $DIR/bad-inputs-and-output.rs:13:25
    |
 LL | fn bar<T: Trait<method() -> (): Send>>() {}
-   |                         ^^^^^^ help: remove the return type
+   |                         ^^^^^^
+   |
+help: remove the return type
+   |
+LL - fn bar<T: Trait<method() -> (): Send>>() {}
+LL + fn bar<T: Trait<method(): Send>>() {}
+   |
 
 error: return type notation arguments must be elided with `..`
   --> $DIR/bad-inputs-and-output.rs:16:23
    |
 LL | fn baz<T: Trait<method(): Send>>() {}
-   |                       ^^ help: add `..`: `(..)`
+   |                       ^^
+   |
+help: add `..`
+   |
+LL | fn baz<T: Trait<method(..): Send>>() {}
+   |                       ~~~~
 
 error: aborting due to 3 previous errors; 1 warning emitted
 

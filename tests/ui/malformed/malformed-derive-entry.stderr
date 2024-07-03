@@ -2,19 +2,36 @@ error: traits in `#[derive(...)]` don't accept arguments
   --> $DIR/malformed-derive-entry.rs:1:14
    |
 LL | #[derive(Copy(Bad))]
-   |              ^^^^^ help: remove the arguments
+   |              ^^^^^
+   |
+help: remove the arguments
+   |
+LL - #[derive(Copy(Bad))]
+LL + #[derive(Copy)]
+   |
 
 error: traits in `#[derive(...)]` don't accept values
   --> $DIR/malformed-derive-entry.rs:6:14
    |
 LL | #[derive(Copy="bad")]
-   |              ^^^^^^ help: remove the value
+   |              ^^^^^^
+   |
+help: remove the value
+   |
+LL - #[derive(Copy="bad")]
+LL + #[derive(Copy)]
+   |
 
 error: malformed `derive` attribute input
   --> $DIR/malformed-derive-entry.rs:11:1
    |
 LL | #[derive]
-   | ^^^^^^^^^ help: must be of the form: `#[derive(Trait1, Trait2, ...)]`
+   | ^^^^^^^^^
+   |
+help: must be of the form
+   |
+LL | #[derive(Trait1, Trait2, ...)]
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0277]: the trait bound `Test1: Clone` is not satisfied
   --> $DIR/malformed-derive-entry.rs:1:10

@@ -64,16 +64,25 @@ error: implicitly cloning a `String` by calling `to_owned` on its dereferenced t
   --> tests/ui/suspicious_to_owned.rs:66:13
    |
 LL |     let _ = String::from(moo).to_owned();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::from(moo).clone()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::implicit-clone` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::implicit_clone)]`
+help: consider using
+   |
+LL |     let _ = String::from(moo).clone();
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: implicitly cloning a `Vec` by calling `to_owned` on its dereferenced type
   --> tests/ui/suspicious_to_owned.rs:69:13
    |
 LL |     let _ = moos_vec.to_owned();
-   |             ^^^^^^^^^^^^^^^^^^^ help: consider using: `moos_vec.clone()`
+   |             ^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using
+   |
+LL |     let _ = moos_vec.clone();
+   |             ~~~~~~~~~~~~~~~~
 
 error: aborting due to 6 previous errors
 

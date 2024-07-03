@@ -2,10 +2,14 @@ error: no need to put clippy lints behind a `clippy` cfg
   --> tests/ui/unnecessary_clippy_cfg.rs:4:1
    |
 LL | #![cfg_attr(clippy, deny(clippy::non_minimal_cfg))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `#![deny(clippy::non_minimal_cfg)]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unnecessary-clippy-cfg` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_clippy_cfg)]`
+help: replace with
+   |
+LL | #![deny(clippy::non_minimal_cfg)]
+   |
 
 error: no need to put clippy lints behind a `clippy` cfg
   --> tests/ui/unnecessary_clippy_cfg.rs:6:37
@@ -27,13 +31,23 @@ error: no need to put clippy lints behind a `clippy` cfg
   --> tests/ui/unnecessary_clippy_cfg.rs:10:1
    |
 LL | #![cfg_attr(clippy, deny(clippy::non_minimal_cfg))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `#![deny(clippy::non_minimal_cfg)]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace with
+   |
+LL | #![deny(clippy::non_minimal_cfg)]
+   |
 
 error: no need to put clippy lints behind a `clippy` cfg
   --> tests/ui/unnecessary_clippy_cfg.rs:13:1
    |
 LL | #[cfg_attr(clippy, deny(clippy::non_minimal_cfg))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `#[deny(clippy::non_minimal_cfg)]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace with
+   |
+LL | #[deny(clippy::non_minimal_cfg)]
+   |
 
 error: no need to put clippy lints behind a `clippy` cfg
   --> tests/ui/unnecessary_clippy_cfg.rs:15:36
@@ -55,7 +69,12 @@ error: no need to put clippy lints behind a `clippy` cfg
   --> tests/ui/unnecessary_clippy_cfg.rs:19:1
    |
 LL | #[cfg_attr(clippy, deny(clippy::non_minimal_cfg))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `#[deny(clippy::non_minimal_cfg)]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace with
+   |
+LL | #[deny(clippy::non_minimal_cfg)]
+   |
 
 error: duplicated attribute
   --> tests/ui/unnecessary_clippy_cfg.rs:8:26

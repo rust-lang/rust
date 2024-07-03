@@ -5,7 +5,12 @@ LL |     struct S {}
    |     ----------- `S` defined here
 ...
 LL |             let Self = S;
-   |                        ^ help: use struct literal syntax instead: `S {}`
+   |                        ^
+   |
+help: use struct literal syntax instead
+   |
+LL |             let Self = S {};
+   |                        ~~~~
 
 error[E0533]: expected unit struct, found self constructor `Self`
   --> $DIR/no-match-tuple-variant-self-ctor.rs:30:17

@@ -2,9 +2,12 @@ error: expected one of `)` or `,`, found `(`
   --> $DIR/test.rs:4:26
    |
 LL |     struct S2(pub((foo)) ());
-   |                         -^ expected one of `)` or `,`
-   |                         |
-   |                         help: missing `,`
+   |                          ^ expected one of `)` or `,`
+   |
+help: missing `,`
+   |
+LL |     struct S2(pub((foo)), ());
+   |                         +
 
 error[E0412]: cannot find type `foo` in this scope
   --> $DIR/test.rs:4:20

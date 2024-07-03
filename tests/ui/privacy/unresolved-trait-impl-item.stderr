@@ -2,10 +2,12 @@ error[E0407]: method `unresolved` is not a member of trait `MyTrait`
   --> $DIR/unresolved-trait-impl-item.rs:11:5
    |
 LL |     async fn unresolved(&self) {}
-   |     ^^^^^^^^^----------^^^^^^^^^^
-   |     |        |
-   |     |        help: there is an associated function with a similar name: `resolved`
-   |     not a member of trait `MyTrait`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a member of trait `MyTrait`
+   |
+help: there is an associated function with a similar name
+   |
+LL |     async fn resolved(&self) {}
+   |              ~~~~~~~~
 
 error[E0324]: item `RESOLVED_WRONG` is an associated method, which doesn't match its trait `MyTrait`
   --> $DIR/unresolved-trait-impl-item.rs:12:5

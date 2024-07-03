@@ -19,25 +19,37 @@ warning: this method call resolves to `<&Box<[T]> as IntoIterator>::into_iter` (
   --> $DIR/into-iter-on-boxed-slices-2021.rs:18:58
    |
 LL |     let _: Iter<'_, i32> = Box::new(boxed_slice.clone()).into_iter();
-   |                                                          ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |                                                          ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL |     let _: Iter<'_, i32> = Box::new(boxed_slice.clone()).iter();
+   |                                                          ~~~~
 
 warning: this method call resolves to `<&Box<[T]> as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<Box<[T]> as IntoIterator>::into_iter` in Rust 2024
   --> $DIR/into-iter-on-boxed-slices-2021.rs:22:57
    |
 LL |     let _: Iter<'_, i32> = Rc::new(boxed_slice.clone()).into_iter();
-   |                                                         ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |                                                         ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL |     let _: Iter<'_, i32> = Rc::new(boxed_slice.clone()).iter();
+   |                                                         ~~~~
 
 warning: this method call resolves to `<&Box<[T]> as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<Box<[T]> as IntoIterator>::into_iter` in Rust 2024
   --> $DIR/into-iter-on-boxed-slices-2021.rs:25:55
    |
 LL |     let _: Iter<'_, i32> = Array(boxed_slice.clone()).into_iter();
-   |                                                       ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |                                                       ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL |     let _: Iter<'_, i32> = Array(boxed_slice.clone()).iter();
+   |                                                       ~~~~
 
 warning: this method call resolves to `<&Box<[T]> as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<Box<[T]> as IntoIterator>::into_iter` in Rust 2024
   --> $DIR/into-iter-on-boxed-slices-2021.rs:32:48

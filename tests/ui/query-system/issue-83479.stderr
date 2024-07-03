@@ -15,17 +15,23 @@ error: free static item without body
   --> $DIR/issue-83479.rs:7:9
    |
 LL |         static FOO: usize;
-   |         ^^^^^^^^^^^^^^^^^-
-   |                          |
-   |                          help: provide a definition for the static: `= <expr>;`
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+help: provide a definition for the static
+   |
+LL |         static FOO: usize = <expr>;
+   |                           ~~~~~~~~~
 
 error: free static item without body
   --> $DIR/issue-83479.rs:12:9
    |
 LL |         static FOO: usize;
-   |         ^^^^^^^^^^^^^^^^^-
-   |                          |
-   |                          help: provide a definition for the static: `= <expr>;`
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+help: provide a definition for the static
+   |
+LL |         static FOO: usize = <expr>;
+   |                           ~~~~~~~~~
 
 error[E0405]: cannot find trait `Trait` in this scope
   --> $DIR/issue-83479.rs:3:24

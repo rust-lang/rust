@@ -172,7 +172,7 @@ impl {self_ty_without_ref} {{
                         iter_ty = snippet(cx, iter_assoc_span, ".."),
                     );
 
-                    diag.span_suggestion_verbose(
+                    diag.span_suggestion(
                         item.span.shrink_to_lo(),
                         format!("consider implementing `{expected_method_name}`"),
                         sugg,
@@ -255,7 +255,7 @@ impl IntoIterator for {self_ty_snippet} {{
 }}
 "
                     );
-                    diag.span_suggestion_verbose(
+                    diag.span_suggestion(
                         span_behind_impl,
                         format!("consider implementing `IntoIterator` for `{self_ty_snippet}`"),
                         sugg,

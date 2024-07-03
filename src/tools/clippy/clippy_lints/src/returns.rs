@@ -430,7 +430,7 @@ fn emit_return_lint(
                 .chain(semi_spans.into_iter().map(|span| (span, String::new())))
                 .collect();
 
-            diag.multipart_suggestion_verbose(replacement.sugg_help(), suggestions, replacement.applicability());
+            diag.multipart_suggestion(replacement.sugg_help(), suggestions, replacement.applicability());
         },
     );
 }

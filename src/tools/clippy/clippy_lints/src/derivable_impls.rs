@@ -131,7 +131,7 @@ fn check_struct<'tcx>(
     if should_emit {
         let struct_span = cx.tcx.def_span(adt_def.did());
         span_lint_and_then(cx, DERIVABLE_IMPLS, item.span, "this `impl` can be derived", |diag| {
-            diag.span_suggestion_hidden(
+            diag.span_suggestion(
                 item.span,
                 "remove the manual implementation...",
                 String::new(),
@@ -160,7 +160,7 @@ fn check_enum<'tcx>(cx: &LateContext<'tcx>, item: &'tcx Item<'_>, func_expr: &Ex
         let variant_span = cx.tcx.def_span(variant_def.def_id);
         let indent_variant = indent_of(cx, variant_span).unwrap_or(0);
         span_lint_and_then(cx, DERIVABLE_IMPLS, item.span, "this `impl` can be derived", |diag| {
-            diag.span_suggestion_hidden(
+            diag.span_suggestion(
                 item.span,
                 "remove the manual implementation...",
                 String::new(),

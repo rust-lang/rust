@@ -36,7 +36,12 @@ error: unnecessary use of `cloned`
   --> tests/ui/unnecessary_iter_cloned.rs:177:18
    |
 LL |         for c in v.iter().cloned() {
-   |                  ^^^^^^^^^^^^^^^^^ help: use: `v.iter()`
+   |                  ^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL |         for c in v.iter() {
+   |                  ~~~~~~~~
 
 error: unnecessary use of `cloned`
   --> tests/ui/unnecessary_iter_cloned.rs:185:18

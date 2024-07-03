@@ -20,12 +20,13 @@ LL |     self,
    |     ---- previous import of the module `bar` here
 ...
 LL |     self
-   |     ^^^^
-   |     |
-   |     `bar` reimported here
-   |     help: remove unnecessary import
+   |     ^^^^ `bar` reimported here
    |
    = note: `bar` must be defined only once in the type namespace of this module
+help: remove unnecessary import
+   |
+LL -     self
+   |
 
 error: aborting due to 3 previous errors
 

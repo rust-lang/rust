@@ -2,17 +2,23 @@ error: associated type in `impl` without body
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:6:5
    |
 LL |     type Y;
-   |     ^^^^^^-
-   |           |
-   |           help: provide a definition for the type: `= <type>;`
+   |     ^^^^^^^
+   |
+help: provide a definition for the type
+   |
+LL |     type Y = <type>;
+   |            ~~~~~~~~~
 
 error: associated type in `impl` without body
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:9:5
    |
 LL |     type Z: Ord;
-   |     ^^^^^^^^^^^-
-   |                |
-   |                help: provide a definition for the type: `= <type>;`
+   |     ^^^^^^^^^^^^
+   |
+help: provide a definition for the type
+   |
+LL |     type Z: Ord = <type>;
+   |                 ~~~~~~~~~
 
 error: bounds on `type`s in `impl`s have no effect
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:9:13
@@ -24,9 +30,12 @@ error: associated type in `impl` without body
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:13:5
    |
 LL |     type W: Ord where Self: Eq;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   |                               |
-   |                               help: provide a definition for the type: `= <type>;`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: provide a definition for the type
+   |
+LL |     type W: Ord where Self: Eq = <type>;
+   |                                ~~~~~~~~~
 
 error: bounds on `type`s in `impl`s have no effect
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:13:13
@@ -38,9 +47,12 @@ error: associated type in `impl` without body
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:18:5
    |
 LL |     type W where Self: Eq;
-   |     ^^^^^^^^^^^^^^^^^^^^^-
-   |                          |
-   |                          help: provide a definition for the type: `= <type>;`
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: provide a definition for the type
+   |
+LL |     type W where Self: Eq = <type>;
+   |                           ~~~~~~~~~
 
 error[E0658]: inherent associated types are unstable
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:6:5

@@ -2,39 +2,60 @@ warning: unused variable: `x`
   --> $DIR/force_warn_expected_lints_fulfilled.rs:18:9
    |
 LL |     let x = 2;
-   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |         ^
    |
    = note: requested on the command line with `--force-warn unused-variables`
+help: if this is intentional, prefix it with an underscore
+   |
+LL |     let _x = 2;
+   |         ~~
 
 warning: unused variable: `fox_name`
   --> $DIR/force_warn_expected_lints_fulfilled.rs:26:9
    |
 LL |     let fox_name = "Sir Nibbles";
-   |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_fox_name`
+   |         ^^^^^^^^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |     let _fox_name = "Sir Nibbles";
+   |         ~~~~~~~~~
 
 warning: variable does not need to be mutable
   --> $DIR/force_warn_expected_lints_fulfilled.rs:30:9
    |
 LL |     let mut what_does_the_fox_say = "*ding* *deng* *dung*";
-   |         ----^^^^^^^^^^^^^^^^^^^^^
-   |         |
-   |         help: remove this `mut`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: requested on the command line with `--force-warn unused-mut`
+help: remove this `mut`
+   |
+LL -     let mut what_does_the_fox_say = "*ding* *deng* *dung*";
+LL +     let what_does_the_fox_say = "*ding* *deng* *dung*";
+   |
 
 warning: unused variable: `this_should_fulfill_the_expectation`
   --> $DIR/force_warn_expected_lints_fulfilled.rs:41:9
    |
 LL |     let this_should_fulfill_the_expectation = "The `#[allow]` has no power here";
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_this_should_fulfill_the_expectation`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |     let _this_should_fulfill_the_expectation = "The `#[allow]` has no power here";
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 warning: denote infinite loops with `loop { ... }`
   --> $DIR/force_warn_expected_lints_fulfilled.rs:8:5
    |
 LL |     while true {
-   |     ^^^^^^^^^^ help: use `loop`
+   |     ^^^^^^^^^^
    |
    = note: requested on the command line with `--force-warn while-true`
+help: use `loop`
+   |
+LL |     loop {
+   |     ~~~~
 
 warning: 5 warnings emitted
 

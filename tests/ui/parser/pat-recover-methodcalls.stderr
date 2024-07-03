@@ -26,10 +26,12 @@ error: expected one of `)`, `,`, `...`, `..=`, `..`, or `|`, found `.`
   --> $DIR/pat-recover-methodcalls.rs:34:15
    |
 LL |     if let (-1.Some(4)) = (0, Some(4)) {}
-   |               ^
-   |               |
-   |               expected one of `)`, `,`, `...`, `..=`, `..`, or `|`
-   |               help: missing `,`
+   |               ^ expected one of `)`, `,`, `...`, `..=`, `..`, or `|`
+   |
+help: missing `,`
+   |
+LL |     if let (-1,.Some(4)) = (0, Some(4)) {}
+   |               +
 
 error: aborting due to 5 previous errors
 

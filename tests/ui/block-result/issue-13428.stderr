@@ -13,9 +13,11 @@ LL | fn bar() -> String {
    |    ---      ^^^^^^ expected `String`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
-LL |     "foobar".to_string()
-LL |     ;
-   |     - help: remove this semicolon to return this value
+   |
+help: remove this semicolon to return this value
+   |
+LL -     ;
+   |
 
 error: aborting due to 2 previous errors
 

@@ -2,22 +2,36 @@ error: redundant slicing of the whole range
   --> tests/ui/redundant_slicing.rs:8:13
    |
 LL |     let _ = &slice[..]; // Redundant slice
-   |             ^^^^^^^^^^ help: use the original value instead: `slice`
+   |             ^^^^^^^^^^
    |
    = note: `-D clippy::redundant-slicing` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::redundant_slicing)]`
+help: use the original value instead
+   |
+LL |     let _ = slice; // Redundant slice
+   |             ~~~~~
 
 error: redundant slicing of the whole range
   --> tests/ui/redundant_slicing.rs:12:13
    |
 LL |     let _ = &(&*v)[..]; // Outer borrow is redundant
-   |             ^^^^^^^^^^ help: use the original value instead: `(&*v)`
+   |             ^^^^^^^^^^
+   |
+help: use the original value instead
+   |
+LL |     let _ = (&*v); // Outer borrow is redundant
+   |             ~~~~~
 
 error: redundant slicing of the whole range
   --> tests/ui/redundant_slicing.rs:29:13
    |
 LL |     let _ = &m!(slice)[..];
-   |             ^^^^^^^^^^^^^^ help: use the original value instead: `slice`
+   |             ^^^^^^^^^^^^^^
+   |
+help: use the original value instead
+   |
+LL |     let _ = slice;
+   |             ~~~~~
 
 error: aborting due to 3 previous errors
 

@@ -120,7 +120,7 @@ pub fn is_const_evaluatable<'tcx>(
                         "failed to evaluate generic const expression",
                     )
                     .with_note("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")
-                    .with_span_suggestion_verbose(
+                    .with_span_suggestion(
                         DUMMY_SP,
                         "consider enabling this feature",
                         "#![feature(generic_const_exprs)]\n",

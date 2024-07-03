@@ -2,9 +2,13 @@ warning: denote infinite loops with `loop { ... }`
   --> $DIR/issue-52443.rs:6:11
    |
 LL |     [(); {while true {break}; 0}];
-   |           ^^^^^^^^^^ help: use `loop`
+   |           ^^^^^^^^^^
    |
    = note: `#[warn(while_true)]` on by default
+help: use `loop`
+   |
+LL |     [(); {loop {break}; 0}];
+   |           ~~~~
 
 error[E0658]: `for` is not allowed in a `const`
   --> $DIR/issue-52443.rs:9:12

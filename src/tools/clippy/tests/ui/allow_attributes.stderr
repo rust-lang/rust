@@ -2,30 +2,48 @@ error: #[allow] attribute found
   --> tests/ui/allow_attributes.rs:12:3
    |
 LL | #[allow(dead_code)]
-   |   ^^^^^ help: replace it with: `expect`
+   |   ^^^^^
    |
    = note: `-D clippy::allow-attributes` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::allow_attributes)]`
+help: replace it with
+   |
+LL | #[expect(dead_code)]
+   |   ~~~~~~
 
 error: #[allow] attribute found
   --> tests/ui/allow_attributes.rs:21:30
    |
 LL | #[cfg_attr(panic = "unwind", allow(dead_code))]
-   |                              ^^^^^ help: replace it with: `expect`
+   |                              ^^^^^
+   |
+help: replace it with
+   |
+LL | #[cfg_attr(panic = "unwind", expect(dead_code))]
+   |                              ~~~~~~
 
 error: #[allow] attribute found
   --> tests/ui/allow_attributes.rs:52:7
    |
 LL |     #[allow(unused)]
-   |       ^^^^^ help: replace it with: `expect`
+   |       ^^^^^
+   |
+help: replace it with
+   |
+LL |     #[expect(unused)]
+   |       ~~~~~~
 
 error: #[allow] attribute found
   --> tests/ui/allow_attributes.rs:52:7
    |
 LL |     #[allow(unused)]
-   |       ^^^^^ help: replace it with: `expect`
+   |       ^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: replace it with
+   |
+LL |     #[expect(unused)]
+   |       ~~~~~~
 
 error: aborting due to 4 previous errors
 

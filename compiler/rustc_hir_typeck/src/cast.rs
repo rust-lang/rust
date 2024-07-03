@@ -262,14 +262,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 if matches!(self.expr.kind, ExprKind::AddrOf(..)) {
                     // get just the borrow part of the expression
                     let span = self.expr_span.with_hi(self.expr.peel_borrows().span.lo());
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span,
                         "remove the unneeded borrow",
                         "",
                         Applicability::MachineApplicable,
                     );
                 } else {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         self.expr_span.shrink_to_lo(),
                         "dereference the expression",
                         "*",
@@ -428,7 +428,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         ));
                     }
 
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         "consider borrowing the value",
                         suggestion,
                         Applicability::MachineApplicable,

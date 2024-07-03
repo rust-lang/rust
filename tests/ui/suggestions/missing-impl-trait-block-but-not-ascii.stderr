@@ -15,7 +15,10 @@ error: expected `{}`, found `;`
 LL | impl T for S；
    |             ^^
    |
-   = help: try using `{}` instead
+help: try using `{}` instead
+   |
+LL | impl T for S{}
+   |             ~~
 
 error[E0046]: not all trait items implemented, missing: `f`
   --> $DIR/missing-impl-trait-block-but-not-ascii.rs:8:1

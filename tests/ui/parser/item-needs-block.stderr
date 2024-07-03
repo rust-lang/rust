@@ -4,7 +4,10 @@ error: expected `{}`, found `;`
 LL | trait Trait;
    |            ^
    |
-   = help: try using `{}` instead
+help: try using `{}` instead
+   |
+LL | trait Trait{}
+   |            ~~
 
 error: expected `{}`, found `;`
   --> $DIR/item-needs-block.rs:4:18
@@ -12,7 +15,10 @@ error: expected `{}`, found `;`
 LL | impl Trait for ();
    |                  ^
    |
-   = help: try using `{}` instead
+help: try using `{}` instead
+   |
+LL | impl Trait for (){}
+   |                  ~~
 
 error: expected `{}`, found `;`
   --> $DIR/item-needs-block.rs:7:10
@@ -20,7 +26,10 @@ error: expected `{}`, found `;`
 LL | enum Enum;
    |          ^
    |
-   = help: try using `{}` instead
+help: try using `{}` instead
+   |
+LL | enum Enum{}
+   |          ~~
 
 error: aborting due to 3 previous errors
 

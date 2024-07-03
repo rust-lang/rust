@@ -225,7 +225,7 @@ fn emit_redundant_guards<'tcx>(
                 } => (span.shrink_to_hi(), format!(": {binding_replacement}")),
                 PatBindingInfo { span, .. } => (span, binding_replacement.into_owned()),
             };
-            diag.multipart_suggestion_verbose(
+            diag.multipart_suggestion(
                 "try",
                 vec![
                     suggestion_span,

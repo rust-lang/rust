@@ -739,7 +739,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         if let Some((removal_span, kind, path)) = &unit_variant {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 *removal_span,
                 format!(
                     "`{path}` is a unit {kind}, and does not take parentheses to be constructed",

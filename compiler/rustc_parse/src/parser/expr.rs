@@ -1764,7 +1764,7 @@ impl<'a> Parser<'a> {
         assert!(could_be_unclosed_char_literal(ident));
         self.dcx()
             .try_steal_modify_and_emit_err(ident.span, StashKey::LifetimeIsChar, |err| {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     ident.span.shrink_to_hi(),
                     "add `'` to close the char literal",
                     "'",
@@ -1773,7 +1773,7 @@ impl<'a> Parser<'a> {
             })
             .unwrap_or_else(|| {
                 err(self)
-                    .with_span_suggestion_verbose(
+                    .with_span_suggestion(
                         ident.span.shrink_to_hi(),
                         "add `'` to close the char literal",
                         "'",
@@ -2957,7 +2957,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Expr>> {
         if let Err(mut e) = self.expect(&token::OpenDelim(Delimiter::Brace)) {
             if self.token == token::Semi {
-                e.span_suggestion_short(
+                e.span_suggestion(
                     match_span,
                     "try removing this `match`",
                     "",
@@ -3189,7 +3189,7 @@ impl<'a> Parser<'a> {
                                     //   |      - ^^ self.token.span
                                     //   |      |
                                     //   |      parsed until here as `"y" & X`
-                                    err.span_suggestion_short(
+                                    err.span_suggestion(
                                         arm_start_span.shrink_to_hi(),
                                         "missing a comma here to end this `match` arm",
                                         ",",
@@ -3371,7 +3371,7 @@ impl<'a> Parser<'a> {
                         } else {
                             Applicability::MaybeIncorrect
                         };
-                        err.span_suggestion_verbose(sugg_sp, msg, "=> ", applicability);
+                        err.span_suggestion(sugg_sp, msg, "=> ", applicability);
                     }
                 }
                 err
@@ -3587,7 +3587,7 @@ impl<'a> Parser<'a> {
                         })
                     {
                         // Looks like they tried to write a shorthand, complex expression.
-                        e.span_suggestion_verbose(
+                        e.span_suggestion(
                             self.token.span.shrink_to_lo(),
                             "try naming a field",
                             &format!("{ident}: ",),

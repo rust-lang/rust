@@ -17,9 +17,12 @@ error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/ice-unexpected-inference-var-122549.rs:11:34
    |
 LL | struct ConstChunksExact<'rem, T: 'a, const N: usize> {}
-   |                         -        ^^ undeclared lifetime
-   |                         |
-   |                         help: consider introducing lifetime `'a` here: `'a,`
+   |                                  ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | struct ConstChunksExact<'a, 'rem, T: 'a, const N: usize> {}
+   |                         +++
 
 error[E0046]: not all trait items implemented, missing: `const_chunks_exact`
   --> $DIR/ice-unexpected-inference-var-122549.rs:9:1

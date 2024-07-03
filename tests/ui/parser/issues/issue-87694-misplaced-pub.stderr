@@ -2,10 +2,12 @@ error: expected one of `async`, `extern`, `fn`, `safe`, or `unsafe`, found keywo
   --> $DIR/issue-87694-misplaced-pub.rs:1:7
    |
 LL | const pub fn test() {}
-   | ------^^^
-   | |     |
-   | |     expected one of `async`, `extern`, `fn`, `safe`, or `unsafe`
-   | help: visibility `pub` must come before `const`: `pub const`
+   |       ^^^ expected one of `async`, `extern`, `fn`, `safe`, or `unsafe`
+   |
+help: visibility `pub` must come before `const`
+   |
+LL | pub const fn test() {}
+   | ~~~~~~~~~
 
 error: aborting due to 1 previous error
 

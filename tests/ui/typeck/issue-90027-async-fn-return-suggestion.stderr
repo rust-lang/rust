@@ -1,10 +1,13 @@
 error[E0308]: mismatched types
   --> $DIR/issue-90027-async-fn-return-suggestion.rs:4:5
    |
-LL | async fn hello() {
-   |                 - help: try adding a return type: `-> i32`
 LL |     0
    |     ^ expected `()`, found integer
+   |
+help: try adding a return type
+   |
+LL | async fn hello() -> i32 {
+   |                  ++++++
 
 error[E0308]: mismatched types
   --> $DIR/issue-90027-async-fn-return-suggestion.rs:9:5

@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
                                     snippet(cx, apa.last_bind_ident.span, ".."),
                                 )
                             };
-                            diag.span_suggestion_verbose(
+                            diag.span_suggestion(
                                 apa.first_stmt_span,
                                 "merge the temporary construction with its single usage",
                                 stmt,

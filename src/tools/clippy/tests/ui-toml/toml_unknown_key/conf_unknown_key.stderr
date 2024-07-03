@@ -248,7 +248,12 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
   --> $DIR/tests/ui-toml/toml_unknown_key/clippy.toml:7:1
    |
 LL | allow_mixed_uninlined_format_args = true
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: perhaps you meant: `allow-mixed-uninlined-format-args`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: perhaps you meant
+   |
+LL | allow-mixed-uninlined-format-args = true
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 3 previous errors
 

@@ -2,15 +2,18 @@ error[E0107]: associated type takes 1 lifetime argument but 2 lifetime arguments
   --> $DIR/parameter_number_and_kind.rs:11:24
    |
 LL |     type FErr1 = Self::E<'static, 'static>;
-   |                        ^          ------- help: remove this lifetime argument
-   |                        |
-   |                        expected 1 lifetime argument
+   |                        ^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/parameter_number_and_kind.rs:8:10
    |
 LL |     type E<'a, T>;
    |          ^ --
+help: remove this lifetime argument
+   |
+LL -     type FErr1 = Self::E<'static, 'static>;
+LL +     type FErr1 = Self::E<'static, >;
+   |
 
 error[E0107]: associated type takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/parameter_number_and_kind.rs:11:24
@@ -32,15 +35,18 @@ error[E0107]: associated type takes 1 generic argument but 2 generic arguments w
   --> $DIR/parameter_number_and_kind.rs:14:27
    |
 LL |     type FErr2<T> = Self::E<'static, T, u32>;
-   |                           ^             --- help: remove this generic argument
-   |                           |
-   |                           expected 1 generic argument
+   |                           ^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/parameter_number_and_kind.rs:8:10
    |
 LL |     type E<'a, T>;
    |          ^     -
+help: remove this generic argument
+   |
+LL -     type FErr2<T> = Self::E<'static, T, u32>;
+LL +     type FErr2<T> = Self::E<'static, T, >;
+   |
 
 error: aborting due to 3 previous errors
 

@@ -689,7 +689,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if let Some(val) =
                                 self.err_ctxt().ty_kind_suggestion(self.param_env, ty)
                             {
-                                err.span_suggestion_verbose(
+                                err.span_suggestion(
                                     expr.span.shrink_to_hi(),
                                     "give the `break` a value of the expected type",
                                     format!(" {val}"),
@@ -959,7 +959,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_label(lhs.span, "cannot assign to this expression");
 
         self.comes_from_while_condition(lhs.hir_id, |expr| {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 expr.span.shrink_to_lo(),
                 "you might have meant to use pattern destructuring",
                 "let ",
@@ -984,7 +984,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // foo()
             // *bar = baz;
             // (#80446).
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 lhs.span.shrink_to_hi(),
                 "you might have meant to write a semicolon here",
                 ";",
@@ -1185,7 +1185,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let hir::Node::Expr(hir::Expr { kind: ExprKind::If { .. }, .. }) =
                     self.tcx.parent_hir_node(expr.hir_id)
                 {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         expr.span.shrink_to_lo(),
                         "you might have meant to use pattern matching",
                         "let ",
@@ -1194,7 +1194,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
             }
             if eq {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     span.shrink_to_hi(),
                     "you might have meant to compare for equality",
                     '=',
@@ -1223,7 +1223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                     .may_apply();
                 if lhs_deref_ty_is_sized && self.can_coerce(rhs_ty, lhs_deref_ty) {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         lhs.span.shrink_to_lo(),
                         "consider dereferencing here to assign to the mutably borrowed value",
                         "*",
@@ -2129,7 +2129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match &items[..] {
                 [] => {}
                 [(_, name, args)] => {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span.shrink_to_hi().with_hi(expr_span.hi()),
                         format!("you might have meant to use the `{name}` associated function"),
                         suggestion(name, *args),
@@ -2222,7 +2222,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     );
                     err.span_label(field.ident.span, "field does not exist");
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         expr.span,
                         format!(
                             "`{adt}::{variant}` is a tuple {kind_name}, use the appropriate syntax",
@@ -2240,7 +2240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     err.span_label(variant_ident_span, format!("`{ty}` defined here"));
                     err.span_label(field.ident.span, "field does not exist");
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         expr.span,
                         format!("`{ty}` is a tuple {kind_name}, use the appropriate syntax",),
                         format!("{ty}(/* fields */)"),
@@ -2255,7 +2255,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     find_best_match_for_name(&available_field_names, field.ident.name, None)
                 {
                     err.span_label(field.ident.span, "unknown field");
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         field.ident.span,
                         "a field with a similar name exists",
                         field_name,
@@ -2479,14 +2479,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && !base.span.from_expansion()
             {
                 if is_valid_suffix(&field_name) {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         field.span.shrink_to_lo(),
                         "if intended to be a floating point literal, consider adding a `0` after the period",
                         '0',
                         Applicability::MaybeIncorrect,
                     );
                 } else if let Some(correct_suffix) = maybe_partial_suffix(&field_name) {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         field.span,
                         format!("if intended to be a floating point literal, consider adding a `0` after the period and a `{correct_suffix}` suffix"),
                         format!("0{correct_suffix}"),
@@ -2528,7 +2528,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             field_ident.span,
             "field not available in `impl Future`, but it is available in its `Output`",
         );
-        err.span_suggestion_verbose(
+        err.span_suggestion(
             base.span.shrink_to_hi(),
             "consider `await`ing on the `Future` and access the field of its `Output`",
             ".await",
@@ -2830,7 +2830,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             } else {
                 if let Some(field_name) = find_best_match_for_name(&field_names, field.name, None) {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         field.span,
                         "a field with a similar name exists",
                         format!("{unwrap}{}", field_name),

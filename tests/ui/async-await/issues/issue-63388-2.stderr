@@ -15,14 +15,16 @@ LL |     ) -> &'a dyn Foo
 error[E0621]: explicit lifetime required in the type of `foo`
   --> $DIR/issue-63388-2.rs:13:5
    |
-LL |           foo: &dyn Foo, bar: &'a dyn Foo
-   |                -------- help: add explicit lifetime `'a` to the type of `foo`: `&'a (dyn Foo + 'a)`
-LL |       ) -> &dyn Foo
 LL | /     {
 LL | |
 LL | |         foo
 LL | |     }
    | |_____^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `foo`
+   |
+LL |         foo: &'a (dyn Foo + 'a), bar: &'a dyn Foo
+   |              ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

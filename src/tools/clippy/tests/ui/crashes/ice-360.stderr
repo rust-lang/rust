@@ -22,10 +22,14 @@ LL | |
 ...  |
 LL | |
 LL | |     }
-   | |_____^ help: try: `while let Some(ele) = iter.next() { .. }`
+   | |_____^
    |
    = note: `-D clippy::while-let-loop` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::while_let_loop)]`
+help: try
+   |
+LL |     while let Some(ele) = iter.next() { .. }
+   |
 
 error: empty `loop {}` wastes CPU cycles
   --> tests/ui/crashes/ice-360.rs:13:9

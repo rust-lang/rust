@@ -2,7 +2,7 @@ error: this match arm has an identical body to the `_` wildcard arm
   --> tests/ui/match_same_arms.rs:12:9
    |
 LL |         Abc::A => 0,
-   |         ^^^^^^^^^^^^^ help: try removing the arm
+   |         ^^^^^^^^^^^^^
    |
    = help: or try changing either arm body
 note: `_` wildcard arm here
@@ -12,6 +12,11 @@ LL |         _ => 0,
    |         ^^^^^^
    = note: `-D clippy::match-same-arms` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
+help: try removing the arm
+   |
+LL -         Abc::A => 0,
+LL +
+   |
 
 error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms.rs:18:9

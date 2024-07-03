@@ -2,9 +2,14 @@ error[E0449]: visibility qualifiers are not permitted here
   --> $DIR/trait-pub-assoc-ty.rs:2:5
    |
 LL |     pub type Foo;
-   |     ^^^ help: remove the qualifier
+   |     ^^^
    |
    = note: trait items always share the visibility of their trait
+help: remove the qualifier
+   |
+LL -     pub type Foo;
+LL +      type Foo;
+   |
 
 error: aborting due to 1 previous error
 

@@ -2,7 +2,12 @@ error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/substitute-params-bad.rs:9:9
    |
 LL | impl<T, 'a> S<T> {
-   |     ----^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, T>`
+   |         ^^
+   |
+help: reorder the parameters: lifetimes, then consts and types
+   |
+LL | impl<'a, T> S<T> {
+   |     ~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/substitute-params-bad.rs:22:35

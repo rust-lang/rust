@@ -2,47 +2,61 @@ error: the semantics of this pattern will change in edition 2024
   --> $DIR/match_ergonomics_2024.rs:14:9
    |
 LL |     let Foo(mut a) = &Foo(0);
-   |         -^^^^^^^^^
-   |         |
-   |         help: desugar the match ergonomics: `&`
+   |         ^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/match_ergonomics_2024.rs:7:9
    |
 LL | #![deny(rust_2024_incompatible_pat)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: desugar the match ergonomics
+   |
+LL |     let &Foo(mut a) = &Foo(0);
+   |         +
 
 error: the semantics of this pattern will change in edition 2024
   --> $DIR/match_ergonomics_2024.rs:18:9
    |
 LL |     let Foo(mut a) = &mut Foo(0);
-   |         -^^^^^^^^^
-   |         |
-   |         help: desugar the match ergonomics: `&mut`
+   |         ^^^^^^^^^^
+   |
+help: desugar the match ergonomics
+   |
+LL |     let &mut Foo(mut a) = &mut Foo(0);
+   |         ++++
 
 error: the semantics of this pattern will change in edition 2024
   --> $DIR/match_ergonomics_2024.rs:22:12
    |
 LL |     if let Some(&_) = &&&&&Some(&0u8) {}
-   |            -^^^^^^^
-   |            |
-   |            help: desugar the match ergonomics: `&&&&&`
+   |            ^^^^^^^^
+   |
+help: desugar the match ergonomics
+   |
+LL |     if let &&&&&Some(&_) = &&&&&Some(&0u8) {}
+   |            +++++
 
 error: the semantics of this pattern will change in edition 2024
   --> $DIR/match_ergonomics_2024.rs:25:12
    |
 LL |     if let Some(&mut _) = &&&&&Some(&mut 0u8) {}
-   |            -^^^^^^^^^^^
-   |            |
-   |            help: desugar the match ergonomics: `&&&&&`
+   |            ^^^^^^^^^^^^
+   |
+help: desugar the match ergonomics
+   |
+LL |     if let &&&&&Some(&mut _) = &&&&&Some(&mut 0u8) {}
+   |            +++++
 
 error: the semantics of this pattern will change in edition 2024
   --> $DIR/match_ergonomics_2024.rs:28:12
    |
 LL |     if let Some(&_) = &&&&&mut Some(&0u8) {}
-   |            -^^^^^^^
-   |            |
-   |            help: desugar the match ergonomics: `&&&&&mut`
+   |            ^^^^^^^^
+   |
+help: desugar the match ergonomics
+   |
+LL |     if let &&&&&mut Some(&_) = &&&&&mut Some(&0u8) {}
+   |            ++++++++
 
 error: the semantics of this pattern will change in edition 2024
   --> $DIR/match_ergonomics_2024.rs:31:12

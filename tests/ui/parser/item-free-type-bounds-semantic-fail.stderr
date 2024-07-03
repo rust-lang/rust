@@ -2,9 +2,12 @@ error: free type alias without body
   --> $DIR/item-free-type-bounds-semantic-fail.rs:4:5
    |
 LL |     type A: Ord;
-   |     ^^^^^^^^^^^-
-   |                |
-   |                help: provide a definition for the type: `= <type>;`
+   |     ^^^^^^^^^^^^
+   |
+help: provide a definition for the type
+   |
+LL |     type A: Ord = <type>;
+   |                 ~~~~~~~~~
 
 error: bounds on `type`s in this context have no effect
   --> $DIR/item-free-type-bounds-semantic-fail.rs:4:13
@@ -28,9 +31,12 @@ error: free type alias without body
   --> $DIR/item-free-type-bounds-semantic-fail.rs:11:5
    |
 LL |     type D<_T>: Ord;
-   |     ^^^^^^^^^^^^^^^-
-   |                    |
-   |                    help: provide a definition for the type: `= <type>;`
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: provide a definition for the type
+   |
+LL |     type D<_T>: Ord = <type>;
+   |                     ~~~~~~~~~
 
 error: bounds on `type`s in this context have no effect
   --> $DIR/item-free-type-bounds-semantic-fail.rs:11:17

@@ -2,34 +2,49 @@ error: a never pattern is always unreachable
   --> $DIR/check.rs:15:20
    |
 LL |         Some(!) => {}
-   |                    ^^
-   |                    |
-   |                    this will never be executed
-   |                    help: remove this expression
+   |                    ^^ this will never be executed
+   |
+help: remove this expression
+   |
+LL -         Some(!) => {}
+LL +         Some(!) => 
+   |
 
 error: a guard on a never pattern will never be run
   --> $DIR/check.rs:20:20
    |
 LL |         Some(!) if true,
-   |                    ^^^^ help: remove this guard
+   |                    ^^^^
+   |
+help: remove this guard
+   |
+LL -         Some(!) if true,
+LL +         Some(!) if ,
+   |
 
 error: a never pattern is always unreachable
   --> $DIR/check.rs:25:28
    |
 LL |         Some(!) if true => {}
-   |                            ^^
-   |                            |
-   |                            this will never be executed
-   |                            help: remove this expression
+   |                            ^^ this will never be executed
+   |
+help: remove this expression
+   |
+LL -         Some(!) if true => {}
+LL +         Some(!) if true => 
+   |
 
 error: a never pattern is always unreachable
   --> $DIR/check.rs:30:27
    |
 LL |         Some(never!()) => {}
-   |                           ^^
-   |                           |
-   |                           this will never be executed
-   |                           help: remove this expression
+   |                           ^^ this will never be executed
+   |
+help: remove this expression
+   |
+LL -         Some(never!()) => {}
+LL +         Some(never!()) => 
+   |
 
 error[E0004]: non-exhaustive patterns: `Some(!)` not covered
   --> $DIR/check.rs:19:11

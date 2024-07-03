@@ -28,7 +28,7 @@ pub(super) fn check_item(
                 "implementing the trait `{}` is not unsafe",
                 trait_ref.print_trait_sugared()
             )
-            .with_span_suggestion_verbose(
+            .with_span_suggestion(
                 span.with_hi(span.lo() + rustc_span::BytePos(7)),
                 "remove `unsafe` from this trait implementation",
                 "",
@@ -52,7 +52,7 @@ pub(super) fn check_item(
                     upholds those invariants before adding the `unsafe` keyword",
                 trait_ref.print_trait_sugared()
             ))
-            .with_span_suggestion_verbose(
+            .with_span_suggestion(
                 span.shrink_to_lo(),
                 "add `unsafe` to this trait implementation",
                 "unsafe ",
@@ -76,7 +76,7 @@ pub(super) fn check_item(
                     upholds those invariants before adding the `unsafe` keyword",
                 trait_ref.print_trait_sugared()
             ))
-            .with_span_suggestion_verbose(
+            .with_span_suggestion(
                 span.shrink_to_lo(),
                 "add `unsafe` to this trait implementation",
                 "unsafe ",

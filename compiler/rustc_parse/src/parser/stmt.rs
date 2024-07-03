@@ -325,7 +325,7 @@ impl<'a> Parser<'a> {
                 // init parsed, ty error
                 // Could parse the type as if it were the initializer, it is likely there was a
                 // typo in the code: `:` instead of `=`. Add suggestion and emit the error.
-                err.span_suggestion_short(
+                err.span_suggestion(
                     colon_sp,
                     "use `=` if you meant to assign",
                     " =",
@@ -589,7 +589,7 @@ impl<'a> Parser<'a> {
                         {
                             // FIXME(hkmatsumoto): Might be better to trigger
                             // this only when parsing an index expression.
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 self.token.span,
                                 "you might have meant a range expression",
                                 "..",
@@ -600,7 +600,7 @@ impl<'a> Parser<'a> {
                             // and we can suggest a path separator
                             self.bump();
                             if self.token.span.lo() == self.prev_token.span.hi() {
-                                err.span_suggestion_verbose(
+                                err.span_suggestion(
                                     self.prev_token.span,
                                     "maybe write a path separator here",
                                     "::",
@@ -798,7 +798,7 @@ impl<'a> Parser<'a> {
                                 false
                             };
                             if suggest_eq {
-                                e.span_suggestion_short(
+                                e.span_suggestion(
                                     colon_sp,
                                     "use `=` if you meant to assign",
                                     "=",

@@ -4,10 +4,7 @@ error: expected one of `(`, `async`, `const`, `default`, `extern`, `fn`, `safe`,
 LL | extern "C" {
    |            - while parsing this item list starting here
 LL |     pub pub fn foo();
-   |         ^^^
-   |         |
-   |         expected one of 9 possible tokens
-   |         help: there is already a visibility modifier, remove one
+   |         ^^^ expected one of 9 possible tokens
 ...
 LL | }
    | - the item list ends here
@@ -17,6 +14,11 @@ note: explicit visibility first seen here
    |
 LL |     pub pub fn foo();
    |     ^^^
+help: there is already a visibility modifier, remove one
+   |
+LL -     pub pub fn foo();
+LL +     pub  fn foo();
+   |
 
 error: aborting due to 1 previous error
 

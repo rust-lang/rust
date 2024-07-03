@@ -166,11 +166,13 @@ error: argument never used
   --> $DIR/ifmt-bad-arg.rs:56:27
    |
 LL |     format!("foo %s baz", "bar");
-   |                  --       ^^^^^ argument never used
-   |                  |
-   |                  help: format specifiers use curly braces: `{}`
+   |                           ^^^^^ argument never used
    |
    = note: printf formatting is not supported; see the documentation for `std::fmt`
+help: format specifiers use curly braces
+   |
+LL |     format!("foo {} baz", "bar");
+   |                  ~~
 
 error: invalid format string: expected `'}'`, found `'t'`
   --> $DIR/ifmt-bad-arg.rs:75:1

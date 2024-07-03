@@ -97,10 +97,7 @@ LL |       let _ = if true {
    |  _____________-
 LL | |
 LL | |         dummy();
-   | |         --------
-   | |         |      |
-   | |         |      help: consider removing this semicolon
-   | |         expected because of this
+   | |         -------- expected because of this
 LL | |
 LL | |     } else {
 LL | |         dummy()
@@ -108,6 +105,12 @@ LL | |         dummy()
 LL | |
 LL | |     };
    | |_____- `if` and `else` have incompatible types
+   |
+help: consider removing this semicolon
+   |
+LL -         dummy();
+LL +         dummy()
+   |
 
 error: aborting due to 4 previous errors
 

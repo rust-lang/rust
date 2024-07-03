@@ -282,12 +282,7 @@ pub(crate) struct IncompleteParse<'a> {
     #[note(expand_macro_expands_to_match_arm)]
     pub expands_to_match_arm: Option<()>,
 
-    #[suggestion(
-        expand_suggestion_add_semi,
-        style = "verbose",
-        code = ";",
-        applicability = "maybe-incorrect"
-    )]
+    #[suggestion(expand_suggestion_add_semi, code = ";", applicability = "maybe-incorrect")]
     pub add_semicolon: Option<Span>,
 }
 

@@ -2,28 +2,47 @@ error: using `.iter().next()` on an array
   --> tests/ui/iter_next_slice.rs:9:13
    |
 LL |     let _ = s.iter().next();
-   |             ^^^^^^^^^^^^^^^ help: try calling: `s.first()`
+   |             ^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::iter-next-slice` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_next_slice)]`
+help: try calling
+   |
+LL |     let _ = s.first();
+   |             ~~~~~~~~~
 
 error: using `.iter().next()` on a Slice without end index
   --> tests/ui/iter_next_slice.rs:12:13
    |
 LL |     let _ = s[2..].iter().next();
-   |             ^^^^^^^^^^^^^^^^^^^^ help: try calling: `s.get(2)`
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+help: try calling
+   |
+LL |     let _ = s.get(2);
+   |             ~~~~~~~~
 
 error: using `.iter().next()` on a Slice without end index
   --> tests/ui/iter_next_slice.rs:15:13
    |
 LL |     let _ = v[5..].iter().next();
-   |             ^^^^^^^^^^^^^^^^^^^^ help: try calling: `v.get(5)`
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+help: try calling
+   |
+LL |     let _ = v.get(5);
+   |             ~~~~~~~~
 
 error: using `.iter().next()` on an array
   --> tests/ui/iter_next_slice.rs:18:13
    |
 LL |     let _ = v.iter().next();
-   |             ^^^^^^^^^^^^^^^ help: try calling: `v.first()`
+   |             ^^^^^^^^^^^^^^^
+   |
+help: try calling
+   |
+LL |     let _ = v.first();
+   |             ~~~~~~~~~
 
 error: aborting due to 4 previous errors
 

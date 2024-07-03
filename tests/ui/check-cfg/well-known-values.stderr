@@ -2,68 +2,86 @@ warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:28:5
    |
 LL |     clippy = "_UNEXPECTED_VALUE",
-   |     ^^^^^^----------------------
-   |           |
-   |           help: remove the value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected value for `clippy`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
+help: remove the value
+   |
+LL -     clippy = "_UNEXPECTED_VALUE",
+LL +     clippy,
+   |
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:30:5
    |
 LL |     debug_assertions = "_UNEXPECTED_VALUE",
-   |     ^^^^^^^^^^^^^^^^----------------------
-   |                     |
-   |                     help: remove the value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected value for `debug_assertions`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: remove the value
+   |
+LL -     debug_assertions = "_UNEXPECTED_VALUE",
+LL +     debug_assertions,
+   |
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:32:5
    |
 LL |     doc = "_UNEXPECTED_VALUE",
-   |     ^^^----------------------
-   |        |
-   |        help: remove the value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected value for `doc`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: remove the value
+   |
+LL -     doc = "_UNEXPECTED_VALUE",
+LL +     doc,
+   |
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:34:5
    |
 LL |     doctest = "_UNEXPECTED_VALUE",
-   |     ^^^^^^^----------------------
-   |            |
-   |            help: remove the value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected value for `doctest`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: remove the value
+   |
+LL -     doctest = "_UNEXPECTED_VALUE",
+LL +     doctest,
+   |
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:36:5
    |
 LL |     miri = "_UNEXPECTED_VALUE",
-   |     ^^^^----------------------
-   |         |
-   |         help: remove the value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected value for `miri`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: remove the value
+   |
+LL -     miri = "_UNEXPECTED_VALUE",
+LL +     miri,
+   |
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:38:5
    |
 LL |     overflow_checks = "_UNEXPECTED_VALUE",
-   |     ^^^^^^^^^^^^^^^----------------------
-   |                    |
-   |                    help: remove the value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected value for `overflow_checks`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: remove the value
+   |
+LL -     overflow_checks = "_UNEXPECTED_VALUE",
+LL +     overflow_checks,
+   |
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:40:5
@@ -78,12 +96,15 @@ warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:42:5
    |
 LL |     proc_macro = "_UNEXPECTED_VALUE",
-   |     ^^^^^^^^^^----------------------
-   |               |
-   |               help: remove the value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected value for `proc_macro`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: remove the value
+   |
+LL -     proc_macro = "_UNEXPECTED_VALUE",
+LL +     proc_macro,
+   |
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:44:5
@@ -98,12 +119,15 @@ warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:46:5
    |
 LL |     rustfmt = "_UNEXPECTED_VALUE",
-   |     ^^^^^^^----------------------
-   |            |
-   |            help: remove the value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected value for `rustfmt`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: remove the value
+   |
+LL -     rustfmt = "_UNEXPECTED_VALUE",
+LL +     rustfmt,
+   |
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:48:5
@@ -217,12 +241,15 @@ warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:72:5
    |
 LL |     target_thread_local = "_UNEXPECTED_VALUE",
-   |     ^^^^^^^^^^^^^^^^^^^----------------------
-   |                        |
-   |                        help: remove the value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected value for `target_thread_local`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: remove the value
+   |
+LL -     target_thread_local = "_UNEXPECTED_VALUE",
+LL +     target_thread_local,
+   |
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:74:5
@@ -237,56 +264,70 @@ warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:76:5
    |
 LL |     test = "_UNEXPECTED_VALUE",
-   |     ^^^^----------------------
-   |         |
-   |         help: remove the value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected value for `test`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: remove the value
+   |
+LL -     test = "_UNEXPECTED_VALUE",
+LL +     test,
+   |
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:78:5
    |
 LL |     ub_checks = "_UNEXPECTED_VALUE",
-   |     ^^^^^^^^^----------------------
-   |              |
-   |              help: remove the value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected value for `ub_checks`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: remove the value
+   |
+LL -     ub_checks = "_UNEXPECTED_VALUE",
+LL +     ub_checks,
+   |
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:80:5
    |
 LL |     unix = "_UNEXPECTED_VALUE",
-   |     ^^^^----------------------
-   |         |
-   |         help: remove the value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected value for `unix`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: remove the value
+   |
+LL -     unix = "_UNEXPECTED_VALUE",
+LL +     unix,
+   |
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:82:5
    |
 LL |     windows = "_UNEXPECTED_VALUE",
-   |     ^^^^^^^----------------------
-   |            |
-   |            help: remove the value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected value for `windows`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: remove the value
+   |
+LL -     windows = "_UNEXPECTED_VALUE",
+LL +     windows,
+   |
 
 warning: unexpected `cfg` condition value: `linuz`
   --> $DIR/well-known-values.rs:88:7
    |
 LL | #[cfg(target_os = "linuz")] // testing that we suggest `linux`
-   |       ^^^^^^^^^^^^-------
-   |                   |
-   |                   help: there is a expected value with a similar name: `"linux"`
+   |       ^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `target_os` are: `aix`, `android`, `cuda`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `macos`, `netbsd`, `none`, `nto`, `openbsd`, `psp`, `redox`, `solaris`, `solid_asp3`, `teeos`, `tvos`, `uefi`, `unknown`, `visionos`, `vita`, `vxworks`, `wasi`, `watchos`, `windows`, `xous`, and `zkvm`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: there is a expected value with a similar name
+   |
+LL | #[cfg(target_os = "linux")] // testing that we suggest `linux`
+   |                   ~~~~~~~
 
 warning: 29 warnings emitted
 

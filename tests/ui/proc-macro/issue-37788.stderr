@@ -5,12 +5,14 @@ LL | fn main() {
    |          - expected `()` because of default return type
 LL |     // Test that constructing the `visible_parent_map` (in `cstore_impl.rs`) does not ICE.
 LL |     std::cell::Cell::new(0)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^- help: consider using a semicolon here: `;`
-   |     |
-   |     expected `()`, found `Cell<{integer}>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `Cell<{integer}>`
    |
    = note: expected unit type `()`
                  found struct `Cell<{integer}>`
+help: consider using a semicolon here
+   |
+LL |     std::cell::Cell::new(0);
+   |                            +
 
 error: aborting due to 1 previous error
 

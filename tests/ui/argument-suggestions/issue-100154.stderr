@@ -2,9 +2,7 @@ error[E0107]: function takes 0 generic arguments but 1 generic argument was supp
   --> $DIR/issue-100154.rs:4:5
    |
 LL |     foo::<()>(());
-   |     ^^^------ help: remove these generics
-   |     |
-   |     expected 0 generic arguments
+   |     ^^^ expected 0 generic arguments
    |
 note: function defined here, with 0 generic parameters
   --> $DIR/issue-100154.rs:1:4
@@ -12,6 +10,11 @@ note: function defined here, with 0 generic parameters
 LL | fn foo(i: impl std::fmt::Display) {}
    |    ^^^
    = note: `impl Trait` cannot be explicitly specified as a generic argument
+help: remove these generics
+   |
+LL -     foo::<()>(());
+LL +     foo(());
+   |
 
 error[E0277]: `()` doesn't implement `std::fmt::Display`
   --> $DIR/issue-100154.rs:4:11

@@ -214,7 +214,7 @@ impl MultiSugg {
     }
 
     fn emit_verbose(self, err: &mut Diag<'_>) {
-        err.multipart_suggestion_verbose(self.msg, self.patches, self.applicability);
+        err.multipart_suggestion(self.msg, self.patches, self.applicability);
     }
 }
 
@@ -365,7 +365,7 @@ impl<'a> Parser<'a> {
                                 && let Ok(snippet) =
                                     self.psess.source_map().span_to_snippet(generic.span)
                             {
-                                err.multipart_suggestion_verbose(
+                                err.multipart_suggestion(
                                         format!("place the generic parameter name after the {ident_name} name"),
                                         vec![
                                             (self.token.span.shrink_to_hi(), snippet),
@@ -622,7 +622,7 @@ impl<'a> Parser<'a> {
 
         if let TokenKind::Ident(symbol, _) = &self.prev_token.kind {
             if ["def", "fun", "func", "function"].contains(&symbol.as_str()) {
-                err.span_suggestion_short(
+                err.span_suggestion(
                     self.prev_token.span,
                     format!("write `fn` instead of `{symbol}` to declare a function"),
                     "fn",
@@ -638,7 +638,7 @@ impl<'a> Parser<'a> {
             let ident = Ident::new(concat, DUMMY_SP);
             if ident.is_used_keyword() || ident.is_reserved() || ident.is_raw_guess() {
                 let span = self.prev_token.span.to(self.token.span);
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     span,
                     format!("consider removing the space to spell keyword `{concat}`"),
                     concat,
@@ -674,7 +674,7 @@ impl<'a> Parser<'a> {
             && (self.token.can_begin_item()
                 || self.token.kind == TokenKind::OpenDelim(Delimiter::Parenthesis))
         {
-            err.span_suggestion_short(
+            err.span_suggestion(
                 self.prev_token.span,
                 "write `pub` instead of `public` to make the item public",
                 "pub",
@@ -686,7 +686,7 @@ impl<'a> Parser<'a> {
             // We have something like `expr //!val` where the user likely meant `expr // !val`
             let pos = self.token.span.lo() + BytePos(2);
             let span = self.token.span.with_lo(pos).with_hi(pos);
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 span,
                 format!(
                     "add a space before {} to write a regular comment",
@@ -1015,7 +1015,7 @@ impl<'a> Parser<'a> {
                 // and recover.
                 self.eat_to_tokens(&[&token::CloseDelim(Delimiter::Parenthesis), &token::Comma]);
 
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "you might have meant to open the body of the closure",
                     vec![
                         (prev.span.shrink_to_hi(), " {".to_string()),
@@ -1028,7 +1028,7 @@ impl<'a> Parser<'a> {
             _ if !matches!(token.kind, token::OpenDelim(Delimiter::Brace)) => {
                 // We don't have a heuristic to correctly identify where the block
                 // should be closed.
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "you might have meant to open the body of the closure",
                     vec![(prev.span.shrink_to_hi(), " {".to_string())],
                     Applicability::HasPlaceholders,
@@ -1231,7 +1231,7 @@ impl<'a> Parser<'a> {
                 Ok((_, _, Recovered::No)) => {
                     if self.eat(&token::Gt) {
                         // We made sense of it. Improve the error message.
-                        e.span_suggestion_verbose(
+                        e.span_suggestion(
                             binop.span.shrink_to_lo(),
                             fluent::parse_sugg_turbofish_syntax,
                             "::",
@@ -2050,7 +2050,7 @@ impl<'a> Parser<'a> {
                 })
                 .last()
         {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 poly.span.shrink_to_hi(),
                 "you might have meant to end the type parameters here",
                 ">",
@@ -2250,7 +2250,7 @@ impl<'a> Parser<'a> {
                     _ => {
                         // Otherwise, try to get a type and emit a suggestion.
                         if let Some(ty) = pat.to_ty() {
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 pat.span,
                                 "explicitly ignore the parameter name",
                                 format!("_: {}", pprust::ty_to_string(&ty)),
@@ -2822,7 +2822,7 @@ impl<'a> Parser<'a> {
                             _ => {}
                         }
                         if show_sugg {
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 colon_span.until(self.look_ahead(1, |t| t.span)),
                                 "maybe write a path separator here",
                                 "::",

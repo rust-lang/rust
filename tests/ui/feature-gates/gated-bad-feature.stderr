@@ -2,13 +2,23 @@ error[E0556]: malformed `feature` attribute input
   --> $DIR/gated-bad-feature.rs:1:25
    |
 LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
-   |                         ^^^^^^^^ help: expected just one word: `foo`
+   |                         ^^^^^^^^
+   |
+help: expected just one word
+   |
+LL | #![feature(foo_bar_baz, foo, foo = "baz", foo)]
+   |                         ~~~
 
 error[E0556]: malformed `feature` attribute input
   --> $DIR/gated-bad-feature.rs:1:35
    |
 LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
-   |                                   ^^^^^^^^^^^ help: expected just one word: `foo`
+   |                                   ^^^^^^^^^^^
+   |
+help: expected just one word
+   |
+LL | #![feature(foo_bar_baz, foo(bar), foo, foo)]
+   |                                   ~~~
 
 error[E0557]: feature has been removed
   --> $DIR/gated-bad-feature.rs:8:12
@@ -20,13 +30,23 @@ error: malformed `feature` attribute input
   --> $DIR/gated-bad-feature.rs:6:1
    |
 LL | #![feature]
-   | ^^^^^^^^^^^ help: must be of the form: `#![feature(name1, name2, ...)]`
+   | ^^^^^^^^^^^
+   |
+help: must be of the form
+   |
+LL | #![feature(name1, name2, ...)]
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: malformed `feature` attribute input
   --> $DIR/gated-bad-feature.rs:7:1
    |
 LL | #![feature = "foo"]
-   | ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![feature(name1, name2, ...)]`
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+help: must be of the form
+   |
+LL | #![feature(name1, name2, ...)]
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0635]: unknown feature `foo_bar_baz`
   --> $DIR/gated-bad-feature.rs:1:12

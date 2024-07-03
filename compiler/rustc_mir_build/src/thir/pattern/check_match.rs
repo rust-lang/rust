@@ -1140,7 +1140,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
         err.subdiagnostic(NonExhaustiveMatchAllArmsGuarded);
     }
     if let Some((span, sugg)) = suggestion {
-        err.span_suggestion_verbose(span, msg, sugg, Applicability::HasPlaceholders);
+        err.span_suggestion(span, msg, sugg, Applicability::HasPlaceholders);
     } else {
         err.help(msg);
     }

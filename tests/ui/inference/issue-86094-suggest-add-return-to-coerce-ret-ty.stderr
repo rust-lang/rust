@@ -35,12 +35,14 @@ LL | fn baz(x: bool) -> Result<(), MyError> {
    |    ---             ^^^^^^^^^^^^^^^^^^^ expected `Result<(), MyError>`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
-...
-LL |     Err(MyError);
-   |                 - help: remove this semicolon to return this value
    |
    = note:   expected enum `Result<(), MyError>`
            found unit type `()`
+help: remove this semicolon to return this value
+   |
+LL -     Err(MyError);
+LL +     Err(MyError)
+   |
 
 error[E0308]: mismatched types
   --> $DIR/issue-86094-suggest-add-return-to-coerce-ret-ty.rs:35:10
@@ -49,12 +51,16 @@ LL |       if x {
    |  __________^
 LL | |
 LL | |         error();
-   | |                - help: remove this semicolon to return this value
 LL | |     } else {
    | |_____^ expected `Result<(), MyError>`, found `()`
    |
    = note:   expected enum `Result<(), MyError>`
            found unit type `()`
+help: remove this semicolon to return this value
+   |
+LL -         error();
+LL +         error()
+   |
 
 error[E0308]: mismatched types
   --> $DIR/issue-86094-suggest-add-return-to-coerce-ret-ty.rs:38:12
@@ -63,12 +69,16 @@ LL |       } else {
    |  ____________^
 LL | |
 LL | |         error();
-   | |                - help: remove this semicolon to return this value
 LL | |     }
    | |_____^ expected `Result<(), MyError>`, found `()`
    |
    = note:   expected enum `Result<(), MyError>`
            found unit type `()`
+help: remove this semicolon to return this value
+   |
+LL -         error();
+LL +         error()
+   |
 
 error[E0282]: type annotations needed
   --> $DIR/issue-86094-suggest-add-return-to-coerce-ret-ty.rs:45:5

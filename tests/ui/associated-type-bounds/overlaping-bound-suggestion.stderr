@@ -2,7 +2,12 @@ error[E0191]: the value of the associated types `Item` and `IntoIter` in `IntoIt
   --> $DIR/overlaping-bound-suggestion.rs:6:13
    |
 LL |     inner: <IntoIterator<Item: IntoIterator<Item: >>::IntoIterator as Item>::Core,
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: specify the associated types: `IntoIterator<Item: IntoIterator<Item: >, Item = Type, IntoIter = Type>`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: specify the associated types
+   |
+LL |     inner: <IntoIterator<Item: IntoIterator<Item: >, Item = Type, IntoIter = Type>::IntoIterator as Item>::Core,
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
   --> $DIR/overlaping-bound-suggestion.rs:6:13

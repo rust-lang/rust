@@ -2,7 +2,7 @@ error: unused attribute
   --> $DIR/lint-attribute-only-with-reason.rs:3:1
    |
 LL | #[allow(reason = "I want to allow something")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: attribute `allow` without any lints has no effect
 note: the lint level is defined here
@@ -10,38 +10,63 @@ note: the lint level is defined here
    |
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
+help: remove this attribute
+   |
+LL - #[allow(reason = "I want to allow something")]
+LL +
+   |
 
 error: unused attribute
   --> $DIR/lint-attribute-only-with-reason.rs:4:1
    |
 LL | #[expect(reason = "I don't know what I'm waiting for")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: attribute `expect` without any lints has no effect
+help: remove this attribute
+   |
+LL - #[expect(reason = "I don't know what I'm waiting for")]
+LL +
+   |
 
 error: unused attribute
   --> $DIR/lint-attribute-only-with-reason.rs:5:1
    |
 LL | #[warn(reason = "This should be warn by default")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: attribute `warn` without any lints has no effect
+help: remove this attribute
+   |
+LL - #[warn(reason = "This should be warn by default")]
+LL +
+   |
 
 error: unused attribute
   --> $DIR/lint-attribute-only-with-reason.rs:6:1
    |
 LL | #[deny(reason = "All listed lints are denied")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: attribute `deny` without any lints has no effect
+help: remove this attribute
+   |
+LL - #[deny(reason = "All listed lints are denied")]
+LL +
+   |
 
 error: unused attribute
   --> $DIR/lint-attribute-only-with-reason.rs:7:1
    |
 LL | #[forbid(reason = "Just some reason")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: attribute `forbid` without any lints has no effect
+help: remove this attribute
+   |
+LL - #[forbid(reason = "Just some reason")]
+LL +
+   |
 
 error: aborting due to 5 previous errors
 

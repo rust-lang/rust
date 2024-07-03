@@ -454,7 +454,7 @@ pub(crate) struct InvalidAsmSym {
 #[diag(resolve_lowercase_self)]
 pub(crate) struct LowercaseSelf {
     #[primary_span]
-    #[suggestion(code = "Self", applicability = "maybe-incorrect", style = "short")]
+    #[suggestion(code = "Self", applicability = "maybe-incorrect")]
     pub(crate) span: Span,
 }
 
@@ -463,7 +463,7 @@ pub(crate) struct LowercaseSelf {
 #[diag(resolve_binding_in_never_pattern)]
 pub(crate) struct BindingInNeverPattern {
     #[primary_span]
-    #[suggestion(code = "_", applicability = "machine-applicable", style = "short")]
+    #[suggestion(code = "_", applicability = "machine-applicable")]
     pub(crate) span: Span,
 }
 
@@ -778,11 +778,7 @@ pub(crate) struct IsNotDirectlyImportable {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
-    resolve_unexpected_res_change_ty_to_const_param_sugg,
-    code = "const ",
-    style = "verbose"
-)]
+#[suggestion(resolve_unexpected_res_change_ty_to_const_param_sugg, code = "const ")]
 pub(crate) struct UnexpectedResChangeTyToConstParamSugg {
     #[primary_span]
     pub span: Span,
@@ -794,8 +790,7 @@ pub(crate) struct UnexpectedResChangeTyToConstParamSugg {
 #[suggestion(
     resolve_unexpected_res_use_at_op_in_slice_pat_with_range_sugg,
     code = "{snippet}",
-    applicability = "maybe-incorrect",
-    style = "verbose"
+    applicability = "maybe-incorrect"
 )]
 pub(crate) struct UnexpectedResUseAtOpInSlicePatWithRangeSugg {
     #[primary_span]
@@ -1130,11 +1125,7 @@ pub(crate) struct ConstructorPrivateIfAnyFieldPrivate {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    resolve_consider_making_the_field_public,
-    applicability = "maybe-incorrect",
-    style = "verbose"
-)]
+#[multipart_suggestion(resolve_consider_making_the_field_public, applicability = "maybe-incorrect")]
 pub(crate) struct ConsiderMakingTheFieldPublic {
     #[suggestion_part(code = "pub ")]
     pub(crate) spans: Vec<Span>,
@@ -1146,8 +1137,7 @@ pub(crate) enum ImportIdent {
     #[suggestion(
         resolve_suggestion_import_ident_through_reexport,
         code = "{path}",
-        applicability = "machine-applicable",
-        style = "verbose"
+        applicability = "machine-applicable"
     )]
     ThroughReExport {
         #[primary_span]
@@ -1158,8 +1148,7 @@ pub(crate) enum ImportIdent {
     #[suggestion(
         resolve_suggestion_import_ident_directly,
         code = "{path}",
-        applicability = "machine-applicable",
-        style = "verbose"
+        applicability = "machine-applicable"
     )]
     Directly {
         #[primary_span]

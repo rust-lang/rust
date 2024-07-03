@@ -18,10 +18,13 @@ LL |     second == 1
 error[E0308]: mismatched types
   --> $DIR/issue-66667-function-cmp-cycle.rs:2:5
    |
-LL | fn first() {
-   |           - help: try adding a return type: `-> bool`
 LL |     second == 1
    |     ^^^^^^^^^^^ expected `()`, found `bool`
+   |
+help: try adding a return type
+   |
+LL | fn first() -> bool {
+   |            +++++++
 
 error[E0369]: binary operation `==` cannot be applied to type `fn() {first}`
   --> $DIR/issue-66667-function-cmp-cycle.rs:8:11
@@ -43,10 +46,13 @@ LL |     first == 1
 error[E0308]: mismatched types
   --> $DIR/issue-66667-function-cmp-cycle.rs:8:5
    |
-LL | fn second() {
-   |            - help: try adding a return type: `-> bool`
 LL |     first == 1
    |     ^^^^^^^^^^ expected `()`, found `bool`
+   |
+help: try adding a return type
+   |
+LL | fn second() -> bool {
+   |             +++++++
 
 error[E0369]: binary operation `==` cannot be applied to type `fn() {bar}`
   --> $DIR/issue-66667-function-cmp-cycle.rs:14:9
@@ -68,10 +74,13 @@ LL |     bar == 1
 error[E0308]: mismatched types
   --> $DIR/issue-66667-function-cmp-cycle.rs:14:5
    |
-LL | fn bar() {
-   |         - help: try adding a return type: `-> bool`
 LL |     bar == 1
    |     ^^^^^^^^ expected `()`, found `bool`
+   |
+help: try adding a return type
+   |
+LL | fn bar() -> bool {
+   |          +++++++
 
 error: aborting due to 9 previous errors
 

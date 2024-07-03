@@ -76,9 +76,6 @@ const LINT_EMISSION_FUNCTIONS: [&[&str]; 7] = [
 ];
 const SUGGESTION_DIAG_METHODS: [(&str, bool); 9] = [
     ("span_suggestion", false),
-    ("span_suggestion_short", false),
-    ("span_suggestion_verbose", false),
-    ("span_suggestion_hidden", false),
     ("tool_only_span_suggestion", false),
     ("multipart_suggestion", true),
     ("multipart_suggestions", true),

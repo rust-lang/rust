@@ -2,9 +2,12 @@ error: associated function in `impl` without body
   --> $DIR/impl-item-fn-no-body-semantic-fail.rs:6:5
    |
 LL |     fn f();
-   |     ^^^^^^-
-   |           |
-   |           help: provide a definition for the function: `{ <body> }`
+   |     ^^^^^^^
+   |
+help: provide a definition for the function
+   |
+LL |     fn f() { <body> }
+   |            ~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

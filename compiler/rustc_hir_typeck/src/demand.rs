@@ -1085,7 +1085,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let ty::Adt(f_def, _f_args) = found.kind()
                     && e_def == f_def
                 {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         *span,
                         "use the type name directly",
                         self.tcx.value_path_str_with_args(e_def.did(), e_args),

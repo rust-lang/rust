@@ -2,9 +2,13 @@ error: unknown `doc` attribute `include`
   --> $DIR/doc-include-suggestion.rs:1:7
    |
 LL | #[doc(include = "external-cross-doc.md")]
-   | ------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-- help: use `doc = include_str!` instead: `#[doc = include_str!("external-cross-doc.md")]`
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[deny(invalid_doc_attributes)]` on by default
+help: use `doc = include_str!` instead
+   |
+LL | #[doc = include_str!("external-cross-doc.md")]
+   |
 
 error: aborting due to 1 previous error
 

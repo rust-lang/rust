@@ -15,12 +15,14 @@ LL | use issue_52891::a;
    |     -------------- previous import of the module `a` here
 ...
 LL | use issue_52891::{a, b, c};
-   |                   ^--
-   |                   |
-   |                   `a` reimported here
-   |                   help: remove unnecessary import
+   |                   ^ `a` reimported here
    |
    = note: `a` must be defined only once in the type namespace of this module
+help: remove unnecessary import
+   |
+LL - use issue_52891::{a, b, c};
+LL + use issue_52891::{b, c};
+   |
 
 error[E0252]: the name `a` is defined multiple times
   --> $DIR/issue-52891.rs:15:22
@@ -29,12 +31,14 @@ LL | use issue_52891::a;
    |     -------------- previous import of the module `a` here
 ...
 LL | use issue_52891::{d, a, e};
-   |                      ^--
-   |                      |
-   |                      `a` reimported here
-   |                      help: remove unnecessary import
+   |                      ^ `a` reimported here
    |
    = note: `a` must be defined only once in the type namespace of this module
+help: remove unnecessary import
+   |
+LL - use issue_52891::{d, a, e};
+LL + use issue_52891::{d, e};
+   |
 
 error[E0252]: the name `a` is defined multiple times
   --> $DIR/issue-52891.rs:16:25
@@ -54,12 +58,14 @@ LL | use issue_52891::a;
    |     -------------- previous import of the module `a` here
 ...
 LL | use issue_52891::{a,
-   |                   ^--
-   |                   |
-   |                   `a` reimported here
-   |                   help: remove unnecessary import
+   |                   ^ `a` reimported here
    |
    = note: `a` must be defined only once in the type namespace of this module
+help: remove unnecessary import
+   |
+LL - use issue_52891::{a,
+LL + use issue_52891::{
+   |
 
 error[E0252]: the name `a` is defined multiple times
   --> $DIR/issue-52891.rs:22:5
@@ -68,12 +74,14 @@ LL | use issue_52891::a;
    |     -------------- previous import of the module `a` here
 ...
 LL |     a,
-   |     ^--
-   |     |
-   |     `a` reimported here
-   |     help: remove unnecessary import
+   |     ^ `a` reimported here
    |
    = note: `a` must be defined only once in the type namespace of this module
+help: remove unnecessary import
+   |
+LL -     a,
+LL +
+   |
 
 error[E0252]: the name `a` is defined multiple times
   --> $DIR/issue-52891.rs:26:5
@@ -107,12 +115,13 @@ LL | extern crate issue_52891;
    | ------------------------- previous import of the extern crate `issue_52891` here
 ...
 LL | use issue_52891::{self};
-   | ------------------^^^^--
-   | |                 |
-   | |                 `issue_52891` reimported here
-   | help: remove unnecessary import
+   |                   ^^^^ `issue_52891` reimported here
    |
    = note: `issue_52891` must be defined only once in the type namespace of this module
+help: remove unnecessary import
+   |
+LL - use issue_52891::{self};
+   |
 
 error[E0252]: the name `n` is defined multiple times
   --> $DIR/issue-52891.rs:36:5

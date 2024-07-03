@@ -2,13 +2,23 @@ error: malformed `cfg_accessible` attribute input
   --> $DIR/cfg_accessible-input-validation.rs:3:1
    |
 LL | #[cfg_accessible]
-   | ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[cfg_accessible(path)]`
+   | ^^^^^^^^^^^^^^^^^
+   |
+help: must be of the form
+   |
+LL | #[cfg_accessible(path)]
+   | ~~~~~~~~~~~~~~~~~~~~~~~
 
 error: malformed `cfg_accessible` attribute input
   --> $DIR/cfg_accessible-input-validation.rs:6:1
    |
 LL | #[cfg_accessible = "value"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[cfg_accessible(path)]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: must be of the form
+   |
+LL | #[cfg_accessible(path)]
+   | ~~~~~~~~~~~~~~~~~~~~~~~
 
 error: `cfg_accessible` path is not specified
   --> $DIR/cfg_accessible-input-validation.rs:9:1

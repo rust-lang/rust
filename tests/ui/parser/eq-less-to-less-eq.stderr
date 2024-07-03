@@ -2,9 +2,12 @@ error: expected one of `!`, `(`, `+`, `::`, `<`, `>`, or `as`, found `{`
   --> $DIR/eq-less-to-less-eq.rs:4:15
    |
 LL |     if a =< b {
-   |          --   ^ expected one of 7 possible tokens
-   |          |
-   |          help: did you mean: `<=`
+   |               ^ expected one of 7 possible tokens
+   |
+help: did you mean
+   |
+LL |     if a <= b {
+   |          ~~
 
 error: expected one of `!`, `(`, `+`, `::`, `<`, `>`, or `as`, found `{`
   --> $DIR/eq-less-to-less-eq.rs:12:15

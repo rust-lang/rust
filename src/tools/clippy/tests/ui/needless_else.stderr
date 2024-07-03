@@ -4,10 +4,16 @@ error: this `else` branch is empty
 LL |       } else {
    |  _______^
 LL | |     }
-   | |_____^ help: you can remove it
+   | |_____^
    |
    = note: `-D clippy::needless-else` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_else)]`
+help: you can remove it
+   |
+LL -     } else {
+LL -     }
+LL +     } 
+   |
 
 error: aborting due to 1 previous error
 

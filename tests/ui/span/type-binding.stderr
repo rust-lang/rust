@@ -2,7 +2,12 @@ error[E0220]: associated type `Trget` not found for `Deref`
   --> $DIR/type-binding.rs:6:20
    |
 LL | fn homura<T: Deref<Trget = i32>>(_: T) {}
-   |                    ^^^^^ help: there is an associated type with a similar name: `Target`
+   |                    ^^^^^
+   |
+help: there is an associated type with a similar name
+   |
+LL | fn homura<T: Deref<Target = i32>>(_: T) {}
+   |                    ~~~~~~
 
 error: aborting due to 1 previous error
 

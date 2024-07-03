@@ -70,13 +70,17 @@ LL |     pub enum B {
    |     ---------- similarly named enum `B` defined here
 ...
 LL |     foo::<A>();
-   |           ^ help: an enum with a similar name exists: `B`
+   |           ^
    |
 note: enum `bar::A` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:11:5
    |
 LL |     enum A {
    |     ^^^^^^ not accessible
+help: an enum with a similar name exists
+   |
+LL |     foo::<B>();
+   |           ~
 
 error[E0412]: cannot find type `C` in this scope
   --> $DIR/glob-resolve1.rs:33:11
@@ -85,13 +89,17 @@ LL |     pub enum B {
    |     ---------- similarly named enum `B` defined here
 ...
 LL |     foo::<C>();
-   |           ^ help: an enum with a similar name exists: `B`
+   |           ^
    |
 note: struct `bar::C` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:18:5
    |
 LL |     struct C;
    |     ^^^^^^^^^ not accessible
+help: an enum with a similar name exists
+   |
+LL |     foo::<B>();
+   |           ~
 
 error[E0412]: cannot find type `D` in this scope
   --> $DIR/glob-resolve1.rs:34:11
@@ -100,13 +108,17 @@ LL |     pub enum B {
    |     ---------- similarly named enum `B` defined here
 ...
 LL |     foo::<D>();
-   |           ^ help: an enum with a similar name exists: `B`
+   |           ^
    |
 note: type alias `bar::D` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:20:5
    |
 LL |     type D = isize;
    |     ^^^^^^^^^^^^^^^ not accessible
+help: an enum with a similar name exists
+   |
+LL |     foo::<B>();
+   |           ~
 
 error: aborting due to 8 previous errors
 

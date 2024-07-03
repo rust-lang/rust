@@ -2,52 +2,91 @@ error: writing `&Vec` instead of `&[_]` involves a new object where a slice will
   --> tests/ui/ptr_arg.rs:13:14
    |
 LL | fn do_vec(x: &Vec<i64>) {
-   |              ^^^^^^^^^ help: change this to: `&[i64]`
+   |              ^^^^^^^^^
    |
    = note: `-D clippy::ptr-arg` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::ptr_arg)]`
+help: change this to
+   |
+LL | fn do_vec(x: &[i64]) {
+   |              ~~~~~~
 
 error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:19:18
    |
 LL | fn do_vec_mut(x: &mut Vec<i64>) {
-   |                  ^^^^^^^^^^^^^ help: change this to: `&mut [i64]`
+   |                  ^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL | fn do_vec_mut(x: &mut [i64]) {
+   |                  ~~~~~~~~~~
 
 error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:24:19
    |
 LL | fn do_vec_mut2(x: &mut Vec<i64>) {
-   |                   ^^^^^^^^^^^^^ help: change this to: `&mut [i64]`
+   |                   ^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL | fn do_vec_mut2(x: &mut [i64]) {
+   |                   ~~~~~~~~~~
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:30:14
    |
 LL | fn do_str(x: &String) {
-   |              ^^^^^^^ help: change this to: `&str`
+   |              ^^^^^^^
+   |
+help: change this to
+   |
+LL | fn do_str(x: &str) {
+   |              ~~~~
 
 error: writing `&mut String` instead of `&mut str` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:35:18
    |
 LL | fn do_str_mut(x: &mut String) {
-   |                  ^^^^^^^^^^^ help: change this to: `&mut str`
+   |                  ^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL | fn do_str_mut(x: &mut str) {
+   |                  ~~~~~~~~
 
 error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:40:15
    |
 LL | fn do_path(x: &PathBuf) {
-   |               ^^^^^^^^ help: change this to: `&Path`
+   |               ^^^^^^^^
+   |
+help: change this to
+   |
+LL | fn do_path(x: &Path) {
+   |               ~~~~~
 
 error: writing `&mut PathBuf` instead of `&mut Path` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:45:19
    |
 LL | fn do_path_mut(x: &mut PathBuf) {
-   |                   ^^^^^^^^^^^^ help: change this to: `&mut Path`
+   |                   ^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL | fn do_path_mut(x: &mut Path) {
+   |                   ~~~~~~~~~
 
 error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:54:18
    |
 LL |     fn do_vec(x: &Vec<i64>);
-   |                  ^^^^^^^^^ help: change this to: `&[i64]`
+   |                  ^^^^^^^^^
+   |
+help: change this to
+   |
+LL |     fn do_vec(x: &[i64]);
+   |                  ~~~~~~
 
 error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:68:14
@@ -120,13 +159,23 @@ error: using a reference to `Cow` is not recommended
   --> tests/ui/ptr_arg.rs:111:25
    |
 LL | fn test_cow_with_ref(c: &Cow<[i32]>) {}
-   |                         ^^^^^^^^^^^ help: change this to: `&[i32]`
+   |                         ^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL | fn test_cow_with_ref(c: &[i32]) {}
+   |                         ~~~~~~
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:141:66
    |
 LL |     fn some_allowed(#[allow(clippy::ptr_arg)] _v: &Vec<u32>, _s: &String) {}
-   |                                                                  ^^^^^^^ help: change this to: `&str`
+   |                                                                  ^^^^^^^
+   |
+help: change this to
+   |
+LL |     fn some_allowed(#[allow(clippy::ptr_arg)] _v: &Vec<u32>, _s: &str) {}
+   |                                                                  ~~~~
 
 error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:171:21
@@ -174,43 +223,78 @@ error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a sl
   --> tests/ui/ptr_arg.rs:190:29
    |
 LL | fn mut_vec_slice_methods(v: &mut Vec<u32>) {
-   |                             ^^^^^^^^^^^^^ help: change this to: `&mut [u32]`
+   |                             ^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL | fn mut_vec_slice_methods(v: &mut [u32]) {
+   |                             ~~~~~~~~~~
 
 error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:253:17
    |
 LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
-   |                 ^^^^^^^^^^^^^ help: change this to: `&mut [u32]`
+   |                 ^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL | fn dyn_trait(a: &mut [u32], b: &mut String, c: &mut PathBuf) {
+   |                 ~~~~~~~~~~
 
 error: writing `&mut String` instead of `&mut str` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:253:35
    |
 LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
-   |                                   ^^^^^^^^^^^ help: change this to: `&mut str`
+   |                                   ^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut str, c: &mut PathBuf) {
+   |                                   ~~~~~~~~
 
 error: writing `&mut PathBuf` instead of `&mut Path` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:253:51
    |
 LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
-   |                                                   ^^^^^^^^^^^^ help: change this to: `&mut Path`
+   |                                                   ^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut Path) {
+   |                                                   ~~~~~~~~~
 
 error: using a reference to `Cow` is not recommended
   --> tests/ui/ptr_arg.rs:279:39
    |
 LL |     fn cow_elided_lifetime<'a>(input: &'a Cow<str>) -> &'a str {
-   |                                       ^^^^^^^^^^^^ help: change this to: `&str`
+   |                                       ^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL |     fn cow_elided_lifetime<'a>(input: &str) -> &'a str {
+   |                                       ~~~~
 
 error: using a reference to `Cow` is not recommended
   --> tests/ui/ptr_arg.rs:285:36
    |
 LL |     fn cow_bad_ret_ty_1<'a>(input: &'a Cow<'a, str>) -> &'static str {
-   |                                    ^^^^^^^^^^^^^^^^ help: change this to: `&str`
+   |                                    ^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL |     fn cow_bad_ret_ty_1<'a>(input: &str) -> &'static str {
+   |                                    ~~~~
 
 error: using a reference to `Cow` is not recommended
   --> tests/ui/ptr_arg.rs:289:40
    |
 LL |     fn cow_bad_ret_ty_2<'a, 'b>(input: &'a Cow<'a, str>) -> &'b str {
-   |                                        ^^^^^^^^^^^^^^^^ help: change this to: `&str`
+   |                                        ^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL |     fn cow_bad_ret_ty_2<'a, 'b>(input: &str) -> &'b str {
+   |                                        ~~~~
 
 error: aborting due to 24 previous errors
 

@@ -20,12 +20,14 @@ error: missing required bound on `Cursor`
   --> $DIR/issue-70304.rs:2:5
    |
 LL |     type Cursor<'a>: DocCursor<'a>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   |                                   |
-   |                                   help: add the required where clause: `where Self: 'a`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this bound is currently required to ensure that impls have maximum flexibility
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
+help: add the required where clause
+   |
+LL |     type Cursor<'a>: DocCursor<'a> where Self: 'a;
+   |                                    ++++++++++++++
 
 error: aborting due to 3 previous errors
 

@@ -221,7 +221,7 @@ pub enum ExternBlockSuggestion {
 pub struct InvalidSafetyOnExtern {
     #[primary_span]
     pub item_span: Span,
-    #[suggestion(code = "unsafe ", applicability = "machine-applicable", style = "verbose")]
+    #[suggestion(code = "unsafe ", applicability = "machine-applicable")]
     pub block: Option<Span>,
 }
 
@@ -380,7 +380,7 @@ pub struct ArgsBeforeConstraint {
     pub constraints: Span,
     #[label(ast_passes_args)]
     pub args: Span,
-    #[suggestion(code = "{suggestion}", applicability = "machine-applicable", style = "verbose")]
+    #[suggestion(code = "{suggestion}", applicability = "machine-applicable")]
     pub data: Span,
     pub suggestion: String,
     pub constraint_len: usize,
@@ -550,11 +550,7 @@ pub enum WhereClauseBeforeTypeAliasSugg {
         #[primary_span]
         span: Span,
     },
-    #[multipart_suggestion(
-        ast_passes_move_suggestion,
-        applicability = "machine-applicable",
-        style = "verbose"
-    )]
+    #[multipart_suggestion(ast_passes_move_suggestion, applicability = "machine-applicable")]
     Move {
         #[suggestion_part(code = "")]
         left: Span,
@@ -722,12 +718,7 @@ pub struct EqualityInWhere {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
-    ast_passes_suggestion,
-    code = "{param}: {path}",
-    style = "verbose",
-    applicability = "maybe-incorrect"
-)]
+#[suggestion(ast_passes_suggestion, code = "{param}: {path}", applicability = "maybe-incorrect")]
 pub struct AssociatedSuggestion {
     #[primary_span]
     pub span: Span,

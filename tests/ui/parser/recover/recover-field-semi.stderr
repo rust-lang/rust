@@ -4,7 +4,12 @@ error: struct fields are separated by `,`
 LL | struct Foo {
    |        --- while parsing this struct
 LL |     foo: i32;
-   |             ^ help: replace `;` with `,`
+   |             ^
+   |
+help: replace `;` with `,`
+   |
+LL |     foo: i32,
+   |             ~
 
 error: union fields are separated by `,`
   --> $DIR/recover-field-semi.rs:7:13
@@ -12,15 +17,25 @@ error: union fields are separated by `,`
 LL | union Bar {
    |       --- while parsing this union
 LL |     foo: i32;
-   |             ^ help: replace `;` with `,`
+   |             ^
+   |
+help: replace `;` with `,`
+   |
+LL |     foo: i32,
+   |             ~
 
 error: struct fields are separated by `,`
   --> $DIR/recover-field-semi.rs:12:19
    |
 LL |     Qux { foo: i32; }
-   |     ---           ^ help: replace `;` with `,`
+   |     ---           ^
    |     |
    |     while parsing this struct
+   |
+help: replace `;` with `,`
+   |
+LL |     Qux { foo: i32, }
+   |                   ~
 
 error: unions cannot have zero fields
   --> $DIR/recover-field-semi.rs:6:1

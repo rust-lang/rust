@@ -314,10 +314,13 @@ LL |         let &mut _a = 0;
    |             ^^^^^^^   - this expression has type `{integer}`
    |             |
    |             expected integer, found `&mut _`
-   |             help: to declare a mutable variable use: `mut _a`
    |
    = note:           expected type `{integer}`
            found mutable reference `&mut _`
+help: to declare a mutable variable use
+   |
+LL |         let mut _a = 0;
+   |             ~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:30:15

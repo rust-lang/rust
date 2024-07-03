@@ -803,7 +803,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (ty::Ref(_, inner_ty, _), _, BindingMode::NONE)
                 if self.can_eq(self.param_env, *inner_ty, actual) =>
             {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     span.shrink_to_lo(),
                     "consider adding `ref`",
                     "ref ",
@@ -813,7 +813,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (_, ty::Ref(_, inner_ty, _), BindingMode::REF)
                 if self.can_eq(self.param_env, expected, *inner_ty) =>
             {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     span.with_hi(span.lo() + BytePos(4)),
                     "consider removing `ref`",
                     "",
@@ -884,7 +884,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check that there is explicit type (ie this is not a closure param with inferred type)
                 // so we don't suggest moving something to the type that does not exist
                 hir::Node::Param(hir::Param { ty_span, pat, .. }) if pat.span != *ty_span => {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!("to take parameter `{binding}` by reference, move `&{mutability}` to the type"),
                         vec![
                             (pat.span.until(inner.span), "".to_owned()),
@@ -903,7 +903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             && let PatKind::Binding(mt, _, ident, _) = the_ref.kind
                         {
                             let BindingMode(_, mtblty) = mt;
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 i.span,
                                 format!("consider removing `&{mutability}` from the pattern"),
                                 mtblty.prefix_str().to_string() + &ident.name.to_string(),
@@ -917,7 +917,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 hir::Node::Param(_) | hir::Node::Arm(_) | hir::Node::Pat(_) => {
                     // rely on match ergonomics or it might be nested `&&pat`
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         pat.span.until(inner.span),
                         format!("consider removing `&{mutability}` from the pattern"),
                         "",
@@ -1075,7 +1075,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if hir::is_range_literal(expr) {
                             let span = self.tcx.hir().span(body_id.hir_id);
                             if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span) {
-                                e.span_suggestion_verbose(
+                                e.span_suggestion(
                                     ident.span,
                                     "you may want to move the range into the match block",
                                     snip,
@@ -1118,7 +1118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 match self.tcx.parent_hir_node(pat.hir_id) {
                     hir::Node::PatField(..) => {
-                        e.span_suggestion_verbose(
+                        e.span_suggestion(
                             ident.span.shrink_to_hi(),
                             "bind the struct field to a different name instead",
                             format!(": other_{}", ident.as_str().to_lowercase()),
@@ -1393,7 +1393,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 wildcard_sugg = String::from(", ") + &wildcard_sugg;
             }
 
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 after_fields_span,
                 "use `_` to explicitly ignore each field",
                 wildcard_sugg,
@@ -1404,14 +1404,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // or the pattern consists of all wildcards.
             if fields.len() - subpats.len() > 1 || all_wildcards {
                 if subpats.is_empty() || all_wildcards {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         all_fields_span,
                         "use `..` to ignore all fields",
                         "..",
                         Applicability::MaybeIncorrect,
                     );
                 } else {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         tail_span,
                         "use `..` to ignore the rest of the fields",
                         ", ..",
@@ -1631,7 +1631,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     E0769,
                     "tuple variant `{path}` written as struct variant",
                 );
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     qpath.span().shrink_to_hi().to(pat.span.shrink_to_hi()),
                     "use the tuple variant pattern syntax instead",
                     format!("({})", self.get_suggested_tuple_struct_pattern(fields, variant)),
@@ -1656,7 +1656,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             E0638,
             "`..` required with {descr} marked as non-exhaustive",
         )
-        .with_span_suggestion_verbose(
+        .with_span_suggestion(
             sp_comma,
             "add `..` at the end of the field list to ignore all other fields",
             sugg,
@@ -1761,7 +1761,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 self.field_ty(field.span, field_def, args),
                             ) => {}
                         _ => {
-                            err.span_suggestion_short(
+                            err.span_suggestion(
                                 pat_field.ident.span,
                                 format!(
                                     "`{}` has a field named `{}`",
@@ -1825,7 +1825,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Applicability::MaybeIncorrect,
                 )
             };
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 qpath.span().shrink_to_hi().to(pat.span.shrink_to_hi()),
                 "use the tuple variant pattern syntax instead",
                 format!("({sugg})"),
@@ -1888,7 +1888,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .struct_span_err(pat.span, "pattern requires `..` due to inaccessible fields");
 
         if let Some(field) = fields.last() {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 field.span.shrink_to_hi(),
                 "ignore the inaccessible and unused fields",
                 ", ..",
@@ -1903,7 +1903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Shrink the span to exclude the `foo:Foo` in `foo::Foo { }`.
             let span = pat.span.with_lo(qpath_span.shrink_to_hi().hi());
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 span,
                 "ignore the inaccessible and unused fields",
                 " { .. }",
@@ -2147,7 +2147,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let err_msg = "cannot match inherited `&` with `&mut` pattern";
                     let err = if let Some(span) = pat_prefix_span {
                         let mut err = self.dcx().struct_span_err(span, err_msg);
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             span,
                             "replace this `&mut` pattern with `&`",
                             "&",
@@ -2509,7 +2509,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         || self.tcx.is_diagnostic_item(sym::Result, adt_def.did()) =>
                 {
                     // Slicing won't work here, but `.as_deref()` might (issue #91328).
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span.shrink_to_hi(),
                         "consider using `as_deref` here",
                         ".as_deref()",
@@ -2521,7 +2521,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let is_top_level = current_depth <= 1;
             if is_slice_or_array_or_vector && is_top_level {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     span.shrink_to_hi(),
                     "consider slicing here",
                     "[..]",

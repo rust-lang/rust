@@ -2,7 +2,12 @@ error: found single colon before projection in qualified path
   --> $DIR/qualified-path-in-turbofish.rs:17:27
    |
 LL |     template::<<Impl as T>:Ty>();
-   |                           ^ help: use double colon: `::`
+   |                           ^
+   |
+help: use double colon
+   |
+LL |     template::<<Impl as T>::Ty>();
+   |                           ~~
 
 error: aborting due to 1 previous error
 

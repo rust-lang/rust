@@ -1,8 +1,6 @@
 error[E0308]: `match` arms have incompatible types
   --> $DIR/match-tail-expr-never-type-error.rs:9:13
    |
-LL |   fn bar(a: bool) {
-   |                  - help: try adding a return type: `-> i32`
 LL | /     match a {
 LL | |         true => 1,
    | |                 - this is found to be of type `{integer}`
@@ -15,6 +13,11 @@ LL | |             never()
 LL | |         }
 LL | |     }
    | |_____- `match` arms have incompatible types
+   |
+help: try adding a return type
+   |
+LL | fn bar(a: bool) -> i32 {
+   |                 ++++++
 
 error: aborting due to 1 previous error
 

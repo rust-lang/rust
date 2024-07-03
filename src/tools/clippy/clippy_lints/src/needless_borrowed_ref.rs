@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowedRef {
                         // `&ref ident`
                         //  ^^^^^
                         let span = ref_pat.span.until(ident.span);
-                        diag.span_suggestion_verbose(
+                        diag.span_suggestion(
                             span,
                             "try removing the `&ref` part",
                             String::new(),

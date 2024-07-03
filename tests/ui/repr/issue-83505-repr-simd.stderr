@@ -2,9 +2,12 @@ error: free static item without body
   --> $DIR/issue-83505-repr-simd.rs:9:1
    |
 LL | static CLs: Es;
-   | ^^^^^^^^^^^^^^-
-   |               |
-   |               help: provide a definition for the static: `= <expr>;`
+   | ^^^^^^^^^^^^^^^
+   |
+help: provide a definition for the static
+   |
+LL | static CLs: Es = <expr>;
+   |                ~~~~~~~~~
 
 error[E0517]: attribute should be applied to a struct
   --> $DIR/issue-83505-repr-simd.rs:5:8

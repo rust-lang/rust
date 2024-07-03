@@ -116,7 +116,6 @@ pub enum AssocItemNotFoundSugg<'a> {
     #[suggestion(
         hir_analysis_assoc_item_not_found_similar_in_other_trait_sugg,
         code = "{suggested_name}",
-        style = "verbose",
         applicability = "maybe-incorrect"
     )]
     SimilarInOtherTrait {
@@ -366,7 +365,7 @@ pub struct TypeofReservedKeywordUsed<'tcx> {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[suggestion(style = "verbose", code = "{ty}")]
+    #[suggestion(code = "{ty}")]
     pub opt_sugg: Option<(Span, Applicability)>,
 }
 
@@ -453,7 +452,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MissingTypeParams {
             } else {
                 // The user wrote `Iterator`, so we don't have a type we can suggest, but at
                 // least we can clue them to the correct syntax `Iterator<Type>`.
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     self.span.shrink_to_hi(),
                     fluent::hir_analysis_suggestion,
                     format!(
@@ -766,7 +765,7 @@ pub(crate) struct PlaceholderNotAllowedItemSignatures {
 pub(crate) struct AssociatedTypeTraitUninferredGenericParams {
     #[primary_span]
     pub span: Span,
-    #[suggestion(style = "verbose", applicability = "maybe-incorrect", code = "{bound}")]
+    #[suggestion(applicability = "maybe-incorrect", code = "{bound}")]
     pub inferred_sugg: Option<Span>,
     pub bound: String,
     #[subdiagnostic]
@@ -932,13 +931,11 @@ pub(crate) struct MissingTraitItemSuggestion {
     #[primary_span]
     pub span: Span,
     pub code: String,
-    pub snippet: String,
 }
 
 #[derive(Subdiagnostic)]
 #[suggestion(
     hir_analysis_missing_trait_item_suggestion,
-    style = "hidden",
     applicability = "has-placeholders",
     code = "{code}"
 )]
@@ -946,7 +943,6 @@ pub(crate) struct MissingTraitItemSuggestionNone {
     #[primary_span]
     pub span: Span,
     pub code: String,
-    pub snippet: String,
 }
 
 #[derive(Diagnostic)]
@@ -1521,7 +1517,6 @@ pub struct StaticMutRef<'a> {
 pub enum StaticMutRefSugg {
     #[suggestion(
         hir_analysis_suggestion,
-        style = "verbose",
         code = "addr_of!({var})",
         applicability = "maybe-incorrect"
     )]
@@ -1532,7 +1527,6 @@ pub enum StaticMutRefSugg {
     },
     #[suggestion(
         hir_analysis_suggestion_mut,
-        style = "verbose",
         code = "addr_of_mut!({var})",
         applicability = "maybe-incorrect"
     )]
@@ -1560,7 +1554,6 @@ pub struct RefOfMutStatic<'a> {
 pub enum RefOfMutStaticSugg {
     #[suggestion(
         hir_analysis_suggestion,
-        style = "verbose",
         code = "addr_of!({var})",
         applicability = "maybe-incorrect"
     )]
@@ -1571,7 +1564,6 @@ pub enum RefOfMutStaticSugg {
     },
     #[suggestion(
         hir_analysis_suggestion_mut,
-        style = "verbose",
         code = "addr_of_mut!({var})",
         applicability = "maybe-incorrect"
     )]

@@ -2,17 +2,23 @@ error[E0747]: type provided when a constant was expected
   --> $DIR/kind_mismatch.rs:11:38
    |
 LL | impl<K> ContainsKey<K> for KeyHolder<K> {}
-   |      -                               ^
-   |      |
-   |      help: consider changing this type parameter to a const parameter: `const K: u8`
+   |                                      ^
+   |
+help: consider changing this type parameter to a const parameter
+   |
+LL | impl<const K: u8> ContainsKey<K> for KeyHolder<K> {}
+   |      ~~~~~~~~~~~
 
 error[E0747]: type provided when a constant was expected
   --> $DIR/kind_mismatch.rs:11:21
    |
 LL | impl<K> ContainsKey<K> for KeyHolder<K> {}
-   |      -              ^
-   |      |
-   |      help: consider changing this type parameter to a const parameter: `const K: u8`
+   |                     ^
+   |
+help: consider changing this type parameter to a const parameter
+   |
+LL | impl<const K: u8> ContainsKey<K> for KeyHolder<K> {}
+   |      ~~~~~~~~~~~
 
 error[E0277]: the trait bound `KeyHolder<0>: SubsetExcept<_>` is not satisfied
   --> $DIR/kind_mismatch.rs:22:45

@@ -503,9 +503,6 @@ pub(super) fn build_suggestion_code(
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum SuggestionKind {
     Normal,
-    Short,
-    Hidden,
-    Verbose,
     ToolOnly,
 }
 
@@ -515,9 +512,6 @@ impl FromStr for SuggestionKind {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "normal" => Ok(SuggestionKind::Normal),
-            "short" => Ok(SuggestionKind::Short),
-            "hidden" => Ok(SuggestionKind::Hidden),
-            "verbose" => Ok(SuggestionKind::Verbose),
             "tool-only" => Ok(SuggestionKind::ToolOnly),
             _ => Err(()),
         }
@@ -528,9 +522,6 @@ impl fmt::Display for SuggestionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SuggestionKind::Normal => write!(f, "normal"),
-            SuggestionKind::Short => write!(f, "short"),
-            SuggestionKind::Hidden => write!(f, "hidden"),
-            SuggestionKind::Verbose => write!(f, "verbose"),
             SuggestionKind::ToolOnly => write!(f, "tool-only"),
         }
     }
@@ -540,15 +531,6 @@ impl SuggestionKind {
     pub(crate) fn to_suggestion_style(&self) -> TokenStream {
         match self {
             SuggestionKind::Normal => {
-                quote! { rustc_errors::SuggestionStyle::ShowCode }
-            }
-            SuggestionKind::Short => {
-                quote! { rustc_errors::SuggestionStyle::HideCodeInline }
-            }
-            SuggestionKind::Hidden => {
-                quote! { rustc_errors::SuggestionStyle::HideCodeAlways }
-            }
-            SuggestionKind::Verbose => {
                 quote! { rustc_errors::SuggestionStyle::ShowAlways }
             }
             SuggestionKind::ToolOnly => {
@@ -560,9 +542,6 @@ impl SuggestionKind {
     fn from_suffix(s: &str) -> Option<Self> {
         match s {
             "" => Some(SuggestionKind::Normal),
-            "_short" => Some(SuggestionKind::Short),
-            "_hidden" => Some(SuggestionKind::Hidden),
-            "_verbose" => Some(SuggestionKind::Verbose),
             _ => None,
         }
     }

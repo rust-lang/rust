@@ -2,15 +2,18 @@ error[E0107]: function takes 1 generic argument but 2 generic arguments were sup
   --> $DIR/issue_114151.rs:17:5
    |
 LL |     foo::<_, L>([(); L + 1 + L]);
-   |     ^^^      - help: remove this generic argument
-   |     |
-   |     expected 1 generic argument
+   |     ^^^ expected 1 generic argument
    |
 note: function defined here, with 1 generic parameter: `N`
   --> $DIR/issue_114151.rs:4:4
    |
 LL | fn foo<const N: usize>(
    |    ^^^ --------------
+help: remove this generic argument
+   |
+LL -     foo::<_, L>([(); L + 1 + L]);
+LL +     foo::<_, >([(); L + 1 + L]);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/issue_114151.rs:17:18

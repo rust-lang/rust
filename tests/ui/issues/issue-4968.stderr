@@ -9,11 +9,14 @@ LL |     match 42 { A => () }
    |           |    |
    |           |    expected integer, found `(isize, isize)`
    |           |    `A` is interpreted as a constant, not a new binding
-   |           |    help: introduce a new binding instead: `other_a`
    |           this expression has type `{integer}`
    |
    = note: expected type `{integer}`
              found tuple `(isize, isize)`
+help: introduce a new binding instead
+   |
+LL |     match 42 { other_a => () }
+   |                ~~~~~~~
 
 error: aborting due to 1 previous error
 

@@ -1,9 +1,6 @@
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:32:25
    |
-LL |     fn ptr(self: Ptr<Self>);
-   |                  --------- help: consider changing method `ptr`'s `self` parameter to be `&self`: `&Self`
-...
 LL |     Ptr(Box::new(4)) as Ptr<dyn Trait>;
    |                         ^^^^^^^^^^^^^^ `Trait` cannot be made into an object
    |
@@ -15,13 +12,14 @@ LL | trait Trait {
 LL |     fn ptr(self: Ptr<Self>);
    |                  ^^^^^^^^^ ...because method `ptr`'s `self` parameter cannot be dispatched on
    = help: only type `i32` implements the trait, consider using it directly instead
+help: consider changing method `ptr`'s `self` parameter to be `&self`
+   |
+LL |     fn ptr(self: &Self);
+   |                  ~~~~~
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:32:5
    |
-LL |     fn ptr(self: Ptr<Self>);
-   |                  --------- help: consider changing method `ptr`'s `self` parameter to be `&self`: `&Self`
-...
 LL |     Ptr(Box::new(4)) as Ptr<dyn Trait>;
    |     ^^^^^^^^^^^^^^^^ `Trait` cannot be made into an object
    |
@@ -34,6 +32,10 @@ LL |     fn ptr(self: Ptr<Self>);
    |                  ^^^^^^^^^ ...because method `ptr`'s `self` parameter cannot be dispatched on
    = help: only type `i32` implements the trait, consider using it directly instead
    = note: required for the cast from `Ptr<{integer}>` to `Ptr<dyn Trait>`
+help: consider changing method `ptr`'s `self` parameter to be `&self`
+   |
+LL |     fn ptr(self: &Self);
+   |                  ~~~~~
 
 error: aborting due to 2 previous errors
 

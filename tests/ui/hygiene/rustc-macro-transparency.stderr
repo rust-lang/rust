@@ -11,10 +11,12 @@ LL |     struct SemiTransparent;
    |     ----------------------- similarly named unit struct `SemiTransparent` defined here
 ...
 LL |     semitransparent;
-   |     ^^^^^^^^^^^^^^^
-   |     |
-   |     not a value
-   |     help: a unit struct with a similar name exists: `SemiTransparent`
+   |     ^^^^^^^^^^^^^^^ not a value
+   |
+help: a unit struct with a similar name exists
+   |
+LL |     SemiTransparent;
+   |     ~~~~~~~~~~~~~~~
 
 error[E0423]: expected value, found macro `opaque`
   --> $DIR/rustc-macro-transparency.rs:30:5

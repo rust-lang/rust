@@ -4,10 +4,14 @@ error: usage of `contains_key` followed by `insert` on a `HashMap`
 LL | /     if !m.contains_key(&k) {
 LL | |         m.insert(k, v);
 LL | |     }
-   | |_____^ help: try: `m.entry(k).or_insert(v);`
+   | |_____^
    |
    = note: `-D clippy::map-entry` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
+help: try
+   |
+LL |     m.entry(k).or_insert(v);
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> tests/ui/entry.rs:29:5
@@ -193,7 +197,12 @@ error: usage of `contains_key` followed by `insert` on a `HashMap`
 LL | /     if !m.contains_key(&m!(k)) {
 LL | |         m.insert(m!(k), m!(v));
 LL | |     }
-   | |_____^ help: try: `m.entry(m!(k)).or_insert_with(|| m!(v));`
+   | |_____^
+   |
+help: try
+   |
+LL |     m.entry(m!(k)).or_insert_with(|| m!(v));
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> tests/ui/entry.rs:151:5

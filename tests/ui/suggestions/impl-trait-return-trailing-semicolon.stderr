@@ -5,9 +5,13 @@ LL | fn foo() -> impl Bar {
    |             ^^^^^^^^ the trait `Bar` is not implemented for `()`
 LL |
 LL |     5;
-   |     -- help: remove this semicolon
-   |     |
-   |     this expression has type `{integer}`, which implements `Bar`
+   |     - this expression has type `{integer}`, which implements `Bar`
+   |
+help: remove this semicolon
+   |
+LL -     5;
+LL +     5
+   |
 
 error[E0277]: the trait bound `(): Bar` is not satisfied
   --> $DIR/impl-trait-return-trailing-semicolon.rs:15:13

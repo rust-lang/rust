@@ -1,11 +1,7 @@
 error: this seems like a manual implementation of the non-exhaustive pattern
   --> tests/ui/manual_non_exhaustive_struct.rs:5:5
    |
-LL |       struct S {
-   |       ^-------
-   |       |
-   |  _____help: add the attribute: `#[non_exhaustive] struct S`
-   | |
+LL | /     struct S {
 LL | |
 LL | |         pub a: i32,
 LL | |         pub b: i32,
@@ -20,6 +16,10 @@ LL |         _c: (),
    |         ^^^^^^
    = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_non_exhaustive)]`
+help: add the attribute
+   |
+LL |     #[non_exhaustive] struct S {
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: this seems like a manual implementation of the non-exhaustive pattern
   --> tests/ui/manual_non_exhaustive_struct.rs:14:5
@@ -41,11 +41,7 @@ LL |         _c: (),
 error: this seems like a manual implementation of the non-exhaustive pattern
   --> tests/ui/manual_non_exhaustive_struct.rs:29:5
    |
-LL |       struct NoUnderscore {
-   |       ^------------------
-   |       |
-   |  _____help: add the attribute: `#[non_exhaustive] struct NoUnderscore`
-   | |
+LL | /     struct NoUnderscore {
 LL | |         pub a: i32,
 LL | |         pub b: i32,
 LL | |         c: (),
@@ -57,20 +53,26 @@ help: remove this field
    |
 LL |         c: (),
    |         ^^^^^
+help: add the attribute
+   |
+LL |     #[non_exhaustive] struct NoUnderscore {
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: this seems like a manual implementation of the non-exhaustive pattern
   --> tests/ui/manual_non_exhaustive_struct.rs:56:5
    |
 LL |     struct T(pub i32, pub i32, ());
-   |     --------^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     help: add the attribute: `#[non_exhaustive] struct T`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: remove this field
   --> tests/ui/manual_non_exhaustive_struct.rs:56:32
    |
 LL |     struct T(pub i32, pub i32, ());
    |                                ^^
+help: add the attribute
+   |
+LL |     #[non_exhaustive] struct T(pub i32, pub i32, ());
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: this seems like a manual implementation of the non-exhaustive pattern
   --> tests/ui/manual_non_exhaustive_struct.rs:61:5

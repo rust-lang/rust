@@ -3,11 +3,14 @@ error[E0401]: can't use generic parameters from outer item
    |
 LL | fn bar<T: Default>(_: T) {
    |        - type parameter from outer item
-LL |     reuse Trait::static_method {
-   |                               - help: try introducing a local generic parameter here: `T,`
 ...
 LL |         let _ = T::Default();
    |                 ^^^^^^^^^^ use of generic parameter from outer item
+   |
+help: try introducing a local generic parameter here
+   |
+LL |     reuse Trait::static_methodT,  {
+   |                               ++
 
 error[E0434]: can't capture dynamic environment in a fn item
   --> $DIR/target-expr.rs:29:17

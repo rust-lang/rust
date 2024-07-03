@@ -8,7 +8,12 @@ error[E0589]: invalid `repr(align)` attribute: `align` needs an argument
   --> $DIR/malformed-repr-hints.rs:10:8
    |
 LL | #[repr(align)]
-   |        ^^^^^ help: supply an argument here: `align(...)`
+   |        ^^^^^
+   |
+help: supply an argument here
+   |
+LL | #[repr(align(...))]
+   |        ~~~~~~~~~~
 
 error[E0693]: incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
   --> $DIR/malformed-repr-hints.rs:14:8

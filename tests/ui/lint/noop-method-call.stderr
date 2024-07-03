@@ -2,18 +2,28 @@ warning: call to `.clone()` on a reference in this situation does nothing
   --> $DIR/noop-method-call.rs:15:25
    |
 LL |     let _ = &mut encoded.clone();
-   |                         ^^^^^^^^ help: remove this redundant call
+   |                         ^^^^^^^^
    |
    = note: the type `[u8]` does not implement `Clone`, so calling `clone` on `&[u8]` copies the reference, which does not do anything and can be removed
    = note: `#[warn(noop_method_call)]` on by default
+help: remove this redundant call
+   |
+LL -     let _ = &mut encoded.clone();
+LL +     let _ = &mut encoded;
+   |
 
 warning: call to `.clone()` on a reference in this situation does nothing
   --> $DIR/noop-method-call.rs:17:21
    |
 LL |     let _ = &encoded.clone();
-   |                     ^^^^^^^^ help: remove this redundant call
+   |                     ^^^^^^^^
    |
    = note: the type `[u8]` does not implement `Clone`, so calling `clone` on `&[u8]` copies the reference, which does not do anything and can be removed
+help: remove this redundant call
+   |
+LL -     let _ = &encoded.clone();
+LL +     let _ = &encoded;
+   |
 
 warning: call to `.clone()` on a reference in this situation does nothing
   --> $DIR/noop-method-call.rs:23:71
