@@ -334,7 +334,6 @@
 #![feature(fmt_internals)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
-#![feature(hint_assert_unchecked)]
 #![feature(ip)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]
