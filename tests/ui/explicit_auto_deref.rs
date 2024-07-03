@@ -373,6 +373,10 @@ mod issue_9841 {
         takes_slice(*array)
     }
 
+    fn takes_array_ref_ref<T, const N: usize>(array: &&&[T; N]) {
+        takes_slice(**array)
+    }
+
     fn takes_slice<T>(slice: &[T]) {
         todo!()
     }
