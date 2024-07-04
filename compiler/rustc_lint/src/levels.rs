@@ -20,7 +20,7 @@ use rustc_session::lint::builtin::{
 use rustc_session::lint::{Level, Lint, LintExpectationId, LintId};
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{AttrId, Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -115,34 +115,6 @@ impl LintLevelSets {
     }
 }
 
-fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExpectation)> {
-    let store = unerased_lint_store(tcx.sess);
-
-    let mut builder = LintLevelsBuilder {
-        sess: tcx.sess,
-        features: tcx.features(),
-        provider: QueryMapExpectationsWrapper {
-            tcx,
-            cur: hir::CRATE_HIR_ID,
-            specs: ShallowLintLevelMap::default(),
-            expectations: Vec::new(),
-            unstable_to_stable_ids: FxIndexMap::default(),
-            empty: FxIndexMap::default(),
-        },
-        lint_added_lints: false,
-        store,
-        registered_tools: tcx.registered_tools(()),
-    };
-
-    builder.add_command_line();
-    builder.add_id(hir::CRATE_HIR_ID);
-    tcx.hir().walk_toplevel_module(&mut builder);
-
-    tcx.dcx().update_unstable_expectation_id(builder.provider.unstable_to_stable_ids);
-
-    builder.provider.expectations
-}
-
 #[instrument(level = "trace", skip(tcx), ret)]
 fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLevelMap {
     let store = unerased_lint_store(tcx.sess);
@@ -207,7 +179,7 @@ pub trait LintLevelsProvider {
     fn current_specs(&self) -> &FxIndexMap<LintId, LevelAndSource>;
     fn insert(&mut self, id: LintId, lvl: LevelAndSource);
     fn get_lint_level(&self, lint: &'static Lint, sess: &Session) -> LevelAndSource;
-    fn push_expectation(&mut self, _id: LintExpectationId, _expectation: LintExpectation) {}
+    fn push_expectation(&mut self, id: LintExpectationId, expectation: LintExpectation);
 }
 
 impl LintLevelsProvider for TopDown {
@@ -222,6 +194,8 @@ impl LintLevelsProvider for TopDown {
     fn get_lint_level(&self, lint: &'static Lint, sess: &Session) -> LevelAndSource {
         self.sets.get_lint_level(lint, self.cur, Some(self.current_specs()), sess)
     }
+
+    fn push_expectation(&mut self, _: LintExpectationId, _: LintExpectation) {}
 }
 
 struct LintLevelQueryMap<'tcx> {
@@ -243,46 +217,8 @@ impl LintLevelsProvider for LintLevelQueryMap<'_> {
     fn get_lint_level(&self, lint: &'static Lint, _: &Session) -> LevelAndSource {
         self.specs.lint_level_id_at_node(self.tcx, LintId::of(lint), self.cur)
     }
-}
-
-struct QueryMapExpectationsWrapper<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    /// HirId of the currently investigated element.
-    cur: HirId,
-    /// Level map for `cur`.
-    specs: ShallowLintLevelMap,
-    expectations: Vec<(LintExpectationId, LintExpectation)>,
-    unstable_to_stable_ids: FxIndexMap<AttrId, LintExpectationId>,
-    /// Empty hash map to simplify code.
-    empty: FxIndexMap<LintId, LevelAndSource>,
-}
-
-impl LintLevelsProvider for QueryMapExpectationsWrapper<'_> {
-    fn current_specs(&self) -> &FxIndexMap<LintId, LevelAndSource> {
-        self.specs.specs.get(&self.cur.local_id).unwrap_or(&self.empty)
-    }
-    fn insert(&mut self, id: LintId, lvl: LevelAndSource) {
-        self.specs.specs.get_mut_or_insert_default(self.cur.local_id).insert(id, lvl);
-    }
-    fn get_lint_level(&self, lint: &'static Lint, _: &Session) -> LevelAndSource {
-        // We cannot use `tcx.lint_level_at_node` because we want to know in which order the
-        // attributes have been inserted, in particular whether an `expect` follows a `forbid`.
-        self.specs.lint_level_id_at_node(self.tcx, LintId::of(lint), self.cur)
-    }
     fn push_expectation(&mut self, id: LintExpectationId, expectation: LintExpectation) {
-        let LintExpectationId::Stable { attr_id: Some(attr_id), hir_id, attr_index, .. } = id
-        else {
-            bug!("unstable expectation id should already be mapped")
-        };
-
-        self.unstable_to_stable_ids.entry(attr_id).or_insert(LintExpectationId::Stable {
-            hir_id,
-            attr_index,
-            lint_index: None,
-            attr_id: None,
-        });
-
-        self.expectations.push((id.normalize(), expectation));
+        self.specs.expectations.push((id.normalize(), expectation))
     }
 }
 
@@ -334,80 +270,6 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     fn visit_expr_field(&mut self, f: &'tcx hir::ExprField<'tcx>) {
         self.add_id(f.hir_id);
         intravisit::walk_expr_field(self, f);
-    }
-
-    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
-        self.add_id(s.hir_id);
-        intravisit::walk_field_def(self, s);
-    }
-
-    fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
-        self.add_id(v.hir_id);
-        intravisit::walk_variant(self, v);
-    }
-
-    fn visit_local(&mut self, l: &'tcx hir::LetStmt<'tcx>) {
-        self.add_id(l.hir_id);
-        intravisit::walk_local(self, l);
-    }
-
-    fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
-        self.add_id(a.hir_id);
-        intravisit::walk_arm(self, a);
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        self.add_id(trait_item.hir_id());
-        intravisit::walk_trait_item(self, trait_item);
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        self.add_id(impl_item.hir_id());
-        intravisit::walk_impl_item(self, impl_item);
-    }
-}
-
-impl<'tcx> LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'tcx>> {
-    fn add_id(&mut self, hir_id: HirId) {
-        // Change both the `HirId` and the associated specs.
-        self.provider.cur = hir_id;
-        self.provider.specs.specs.clear();
-        self.add(self.provider.tcx.hir().attrs(hir_id), hir_id == hir::CRATE_HIR_ID, Some(hir_id));
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'tcx>> {
-    type NestedFilter = nested_filter::All;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.provider.tcx.hir()
-    }
-
-    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        self.add_id(param.hir_id);
-        intravisit::walk_param(self, param);
-    }
-
-    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
-        self.add_id(it.hir_id());
-        intravisit::walk_item(self, it);
-    }
-
-    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
-        self.add_id(it.hir_id());
-        intravisit::walk_foreign_item(self, it);
-    }
-
-    fn visit_stmt(&mut self, e: &'tcx hir::Stmt<'tcx>) {
-        // We will call `add_id` when we walk
-        // the `StmtKind`. The outer statement itself doesn't
-        // define the lint levels.
-        intravisit::walk_stmt(self, e);
-    }
-
-    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
-        self.add_id(e.hir_id);
-        intravisit::walk_expr(self, e);
     }
 
     fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
@@ -1099,7 +961,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { shallow_lint_levels_on, lint_expectations, ..*providers };
+    *providers = Providers { shallow_lint_levels_on, ..*providers };
 }
 
 pub(crate) fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {
