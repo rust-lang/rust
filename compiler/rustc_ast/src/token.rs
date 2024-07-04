@@ -30,10 +30,6 @@ pub enum InvisibleOrigin {
     // Converted from `proc_macro::Delimiter` in
     // `proc_macro::Delimiter::to_internal`, i.e. returned by a proc macro.
     ProcMacro,
-
-    // Converted from `TokenKind::NtLifetime` in `TokenStream::flatten_token`.
-    // Treated similarly to `ProcMacro`.
-    FlattenToken,
 }
 
 impl PartialEq for InvisibleOrigin {
@@ -130,9 +126,7 @@ impl Delimiter {
         match self {
             Delimiter::Parenthesis | Delimiter::Bracket | Delimiter::Brace => false,
             Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) => false,
-            Delimiter::Invisible(InvisibleOrigin::FlattenToken | InvisibleOrigin::ProcMacro) => {
-                true
-            }
+            Delimiter::Invisible(InvisibleOrigin::ProcMacro) => true,
         }
     }
 
