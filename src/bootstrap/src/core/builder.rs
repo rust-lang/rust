@@ -860,6 +860,7 @@ impl<'a> Builder<'a> {
                 test::Clippy,
                 test::CompiletestTest,
                 test::CrateRunMakeSupport,
+                test::CrateBuildHelper,
                 test::RustdocJSStd,
                 test::RustdocJSNotStd,
                 test::RustdocGUI,
