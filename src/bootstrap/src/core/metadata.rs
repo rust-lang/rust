@@ -1,9 +1,8 @@
 use std::path::PathBuf;
-use std::process::Command;
 
 use serde_derive::Deserialize;
 
-use crate::utils::helpers::output;
+use crate::utils::exec::BootstrapCommand;
 use crate::{t, Build, Crate};
 
 /// For more information, see the output of
@@ -71,7 +70,7 @@ pub fn build(build: &mut Build) {
 /// particular crate (e.g., `x build sysroot` to build library/sysroot).
 fn workspace_members(build: &Build) -> Vec<Package> {
     let collect_metadata = |manifest_path| {
-        let mut cargo = Command::new(&build.initial_cargo);
+        let mut cargo = BootstrapCommand::new(&build.initial_cargo);
         cargo
             // Will read the libstd Cargo.toml
             // which uses the unstable `public-dependency` feature.
@@ -82,7 +81,7 @@ fn workspace_members(build: &Build) -> Vec<Package> {
             .arg("--no-deps")
             .arg("--manifest-path")
             .arg(build.src.join(manifest_path));
-        let metadata_output = output(&mut cargo);
+        let metadata_output = build.run(cargo.capture_stdout().run_always()).stdout();
         let Output { packages, .. } = t!(serde_json::from_str(&metadata_output));
         packages
     };

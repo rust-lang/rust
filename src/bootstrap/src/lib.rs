@@ -30,7 +30,6 @@ use std::time::SystemTime;
 
 use build_helper::ci::{gha, CiEnv};
 use build_helper::exit;
-use build_helper::util::fail;
 use filetime::FileTime;
 use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
@@ -42,7 +41,7 @@ use crate::core::builder::Kind;
 use crate::core::config::{flags, LldMode};
 use crate::core::config::{DryRun, Target};
 use crate::core::config::{LlvmLibunwind, TargetSelection};
-use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode};
+use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
 
 mod core;
@@ -494,11 +493,12 @@ impl Build {
         let submodule_git = || helpers::git(Some(&absolute_path));
 
         // Determine commit checked out in submodule.
-        let checked_out_hash = output(submodule_git().args(["rev-parse", "HEAD"]));
+        let checked_out_hash = output(&mut submodule_git().args(["rev-parse", "HEAD"]).command);
         let checked_out_hash = checked_out_hash.trim_end();
         // Determine commit that the submodule *should* have.
-        let recorded =
-            output(helpers::git(Some(&self.src)).args(["ls-tree", "HEAD"]).arg(relative_path));
+        let recorded = output(
+            &mut helpers::git(Some(&self.src)).args(["ls-tree", "HEAD"]).arg(relative_path).command,
+        );
         let actual_hash = recorded
             .split_whitespace()
             .nth(2)
@@ -521,6 +521,7 @@ impl Build {
             let current_branch = {
                 let output = helpers::git(Some(&self.src))
                     .args(["symbolic-ref", "--short", "HEAD"])
+                    .command
                     .stderr(Stdio::inherit())
                     .output();
                 let output = t!(output);
@@ -546,17 +547,14 @@ impl Build {
             git
         };
         // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
-        if !update(true).status().map_or(false, |status| status.success()) {
+        if !update(true).command.status().map_or(false, |status| status.success()) {
             self.run(update(false));
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
         let has_local_modifications = self
-            .run(
-                BootstrapCommand::from(submodule_git().args(["diff-index", "--quiet", "HEAD"]))
-                    .allow_failure(),
-            )
+            .run(submodule_git().allow_failure().args(["diff-index", "--quiet", "HEAD"]))
             .is_failure();
         if has_local_modifications {
             self.run(submodule_git().args(["stash", "push"]));
@@ -577,12 +575,15 @@ impl Build {
         if !self.config.submodules(self.rust_info()) {
             return;
         }
-        let output = output(
-            helpers::git(Some(&self.src))
-                .args(["config", "--file"])
-                .arg(self.config.src.join(".gitmodules"))
-                .args(["--get-regexp", "path"]),
-        );
+        let output = self
+            .run(
+                helpers::git(Some(&self.src))
+                    .capture()
+                    .args(["config", "--file"])
+                    .arg(self.config.src.join(".gitmodules"))
+                    .args(["--get-regexp", "path"]),
+            )
+            .stdout();
         for line in output.lines() {
             // Look for `submodule.$name.path = $path`
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
@@ -859,14 +860,16 @@ impl Build {
         if let Some(s) = target_config.and_then(|c| c.llvm_filecheck.as_ref()) {
             s.to_path_buf()
         } else if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            let llvm_bindir = output(Command::new(s).arg("--bindir"));
+            let llvm_bindir =
+                self.run(BootstrapCommand::new(s).capture_stdout().arg("--bindir")).stdout();
             let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", target));
             if filecheck.exists() {
                 filecheck
             } else {
                 // On Fedora the system LLVM installs FileCheck in the
                 // llvm subdirectory of the libdir.
-                let llvm_libdir = output(Command::new(s).arg("--libdir"));
+                let llvm_libdir =
+                    self.run(BootstrapCommand::new(s).capture_stdout().arg("--libdir")).stdout();
                 let lib_filecheck =
                     Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", target));
                 if lib_filecheck.exists() {
@@ -932,66 +935,79 @@ impl Build {
 
     /// Execute a command and return its output.
     /// This method should be used for all command executions in bootstrap.
-    fn run<C: Into<BootstrapCommand>>(&self, command: C) -> CommandOutput {
-        if self.config.dry_run() {
+    fn run<C: AsMut<BootstrapCommand>>(&self, mut command: C) -> CommandOutput {
+        let command = command.as_mut();
+        if self.config.dry_run() && !command.run_always {
             return CommandOutput::default();
         }
 
-        let mut command = command.into();
-
         self.verbose(|| println!("running: {command:?}"));
 
-        let output_mode = command.output_mode.unwrap_or_else(|| match self.is_verbose() {
-            true => OutputMode::All,
-            false => OutputMode::OnlyOutput,
-        });
-        let (output, print_error): (io::Result<CommandOutput>, bool) = match output_mode {
-            mode @ (OutputMode::All | OutputMode::OnlyOutput) => (
-                command.command.status().map(|status| status.into()),
-                matches!(mode, OutputMode::All),
-            ),
-            OutputMode::OnlyOnFailure => (command.command.output().map(|o| o.into()), true),
-        };
+        command.command.stdout(command.stdout.stdio());
+        command.command.stderr(command.stderr.stdio());
 
-        let output = match output {
-            Ok(output) => output,
-            Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", command, e)),
+        let output = command.command.output();
+
+        use std::fmt::Write;
+
+        let mut message = String::new();
+        let output: CommandOutput = match output {
+            // Command has succeeded
+            Ok(output) if output.status.success() => output.into(),
+            // Command has started, but then it failed
+            Ok(output) => {
+                writeln!(
+                    message,
+                    "\n\nCommand {command:?} did not execute successfully.\
+            \nExpected success, got: {}",
+                    output.status,
+                )
+                .unwrap();
+
+                let output: CommandOutput = output.into();
+
+                // If the output mode is OutputMode::Capture, we can now print the output.
+                // If it is OutputMode::Print, then the output has already been printed to
+                // stdout/stderr, and we thus don't have anything captured to print anyway.
+                if command.stdout.captures() {
+                    writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
+                }
+                if command.stderr.captures() {
+                    writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
+                }
+                output
+            }
+            // The command did not even start
+            Err(e) => {
+                writeln!(
+                    message,
+                    "\n\nCommand {command:?} did not execute successfully.\
+            \nIt was not possible to execute the command: {e:?}"
+                )
+                .unwrap();
+                CommandOutput::did_not_start()
+            }
         };
         if !output.is_success() {
-            if print_error {
-                println!(
-                    "\n\nCommand did not execute successfully.\
-                \nExpected success, got: {}",
-                    output.status(),
-                );
-
-                if !self.is_verbose() {
-                    println!("Add `-v` to see more details.\n");
-                }
-
-                self.verbose(|| {
-                    println!(
-                        "\nSTDOUT ----\n{}\n\
-                    STDERR ----\n{}\n",
-                        output.stdout(),
-                        output.stderr(),
-                    )
-                });
-            }
-
             match command.failure_behavior {
                 BehaviorOnFailure::DelayFail => {
                     if self.fail_fast {
+                        println!("{message}");
                         exit!(1);
                     }
 
                     let mut failures = self.delayed_failures.borrow_mut();
-                    failures.push(format!("{command:?}"));
+                    failures.push(message);
                 }
                 BehaviorOnFailure::Exit => {
+                    println!("{message}");
                     exit!(1);
                 }
-                BehaviorOnFailure::Ignore => {}
+                BehaviorOnFailure::Ignore => {
+                    // If failures are allowed, either the error has been printed already
+                    // (OutputMode::Print) or the user used a capture output mode and wants to
+                    // handle the error output on their own.
+                }
             }
         }
         output
@@ -1480,14 +1496,18 @@ impl Build {
             // Figure out how many merge commits happened since we branched off master.
             // That's our beta number!
             // (Note that we use a `..` range, not the `...` symmetric difference.)
-            output(
-                helpers::git(Some(&self.src)).arg("rev-list").arg("--count").arg("--merges").arg(
-                    format!(
+            self.run(
+                helpers::git(Some(&self.src))
+                    .capture()
+                    .arg("rev-list")
+                    .arg("--count")
+                    .arg("--merges")
+                    .arg(format!(
                         "refs/remotes/origin/{}..HEAD",
                         self.config.stage0_metadata.config.nightly_branch
-                    ),
-                ),
+                    )),
             )
+            .stdout()
         });
         let n = count.trim().parse().unwrap();
         self.prerelease_version.set(Some(n));
@@ -1914,6 +1934,7 @@ fn envify(s: &str) -> String {
 pub fn generate_smart_stamp_hash(dir: &Path, additional_input: &str) -> String {
     let diff = helpers::git(Some(dir))
         .arg("diff")
+        .command
         .output()
         .map(|o| String::from_utf8(o.stdout).unwrap_or_default())
         .unwrap_or_default();
@@ -1923,6 +1944,7 @@ pub fn generate_smart_stamp_hash(dir: &Path, additional_input: &str) -> String {
         .arg("--porcelain")
         .arg("-z")
         .arg("--untracked-files=normal")
+        .command
         .output()
         .map(|o| String::from_utf8(o.stdout).unwrap_or_default())
         .unwrap_or_default();

@@ -26,11 +26,10 @@ use crate::core::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::flags::get_completion;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::TargetSelection;
-use crate::utils::exec::{BootstrapCommand, OutputMode};
+use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
     self, add_link_lib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
-    linker_args, linker_flags, output, t, target_supports_cranelift_backend, up_to_date,
-    LldThreads,
+    linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date, LldThreads,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
@@ -150,16 +149,13 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         builder.default_doc(&[]);
 
         // Build the linkchecker before calling `msg`, since GHA doesn't support nested groups.
-        let mut linkchecker = builder.tool_cmd(Tool::Linkchecker);
+        let linkchecker = builder.tool_cmd(Tool::Linkchecker);
 
         // Run the linkchecker.
         let _guard =
             builder.msg(Kind::Test, compiler.stage, "Linkcheck", bootstrap_host, bootstrap_host);
         let _time = helpers::timeit(builder);
-        builder.run(
-            BootstrapCommand::from(linkchecker.arg(builder.out.join(host.triple).join("doc")))
-                .delay_failure(),
-        );
+        builder.run(linkchecker.delay_failure().arg(builder.out.join(host.triple).join("doc")));
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -217,10 +213,7 @@ impl Step for HtmlCheck {
         ));
 
         builder.run(
-            BootstrapCommand::from(
-                builder.tool_cmd(Tool::HtmlChecker).arg(builder.doc_out(self.target)),
-            )
-            .delay_failure(),
+            builder.tool_cmd(Tool::HtmlChecker).delay_failure().arg(builder.doc_out(self.target)),
         );
     }
 }
@@ -260,14 +253,13 @@ impl Step for Cargotest {
 
         let _time = helpers::timeit(builder);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
-        let cmd = cmd
-            .arg(&cargo)
+        cmd.arg(&cargo)
             .arg(&out_dir)
             .args(builder.config.test_args())
             .env("RUSTC", builder.rustc(compiler))
             .env("RUSTDOC", builder.rustdoc(compiler));
-        add_rustdoc_cargo_linker_args(cmd, builder, compiler.host, LldThreads::No);
-        builder.run(BootstrapCommand::from(cmd).delay_failure());
+        add_rustdoc_cargo_linker_args(&mut cmd, builder, compiler.host, LldThreads::No);
+        builder.run(cmd.delay_failure());
     }
 }
 
@@ -477,19 +469,12 @@ impl Miri {
         // We re-use the `cargo` from above.
         cargo.arg("--print-sysroot");
 
-        // FIXME: Is there a way in which we can re-use the usual `run` helpers?
         if builder.config.dry_run() {
             String::new()
         } else {
             builder.verbose(|| println!("running: {cargo:?}"));
-            let out = cargo
-                .command
-                .output()
-                .expect("We already ran `cargo miri setup` before and that worked");
-            assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
+            let stdout = builder.run(cargo.capture_stdout()).stdout();
             // Output is "<sysroot>\n".
-            let stdout = String::from_utf8(out.stdout)
-                .expect("`cargo miri setup` stdout is not valid UTF-8");
             let sysroot = stdout.trim_end();
             builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
             sysroot.to_owned()
@@ -763,12 +748,12 @@ impl Step for Clippy {
         cargo.env("HOST_LIBS", host_libs);
 
         cargo.add_rustc_lib_path(builder);
-        let mut cargo = prepare_cargo_test(cargo, &[], &[], "clippy", compiler, host, builder);
+        let cargo = prepare_cargo_test(cargo, &[], &[], "clippy", compiler, host, builder);
 
         let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
 
         // Clippy reports errors if it blessed the outputs
-        if builder.run(BootstrapCommand::from(&mut cargo).allow_failure()).is_success() {
+        if builder.run(cargo.allow_failure()).is_success() {
             // The tests succeeded; nothing to do.
             return;
         }
@@ -821,7 +806,7 @@ impl Step for RustdocTheme {
             .env("RUSTC_BOOTSTRAP", "1");
         cmd.args(linker_args(builder, self.compiler.host, LldThreads::No));
 
-        builder.run(BootstrapCommand::from(&mut cmd).delay_failure());
+        builder.run(cmd.delay_failure());
     }
 }
 
@@ -918,25 +903,26 @@ impl Step for RustdocJSNotStd {
     }
 }
 
-fn get_browser_ui_test_version_inner(npm: &Path, global: bool) -> Option<String> {
-    let mut command = Command::new(npm);
+fn get_browser_ui_test_version_inner(
+    builder: &Builder<'_>,
+    npm: &Path,
+    global: bool,
+) -> Option<String> {
+    let mut command = BootstrapCommand::new(npm).capture();
     command.arg("list").arg("--parseable").arg("--long").arg("--depth=0");
     if global {
         command.arg("--global");
     }
-    let lines = command
-        .output()
-        .map(|output| String::from_utf8_lossy(&output.stdout).into_owned())
-        .unwrap_or_default();
+    let lines = builder.run(command.allow_failure()).stdout();
     lines
         .lines()
         .find_map(|l| l.split(':').nth(1)?.strip_prefix("browser-ui-test@"))
         .map(|v| v.to_owned())
 }
 
-fn get_browser_ui_test_version(npm: &Path) -> Option<String> {
-    get_browser_ui_test_version_inner(npm, false)
-        .or_else(|| get_browser_ui_test_version_inner(npm, true))
+fn get_browser_ui_test_version(builder: &Builder<'_>, npm: &Path) -> Option<String> {
+    get_browser_ui_test_version_inner(builder, npm, false)
+        .or_else(|| get_browser_ui_test_version_inner(builder, npm, true))
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -960,7 +946,7 @@ impl Step for RustdocGUI {
                     .config
                     .npm
                     .as_ref()
-                    .map(|p| get_browser_ui_test_version(p).is_some())
+                    .map(|p| get_browser_ui_test_version(builder, p).is_some())
                     .unwrap_or(false)
         }))
     }
@@ -1099,7 +1085,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         }
 
         builder.info("tidy check");
-        builder.run(BootstrapCommand::from(&mut cmd).delay_failure());
+        builder.run(cmd.delay_failure());
 
         builder.info("x.py completions check");
         let [bash, zsh, fish, powershell] = ["x.py.sh", "x.py.zsh", "x.py.fish", "x.py.ps1"]
@@ -1306,7 +1292,7 @@ impl Step for RunMakeSupport {
             &[],
         );
 
-        builder.run(cargo);
+        builder.run(cargo.into_cmd());
 
         let lib_name = "librun_make_support.rlib";
         let lib = builder.tools_dir(self.compiler).join(lib_name);
@@ -1818,26 +1804,16 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         let lldb_exe = builder.config.lldb.clone().unwrap_or_else(|| PathBuf::from("lldb"));
-        let lldb_version = Command::new(&lldb_exe)
-            .arg("--version")
-            .output()
-            .map(|output| {
-                (String::from_utf8_lossy(&output.stdout).to_string(), output.status.success())
-            })
-            .ok()
-            .and_then(|(output, success)| if success { Some(output) } else { None });
+        let lldb_version = builder
+            .run(BootstrapCommand::new(&lldb_exe).capture().allow_failure().arg("--version"))
+            .stdout_if_ok()
+            .and_then(|v| if v.trim().is_empty() { None } else { Some(v) });
         if let Some(ref vers) = lldb_version {
-            let run = |cmd: &mut Command| {
-                cmd.output().map(|output| {
-                    String::from_utf8_lossy(&output.stdout)
-                        .lines()
-                        .next()
-                        .unwrap_or_else(|| panic!("{:?} failed {:?}", cmd, output))
-                        .to_string()
-                })
-            };
             cmd.arg("--lldb-version").arg(vers);
-            let lldb_python_dir = run(Command::new(&lldb_exe).arg("-P")).ok();
+            let lldb_python_dir = builder
+                .run(BootstrapCommand::new(&lldb_exe).allow_failure().capture_stdout().arg("-P"))
+                .stdout_if_ok()
+                .map(|p| p.lines().next().expect("lldb Python dir not found").to_string());
             if let Some(ref dir) = lldb_python_dir {
                 cmd.arg("--lldb-python-dir").arg(dir);
             }
@@ -1893,8 +1869,12 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             let llvm::LlvmResult { llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
-                let llvm_version = output(Command::new(&llvm_config).arg("--version"));
-                let llvm_components = output(Command::new(&llvm_config).arg("--components"));
+                let llvm_version = builder
+                    .run(BootstrapCommand::new(&llvm_config).capture_stdout().arg("--version"))
+                    .stdout();
+                let llvm_components = builder
+                    .run(BootstrapCommand::new(&llvm_config).capture_stdout().arg("--components"))
+                    .stdout();
                 // Remove trailing newline from llvm-config output.
                 cmd.arg("--llvm-version")
                     .arg(llvm_version.trim())
@@ -1913,7 +1893,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // separate compilations. We can add LLVM's library path to the
             // platform-specific environment variable as a workaround.
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
-                let llvm_libdir = output(Command::new(&llvm_config).arg("--libdir"));
+                let llvm_libdir = builder
+                    .run(BootstrapCommand::new(&llvm_config).capture_stdout().arg("--libdir"))
+                    .stdout();
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cmd);
             }
 
@@ -2187,7 +2169,7 @@ impl BookTest {
             compiler.host,
         );
         let _time = helpers::timeit(builder);
-        let cmd = BootstrapCommand::from(&mut rustbook_cmd).delay_failure();
+        let cmd = rustbook_cmd.delay_failure();
         let toolstate =
             if builder.run(cmd).is_success() { ToolState::TestPass } else { ToolState::TestFail };
         builder.save_toolstate(self.name, toolstate);
@@ -2318,7 +2300,7 @@ impl Step for ErrorIndex {
         let guard =
             builder.msg(Kind::Test, compiler.stage, "error-index", compiler.host, compiler.host);
         let _time = helpers::timeit(builder);
-        builder.run(BootstrapCommand::from(&mut tool).output_mode(OutputMode::OnlyOnFailure));
+        builder.run(tool.capture());
         drop(guard);
         // The tests themselves need to link to std, so make sure it is
         // available.
@@ -2349,7 +2331,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
 
     cmd = cmd.delay_failure();
     if !builder.config.verbose_tests {
-        cmd = cmd.quiet();
+        cmd = cmd.capture();
     }
     builder.run(cmd).is_success()
 }
@@ -2375,10 +2357,13 @@ impl Step for RustcGuide {
         builder.update_submodule(&relative_path);
 
         let src = builder.src.join(relative_path);
-        let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-        let cmd = BootstrapCommand::from(rustbook_cmd.arg("linkcheck").arg(&src)).delay_failure();
-        let toolstate =
-            if builder.run(cmd).is_success() { ToolState::TestPass } else { ToolState::TestFail };
+        let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook).delay_failure();
+        rustbook_cmd.arg("linkcheck").arg(&src);
+        let toolstate = if builder.run(rustbook_cmd).is_success() {
+            ToolState::TestPass
+        } else {
+            ToolState::TestFail
+        };
         builder.save_toolstate("rustc-dev-guide", toolstate);
     }
 }
@@ -3347,7 +3332,7 @@ impl Step for CodegenCranelift {
             .arg("testsuite.extended_sysroot");
         cargo.args(builder.config.test_args());
 
-        builder.run(cargo);
+        builder.run(cargo.into_cmd());
     }
 }
 
@@ -3472,6 +3457,6 @@ impl Step for CodegenGCC {
             .arg("--std-tests");
         cargo.args(builder.config.test_args());
 
-        builder.run(cargo);
+        builder.run(cargo.into_cmd());
     }
 }

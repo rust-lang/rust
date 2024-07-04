@@ -101,8 +101,13 @@ fn print_error(tool: &str, submodule: &str) {
 
 fn check_changed_files(toolstates: &HashMap<Box<str>, ToolState>) {
     // Changed files
-    let output =
-        helpers::git(None).arg("diff").arg("--name-status").arg("HEAD").arg("HEAD^").output();
+    let output = helpers::git(None)
+        .arg("diff")
+        .arg("--name-status")
+        .arg("HEAD")
+        .arg("HEAD^")
+        .command
+        .output();
     let output = match output {
         Ok(o) => o,
         Err(e) => {
@@ -324,6 +329,7 @@ fn checkout_toolstate_repo() {
         .arg("--depth=1")
         .arg(toolstate_repo())
         .arg(TOOLSTATE_DIR)
+        .command
         .status();
     let success = match status {
         Ok(s) => s.success(),
@@ -337,7 +343,8 @@ fn checkout_toolstate_repo() {
 /// Sets up config and authentication for modifying the toolstate repo.
 fn prepare_toolstate_config(token: &str) {
     fn git_config(key: &str, value: &str) {
-        let status = helpers::git(None).arg("config").arg("--global").arg(key).arg(value).status();
+        let status =
+            helpers::git(None).arg("config").arg("--global").arg(key).arg(value).command.status();
         let success = match status {
             Ok(s) => s.success(),
             Err(_) => false,
@@ -406,6 +413,7 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData) {
             .arg("-a")
             .arg("-m")
             .arg(&message)
+            .command
             .status());
         if !status.success() {
             success = true;
@@ -416,6 +424,7 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData) {
             .arg("push")
             .arg("origin")
             .arg("master")
+            .command
             .status());
         // If we successfully push, exit.
         if status.success() {
@@ -428,12 +437,14 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData) {
             .arg("fetch")
             .arg("origin")
             .arg("master")
+            .command
             .status());
         assert!(status.success());
         let status = t!(helpers::git(Some(Path::new(TOOLSTATE_DIR)))
             .arg("reset")
             .arg("--hard")
             .arg("origin/master")
+            .command
             .status());
         assert!(status.success());
     }
@@ -449,7 +460,7 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData) {
 /// `publish_toolstate.py` script if the PR passes all tests and is merged to
 /// master.
 fn publish_test_results(current_toolstate: &ToolstateData) {
-    let commit = t!(helpers::git(None).arg("rev-parse").arg("HEAD").output());
+    let commit = t!(helpers::git(None).arg("rev-parse").arg("HEAD").command.output());
     let commit = t!(String::from_utf8(commit.stdout));
 
     let toolstate_serialized = t!(serde_json::to_string(&current_toolstate));
