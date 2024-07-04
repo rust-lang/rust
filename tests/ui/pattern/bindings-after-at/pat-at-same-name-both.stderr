@@ -78,11 +78,11 @@ LL |         | Err(a @ b @ a)
 help: consider making this binding mutable
    |
 LL |         Ok(a @ b @ mut a)
-   |                    ~~~~~
+   |                    +++
 help: to modify the original value, take a borrow instead
    |
 LL |         Ok(a @ b @ ref mut a)
-   |                    ~~~~~~~~~
+   |                    +++++++
 
 error: aborting due to 12 previous errors
 

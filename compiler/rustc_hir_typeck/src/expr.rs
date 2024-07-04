@@ -2551,10 +2551,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match *base_ty.peel_refs().kind() {
             ty::Array(_, len) => {
-                self.maybe_suggest_array_indexing(&mut err, expr, base, ident, len);
+                self.maybe_suggest_array_indexing(&mut err, base, ident, len);
             }
             ty::RawPtr(..) => {
-                self.suggest_first_deref_field(&mut err, expr, base, ident);
+                self.suggest_first_deref_field(&mut err, base, ident);
             }
             ty::Param(param_ty) => {
                 err.span_label(ident.span, "unknown field");
@@ -2721,7 +2721,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn maybe_suggest_array_indexing(
         &self,
         err: &mut Diag<'_>,
-        expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
         field: Ident,
         len: ty::Const<'tcx>,
@@ -2729,32 +2728,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_label(field.span, "unknown field");
         if let (Some(len), Ok(user_index)) =
             (len.try_eval_target_usize(self.tcx, self.param_env), field.as_str().parse::<u64>())
-            && let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span)
         {
             let help = "instead of using tuple indexing, use array indexing";
-            let suggestion = format!("{base}[{field}]");
             let applicability = if len < user_index {
                 Applicability::MachineApplicable
             } else {
                 Applicability::MaybeIncorrect
             };
-            err.span_suggestion(expr.span, help, suggestion, applicability);
+            err.multipart_suggestion(
+                help,
+                vec![
+                    (base.span.between(field.span), "[".to_string()),
+                    (field.span.shrink_to_hi(), "]".to_string()),
+                ],
+                applicability,
+            );
         }
     }
 
-    fn suggest_first_deref_field(
-        &self,
-        err: &mut Diag<'_>,
-        expr: &hir::Expr<'_>,
-        base: &hir::Expr<'_>,
-        field: Ident,
-    ) {
+    fn suggest_first_deref_field(&self, err: &mut Diag<'_>, base: &hir::Expr<'_>, field: Ident) {
         err.span_label(field.span, "unknown field");
-        if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
-            let msg = format!("`{base}` is a raw pointer; try dereferencing it");
-            let suggestion = format!("(*{base}).{field}");
-            err.span_suggestion(expr.span, msg, suggestion, Applicability::MaybeIncorrect);
-        }
+        let val = if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span)
+            && base.len() < 20
+        {
+            format!("`{base}`")
+        } else {
+            "the value".to_string()
+        };
+        err.multipart_suggestion(
+            format!("{val} is a raw pointer; try dereferencing it"),
+            vec![
+                (base.span.shrink_to_lo(), "(*".to_string()),
+                (base.span.shrink_to_hi(), ")".to_string()),
+            ],
+            Applicability::MaybeIncorrect,
+        );
     }
 
     fn no_such_field_err(&self, field: Ident, expr_t: Ty<'tcx>, id: HirId) -> Diag<'_> {

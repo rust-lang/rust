@@ -453,12 +453,11 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MissingTypeParams {
             } else {
                 // The user wrote `Iterator`, so we don't have a type we can suggest, but at
                 // least we can clue them to the correct syntax `Iterator<Type>`.
-                err.span_suggestion(
-                    self.span,
+                err.span_suggestion_verbose(
+                    self.span.shrink_to_hi(),
                     fluent::hir_analysis_suggestion,
                     format!(
-                        "{}<{}>",
-                        snippet,
+                        "<{}>",
                         self.missing_type_params
                             .iter()
                             .map(|n| n.to_string())
