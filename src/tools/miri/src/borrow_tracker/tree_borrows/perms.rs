@@ -186,6 +186,10 @@ impl Permission {
     pub fn is_disabled(&self) -> bool {
         self.inner == Disabled
     }
+    /// Check if `self` is the post-child-write state of a pointer (is `Active`).
+    pub fn is_active(&self) -> bool {
+        self.inner == Active
+    }
 
     /// Default initial permission of the root of a new tree at inbounds positions.
     /// Must *only* be used for the root, this is not in general an "initial" permission!
