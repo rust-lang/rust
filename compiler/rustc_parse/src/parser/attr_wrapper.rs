@@ -8,7 +8,6 @@ use rustc_errors::PResult;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Span, DUMMY_SP};
 
-use std::ops::Range;
 use std::{iter, mem};
 
 /// A wrapper type to ensure that the parser handles outer attributes correctly.
@@ -356,8 +355,7 @@ impl<'a> Parser<'a> {
             let new_tokens = vec![(FlatToken::AttrTarget(attr_data), Spacing::Alone)];
 
             assert!(!self.break_last_token, "Should not have unglued last token with cfg attr");
-            let range: Range<u32> = (start_pos.try_into().unwrap())..(end_pos.try_into().unwrap());
-            self.capture_state.replace_ranges.push((range, new_tokens));
+            self.capture_state.replace_ranges.push((start_pos..end_pos, new_tokens));
             self.capture_state.replace_ranges.extend(inner_attr_replace_ranges);
         }
 
