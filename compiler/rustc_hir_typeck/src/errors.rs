@@ -255,7 +255,6 @@ pub struct LossyProvenanceInt2Ptr<'tcx> {
 
 #[derive(LintDiagnostic)]
 #[diag(hir_typeck_ptr_cast_add_auto_to_object)]
-//#[help]
 pub struct PtrCastAddAutoToObject {
     pub traits_len: usize,
     pub traits: DiagSymbolList<String>,

@@ -2323,6 +2323,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 let src_tail = tcx.struct_tail_without_normalization(src.ty);
                                 let dst_tail = tcx.struct_tail_without_normalization(dst.ty);
 
+                                // This checks (lifetime part of) vtable validity for pointer casts,
+                                // which is irrelevant when there are aren't principal traits on both sides (aka only auto traits).
+                                //
+                                // Note that other checks (such as denying `dyn Send` -> `dyn Debug`) are in `rustc_hir_typeck`.
                                 if let ty::Dynamic(src_tty, ..) = src_tail.kind()
                                     && let ty::Dynamic(dst_tty, ..) = dst_tail.kind()
                                     && src_tty.principal().is_some()

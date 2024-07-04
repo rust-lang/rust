@@ -838,6 +838,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         // Check that the traits are actually the same
                         // (this is required as the `Unsize` check below would allow upcasting, etc)
                         // N.B.: this is only correct as long as we don't support `trait A<T>: A<()>`.
+                        //
+                        // Note that trait upcasting goes through a different mechanism (`coerce_unsized`)
+                        // and is unaffected by this check.
                         if src_principal.def_id() != dst_principal.def_id() {
                             return Err(CastError::DifferingKinds);
                         }
@@ -902,10 +905,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             )
                         }
 
-                        // FIXME: ideally we'd maybe add a flag here, so that borrowck knows that
-                        //        it needs to borrowck this ptr cast. this is made annoying by the
-                        //        fact that `thir` does not have `CastKind` and mir restores it
-                        //        from types.
                         Ok(CastKind::PtrPtrCast)
                     }
 
