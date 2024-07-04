@@ -20,7 +20,7 @@ use rustc_session::lint::builtin::{
 use rustc_session::lint::{Level, Lint, LintExpectationId, LintId};
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{AttrId, Span, DUMMY_SP};
 use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -138,7 +138,7 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
     builder.add_id(hir::CRATE_HIR_ID);
     tcx.hir().walk_toplevel_module(&mut builder);
 
-    tcx.dcx().update_unstable_expectation_id(&builder.provider.unstable_to_stable_ids);
+    tcx.dcx().update_unstable_expectation_id(builder.provider.unstable_to_stable_ids);
 
     builder.provider.expectations
 }
@@ -252,7 +252,7 @@ struct QueryMapExpectationsWrapper<'tcx> {
     /// Level map for `cur`.
     specs: ShallowLintLevelMap,
     expectations: Vec<(LintExpectationId, LintExpectation)>,
-    unstable_to_stable_ids: FxIndexMap<LintExpectationId, LintExpectationId>,
+    unstable_to_stable_ids: FxIndexMap<AttrId, LintExpectationId>,
     /// Empty hash map to simplify code.
     empty: FxIndexMap<LintId, LevelAndSource>,
 }
@@ -274,9 +274,8 @@ impl LintLevelsProvider for QueryMapExpectationsWrapper<'_> {
         else {
             bug!("unstable expectation id should already be mapped")
         };
-        let key = LintExpectationId::Unstable { attr_id, lint_index: None };
 
-        self.unstable_to_stable_ids.entry(key).or_insert(LintExpectationId::Stable {
+        self.unstable_to_stable_ids.entry(attr_id).or_insert(LintExpectationId::Stable {
             hir_id,
             attr_index,
             lint_index: None,
