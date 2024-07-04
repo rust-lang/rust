@@ -224,6 +224,7 @@ fn main() {
     let args = vec![
         "rustc".to_string(),
         "--edition=2021".to_string(),
+        "-Cdebuginfo=full".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),
         path.to_string(),

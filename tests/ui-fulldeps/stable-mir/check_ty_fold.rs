@@ -81,6 +81,7 @@ fn main() {
     let args = vec![
         "rustc".to_string(),
         "-Cpanic=abort".to_string(),
+        "-Cdebuginfo=full".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),
         path.to_string(),
