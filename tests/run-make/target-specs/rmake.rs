@@ -1,6 +1,6 @@
 // Target-specific compilation in rustc used to have case-by-case peculiarities in 2014,
 // with the compiler having redundant target types and unspecific names. An overarching rework
-// in #161156 changed the way the target flag functions, and this test attempts compilation
+// in #16156 changed the way the target flag functions, and this test attempts compilation
 // with the target flag's bundle of new features to check that compilation either succeeds while
 // using them correctly, or fails with the right error message when using them improperly.
 // See https://github.com/rust-lang/rust/pull/16156
