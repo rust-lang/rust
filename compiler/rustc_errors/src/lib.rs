@@ -1567,7 +1567,7 @@ impl DiagCtxtInner {
                 if let LintExpectationId::Unstable { .. } = expect_id {
                     unreachable!(); // this case was handled at the top of this function
                 }
-                self.fulfilled_expectations.insert(expect_id.normalize());
+                self.fulfilled_expectations.insert(expect_id);
                 if let Expect(_) = diagnostic.level {
                     // Nothing emitted here for expected lints.
                     TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);

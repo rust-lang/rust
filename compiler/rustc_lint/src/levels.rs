@@ -218,7 +218,7 @@ impl LintLevelsProvider for LintLevelQueryMap<'_> {
         self.specs.lint_level_id_at_node(self.tcx, LintId::of(lint), self.cur)
     }
     fn push_expectation(&mut self, id: LintExpectationId, expectation: LintExpectation) {
-        self.specs.expectations.push((id.normalize(), expectation))
+        self.specs.expectations.push((id, expectation))
     }
 }
 
@@ -486,13 +486,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Attempts to insert the `id` to `level_src` map entry. If unsuccessful
     /// (e.g. if a forbid was already inserted on the same scope), then emits a
     /// diagnostic with no change to `specs`.
-    fn insert_spec(&mut self, id: LintId, (mut level, src): LevelAndSource) {
+    fn insert_spec(&mut self, id: LintId, (level, src): LevelAndSource) {
         let (old_level, old_src) = self.provider.get_lint_level(id.lint, self.sess);
-        if let Level::Expect(id) = &mut level
-            && let LintExpectationId::Stable { .. } = id
-        {
-            *id = id.normalize();
-        }
+
         // Setting to a non-forbid level is an error if the lint previously had
         // a forbid level. Note that this is not necessarily true even with a
         // `#[forbid(..)]` attribute present, as that is overridden by `--cap-lints`.
@@ -604,17 +600,15 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 // This is the only lint level with a `LintExpectationId` that can be created from
                 // an attribute.
                 Some(Level::Expect(unstable_id)) if let Some(hir_id) = source_hir_id => {
-                    let LintExpectationId::Unstable { attr_id, lint_index } = unstable_id else {
+                    let LintExpectationId::Unstable { lint_index: None, attr_id: _ } = unstable_id
+                    else {
                         bug!("stable id Level::from_attr")
                     };
 
                     let stable_id = LintExpectationId::Stable {
                         hir_id,
                         attr_index: attr_index.try_into().unwrap(),
-                        lint_index,
-                        // We pass the previous unstable attr_id such that we can trace the ast id
-                        // when building a map to go from unstable to stable id.
-                        attr_id: Some(attr_id),
+                        lint_index: None,
                     };
 
                     Level::Expect(stable_id)

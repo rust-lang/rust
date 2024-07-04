@@ -20,8 +20,7 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
     let mut unstable_to_stable_ids = FxIndexMap::default();
 
     let mut record_stable = |attr_id, hir_id, attr_index| {
-        let expect_id =
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: None, attr_id: None };
+        let expect_id = LintExpectationId::Stable { hir_id, attr_index, lint_index: None };
         unstable_to_stable_ids.entry(attr_id).or_insert(expect_id);
     };
     let mut push_expectations = |owner| {

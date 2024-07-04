@@ -368,7 +368,7 @@ impl DiagInner {
                 panic!("{expectation_id:?} must have a matching stable id")
             };
 
-            let mut stable_id = stable_id.normalize();
+            let mut stable_id = *stable_id;
             stable_id.set_lint_index(lint_index);
             *expectation_id = stable_id;
         }
