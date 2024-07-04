@@ -200,7 +200,7 @@ fn logical_merge<T, F: FnMut(&T, &T) -> bool>(
     // If one or both of the runs are sorted do a physical merge, using
     // quicksort to sort the unsorted run if present. We also *need* to
     // physically merge if the combined runs would not fit in the scratch space
-    // anymore (as this would mean we are no longer able to to quicksort them).
+    // anymore (as this would mean we are no longer able to quicksort them).
     let len = v.len();
     let can_fit_in_scratch = len <= scratch.len();
     if !can_fit_in_scratch || left.sorted() || right.sorted() {
