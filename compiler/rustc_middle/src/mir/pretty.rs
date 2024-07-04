@@ -473,8 +473,8 @@ pub fn write_mir_intro<'tcx>(
     // Add an empty line before the first block is printed.
     writeln!(w)?;
 
-    if let Some(branch_info) = &body.coverage_branch_info {
-        write_coverage_branch_info(branch_info, w)?;
+    if let Some(coverage_info_hi) = &body.coverage_info_hi {
+        write_coverage_info_hi(coverage_info_hi, w)?;
     }
     if let Some(function_coverage_info) = &body.function_coverage_info {
         write_function_coverage_info(function_coverage_info, w)?;
@@ -483,12 +483,16 @@ pub fn write_mir_intro<'tcx>(
     Ok(())
 }
 
-fn write_coverage_branch_info(
-    branch_info: &coverage::BranchInfo,
+fn write_coverage_info_hi(
+    coverage_info_hi: &coverage::CoverageInfoHi,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::BranchInfo { branch_spans, mcdc_branch_spans, mcdc_decision_spans, .. } =
-        branch_info;
+    let coverage::CoverageInfoHi {
+        num_block_markers: _,
+        branch_spans,
+        mcdc_branch_spans,
+        mcdc_decision_spans,
+    } = coverage_info_hi;
 
     for coverage::BranchSpan { span, true_marker, false_marker } in branch_spans {
         writeln!(

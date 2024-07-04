@@ -250,24 +250,24 @@ impl MCDCInfoBuilder {
 
 impl Builder<'_, '_> {
     pub(crate) fn visit_coverage_branch_operation(&mut self, logical_op: LogicalOp, span: Span) {
-        if let Some(branch_info) = self.coverage_branch_info.as_mut()
-            && let Some(mcdc_info) = branch_info.mcdc_info.as_mut()
+        if let Some(coverage_info) = self.coverage_info.as_mut()
+            && let Some(mcdc_info) = coverage_info.mcdc_info.as_mut()
         {
             mcdc_info.state.record_conditions(logical_op, span);
         }
     }
 
     pub(crate) fn mcdc_increment_depth_if_enabled(&mut self) {
-        if let Some(branch_info) = self.coverage_branch_info.as_mut()
-            && let Some(mcdc_info) = branch_info.mcdc_info.as_mut()
+        if let Some(coverage_info) = self.coverage_info.as_mut()
+            && let Some(mcdc_info) = coverage_info.mcdc_info.as_mut()
         {
             mcdc_info.state.decision_ctx_stack.push(MCDCDecisionCtx::default());
         };
     }
 
     pub(crate) fn mcdc_decrement_depth_if_enabled(&mut self) {
-        if let Some(branch_info) = self.coverage_branch_info.as_mut()
-            && let Some(mcdc_info) = branch_info.mcdc_info.as_mut()
+        if let Some(coverage_info) = self.coverage_info.as_mut()
+            && let Some(mcdc_info) = coverage_info.mcdc_info.as_mut()
         {
             if mcdc_info.state.decision_ctx_stack.pop().is_none() {
                 bug!("Unexpected empty decision stack");
