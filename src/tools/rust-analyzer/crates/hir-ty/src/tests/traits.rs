@@ -4824,3 +4824,76 @@ fn foo() {
 "#,
     )
 }
+
+#[test]
+fn nested_impl_traits() {
+    check_infer(
+        r#"
+//- minicore: fn
+trait Foo {}
+
+trait Bar<T> {}
+
+trait Baz {
+    type Assoc;
+}
+
+struct Qux<T> {
+    qux: T,
+}
+
+struct S;
+
+impl Foo for S {}
+
+fn not_allowed1(f: impl Fn(impl Foo)) {
+    let foo = S;
+    f(foo);
+}
+
+// This caused stack overflow in #17498
+fn not_allowed2(f: impl Fn(&impl Foo)) {
+    let foo = S;
+    f(&foo);
+}
+
+fn not_allowed3(bar: impl Bar<impl Foo>) {}
+
+// This also caused stack overflow
+fn not_allowed4(bar: impl Bar<&impl Foo>) {}
+
+fn allowed1(baz: impl Baz<Assoc = impl Foo>) {}
+
+fn allowed2<'a>(baz: impl Baz<Assoc = &'a (impl Foo + 'a)>) {}
+
+fn allowed3(baz: impl Baz<Assoc = Qux<impl Foo>>) {}
+"#,
+        expect![[r#"
+            139..140 'f': impl Fn({unknown}) + ?Sized
+            161..193 '{     ...oo); }': ()
+            171..174 'foo': S
+            177..178 'S': S
+            184..185 'f': impl Fn({unknown}) + ?Sized
+            184..190 'f(foo)': ()
+            186..189 'foo': S
+            251..252 'f': impl Fn(&'? {unknown}) + ?Sized
+            274..307 '{     ...oo); }': ()
+            284..287 'foo': S
+            290..291 'S': S
+            297..298 'f': impl Fn(&'? {unknown}) + ?Sized
+            297..304 'f(&foo)': ()
+            299..303 '&foo': &'? S
+            300..303 'foo': S
+            325..328 'bar': impl Bar<{unknown}> + ?Sized
+            350..352 '{}': ()
+            405..408 'bar': impl Bar<&'? {unknown}> + ?Sized
+            431..433 '{}': ()
+            447..450 'baz': impl Baz<Assoc = impl Foo + ?Sized> + ?Sized
+            480..482 '{}': ()
+            500..503 'baz': impl Baz<Assoc = &'a impl Foo + 'a + ?Sized> + ?Sized
+            544..546 '{}': ()
+            560..563 'baz': impl Baz<Assoc = Qux<impl Foo + ?Sized>> + ?Sized
+            598..600 '{}': ()
+        "#]],
+    )
+}
