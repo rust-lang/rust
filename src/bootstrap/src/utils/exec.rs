@@ -1,4 +1,5 @@
 use crate::Build;
+use build_helper::drop_bomb::DropBomb;
 use std::ffi::OsStr;
 use std::path::Path;
 use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
@@ -61,9 +62,13 @@ pub struct BootstrapCommand {
     pub stderr: OutputMode,
     // Run the command even during dry run
     pub run_always: bool,
+    // This field makes sure that each command is executed (or disarmed) before it is dropped,
+    // to avoid forgetting to execute a command.
+    drop_bomb: DropBomb,
 }
 
 impl BootstrapCommand {
+    #[track_caller]
     pub fn new<S: AsRef<OsStr>>(program: S) -> Self {
         Command::new(program).into()
     }
@@ -149,18 +154,30 @@ impl BootstrapCommand {
     /// Provides access to the stdlib Command inside.
     /// All usages of this function should be eventually removed from bootstrap.
     pub fn as_command_mut(&mut self) -> &mut Command {
+        // We don't know what will happen with the returned command, so we need to mark this
+        // command as executed proactively.
+        self.mark_as_executed();
         &mut self.command
+    }
+
+    /// Mark the command as being executd, disarming the drop bomb.
+    /// If this method is not called before the command is dropped, its drop will panic.
+    pub fn mark_as_executed(&mut self) {
+        self.drop_bomb.defuse();
     }
 }
 
 impl From<Command> for BootstrapCommand {
+    #[track_caller]
     fn from(command: Command) -> Self {
+        let program = command.get_program().to_owned();
         Self {
             command,
             failure_behavior: BehaviorOnFailure::Exit,
             stdout: OutputMode::Print,
             stderr: OutputMode::Print,
             run_always: false,
+            drop_bomb: DropBomb::arm(program),
         }
     }
 }
@@ -175,6 +192,7 @@ enum CommandStatus {
 
 /// Create a new BootstrapCommand. This is a helper function to make command creation
 /// shorter than `BootstrapCommand::new`.
+#[track_caller]
 #[must_use]
 pub fn command<S: AsRef<OsStr>>(program: S) -> BootstrapCommand {
     BootstrapCommand::new(program)

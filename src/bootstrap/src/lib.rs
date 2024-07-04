@@ -938,6 +938,7 @@ impl Build {
     /// Execute a command and return its output.
     /// This method should be used for all command executions in bootstrap.
     fn run(&self, command: &mut BootstrapCommand) -> CommandOutput {
+        command.mark_as_executed();
         if self.config.dry_run() && !command.run_always {
             return CommandOutput::default();
         }

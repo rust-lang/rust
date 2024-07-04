@@ -501,6 +501,7 @@ pub fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
 /// bootstrap-specific needs/hacks from a single source, rather than applying them on next to every
 /// git command creation, which is painful to ensure that the required change is applied
 /// on each one of them correctly.
+#[track_caller]
 pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
     let mut git = command("git");
 
