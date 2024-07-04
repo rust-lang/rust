@@ -226,6 +226,7 @@ fn try_find_fn_or_closure(
         sema: &Semantics<'_, RootDatabase>,
         file_id: HirFileId,
         ancestors: impl Iterator<Item = SyntaxNode>,
+        cursor_token_kind: SyntaxKind,
     ) -> Option<UpmappingResult<NavigationTarget>> {
         let db = sema.db;
 
@@ -238,7 +239,11 @@ fn try_find_fn_or_closure(
 
                         // For async token, we navigate to itself, which triggers
                         // VSCode to find the references
-                        let focus_token = fn_.fn_token()?;
+                        let focus_token = if matches!(cursor_token_kind, T![async]) {
+                            fn_.async_token()?
+                        } else {
+                            fn_.fn_token()?
+                        };
                         let focus_range = InFile::new(file_id, focus_token.text_range())
                             .original_node_file_range_opt(db)
                             .map(|(frange, _)| frange.range);
@@ -276,13 +281,14 @@ fn try_find_fn_or_closure(
         None
     }
 
+    let token_kind = token.kind();
     sema.descend_into_macros(DescendPreference::None, token.clone())
         .into_iter()
         .filter_map(|descended| {
             let file_id = sema.hir_file_for(&descended.parent()?);
 
             // Try to find the function in the macro file
-            find_exit_point(sema, file_id, descended.parent_ancestors()).or_else(|| {
+            find_exit_point(sema, file_id, descended.parent_ancestors(), token_kind).or_else(|| {
                 // If not found, try to find it in the root file
                 if file_id.is_macro() {
                     token
@@ -290,7 +296,7 @@ fn try_find_fn_or_closure(
                         .find(|it| ast::TokenTree::can_cast(it.kind()))
                         .and_then(|parent| {
                             let file_id = sema.hir_file_for(&parent);
-                            find_exit_point(sema, file_id, parent.ancestors())
+                            find_exit_point(sema, file_id, parent.ancestors(), token_kind)
                         })
                 } else {
                     None
