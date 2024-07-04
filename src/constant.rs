@@ -155,7 +155,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                             fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                         }
                     }
-                    GlobalAlloc::Function(instance) => {
+                    GlobalAlloc::Function { instance, .. } => {
                         let func_id = crate::abi::import_function(fx.tcx, fx.module, instance);
                         let local_func_id =
                             fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
@@ -351,7 +351,9 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             TodoItem::Alloc(alloc_id) => {
                 let alloc = match tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => alloc,
-                    GlobalAlloc::Function(_) | GlobalAlloc::Static(_) | GlobalAlloc::VTable(..) => {
+                    GlobalAlloc::Function { .. }
+                    | GlobalAlloc::Static(_)
+                    | GlobalAlloc::VTable(..) => {
                         unreachable!()
                     }
                 };
@@ -415,7 +417,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
 
             let reloc_target_alloc = tcx.global_alloc(alloc_id);
             let data_id = match reloc_target_alloc {
-                GlobalAlloc::Function(instance) => {
+                GlobalAlloc::Function { instance, .. } => {
                     assert_eq!(addend, 0);
                     let func_id =
                         crate::abi::import_function(tcx, module, instance.polymorphize(tcx));
