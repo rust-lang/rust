@@ -335,6 +335,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "proc-macro2",
     "psm",
     "pulldown-cmark",
+    "pulldown-cmark-escape",
     "punycode",
     "quote",
     "r-efi",
