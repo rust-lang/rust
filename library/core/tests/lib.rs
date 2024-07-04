@@ -61,6 +61,7 @@
 #![feature(num_midpoint)]
 #![feature(offset_of_nested)]
 #![feature(isqrt)]
+#![feature(unsigned_is_multiple_of)]
 #![feature(step_trait)]
 #![feature(str_internals)]
 #![feature(std_internals)]
