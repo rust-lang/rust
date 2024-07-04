@@ -1976,13 +1976,14 @@ pub fn chroot(dir: &Path) -> io::Result<()> {
 
 pub use remove_dir_impl::remove_dir_all;
 
-// Fallback for REDOX, ESP-ID, Horizon, Vita and Miri
+// Fallback for REDOX, ESP-ID, Horizon, Vita, Vxworks and Miri
 #[cfg(any(
     target_os = "redox",
     target_os = "espidf",
     target_os = "horizon",
     target_os = "vita",
     target_os = "nto",
+    target_os = "vxworks",
     miri
 ))]
 mod remove_dir_impl {
@@ -1996,6 +1997,7 @@ mod remove_dir_impl {
     target_os = "horizon",
     target_os = "vita",
     target_os = "nto",
+    target_os = "vxworks",
     miri
 )))]
 mod remove_dir_impl {
