@@ -1264,6 +1264,9 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
+        if let Err(guar) = value.error_reported() {
+            self.set_tainted_by_errors(guar);
+        }
         if !value.has_non_region_infer() {
             return value;
         }
