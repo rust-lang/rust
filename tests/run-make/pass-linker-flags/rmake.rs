@@ -12,7 +12,7 @@ fn main() {
     let out = rustc()
         .input("empty.rs")
         .arg("-Zunstable-options")
-        .args(&["-l", "static=l1"])
+        .arg("-lstatic=l1")
         .arg("-llink-arg=a1")
         .arg("-lstatic=l2")
         .arg("-llink-arg=a2")
@@ -23,5 +23,6 @@ fn main() {
         .stdout_utf8();
     let out2 = rustc().input("attribute.rs").print("link-args").run_unchecked().stdout_utf8();
     let re = regex::Regex::new("l1.*a1.*l2.*a2.*d1.*a3").unwrap();
-    assert!(re.is_match(&out) && re.is_match(&out2));
+    assert!(re.is_match(&out));
+    assert!(re.is_match(&out2));
 }
