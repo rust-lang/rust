@@ -14,7 +14,7 @@
 //! ownership of the original.
 
 use crate::ast::{AttrStyle, StmtKind};
-use crate::ast_traits::{HasAttrs, HasSpan, HasTokens};
+use crate::ast_traits::{HasAttrs, HasTokens};
 use crate::token::{self, Delimiter, Nonterminal, Token, TokenKind};
 use crate::AttrVec;
 
@@ -436,9 +436,9 @@ impl TokenStream {
         TokenStream::new(vec![TokenTree::token_alone(kind, span)])
     }
 
-    pub fn from_ast(node: &(impl HasAttrs + HasSpan + HasTokens + fmt::Debug)) -> TokenStream {
+    pub fn from_ast(node: &(impl HasAttrs + HasTokens + fmt::Debug)) -> TokenStream {
         let Some(tokens) = node.tokens() else {
-            panic!("missing tokens for node at {:?}: {:?}", node.span(), node);
+            panic!("missing tokens for node: {:?}", node);
         };
         let attrs = node.attrs();
         let attr_stream = if attrs.is_empty() {
