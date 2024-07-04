@@ -16,7 +16,7 @@ use ide_db::{
 use stdx::never;
 use syntax::{
     ast::{self, HasName},
-    format_smolstr, AstNode, SmolStr, SyntaxNode, TextRange, ToSmolStr,
+    format_smolstr, AstNode, SmolStr, SyntaxElement, SyntaxNode, TextRange, ToSmolStr,
 };
 
 /// `NavigationTarget` represents an element in the editor's UI which you can
@@ -146,6 +146,22 @@ impl NavigationTarget {
         let name: SmolStr = value.name().map(|it| it.text().into()).unwrap_or_else(|| "_".into());
 
         orig_range_with_focus(db, file_id, value.syntax(), value.name()).map(
+            |(FileRange { file_id, range: full_range }, focus_range)| {
+                NavigationTarget::from_syntax(file_id, name.clone(), focus_range, full_range, kind)
+            },
+        )
+    }
+
+    pub(crate) fn from_expr(
+        db: &RootDatabase,
+        InFile { file_id, value }: InFile<ast::Expr>,
+        focus_syntax: SyntaxElement,
+    ) -> UpmappingResult<NavigationTarget> {
+        let name: SmolStr = "<expr>".into();
+        let kind = SymbolKind::Label;
+        let focus_range = Some(focus_syntax.text_range());
+
+        orig_range_with_focus_r(db, file_id, value.syntax().text_range(), focus_range).map(
             |(FileRange { file_id, range: full_range }, focus_range)| {
                 NavigationTarget::from_syntax(file_id, name.clone(), focus_range, full_range, kind)
             },
@@ -710,7 +726,7 @@ impl<T> IntoIterator for UpmappingResult<T> {
 }
 
 impl<T> UpmappingResult<T> {
-    fn map<U>(self, f: impl Fn(T) -> U) -> UpmappingResult<U> {
+    pub(crate) fn map<U>(self, f: impl Fn(T) -> U) -> UpmappingResult<U> {
         UpmappingResult { call_site: f(self.call_site), def_site: self.def_site.map(f) }
     }
 }
@@ -736,9 +752,9 @@ fn orig_range_with_focus_r(
     db: &RootDatabase,
     hir_file: HirFileId,
     value: TextRange,
-    name: Option<TextRange>,
+    focus_range: Option<TextRange>,
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
-    let Some(name) = name else { return orig_range_r(db, hir_file, value) };
+    let Some(name) = focus_range else { return orig_range_r(db, hir_file, value) };
 
     let call_kind =
         || db.lookup_intern_macro_call(hir_file.macro_file().unwrap().macro_call_id).kind;
