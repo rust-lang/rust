@@ -109,14 +109,17 @@ impl BootstrapCommand {
         self
     }
 
+    #[must_use]
     pub fn delay_failure(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::DelayFail, ..self }
     }
 
+    #[must_use]
     pub fn fail_fast(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::Exit, ..self }
     }
 
+    #[must_use]
     pub fn allow_failure(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::Ignore, ..self }
     }
@@ -127,11 +130,13 @@ impl BootstrapCommand {
     }
 
     /// Capture all output of the command, do not print it.
+    #[must_use]
     pub fn capture(self) -> Self {
         Self { stdout: OutputMode::Capture, stderr: OutputMode::Capture, ..self }
     }
 
     /// Capture stdout of the command, do not print it.
+    #[must_use]
     pub fn capture_stdout(self) -> Self {
         Self { stdout: OutputMode::Capture, ..self }
     }
@@ -178,10 +183,12 @@ pub struct CommandOutput {
 }
 
 impl CommandOutput {
+    #[must_use]
     pub fn did_not_start() -> Self {
         Self { status: CommandStatus::DidNotStart, stdout: vec![], stderr: vec![] }
     }
 
+    #[must_use]
     pub fn is_success(&self) -> bool {
         match self.status {
             CommandStatus::Finished(status) => status.success(),
@@ -189,10 +196,12 @@ impl CommandOutput {
         }
     }
 
+    #[must_use]
     pub fn is_failure(&self) -> bool {
         !self.is_success()
     }
 
+    #[must_use]
     pub fn status(&self) -> Option<ExitStatus> {
         match self.status {
             CommandStatus::Finished(status) => Some(status),
@@ -200,14 +209,17 @@ impl CommandOutput {
         }
     }
 
+    #[must_use]
     pub fn stdout(&self) -> String {
         String::from_utf8(self.stdout.clone()).expect("Cannot parse process stdout as UTF-8")
     }
 
+    #[must_use]
     pub fn stdout_if_ok(&self) -> Option<String> {
         if self.is_success() { Some(self.stdout()) } else { None }
     }
 
+    #[must_use]
     pub fn stderr(&self) -> String {
         String::from_utf8(self.stderr.clone()).expect("Cannot parse process stderr as UTF-8")
     }
