@@ -16,6 +16,11 @@ use std::path::PathBuf;
 const CONDENSED_DIRECTORIES: &[(&str, &str)] =
     &[("./src/llvm-project/", "./src/llvm-project/README.md")];
 
+/// The entry point to the binary.
+///
+/// You should probably let `bootstrap` execute this program instead of running it directly.
+///
+/// Run `x.py run collect-license-metadata`
 fn main() -> Result<(), Error> {
     let reuse_exe: PathBuf = std::env::var_os("REUSE_EXE").expect("Missing REUSE_EXE").into();
     let dest: PathBuf = std::env::var_os("DEST").expect("Missing DEST").into();
