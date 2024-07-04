@@ -11,6 +11,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use rustc_target::spec::abi::Abi;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -115,7 +116,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
                     .iter()
                     .any(|param| matches!(param.kind, GenericParamKind::Const { .. }));
 
-                if already_const(header) || has_const_generic_params {
+                if already_const(header)
+                    || has_const_generic_params
+                    || !could_be_const_with_abi(cx, &self.msrv, header.abi)
+                {
                     return;
                 }
             },
@@ -170,4 +174,14 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
 #[must_use]
 fn already_const(header: hir::FnHeader) -> bool {
     header.constness == Constness::Const
+}
+
+fn could_be_const_with_abi(cx: &LateContext<'_>, msrv: &Msrv, abi: Abi) -> bool {
+    match abi {
+        Abi::Rust => true,
+        // `const extern "C"` was stablized after 1.62.0
+        Abi::C { unwind: false } => msrv.meets(msrvs::CONST_EXTERN_FN),
+        // Rest ABIs are still unstable and need the `const_extern_fn` feature enabled.
+        _ => cx.tcx.features().const_extern_fn,
+    }
 }
