@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{base, SmallDataThresholdSupport, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -21,6 +21,9 @@ pub fn target() -> Target {
             features: "+mips64r6".into(),
             max_atomic_width: Some(64),
             mcount: "_mcount".into(),
+            small_data_threshold_support: SmallDataThresholdSupport::LlvmArg(
+                "mips-ssection-threshold".into(),
+            ),
 
             ..base::linux_gnu::opts()
         },

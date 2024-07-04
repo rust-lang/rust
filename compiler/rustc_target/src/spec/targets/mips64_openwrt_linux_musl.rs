@@ -1,7 +1,7 @@
 //! A target tuple for OpenWrt MIPS64 targets.
 
 use crate::abi::Endian;
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{base, SmallDataThresholdSupport, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = base::linux_musl::opts();
@@ -26,6 +26,9 @@ pub fn target() -> Target {
             abi: "abi64".into(),
             endian: Endian::Big,
             mcount: "_mcount".into(),
+            small_data_threshold_support: SmallDataThresholdSupport::LlvmArg(
+                "mips-ssection-threshold".into(),
+            ),
             ..base
         },
     }

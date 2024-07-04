@@ -30,6 +30,7 @@ use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{call::FnAbi, HasDataLayout, TargetDataLayout, VariantIdx};
+use rustc_target::spec::SmallDataThresholdSupport;
 use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 use smallvec::SmallVec;
 
@@ -325,6 +326,24 @@ pub unsafe fn create_module<'ll>(
             1,
         )
     }
+
+    match (
+        sess.opts.unstable_opts.small_data_threshold,
+        &sess.target.options.small_data_threshold_support,
+    ) {
+        // Set up the small-data optimization limit for architectures that use
+        // an LLVM module flag to control this.
+        (Some(threshold), SmallDataThresholdSupport::LlvmModuleFlag(flag)) => {
+            let flag = format!("{flag}\0");
+            llvm::LLVMRustAddModuleFlagU32(
+                llmod,
+                llvm::LLVMModFlagBehavior::Error,
+                flag.as_str().as_ptr().cast(),
+                threshold as u32,
+            )
+        }
+        _ => (),
+    };
 
     // Insert `llvm.ident` metadata.
     //

@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel};
+use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SmallDataThresholdSupport};
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -36,6 +36,9 @@ pub fn target() -> Target {
             emit_debug_gdb_scripts: false,
             eh_frame_header: false,
             singlethread: true,
+            small_data_threshold_support: SmallDataThresholdSupport::LlvmModuleFlag(
+                "SmallDataLimit".into(),
+            ),
             ..Default::default()
         },
     }

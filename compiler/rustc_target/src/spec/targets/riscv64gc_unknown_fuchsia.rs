@@ -1,4 +1,6 @@
-use crate::spec::{base, CodeModel, SanitizerSet, Target, TargetOptions};
+use crate::spec::{
+    base, CodeModel, SanitizerSet, SmallDataThresholdSupport, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     Target {
@@ -19,6 +21,9 @@ pub fn target() -> Target {
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
             supported_sanitizers: SanitizerSet::SHADOWCALLSTACK,
+            small_data_threshold_support: SmallDataThresholdSupport::LlvmModuleFlag(
+                "SmallDataLimit".into(),
+            ),
             ..base::fuchsia::opts()
         },
     }

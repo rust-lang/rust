@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 
-use crate::spec::{base, CodeModel, SanitizerSet, SplitDebuginfo, Target, TargetOptions};
+use crate::spec::{
+    base, CodeModel, SanitizerSet, SmallDataThresholdSupport, SplitDebuginfo, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     Target {
@@ -22,6 +24,9 @@ pub fn target() -> Target {
             supported_sanitizers: SanitizerSet::ADDRESS,
             max_atomic_width: Some(64),
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
+            small_data_threshold_support: SmallDataThresholdSupport::LlvmModuleFlag(
+                "SmallDataLimit".into(),
+            ),
             ..base::android::opts()
         },
     }
