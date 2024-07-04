@@ -5,6 +5,7 @@ use crate::ty::{
     self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
@@ -388,13 +389,25 @@ impl<'tcx> InstanceKind<'tcx> {
 }
 
 fn type_length<'tcx>(item: impl TypeVisitable<TyCtxt<'tcx>>) -> usize {
-    struct Visitor {
+    struct Visitor<'tcx> {
         type_length: usize,
+        cache: FxHashMap<Ty<'tcx>, usize>,
     }
-    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Visitor {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Visitor<'tcx> {
         fn visit_ty(&mut self, t: Ty<'tcx>) {
+            if let Some(&value) = self.cache.get(&t) {
+                self.type_length += value;
+                return;
+            }
+
+            let prev = self.type_length;
             self.type_length += 1;
             t.super_visit_with(self);
+
+            // We don't try to use the cache if the type is fairly small.
+            if self.type_length > 16 {
+                self.cache.insert(t, self.type_length - prev);
+            }
         }
 
         fn visit_const(&mut self, ct: ty::Const<'tcx>) {
@@ -402,7 +415,7 @@ fn type_length<'tcx>(item: impl TypeVisitable<TyCtxt<'tcx>>) -> usize {
             ct.super_visit_with(self);
         }
     }
-    let mut visitor = Visitor { type_length: 0 };
+    let mut visitor = Visitor { type_length: 0, cache: Default::default() };
     item.visit_with(&mut visitor);
 
     visitor.type_length
