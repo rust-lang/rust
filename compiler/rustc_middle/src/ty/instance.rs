@@ -1,23 +1,25 @@
+use crate::error;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
-use crate::ty::{EarlyBinder, GenericArgs, GenericArgsRef, TypeVisitableExt};
+use crate::ty::print::{shrunk_instance_name, FmtPrinter, Printer};
+use crate::ty::{
+    self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::FiniteBitSet;
-use rustc_macros::{
-    Decodable, Encodable, HashStable, Lift, TyDecodable, TyEncodable, TypeVisitable,
-};
+use rustc_macros::{Decodable, Encodable, HashStable, Lift, TyDecodable, TyEncodable};
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol, DUMMY_SP};
 use tracing::{debug, instrument};
 
 use std::assert_matches::assert_matches;
 use std::fmt;
+use std::path::PathBuf;
 
 /// An `InstanceKind` along with the args that are needed to substitute the instance.
 ///
@@ -385,7 +387,28 @@ impl<'tcx> InstanceKind<'tcx> {
     }
 }
 
-fn fmt_instance(
+fn type_length<'tcx>(item: impl TypeVisitable<TyCtxt<'tcx>>) -> usize {
+    struct Visitor {
+        type_length: usize,
+    }
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Visitor {
+        fn visit_ty(&mut self, t: Ty<'tcx>) {
+            self.type_length += 1;
+            t.super_visit_with(self);
+        }
+
+        fn visit_const(&mut self, ct: ty::Const<'tcx>) {
+            self.type_length += 1;
+            ct.super_visit_with(self);
+        }
+    }
+    let mut visitor = Visitor { type_length: 0 };
+    item.visit_with(&mut visitor);
+
+    visitor.type_length
+}
+
+pub fn fmt_instance(
     f: &mut fmt::Formatter<'_>,
     instance: Instance<'_>,
     type_length: Option<rustc_session::Limit>,
@@ -485,19 +508,30 @@ impl<'tcx> Instance<'tcx> {
     ///
     /// Presuming that coherence and type-check have succeeded, if this method is invoked
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
-    /// `Ok(Some(instance))`.
+    /// `Ok(Some(instance))`, **except** for when the instance's inputs hit the type size limit,
+    /// in which case it may bail out and return `Ok(None)`.
     ///
     /// Returns `Err(ErrorGuaranteed)` when the `Instance` resolution process
     /// couldn't complete due to errors elsewhere - this is distinct
     /// from `Ok(None)` to avoid misleading diagnostics when an error
     /// has already been/will be emitted, for the original cause
     #[instrument(level = "debug", skip(tcx), ret)]
-    pub fn resolve(
+    pub fn try_resolve(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
+        // Rust code can easily create exponentially-long types using only a
+        // polynomial recursion depth. Even with the default recursion
+        // depth, you can easily get cases that take >2^60 steps to run,
+        // which means that rustc basically hangs.
+        //
+        // Bail out in these cases to avoid that bad user experience.
+        if !tcx.type_length_limit().value_within_limit(type_length(args)) {
+            return Ok(None);
+        }
+
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
 
@@ -505,7 +539,7 @@ impl<'tcx> Instance<'tcx> {
         // below is more likely to ignore the bounds in scope (e.g. if the only
         // generic parameters mentioned by `args` were lifetime ones).
         let args = tcx.erase_regions(args);
-        tcx.resolve_instance(tcx.erase_regions(param_env.and((def_id, args))))
+        tcx.resolve_instance_raw(tcx.erase_regions(param_env.and((def_id, args))))
     }
 
     pub fn expect_resolve(
@@ -513,10 +547,48 @@ impl<'tcx> Instance<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
+        span: Span,
     ) -> Instance<'tcx> {
-        match ty::Instance::resolve(tcx, param_env, def_id, args) {
+        // We compute the span lazily, to avoid unnecessary query calls.
+        // If `span` is a DUMMY_SP, and the def id is local, then use the
+        // def span of the def id.
+        let span_or_local_def_span =
+            || if span.is_dummy() && def_id.is_local() { tcx.def_span(def_id) } else { span };
+
+        match ty::Instance::try_resolve(tcx, param_env, def_id, args) {
             Ok(Some(instance)) => instance,
-            instance => bug!(
+            Ok(None) => {
+                let type_length = type_length(args);
+                if !tcx.type_length_limit().value_within_limit(type_length) {
+                    let (shrunk, written_to_path) =
+                        shrunk_instance_name(tcx, Instance::new(def_id, args));
+                    let mut path = PathBuf::new();
+                    let was_written = if let Some(path2) = written_to_path {
+                        path = path2;
+                        Some(())
+                    } else {
+                        None
+                    };
+                    tcx.dcx().emit_fatal(error::TypeLengthLimit {
+                        // We don't use `def_span(def_id)` so that diagnostics point
+                        // to the crate root during mono instead of to foreign items.
+                        // This is arguably better.
+                        span: span_or_local_def_span(),
+                        shrunk,
+                        was_written,
+                        path,
+                        type_length,
+                    });
+                } else {
+                    span_bug!(
+                        span_or_local_def_span(),
+                        "failed to resolve instance for {}",
+                        tcx.def_path_str_with_args(def_id, args)
+                    )
+                }
+            }
+            instance => span_bug!(
+                span_or_local_def_span(),
                 "failed to resolve instance for {}: {instance:#?}",
                 tcx.def_path_str_with_args(def_id, args)
             ),
@@ -533,7 +605,7 @@ impl<'tcx> Instance<'tcx> {
         // Use either `resolve_closure` or `resolve_for_vtable`
         assert!(!tcx.is_closure_like(def_id), "Called `resolve_for_fn_ptr` on closure: {def_id:?}");
         let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::FnPtr);
-        Instance::resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
+        Instance::try_resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceKind::Item(def) if resolved.def.requires_caller_location(tcx) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
@@ -571,77 +643,82 @@ impl<'tcx> Instance<'tcx> {
         })
     }
 
-    pub fn resolve_for_vtable(
+    pub fn expect_resolve_for_vtable(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> Option<Instance<'tcx>> {
+        span: Span,
+    ) -> Instance<'tcx> {
         debug!("resolve_for_vtable(def_id={:?}, args={:?})", def_id, args);
         let fn_sig = tcx.fn_sig(def_id).instantiate_identity();
         let is_vtable_shim = !fn_sig.inputs().skip_binder().is_empty()
             && fn_sig.input(0).skip_binder().is_param(0)
             && tcx.generics_of(def_id).has_self;
+
         if is_vtable_shim {
             debug!(" => associated item with unsizeable self: Self");
-            Some(Instance { def: InstanceKind::VTableShim(def_id), args })
-        } else {
-            let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::Vtable);
-            Instance::resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
-                match resolved.def {
-                    InstanceKind::Item(def) => {
-                        // We need to generate a shim when we cannot guarantee that
-                        // the caller of a trait object method will be aware of
-                        // `#[track_caller]` - this ensures that the caller
-                        // and callee ABI will always match.
-                        //
-                        // The shim is generated when all of these conditions are met:
-                        //
-                        // 1) The underlying method expects a caller location parameter
-                        // in the ABI
-                        if resolved.def.requires_caller_location(tcx)
-                            // 2) The caller location parameter comes from having `#[track_caller]`
-                            // on the implementation, and *not* on the trait method.
-                            && !tcx.should_inherit_track_caller(def)
-                            // If the method implementation comes from the trait definition itself
-                            // (e.g. `trait Foo { #[track_caller] my_fn() { /* impl */ } }`),
-                            // then we don't need to generate a shim. This check is needed because
-                            // `should_inherit_track_caller` returns `false` if our method
-                            // implementation comes from the trait block, and not an impl block
-                            && !matches!(
-                                tcx.opt_associated_item(def),
-                                Some(ty::AssocItem {
-                                    container: ty::AssocItemContainer::TraitContainer,
-                                    ..
-                                })
-                            )
-                        {
-                            if tcx.is_closure_like(def) {
-                                debug!(" => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",
-                                       def, def_id, args);
-
-                                // Create a shim for the `FnOnce/FnMut/Fn` method we are calling
-                                // - unlike functions, invoking a closure always goes through a
-                                // trait.
-                                resolved = Instance { def: InstanceKind::ReifyShim(def_id, reason), args };
-                            } else {
-                                debug!(
-                                    " => vtable fn pointer created for function with #[track_caller]: {:?}", def
-                                );
-                                resolved.def = InstanceKind::ReifyShim(def, reason);
-                            }
-                        }
-                    }
-                    InstanceKind::Virtual(def_id, _) => {
-                        debug!(" => vtable fn pointer created for virtual call");
-                        resolved.def = InstanceKind::ReifyShim(def_id, reason)
-                    }
-                    _ => {}
-                }
-
-                resolved
-            })
+            return Instance { def: InstanceKind::VTableShim(def_id), args };
         }
+
+        let mut resolved = Instance::expect_resolve(tcx, param_env, def_id, args, span);
+
+        let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::Vtable);
+        match resolved.def {
+            InstanceKind::Item(def) => {
+                // We need to generate a shim when we cannot guarantee that
+                // the caller of a trait object method will be aware of
+                // `#[track_caller]` - this ensures that the caller
+                // and callee ABI will always match.
+                //
+                // The shim is generated when all of these conditions are met:
+                //
+                // 1) The underlying method expects a caller location parameter
+                // in the ABI
+                if resolved.def.requires_caller_location(tcx)
+                        // 2) The caller location parameter comes from having `#[track_caller]`
+                        // on the implementation, and *not* on the trait method.
+                        && !tcx.should_inherit_track_caller(def)
+                        // If the method implementation comes from the trait definition itself
+                        // (e.g. `trait Foo { #[track_caller] my_fn() { /* impl */ } }`),
+                        // then we don't need to generate a shim. This check is needed because
+                        // `should_inherit_track_caller` returns `false` if our method
+                        // implementation comes from the trait block, and not an impl block
+                        && !matches!(
+                            tcx.opt_associated_item(def),
+                            Some(ty::AssocItem {
+                                container: ty::AssocItemContainer::TraitContainer,
+                                ..
+                            })
+                        )
+                {
+                    if tcx.is_closure_like(def) {
+                        debug!(
+                            " => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",
+                            def, def_id, args
+                        );
+
+                        // Create a shim for the `FnOnce/FnMut/Fn` method we are calling
+                        // - unlike functions, invoking a closure always goes through a
+                        // trait.
+                        resolved = Instance { def: InstanceKind::ReifyShim(def_id, reason), args };
+                    } else {
+                        debug!(
+                            " => vtable fn pointer created for function with #[track_caller]: {:?}",
+                            def
+                        );
+                        resolved.def = InstanceKind::ReifyShim(def, reason);
+                    }
+                }
+            }
+            InstanceKind::Virtual(def_id, _) => {
+                debug!(" => vtable fn pointer created for virtual call");
+                resolved.def = InstanceKind::ReifyShim(def_id, reason)
+            }
+            _ => {}
+        }
+
+        resolved
     }
 
     pub fn resolve_closure(
@@ -661,13 +738,25 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
-        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
+        Instance::expect_resolve(
+            tcx,
+            ty::ParamEnv::reveal_all(),
+            def_id,
+            args,
+            ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),
+        )
     }
 
     pub fn resolve_async_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::AsyncDropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
-        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
+        Instance::expect_resolve(
+            tcx,
+            ty::ParamEnv::reveal_all(),
+            def_id,
+            args,
+            ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),
+        )
     }
 
     #[instrument(level = "debug", skip(tcx), ret)]

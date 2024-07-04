@@ -1,0 +1,51 @@
+error[E0204]: the trait `ConstParamTy` cannot be implemented for this type
+  --> $DIR/nested_bad_const_param_ty.rs:6:10
+   |
+LL | #[derive(ConstParamTy)]
+   |          ^^^^^^^^^^^^
+LL |
+LL | struct Foo([*const u8; 1]);
+   |            -------------- this field does not implement `ConstParamTy`
+   |
+note: the `ConstParamTy` impl for `[*const u8; 1]` requires that `*const u8: ConstParamTy`
+  --> $DIR/nested_bad_const_param_ty.rs:8:12
+   |
+LL | struct Foo([*const u8; 1]);
+   |            ^^^^^^^^^^^^^^
+   = note: this error originates in the derive macro `ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0204]: the trait `ConstParamTy` cannot be implemented for this type
+  --> $DIR/nested_bad_const_param_ty.rs:10:10
+   |
+LL | #[derive(ConstParamTy)]
+   |          ^^^^^^^^^^^^
+LL |
+LL | struct Foo2([*mut u8; 1]);
+   |             ------------ this field does not implement `ConstParamTy`
+   |
+note: the `ConstParamTy` impl for `[*mut u8; 1]` requires that `*mut u8: ConstParamTy`
+  --> $DIR/nested_bad_const_param_ty.rs:12:13
+   |
+LL | struct Foo2([*mut u8; 1]);
+   |             ^^^^^^^^^^^^
+   = note: this error originates in the derive macro `ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0204]: the trait `ConstParamTy` cannot be implemented for this type
+  --> $DIR/nested_bad_const_param_ty.rs:14:10
+   |
+LL | #[derive(ConstParamTy)]
+   |          ^^^^^^^^^^^^
+LL |
+LL | struct Foo3([fn(); 1]);
+   |             --------- this field does not implement `ConstParamTy`
+   |
+note: the `ConstParamTy` impl for `[fn(); 1]` requires that `fn(): ConstParamTy`
+  --> $DIR/nested_bad_const_param_ty.rs:16:13
+   |
+LL | struct Foo3([fn(); 1]);
+   |             ^^^^^^^^^
+   = note: this error originates in the derive macro `ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0204`.

@@ -3141,7 +3141,19 @@ dependencies = [
  "bitflags 2.5.0",
  "getopts",
  "memchr",
- "pulldown-cmark-escape",
+ "pulldown-cmark-escape 0.10.1",
+ "unicase",
+]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8746739f11d39ce5ad5c2520a9b75285310dbfe78c541ccf832d38615765aec0"
+dependencies = [
+ "bitflags 2.5.0",
+ "memchr",
+ "pulldown-cmark-escape 0.11.0",
  "unicase",
 ]
 
@@ -3150,6 +3162,12 @@ name = "pulldown-cmark-escape"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd348ff538bc9caeda7ee8cad2d1d48236a1f443c1fa3913c6a02fe0043b1dd3"
+
+[[package]]
+name = "pulldown-cmark-escape"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "007d8adb5ddab6f8e3f491ac63566a7d5002cc7ed73901f72057943fa71ae1ae"
 
 [[package]]
 name = "pulldown-cmark-to-cmark"
@@ -4604,7 +4622,7 @@ name = "rustc_resolve"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.5.0",
- "pulldown-cmark 0.9.6",
+ "pulldown-cmark 0.11.0",
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -4883,6 +4901,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "minifier",
+ "pulldown-cmark 0.9.6",
  "regex",
  "rustdoc-json-types",
  "serde",

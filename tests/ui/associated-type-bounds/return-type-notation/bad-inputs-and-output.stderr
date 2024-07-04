@@ -1,9 +1,3 @@
-error: return type notation uses `()` instead of `(..)` for elided arguments
-  --> $DIR/bad-inputs-and-output.rs:16:24
-   |
-LL | fn baz<T: Trait<method(..): Send>>() {}
-   |                        ^^ help: remove the `..`
-
 warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/bad-inputs-and-output.rs:3:12
    |
@@ -24,6 +18,12 @@ error: return type not allowed with return type notation
    |
 LL | fn bar<T: Trait<method() -> (): Send>>() {}
    |                         ^^^^^^ help: remove the return type
+
+error: return type notation arguments must be elided with `..`
+  --> $DIR/bad-inputs-and-output.rs:16:23
+   |
+LL | fn baz<T: Trait<method(): Send>>() {}
+   |                       ^^ help: add `..`: `(..)`
 
 error: aborting due to 3 previous errors; 1 warning emitted
 

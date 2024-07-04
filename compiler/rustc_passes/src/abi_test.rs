@@ -61,7 +61,7 @@ fn unwrap_fn_abi<'tcx>(
 fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
     let param_env = tcx.param_env(item_def_id);
     let args = GenericArgs::identity_for_item(tcx, item_def_id);
-    let instance = match Instance::resolve(tcx, param_env, item_def_id.into(), args) {
+    let instance = match Instance::try_resolve(tcx, param_env, item_def_id.into(), args) {
         Ok(Some(instance)) => instance,
         Ok(None) => {
             // Not sure what to do here, but `LayoutError::Unknown` seems reasonable?

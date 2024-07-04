@@ -85,9 +85,13 @@ pub(super) fn mangle<'tcx>(
         }
         // FIXME(async_closures): This shouldn't be needed when we fix
         // `Instance::ty`/`Instance::def_id`.
-        ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-        | ty::InstanceKind::CoroutineKindShim { .. } => {
-            printer.write_str("{{fn-once-shim}}").unwrap();
+        ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref, .. } => {
+            printer
+                .write_str(if receiver_by_ref { "{{by-move-shim}}" } else { "{{by-ref-shim}}" })
+                .unwrap();
+        }
+        ty::InstanceKind::CoroutineKindShim { .. } => {
+            printer.write_str("{{by-move-body-shim}}").unwrap();
         }
         _ => {}
     }

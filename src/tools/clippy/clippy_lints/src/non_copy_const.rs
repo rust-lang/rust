@@ -258,7 +258,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                 // e.g. implementing `has_frozen_variant` described above, and not running this function
                 // when the type doesn't have any frozen variants would be the 'correct' way for the 2nd
                 // case (that actually removes another suboptimal behavior (I won't say 'false positive') where,
-                // similar to 2., but with the a frozen variant) (e.g. borrowing
+                // similar to 2., but with a frozen variant) (e.g. borrowing
                 // `borrow_interior_mutable_const::enums::AssocConsts::TO_BE_FROZEN_VARIANT`).
                 // I chose this way because unfrozen enums as assoc consts are rare (or, hopefully, none).
                 matches!(err, ErrorHandled::TooGeneric(..))
@@ -293,7 +293,7 @@ impl<'tcx> NonCopyConst<'tcx> {
         ct: ty::UnevaluatedConst<'tcx>,
         span: Span,
     ) -> EvalToValTreeResult<'tcx> {
-        match ty::Instance::resolve(tcx, param_env, ct.def, ct.args) {
+        match ty::Instance::try_resolve(tcx, param_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
                 let cid = GlobalId {
                     instance,

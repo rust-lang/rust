@@ -98,7 +98,7 @@ pub fn call_kind<'tcx>(
         Some(CallKind::Operator { self_arg, trait_id, self_ty: method_args.type_at(0) })
     } else if is_deref {
         let deref_target = tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
-            Instance::resolve(tcx, param_env, deref_target, method_args).transpose()
+            Instance::try_resolve(tcx, param_env, deref_target, method_args).transpose()
         });
         if let Some(Ok(instance)) = deref_target {
             let deref_target_ty = instance.ty(tcx, param_env);

@@ -53,7 +53,7 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
                 trace!(?caller, ?param_env, ?args, "cannot normalize, skipping");
                 continue;
             };
-            let Ok(Some(callee)) = ty::Instance::resolve(tcx, param_env, callee, args) else {
+            let Ok(Some(callee)) = ty::Instance::try_resolve(tcx, param_env, callee, args) else {
                 trace!(?callee, "cannot resolve, skipping");
                 continue;
             };

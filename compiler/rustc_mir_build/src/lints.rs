@@ -141,7 +141,7 @@ impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx> {
                 return false;
             };
             let (callee, call_args) = if let Ok(Some(instance)) =
-                Instance::resolve(tcx, param_env, callee, normalized_args)
+                Instance::try_resolve(tcx, param_env, callee, normalized_args)
             {
                 (instance.def_id(), instance.args)
             } else {

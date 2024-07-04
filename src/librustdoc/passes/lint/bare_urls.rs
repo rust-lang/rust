@@ -42,11 +42,11 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item) {
             match event {
                 Event::Text(s) => find_raw_urls(cx, &s, range, &report_diag),
                 // We don't want to check the text inside code blocks or links.
-                Event::Start(tag @ (Tag::CodeBlock(_) | Tag::Link(..))) => {
+                Event::Start(tag @ (Tag::CodeBlock(_) | Tag::Link { .. })) => {
                     while let Some((event, _)) = p.next() {
                         match event {
                             Event::End(end)
-                                if mem::discriminant(&end) == mem::discriminant(&tag) =>
+                                if mem::discriminant(&end) == mem::discriminant(&tag.to_end()) =>
                             {
                                 break;
                             }
