@@ -4,6 +4,7 @@
 use std::marker::SmartPointer;
 
 #[derive(SmartPointer)]
+#[repr(transparent)]
 struct MyPointer<'a, #[pointee] T: ?Sized> {
     ptr: &'a T,
 }

@@ -9,7 +9,7 @@ LL | #[derive(SmartPointer)]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `#[pointee]` attribute is an experimental feature
-  --> $DIR/feature-gate-derive-smart-pointer.rs:4:22
+  --> $DIR/feature-gate-derive-smart-pointer.rs:5:22
    |
 LL | struct MyPointer<'a, #[pointee] T: ?Sized> {
    |                      ^^^^^^^^^^
