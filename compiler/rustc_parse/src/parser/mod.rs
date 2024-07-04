@@ -203,7 +203,7 @@ struct ClosureSpans {
 }
 
 /// Indicates a range of tokens that should be replaced by
-/// the tokens in the provided vector. This is used in two
+/// the tokens in the provided `AttributesData`. This is used in two
 /// places during token collection:
 ///
 /// 1. During the parsing of an AST node that may have a `#[derive]`
@@ -219,7 +219,7 @@ struct ClosureSpans {
 /// the first macro inner attribute to invoke a proc-macro).
 /// When create a `TokenStream`, the inner attributes get inserted
 /// into the proper place in the token stream.
-type ReplaceRange = (Range<u32>, Vec<(FlatToken, Spacing)>);
+type ReplaceRange = (Range<u32>, Option<AttributesData>);
 
 /// Controls how we capture tokens. Capturing can be expensive,
 /// so we try to avoid performing capturing in cases where

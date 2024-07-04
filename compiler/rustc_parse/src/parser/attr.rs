@@ -313,7 +313,7 @@ impl<'a> Parser<'a> {
                 // corresponding macro).
                 let range = start_pos..end_pos;
                 if let Capturing::Yes = self.capture_state.capturing {
-                    self.capture_state.inner_attr_ranges.insert(attr.id, (range, vec![]));
+                    self.capture_state.inner_attr_ranges.insert(attr.id, (range, None));
                 }
                 attrs.push(attr);
             } else {

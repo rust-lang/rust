@@ -145,24 +145,23 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
             // start position, we ensure that any replace range which encloses
             // another replace range will capture the *replaced* tokens for the inner
             // range, not the original tokens.
-            for (range, new_tokens) in replace_ranges.into_iter().rev() {
+            for (range, attr_data) in replace_ranges.into_iter().rev() {
                 assert!(!range.is_empty(), "Cannot replace an empty range: {range:?}");
-                // Replace ranges are only allowed to decrease the number of tokens.
-                assert!(
-                    range.len() >= new_tokens.len(),
-                    "Range {range:?} has greater len than {new_tokens:?}"
-                );
 
-                // Replace any removed tokens with `FlatToken::Empty`.
-                // This keeps the total length of `tokens` constant throughout the
-                // replacement process, allowing us to use all of the `ReplaceRanges` entries
-                // without adjusting indices.
-                let filler = iter::repeat((FlatToken::Empty, Spacing::Alone))
-                    .take(range.len() - new_tokens.len());
-
+                // Replace the tokens in range with zero or one `FlatToken::AttrTarget`s, plus
+                // enough `FlatToken::Empty`s to fill up the rest of the range. This keeps the
+                // total length of `tokens` constant throughout the replacement process, allowing
+                // us to use all of the `ReplaceRanges` entries without adjusting indices.
+                let attr_data_len = attr_data.is_some() as usize;
                 tokens.splice(
                     (range.start as usize)..(range.end as usize),
-                    new_tokens.into_iter().chain(filler),
+                    attr_data
+                        .into_iter()
+                        .map(|attr_data| (FlatToken::AttrTarget(attr_data), Spacing::Alone))
+                        .chain(
+                            iter::repeat((FlatToken::Empty, Spacing::Alone))
+                                .take(range.len() - attr_data_len),
+                        ),
                 );
             }
             make_attr_token_stream(tokens.into_iter(), self.break_last_token)
@@ -315,7 +314,7 @@ impl<'a> Parser<'a> {
                 .iter()
                 .cloned()
                 .chain(inner_attr_replace_ranges.iter().cloned())
-                .map(|(range, tokens)| ((range.start - start_pos)..(range.end - start_pos), tokens))
+                .map(|(range, data)| ((range.start - start_pos)..(range.end - start_pos), data))
                 .collect()
         };
 
@@ -345,17 +344,15 @@ impl<'a> Parser<'a> {
             && matches!(self.capture_state.capturing, Capturing::Yes)
             && has_cfg_or_cfg_attr(final_attrs)
         {
-            let attr_data = AttributesData { attrs: final_attrs.iter().cloned().collect(), tokens };
+            assert!(!self.break_last_token, "Should not have unglued last token with cfg attr");
 
             // Replace the entire AST node that we just parsed, including attributes,
-            // with a `FlatToken::AttrTarget`. If this AST node is inside an item
+            // with `attr_data`. If this AST node is inside an item
             // that has `#[derive]`, then this will allow us to cfg-expand this
             // AST node.
             let start_pos = if has_outer_attrs { attrs.start_pos } else { start_pos };
-            let new_tokens = vec![(FlatToken::AttrTarget(attr_data), Spacing::Alone)];
-
-            assert!(!self.break_last_token, "Should not have unglued last token with cfg attr");
-            self.capture_state.replace_ranges.push((start_pos..end_pos, new_tokens));
+            let attr_data = AttributesData { attrs: final_attrs.iter().cloned().collect(), tokens };
+            self.capture_state.replace_ranges.push((start_pos..end_pos, Some(attr_data)));
             self.capture_state.replace_ranges.extend(inner_attr_replace_ranges);
         }
 
