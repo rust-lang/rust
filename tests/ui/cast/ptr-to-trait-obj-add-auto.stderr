@@ -8,7 +8,7 @@ LL |     x as _
    = note: for more information, see issue #127323 <https://github.com/rust-lang/rust/issues/127323>
    = note: `#[warn(ptr_cast_add_auto_to_object)]` on by default
 
-warning: adding auto traits `Sync`, `Send`, and `Unpin` to a trait object in a pointer cast may cause UB later on
+warning: adding auto traits `Send`, `Sync`, and `Unpin` to a trait object in a pointer cast may cause UB later on
   --> $DIR/ptr-to-trait-obj-add-auto.rs:13:5
    |
 LL |     x as _
@@ -31,7 +31,7 @@ LL |     x as _
    = note: `#[warn(ptr_cast_add_auto_to_object)]` on by default
 
 Future breakage diagnostic:
-warning: adding auto traits `Sync`, `Send`, and `Unpin` to a trait object in a pointer cast may cause UB later on
+warning: adding auto traits `Send`, `Sync`, and `Unpin` to a trait object in a pointer cast may cause UB later on
   --> $DIR/ptr-to-trait-obj-add-auto.rs:13:5
    |
 LL |     x as _

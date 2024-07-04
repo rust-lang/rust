@@ -897,10 +897,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                 self.span,
                                 errors::PtrCastAddAutoToObject {
                                     traits_len: added.len(),
-                                    traits: added
-                                        .into_iter()
-                                        .map(|trait_did| tcx.def_path_str(trait_did))
-                                        .collect(),
+                                    traits: {
+                                        let mut traits: Vec<_> = added
+                                            .into_iter()
+                                            .map(|trait_did| tcx.def_path_str(trait_did))
+                                            .collect();
+
+                                        traits.sort();
+                                        traits.into()
+                                    },
                                 },
                             )
                         }
