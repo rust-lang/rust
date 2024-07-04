@@ -41,7 +41,7 @@ use super::{
 use crate::{errors, maybe_recover_from_interpolated_ty_qpath};
 
 #[derive(Debug)]
-enum DestructuredFloat {
+pub(super) enum DestructuredFloat {
     /// 1e2
     Single(Symbol, Span),
     /// 1.
@@ -1041,7 +1041,7 @@ impl<'a> Parser<'a> {
     //  support pushing "future tokens" (would be also helpful to `break_and_eat`), or
     //  we should break everything including floats into more basic proc-macro style
     //  tokens in the lexer (probably preferable).
-    fn break_up_float(&self, float: Symbol, span: Span) -> DestructuredFloat {
+    pub(super) fn break_up_float(&self, float: Symbol, span: Span) -> DestructuredFloat {
         #[derive(Debug)]
         enum FloatComponent {
             IdentLike(String),

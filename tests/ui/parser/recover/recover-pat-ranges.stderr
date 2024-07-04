@@ -1,5 +1,5 @@
 error: range pattern bounds cannot have parentheses
-  --> $DIR/pat-recover-ranges.rs:4:13
+  --> $DIR/recover-pat-ranges.rs:4:13
    |
 LL |         0..=(1) => (),
    |             ^ ^
@@ -11,7 +11,7 @@ LL +         0..=1 => (),
    |
 
 error: range pattern bounds cannot have parentheses
-  --> $DIR/pat-recover-ranges.rs:6:9
+  --> $DIR/recover-pat-ranges.rs:6:9
    |
 LL |         (-12)..=4 => (),
    |         ^   ^
@@ -23,7 +23,7 @@ LL +         -12..=4 => (),
    |
 
 error: range pattern bounds cannot have parentheses
-  --> $DIR/pat-recover-ranges.rs:8:9
+  --> $DIR/recover-pat-ranges.rs:8:9
    |
 LL |         (0)..=(-4) => (),
    |         ^ ^
@@ -35,7 +35,7 @@ LL +         0..=(-4) => (),
    |
 
 error: range pattern bounds cannot have parentheses
-  --> $DIR/pat-recover-ranges.rs:8:15
+  --> $DIR/recover-pat-ranges.rs:8:15
    |
 LL |         (0)..=(-4) => (),
    |               ^  ^
@@ -47,13 +47,13 @@ LL +         (0)..=-4 => (),
    |
 
 error: expected a pattern range bound, found an expression
-  --> $DIR/pat-recover-ranges.rs:11:12
+  --> $DIR/recover-pat-ranges.rs:11:12
    |
 LL |         ..=1 + 2 => (),
    |            ^^^^^ arbitrary expressions are not allowed in patterns
 
 error: range pattern bounds cannot have parentheses
-  --> $DIR/pat-recover-ranges.rs:13:9
+  --> $DIR/recover-pat-ranges.rs:13:9
    |
 LL |         (4).. => (),
    |         ^ ^
@@ -65,13 +65,13 @@ LL +         4.. => (),
    |
 
 error: expected a pattern range bound, found an expression
-  --> $DIR/pat-recover-ranges.rs:15:10
+  --> $DIR/recover-pat-ranges.rs:15:10
    |
 LL |         (-4 + 0).. => (),
    |          ^^^^^^ arbitrary expressions are not allowed in patterns
 
 error: range pattern bounds cannot have parentheses
-  --> $DIR/pat-recover-ranges.rs:15:9
+  --> $DIR/recover-pat-ranges.rs:15:9
    |
 LL |         (-4 + 0).. => (),
    |         ^      ^
@@ -83,13 +83,13 @@ LL +         -4 + 0.. => (),
    |
 
 error: expected a pattern range bound, found an expression
-  --> $DIR/pat-recover-ranges.rs:18:10
+  --> $DIR/recover-pat-ranges.rs:18:10
    |
 LL |         (1 + 4)...1 * 2 => (),
    |          ^^^^^ arbitrary expressions are not allowed in patterns
 
 error: range pattern bounds cannot have parentheses
-  --> $DIR/pat-recover-ranges.rs:18:9
+  --> $DIR/recover-pat-ranges.rs:18:9
    |
 LL |         (1 + 4)...1 * 2 => (),
    |         ^     ^
@@ -101,25 +101,25 @@ LL +         1 + 4...1 * 2 => (),
    |
 
 error: expected a pattern range bound, found an expression
-  --> $DIR/pat-recover-ranges.rs:18:19
+  --> $DIR/recover-pat-ranges.rs:18:19
    |
 LL |         (1 + 4)...1 * 2 => (),
    |                   ^^^^^ arbitrary expressions are not allowed in patterns
 
-error: expected a pattern range bound, found a method call
-  --> $DIR/pat-recover-ranges.rs:24:9
+error: expected a pattern range bound, found an expression
+  --> $DIR/recover-pat-ranges.rs:24:9
    |
 LL |         0.x()..="y".z() => (),
-   |         ^^^^^ method calls are not allowed in patterns
+   |         ^^^^^ arbitrary expressions are not allowed in patterns
 
-error: expected a pattern range bound, found a method call
-  --> $DIR/pat-recover-ranges.rs:24:17
+error: expected a pattern range bound, found an expression
+  --> $DIR/recover-pat-ranges.rs:24:17
    |
 LL |         0.x()..="y".z() => (),
-   |                 ^^^^^^^ method calls are not allowed in patterns
+   |                 ^^^^^^^ arbitrary expressions are not allowed in patterns
 
 warning: `...` range patterns are deprecated
-  --> $DIR/pat-recover-ranges.rs:18:16
+  --> $DIR/recover-pat-ranges.rs:18:16
    |
 LL |         (1 + 4)...1 * 2 => (),
    |                ^^^ help: use `..=` for an inclusive range

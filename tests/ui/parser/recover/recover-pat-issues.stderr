@@ -1,0 +1,38 @@
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-issues.rs:6:13
+   |
+LL |         Foo("hi".to_owned()) => true,
+   |             ^^^^^^^^^^^^^^^ arbitrary expressions are not allowed in patterns
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-issues.rs:14:20
+   |
+LL |         Bar { baz: "hi".to_owned() } => true,
+   |                    ^^^^^^^^^^^^^^^ arbitrary expressions are not allowed in patterns
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-issues.rs:25:11
+   |
+LL |         &["foo".to_string()] => {}
+   |           ^^^^^^^^^^^^^^^^^ arbitrary expressions are not allowed in patterns
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-issues.rs:36:17
+   |
+LL |     if let Some(MAGIC.0 as usize) = None::<usize> {}
+   |                 ^^^^^^^^^^^^^^^^ arbitrary expressions are not allowed in patterns
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-issues.rs:41:13
+   |
+LL |     if let (-1.some(4)) = (0, Some(4)) {}
+   |             ^^^^^^^^^^ arbitrary expressions are not allowed in patterns
+
+error: expected a pattern, found an expression
+  --> $DIR/recover-pat-issues.rs:44:13
+   |
+LL |     if let (-1.Some(4)) = (0, Some(4)) {}
+   |             ^^^^^^^^^^ arbitrary expressions are not allowed in patterns
+
+error: aborting due to 6 previous errors
+
