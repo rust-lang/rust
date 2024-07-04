@@ -2105,7 +2105,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--nightly-branch").arg(git_config.nightly_branch);
 
         // FIXME: Move CiEnv back to bootstrap, it is only used here anyway
-        builder.ci_env.force_coloring_in_ci(&mut cmd.command);
+        builder.ci_env.force_coloring_in_ci(cmd.as_command_mut());
 
         #[cfg(feature = "build-metrics")]
         builder.metrics.begin_test_suite(

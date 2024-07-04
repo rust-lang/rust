@@ -55,7 +55,7 @@ impl OutputMode {
 /// [delay_failure]: BootstrapCommand::delay_failure
 #[derive(Debug)]
 pub struct BootstrapCommand {
-    pub command: Command,
+    command: Command,
     pub failure_behavior: BehaviorOnFailure,
     pub stdout: OutputMode,
     pub stderr: OutputMode,
@@ -144,6 +144,12 @@ impl BootstrapCommand {
     /// Run the command, returning its output.
     pub fn run(&mut self, builder: &Build) -> CommandOutput {
         builder.run(self)
+    }
+
+    /// Provides access to the stdlib Command inside.
+    /// All usages of this function should be eventually removed from bootstrap.
+    pub fn as_command_mut(&mut self) -> &mut Command {
+        &mut self.command
     }
 }
 

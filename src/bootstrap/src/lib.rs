@@ -493,11 +493,14 @@ impl Build {
         let submodule_git = || helpers::git(Some(&absolute_path));
 
         // Determine commit checked out in submodule.
-        let checked_out_hash = output(&mut submodule_git().args(["rev-parse", "HEAD"]).command);
+        let checked_out_hash = output(submodule_git().args(["rev-parse", "HEAD"]).as_command_mut());
         let checked_out_hash = checked_out_hash.trim_end();
         // Determine commit that the submodule *should* have.
         let recorded = output(
-            &mut helpers::git(Some(&self.src)).args(["ls-tree", "HEAD"]).arg(relative_path).command,
+            helpers::git(Some(&self.src))
+                .args(["ls-tree", "HEAD"])
+                .arg(relative_path)
+                .as_command_mut(),
         );
         let actual_hash = recorded
             .split_whitespace()
@@ -522,7 +525,7 @@ impl Build {
             let current_branch = {
                 let output = helpers::git(Some(&self.src))
                     .args(["symbolic-ref", "--short", "HEAD"])
-                    .command
+                    .as_command_mut()
                     .stderr(Stdio::inherit())
                     .output();
                 let output = t!(output);
@@ -548,7 +551,7 @@ impl Build {
             git
         };
         // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
-        if !update(true).command.status().map_or(false, |status| status.success()) {
+        if !update(true).as_command_mut().status().map_or(false, |status| status.success()) {
             update(false).run(self);
         }
 
@@ -941,10 +944,12 @@ impl Build {
 
         self.verbose(|| println!("running: {command:?}"));
 
-        command.command.stdout(command.stdout.stdio());
-        command.command.stderr(command.stderr.stdio());
+        let stdout = command.stdout.stdio();
+        command.as_command_mut().stdout(stdout);
+        let stderr = command.stderr.stdio();
+        command.as_command_mut().stderr(stderr);
 
-        let output = command.command.output();
+        let output = command.as_command_mut().output();
 
         use std::fmt::Write;
 
@@ -1931,7 +1936,7 @@ fn envify(s: &str) -> String {
 pub fn generate_smart_stamp_hash(dir: &Path, additional_input: &str) -> String {
     let diff = helpers::git(Some(dir))
         .arg("diff")
-        .command
+        .as_command_mut()
         .output()
         .map(|o| String::from_utf8(o.stdout).unwrap_or_default())
         .unwrap_or_default();
@@ -1941,7 +1946,7 @@ pub fn generate_smart_stamp_hash(dir: &Path, additional_input: &str) -> String {
         .arg("--porcelain")
         .arg("-z")
         .arg("--untracked-files=normal")
-        .command
+        .as_command_mut()
         .output()
         .map(|o| String::from_utf8(o.stdout).unwrap_or_default())
         .unwrap_or_default();
