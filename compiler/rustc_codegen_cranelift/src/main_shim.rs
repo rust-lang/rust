@@ -4,6 +4,7 @@ use rustc_middle::ty::AssocKind;
 use rustc_middle::ty::GenericArg;
 use rustc_session::config::{sigpipe, EntryFnType};
 use rustc_span::symbol::Ident;
+use rustc_span::DUMMY_SP;
 
 use crate::prelude::*;
 
@@ -119,6 +120,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     ParamEnv::reveal_all(),
                     report.def_id,
                     tcx.mk_args(&[GenericArg::from(main_ret_ty)]),
+                    DUMMY_SP,
                 )
                 .polymorphize(tcx);
 
@@ -144,6 +146,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     ParamEnv::reveal_all(),
                     start_def_id,
                     tcx.mk_args(&[main_ret_ty.into()]),
+                    DUMMY_SP,
                 )
                 .polymorphize(tcx);
                 let start_func_id = import_function(tcx, m, start_instance);

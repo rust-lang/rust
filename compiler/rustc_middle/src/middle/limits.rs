@@ -30,7 +30,7 @@ pub fn provide(providers: &mut Providers) {
             tcx.hir().krate_attrs(),
             tcx.sess,
             sym::type_length_limit,
-            1048576,
+            2usize.pow(24),
         ),
     }
 }

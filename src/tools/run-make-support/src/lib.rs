@@ -321,8 +321,9 @@ pub fn set_host_rpath(cmd: &mut Command) {
 /// Read the contents of a file that cannot simply be read by
 /// read_to_string, due to invalid utf8 data, then assert that it contains `expected`.
 #[track_caller]
-pub fn invalid_utf8_contains<P: AsRef<Path>>(path: P, expected: &str) {
+pub fn invalid_utf8_contains<P: AsRef<Path>, S: AsRef<str>>(path: P, expected: S) {
     let buffer = fs_wrapper::read(path.as_ref());
+    let expected = expected.as_ref();
     if !String::from_utf8_lossy(&buffer).contains(expected) {
         eprintln!("=== FILE CONTENTS (LOSSY) ===");
         eprintln!("{}", String::from_utf8_lossy(&buffer));
@@ -335,8 +336,9 @@ pub fn invalid_utf8_contains<P: AsRef<Path>>(path: P, expected: &str) {
 /// Read the contents of a file that cannot simply be read by
 /// read_to_string, due to invalid utf8 data, then assert that it does not contain `expected`.
 #[track_caller]
-pub fn invalid_utf8_not_contains<P: AsRef<Path>>(path: P, expected: &str) {
+pub fn invalid_utf8_not_contains<P: AsRef<Path>, S: AsRef<str>>(path: P, expected: S) {
     let buffer = fs_wrapper::read(path.as_ref());
+    let expected = expected.as_ref();
     if String::from_utf8_lossy(&buffer).contains(expected) {
         eprintln!("=== FILE CONTENTS (LOSSY) ===");
         eprintln!("{}", String::from_utf8_lossy(&buffer));

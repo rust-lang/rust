@@ -253,6 +253,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
                 ty::ParamEnv::reveal_all(),
                 const_def_id,
                 instance.args,
+                self.cur_span(),
             );
 
             return Ok(Some(new_instance));

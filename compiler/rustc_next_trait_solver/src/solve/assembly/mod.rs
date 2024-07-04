@@ -387,48 +387,83 @@ where
             G::consider_auto_trait_candidate(self, goal)
         } else if cx.trait_is_alias(trait_def_id) {
             G::consider_trait_alias_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Sized) {
-            G::consider_builtin_sized_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Copy)
-            || cx.is_lang_item(trait_def_id, TraitSolverLangItem::Clone)
-        {
-            G::consider_builtin_copy_clone_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::PointerLike) {
-            G::consider_builtin_pointer_like_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::FnPtrTrait) {
-            G::consider_builtin_fn_ptr_trait_candidate(self, goal)
-        } else if let Some(kind) = self.cx().fn_trait_kind_from_def_id(trait_def_id) {
-            G::consider_builtin_fn_trait_candidates(self, goal, kind)
-        } else if let Some(kind) = self.cx().async_fn_trait_kind_from_def_id(trait_def_id) {
-            G::consider_builtin_async_fn_trait_candidates(self, goal, kind)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::AsyncFnKindHelper) {
-            G::consider_builtin_async_fn_kind_helper_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Tuple) {
-            G::consider_builtin_tuple_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::PointeeTrait) {
-            G::consider_builtin_pointee_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Future) {
-            G::consider_builtin_future_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Iterator) {
-            G::consider_builtin_iterator_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::FusedIterator) {
-            G::consider_builtin_fused_iterator_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::AsyncIterator) {
-            G::consider_builtin_async_iterator_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Coroutine) {
-            G::consider_builtin_coroutine_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::DiscriminantKind) {
-            G::consider_builtin_discriminant_kind_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::AsyncDestruct) {
-            G::consider_builtin_async_destruct_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Destruct) {
-            G::consider_builtin_destruct_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::TransmuteTrait) {
-            G::consider_builtin_transmute_candidate(self, goal)
-        } else if cx.is_lang_item(trait_def_id, TraitSolverLangItem::EffectsIntersection) {
-            G::consider_builtin_effects_intersection_candidate(self, goal)
         } else {
-            Err(NoSolution)
+            match cx.as_lang_item(trait_def_id) {
+                Some(TraitSolverLangItem::Sized) => G::consider_builtin_sized_candidate(self, goal),
+                Some(TraitSolverLangItem::Copy | TraitSolverLangItem::Clone) => {
+                    G::consider_builtin_copy_clone_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::Fn) => {
+                    G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::Fn)
+                }
+                Some(TraitSolverLangItem::FnMut) => {
+                    G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::FnMut)
+                }
+                Some(TraitSolverLangItem::FnOnce) => {
+                    G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::FnOnce)
+                }
+                Some(TraitSolverLangItem::AsyncFn) => {
+                    G::consider_builtin_async_fn_trait_candidates(self, goal, ty::ClosureKind::Fn)
+                }
+                Some(TraitSolverLangItem::AsyncFnMut) => {
+                    G::consider_builtin_async_fn_trait_candidates(
+                        self,
+                        goal,
+                        ty::ClosureKind::FnMut,
+                    )
+                }
+                Some(TraitSolverLangItem::AsyncFnOnce) => {
+                    G::consider_builtin_async_fn_trait_candidates(
+                        self,
+                        goal,
+                        ty::ClosureKind::FnOnce,
+                    )
+                }
+                Some(TraitSolverLangItem::PointerLike) => {
+                    G::consider_builtin_pointer_like_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::FnPtrTrait) => {
+                    G::consider_builtin_fn_ptr_trait_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::AsyncFnKindHelper) => {
+                    G::consider_builtin_async_fn_kind_helper_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::Tuple) => G::consider_builtin_tuple_candidate(self, goal),
+                Some(TraitSolverLangItem::PointeeTrait) => {
+                    G::consider_builtin_pointee_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::Future) => {
+                    G::consider_builtin_future_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::Iterator) => {
+                    G::consider_builtin_iterator_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::FusedIterator) => {
+                    G::consider_builtin_fused_iterator_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::AsyncIterator) => {
+                    G::consider_builtin_async_iterator_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::Coroutine) => {
+                    G::consider_builtin_coroutine_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::DiscriminantKind) => {
+                    G::consider_builtin_discriminant_kind_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::AsyncDestruct) => {
+                    G::consider_builtin_async_destruct_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::Destruct) => {
+                    G::consider_builtin_destruct_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::TransmuteTrait) => {
+                    G::consider_builtin_transmute_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::EffectsIntersection) => {
+                    G::consider_builtin_effects_intersection_candidate(self, goal)
+                }
+                _ => Err(NoSolution),
+            }
         };
 
         candidates.extend(result);

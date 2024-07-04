@@ -951,6 +951,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return err.emit();
         }
 
+        // Special case, we found an extra argument is provided, which is very common in practice.
+        // but there is a obviously better removing suggestion compared to the current one,
+        // try to find the argument with Error type, if we removed it all the types will become good,
+        // then we will replace the current suggestion.
+        if let [Error::Extra(provided_idx)] = &errors[..] {
+            let remove_idx_is_perfect = |idx: usize| -> bool {
+                let removed_arg_tys = provided_arg_tys
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(j, arg)| if idx == j { None } else { Some(arg) })
+                    .collect::<IndexVec<ProvidedIdx, _>>();
+                std::iter::zip(formal_and_expected_inputs.iter(), removed_arg_tys.iter()).all(
+                    |((expected_ty, _), (provided_ty, _))| {
+                        !provided_ty.references_error()
+                            && self.can_coerce(*provided_ty, *expected_ty)
+                    },
+                )
+            };
+
+            if !remove_idx_is_perfect(provided_idx.as_usize()) {
+                if let Some(i) = (0..provided_args.len()).find(|&i| remove_idx_is_perfect(i)) {
+                    errors = vec![Error::Extra(ProvidedIdx::from_usize(i))];
+                }
+            }
+        }
+
         let mut err = if formal_and_expected_inputs.len() == provided_args.len() {
             struct_span_code_err!(
                 self.dcx(),
@@ -1652,7 +1678,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.warn_if_unreachable(stmt.hir_id, stmt.span, "statement");
 
-        // Hide the outer diverging and `has_errors` flags.
+        // Hide the outer diverging flags.
         let old_diverges = self.diverges.replace(Diverges::Maybe);
 
         match stmt.kind {

@@ -45,10 +45,6 @@ parse_bad_assoc_type_bounds = bounds on associated types do not belong here
 parse_bad_item_kind = {$descr} is not supported in {$ctx}
     .help = consider moving the {$descr} out to a nearby module scope
 
-parse_bad_return_type_notation_dotdot =
-    return type notation uses `()` instead of `(..)` for elided arguments
-    .suggestion = remove the `..`
-
 parse_bad_return_type_notation_output =
     return type not allowed with return type notation
     .suggestion = remove the return type

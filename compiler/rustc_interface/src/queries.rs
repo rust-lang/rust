@@ -65,12 +65,6 @@ impl<'a, 'tcx> QueryResult<'a, &'tcx GlobalCtxt<'tcx>> {
     }
 }
 
-impl<T> Default for Query<T> {
-    fn default() -> Self {
-        Query { result: RefCell::new(None) }
-    }
-}
-
 pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
     gcx_cell: OnceLock<GlobalCtxt<'tcx>>,
@@ -90,8 +84,8 @@ impl<'tcx> Queries<'tcx> {
             gcx_cell: OnceLock::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             hir_arena: WorkerLocal::new(|_| rustc_hir::Arena::default()),
-            parse: Default::default(),
-            gcx: Default::default(),
+            parse: Query { result: RefCell::new(None) },
+            gcx: Query { result: RefCell::new(None) },
         }
     }
 
@@ -116,23 +110,6 @@ impl<'tcx> Queries<'tcx> {
             )
         })
     }
-
-    pub fn codegen_and_build_linker(&'tcx self) -> Result<Linker> {
-        self.global_ctxt()?.enter(|tcx| {
-            let ongoing_codegen = passes::start_codegen(&*self.compiler.codegen_backend, tcx)?;
-
-            Ok(Linker {
-                dep_graph: tcx.dep_graph.clone(),
-                output_filenames: tcx.output_filenames(()).clone(),
-                crate_hash: if tcx.needs_crate_hash() {
-                    Some(tcx.crate_hash(LOCAL_CRATE))
-                } else {
-                    None
-                },
-                ongoing_codegen,
-            })
-        })
-    }
 }
 
 pub struct Linker {
@@ -144,6 +121,36 @@ pub struct Linker {
 }
 
 impl Linker {
+    pub fn codegen_and_build_linker(
+        tcx: TyCtxt<'_>,
+        codegen_backend: &dyn CodegenBackend,
+    ) -> Result<Linker> {
+        let ongoing_codegen = passes::start_codegen(codegen_backend, tcx)?;
+
+        // This must run after monomorphization so that all generic types
+        // have been instantiated.
+        if tcx.sess.opts.unstable_opts.print_type_sizes {
+            tcx.sess.code_stats.print_type_sizes();
+        }
+
+        if tcx.sess.opts.unstable_opts.print_vtable_sizes {
+            let crate_name = tcx.crate_name(LOCAL_CRATE);
+
+            tcx.sess.code_stats.print_vtable_sizes(crate_name);
+        }
+
+        Ok(Linker {
+            dep_graph: tcx.dep_graph.clone(),
+            output_filenames: tcx.output_filenames(()).clone(),
+            crate_hash: if tcx.needs_crate_hash() {
+                Some(tcx.crate_hash(LOCAL_CRATE))
+            } else {
+                None
+            },
+            ongoing_codegen,
+        })
+    }
+
     pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) -> Result<()> {
         let (codegen_results, work_products) =
             codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames);
@@ -197,7 +204,7 @@ impl Compiler {
         F: for<'tcx> FnOnce(&'tcx Queries<'tcx>) -> T,
     {
         // Must declare `_timer` first so that it is dropped after `queries`.
-        let mut _timer = None;
+        let _timer;
         let queries = Queries::new(self);
         let ret = f(&queries);
 
@@ -220,7 +227,7 @@ impl Compiler {
 
         // The timer's lifetime spans the dropping of `queries`, which contains
         // the global context.
-        _timer = Some(self.sess.timer("free_global_ctxt"));
+        _timer = self.sess.timer("free_global_ctxt");
         if let Err((path, error)) = queries.finish() {
             self.sess.dcx().emit_fatal(errors::FailedWritingFile { path: &path, error });
         }
