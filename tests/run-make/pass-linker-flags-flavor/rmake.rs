@@ -4,7 +4,8 @@
 // explicit flags and then with those flags passed inside the rust source code.
 // See https://github.com/rust-lang/rust/pull/118202
 
-//FIXME(Oneirical): only-linux
+//@ only-linux
+// Reason: the `gnu-cc` linker is only available on linux
 
 use run_make_support::{regex, rustc};
 
