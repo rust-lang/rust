@@ -273,6 +273,32 @@ impl FdTable {
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    fn dup(&mut self, old_fd: i32) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        let Some(dup_fd) = this.machine.fds.dup(old_fd) else {
+            return this.fd_not_found();
+        };
+        Ok(this.machine.fds.insert_fd_with_min_fd(dup_fd, 0))
+    }
+
+    fn dup2(&mut self, old_fd: i32, new_fd: i32) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        let Some(dup_fd) = this.machine.fds.dup(old_fd) else {
+            return this.fd_not_found();
+        };
+        if new_fd != old_fd {
+            // Close new_fd if it is previously opened.
+            // If old_fd and new_fd point to the same description, then `dup_fd` ensures we keep the underlying file description alive.
+            if let Some(file_descriptor) = this.machine.fds.fds.insert(new_fd, dup_fd) {
+                // Ignore close error (not interpreter's) according to dup2() doc.
+                file_descriptor.close(this.machine.communicate())?.ok();
+            }
+        }
+        Ok(new_fd)
+    }
+
     fn fcntl(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -334,14 +360,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        Ok(Scalar::from_i32(if let Some(file_descriptor) = this.machine.fds.remove(fd) {
-            let result = file_descriptor.close(this.machine.communicate())?;
-            // return `0` if close is successful
-            let result = result.map(|()| 0i32);
-            this.try_unwrap_io_result(result)?
-        } else {
-            this.fd_not_found()?
-        }))
+        let Some(file_descriptor) = this.machine.fds.remove(fd) else {
+            return Ok(Scalar::from_i32(this.fd_not_found()?));
+        };
+        let result = file_descriptor.close(this.machine.communicate())?;
+        // return `0` if close is successful
+        let result = result.map(|()| 0i32);
+        Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
     /// Function used when a file descriptor does not exist. It returns `Ok(-1)`and sets

@@ -46,24 +46,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         let this = self.eval_context_mut();
-        let tcx = this.tcx.tcx;
 
         // Some shims forward to other MIR bodies.
         match link_name.as_str() {
-            // This matches calls to the foreign item `panic_impl`.
-            // The implementation is provided by the function with the `#[panic_handler]` attribute.
-            "panic_impl" => {
-                // We don't use `check_shim` here because we are just forwarding to the lang
-                // item. Argument count checking will be performed when the returned `Body` is
-                // called.
-                this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name)?;
-                let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
-                let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
-                return Ok(Some((
-                    this.load_mir(panic_impl_instance.def, None)?,
-                    panic_impl_instance,
-                )));
-            }
             "__rust_alloc_error_handler" => {
                 // Forward to the right symbol that implements this function.
                 let Some(handler_kind) = this.tcx.alloc_error_handler_kind(()) else {

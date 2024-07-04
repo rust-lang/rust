@@ -68,13 +68,11 @@ impl<'tcx> Tree {
         let global = machine.borrow_tracker.as_ref().unwrap();
         let span = machine.current_span();
         self.perform_access(
-            access_kind,
             tag,
-            Some(range),
+            Some((range, access_kind, diagnostics::AccessCause::Explicit(access_kind))),
             global,
             alloc_id,
             span,
-            diagnostics::AccessCause::Explicit(access_kind),
         )
     }
 
@@ -115,15 +113,8 @@ impl<'tcx> Tree {
         alloc_id: AllocId, // diagnostics
     ) -> InterpResult<'tcx> {
         let span = machine.current_span();
-        self.perform_access(
-            AccessKind::Read,
-            tag,
-            None, // no specified range because it occurs on the entire allocation
-            global,
-            alloc_id,
-            span,
-            diagnostics::AccessCause::FnExit,
-        )
+        // `None` makes it the magic on-protector-end operation
+        self.perform_access(tag, None, global, alloc_id, span)
     }
 }
 
@@ -297,13 +288,11 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // All reborrows incur a (possibly zero-sized) read access to the parent
         tree_borrows.perform_access(
-            AccessKind::Read,
             orig_tag,
-            Some(range),
+            Some((range, AccessKind::Read, diagnostics::AccessCause::Reborrow)),
             this.machine.borrow_tracker.as_ref().unwrap(),
             alloc_id,
             this.machine.current_span(),
-            diagnostics::AccessCause::Reborrow,
         )?;
         // Record the parent-child pair in the tree.
         tree_borrows.new_child(orig_tag, new_tag, new_perm.initial_state, range, span)?;

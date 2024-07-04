@@ -19,7 +19,7 @@ pub enum AccessCause {
     Explicit(AccessKind),
     Reborrow,
     Dealloc,
-    FnExit,
+    FnExit(AccessKind),
 }
 
 impl fmt::Display for AccessCause {
@@ -28,7 +28,11 @@ impl fmt::Display for AccessCause {
             Self::Explicit(kind) => write!(f, "{kind}"),
             Self::Reborrow => write!(f, "reborrow"),
             Self::Dealloc => write!(f, "deallocation"),
-            Self::FnExit => write!(f, "protector release"),
+            // This is dead code, since the protector release access itself can never
+            // cause UB (while the protector is active, if some other access invalidates
+            // further use of the protected tag, that is immediate UB).
+            // Describing the cause of UB is the only time this function is called.
+            Self::FnExit(_) => unreachable!("protector accesses can never be the source of UB"),
         }
     }
 }
@@ -40,7 +44,7 @@ impl AccessCause {
             Self::Explicit(kind) => format!("{rel} {kind}"),
             Self::Reborrow => format!("reborrow (acting as a {rel} read access)"),
             Self::Dealloc => format!("deallocation (acting as a {rel} write access)"),
-            Self::FnExit => format!("protector release (acting as a {rel} read access)"),
+            Self::FnExit(kind) => format!("protector release (acting as a {rel} {kind})"),
         }
     }
 }
