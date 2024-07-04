@@ -2527,7 +2527,7 @@ impl Cargo {
 
         if let Some(target_linker) = builder.linker(target) {
             let target = crate::envify(&target.triple);
-            self.command.env(&format!("CARGO_TARGET_{target}_LINKER"), target_linker);
+            self.command.env(format!("CARGO_TARGET_{target}_LINKER"), target_linker);
         }
         // We want to set -Clinker using Cargo, therefore we only call `linker_flags` and not
         // `linker_args` here.
