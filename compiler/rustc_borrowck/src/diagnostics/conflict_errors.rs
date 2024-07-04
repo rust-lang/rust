@@ -3757,13 +3757,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         assigned_span: Span,
         err_place: Place<'tcx>,
     ) {
-        let (from_arg, local_decl, local_name) = match err_place.as_local() {
-            Some(local) => (
-                self.body.local_kind(local) == LocalKind::Arg,
-                Some(&self.body.local_decls[local]),
-                self.local_names[local],
-            ),
-            None => (false, None, None),
+        let (from_arg, local_decl) = match err_place.as_local() {
+            Some(local) => {
+                (self.body.local_kind(local) == LocalKind::Arg, Some(&self.body.local_decls[local]))
+            }
+            None => (false, None),
         };
 
         // If root local is initialized immediately (everything apart from let
@@ -3795,13 +3793,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             err.span_label(assigned_span, format!("first assignment to {place_description}"));
         }
         if let Some(decl) = local_decl
-            && let Some(name) = local_name
             && decl.can_be_made_mutable()
         {
-            err.span_suggestion(
-                decl.source_info.span,
+            err.span_suggestion_verbose(
+                decl.source_info.span.shrink_to_lo(),
                 "consider making this binding mutable",
-                format!("mut {name}"),
+                "mut ".to_string(),
                 Applicability::MachineApplicable,
             );
             if !from_arg
@@ -3813,10 +3810,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     }))
                 )
             {
-                err.span_suggestion(
-                    decl.source_info.span,
+                err.span_suggestion_verbose(
+                    decl.source_info.span.shrink_to_lo(),
                     "to modify the original value, take a borrow instead",
-                    format!("ref mut {name}"),
+                    "ref mut ".to_string(),
                     Applicability::MaybeIncorrect,
                 );
             }

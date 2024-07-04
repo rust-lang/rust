@@ -13,12 +13,14 @@ error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/issue-61452.rs:9:5
    |
 LL | pub async fn g(x: usize) {
-   |                -
-   |                |
-   |                first assignment to `x`
-   |                help: consider making this binding mutable: `mut x`
+   |                - first assignment to `x`
 LL |     x += 1;
    |     ^^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL | pub async fn g(mut x: usize) {
+   |                +++
 
 error: aborting due to 2 previous errors
 

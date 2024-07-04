@@ -23,7 +23,7 @@ impl Cache {
 
         Cache {
             value: serde_json::from_str::<Value>(&content).expect("failed to convert from JSON"),
-            variables: HashMap::new(),
+            variables: HashMap::from([("FILE".to_owned(), config.template.clone().into())]),
         }
     }
 

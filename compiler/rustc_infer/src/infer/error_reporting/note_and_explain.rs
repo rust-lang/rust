@@ -52,10 +52,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         ) = tcx.sess.source_map().span_to_snippet(sp) =>
                     {
                         if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
-                            diag.span_suggestion(
-                                sp,
+                            diag.span_suggestion_verbose(
+                                sp.shrink_to_hi(),
                                 "use a float literal",
-                                format!("{snippet}.0"),
+                                ".0",
                                 MachineApplicable,
                             );
                         }
