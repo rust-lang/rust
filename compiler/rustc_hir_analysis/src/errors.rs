@@ -707,15 +707,6 @@ pub(crate) struct PassToVariadicFunction<'tcx, 'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_cast_thin_pointer_to_fat_pointer, code = E0607)]
-pub(crate) struct CastThinPointerToFatPointer<'tcx> {
-    #[primary_span]
-    pub span: Span,
-    pub expr_ty: Ty<'tcx>,
-    pub cast_ty: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_invalid_union_field, code = E0740)]
 pub(crate) struct InvalidUnionField {
     #[primary_span]

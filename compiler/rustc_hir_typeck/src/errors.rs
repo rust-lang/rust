@@ -689,3 +689,14 @@ pub struct ReplaceWithName {
     pub span: Span,
     pub name: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_cast_thin_pointer_to_fat_pointer, code = E0607)]
+pub(crate) struct CastThinPointerToFatPointer<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: String,
+    #[note(hir_typeck_teach_help)]
+    pub(crate) teach: Option<()>,
+}

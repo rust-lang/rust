@@ -55,8 +55,6 @@ hir_analysis_cannot_capture_late_bound_ty =
     cannot capture late-bound type parameter in {$what}
     .label = parameter defined here
 
-hir_analysis_cast_thin_pointer_to_fat_pointer = cannot cast thin pointer `{$expr_ty}` to fat pointer `{$cast_ty}`
-
 hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are forbidden when `for<...>` is present
     .label = `for<...>` is here
 
