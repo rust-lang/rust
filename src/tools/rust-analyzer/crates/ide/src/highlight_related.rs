@@ -306,6 +306,9 @@ pub(crate) fn highlight_exit_points(
                 _ => None,
             };
 
+            if let Some(range) = original_range(sema.db, file_id, text_range) {
+                highlights.push(HighlightedRange { category: ReferenceCategory::empty(), range })
+            }
         });
 
         // We should handle `return` separately because when it is used in `try` block
@@ -322,6 +325,10 @@ pub(crate) fn highlight_exit_points(
                     _ => None,
                 };
 
+                if let Some(range) = original_range(sema.db, file_id, text_range) {
+                    highlights
+                        .push(HighlightedRange { category: ReferenceCategory::empty(), range })
+                }
             });
 
         let tail = match body {
@@ -411,6 +418,10 @@ pub(crate) fn highlight_break_points(
                     token_lt.map(|it| it.syntax().text_range()),
                 );
 
+                if let Some(range) = original_range(sema.db, file_id, text_range) {
+                    highlights
+                        .push(HighlightedRange { category: ReferenceCategory::empty(), range })
+                }
             });
 
         Some(highlights)
@@ -483,6 +494,9 @@ pub(crate) fn highlight_yield_points(
             }
             .map(|it| it.text_range());
 
+            if let Some(range) = original_range(sema.db, file_id, token_range) {
+                highlights.push(HighlightedRange { category: ReferenceCategory::empty(), range });
+            }
         });
 
         Some(highlights)
@@ -520,6 +534,20 @@ fn find_defs(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> FxHashSe
         .filter_map(|token| IdentClass::classify_token(sema, &token))
         .flat_map(IdentClass::definitions_no_ops)
         .collect()
+}
+
+fn original_range(
+    db: &dyn db::ExpandDatabase,
+    file_id: HirFileId,
+    text_range: Option<TextRange>,
+) -> Option<TextRange> {
+    if text_range.is_none() || !file_id.is_macro() {
+        return text_range;
+    }
+
+    InFile::new(file_id, text_range.unwrap())
+        .original_node_file_range_opt(db)
+        .map(|(frange, _)| frange.range)
 }
 
 /// Preorder walk all the expression's child expressions.
@@ -989,6 +1017,7 @@ impl Never {
 }
 macro_rules! never {
     () => { never() }
+         // ^^^^^^^
 }
 fn never() -> ! { loop {} }
   fn foo() ->$0 u32 {
@@ -1814,5 +1843,109 @@ fn test() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn return_in_macros() {
+        check(
+            r#"
+macro_rules! N {
+    ($i:ident, $x:expr, $blk:expr) => {
+        for $i in 0..$x {
+            $blk
+        }
+    };
+}
+
+fn main() {
+    fn f() {
+ // ^^
+        N!(i, 5, {
+            println!("{}", i);
+            return$0;
+         // ^^^^^^
+        });
+
+        for i in 1..5 {
+            return;
+         // ^^^^^^
+        }
+       (|| {
+            return;
+        })();
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn return_in_closure() {
+        check(
+            r#"
+macro_rules! N {
+    ($i:ident, $x:expr, $blk:expr) => {
+        for $i in 0..$x {
+            $blk
+        }
+    };
+}
+
+fn main() {
+    fn f() {
+        N!(i, 5, {
+            println!("{}", i);
+            return;
+        });
+
+        for i in 1..5 {
+            return;
+        }
+       (|| {
+     // ^
+            return$0;
+         // ^^^^^^
+        })();
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn return_in_try() {
+        check(
+            r#"
+fn main() {
+    fn f() {
+ // ^^
+        try {
+            return$0;
+         // ^^^^^^
+        }
+
+        return;
+     // ^^^^^^
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn break_in_try() {
+        check(
+            r#"
+fn main() {
+    for i in 1..100 {
+ // ^^^
+        let x: Result<(), ()> = try {
+            break$0;
+         // ^^^^^
+        };
+    }
+}
+"#,
+        )
     }
 }
