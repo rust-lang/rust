@@ -32,7 +32,6 @@ use super::FnCtxt;
 
 use crate::errors;
 use crate::type_error_struct;
-use itertools::Itertools;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{codes::*, Applicability, Diag, ErrorGuaranteed};
 use rustc_hir::{self as hir, ExprKind, LangItem};
@@ -897,10 +896,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                     traits_len: added.len(),
                                     traits: added
                                         .into_iter()
-                                        .map(|trait_did| {
-                                            format!("`{}`", tcx.def_path_str(trait_did))
-                                        })
-                                        .join(", "),
+                                        .map(|trait_did| tcx.def_path_str(trait_did))
+                                        .collect(),
                                 },
                             )
                         }
