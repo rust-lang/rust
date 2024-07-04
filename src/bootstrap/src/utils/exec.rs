@@ -1,6 +1,7 @@
 use crate::Build;
 use build_helper::drop_bomb::DropBomb;
 use std::ffi::OsStr;
+use std::fmt::{Debug, Formatter};
 use std::path::Path;
 use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
 
@@ -54,7 +55,6 @@ impl OutputMode {
 ///
 /// [allow_failure]: BootstrapCommand::allow_failure
 /// [delay_failure]: BootstrapCommand::delay_failure
-#[derive(Debug)]
 pub struct BootstrapCommand {
     command: Command,
     pub failure_behavior: BehaviorOnFailure,
@@ -147,6 +147,7 @@ impl BootstrapCommand {
     }
 
     /// Run the command, returning its output.
+    #[track_caller]
     pub fn run(&mut self, builder: &Build) -> CommandOutput {
         builder.run(self)
     }
@@ -169,6 +170,17 @@ impl BootstrapCommand {
     /// Returns the source code location where this command was created.
     pub fn get_created_location(&self) -> std::panic::Location<'static> {
         self.drop_bomb.get_created_location()
+    }
+}
+
+impl Debug for BootstrapCommand {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.command)?;
+        write!(
+            f,
+            " (failure_mode={:?}, stdout_mode={:?}, stderr_mode={:?})",
+            self.failure_behavior, self.stdout, self.stderr
+        )
     }
 }
 
