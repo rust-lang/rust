@@ -1387,7 +1387,7 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 #[doc(hidden)]
 #[inline(always)]
 #[unstable(issue = "none", feature = "std_internals")]
-#[rustc_const_unstable(issue = "none", feature = "const_int_cannot_overflow")]
+#[rustc_const_stable(feature = "const_int_from_str", since = "CURRENT_RUSTC_VERSION")]
 pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {
     radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
 }
@@ -1411,7 +1411,6 @@ const fn from_str_radix_panic(radix: u32) {
     intrinsics::const_eval_select((radix,), from_str_radix_panic_ct, from_str_radix_panic_rt);
 }
 
-#[allow_internal_unstable(const_int_cannot_overflow)]
 macro_rules! from_str_radix {
     ($($int_ty:ty)+) => {$(
         impl $int_ty {
