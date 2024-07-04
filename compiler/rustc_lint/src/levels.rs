@@ -695,59 +695,20 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 let name = pprust::path_to_string(&meta_item.path);
                 let lint_result =
                     self.store.check_lint_name(&name, tool_name, self.registered_tools);
-                match &lint_result {
+
+                let (ids, name) = match lint_result {
                     CheckLintNameResult::Ok(ids) => {
-                        // This checks for instances where the user writes
-                        // `#[expect(unfulfilled_lint_expectations)]` in that case we want to avoid
-                        // overriding the lint level but instead add an expectation that can't be
-                        // fulfilled. The lint message will include an explanation, that the
-                        // `unfulfilled_lint_expectations` lint can't be expected.
-                        if let Level::Expect(expect_id) = level {
-                            // The `unfulfilled_lint_expectations` lint is not part of any lint
-                            // groups. Therefore. we only need to check the slice if it contains a
-                            // single lint.
-                            let is_unfulfilled_lint_expectations = match ids {
-                                [lint] => *lint == LintId::of(UNFULFILLED_LINT_EXPECTATIONS),
-                                _ => false,
-                            };
-                            self.provider.push_expectation(
-                                expect_id,
-                                LintExpectation::new(
-                                    reason,
-                                    sp,
-                                    is_unfulfilled_lint_expectations,
-                                    tool_name,
-                                ),
-                            );
-                        }
-                        let src = LintLevelSource::Node {
-                            name: meta_item
-                                .path
-                                .segments
-                                .last()
-                                .expect("empty lint name")
-                                .ident
-                                .name,
-                            span: sp,
-                            reason,
-                        };
-                        for &id in *ids {
-                            if self.check_gated_lint(id, attr.span, false) {
-                                self.insert_spec(id, (level, src));
-                            }
-                        }
+                        let name =
+                            meta_item.path.segments.last().expect("empty lint name").ident.name;
+                        (ids, name)
                     }
 
                     CheckLintNameResult::Tool(ids, new_lint_name) => {
-                        let src = match new_lint_name {
+                        let name = match new_lint_name {
                             None => {
                                 let complete_name =
                                     &format!("{}::{}", tool_ident.unwrap().name, name);
-                                LintLevelSource::Node {
-                                    name: Symbol::intern(complete_name),
-                                    span: sp,
-                                    reason,
-                                }
+                                Symbol::intern(complete_name)
                             }
                             Some(new_lint_name) => {
                                 self.emit_span_lint(
@@ -756,27 +717,13 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                     DeprecatedLintName {
                                         name,
                                         suggestion: sp,
-                                        replace: new_lint_name,
+                                        replace: &new_lint_name,
                                     },
                                 );
-                                LintLevelSource::Node {
-                                    name: Symbol::intern(new_lint_name),
-                                    span: sp,
-                                    reason,
-                                }
+                                Symbol::intern(&new_lint_name)
                             }
                         };
-                        for &id in *ids {
-                            if self.check_gated_lint(id, attr.span, false) {
-                                self.insert_spec(id, (level, src));
-                            }
-                        }
-                        if let Level::Expect(expect_id) = level {
-                            self.provider.push_expectation(
-                                expect_id,
-                                LintExpectation::new(reason, sp, false, tool_name),
-                            );
-                        }
+                        (ids, name)
                     }
 
                     CheckLintNameResult::MissingTool => {
@@ -784,9 +731,10 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         // exist in the tool or the code was not compiled with the tool and
                         // therefore the lint was never added to the `LintStore`. To detect
                         // this is the responsibility of the lint tool.
+                        continue;
                     }
 
-                    &CheckLintNameResult::NoTool => {
+                    CheckLintNameResult::NoTool => {
                         sess.dcx().emit_err(UnknownToolInScopedLint {
                             span: tool_ident.map(|ident| ident.span),
                             tool_name: tool_name.unwrap(),
@@ -796,57 +744,87 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         continue;
                     }
 
-                    _ if !self.lint_added_lints => {}
-
                     CheckLintNameResult::Renamed(ref replace) => {
-                        let suggestion =
-                            RenamedLintSuggestion::WithSpan { suggestion: sp, replace };
-                        let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
-                        let lint = RenamedLint { name: name.as_str(), suggestion };
-                        self.emit_span_lint(RENAMED_AND_REMOVED_LINTS, sp.into(), lint);
+                        if self.lint_added_lints {
+                            let suggestion =
+                                RenamedLintSuggestion::WithSpan { suggestion: sp, replace };
+                            let name =
+                                tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
+                            let lint = RenamedLint { name: name.as_str(), suggestion };
+                            self.emit_span_lint(RENAMED_AND_REMOVED_LINTS, sp.into(), lint);
+                        }
+
+                        // If this lint was renamed, apply the new lint instead of ignoring the
+                        // attribute. Ignore any errors or warnings that happen because the new
+                        // name is inaccurate.
+                        // NOTE: `new_name` already includes the tool name, so we don't
+                        // have to add it again.
+                        let CheckLintNameResult::Ok(ids) =
+                            self.store.check_lint_name(replace, None, self.registered_tools)
+                        else {
+                            panic!("renamed lint does not exist: {replace}");
+                        };
+
+                        (ids, Symbol::intern(&replace))
                     }
 
                     CheckLintNameResult::Removed(ref reason) => {
-                        let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
-                        let lint = RemovedLint { name: name.as_str(), reason };
-                        self.emit_span_lint(RENAMED_AND_REMOVED_LINTS, sp.into(), lint);
+                        if self.lint_added_lints {
+                            let name =
+                                tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
+                            let lint = RemovedLint { name: name.as_str(), reason };
+                            self.emit_span_lint(RENAMED_AND_REMOVED_LINTS, sp.into(), lint);
+                        }
+                        continue;
                     }
 
                     CheckLintNameResult::NoLint(suggestion) => {
-                        let name = tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
-                        let suggestion = suggestion.map(|(replace, from_rustc)| {
-                            UnknownLintSuggestion::WithSpan { suggestion: sp, replace, from_rustc }
-                        });
-                        let lint = UnknownLint { name, suggestion };
-                        self.emit_span_lint(UNKNOWN_LINTS, sp.into(), lint);
+                        if self.lint_added_lints {
+                            let name =
+                                tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
+                            let suggestion = suggestion.map(|(replace, from_rustc)| {
+                                UnknownLintSuggestion::WithSpan {
+                                    suggestion: sp,
+                                    replace,
+                                    from_rustc,
+                                }
+                            });
+                            let lint = UnknownLint { name, suggestion };
+                            self.emit_span_lint(UNKNOWN_LINTS, sp.into(), lint);
+                        }
+                        continue;
+                    }
+                };
+
+                let src = LintLevelSource::Node { name, span: sp, reason };
+                for &id in ids {
+                    if self.check_gated_lint(id, attr.span, false) {
+                        self.insert_spec(id, (level, src));
                     }
                 }
-                // If this lint was renamed, apply the new lint instead of ignoring the attribute.
-                // This happens outside of the match because the new lint should be applied even if
-                // we don't warn about the name change.
-                if let CheckLintNameResult::Renamed(new_name) = lint_result {
-                    // Ignore any errors or warnings that happen because the new name is inaccurate
-                    // NOTE: `new_name` already includes the tool name, so we don't have to add it
-                    // again.
-                    let CheckLintNameResult::Ok(ids) =
-                        self.store.check_lint_name(&new_name, None, self.registered_tools)
-                    else {
-                        panic!("renamed lint does not exist: {new_name}");
-                    };
 
-                    let src =
-                        LintLevelSource::Node { name: Symbol::intern(&new_name), span: sp, reason };
-                    for &id in ids {
-                        if self.check_gated_lint(id, attr.span, false) {
-                            self.insert_spec(id, (level, src));
-                        }
-                    }
-                    if let Level::Expect(expect_id) = level {
-                        self.provider.push_expectation(
-                            expect_id,
-                            LintExpectation::new(reason, sp, false, tool_name),
-                        );
-                    }
+                // This checks for instances where the user writes
+                // `#[expect(unfulfilled_lint_expectations)]` in that case we want to avoid
+                // overriding the lint level but instead add an expectation that can't be
+                // fulfilled. The lint message will include an explanation, that the
+                // `unfulfilled_lint_expectations` lint can't be expected.
+                if let Level::Expect(expect_id) = level {
+                    // The `unfulfilled_lint_expectations` lint is not part of any lint
+                    // groups. Therefore. we only need to check the slice if it contains a
+                    // single lint.
+                    let is_unfulfilled_lint_expectations = match ids {
+                        [lint] => *lint == LintId::of(UNFULFILLED_LINT_EXPECTATIONS),
+                        _ => false,
+                    };
+                    self.provider.push_expectation(
+                        expect_id,
+                        LintExpectation::new(
+                            reason,
+                            sp,
+                            is_unfulfilled_lint_expectations,
+                            tool_name,
+                        ),
+                    );
                 }
             }
         }
