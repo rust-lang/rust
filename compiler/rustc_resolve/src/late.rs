@@ -1221,6 +1221,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                         }
                     }
                 }
+                GenericArgs::ParenthesizedElided(_) => {}
             }
         }
     }

@@ -62,7 +62,7 @@ pub struct RegionTracker {
     /// The representative Region Variable Id for this SCC. We prefer
     /// placeholders over existentially quantified variables, otherwise
     ///  it's the one with the smallest Region Variable ID.
-    representative: RegionVid,
+    pub(crate) representative: RegionVid,
 
     /// Is the current representative a placeholder?
     representative_is_placeholder: bool,
@@ -97,7 +97,7 @@ impl scc::Annotation for RegionTracker {
 }
 
 impl RegionTracker {
-    fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
+    pub(crate) fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
         let (representative_is_placeholder, representative_is_existential) = match definition.origin
         {
             rustc_infer::infer::NllRegionVariableOrigin::FreeRegion => (false, false),
@@ -116,7 +116,9 @@ impl RegionTracker {
             representative_is_existential,
         }
     }
-    fn universe(self) -> UniverseIndex {
+
+    /// The smallest-indexed universe reachable from and/or in this SCC.
+    fn min_universe(self) -> UniverseIndex {
         self.min_reachable_universe
     }
 
@@ -132,8 +134,8 @@ impl RegionTracker {
 
     /// Returns `true` if during the annotated SCC reaches a placeholder
     /// with a universe larger than the smallest reachable one, `false` otherwise.
-    pub fn has_incompatible_universes(&self) -> bool {
-        self.universe().cannot_name(self.max_placeholder_universe_reached)
+    pub(crate) fn has_incompatible_universes(&self) -> bool {
+        self.min_universe().cannot_name(self.max_placeholder_universe_reached)
     }
 }
 
@@ -163,7 +165,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// The SCC computed from `constraints` and the constraint
     /// graph. We have an edge from SCC A to SCC B if `A: B`. Used to
     /// compute the values of each region.
-    constraint_sccs: Rc<ConstraintSccs>,
+    constraint_sccs: ConstraintSccs,
 
     /// Reverse of the SCC constraint graph --  i.e., an edge `A -> B` exists if
     /// `B: A`. This is used to compute the universal regions that are required
@@ -401,7 +403,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         universal_regions: Rc<UniversalRegions<'tcx>>,
         placeholder_indices: Rc<PlaceholderIndices>,
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-        outlives_constraints: OutlivesConstraintSet<'tcx>,
+        mut outlives_constraints: OutlivesConstraintSet<'tcx>,
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
         universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
         type_tests: Vec<TypeTest<'tcx>>,
@@ -419,17 +421,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|info| RegionDefinition::new(info.universe, info.origin))
             .collect();
 
-        let fr_static = universal_regions.fr_static;
+        let constraint_sccs =
+            outlives_constraints.add_outlives_static(&universal_regions, &definitions);
         let constraints = Frozen::freeze(outlives_constraints);
         let constraint_graph = Frozen::freeze(constraints.graph(definitions.len()));
-        let constraint_sccs = {
-            let constraint_graph = constraints.graph(definitions.len());
-            let region_graph = &constraint_graph.region_graph(&constraints, fr_static);
-            let sccs = ConstraintSccs::new_with_annotation(&region_graph, |r| {
-                RegionTracker::new(r, &definitions[r])
-            });
-            Rc::new(sccs)
-        };
 
         if cfg!(debug_assertions) {
             sccs_info(infcx, &constraint_sccs);
@@ -548,21 +543,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 NllRegionVariableOrigin::Placeholder(placeholder) => {
-                    // Each placeholder region is only visible from
-                    // its universe `ui` and its extensions. So we
-                    // can't just add it into `scc` unless the
-                    // universe of the scc can name this region.
-                    let scc_universe = self.scc_universe(scc);
-                    if scc_universe.can_name(placeholder.universe) {
-                        self.scc_values.add_element(scc, placeholder);
-                    } else {
-                        debug!(
-                            "init_free_and_bound_regions: placeholder {:?} is \
-                             not compatible with universe {:?} of its SCC {:?}",
-                            placeholder, scc_universe, scc,
-                        );
-                        self.add_incompatible_universe(scc);
-                    }
+                    self.scc_values.add_element(scc, placeholder);
                 }
 
                 NllRegionVariableOrigin::Existential { .. } => {
@@ -744,23 +725,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// (which is assured by iterating over SCCs in dependency order).
     #[instrument(skip(self), level = "debug")]
     fn compute_value_for_scc(&mut self, scc_a: ConstraintSccIndex) {
-        let constraint_sccs = self.constraint_sccs.clone();
-
         // Walk each SCC `B` such that `A: B`...
-        for &scc_b in constraint_sccs.successors(scc_a) {
+        for &scc_b in self.constraint_sccs.successors(scc_a) {
             debug!(?scc_b);
-
-            // ...and add elements from `B` into `A`. One complication
-            // arises because of universes: If `B` contains something
-            // that `A` cannot name, then `A` can only contain `B` if
-            // it outlives static.
-            if self.universe_compatible(scc_b, scc_a) {
-                // `A` can name everything that is in `B`, so just
-                // merge the bits.
-                self.scc_values.add_region(scc_a, scc_b);
-            } else {
-                self.add_incompatible_universe(scc_a);
-            }
+            self.scc_values.add_region(scc_a, scc_b);
         }
 
         // Now take member constraints into account.
@@ -814,7 +782,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // If the member region lives in a higher universe, we currently choose
         // the most conservative option by leaving it unchanged.
 
-        if !self.constraint_sccs().annotation(scc).universe().is_root() {
+        if !self.constraint_sccs().annotation(scc).min_universe().is_root() {
             return;
         }
 
@@ -886,35 +854,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// in `scc_a`. Used during constraint propagation, and only once
     /// the value of `scc_b` has been computed.
     fn universe_compatible(&self, scc_b: ConstraintSccIndex, scc_a: ConstraintSccIndex) -> bool {
-        let universe_a = self.constraint_sccs().annotation(scc_a).universe();
-        let universe_b = self.constraint_sccs().annotation(scc_b).universe();
+        let a_annotation = self.constraint_sccs().annotation(scc_a);
+        let b_annotation = self.constraint_sccs().annotation(scc_b);
+        let a_universe = a_annotation.min_universe();
 
-        // Quick check: if scc_b's declared universe is a subset of
+        // If scc_b's declared universe is a subset of
         // scc_a's declared universe (typically, both are ROOT), then
         // it cannot contain any problematic universe elements.
-        if universe_a.can_name(universe_b) {
+        if a_universe.can_name(b_annotation.min_universe()) {
             return true;
         }
 
-        // Otherwise, we have to iterate over the universe elements in
-        // B's value, and check whether all of them are nameable
-        // from universe_a
-        self.scc_values.placeholders_contained_in(scc_b).all(|p| universe_a.can_name(p.universe))
-    }
-
-    /// Extend `scc` so that it can outlive some placeholder region
-    /// from a universe it can't name; at present, the only way for
-    /// this to be true is if `scc` outlives `'static`. This is
-    /// actually stricter than necessary: ideally, we'd support bounds
-    /// like `for<'a: 'b>` that might then allow us to approximate
-    /// `'a` with `'b` and not `'static`. But it will have to do for
-    /// now.
-    fn add_incompatible_universe(&mut self, scc: ConstraintSccIndex) {
-        debug!("add_incompatible_universe(scc={:?})", scc);
-
-        let fr_static = self.universal_regions.fr_static;
-        self.scc_values.add_all_points(scc);
-        self.scc_values.add_element(scc, fr_static);
+        // Otherwise, there can be no placeholder in `b` with a too high
+        // universe index to name from `a`.
+        a_universe.can_name(b_annotation.max_placeholder_universe_reached)
     }
 
     /// Once regions have been propagated, this method is used to see
@@ -1022,7 +975,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             "lower_bound = {:?} r_scc={:?} universe={:?}",
             lower_bound,
             r_scc,
-            self.constraint_sccs.annotation(r_scc).universe()
+            self.constraint_sccs.annotation(r_scc).min_universe()
         );
 
         // If the type test requires that `T: 'a` where `'a` is a
@@ -1539,7 +1492,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// The minimum universe of any variable reachable from this
     /// SCC, inside or outside of it.
     fn scc_universe(&self, scc: ConstraintSccIndex) -> UniverseIndex {
-        self.constraint_sccs().annotation(scc).universe()
+        self.constraint_sccs().annotation(scc).min_universe()
     }
     /// Checks the final value for the free region `fr` to see if it
     /// grew too large. In particular, examine what `end(X)` points
@@ -1896,6 +1849,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // This loop can be hot.
             for constraint in outgoing_edges_from_graph {
+                if matches!(constraint.category, ConstraintCategory::IllegalUniverse) {
+                    debug!("Ignoring illegal universe constraint: {constraint:?}");
+                    continue;
+                }
                 handle_constraint(constraint);
             }
 

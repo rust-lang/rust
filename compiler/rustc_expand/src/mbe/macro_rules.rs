@@ -153,7 +153,7 @@ pub(super) trait Tracker<'matcher> {
     /// Arm failed to match. If the token is `token::Eof`, it indicates an unexpected
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
     /// The usize is the approximate position of the token in the input token stream.
-    fn build_failure(tok: Token, position: usize, msg: &'static str) -> Self::Failure;
+    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure;
 
     /// This is called before trying to match next MatcherLoc on the current token.
     fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
@@ -182,7 +182,7 @@ pub(super) struct NoopTracker;
 impl<'matcher> Tracker<'matcher> for NoopTracker {
     type Failure = ();
 
-    fn build_failure(_tok: Token, _position: usize, _msg: &'static str) -> Self::Failure {}
+    fn build_failure(_tok: Token, _position: u32, _msg: &'static str) -> Self::Failure {}
 
     fn description() -> &'static str {
         "none"

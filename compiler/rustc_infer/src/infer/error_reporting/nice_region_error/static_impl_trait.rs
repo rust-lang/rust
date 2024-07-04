@@ -534,7 +534,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let tcx = self.tcx();
 
         // Find the method being called.
-        let Ok(Some(instance)) = ty::Instance::resolve(
+        let Ok(Some(instance)) = ty::Instance::try_resolve(
             tcx,
             ctxt.param_env,
             ctxt.assoc_item.def_id,

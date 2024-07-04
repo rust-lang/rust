@@ -403,7 +403,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             //
             // Why only in unoptimized builds?
             // - In unoptimized builds LLVM uses FastISel which does not support switches, so it
-            //   must fall back to the to the slower SelectionDAG isel. Therefore, using `br` gives
+            //   must fall back to the slower SelectionDAG isel. Therefore, using `br` gives
             //   significant compile time speedups for unoptimized builds.
             // - In optimized builds the above doesn't hold, and using `br` sometimes results in
             //   worse generated code because LLVM can no longer tell that the value being switched
@@ -842,6 +842,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         ty::ParamEnv::reveal_all(),
                         def_id,
                         args,
+                        fn_span,
                     )
                     .polymorphize(bx.tcx()),
                 ),
@@ -1521,7 +1522,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //   when passed by value, making it smaller.
                 // - On some ABIs, the Rust layout { u16, u16, u16 } may be padded up to 8 bytes
                 //   when passed by value, making it larger.
-                let copy_bytes = cmp::min(scratch_size.bytes(), arg.layout.size.bytes());
+                let copy_bytes = cmp::min(cast.unaligned_size(bx).bytes(), arg.layout.size.bytes());
                 // Allocate some scratch space...
                 let llscratch = bx.alloca(scratch_size, scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);

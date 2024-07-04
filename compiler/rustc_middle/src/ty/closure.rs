@@ -237,7 +237,7 @@ impl<'tcx> TyCtxt<'tcx> {
 /// Eg: 1. `foo.x` which is represented using `projections=[Field(x)]` is an ancestor of
 ///        `foo.x.y` which is represented using `projections=[Field(x), Field(y)]`.
 ///        Note both `foo.x` and `foo.x.y` start off of the same root variable `foo`.
-///     2. Since we only look at the projections here function will return `bar.x` as an a valid
+///     2. Since we only look at the projections here function will return `bar.x` as a valid
 ///        ancestor of `foo.x.y`. It's the caller's responsibility to ensure that both projections
 ///        list are being applied to the same root variable.
 pub fn is_ancestor_or_same_capture(

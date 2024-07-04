@@ -66,7 +66,8 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             ConstraintCategory::Predicate(_)
             | ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
-            | ConstraintCategory::Internal => "",
+            | ConstraintCategory::Internal
+            | ConstraintCategory::IllegalUniverse => "",
         }
     }
 }
@@ -948,7 +949,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 return;
             }
 
-            if let Ok(Some(instance)) = ty::Instance::resolve(
+            if let Ok(Some(instance)) = ty::Instance::try_resolve(
                 tcx,
                 self.param_env,
                 *fn_did,

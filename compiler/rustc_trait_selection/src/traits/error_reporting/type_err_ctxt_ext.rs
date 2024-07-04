@@ -1296,7 +1296,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     expr = binding_expr;
                 }
                 if let hir::Node::Param(_param) = parent {
-                    // ...and it is a an fn argument.
+                    // ...and it is an fn argument.
                     break;
                 }
             }
@@ -1586,60 +1586,113 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         self.probe(|_| {
-            let ocx = ObligationCtxt::new(self);
-
             // try to find the mismatched types to report the error with.
             //
             // this can fail if the problem was higher-ranked, in which
             // cause I have no idea for a good error message.
             let bound_predicate = predicate.kind();
-            let (values, err) = if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) =
-                bound_predicate.skip_binder()
-            {
-                let data = self.instantiate_binder_with_fresh_vars(
-                    obligation.cause.span,
-                    infer::BoundRegionConversionTime::HigherRankedType,
-                    bound_predicate.rebind(data),
-                );
-                let unnormalized_term = data.projection_term.to_term(self.tcx);
-                // FIXME(-Znext-solver): For diagnostic purposes, it would be nice
-                // to deeply normalize this type.
-                let normalized_term =
-                    ocx.normalize(&obligation.cause, obligation.param_env, unnormalized_term);
+            let (values, err) = match bound_predicate.skip_binder() {
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
+                    let ocx = ObligationCtxt::new(self);
 
-                debug!(?obligation.cause, ?obligation.param_env);
+                    let data = self.instantiate_binder_with_fresh_vars(
+                        obligation.cause.span,
+                        infer::BoundRegionConversionTime::HigherRankedType,
+                        bound_predicate.rebind(data),
+                    );
+                    let unnormalized_term = data.projection_term.to_term(self.tcx);
+                    // FIXME(-Znext-solver): For diagnostic purposes, it would be nice
+                    // to deeply normalize this type.
+                    let normalized_term =
+                        ocx.normalize(&obligation.cause, obligation.param_env, unnormalized_term);
 
-                debug!(?normalized_term, data.ty = ?data.term);
+                    let is_normalized_term_expected = !matches!(
+                        obligation.cause.code().peel_derives(),
+                        ObligationCauseCode::WhereClause(..)
+                            | ObligationCauseCode::WhereClauseInExpr(..)
+                            | ObligationCauseCode::Coercion { .. }
+                    );
 
-                let is_normalized_term_expected = !matches!(
-                    obligation.cause.code().peel_derives(),
-                    |ObligationCauseCode::WhereClause(..)| ObligationCauseCode::WhereClauseInExpr(
-                        ..
-                    ) | ObligationCauseCode::Coercion { .. }
-                );
+                    let (expected, actual) = if is_normalized_term_expected {
+                        (normalized_term, data.term)
+                    } else {
+                        (data.term, normalized_term)
+                    };
 
-                let (expected, actual) = if is_normalized_term_expected {
-                    (normalized_term, data.term)
-                } else {
-                    (data.term, normalized_term)
-                };
+                    // constrain inference variables a bit more to nested obligations from normalize so
+                    // we can have more helpful errors.
+                    //
+                    // we intentionally drop errors from normalization here,
+                    // since the normalization is just done to improve the error message.
+                    let _ = ocx.select_where_possible();
 
-                // constrain inference variables a bit more to nested obligations from normalize so
-                // we can have more helpful errors.
-                //
-                // we intentionally drop errors from normalization here,
-                // since the normalization is just done to improve the error message.
-                let _ = ocx.select_where_possible();
-
-                if let Err(new_err) =
-                    ocx.eq(&obligation.cause, obligation.param_env, expected, actual)
-                {
-                    (Some((data, is_normalized_term_expected, normalized_term, data.term)), new_err)
-                } else {
-                    (None, error.err)
+                    if let Err(new_err) =
+                        ocx.eq(&obligation.cause, obligation.param_env, expected, actual)
+                    {
+                        (
+                            Some((
+                                data.projection_term,
+                                is_normalized_term_expected,
+                                self.resolve_vars_if_possible(normalized_term),
+                                data.term,
+                            )),
+                            new_err,
+                        )
+                    } else {
+                        (None, error.err)
+                    }
                 }
-            } else {
-                (None, error.err)
+                ty::PredicateKind::AliasRelate(lhs, rhs, _) => {
+                    let derive_better_type_error =
+                        |alias_term: ty::AliasTerm<'tcx>, expected_term: ty::Term<'tcx>| {
+                            let ocx = ObligationCtxt::new(self);
+                            let normalized_term = match expected_term.unpack() {
+                                ty::TermKind::Ty(_) => self.next_ty_var(DUMMY_SP).into(),
+                                ty::TermKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
+                            };
+                            ocx.register_obligation(Obligation::new(
+                                self.tcx,
+                                ObligationCause::dummy(),
+                                obligation.param_env,
+                                ty::PredicateKind::NormalizesTo(ty::NormalizesTo {
+                                    alias: alias_term,
+                                    term: normalized_term,
+                                }),
+                            ));
+                            let _ = ocx.select_where_possible();
+                            if let Err(terr) = ocx.eq(
+                                &ObligationCause::dummy(),
+                                obligation.param_env,
+                                expected_term,
+                                normalized_term,
+                            ) {
+                                Some((terr, self.resolve_vars_if_possible(normalized_term)))
+                            } else {
+                                None
+                            }
+                        };
+
+                    if let Some(lhs) = lhs.to_alias_term()
+                        && let Some((better_type_err, expected_term)) =
+                            derive_better_type_error(lhs, rhs)
+                    {
+                        (
+                            Some((lhs, true, self.resolve_vars_if_possible(expected_term), rhs)),
+                            better_type_err,
+                        )
+                    } else if let Some(rhs) = rhs.to_alias_term()
+                        && let Some((better_type_err, expected_term)) =
+                            derive_better_type_error(rhs, lhs)
+                    {
+                        (
+                            Some((rhs, true, self.resolve_vars_if_possible(expected_term), lhs)),
+                            better_type_err,
+                        )
+                    } else {
+                        (None, error.err)
+                    }
+                }
+                _ => (None, error.err),
             };
 
             let msg = values
@@ -1737,15 +1790,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn maybe_detailed_projection_msg(
         &self,
-        pred: ty::ProjectionPredicate<'tcx>,
+        projection_term: ty::AliasTerm<'tcx>,
         normalized_ty: ty::Term<'tcx>,
         expected_ty: ty::Term<'tcx>,
     ) -> Option<String> {
-        let trait_def_id = pred.projection_term.trait_def_id(self.tcx);
-        let self_ty = pred.projection_term.self_ty();
+        let trait_def_id = projection_term.trait_def_id(self.tcx);
+        let self_ty = projection_term.self_ty();
 
         with_forced_trimmed_paths! {
-            if self.tcx.is_lang_item(pred.projection_term.def_id,LangItem::FnOnceOutput) {
+            if self.tcx.is_lang_item(projection_term.def_id, LangItem::FnOnceOutput) {
                 let fn_kind = self_ty.prefix_string(self.tcx);
                 let item = match self_ty.kind() {
                     ty::FnDef(def, _) => self.tcx.item_name(*def).to_string(),

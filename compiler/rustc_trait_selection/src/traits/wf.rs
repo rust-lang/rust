@@ -437,12 +437,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
     /// Pushes the obligations required for an alias (except inherent) to be WF
     /// into `self.out`.
-    fn compute_alias_ty(&mut self, data: ty::AliasTy<'tcx>) {
-        self.compute_alias_term(data.into());
-    }
-
-    /// Pushes the obligations required for an alias (except inherent) to be WF
-    /// into `self.out`.
     fn compute_alias_term(&mut self, data: ty::AliasTerm<'tcx>) {
         // A projection is well-formed if
         //
@@ -498,7 +492,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             self.out.extend(obligations);
         }
 
-        self.compute_projection_args(data.args);
+        data.args.visit_with(self);
     }
 
     fn compute_projection_args(&mut self, args: GenericArgsRef<'tcx>) {
@@ -702,8 +696,8 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             }
 
             ty::Alias(ty::Projection | ty::Opaque | ty::Weak, data) => {
-                self.compute_alias_ty(data);
-                return; // Subtree handled by compute_projection.
+                let obligations = self.nominal_obligations(data.def_id, data.args);
+                self.out.extend(obligations);
             }
             ty::Alias(ty::Inherent, data) => {
                 self.compute_inherent_projection(data);

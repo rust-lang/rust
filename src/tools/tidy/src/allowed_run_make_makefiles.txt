@@ -23,7 +23,6 @@ run-make/dep-info-spaces/Makefile
 run-make/dep-info/Makefile
 run-make/dump-ice-to-disk/Makefile
 run-make/dump-mono-stats/Makefile
-run-make/dylib-chain/Makefile
 run-make/emit-path-unhashed/Makefile
 run-make/emit-shared-files/Makefile
 run-make/emit-to-stdout/Makefile
@@ -66,7 +65,6 @@ run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
 run-make/issue-37839/Makefile
 run-make/issue-40535/Makefile
-run-make/issue-47384/Makefile
 run-make/issue-47551/Makefile
 run-make/issue-69368/Makefile
 run-make/issue-83045/Makefile
@@ -98,7 +96,6 @@ run-make/metadata-dep-info/Makefile
 run-make/min-global-align/Makefile
 run-make/missing-crate-dependency/Makefile
 run-make/mixing-libs/Makefile
-run-make/msvc-opt-minsize/Makefile
 run-make/native-link-modifier-bundle/Makefile
 run-make/native-link-modifier-whole-archive/Makefile
 run-make/no-alloc-shim/Makefile
@@ -136,7 +133,6 @@ run-make/remap-path-prefix-dwarf/Makefile
 run-make/reproducible-build-2/Makefile
 run-make/reproducible-build/Makefile
 run-make/return-non-c-like-enum-from-c/Makefile
-run-make/rlib-chain/Makefile
 run-make/rlib-format-packed-bundled-libs-2/Makefile
 run-make/rlib-format-packed-bundled-libs-3/Makefile
 run-make/rlib-format-packed-bundled-libs/Makefile
@@ -166,7 +162,6 @@ run-make/target-cpu-native/Makefile
 run-make/target-specs/Makefile
 run-make/target-without-atomic-cas/Makefile
 run-make/test-benches/Makefile
-run-make/test-harness/Makefile
 run-make/thumb-none-cortex-m/Makefile
 run-make/thumb-none-qemu/Makefile
 run-make/track-path-dep-info/Makefile

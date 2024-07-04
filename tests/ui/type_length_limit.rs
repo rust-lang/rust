@@ -1,7 +1,6 @@
 //@ build-fail
-//@ error-pattern: reached the type-length limit while instantiating
 //@ compile-flags: -Copt-level=0
-//@ normalize-stderr-test: ".nll/" -> "/"
+//~^^ ERROR reached the type-length limit
 
 // Test that the type length limit can be changed.
 // The exact type depends on optimizations, so disable them.
@@ -31,4 +30,5 @@ pub struct G<T, K>(std::marker::PhantomData::<(T, K)>);
 
 fn main() {
     drop::<Option<A>>(None);
+    //~^ ERROR reached the type-length limit
 }

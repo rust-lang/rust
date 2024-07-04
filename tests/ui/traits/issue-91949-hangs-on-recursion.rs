@@ -1,9 +1,5 @@
 //@ build-fail
 //@ compile-flags: -Zinline-mir=no
-//@ error-pattern: overflow evaluating the requirement `<std::iter::Empty<()> as Iterator>::Item == ()`
-//@ error-pattern: function cannot return without recursing
-//@ normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
-//@ ignore-compare-mode-next-solver (hangs)
 
 // Regression test for #91949.
 // This hanged *forever* on 1.56, fixed by #90423.
@@ -22,10 +18,12 @@ impl<T, I: Iterator<Item = T>> Iterator for IteratorOfWrapped<T, I> {
 }
 
 fn recurse<T>(elements: T) -> Vec<char>
+//~^ WARN function cannot return without recursing
 where
     T: Iterator<Item = ()>,
 {
     recurse(IteratorOfWrapped(elements).map(|t| t.0))
+    //~^ ERROR reached the type-length limit
 }
 
 fn main() {

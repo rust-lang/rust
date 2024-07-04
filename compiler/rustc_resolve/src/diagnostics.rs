@@ -1987,10 +1987,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             candidates
                 .sort_by_cached_key(|c| (c.path.segments.len(), pprust::path_to_string(&c.path)));
             if let Some(candidate) = candidates.get(0) {
+                let path = {
+                    // remove the possible common prefix of the path
+                    let start_index = (0..failed_segment_idx)
+                        .find(|&i| path[i].ident != candidate.path.segments[i].ident)
+                        .unwrap_or_default();
+                    let segments = (start_index..=failed_segment_idx)
+                        .map(|s| candidate.path.segments[s].clone())
+                        .collect();
+                    Path { segments, span: Span::default(), tokens: None }
+                };
                 (
                     String::from("unresolved import"),
                     Some((
-                        vec![(ident.span, pprust::path_to_string(&candidate.path))],
+                        vec![(ident.span, pprust::path_to_string(&path))],
                         String::from("a similar path exists"),
                         Applicability::MaybeIncorrect,
                     )),
