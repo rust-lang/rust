@@ -4072,7 +4072,6 @@ name = "rustc_log"
 version = "0.0.0"
 dependencies = [
  "tracing",
- "tracing-core",
  "tracing-subscriber",
  "tracing-tree",
 ]
