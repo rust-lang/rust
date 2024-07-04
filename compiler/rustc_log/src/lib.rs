@@ -42,7 +42,7 @@ use std::env::{self, VarError};
 use std::fmt::{self, Display};
 use std::io::{self, IsTerminal};
 
-use tracing_core::{Event, Subscriber};
+use tracing::{Event, Subscriber};
 use tracing_subscriber::filter::{Directive, EnvFilter, LevelFilter};
 use tracing_subscriber::fmt::FmtContext;
 use tracing_subscriber::fmt::format::{self, FormatEvent, FormatFields};
