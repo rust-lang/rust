@@ -35,10 +35,46 @@ LL |     let _: &std::path::Path = std::path::Path::new("");
    |             ^^^^^^^^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:37:13
+   |
+LL |     let _ = ::core::clone::Clone::clone(&0i32);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:40:13
+   |
+LL |     let _ = <i32 as core::clone::Clone>::clone(&0i32);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: consider bringing this path into scope with the `use` keyword
   --> tests/ui-toml/absolute_paths/absolute_paths.rs:43:13
    |
 LL |     let _ = std::option::Option::None::<i32>;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:65:17
+   |
+LL |         impl<T: core::cmp::Eq> core::fmt::Display for X<T>
+   |                 ^^^^^^^^^^^^^
+
+error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:70:18
+   |
+LL |         where T: core::clone::Clone
+   |                  ^^^^^^^^^^^^^^^^^^
+
+error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:65:32
+   |
+LL |         impl<T: core::cmp::Eq> core::fmt::Display for X<T>
+   |                                ^^^^^^^^^^^^^^^^^^
+
+error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:116:5
+   |
+LL |     crate::m1::S
+   |     ^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
 
