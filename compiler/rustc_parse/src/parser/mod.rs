@@ -506,6 +506,7 @@ impl<'a> Parser<'a> {
             FatalError.raise();
         } else {
             self.expected_one_of_not_found(edible, inedible)
+                .map(|error_guaranteed| Recovered::Yes(error_guaranteed))
         }
     }
 

@@ -21,6 +21,11 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use thin_vec::{thin_vec, ThinVec};
 
+/// Signals whether parsing a type should allow `+`.
+///
+/// For example, let T be the type `impl Default + 'static`
+/// With `AllowPlus::Yes`, T will be parsed successfully
+/// With `AllowPlus::No`, parsing T will return a parse error
 #[derive(Copy, Clone, PartialEq)]
 pub(super) enum AllowPlus {
     Yes,
