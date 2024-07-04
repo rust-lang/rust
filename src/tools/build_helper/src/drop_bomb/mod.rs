@@ -15,7 +15,7 @@ mod tests;
 pub struct DropBomb {
     command: OsString,
     defused: bool,
-    armed_line: u32,
+    armed_location: panic::Location<'static>,
 }
 
 impl DropBomb {
@@ -27,7 +27,7 @@ impl DropBomb {
         DropBomb {
             command: command.as_ref().into(),
             defused: false,
-            armed_line: panic::Location::caller().line(),
+            armed_location: *panic::Location::caller(),
         }
     }
 
@@ -41,8 +41,8 @@ impl Drop for DropBomb {
     fn drop(&mut self) {
         if !self.defused && !std::thread::panicking() {
             panic!(
-                "command constructed but not executed at line {}: `{}`",
-                self.armed_line,
+                "command constructed but not executed at {}: `{}`",
+                self.armed_location,
                 self.command.to_string_lossy()
             )
         }
