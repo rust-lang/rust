@@ -338,13 +338,13 @@ fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
 /// When `clang-cl` is used with instrumentation, we need to add clang's runtime library resource
 /// directory to the linker flags, otherwise there will be linker errors about the profiler runtime
 /// missing. This function returns the path to that directory.
-pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
+pub fn get_clang_cl_resource_dir(builder: &Builder<'_>, clang_cl_path: &str) -> PathBuf {
     // Similar to how LLVM does it, to find clang's library runtime directory:
     // - we ask `clang-cl` to locate the `clang_rt.builtins` lib.
-    let mut builtins_locator = Command::new(clang_cl_path);
+    let mut builtins_locator = command(clang_cl_path);
     builtins_locator.args(["/clang:-print-libgcc-file-name", "/clang:--rtlib=compiler-rt"]);
 
-    let clang_rt_builtins = output(&mut builtins_locator);
+    let clang_rt_builtins = builtins_locator.capture_stdout().run(builder).stdout();
     let clang_rt_builtins = Path::new(clang_rt_builtins.trim());
     assert!(
         clang_rt_builtins.exists(),
