@@ -24,7 +24,7 @@ use rustc_span::{sym, Span, SpanDecoder, SpanEncoder, Symbol, DUMMY_SP};
 
 use crate::ast::AttrStyle;
 use crate::ast_traits::{HasAttrs, HasTokens};
-use crate::token::{self, Delimiter, InvisibleOrigin, Token, TokenKind};
+use crate::token::{self, Delimiter, Token, TokenKind};
 use crate::{AttrVec, Attribute};
 
 /// Part of a `TokenStream`.
@@ -452,48 +452,6 @@ impl TokenStream {
         let mut tts = vec![];
         attrs_and_tokens_to_token_trees(node.attrs(), tokens, &mut tts);
         TokenStream::new(tts)
-    }
-
-    fn flatten_token(token: &Token, spacing: Spacing) -> TokenTree {
-        match token.kind {
-            token::NtIdent(ident, is_raw) => {
-                TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span), spacing)
-            }
-            token::NtLifetime(ident, is_raw) => TokenTree::Delimited(
-                DelimSpan::from_single(token.span),
-                DelimSpacing::new(Spacing::JointHidden, spacing),
-                Delimiter::Invisible(InvisibleOrigin::FlattenToken),
-                TokenStream::token_alone(token::Lifetime(ident.name, is_raw), ident.span),
-            ),
-            _ => TokenTree::Token(*token, spacing),
-        }
-    }
-
-    fn flatten_token_tree(tree: &TokenTree) -> TokenTree {
-        match tree {
-            TokenTree::Token(token, spacing) => TokenStream::flatten_token(token, *spacing),
-            TokenTree::Delimited(span, spacing, delim, tts) => {
-                TokenTree::Delimited(*span, *spacing, *delim, tts.flattened())
-            }
-        }
-    }
-
-    #[must_use]
-    pub fn flattened(&self) -> TokenStream {
-        fn can_skip(stream: &TokenStream) -> bool {
-            stream.trees().all(|tree| match tree {
-                TokenTree::Token(token, _) => {
-                    !matches!(token.kind, token::NtIdent(..) | token::NtLifetime(..))
-                }
-                TokenTree::Delimited(.., inner) => can_skip(inner),
-            })
-        }
-
-        if can_skip(self) {
-            return self.clone();
-        }
-
-        self.trees().map(|tree| TokenStream::flatten_token_tree(tree)).collect()
     }
 
     // If `vec` is not empty, try to glue `tt` onto its last token. The return

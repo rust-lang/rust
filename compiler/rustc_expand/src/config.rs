@@ -214,12 +214,6 @@ impl<'a> StripUnconfigured<'a> {
                     Some(AttrTokenTree::Delimited(sp, spacing, delim, inner))
                 }
                 AttrTokenTree::Token(
-                    Token { kind: TokenKind::NtIdent(..) | TokenKind::NtLifetime(..), .. },
-                    _,
-                ) => {
-                    panic!("Nonterminal should have been flattened: {:?}", tree);
-                }
-                AttrTokenTree::Token(
                     Token { kind: TokenKind::OpenDelim(_) | TokenKind::CloseDelim(_), .. },
                     _,
                 ) => {
