@@ -2726,8 +2726,11 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
     // Runtime NOP
 }
 
-/// `ptr` must point to a vtable.
 /// The intrinsic will return the size stored in that vtable.
+///
+/// # Safety
+///
+/// `ptr` must point to a vtable.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
@@ -2736,8 +2739,11 @@ pub unsafe fn vtable_size(_ptr: *const ()) -> usize {
     unreachable!()
 }
 
-/// `ptr` must point to a vtable.
 /// The intrinsic will return the alignment stored in that vtable.
+///
+/// # Safety
+///
+/// `ptr` must point to a vtable.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
@@ -2821,6 +2827,10 @@ pub const fn variant_count<T>() -> usize {
 /// The size of the referenced value in bytes.
 ///
 /// The stabilized version of this intrinsic is [`crate::mem::size_of_val`].
+///
+/// # Safety
+///
+/// See [`crate::mem::size_of_val_raw`] for safety conditions.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
@@ -2834,6 +2844,10 @@ pub const unsafe fn size_of_val<T: ?Sized>(_ptr: *const T) -> usize {
 /// The required alignment of the referenced value.
 ///
 /// The stabilized version of this intrinsic is [`core::mem::align_of_val`].
+///
+/// # Safety
+///
+/// See [`crate::mem::align_of_val_raw`] for safety conditions.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
