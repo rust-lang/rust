@@ -108,7 +108,6 @@ run-make/output-type-permutations/Makefile
 run-make/panic-abort-eh_frame/Makefile
 run-make/pass-linker-flags-flavor/Makefile
 run-make/pass-linker-flags-from-dep/Makefile
-run-make/pass-linker-flags/Makefile
 run-make/pass-non-c-like-enum-to-c/Makefile
 run-make/pdb-buildinfo-cl-cmd/Makefile
 run-make/pgo-gen-lto/Makefile
