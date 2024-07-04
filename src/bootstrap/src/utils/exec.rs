@@ -160,10 +160,15 @@ impl BootstrapCommand {
         &mut self.command
     }
 
-    /// Mark the command as being executd, disarming the drop bomb.
+    /// Mark the command as being executed, disarming the drop bomb.
     /// If this method is not called before the command is dropped, its drop will panic.
     pub fn mark_as_executed(&mut self) {
         self.drop_bomb.defuse();
+    }
+
+    /// Returns the source code location where this command was created.
+    pub fn get_created_location(&self) -> std::panic::Location<'static> {
+        self.drop_bomb.get_created_location()
     }
 }
 
@@ -171,6 +176,7 @@ impl From<Command> for BootstrapCommand {
     #[track_caller]
     fn from(command: Command) -> Self {
         let program = command.get_program().to_owned();
+
         Self {
             command,
             failure_behavior: BehaviorOnFailure::Exit,

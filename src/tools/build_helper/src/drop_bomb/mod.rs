@@ -31,6 +31,10 @@ impl DropBomb {
         }
     }
 
+    pub fn get_created_location(&self) -> panic::Location<'static> {
+        self.armed_location
+    }
+
     /// Defuse the [`DropBomb`]. This will prevent the drop bomb from panicking when dropped.
     pub fn defuse(&mut self) {
         self.defused = true;

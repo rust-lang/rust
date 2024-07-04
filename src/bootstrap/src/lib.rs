@@ -937,13 +937,19 @@ impl Build {
 
     /// Execute a command and return its output.
     /// This method should be used for all command executions in bootstrap.
+    #[track_caller]
     fn run(&self, command: &mut BootstrapCommand) -> CommandOutput {
         command.mark_as_executed();
         if self.config.dry_run() && !command.run_always {
             return CommandOutput::default();
         }
 
-        self.verbose(|| println!("running: {command:?}"));
+        let created_at = command.get_created_location();
+        let executed_at = std::panic::Location::caller();
+
+        self.verbose(|| {
+            println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
+        });
 
         let stdout = command.stdout.stdio();
         command.as_command_mut().stdout(stdout);
@@ -962,8 +968,11 @@ impl Build {
             Ok(output) => {
                 writeln!(
                     message,
-                    "\n\nCommand {command:?} did not execute successfully.\
-            \nExpected success, got: {}",
+                    r#"
+Command {command:?} did not execute successfully.
+Expected success, got {}
+Created at: {created_at}
+Executed at: {executed_at}"#,
                     output.status,
                 )
                 .unwrap();
