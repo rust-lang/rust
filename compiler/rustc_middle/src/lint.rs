@@ -7,7 +7,7 @@ use rustc_hir::{HirId, ItemLocalId};
 use rustc_macros::HashStable;
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
-    FutureIncompatibilityReason, Level, Lint, LintId,
+    FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId,
 };
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -63,6 +63,7 @@ pub type LevelAndSource = (Level, LintLevelSource);
 /// by the attributes for *a single HirId*.
 #[derive(Default, Debug, HashStable)]
 pub struct ShallowLintLevelMap {
+    pub expectations: Vec<(LintExpectationId, LintExpectation)>,
     pub specs: SortedMap<ItemLocalId, FxIndexMap<LintId, LevelAndSource>>,
 }
 
