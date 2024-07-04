@@ -500,16 +500,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::SizedUnsizedCast => {
-                use rustc_hir_analysis::structured_errors::{SizedUnsizedCast, StructuredDiag};
-
-                SizedUnsizedCast {
-                    sess: fcx.tcx.sess,
+                fcx.dcx().emit_err(errors::CastThinPointerToFatPointer {
                     span: self.span,
                     expr_ty: self.expr_ty,
                     cast_ty: fcx.ty_to_string(self.cast_ty),
-                }
-                .diagnostic()
-                .emit();
+                    teach: fcx.tcx.sess.teach(E0607).then_some(()),
+                });
             }
             CastError::IntToFatCast(known_metadata) => {
                 let expr_if_nightly = fcx.tcx.sess.is_nightly_build().then_some(self.expr_span);
