@@ -4986,8 +4986,7 @@ declare_lint! {
     "detects `as` casts from pointers to `dyn Trait` to pointers to `dyn Trait + Auto`",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        // FIXME: actually write an issue with an explanation
-        reference: "issue #125289 <https://github.com/rust-lang/rust/issues/125289>",
+        reference: "issue #127323 <https://github.com/rust-lang/rust/issues/127323>",
     };
 }
 

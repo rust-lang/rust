@@ -5,7 +5,7 @@ LL |     x as _
    |     ^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #125289 <https://github.com/rust-lang/rust/issues/125289>
+   = note: for more information, see issue #127323 <https://github.com/rust-lang/rust/issues/127323>
    = note: `#[warn(ptr_cast_add_auto_to_object)]` on by default
 
 warning: adding auto traits `Sync`, `Send`, and `Unpin` to a trait object in a pointer cast may cause UB later on
@@ -15,7 +15,7 @@ LL |     x as _
    |     ^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #125289 <https://github.com/rust-lang/rust/issues/125289>
+   = note: for more information, see issue #127323 <https://github.com/rust-lang/rust/issues/127323>
 
 warning: 2 warnings emitted
 
@@ -27,7 +27,7 @@ LL |     x as _
    |     ^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #125289 <https://github.com/rust-lang/rust/issues/125289>
+   = note: for more information, see issue #127323 <https://github.com/rust-lang/rust/issues/127323>
    = note: `#[warn(ptr_cast_add_auto_to_object)]` on by default
 
 Future breakage diagnostic:
@@ -38,6 +38,6 @@ LL |     x as _
    |     ^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #125289 <https://github.com/rust-lang/rust/issues/125289>
+   = note: for more information, see issue #127323 <https://github.com/rust-lang/rust/issues/127323>
    = note: `#[warn(ptr_cast_add_auto_to_object)]` on by default
 
