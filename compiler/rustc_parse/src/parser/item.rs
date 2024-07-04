@@ -1753,11 +1753,18 @@ impl<'a> Parser<'a> {
                         fields.push(field);
                     }
                     Err(mut err) => {
-                        self.consume_block(Delimiter::Brace, ConsumeClosingDelim::No);
                         err.span_label(ident_span, format!("while parsing this {adt_ty}"));
                         let guar = err.emit();
                         recovered = Recovered::Yes(guar);
-                        break;
+                        if self.look_ahead(1, |next_token| next_token == &token::Comma) {
+                            self.bump();
+                            self.eat(&TokenKind::Comma);
+                        } else if self.prev_token.kind == token::Semi {
+                            // we already suggested `;` -> `,`, here we try to recover and continue parse next field
+                        } else {
+                            self.consume_block(Delimiter::Brace, ConsumeClosingDelim::No);
+                            break;
+                        }
                     }
                 }
             }
