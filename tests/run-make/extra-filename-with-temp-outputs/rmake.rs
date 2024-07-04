@@ -6,8 +6,6 @@
 // are named as expected.
 // See https://github.com/rust-lang/rust/pull/15686
 
-//FIXME(Oneirical): ignore-cross-compile
-
 use run_make_support::{
     bin_name, cwd, fs_wrapper, has_prefix, has_suffix, rustc, shallow_find_files,
 };
