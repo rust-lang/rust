@@ -217,6 +217,7 @@ impl Step for GenerateCopyright {
         let mut cmd = builder.tool_cmd(Tool::GenerateCopyright);
         cmd.env("LICENSE_METADATA", &license_metadata);
         cmd.env("DEST", &dest);
+        cmd.env("CARGO", &builder.initial_cargo);
         cmd.run(builder);
 
         dest
