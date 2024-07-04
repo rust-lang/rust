@@ -1,5 +1,6 @@
 // skip-filecheck
 //@ test-mir-pass: MatchBranchSimplification
+//@ compile-flags: -Zunsound-mir-opts
 
 // EMIT_MIR matches_u8.exhaustive_match.MatchBranchSimplification.diff
 // EMIT_MIR matches_u8.exhaustive_match_i8.MatchBranchSimplification.diff
