@@ -65,4 +65,20 @@ pub fn main() {
     let Foo(mut a) = &mut Foo(0);
     //~^ ERROR: binding cannot be both mutable and by-reference
     a = &mut 42;
+
+    fn generic<R: Ref>() -> R {
+        R::meow()
+    }
+
+    trait Ref: Sized {
+        fn meow() -> Self;
+    }
+
+    impl Ref for &'static mut [(); 0] {
+        fn meow() -> Self {
+            &mut []
+        }
+    }
+
+    let &_ = generic(); //~ERROR: the trait bound `&_: main::Ref` is not satisfied [E0277]
 }
