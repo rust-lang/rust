@@ -489,7 +489,6 @@ fn thin_lto(
                 //let path = module_buffer.0.to_str().expect("path");
                 //let my_path = PathBuf::from(path);
                 //let exists = my_path.exists();
-                //println!("Path: {:?}: {}", path, exists);
                 /*module.module_llvm.should_combine_object_files = true;
                 module
                 .module_llvm
@@ -626,11 +625,6 @@ pub unsafe fn optimize_thin_module(
             match *module {
                 SerializedModule::Local(ref module_buffer) => {
                     let path = module_buffer.0.to_str().expect("path");
-
-                    //let my_path = PathBuf::from(path);
-                    //let exists = my_path.exists();
-                    //println!("Path2: {:?}: {}", path, exists);
-
                     context.add_driver_option(path);
                     should_combine_object_files = true;
                     /*module.module_llvm.should_combine_object_files = true;
