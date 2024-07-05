@@ -22,6 +22,7 @@ struct Function {
     has_test: bool,
 }
 
+static BF16: Type = Type::BFloat16;
 static F32: Type = Type::PrimFloat(32);
 static F64: Type = Type::PrimFloat(64);
 static I8: Type = Type::PrimSigned(8);
@@ -65,6 +66,7 @@ enum Type {
     PrimFloat(u8),
     PrimSigned(u8),
     PrimUnsigned(u8),
+    BFloat16,
     MutPtr(&'static Type),
     ConstPtr(&'static Type),
     M128,
@@ -699,7 +701,8 @@ fn equate(
         (&Type::PrimSigned(32), "__int32" | "const int" | "int") => {}
         (&Type::PrimSigned(64), "__int64" | "long long") => {}
         (&Type::PrimUnsigned(8), "unsigned char") => {}
-        (&Type::PrimUnsigned(16), "unsigned short" | "__bfloat16") => {}
+        (&Type::PrimUnsigned(16), "unsigned short") => {}
+        (&Type::BFloat16, "__bfloat16") => {}
         (
             &Type::PrimUnsigned(32),
             "unsigned __int32" | "unsigned int" | "unsigned long" | "const unsigned int",
@@ -758,9 +761,10 @@ fn equate(
         (&Type::ConstPtr(&Type::PrimSigned(8)), "char const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(32)), "__int32 const*" | "int const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(64)), "__int64 const*") => {}
-        (&Type::ConstPtr(&Type::PrimUnsigned(16)), "unsigned short const*" | "__bf16 const*") => {}
+        (&Type::ConstPtr(&Type::PrimUnsigned(16)), "unsigned short const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(32)), "unsigned int const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(64)), "unsigned __int64 const*") => {}
+        (&Type::ConstPtr(&Type::BFloat16), "__bf16 const*") => {}
 
         (&Type::ConstPtr(&Type::M128), "__m128 const*") => {}
         (&Type::ConstPtr(&Type::M128BH), "__m128bh const*") => {}

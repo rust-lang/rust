@@ -197,6 +197,7 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "_MM_MANTISSA_SIGN_ENUM" => quote! { &MM_MANTISSA_SIGN_ENUM },
             "_MM_PERM_ENUM" => quote! { &MM_PERM_ENUM },
             "bool" => quote! { &BOOL },
+            "bf16" => quote! { &BF16 },
             "f32" => quote! { &F32 },
             "f64" => quote! { &F64 },
             "i16" => quote! { &I16 },

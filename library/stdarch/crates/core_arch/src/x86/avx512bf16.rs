@@ -486,9 +486,9 @@ pub unsafe fn _mm_maskz_cvtpbh_ps(k: __mmask8, a: __m128bh) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsbh_ss)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-pub unsafe fn _mm_cvtsbh_ss(a: u16) -> f32 {
-    f32::from_bits((a as u32) << 16)
+#[unstable(feature = "stdarch_x86_avx512_bf16", issue = "127356")]
+pub unsafe fn _mm_cvtsbh_ss(a: bf16) -> f32 {
+    f32::from_bits((a.to_bits() as u32) << 16)
 }
 
 /// Converts packed single-precision (32-bit) floating-point elements in a to packed BF16 (16-bit)
@@ -558,9 +558,10 @@ pub unsafe fn _mm_maskz_cvtneps_pbh(k: __mmask8, a: __m128) -> __m128bh {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtness_sbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-pub unsafe fn _mm_cvtness_sbh(a: f32) -> u16 {
-    simd_extract!(_mm_cvtneps_pbh(_mm_set_ss(a)), 0)
+#[unstable(feature = "stdarch_x86_avx512_bf16", issue = "127356")]
+pub unsafe fn _mm_cvtness_sbh(a: f32) -> bf16 {
+    let value: u16 = simd_extract!(_mm_cvtneps_pbh(_mm_set_ss(a)), 0);
+    bf16::from_bits(value)
 }
 
 #[cfg(test)]
@@ -1910,7 +1911,7 @@ mod tests {
 
     #[simd_test(enable = "avx512bf16")]
     unsafe fn test_mm_cvtsbh_ss() {
-        let r = _mm_cvtsbh_ss(BF16_ONE);
+        let r = _mm_cvtsbh_ss(bf16::from_bits(BF16_ONE));
         assert_eq!(r, 1.);
     }
 
@@ -1944,6 +1945,6 @@ mod tests {
     #[simd_test(enable = "avx512bf16,avx512vl")]
     unsafe fn test_mm_cvtness_sbh() {
         let r = _mm_cvtness_sbh(1.);
-        assert_eq!(r, BF16_ONE);
+        assert_eq!(r.to_bits(), BF16_ONE);
     }
 }

@@ -1,5 +1,5 @@
 use crate::arch::asm;
-use crate::core_arch::{simd::*, x86::*};
+use crate::core_arch::x86::*;
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
@@ -15,9 +15,9 @@ use stdarch_test::assert_instr;
     all(test, any(target_os = "linux", target_env = "msvc")),
     assert_instr(vbcstnebf162ps)
 )]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-pub unsafe fn _mm_bcstnebf16_ps(a: *const u16) -> __m128 {
-    transmute(bcstnebf162ps_128(a))
+#[unstable(feature = "stdarch_x86_avx512_bf16", issue = "127356")]
+pub unsafe fn _mm_bcstnebf16_ps(a: *const bf16) -> __m128 {
+    bcstnebf162ps_128(a)
 }
 
 /// Convert scalar BF16 (16-bit) floating point element stored at memory locations starting at location
@@ -31,9 +31,9 @@ pub unsafe fn _mm_bcstnebf16_ps(a: *const u16) -> __m128 {
     all(test, any(target_os = "linux", target_env = "msvc")),
     assert_instr(vbcstnebf162ps)
 )]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-pub unsafe fn _mm256_bcstnebf16_ps(a: *const u16) -> __m256 {
-    transmute(bcstnebf162ps_256(a))
+#[unstable(feature = "stdarch_x86_avx512_bf16", issue = "127356")]
+pub unsafe fn _mm256_bcstnebf16_ps(a: *const bf16) -> __m256 {
+    bcstnebf162ps_256(a)
 }
 
 /// Convert packed BF16 (16-bit) floating-point even-indexed elements stored at memory locations starting at
@@ -143,9 +143,9 @@ pub unsafe fn _mm256_cvtneps_avx_pbh(a: __m256) -> __m128bh {
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.vbcstnebf162ps128"]
-    fn bcstnebf162ps_128(a: *const u16) -> f32x4;
+    fn bcstnebf162ps_128(a: *const bf16) -> __m128;
     #[link_name = "llvm.x86.vbcstnebf162ps256"]
-    fn bcstnebf162ps_256(a: *const u16) -> f32x8;
+    fn bcstnebf162ps_256(a: *const bf16) -> __m256;
 
     #[link_name = "llvm.x86.vcvtneebf162ps128"]
     fn cvtneebf162ps_128(a: *const __m128bh) -> __m128;
@@ -177,7 +177,7 @@ mod tests {
 
     #[simd_test(enable = "avxneconvert")]
     unsafe fn test_mm_bcstnebf16_ps() {
-        let a = BF16_ONE;
+        let a = bf16::from_bits(BF16_ONE);
         let r = _mm_bcstnebf16_ps(addr_of!(a));
         let e = _mm_set_ps(1., 1., 1., 1.);
         assert_eq_m128(r, e);
@@ -185,7 +185,7 @@ mod tests {
 
     #[simd_test(enable = "avxneconvert")]
     unsafe fn test_mm256_bcstnebf16_ps() {
-        let a = BF16_ONE;
+        let a = bf16::from_bits(BF16_ONE);
         let r = _mm256_bcstnebf16_ps(addr_of!(a));
         let e = _mm256_set_ps(1., 1., 1., 1., 1., 1., 1., 1.);
         assert_eq_m256(r, e);

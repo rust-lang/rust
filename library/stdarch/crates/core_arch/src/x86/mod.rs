@@ -337,6 +337,31 @@ types! {
     );
 }
 
+/// The BFloat16 type used in AVX-512 intrinsics.
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug)]
+#[allow(non_camel_case_types)]
+#[unstable(feature = "stdarch_x86_avx512_bf16", issue = "127356")]
+pub struct bf16(u16);
+
+impl bf16 {
+    /// Raw transmutation from `u16`
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "stdarch_x86_avx512_bf16", issue = "127356")]
+    pub const fn from_bits(bits: u16) -> bf16 {
+        bf16(bits)
+    }
+
+    /// Raw transmutation to `u16`
+    #[inline]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[unstable(feature = "stdarch_x86_avx512_bf16", issue = "127356")]
+    pub const fn to_bits(self) -> u16 {
+        self.0
+    }
+}
+
 /// The `__mmask64` type used in AVX-512 intrinsics, a 64-bit integer
 #[allow(non_camel_case_types)]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
