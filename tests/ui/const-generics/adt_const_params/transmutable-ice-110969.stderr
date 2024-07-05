@@ -7,7 +7,7 @@ LL |         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME>,
 help: remove the unnecessary generic argument
    |
 LL -         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME>,
-LL +         Dst: BikeshedIntrinsicFrom<Src, Context, >,
+LL +         Dst: BikeshedIntrinsicFrom<Src, Context>,
    |
 
 error[E0308]: mismatched types

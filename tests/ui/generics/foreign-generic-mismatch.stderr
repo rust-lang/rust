@@ -30,7 +30,7 @@ LL | pub fn lt_arg<'a: 'a>() {}
 help: remove the lifetime argument
    |
 LL -     foreign_generic_mismatch::lt_arg::<'static, 'static>();
-LL +     foreign_generic_mismatch::lt_arg::<'static, >();
+LL +     foreign_generic_mismatch::lt_arg::<'static>();
    |
 
 error: aborting due to 2 previous errors

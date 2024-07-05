@@ -12,7 +12,7 @@ LL | struct Vec<T, A = Heap>(
 help: remove the unnecessary generic argument
    |
 LL -     let _: Vec<isize, Heap, bool>;
-LL +     let _: Vec<isize, Heap, >;
+LL +     let _: Vec<isize, Heap>;
    |
 
 error: aborting due to 1 previous error

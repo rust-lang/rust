@@ -127,7 +127,7 @@ LL | struct Struct<T: Trait<u32, String>> {
 help: remove the unnecessary generic argument
    |
 LL - impl<T: Trait<u32, Assoc=String>, U> YetAnotherTrait for Struct<T, U> {}
-LL + impl<T: Trait<u32, Assoc=String>, U> YetAnotherTrait for Struct<T, > {}
+LL + impl<T: Trait<u32, Assoc=String>, U> YetAnotherTrait for Struct<T> {}
    |
 
 error: aborting due to 9 previous errors

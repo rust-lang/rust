@@ -30,7 +30,7 @@ LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
 help: remove the lifetime argument
    |
 LL -     S.early::<'static, 'static, 'static>();
-LL +     S.early::<'static, 'static, >();
+LL +     S.early::<'static, 'static>();
    |
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
@@ -233,7 +233,7 @@ LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
 help: remove the lifetime argument
    |
 LL -     S::early::<'static, 'static, 'static>(S);
-LL +     S::early::<'static, 'static, >(S);
+LL +     S::early::<'static, 'static>(S);
    |
 
 error: aborting due to 18 previous errors

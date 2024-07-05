@@ -7,7 +7,7 @@ LL |     let _: Cell<&str, "a"> = Cell::new("");
 help: remove the unnecessary generic argument
    |
 LL -     let _: Cell<&str, "a"> = Cell::new("");
-LL +     let _: Cell<&str, > = Cell::new("");
+LL +     let _: Cell<&str> = Cell::new("");
    |
 
 error: aborting due to 1 previous error

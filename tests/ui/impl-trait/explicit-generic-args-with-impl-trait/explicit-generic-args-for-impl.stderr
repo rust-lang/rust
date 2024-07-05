@@ -13,7 +13,7 @@ LL | fn foo<T: ?Sized>(_f: impl AsRef<T>) {}
 help: remove the unnecessary generic argument
    |
 LL -     foo::<str, String>("".to_string());
-LL +     foo::<str, >("".to_string());
+LL +     foo::<str>("".to_string());
    |
 
 error: aborting due to 1 previous error

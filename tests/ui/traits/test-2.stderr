@@ -29,7 +29,7 @@ LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
 help: remove the unnecessary generic argument
    |
 LL -     10.blah::<i32, i32>();
-LL +     10.blah::<i32, >();
+LL +     10.blah::<i32>();
    |
 
 error[E0038]: the trait `bar` cannot be made into an object

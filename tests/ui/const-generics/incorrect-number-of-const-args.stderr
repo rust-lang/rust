@@ -30,7 +30,7 @@ LL | fn foo<const X: usize, const Y: usize>() -> usize {
 help: remove the unnecessary generic argument
    |
 LL -     foo::<0, 0, 0>();
-LL +     foo::<0, 0, >();
+LL +     foo::<0, 0>();
    |
 
 error: aborting due to 2 previous errors

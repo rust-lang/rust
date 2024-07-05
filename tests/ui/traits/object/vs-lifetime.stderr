@@ -18,7 +18,7 @@ LL | struct S<'a, T>(&'a u8, T);
 help: remove the lifetime argument
    |
 LL -     let _: S<'static, 'static>;
-LL +     let _: S<'static, >;
+LL +     let _: S<'static>;
    |
 
 error[E0107]: struct takes 1 generic argument but 0 generic arguments were supplied

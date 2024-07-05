@@ -12,7 +12,7 @@ LL | struct Foo<'a, T: 'a>(&'a T);
 help: remove the lifetime argument
    |
 LL -     Foo::<'static, 'static, ()>(&0);
-LL +     Foo::<'static, , ()>(&0);
+LL +     Foo::<'static, ()>(&0);
    |
 
 error[E0107]: struct takes 1 lifetime argument but 2 lifetime arguments were supplied
@@ -29,7 +29,7 @@ LL | struct Bar<'a>(&'a ());
 help: remove the lifetime argument
    |
 LL -     Bar::<'static, 'static, ()>(&());
-LL +     Bar::<'static, , ()>(&());
+LL +     Bar::<'static, ()>(&());
    |
 
 error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied

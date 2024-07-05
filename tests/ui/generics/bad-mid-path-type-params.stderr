@@ -12,7 +12,7 @@ LL |     fn new<U>(x: T, _: U) -> S<T> {
 help: remove the unnecessary generic argument
    |
 LL -     let _ = S::new::<isize,f64>(1, 1.0);
-LL +     let _ = S::new::<isize,>(1, 1.0);
+LL +     let _ = S::new::<isize>(1, 1.0);
    |
 
 error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supplied
@@ -46,7 +46,7 @@ LL |     fn new<U>(x: T, y: U) -> Self;
 help: remove the unnecessary generic argument
    |
 LL -     let _: S2 = Trait::new::<isize,f64>(1, 1.0);
-LL +     let _: S2 = Trait::new::<isize,>(1, 1.0);
+LL +     let _: S2 = Trait::new::<isize>(1, 1.0);
    |
 
 error[E0107]: trait takes 0 lifetime arguments but 1 lifetime argument was supplied
@@ -80,7 +80,7 @@ LL |     fn new<U>(x: T, y: U) -> Self;
 help: remove the unnecessary generic argument
    |
 LL -     let _: S2 = Trait::<'a,isize>::new::<f64,f64>(1, 1.0);
-LL +     let _: S2 = Trait::<'a,isize>::new::<f64,>(1, 1.0);
+LL +     let _: S2 = Trait::<'a,isize>::new::<f64>(1, 1.0);
    |
 
 error: aborting due to 5 previous errors

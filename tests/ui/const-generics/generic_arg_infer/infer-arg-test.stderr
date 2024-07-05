@@ -33,7 +33,7 @@ LL | struct All<'a, T, const N: usize> {
 help: remove the unnecessary generic argument
    |
 LL -   let a: All<_, _, _>;
-LL +   let a: All<_, _, >;
+LL +   let a: All<_, _>;
    |
 
 error: aborting due to 4 previous errors

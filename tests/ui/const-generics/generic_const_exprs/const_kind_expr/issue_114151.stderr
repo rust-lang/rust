@@ -12,7 +12,7 @@ LL | fn foo<const N: usize>(
 help: remove the unnecessary generic argument
    |
 LL -     foo::<_, L>([(); L + 1 + L]);
-LL +     foo::<_, >([(); L + 1 + L]);
+LL +     foo::<_>([(); L + 1 + L]);
    |
 
 error[E0308]: mismatched types

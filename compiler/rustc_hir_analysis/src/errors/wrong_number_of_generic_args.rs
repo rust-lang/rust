@@ -939,17 +939,20 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 }
             }
 
-            let span_lo_redundant_lt_args = lt_arg_spans[self.num_expected_lifetime_args()];
+            let span_lo_redundant_lt_args = if self.num_expected_lifetime_args() == 0 {
+                lt_arg_spans[0]
+            } else {
+                lt_arg_spans[self.num_expected_lifetime_args() - 1]
+            };
             let span_hi_redundant_lt_args = lt_arg_spans[lt_arg_spans.len() - 1];
 
-            let span_redundant_lt_args = span_lo_redundant_lt_args.to(span_hi_redundant_lt_args);
+            let span_redundant_lt_args =
+                span_lo_redundant_lt_args.shrink_to_hi().to(span_hi_redundant_lt_args);
             debug!("span_redundant_lt_args: {:?}", span_redundant_lt_args);
 
             let num_redundant_lt_args = lt_arg_spans.len() - self.num_expected_lifetime_args();
-            let msg_lifetimes = format!(
-                "remove the lifetime argument{s}",
-                s = pluralize!(num_redundant_lt_args),
-            );
+            let msg_lifetimes =
+                format!("remove the lifetime argument{s}", s = pluralize!(num_redundant_lt_args));
 
             err.span_suggestion_verbose(
                 span_redundant_lt_args,
@@ -978,11 +981,16 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             }
 
             let span_lo_redundant_type_or_const_args =
-                gen_arg_spans[self.num_expected_type_or_const_args()];
+                if self.num_expected_type_or_const_args() == 0 {
+                    gen_arg_spans[0]
+                } else {
+                    gen_arg_spans[self.num_expected_type_or_const_args() - 1]
+                };
             let span_hi_redundant_type_or_const_args = gen_arg_spans[gen_arg_spans.len() - 1];
+            let span_redundant_type_or_const_args = span_lo_redundant_type_or_const_args
+                .shrink_to_hi()
+                .to(span_hi_redundant_type_or_const_args);
 
-            let span_redundant_type_or_const_args =
-                span_lo_redundant_type_or_const_args.to(span_hi_redundant_type_or_const_args);
             debug!("span_redundant_type_or_const_args: {:?}", span_redundant_type_or_const_args);
 
             let num_redundant_gen_args =
