@@ -6,6 +6,9 @@ use crate::sys::common::alloc::{realloc_fallback, MIN_ALIGN};
 unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        if !alloc_isvalid_layout_size(layout) {
+            return ptr::null_mut();
+        }
         // jemalloc provides alignment less than MIN_ALIGN for small allocations.
         // So only rely on MIN_ALIGN if size >= align.
         // Also see <https://github.com/rust-lang/rust/issues/45955> and
@@ -31,6 +34,9 @@ unsafe impl GlobalAlloc for System {
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        if !alloc_isvalid_layout_size(layout) {
+            return ptr::null_mut();
+        }
         // See the comment above in `alloc` for why this check looks the way it does.
         if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
             libc::calloc(layout.size(), 1) as *mut u8
@@ -83,6 +89,37 @@ cfg_if::cfg_if! {
             let align = layout.align().max(crate::mem::size_of::<usize>());
             let ret = libc::posix_memalign(&mut out, align, layout.size());
             if ret != 0 { ptr::null_mut() } else { out as *mut u8 }
+        }
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(sanitize = "thread")] {
+        #[inline]
+        fn alloc_isvalid_layout_size(layout: Layout) -> bool {
+            // ThreadSanitizer crashes if the layout size reaches this value.
+            // ...
+            // let l = std::alloc::Layout::from_size_align(0x10000000000, std::mem::align_of::<usize>()).unwrap();
+            // let p = unsafe { std::alloc::alloc(l) };
+            // ...
+            // ==14213==ERROR: ThreadSanitizer: requested allocation size 0x10000000000 exceeds maximum supported size of 0x10000000000
+            // #0 malloc /rustc/llvm/src/llvm-project/compiler-rt/lib/tsan/rtl/tsan_interceptors_posix.cpp:666:5 (tt+0xeba0c) (BuildId: 88fd2e282c676bae)
+            // ..
+
+            // Note: is the value for all architectures until `max_allocation_size_mb` sanitizer
+            // option is set.
+            const MAX_LAYOUT_SIZE: usize = 1 << 40;
+
+            if layout.size() >= MAX_LAYOUT_SIZE {
+                false
+            } else {
+                true
+            }
+        }
+    } else {
+        #[inline]
+        fn alloc_isvalid_layout_size(_: Layout) -> bool {
+            true
         }
     }
 }
