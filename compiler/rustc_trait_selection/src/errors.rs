@@ -109,7 +109,7 @@ impl Subdiagnostic for AdjustSignatureBorrow {
         match self {
             AdjustSignatureBorrow::Borrow { to_borrow } => {
                 diag.arg("len", to_borrow.len());
-                diag.multipart_suggestion_verbose(
+                diag.multipart_suggestion(
                     fluent::trait_selection_adjust_signature_borrow,
                     to_borrow,
                     Applicability::MaybeIncorrect,
@@ -117,7 +117,7 @@ impl Subdiagnostic for AdjustSignatureBorrow {
             }
             AdjustSignatureBorrow::RemoveBorrow { remove_borrow } => {
                 diag.arg("len", remove_borrow.len());
-                diag.multipart_suggestion_verbose(
+                diag.multipart_suggestion(
                     fluent::trait_selection_adjust_signature_remove_borrow,
                     remove_borrow,
                     Applicability::MaybeIncorrect,

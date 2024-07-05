@@ -1,10 +1,7 @@
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:7:5
    |
-LL |       for n in x {
-   |       ^        - help: try: `x.into_iter().flatten()`
-   |  _____|
-   | |
+LL | /     for n in x {
 LL | |
 LL | |         if let Some(y) = n {
 LL | |             println!("{}", y);
@@ -21,14 +18,15 @@ LL | |         }
    | |_________^
    = note: `-D clippy::manual-flatten` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_flatten)]`
+help: try
+   |
+LL |     for n in x.into_iter().flatten() {
+   |              ~~~~~~~~~~~~~~~~~~~~~~~
 
 error: unnecessary `if let` since only the `Ok` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:16:5
    |
-LL |       for n in y.clone() {
-   |       ^        --------- help: try: `y.clone().into_iter().flatten()`
-   |  _____|
-   | |
+LL | /     for n in y.clone() {
 LL | |
 LL | |         if let Ok(n) = n {
 LL | |             println!("{}", n);
@@ -43,14 +41,15 @@ LL | /         if let Ok(n) = n {
 LL | |             println!("{}", n);
 LL | |         };
    | |_________^
+help: try
+   |
+LL |     for n in y.clone().into_iter().flatten() {
+   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: unnecessary `if let` since only the `Ok` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:24:5
    |
-LL |       for n in &y {
-   |       ^        -- help: try: `y.iter().flatten()`
-   |  _____|
-   | |
+LL | /     for n in &y {
 LL | |
 LL | |         if let Ok(n) = n {
 LL | |             println!("{}", n);
@@ -65,14 +64,15 @@ LL | /         if let Ok(n) = n {
 LL | |             println!("{}", n);
 LL | |         }
    | |_________^
+help: try
+   |
+LL |     for n in y.iter().flatten() {
+   |              ~~~~~~~~~~~~~~~~~~
 
 error: unnecessary `if let` since only the `Ok` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:33:5
    |
-LL |       for n in z {
-   |       ^        - help: try: `z.iter().flatten()`
-   |  _____|
-   | |
+LL | /     for n in z {
 LL | |
 LL | |         if let Ok(n) = n {
 LL | |             println!("{}", n);
@@ -87,14 +87,15 @@ LL | /         if let Ok(n) = n {
 LL | |             println!("{}", n);
 LL | |         }
    | |_________^
+help: try
+   |
+LL |     for n in z.iter().flatten() {
+   |              ~~~~~~~~~~~~~~~~~~
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:43:5
    |
-LL |       for n in z {
-   |       ^        - help: try: `z.flatten()`
-   |  _____|
-   | |
+LL | /     for n in z {
 LL | |
 LL | |         if let Some(m) = n {
 LL | |             println!("{}", m);
@@ -109,14 +110,15 @@ LL | /         if let Some(m) = n {
 LL | |             println!("{}", m);
 LL | |         }
    | |_________^
+help: try
+   |
+LL |     for n in z.flatten() {
+   |              ~~~~~~~~~~~
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:77:5
    |
-LL |       for n in &vec_of_ref {
-   |       ^        ----------- help: try: `vec_of_ref.iter().copied().flatten()`
-   |  _____|
-   | |
+LL | /     for n in &vec_of_ref {
 LL | |
 LL | |         if let Some(n) = n {
 LL | |             println!("{:?}", n);
@@ -131,14 +133,15 @@ LL | /         if let Some(n) = n {
 LL | |             println!("{:?}", n);
 LL | |         }
    | |_________^
+help: try
+   |
+LL |     for n in vec_of_ref.iter().copied().flatten() {
+   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:85:5
    |
-LL |       for n in vec_of_ref {
-   |       ^        ---------- help: try: `vec_of_ref.iter().copied().flatten()`
-   |  _____|
-   | |
+LL | /     for n in vec_of_ref {
 LL | |
 LL | |         if let Some(n) = n {
 LL | |             println!("{:?}", n);
@@ -153,14 +156,15 @@ LL | /         if let Some(n) = n {
 LL | |             println!("{:?}", n);
 LL | |         }
    | |_________^
+help: try
+   |
+LL |     for n in vec_of_ref.iter().copied().flatten() {
+   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:93:5
    |
-LL |       for n in slice_of_ref {
-   |       ^        ------------ help: try: `slice_of_ref.iter().copied().flatten()`
-   |  _____|
-   | |
+LL | /     for n in slice_of_ref {
 LL | |
 LL | |         if let Some(n) = n {
 LL | |             println!("{:?}", n);
@@ -175,6 +179,10 @@ LL | /         if let Some(n) = n {
 LL | |             println!("{:?}", n);
 LL | |         }
    | |_________^
+help: try
+   |
+LL |     for n in slice_of_ref.iter().copied().flatten() {
+   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:124:5

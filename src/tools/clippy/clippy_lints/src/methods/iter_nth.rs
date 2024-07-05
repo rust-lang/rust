@@ -31,7 +31,7 @@ pub(super) fn check<'tcx>(
         format!("called `.{iter_method}().nth()` on a {caller_type}"),
         |diag| {
             let get_method = if iter_method == "iter_mut" { "get_mut" } else { "get" };
-            diag.span_suggestion_verbose(
+            diag.span_suggestion(
                 iter_span.to(nth_span),
                 format!("`{get_method}` is equivalent but more concise"),
                 get_method,

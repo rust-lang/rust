@@ -4,10 +4,14 @@ error: implicitly performing saturating subtraction
 LL | /     if u_8 > 0 {
 LL | |         u_8 = u_8 - 1;
 LL | |     }
-   | |_____^ help: try: `u_8 = u_8.saturating_sub(1);`
+   | |_____^
    |
    = note: `-D clippy::implicit-saturating-sub` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::implicit_saturating_sub)]`
+help: try
+   |
+LL |     u_8 = u_8.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:34:13
@@ -15,7 +19,12 @@ error: implicitly performing saturating subtraction
 LL | /             if u_8 > 0 {
 LL | |                 u_8 -= 1;
 LL | |             }
-   | |_____________^ help: try: `u_8 = u_8.saturating_sub(1);`
+   | |_____________^
+   |
+help: try
+   |
+LL |             u_8 = u_8.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:48:5
@@ -23,7 +32,12 @@ error: implicitly performing saturating subtraction
 LL | /     if u_16 > 0 {
 LL | |         u_16 -= 1;
 LL | |     }
-   | |_____^ help: try: `u_16 = u_16.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     u_16 = u_16.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:58:5
@@ -31,7 +45,12 @@ error: implicitly performing saturating subtraction
 LL | /     if u_32 != 0 {
 LL | |         u_32 -= 1;
 LL | |     }
-   | |_____^ help: try: `u_32 = u_32.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     u_32 = u_32.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:79:5
@@ -39,7 +58,12 @@ error: implicitly performing saturating subtraction
 LL | /     if u_64 > 0 {
 LL | |         u_64 -= 1;
 LL | |     }
-   | |_____^ help: try: `u_64 = u_64.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     u_64 = u_64.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:84:5
@@ -47,7 +71,12 @@ error: implicitly performing saturating subtraction
 LL | /     if 0 < u_64 {
 LL | |         u_64 -= 1;
 LL | |     }
-   | |_____^ help: try: `u_64 = u_64.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     u_64 = u_64.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:89:5
@@ -55,7 +84,12 @@ error: implicitly performing saturating subtraction
 LL | /     if 0 != u_64 {
 LL | |         u_64 -= 1;
 LL | |     }
-   | |_____^ help: try: `u_64 = u_64.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     u_64 = u_64.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:110:5
@@ -63,7 +97,12 @@ error: implicitly performing saturating subtraction
 LL | /     if u_usize > 0 {
 LL | |         u_usize -= 1;
 LL | |     }
-   | |_____^ help: try: `u_usize = u_usize.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     u_usize = u_usize.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:122:5
@@ -71,7 +110,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i_8 > i8::MIN {
 LL | |         i_8 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_8 = i_8.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_8 = i_8.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:127:5
@@ -79,7 +123,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i_8 > i8::MIN {
 LL | |         i_8 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_8 = i_8.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_8 = i_8.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:132:5
@@ -87,7 +136,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i_8 != i8::MIN {
 LL | |         i_8 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_8 = i_8.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_8 = i_8.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:137:5
@@ -95,7 +149,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i_8 != i8::MIN {
 LL | |         i_8 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_8 = i_8.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_8 = i_8.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:147:5
@@ -103,7 +162,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i_16 > i16::MIN {
 LL | |         i_16 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_16 = i_16.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_16 = i_16.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:152:5
@@ -111,7 +175,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i_16 > i16::MIN {
 LL | |         i_16 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_16 = i_16.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_16 = i_16.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:157:5
@@ -119,7 +188,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i_16 != i16::MIN {
 LL | |         i_16 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_16 = i_16.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_16 = i_16.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:162:5
@@ -127,7 +201,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i_16 != i16::MIN {
 LL | |         i_16 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_16 = i_16.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_16 = i_16.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:172:5
@@ -135,7 +214,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i_32 > i32::MIN {
 LL | |         i_32 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_32 = i_32.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_32 = i_32.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:177:5
@@ -143,7 +227,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i_32 > i32::MIN {
 LL | |         i_32 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_32 = i_32.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_32 = i_32.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:182:5
@@ -151,7 +240,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i_32 != i32::MIN {
 LL | |         i_32 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_32 = i_32.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_32 = i_32.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:187:5
@@ -159,7 +253,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i_32 != i32::MIN {
 LL | |         i_32 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_32 = i_32.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_32 = i_32.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:197:5
@@ -167,7 +266,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i64::MIN < i_64 {
 LL | |         i_64 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_64 = i_64.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_64 = i_64.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:202:5
@@ -175,7 +279,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i64::MIN != i_64 {
 LL | |         i_64 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_64 = i_64.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_64 = i_64.saturating_sub(1);
+   |
 
 error: implicitly performing saturating subtraction
   --> tests/ui/implicit_saturating_sub.rs:207:5
@@ -183,7 +292,12 @@ error: implicitly performing saturating subtraction
 LL | /     if i64::MIN < i_64 {
 LL | |         i_64 -= 1;
 LL | |     }
-   | |_____^ help: try: `i_64 = i_64.saturating_sub(1);`
+   | |_____^
+   |
+help: try
+   |
+LL |     i_64 = i_64.saturating_sub(1);
+   |
 
 error: aborting due to 23 previous errors
 

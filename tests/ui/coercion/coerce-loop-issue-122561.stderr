@@ -2,15 +2,24 @@ warning: denote infinite loops with `loop { ... }`
   --> $DIR/coerce-loop-issue-122561.rs:48:5
    |
 LL |     while true {
-   |     ^^^^^^^^^^ help: use `loop`
+   |     ^^^^^^^^^^
    |
    = note: `#[warn(while_true)]` on by default
+help: use `loop`
+   |
+LL |     loop {
+   |     ~~~~
 
 warning: denote infinite loops with `loop { ... }`
   --> $DIR/coerce-loop-issue-122561.rs:72:5
    |
 LL |     while true {
-   |     ^^^^^^^^^^ help: use `loop`
+   |     ^^^^^^^^^^
+   |
+help: use `loop`
+   |
+LL |     loop {
+   |     ~~~~
 
 error[E0658]: `for` is not allowed in a `const`
   --> $DIR/coerce-loop-issue-122561.rs:41:24

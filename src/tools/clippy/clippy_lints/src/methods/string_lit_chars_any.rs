@@ -46,7 +46,7 @@ pub(super) fn check<'tcx>(
             expr.span,
             "usage of `.chars().any(...)` to check if a char matches any from a string literal",
             |diag| {
-                diag.span_suggestion_verbose(
+                diag.span_suggestion(
                     expr.span,
                     "use `matches!(...)` instead",
                     format!("matches!({scrutinee_snip}, {pat_snip})"),

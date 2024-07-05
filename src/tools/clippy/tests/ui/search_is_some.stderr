@@ -40,7 +40,12 @@ error: called `is_some()` after searching an `Iterator` with `find`
   --> tests/ui/search_is_some.rs:43:20
    |
 LL |     let _ = (0..1).find(some_closure).is_some();
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(some_closure)`
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using
+   |
+LL |     let _ = (0..1).any(some_closure);
+   |                    ~~~~~~~~~~~~~~~~~
 
 error: called `is_none()` after searching an `Iterator` with `find`
   --> tests/ui/search_is_some.rs:53:13
@@ -82,7 +87,12 @@ error: called `is_none()` after searching an `Iterator` with `find`
   --> tests/ui/search_is_some.rs:80:13
    |
 LL |     let _ = (0..1).find(some_closure).is_none();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!(0..1).any(some_closure)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using
+   |
+LL |     let _ = !(0..1).any(some_closure);
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 8 previous errors
 

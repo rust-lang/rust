@@ -7,7 +7,7 @@ use crate::fluent_generated as fluent;
 use rustc_errors::{
     codes::*, Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString,
     ElidedLifetimeInPathSubdiag, EmissionGuarantee, LintDiagnostic, MultiSpan, SubdiagMessageOp,
-    Subdiagnostic, SuggestionStyle,
+    Subdiagnostic,
 };
 use rustc_hir::{def::Namespace, def_id::DefId};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -61,7 +61,7 @@ pub enum ShadowedIntoIterDiagSub {
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_while_true)]
 pub struct BuiltinWhileTrue {
-    #[suggestion(style = "short", code = "{replace}", applicability = "machine-applicable")]
+    #[suggestion(code = "{replace}", applicability = "machine-applicable")]
     pub suggestion: Span,
     pub replace: String,
 }
@@ -184,7 +184,6 @@ pub struct BuiltinDeprecatedAttrUsed {
     pub name: String,
     #[suggestion(
         lint_builtin_deprecated_attr_default_suggestion,
-        style = "short",
         code = "",
         applicability = "machine-applicable"
     )]
@@ -214,7 +213,7 @@ pub enum BuiltinUnusedDocCommentSub {
 pub struct BuiltinNoMangleGeneric {
     // Use of `#[no_mangle]` suggests FFI intent; correct
     // fix may be to monomorphize source by hand
-    #[suggestion(style = "short", code = "", applicability = "maybe-incorrect")]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub suggestion: Span,
 }
 
@@ -352,7 +351,7 @@ pub enum BuiltinEllipsisInclusiveRangePatternsLint {
     },
     #[diag(lint_builtin_ellipsis_inclusive_range_patterns)]
     NonParenthesise {
-        #[suggestion(style = "short", code = "..=", applicability = "machine-applicable")]
+        #[suggestion(code = "..=", applicability = "machine-applicable")]
         suggestion: Span,
     },
 }
@@ -656,7 +655,6 @@ pub enum UseLetUnderscoreIgnoreSuggestion {
     Note,
     #[multipart_suggestion(
         lint_use_let_underscore_ignore_suggestion,
-        style = "verbose",
         applicability = "maybe-incorrect"
     )]
     Suggestion {
@@ -824,11 +822,10 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
     ) {
         match self {
             HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
-                diag.multipart_suggestion_with_style(
+                diag.multipart_suggestion(
                     fluent::lint_suggestion_remove,
                     spans.iter().map(|(_, span)| (*span, "".to_string())).collect(),
                     Applicability::MachineApplicable,
-                    SuggestionStyle::HideCodeAlways,
                 );
                 diag.multipart_suggestion(
                     fluent::lint_suggestion_escape,
@@ -872,7 +869,7 @@ pub struct MappingToUnit {
     pub argument_label: Span,
     #[label(lint_map_label)]
     pub map_label: Span,
-    #[suggestion(style = "verbose", code = "{replace}", applicability = "maybe-incorrect")]
+    #[suggestion(code = "{replace}", applicability = "maybe-incorrect")]
     pub suggestion: Span,
     pub replace: String,
 }
@@ -974,7 +971,7 @@ impl Subdiagnostic for NonBindingLetSub {
 
         if can_suggest_binding {
             let prefix = if self.is_assign_desugar { "let " } else { "" };
-            diag.span_suggestion_verbose(
+            diag.span_suggestion(
                 self.suggestion,
                 fluent::lint_non_binding_let_suggestion,
                 format!("{prefix}_unused"),
@@ -1694,11 +1691,7 @@ pub enum InvalidNanComparisons {
 
 #[derive(Subdiagnostic)]
 pub enum InvalidNanComparisonsSuggestion {
-    #[multipart_suggestion(
-        lint_suggestion,
-        style = "verbose",
-        applicability = "machine-applicable"
-    )]
+    #[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
     Spanful {
         #[suggestion_part(code = "!")]
         neg: Option<Span>,
@@ -1729,7 +1722,6 @@ pub enum AmbiguousWidePointerComparisons<'a> {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     lint_addr_metadata_suggestion,
-    style = "verbose",
     // FIXME(#53934): make machine-applicable again
     applicability = "maybe-incorrect"
 )]
@@ -1751,7 +1743,6 @@ pub struct AmbiguousWidePointerComparisonsAddrMetadataSuggestion<'a> {
 pub enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
     #[multipart_suggestion(
         lint_addr_suggestion,
-        style = "verbose",
         // FIXME(#53934): make machine-applicable again
         applicability = "maybe-incorrect"
     )]
@@ -1770,7 +1761,6 @@ pub enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
     },
     #[multipart_suggestion(
         lint_addr_suggestion,
-        style = "verbose",
         // FIXME(#53934): make machine-applicable again
         applicability = "maybe-incorrect"
     )]
@@ -1861,17 +1851,12 @@ pub struct UnusedOp<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum UnusedOpSuggestion {
-    #[suggestion(
-        lint_suggestion,
-        style = "verbose",
-        code = "let _ = ",
-        applicability = "maybe-incorrect"
-    )]
+    #[suggestion(lint_suggestion, code = "let _ = ", applicability = "maybe-incorrect")]
     NormalExpr {
         #[primary_span]
         span: Span,
     },
-    #[multipart_suggestion(lint_suggestion, style = "verbose", applicability = "maybe-incorrect")]
+    #[multipart_suggestion(lint_suggestion, applicability = "maybe-incorrect")]
     BlockTailExpr {
         #[suggestion_part(code = "let _ = ")]
         before_span: Span,
@@ -1922,17 +1907,12 @@ pub struct UnusedDef<'a, 'b> {
 #[derive(Subdiagnostic)]
 
 pub enum UnusedDefSuggestion {
-    #[suggestion(
-        lint_suggestion,
-        style = "verbose",
-        code = "let _ = ",
-        applicability = "maybe-incorrect"
-    )]
+    #[suggestion(lint_suggestion, code = "let _ = ", applicability = "maybe-incorrect")]
     NormalExpr {
         #[primary_span]
         span: Span,
     },
-    #[multipart_suggestion(lint_suggestion, style = "verbose", applicability = "maybe-incorrect")]
+    #[multipart_suggestion(lint_suggestion, applicability = "maybe-incorrect")]
     BlockTailExpr {
         #[suggestion_part(code = "let _ = ")]
         before_span: Span,
@@ -2328,7 +2308,7 @@ pub struct UnusedMacroUse;
 #[diag(lint_private_extern_crate_reexport, code = E0365)]
 pub struct PrivateExternCrateReexport {
     pub ident: Ident,
-    #[suggestion(code = "pub ", style = "verbose", applicability = "maybe-incorrect")]
+    #[suggestion(code = "pub ", applicability = "maybe-incorrect")]
     pub sugg: Span,
 }
 
@@ -2458,7 +2438,6 @@ pub struct UnknownDiagnosticAttribute {
 #[derive(Subdiagnostic)]
 #[suggestion(
     lint_unknown_diagnostic_attribute_typo_sugg,
-    style = "verbose",
     code = "{typo_name}",
     applicability = "machine-applicable"
 )]
@@ -2491,7 +2470,7 @@ pub struct UnicodeCharNoteSub {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable", style = "hidden")]
+#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
 pub struct UnicodeTextFlowSuggestion {
     #[suggestion_part(code = "")]
     pub spans: Vec<Span>,
@@ -2785,7 +2764,7 @@ pub struct NamedArgumentUsedPositionally {
     pub named_arg_sp: Span,
     #[label(lint_label_position_arg)]
     pub position_label_sp: Option<Span>,
-    #[suggestion(style = "verbose", code = "{name}", applicability = "maybe-incorrect")]
+    #[suggestion(code = "{name}", applicability = "maybe-incorrect")]
     pub suggestion: Option<Span>,
 
     pub name: String,
@@ -2810,7 +2789,7 @@ pub struct UnusedExternCrate {
 #[derive(LintDiagnostic)]
 #[diag(lint_extern_crate_not_idiomatic)]
 pub struct ExternCrateNotIdiomatic {
-    #[suggestion(style = "verbose", code = "{code}", applicability = "machine-applicable")]
+    #[suggestion(code = "{code}", applicability = "machine-applicable")]
     pub span: Span,
 
     pub code: &'static str,
@@ -2857,14 +2836,14 @@ pub struct HiddenGlobReexports {
 #[derive(LintDiagnostic)]
 #[diag(lint_unnecessary_qualification)]
 pub struct UnusedQualifications {
-    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable")]
     pub removal_span: Span,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(lint_associated_const_elided_lifetime)]
 pub struct AssociatedConstElidedLifetime {
-    #[suggestion(style = "verbose", code = "{code}", applicability = "machine-applicable")]
+    #[suggestion(code = "{code}", applicability = "machine-applicable")]
     pub span: Span,
 
     pub code: &'static str,

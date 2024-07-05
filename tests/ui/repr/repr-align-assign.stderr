@@ -2,29 +2,47 @@ error[E0693]: incorrect `repr(align)` attribute format
   --> $DIR/repr-align-assign.rs:5:8
    |
 LL | #[repr(align=8)]
-   |        ^^^^^^^ help: use parentheses instead: `align(8)`
+   |        ^^^^^^^
+   |
+help: use parentheses instead
+   |
+LL | #[repr(align(8))]
+   |        ~~~~~~~~
 
 error[E0693]: incorrect `repr(align)` attribute format
   --> $DIR/repr-align-assign.rs:9:8
    |
 LL | #[repr(align="8")]
-   |        ^^^^^^^^^ help: use parentheses instead: `align(8)`
+   |        ^^^^^^^^^
+   |
+help: use parentheses instead
+   |
+LL | #[repr(align(8))]
+   |        ~~~~~~~~
 
 error[E0693]: incorrect `repr(align)` attribute format
   --> $DIR/repr-align-assign.rs:5:8
    |
 LL | #[repr(align=8)]
-   |        ^^^^^^^ help: use parentheses instead: `align(8)`
+   |        ^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: use parentheses instead
+   |
+LL | #[repr(align(8))]
+   |        ~~~~~~~~
 
 error[E0693]: incorrect `repr(align)` attribute format
   --> $DIR/repr-align-assign.rs:9:8
    |
 LL | #[repr(align="8")]
-   |        ^^^^^^^^^ help: use parentheses instead: `align(8)`
+   |        ^^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: use parentheses instead
+   |
+LL | #[repr(align(8))]
+   |        ~~~~~~~~
 
 error: aborting due to 4 previous errors
 

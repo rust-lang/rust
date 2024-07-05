@@ -71,73 +71,105 @@ warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (du
   --> $DIR/into-iter-on-arrays-lint.rs:24:21
    |
 LL |     Box::new(small).into_iter();
-   |                     ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |                     ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL |     Box::new(small).iter();
+   |                     ~~~~
 
 warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<[T; N] as IntoIterator>::into_iter` in Rust 2021
   --> $DIR/into-iter-on-arrays-lint.rs:27:22
    |
 LL |     Box::new([1, 2]).into_iter();
-   |                      ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |                      ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL |     Box::new([1, 2]).iter();
+   |                      ~~~~
 
 warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<[T; N] as IntoIterator>::into_iter` in Rust 2021
   --> $DIR/into-iter-on-arrays-lint.rs:30:19
    |
 LL |     Box::new(big).into_iter();
-   |                   ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |                   ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL |     Box::new(big).iter();
+   |                   ~~~~
 
 warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<[T; N] as IntoIterator>::into_iter` in Rust 2021
   --> $DIR/into-iter-on-arrays-lint.rs:33:25
    |
 LL |     Box::new([0u8; 33]).into_iter();
-   |                         ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |                         ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL |     Box::new([0u8; 33]).iter();
+   |                         ~~~~
 
 warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<[T; N] as IntoIterator>::into_iter` in Rust 2021
   --> $DIR/into-iter-on-arrays-lint.rs:37:31
    |
 LL |     Box::new(Box::new(small)).into_iter();
-   |                               ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |                               ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL |     Box::new(Box::new(small)).iter();
+   |                               ~~~~
 
 warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<[T; N] as IntoIterator>::into_iter` in Rust 2021
   --> $DIR/into-iter-on-arrays-lint.rs:40:32
    |
 LL |     Box::new(Box::new([1, 2])).into_iter();
-   |                                ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |                                ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL |     Box::new(Box::new([1, 2])).iter();
+   |                                ~~~~
 
 warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<[T; N] as IntoIterator>::into_iter` in Rust 2021
   --> $DIR/into-iter-on-arrays-lint.rs:43:29
    |
 LL |     Box::new(Box::new(big)).into_iter();
-   |                             ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |                             ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL |     Box::new(Box::new(big)).iter();
+   |                             ~~~~
 
 warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<[T; N] as IntoIterator>::into_iter` in Rust 2021
   --> $DIR/into-iter-on-arrays-lint.rs:46:35
    |
 LL |     Box::new(Box::new([0u8; 33])).into_iter();
-   |                                   ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |                                   ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL |     Box::new(Box::new([0u8; 33])).iter();
+   |                                   ~~~~
 
 warning: 12 warnings emitted
 

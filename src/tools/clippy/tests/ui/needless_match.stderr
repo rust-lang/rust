@@ -8,10 +8,14 @@ LL | |         1 => 1,
 LL | |         2 => 2,
 LL | |         _ => i,
 LL | |     };
-   | |_____^ help: replace it with: `i`
+   | |_____^
    |
    = note: `-D clippy::needless-match` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_match)]`
+help: replace it with
+   |
+LL |     let _: i32 = i;
+   |                  ~
 
 error: this match expression is unnecessary
   --> tests/ui/needless_match.rs:22:19
@@ -22,7 +26,12 @@ LL | |         "a" => "a",
 LL | |         "b" => "b",
 LL | |         s => s,
 LL | |     };
-   | |_____^ help: replace it with: `s`
+   | |_____^
+   |
+help: replace it with
+   |
+LL |     let _: &str = s;
+   |                   ~
 
 error: this match expression is unnecessary
   --> tests/ui/needless_match.rs:31:21
@@ -34,7 +43,12 @@ LL | |         Simple::B => Simple::B,
 LL | |         Simple::C => Simple::C,
 LL | |         Simple::D => Simple::D,
 LL | |     };
-   | |_____^ help: replace it with: `se`
+   | |_____^
+   |
+help: replace it with
+   |
+LL |     let _: Simple = se;
+   |                     ~~
 
 error: this match expression is unnecessary
   --> tests/ui/needless_match.rs:53:26
@@ -44,7 +58,12 @@ LL |       let _: Option<i32> = match x {
 LL | |         Some(a) => Some(a),
 LL | |         None => None,
 LL | |     };
-   | |_____^ help: replace it with: `x`
+   | |_____^
+   |
+help: replace it with
+   |
+LL |     let _: Option<i32> = x;
+   |                          ~
 
 error: this match expression is unnecessary
   --> tests/ui/needless_match.rs:69:31
@@ -54,7 +73,12 @@ LL |       let _: Result<i32, i32> = match Ok(1) {
 LL | |         Ok(a) => Ok(a),
 LL | |         Err(err) => Err(err),
 LL | |     };
-   | |_____^ help: replace it with: `Ok(1)`
+   | |_____^
+   |
+help: replace it with
+   |
+LL |     let _: Result<i32, i32> = Ok(1);
+   |                               ~~~~~
 
 error: this match expression is unnecessary
   --> tests/ui/needless_match.rs:73:31
@@ -64,25 +88,45 @@ LL |       let _: Result<i32, i32> = match func_ret_err(0_i32) {
 LL | |         Err(err) => Err(err),
 LL | |         Ok(a) => Ok(a),
 LL | |     };
-   | |_____^ help: replace it with: `func_ret_err(0_i32)`
+   | |_____^
+   |
+help: replace it with
+   |
+LL |     let _: Result<i32, i32> = func_ret_err(0_i32);
+   |                               ~~~~~~~~~~~~~~~~~~~
 
 error: this if-let expression is unnecessary
   --> tests/ui/needless_match.rs:86:13
    |
 LL |     let _ = if let Some(a) = Some(1) { Some(a) } else { None };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `Some(1)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with
+   |
+LL |     let _ = Some(1);
+   |             ~~~~~~~
 
 error: this if-let expression is unnecessary
   --> tests/ui/needless_match.rs:121:31
    |
 LL |     let _: Result<i32, i32> = if let Err(e) = x { Err(e) } else { x };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with
+   |
+LL |     let _: Result<i32, i32> = x;
+   |                               ~
 
 error: this if-let expression is unnecessary
   --> tests/ui/needless_match.rs:122:31
    |
 LL |     let _: Result<i32, i32> = if let Ok(val) = x { Ok(val) } else { x };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with
+   |
+LL |     let _: Result<i32, i32> = x;
+   |                               ~
 
 error: this if-let expression is unnecessary
   --> tests/ui/needless_match.rs:129:21
@@ -95,7 +139,12 @@ LL | |         Simple::B
 ...  |
 LL | |         x
 LL | |     };
-   | |_____^ help: replace it with: `x`
+   | |_____^
+   |
+help: replace it with
+   |
+LL |     let _: Simple = x;
+   |                     ~
 
 error: this match expression is unnecessary
   --> tests/ui/needless_match.rs:168:26
@@ -108,7 +157,12 @@ LL | |             Complex::C(a, b, c) => Complex::C(a, b, c),
 LL | |             Complex::D(E::VariantA(ea, eb), b) => Complex::D(E::VariantA(ea, eb), b),
 LL | |             Complex::D(E::VariantB(ea, eb), b) => Complex::D(E::VariantB(ea, eb), b),
 LL | |         };
-   | |_________^ help: replace it with: `ce`
+   | |_________^
+   |
+help: replace it with
+   |
+LL |         let _: Complex = ce;
+   |                          ~~
 
 error: this match expression is unnecessary
   --> tests/ui/needless_match.rs:252:17
@@ -118,7 +172,12 @@ LL |           let _ = match e {
 LL | |             _ if some_bool => e,
 LL | |             _ => e,
 LL | |         };
-   | |_________^ help: replace it with: `e`
+   | |_________^
+   |
+help: replace it with
+   |
+LL |         let _ = e;
+   |                 ~
 
 error: this match expression is unnecessary
   --> tests/ui/needless_match.rs:258:17
@@ -129,7 +188,12 @@ LL | |             Some(i) => Some(i),
 LL | |             _ if some_bool => e,
 LL | |             _ => e,
 LL | |         };
-   | |_________^ help: replace it with: `e`
+   | |_________^
+   |
+help: replace it with
+   |
+LL |         let _ = e;
+   |                 ~
 
 error: aborting due to 13 previous errors
 

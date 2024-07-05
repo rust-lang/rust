@@ -23,7 +23,12 @@ error: unused variable: `a`
   --> $DIR/issue-117284-arg-in-macro.rs:16:9
    |
 LL |     let a = 1;
-   |         ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |         ^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |     let _a = 1;
+   |         ~~
 
 error: aborting due to 2 previous errors
 

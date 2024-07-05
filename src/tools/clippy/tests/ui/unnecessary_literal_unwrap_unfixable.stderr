@@ -100,13 +100,23 @@ error: used `unwrap_or_default()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:32:21
    |
 LL |     let _val3: u8 = None.unwrap_or_default();
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the `None` and `unwrap_or_default()`: `Default::default()`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap_or_default()`
+   |
+LL |     let _val3: u8 = Default::default();
+   |                     ~~~~~~~~~~~~~~~~~~
 
 error: used `unwrap_or_default()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:34:5
    |
 LL |     None::<()>.unwrap_or_default();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the `None` and `unwrap_or_default()`: `Default::default()`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap_or_default()`
+   |
+LL |     Default::default();
+   |     ~~~~~~~~~~~~~~~~~~
 
 error: used `unwrap()` on `Ok` value
   --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:40:17

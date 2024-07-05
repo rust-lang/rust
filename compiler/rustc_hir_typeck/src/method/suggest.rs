@@ -375,7 +375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             && let hir::TyKind::Ref(_, mut_ty) = &ty.kind
                             && let hir::Mutability::Not = mut_ty.mutbl
                         {
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 mut_ty.ty.span.shrink_to_lo(),
                                 msg,
                                 "mut ",
@@ -908,7 +908,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if item_name.name == sym::count && self.is_slice_ty(rcvr_ty, span) {
             let msg = "consider using `len` instead";
             if let SelfSource::MethodCall(_expr) = source {
-                err.span_suggestion_short(span, msg, "len", Applicability::MachineApplicable);
+                err.span_suggestion(span, msg, "len", Applicability::MachineApplicable);
             } else {
                 err.span_label(span, msg);
             }
@@ -921,7 +921,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if self.impl_into_iterator_should_be_iterator(rcvr_ty, span, unsatisfied_predicates)
         {
             err.span_label(span, format!("`{rcvr_ty}` is not an iterator"));
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 "call `.into_iter()` first",
                 vec![(span.shrink_to_lo(), format!("into_iter()."))],
                 Applicability::MaybeIncorrect,
@@ -1157,7 +1157,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     Some(sp) => (sp.shrink_to_hi(), " ?Sized +"),
                                     None => (param.span.shrink_to_hi(), ": ?Sized"),
                                 };
-                                err.span_suggestion_verbose(
+                                err.span_suggestion(
                                     sp,
                                     "consider relaxing the type parameter's implicit `Sized` bound",
                                     sugg,
@@ -1299,7 +1299,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     restrict_type_params = true;
                     // #74886: Sort here so that the output is always the same.
                     let obligations = obligations.into_sorted_stable_ord();
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span,
                         format!(
                             "consider restricting the type parameter{s} to satisfy the trait \
@@ -1425,7 +1425,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => false,
                 };
                 if is_string_or_ref_str && item_name.name == sym::iter {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         item_name.span,
                         "because of the in-memory representation of `&str`, to obtain \
                          an `Iterator` over each of its codepoint use method `chars`",
@@ -1746,7 +1746,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     // We found a method with the same number of arguments as the method
                     // call expression the user wrote.
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span,
                         msg,
                         similar_candidate.name,
@@ -1768,7 +1768,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 // We have fn call expression and the argument count match the associated
                 // function we found.
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     span,
                     msg,
                     similar_candidate.name,
@@ -1781,12 +1781,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && args.unwrap_or(&[]).is_empty()
         {
             // We have an associated item syntax and we found something that isn't an fn.
-            err.span_suggestion_verbose(
-                span,
-                msg,
-                similar_candidate.name,
-                Applicability::MaybeIncorrect,
-            );
+            err.span_suggestion(span, msg, similar_candidate.name, Applicability::MaybeIncorrect);
         } else {
             // The expression is a function or method call, but the item we found is an
             // associated const or type.
@@ -1833,7 +1828,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .all(|(expected, found)| self.can_coerce(*expected, *found))
                             && fn_sig.inputs()[1..].len() == args.len()
                         {
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 item_name.span,
                                 format!("you might have meant to use `{}`", inherent_method.name),
                                 inherent_method.name,
@@ -2542,7 +2537,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     if probe.is_ok() {
                         let sm = self.infcx.tcx.sess.source_map();
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             sm.span_extend_while(seg1.ident.span.shrink_to_hi(), |c| c == ':')
                                 .unwrap(),
                             "you may have meant to call an instance method",
@@ -2710,7 +2705,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 return;
                             };
                         if question {
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 expr.span.shrink_to_hi(),
                                 format!(
                                     "use the `?` operator to extract the `{self_ty}` value, propagating \
@@ -2720,7 +2715,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Applicability::MachineApplicable,
                             );
                         } else {
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 expr.span.shrink_to_hi(),
                                 format!(
                                     "consider using `{kind}::expect` to unwrap the `{self_ty}` value, \
@@ -2779,7 +2774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         None => return,
                     };
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         expr.span.shrink_to_hi(),
                         format!(
                             "use `{suggestion}` to {borrow_kind} the `{ty}`, \
@@ -2789,7 +2784,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MaybeIncorrect,
                     );
                 } else if tcx.is_diagnostic_item(sym::Mutex, inner_id) {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         expr.span.shrink_to_hi(),
                         format!(
                             "use `.lock().unwrap()` to borrow the `{ty}`, \
@@ -2804,7 +2799,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some(Mutability::Mut) => (".write().unwrap()", "mutably borrow"),
                         None => return,
                     };
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         expr.span.shrink_to_hi(),
                         format!(
                             "use `{suggestion}` to {borrow_kind} the `{ty}`, \
@@ -3066,7 +3061,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         for (self_name, self_span, traits) in &derives_grouped {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 self_span.shrink_to_lo(),
                 format!("consider annotating `{self_name}` with `#[derive({traits})]`"),
                 format!("#[derive({traits})]\n"),
@@ -3131,7 +3126,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         _ => format!("<{deref_ty}>"),
                     };
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         ty.span,
                         format!("the function `{item_name}` is implemented on `{deref_ty}`"),
                         suggested_path,
@@ -3173,7 +3168,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.method_exists_for_diagnostic(item_name, output_ty, call.hir_id, return_type);
         debug!("suggest_await_before_method: is_method_exist={}", method_exists);
         if method_exists {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 span.shrink_to_lo(),
                 "consider `await`ing on the `Future` and calling the method on its `Output`",
                 "await.",
@@ -3979,7 +3974,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let fn_args = fn_sig.skip_binder().skip_binder().inputs()
                 && fn_args.len() == args.len() + 1
             {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     method_name.span.shrink_to_hi(),
                     format!("try calling `{}` instead", new_name.name.as_str()),
                     "_else",
@@ -4092,7 +4087,7 @@ fn print_disambiguation_help<'tcx>(
             .join(", ");
 
             let args = format!("({}{})", rcvr_ref, args);
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 span,
                 format!(
                     "disambiguate the {def_kind_descr} for {}",

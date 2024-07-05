@@ -937,7 +937,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             hir::AssocItemConstraintKind::Bound { bounds: _ } => {}
                         }
                     } else {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             span.with_hi(assoc_name.span.lo()),
                             "use fully-qualified syntax to disambiguate",
                             format!("<{ty_param_name} as {}>::", bound.print_only_trait_path()),

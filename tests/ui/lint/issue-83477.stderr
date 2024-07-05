@@ -2,15 +2,24 @@ warning: unknown lint: `rustc::foo::bar::default_hash_types`
   --> $DIR/issue-83477.rs:5:9
    |
 LL | #[allow(rustc::foo::bar::default_hash_types)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `rustc::default_hash_types`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(unknown_lints)]` on by default
+help: did you mean
+   |
+LL | #[allow(rustc::default_hash_types)]
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 warning: unknown lint: `rustc::foo::default_hash_types`
   --> $DIR/issue-83477.rs:9:9
    |
 LL | #[allow(rustc::foo::default_hash_types)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `rustc::default_hash_types`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: did you mean
+   |
+LL | #[allow(rustc::default_hash_types)]
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 warning: prefer `FxHashMap` over `HashMap`, it has better performance
   --> $DIR/issue-83477.rs:14:13

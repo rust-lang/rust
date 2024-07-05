@@ -878,7 +878,7 @@ impl<'a> Parser<'a> {
                                     pprust::token_to_string(&self.prev_token)
                                 );
                                 expect_err
-                                    .with_span_suggestion_verbose(
+                                    .with_span_suggestion(
                                         self.prev_token.span.shrink_to_hi().until(self.token.span),
                                         msg,
                                         " @ ",
@@ -895,7 +895,7 @@ impl<'a> Parser<'a> {
                                     // Parsed successfully, therefore most probably the code only
                                     // misses a separator.
                                     expect_err
-                                        .with_span_suggestion_short(
+                                        .with_span_suggestion(
                                             sp,
                                             format!("missing `{token_str}`"),
                                             token_str,

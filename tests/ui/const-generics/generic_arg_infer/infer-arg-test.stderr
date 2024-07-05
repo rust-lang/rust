@@ -23,15 +23,18 @@ error[E0107]: struct takes 2 generic arguments but 3 generic arguments were supp
   --> $DIR/infer-arg-test.rs:18:10
    |
 LL |   let a: All<_, _, _>;
-   |          ^^^       - help: remove this generic argument
-   |          |
-   |          expected 2 generic arguments
+   |          ^^^ expected 2 generic arguments
    |
 note: struct defined here, with 2 generic parameters: `T`, `N`
   --> $DIR/infer-arg-test.rs:3:8
    |
 LL | struct All<'a, T, const N: usize> {
    |        ^^^     -  --------------
+help: remove this generic argument
+   |
+LL -   let a: All<_, _, _>;
+LL +   let a: All<_, _, >;
+   |
 
 error: aborting due to 4 previous errors
 

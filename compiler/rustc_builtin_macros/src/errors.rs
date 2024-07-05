@@ -49,7 +49,7 @@ pub(crate) struct AssertRequiresExpression {
 pub(crate) struct AssertMissingComma {
     #[primary_span]
     pub(crate) span: Span,
-    #[suggestion(code = ", ", applicability = "maybe-incorrect", style = "short")]
+    #[suggestion(code = ", ", applicability = "maybe-incorrect")]
     pub(crate) comma: Span,
 }
 
@@ -401,7 +401,7 @@ pub(crate) struct MultipleDefaultAttrsSugg {
 #[diag(builtin_macros_default_arg)]
 pub(crate) struct DefaultHasArg {
     #[primary_span]
-    #[suggestion(code = "#[default]", style = "hidden", applicability = "maybe-incorrect")]
+    #[suggestion(code = "#[default]", applicability = "maybe-incorrect")]
     pub(crate) span: Span,
 }
 
@@ -536,7 +536,6 @@ pub(crate) struct InvalidFormatStringLabel {
 pub(crate) enum InvalidFormatStringSuggestion {
     #[multipart_suggestion(
         builtin_macros_format_use_positional,
-        style = "verbose",
         applicability = "machine-applicable"
     )]
     UsePositional {

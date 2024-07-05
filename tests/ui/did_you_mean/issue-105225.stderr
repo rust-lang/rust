@@ -2,37 +2,52 @@ error: redundant argument
   --> $DIR/issue-105225.rs:7:21
    |
 LL |     println!("{x}", x);
-   |                     ^ help: this can be removed
+   |                     ^
    |
 note: the formatting specifier is referencing the binding already
   --> $DIR/issue-105225.rs:7:16
    |
 LL |     println!("{x}", x);
    |                ^
+help: this can be removed
+   |
+LL -     println!("{x}", x);
+LL +     println!("{x}", );
+   |
 
 error: redundant argument
   --> $DIR/issue-105225.rs:10:27
    |
 LL |     println!("{x} {}", x, x);
-   |                           ^ help: this can be removed
+   |                           ^
    |
 note: the formatting specifier is referencing the binding already
   --> $DIR/issue-105225.rs:10:16
    |
 LL |     println!("{x} {}", x, x);
    |                ^
+help: this can be removed
+   |
+LL -     println!("{x} {}", x, x);
+LL +     println!("{x} {}", x, );
+   |
 
 error: redundant argument
   --> $DIR/issue-105225.rs:13:27
    |
 LL |     println!("{} {x}", x, x);
-   |                           ^ help: this can be removed
+   |                           ^
    |
 note: the formatting specifier is referencing the binding already
   --> $DIR/issue-105225.rs:13:19
    |
 LL |     println!("{} {x}", x, x);
    |                   ^
+help: this can be removed
+   |
+LL -     println!("{} {x}", x, x);
+LL +     println!("{} {x}", x, );
+   |
 
 error: redundant arguments
   --> $DIR/issue-105225.rs:16:25

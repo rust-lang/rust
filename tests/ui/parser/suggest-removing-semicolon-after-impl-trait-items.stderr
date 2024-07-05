@@ -4,12 +4,15 @@ error: non-item in item list
 LL | trait Foo {
    |           - item list starts here
 LL |     fn bar() {};
-   |                ^
-   |                |
-   |                non-item starts here
-   |                help: consider removing this semicolon
+   |                ^ non-item starts here
 LL | }
    | - item list ends here
+   |
+help: consider removing this semicolon
+   |
+LL -     fn bar() {};
+LL +     fn bar() {}
+   |
 
 error: aborting due to 1 previous error
 

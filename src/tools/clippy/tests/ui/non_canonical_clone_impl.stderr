@@ -5,10 +5,14 @@ LL |       fn clone(&self) -> Self {
    |  _____________________________^
 LL | |         Self(self.0)
 LL | |     }
-   | |_____^ help: change this to: `{ *self }`
+   | |_____^
    |
    = note: `-D clippy::non-canonical-clone-impl` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::non_canonical_clone_impl)]`
+help: change this to
+   |
+LL |     fn clone(&self) -> Self { *self }
+   |                             ~~~~~~~~~
 
 error: unnecessary implementation of `clone_from` on a `Copy` type
   --> tests/ui/non_canonical_clone_impl.rs:18:5
@@ -17,7 +21,15 @@ LL | /     fn clone_from(&mut self, source: &Self) {
 LL | |         source.clone();
 LL | |         *self = source.clone();
 LL | |     }
-   | |_____^ help: remove it
+   | |_____^
+   |
+help: remove it
+   |
+LL -     fn clone_from(&mut self, source: &Self) {
+LL -         source.clone();
+LL -         *self = source.clone();
+LL -     }
+   |
 
 error: non-canonical implementation of `clone` on a `Copy` type
   --> tests/ui/non_canonical_clone_impl.rs:85:29
@@ -26,7 +38,12 @@ LL |       fn clone(&self) -> Self {
    |  _____________________________^
 LL | |         Self(self.0)
 LL | |     }
-   | |_____^ help: change this to: `{ *self }`
+   | |_____^
+   |
+help: change this to
+   |
+LL |     fn clone(&self) -> Self { *self }
+   |                             ~~~~~~~~~
 
 error: unnecessary implementation of `clone_from` on a `Copy` type
   --> tests/ui/non_canonical_clone_impl.rs:89:5
@@ -35,7 +52,15 @@ LL | /     fn clone_from(&mut self, source: &Self) {
 LL | |         source.clone();
 LL | |         *self = source.clone();
 LL | |     }
-   | |_____^ help: remove it
+   | |_____^
+   |
+help: remove it
+   |
+LL -     fn clone_from(&mut self, source: &Self) {
+LL -         source.clone();
+LL -         *self = source.clone();
+LL -     }
+   |
 
 error: aborting due to 4 previous errors
 

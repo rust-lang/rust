@@ -153,7 +153,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
         {
             let suggestion = if vis_span.is_empty() { "const " } else { " const" };
             span_lint_and_then(cx, MISSING_CONST_FOR_FN, span, "this could be a `const fn`", |diag| {
-                diag.span_suggestion_verbose(
+                diag.span_suggestion(
                     vis_span.shrink_to_hi(),
                     "make the function `const`",
                     suggestion,

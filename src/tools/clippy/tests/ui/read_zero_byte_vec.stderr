@@ -2,16 +2,25 @@ error: reading zero byte data to `Vec`
   --> tests/ui/read_zero_byte_vec.rs:21:5
    |
 LL |     f.read_exact(&mut data).unwrap();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `data.resize(20, 0); f.read_exact(&mut data)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::read-zero-byte-vec` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::read_zero_byte_vec)]`
+help: try
+   |
+LL |     data.resize(20, 0); f.read_exact(&mut data).unwrap();
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: reading zero byte data to `Vec`
   --> tests/ui/read_zero_byte_vec.rs:27:5
    |
 LL |     f.read_exact(&mut data2)?;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `data2.resize(cap, 0); f.read_exact(&mut data2)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     data2.resize(cap, 0); f.read_exact(&mut data2)?;
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: reading zero byte data to `Vec`
   --> tests/ui/read_zero_byte_vec.rs:32:5

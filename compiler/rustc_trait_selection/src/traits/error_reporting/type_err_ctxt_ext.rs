@@ -1273,7 +1273,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .must_apply_modulo_regions()
             {
                 suggested = true;
-                err.span_suggestion_short(
+                err.span_suggestion(
                     stmt.span.with_lo(expr.span.hi()),
                     "remove this semicolon",
                     String::new(),
@@ -3033,7 +3033,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             suggs.push((span, suggestion));
         }
 
-        err.multipart_suggestion_verbose(
+        err.multipart_suggestion(
             "consider relaxing the implicit `Sized` restriction",
             suggs,
             Applicability::MachineApplicable,
@@ -3663,7 +3663,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             if let Some(def_id) = def_id
                                 && let Some(generics) = self.tcx.hir().get_generics(def_id)
                             {
-                                err.span_suggestion_verbose(
+                                err.span_suggestion(
                                     generics.tail_span_for_predicate_suggestion(),
                                     msg,
                                     format!("{} {code}", generics.add_where_or_trailing_comma()),

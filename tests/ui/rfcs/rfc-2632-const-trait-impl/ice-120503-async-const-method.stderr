@@ -2,21 +2,25 @@ error: expected one of `extern`, `fn`, `safe`, or `unsafe`, found keyword `const
   --> $DIR/ice-120503-async-const-method.rs:7:11
    |
 LL |     async const fn bar(&self) {
-   |     ------^^^^^
-   |     |     |
-   |     |     expected one of `extern`, `fn`, `safe`, or `unsafe`
-   |     help: `const` must come before `async`: `const async`
+   |           ^^^^^ expected one of `extern`, `fn`, `safe`, or `unsafe`
    |
    = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+help: `const` must come before `async`
+   |
+LL |     const async fn bar(&self) {
+   |     ~~~~~~~~~~~
 
 error[E0379]: functions in trait impls cannot be declared const
   --> $DIR/ice-120503-async-const-method.rs:7:11
    |
 LL |     async const fn bar(&self) {
-   |           ^^^^^-
-   |           |
-   |           functions in trait impls cannot be const
-   |           help: remove the `const`
+   |           ^^^^^ functions in trait impls cannot be const
+   |
+help: remove the `const`
+   |
+LL -     async const fn bar(&self) {
+LL +     async fn bar(&self) {
+   |
 
 error: functions cannot be both `const` and `async`
   --> $DIR/ice-120503-async-const-method.rs:7:5
@@ -64,10 +68,15 @@ error[E0425]: cannot find function `main8` in this scope
   --> $DIR/ice-120503-async-const-method.rs:13:9
    |
 LL |         main8().await;
-   |         ^^^^^ help: a function with a similar name exists: `main`
+   |         ^^^^^
 ...
 LL | fn main() {}
    | --------- similarly named function `main` defined here
+   |
+help: a function with a similar name exists
+   |
+LL |         main().await;
+   |         ~~~~
 
 error[E0391]: cycle detected when computing type of opaque `<impl at $DIR/ice-120503-async-const-method.rs:6:1: 6:21>::bar::{opaque#0}`
   --> $DIR/ice-120503-async-const-method.rs:7:5

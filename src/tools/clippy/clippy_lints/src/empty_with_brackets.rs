@@ -86,7 +86,7 @@ impl EarlyLintPass for EmptyWithBrackets {
                 span_after_ident,
                 "found empty brackets on struct declaration",
                 |diagnostic| {
-                    diagnostic.span_suggestion_hidden(
+                    diagnostic.span_suggestion(
                         span_after_ident,
                         "remove the brackets",
                         ";",
@@ -107,7 +107,7 @@ impl EarlyLintPass for EmptyWithBrackets {
                 span_after_ident,
                 "enum variant has empty brackets",
                 |diagnostic| {
-                    diagnostic.span_suggestion_hidden(
+                    diagnostic.span_suggestion(
                         span_after_ident,
                         "remove the brackets",
                         "",

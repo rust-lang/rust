@@ -163,7 +163,12 @@ error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value
   --> tests/ui/map_unwrap_or.rs:99:13
    |
 LL |     let _ = res.map(|x| x + 1).unwrap_or_else(|_e| 0);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `res.map_or_else(|_e| 0, |x| x + 1)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let _ = res.map_or_else(|_e| 0, |x| x + 1);
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: called `map(<f>).unwrap_or(<a>)` on an `Option` value
   --> tests/ui/map_unwrap_or.rs:106:13

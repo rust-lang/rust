@@ -2,16 +2,25 @@ error: this import is redundant
   --> tests/ui/single_component_path_imports.rs:6:1
    |
 LL | use regex;
-   | ^^^^^^^^^^ help: remove it entirely
+   | ^^^^^^^^^^
    |
    = note: `-D clippy::single-component-path-imports` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::single_component_path_imports)]`
+help: remove it entirely
+   |
+LL - use regex;
+   |
 
 error: this import is redundant
   --> tests/ui/single_component_path_imports.rs:32:5
    |
 LL |     use regex;
-   |     ^^^^^^^^^^ help: remove it entirely
+   |     ^^^^^^^^^^
+   |
+help: remove it entirely
+   |
+LL -     use regex;
+   |
 
 error: aborting due to 2 previous errors
 

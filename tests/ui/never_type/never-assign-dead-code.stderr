@@ -25,9 +25,13 @@ warning: unused variable: `x`
   --> $DIR/never-assign-dead-code.rs:10:9
    |
 LL |     let x: ! = panic!("aah");
-   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |         ^
    |
    = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+help: if this is intentional, prefix it with an underscore
+   |
+LL |     let _x: ! = panic!("aah");
+   |         ~~
 
 warning: 3 warnings emitted
 

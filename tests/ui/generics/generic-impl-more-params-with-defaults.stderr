@@ -2,15 +2,18 @@ error[E0107]: struct takes at most 2 generic arguments but 3 generic arguments w
   --> $DIR/generic-impl-more-params-with-defaults.rs:13:5
    |
 LL |     Vec::<isize, Heap, bool>::new();
-   |     ^^^                ---- help: remove this generic argument
-   |     |
-   |     expected at most 2 generic arguments
+   |     ^^^ expected at most 2 generic arguments
    |
 note: struct defined here, with at most 2 generic parameters: `T`, `A`
   --> $DIR/generic-impl-more-params-with-defaults.rs:5:8
    |
 LL | struct Vec<T, A = Heap>(
    |        ^^^ -  --------
+help: remove this generic argument
+   |
+LL -     Vec::<isize, Heap, bool>::new();
+LL +     Vec::<isize, Heap, >::new();
+   |
 
 error: aborting due to 1 previous error
 

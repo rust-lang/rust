@@ -273,7 +273,7 @@ hir_analysis_missing_trait_item = not all trait items implemented, missing: `{$m
 
 hir_analysis_missing_trait_item_label = `{$item}` from trait
 
-hir_analysis_missing_trait_item_suggestion = implement the missing item: `{$snippet}`
+hir_analysis_missing_trait_item_suggestion = implement the missing item
 
 hir_analysis_missing_trait_item_unstable = not all trait items implemented, missing: `{$missing_item_name}`
     .note = default implementation of `{$missing_item_name}` is unstable

@@ -4,7 +4,10 @@ error[E0046]: not all trait items implemented, missing: `Gat`
 LL | impl missing_item_sugg::Foo for Local {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Gat` in implementation
    |
-   = help: implement the missing item: `type Gat<T> = /* Type */ where T: std::fmt::Display;`
+help: implement the missing item
+   |
+LL + type Gat<T> = /* Type */ where T: std::fmt::Display;
+   |
 
 error: aborting due to 1 previous error
 

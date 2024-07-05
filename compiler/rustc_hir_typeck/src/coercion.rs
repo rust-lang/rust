@@ -1585,7 +1585,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         );
                         if let Some(value) = fcx.err_ctxt().ty_kind_suggestion(fcx.param_env, found)
                         {
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 cause.span.shrink_to_hi(),
                                 "give the `return` a value of the expected type",
                                 format!(" {value}"),

@@ -2,17 +2,27 @@ error: expected `;`, found `}`
   --> $DIR/missing-semicolon.rs:6:7
    |
 LL |     ()
-   |       ^ help: add `;` here
+   |       ^
 LL | }
    | - unexpected token
+   |
+help: add `;` here
+   |
+LL |     ();
+   |       +
 
 error: expected `;`, found `}`
   --> $DIR/missing-semicolon.rs:32:7
    |
 LL |     ()
-   |       ^ help: add `;` here
+   |       ^
 LL | }
    | - unexpected token
+   |
+help: add `;` here
+   |
+LL |     ();
+   |       +
 
 error[E0618]: expected function, found `{integer}`
   --> $DIR/missing-semicolon.rs:5:13
@@ -20,11 +30,14 @@ error[E0618]: expected function, found `{integer}`
 LL |       let x = 5;
    |           - `x` has type `{integer}`
 LL |       let y = x
-   |               ^- help: consider using a semicolon here to finish the statement: `;`
-   |  _____________|
-   | |
+   |  _____________^
 LL | |     ()
    | |______- call expression requires function
+   |
+help: consider using a semicolon here to finish the statement
+   |
+LL |     let y = x;
+   |              +
 
 error[E0618]: expected function, found `{integer}`
   --> $DIR/missing-semicolon.rs:11:13
@@ -32,11 +45,14 @@ error[E0618]: expected function, found `{integer}`
 LL |       let x = 5;
    |           - `x` has type `{integer}`
 LL |       let y = x
-   |               ^- help: consider using a semicolon here to finish the statement: `;`
-   |  _____________|
-   | |
+   |  _____________^
 LL | |     ();
    | |______- call expression requires function
+   |
+help: consider using a semicolon here to finish the statement
+   |
+LL |     let y = x;
+   |              +
 
 error[E0618]: expected function, found `{integer}`
   --> $DIR/missing-semicolon.rs:16:5
@@ -44,31 +60,40 @@ error[E0618]: expected function, found `{integer}`
 LL |       let x = 5;
    |           - `x` has type `{integer}`
 LL |       x
-   |       ^- help: consider using a semicolon here to finish the statement: `;`
-   |  _____|
-   | |
+   |  _____^
 LL | |     ()
    | |______- call expression requires function
+   |
+help: consider using a semicolon here to finish the statement
+   |
+LL |     x;
+   |      +
 
 error[E0618]: expected function, found `{integer}`
   --> $DIR/missing-semicolon.rs:31:13
    |
 LL |       let y = 5
-   |               ^- help: consider using a semicolon here to finish the statement: `;`
-   |  _____________|
-   | |
+   |  _____________^
 LL | |     ()
    | |______- call expression requires function
+   |
+help: consider using a semicolon here to finish the statement
+   |
+LL |     let y = 5;
+   |              +
 
 error[E0618]: expected function, found `{integer}`
   --> $DIR/missing-semicolon.rs:35:5
    |
 LL |       5
-   |       ^- help: consider using a semicolon here to finish the statement: `;`
-   |  _____|
-   | |
+   |  _____^
 LL | |     ();
    | |______- call expression requires function
+   |
+help: consider using a semicolon here to finish the statement
+   |
+LL |     5;
+   |      +
 
 error: aborting due to 7 previous errors
 

@@ -2,9 +2,12 @@ error: associated function in `impl` without body
   --> $DIR/issue-95023.rs:8:5
    |
 LL |     fn foo<const N: usize>(&self) -> Self::B<{ N }>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   |                                                    |
-   |                                                    help: provide a definition for the function: `{ <body> }`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: provide a definition for the function
+   |
+LL |     fn foo<const N: usize>(&self) -> Self::B<{ N }> { <body> }
+   |                                                     ~~~~~~~~~~
 
 error[E0407]: method `foo` is not a member of trait `Fn`
   --> $DIR/issue-95023.rs:8:5
@@ -48,21 +51,33 @@ error[E0046]: not all trait items implemented, missing: `call`
 LL | impl Fn(&isize) for Error {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ missing `call` in implementation
    |
-   = help: implement the missing item: `fn call(&self, _: (&isize,)) -> <Self as FnOnce<(&isize,)>>::Output { todo!() }`
+help: implement the missing item
+   |
+LL + fn call(&self, _: (&isize,)) -> <Self as FnOnce<(&isize,)>>::Output { todo!() }
+   |
 
 error[E0220]: associated type `B` not found for `Self`
   --> $DIR/issue-95023.rs:8:44
    |
 LL |     fn foo<const N: usize>(&self) -> Self::B<{ N }>;
-   |                                            ^ help: `Self` has the following associated type: `Output`
+   |                                            ^
+   |
+help: `Self` has the following associated type
+   |
+LL |     fn foo<const N: usize>(&self) -> Self::Output<{ N }>;
+   |                                            ~~~~~~
 
 error[E0220]: associated type `B` not found for `Self`
   --> $DIR/issue-95023.rs:8:44
    |
 LL |     fn foo<const N: usize>(&self) -> Self::B<{ N }>;
-   |                                            ^ help: `Self` has the following associated type: `Output`
+   |                                            ^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: `Self` has the following associated type
+   |
+LL |     fn foo<const N: usize>(&self) -> Self::Output<{ N }>;
+   |                                            ~~~~~~
 
 error: aborting due to 8 previous errors
 

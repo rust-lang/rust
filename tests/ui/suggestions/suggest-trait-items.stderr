@@ -2,46 +2,56 @@ error[E0437]: type `Typ` is not a member of trait `Foo`
   --> $DIR/suggest-trait-items.rs:13:5
    |
 LL |     type Typ = ();
-   |     ^^^^^---^^^^^^
-   |     |    |
-   |     |    help: there is an associated type with a similar name: `Type`
-   |     not a member of trait `Foo`
+   |     ^^^^^^^^^^^^^^ not a member of trait `Foo`
+   |
+help: there is an associated type with a similar name
+   |
+LL |     type Type = ();
+   |          ~~~~
 
 error[E0407]: method `fooo` is not a member of trait `Foo`
   --> $DIR/suggest-trait-items.rs:17:5
    |
 LL |     fn fooo() {}
-   |     ^^^----^^^^^
-   |     |  |
-   |     |  help: there is an associated function with a similar name: `foo`
-   |     not a member of trait `Foo`
+   |     ^^^^^^^^^^^^ not a member of trait `Foo`
+   |
+help: there is an associated function with a similar name
+   |
+LL |     fn foo() {}
+   |        ~~~
 
 error[E0407]: method `barr` is not a member of trait `Foo`
   --> $DIR/suggest-trait-items.rs:21:5
    |
 LL |     fn barr() {}
-   |     ^^^----^^^^^
-   |     |  |
-   |     |  help: there is an associated function with a similar name: `bar`
-   |     not a member of trait `Foo`
+   |     ^^^^^^^^^^^^ not a member of trait `Foo`
+   |
+help: there is an associated function with a similar name
+   |
+LL |     fn bar() {}
+   |        ~~~
 
 error[E0407]: method `quux` is not a member of trait `Foo`
   --> $DIR/suggest-trait-items.rs:25:5
    |
 LL |     fn quux() {}
-   |     ^^^----^^^^^
-   |     |  |
-   |     |  help: there is an associated function with a similar name: `qux`
-   |     not a member of trait `Foo`
+   |     ^^^^^^^^^^^^ not a member of trait `Foo`
+   |
+help: there is an associated function with a similar name
+   |
+LL |     fn qux() {}
+   |        ~~~
 
 error[E0438]: const `Cnst` is not a member of trait `Bar`
   --> $DIR/suggest-trait-items.rs:42:5
    |
 LL |     const Cnst: i32 = 0;
-   |     ^^^^^^----^^^^^^^^^^
-   |     |     |
-   |     |     help: there is an associated constant with a similar name: `Const`
-   |     not a member of trait `Bar`
+   |     ^^^^^^^^^^^^^^^^^^^^ not a member of trait `Bar`
+   |
+help: there is an associated constant with a similar name
+   |
+LL |     const Const: i32 = 0;
+   |           ~~~~~
 
 error[E0046]: not all trait items implemented, missing: `Type`, `foo`, `bar`, `qux`
   --> $DIR/suggest-trait-items.rs:11:1

@@ -5,7 +5,12 @@ LL |     type A;
    |     ------ `A` defined here
 ...
 LL | type I<'a> = &'a (dyn Foo + 'a);
-   |                       ^^^ help: specify the associated type: `Foo<A = Type>`
+   |                       ^^^
+   |
+help: specify the associated type
+   |
+LL | type I<'a> = &'a (dyn Foo<A = Type> + 'a);
+   |                       ~~~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

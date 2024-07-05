@@ -2,28 +2,34 @@ error[E0412]: cannot find type `double` in this scope
   --> $DIR/recommend-literal.rs:1:13
    |
 LL | type Real = double;
-   |             ^^^^^^
-   |             |
-   |             not found in this scope
-   |             help: perhaps you intended to use this type: `f64`
+   |             ^^^^^^ not found in this scope
+   |
+help: perhaps you intended to use this type
+   |
+LL | type Real = f64;
+   |             ~~~
 
 error[E0412]: cannot find type `long` in this scope
   --> $DIR/recommend-literal.rs:7:12
    |
 LL |     let y: long = 74802374902374923;
-   |            ^^^^
-   |            |
-   |            not found in this scope
-   |            help: perhaps you intended to use this type: `i64`
+   |            ^^^^ not found in this scope
+   |
+help: perhaps you intended to use this type
+   |
+LL |     let y: i64 = 74802374902374923;
+   |            ~~~
 
 error[E0412]: cannot find type `Boolean` in this scope
   --> $DIR/recommend-literal.rs:10:13
    |
 LL |     let v1: Boolean = true;
-   |             ^^^^^^^
-   |             |
-   |             not found in this scope
-   |             help: perhaps you intended to use this type: `bool`
+   |             ^^^^^^^ not found in this scope
+   |
+help: perhaps you intended to use this type
+   |
+LL |     let v1: bool = true;
+   |             ~~~~
 
 error[E0412]: cannot find type `Bool` in this scope
   --> $DIR/recommend-literal.rs:13:13
@@ -44,28 +50,34 @@ error[E0412]: cannot find type `boolean` in this scope
   --> $DIR/recommend-literal.rs:19:9
    |
 LL | fn z(a: boolean) {
-   |         ^^^^^^^
-   |         |
-   |         not found in this scope
-   |         help: perhaps you intended to use this type: `bool`
+   |         ^^^^^^^ not found in this scope
+   |
+help: perhaps you intended to use this type
+   |
+LL | fn z(a: bool) {
+   |         ~~~~
 
 error[E0412]: cannot find type `byte` in this scope
   --> $DIR/recommend-literal.rs:24:11
    |
 LL | fn a() -> byte {
-   |           ^^^^
-   |           |
-   |           not found in this scope
-   |           help: perhaps you intended to use this type: `u8`
+   |           ^^^^ not found in this scope
+   |
+help: perhaps you intended to use this type
+   |
+LL | fn a() -> u8 {
+   |           ~~
 
 error[E0412]: cannot find type `float` in this scope
   --> $DIR/recommend-literal.rs:31:12
    |
 LL |     width: float,
-   |            ^^^^^
-   |            |
-   |            not found in this scope
-   |            help: perhaps you intended to use this type: `f32`
+   |            ^^^^^ not found in this scope
+   |
+help: perhaps you intended to use this type
+   |
+LL |     width: f32,
+   |            ~~~
 
 error[E0412]: cannot find type `int` in this scope
   --> $DIR/recommend-literal.rs:34:19
@@ -86,10 +98,12 @@ error[E0412]: cannot find type `short` in this scope
   --> $DIR/recommend-literal.rs:40:16
    |
 LL | impl Stuff for short {}
-   |                ^^^^^
-   |                |
-   |                not found in this scope
-   |                help: perhaps you intended to use this type: `i16`
+   |                ^^^^^ not found in this scope
+   |
+help: perhaps you intended to use this type
+   |
+LL | impl Stuff for i16 {}
+   |                ~~~
 
 error: aborting due to 9 previous errors
 

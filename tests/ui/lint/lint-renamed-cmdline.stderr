@@ -20,7 +20,7 @@ error: unused variable: `unused`
   --> $DIR/lint-renamed-cmdline.rs:9:17
    |
 LL | fn main() { let unused = (); }
-   |                 ^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused`
+   |                 ^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/lint-renamed-cmdline.rs:8:8
@@ -28,6 +28,10 @@ note: the lint level is defined here
 LL | #[deny(unused)]
    |        ^^^^^^
    = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
+help: if this is intentional, prefix it with an underscore
+   |
+LL | fn main() { let _unused = (); }
+   |                 ~~~~~~~
 
 warning: lint `bare_trait_object` has been renamed to `bare_trait_objects`
    |

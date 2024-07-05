@@ -5,7 +5,12 @@ LL |     Cow,
    |     --- `FarmAnimal::Cow` defined here
 ...
 LL |         FarmAnimal::Cow(_) => "moo".to_string(),
-   |         ^^^^^^^^^^^^^^^^^^ help: use this syntax instead: `FarmAnimal::Cow`
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+help: use this syntax instead
+   |
+LL |         FarmAnimal::Cow => "moo".to_string(),
+   |         ~~~~~~~~~~~~~~~
 
 error[E0164]: expected tuple struct or tuple variant, found struct variant `FarmAnimal::Chicken`
   --> $DIR/issue-84700.rs:17:9

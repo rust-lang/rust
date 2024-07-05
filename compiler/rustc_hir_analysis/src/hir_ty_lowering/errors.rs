@@ -255,7 +255,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     {
                         // We suggested constraining a type parameter, but the associated item on it
                         // was also not an exact match, so we also suggest changing it.
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             assoc_name.span,
                             fluent::hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg,
                             suggested_name,
@@ -375,7 +375,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .keys()
             .any(|full_span| full_span.contains(span))
         {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 span.shrink_to_lo(),
                 "you are looking for the module in `std`, not the primitive type",
                 "std::",
@@ -388,7 +388,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             traits.sort();
             match (&types[..], &traits[..]) {
                 ([], []) => {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span,
                         format!(
                             "if there were a type named `Type` that implements a trait named \
@@ -400,7 +400,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     );
                 }
                 ([], [trait_str]) => {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span,
                         format!(
                             "if there were a type named `Example` that implemented `{trait_str}`, \
@@ -423,7 +423,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     );
                 }
                 ([type_str], []) => {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span,
                         format!(
                             "if there were a trait named `Example` with associated type `{name}` \
@@ -1013,7 +1013,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         {
             let reported =
                 struct_span_code_err!(tcx.dcx(), span, E0223, "ambiguous associated type")
-                    .with_span_suggestion_verbose(
+                    .with_span_suggestion(
                         ident2.span.to(ident3.span),
                         format!("there is an associated function with a similar name: `{name}`"),
                         name,
@@ -1260,7 +1260,7 @@ pub fn prohibit_assoc_item_constraint(
 
             // Now emit the suggestion
             if let Ok(suggestion) = tcx.sess.source_map().span_to_snippet(removal_span) {
-                e.span_suggestion_verbose(
+                e.span_suggestion(
                     removal_span,
                     format!("consider removing this associated item {}", constraint.kind.descr()),
                     suggestion,
@@ -1273,7 +1273,7 @@ pub fn prohibit_assoc_item_constraint(
         // i.e., replacing `<..., T = A, ...>` with `<..., A, ...>`.
         let suggest_direct_use = |e: &mut Diag<'_>, sp: Span| {
             if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(sp) {
-                e.span_suggestion_verbose(
+                e.span_suggestion(
                     constraint.span,
                     format!("to use `{snippet}` as a generic argument specify it directly"),
                     snippet,
@@ -1345,7 +1345,7 @@ pub fn prohibit_assoc_item_constraint(
                         let suggestions =
                             vec![param_decl, (constraint.span, format!("{}", matching_param.name))];
 
-                        err.multipart_suggestion_verbose(
+                        err.multipart_suggestion(
                             format!("declare the type parameter right after the `impl` keyword"),
                             suggestions,
                             Applicability::MaybeIncorrect,
@@ -1455,7 +1455,7 @@ fn generics_args_err_extend<'a>(
             if tcx.generics_of(adt_def.did()).is_empty() {
                 // FIXME(estebank): we could also verify that the arguments being
                 // work for the `enum`, instead of just looking if it takes *any*.
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     args_span,
                     format!("{type_name} doesn't have generic parameters"),
                     "",
@@ -1520,13 +1520,13 @@ fn generics_args_err_extend<'a>(
                 },
                 (args_span, String::new()),
             ];
-            err.multipart_suggestion_verbose(msg, suggestion, Applicability::MaybeIncorrect);
+            err.multipart_suggestion(msg, suggestion, Applicability::MaybeIncorrect);
         }
         GenericsArgsErrExtend::PrimTy(prim_ty) => {
             let name = prim_ty.name_str();
             for segment in segments {
                 if let Some(args) = segment.args {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         segment.ident.span.shrink_to_hi().to(args.span_ext),
                         format!("primitive type `{name}` doesn't have generic parameters"),
                         "",
@@ -1548,7 +1548,7 @@ fn generics_args_err_extend<'a>(
             err.span_note(span, format!("{kind} `{name}` defined here"));
         }
         GenericsArgsErrExtend::SelfTyParam(span) => {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 span,
                 "the `Self` type doesn't accept type parameters",
                 "",
@@ -1590,7 +1590,7 @@ fn generics_args_err_extend<'a>(
                     if generics == 0 {
                         // FIXME(estebank): we could also verify that the arguments being
                         // work for the `enum`, instead of just looking if it takes *any*.
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             segment.ident.span.shrink_to_hi().to(args.span_ext),
                             "the `Self` type doesn't accept type parameters",
                             "",
@@ -1598,7 +1598,7 @@ fn generics_args_err_extend<'a>(
                         );
                         return;
                     } else {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             segment.ident.span,
                             format!(
                                 "the `Self` type doesn't accept type parameters, use the \

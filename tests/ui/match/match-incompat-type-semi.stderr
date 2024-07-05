@@ -9,14 +9,17 @@ LL | |             x
 LL | |         },
 LL | |         None => {
 LL | |             0;
-   | |             ^-
-   | |             ||
-   | |             |help: consider removing this semicolon
-   | |             expected integer, found `()`
+   | |             ^^ expected integer, found `()`
 ...  |
 LL | |         },
 LL | |     };
    | |_____- `match` arms have incompatible types
+   |
+help: consider removing this semicolon
+   |
+LL -             0;
+LL +             0
+   |
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/match-incompat-type-semi.rs:20:9
@@ -27,14 +30,17 @@ LL | |         x
    | |         - expected because of this
 LL | |     } else {
 LL | |         0;
-   | |         ^-
-   | |         ||
-   | |         |help: consider removing this semicolon
-   | |         expected integer, found `()`
+   | |         ^^ expected integer, found `()`
 LL | |
 LL | |
 LL | |     };
    | |_____- `if` and `else` have incompatible types
+   |
+help: consider removing this semicolon
+   |
+LL -         0;
+LL +         0
+   |
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/match-incompat-type-semi.rs:30:13

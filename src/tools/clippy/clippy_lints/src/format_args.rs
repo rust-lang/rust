@@ -14,7 +14,7 @@ use rustc_ast::{
     FormatPlaceholder, FormatTrait,
 };
 use rustc_errors::Applicability;
-use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
+use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowAlways};
 use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
@@ -295,7 +295,7 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
                     }
 
                     if let Some(format_span) = format_placeholder_format_span(placeholder) {
-                        diag.span_suggestion_verbose(
+                        diag.span_suggestion(
                             format_span,
                             "if the current behavior is intentional, remove the format specifiers",
                             "",
@@ -355,7 +355,7 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
                     "change this to",
                     fixes,
                     Applicability::MachineApplicable,
-                    if multiline_fix { CompletelyHidden } else { ShowCode },
+                    if multiline_fix { CompletelyHidden } else { ShowAlways },
                 );
             },
         );

@@ -228,7 +228,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                 if !multiple_borrow_span.is_some_and(|(old, new)| {
                                     old.to(info.span.shrink_to_hi()).contains(new)
                                 }) {
-                                    err.span_suggestion_verbose(
+                                    err.span_suggestion(
                                         info.span.shrink_to_hi(),
                                         "consider adding semicolon after the expression so its \
                                         temporaries are dropped sooner, before the local variables \
@@ -379,7 +379,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 category.description(),
             );
 
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 span.shrink_to_hi(),
                 msg,
                 format!(" + {suggestable_name}"),

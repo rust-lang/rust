@@ -22,18 +22,24 @@ error[E0425]: cannot find value `LOOP` in this scope
 LL |     'LOOP: for _ in 0 .. 9 {
    |     ----- a label with a similar name exists
 LL |         break LOOP;
-   |               ^^^^
-   |               |
-   |               not found in this scope
-   |               help: use the similarly named label: `'LOOP`
+   |               ^^^^ not found in this scope
+   |
+help: use the similarly named label
+   |
+LL |         break 'LOOP;
+   |               ~~~~~
 
 warning: denote infinite loops with `loop { ... }`
   --> $DIR/loop-break-value.rs:30:5
    |
 LL |     'while_loop: while true {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(while_true)]` on by default
+help: use `loop`
+   |
+LL |     'while_loop: loop {
+   |     ~~~~~~~~~~~~~~~~~
 
 error[E0571]: `break` with value from a `while` loop
   --> $DIR/loop-break-value.rs:32:9

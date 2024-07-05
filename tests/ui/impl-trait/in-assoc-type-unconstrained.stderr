@@ -27,10 +27,7 @@ LL |         type Ty = impl Sized;
    |                   ---------- the expected opaque type
 LL |
 LL |         fn method() -> () {}
-   |                        ^^
-   |                        |
-   |                        expected opaque type, found `()`
-   |                        help: change the output type to match the trait: `<() as compare_method::Trait>::Ty`
+   |                        ^^ expected opaque type, found `()`
    |
 note: type in trait
   --> $DIR/in-assoc-type-unconstrained.rs:17:24
@@ -44,6 +41,10 @@ note: this item must have the opaque type in its signature in order to be able t
    |
 LL |         fn method() -> () {}
    |            ^^^^^^
+help: change the output type to match the trait
+   |
+LL |         fn method() -> <() as compare_method::Trait>::Ty {}
+   |                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: unconstrained opaque type
   --> $DIR/in-assoc-type-unconstrained.rs:20:19

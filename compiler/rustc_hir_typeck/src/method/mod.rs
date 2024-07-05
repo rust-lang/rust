@@ -154,7 +154,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if params > 0 { Applicability::HasPlaceholders } else { Applicability::MaybeIncorrect },
         );
 
-        err.span_suggestion_verbose(sugg_span, msg, suggestion, applicability);
+        err.span_suggestion(sugg_span, msg, suggestion, applicability);
     }
 
     /// Performs method lookup. If lookup is successful, it will return the callee

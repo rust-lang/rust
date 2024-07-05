@@ -70,7 +70,7 @@ pub fn report_object_safety_error<'tcx>(
         }
         if tcx.parent_hir_node(hir_id).fn_sig().is_some() {
             // Do not suggest `impl Trait` when dealing with things like super-traits.
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 ty.span.until(trait_ref.span),
                 "consider using an opaque type instead",
                 "impl ",

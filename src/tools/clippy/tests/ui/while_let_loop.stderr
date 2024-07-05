@@ -8,10 +8,14 @@ LL | |         if let Some(_x) = y {
 ...  |
 LL | |         }
 LL | |     }
-   | |_____^ help: try: `while let Some(_x) = y { .. }`
+   | |_____^
    |
    = note: `-D clippy::while-let-loop` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::while_let_loop)]`
+help: try
+   |
+LL |     while let Some(_x) = y { .. }
+   |
 
 error: this loop could be written as a `while let` loop
   --> tests/ui/while_let_loop.rs:25:5
@@ -23,7 +27,12 @@ LL | |             Some(_x) => true,
 LL | |             None => break,
 LL | |         };
 LL | |     }
-   | |_____^ help: try: `while let Some(_x) = y { .. }`
+   | |_____^
+   |
+help: try
+   |
+LL |     while let Some(_x) = y { .. }
+   |
 
 error: this loop could be written as a `while let` loop
   --> tests/ui/while_let_loop.rs:33:5
@@ -35,7 +44,12 @@ LL | |             Some(x) => x,
 ...  |
 LL | |         let _str = "foo";
 LL | |     }
-   | |_____^ help: try: `while let Some(x) = y { .. }`
+   | |_____^
+   |
+help: try
+   |
+LL |     while let Some(x) = y { .. }
+   |
 
 error: this loop could be written as a `while let` loop
   --> tests/ui/while_let_loop.rs:43:5
@@ -47,7 +61,12 @@ LL | |             Some(x) => x,
 ...  |
 LL | |         }
 LL | |     }
-   | |_____^ help: try: `while let Some(x) = y { .. }`
+   | |_____^
+   |
+help: try
+   |
+LL |     while let Some(x) = y { .. }
+   |
 
 error: this loop could be written as a `while let` loop
   --> tests/ui/while_let_loop.rs:74:5
@@ -59,7 +78,12 @@ LL | |             Some(word) => (word.is_empty(), word.len()),
 ...  |
 LL | |         let _ = (e, l);
 LL | |     }
-   | |_____^ help: try: `while let Some(word) = "".split_whitespace().next() { .. }`
+   | |_____^
+   |
+help: try
+   |
+LL |     while let Some(word) = "".split_whitespace().next() { .. }
+   |
 
 error: aborting due to 5 previous errors
 

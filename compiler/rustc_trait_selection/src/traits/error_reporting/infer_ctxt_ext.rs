@@ -130,7 +130,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // For example, if `expected_args_length` is 2, suggest `|_, _|`.
             if found_args.is_empty() && is_closure {
                 let underscores = vec!["_"; expected_args.len()].join(", ");
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     closure_arg_span.unwrap_or(found_span),
                     format!(
                         "consider changing the closure to take and ignore the expected argument{}",
@@ -148,7 +148,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         .map(|(name, _)| name.to_owned())
                         .collect::<Vec<String>>()
                         .join(", ");
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         found_span,
                         "change the closure to take multiple arguments instead of a single tuple",
                         format!("|{sugg}|"),
@@ -187,7 +187,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         String::new()
                     },
                 );
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     found_span,
                     "change the closure to accept a tuple instead of individual arguments",
                     sugg,

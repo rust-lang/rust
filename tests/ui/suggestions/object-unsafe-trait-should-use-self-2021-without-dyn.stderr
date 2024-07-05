@@ -77,9 +77,7 @@ error[E0038]: the trait `C` cannot be made into an object
   --> $DIR/object-unsafe-trait-should-use-self-2021-without-dyn.rs:18:20
    |
 LL |     fn f(&self, c: C) -> C;
-   |          -----     ^ `C` cannot be made into an object
-   |          |
-   |          help: consider changing method `f`'s `self` parameter to be `&self` (notice the capitalization): `&Self`
+   |                    ^ `C` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-unsafe-trait-should-use-self-2021-without-dyn.rs:18:10
@@ -88,6 +86,10 @@ LL | trait C {
    |       - this trait cannot be made into an object...
 LL |     fn f(&self, c: C) -> C;
    |          ^^^^^ ...because method `f`'s `self` parameter cannot be dispatched on
+help: consider changing method `f`'s `self` parameter to be `&self` (notice the capitalization difference)
+   |
+LL |     fn f(&Self, c: C) -> C;
+   |          ~~~~~
 
 error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/object-unsafe-trait-should-use-self-2021-without-dyn.rs:4:13

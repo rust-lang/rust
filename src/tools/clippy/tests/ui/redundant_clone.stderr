@@ -2,7 +2,7 @@ error: redundant clone
   --> tests/ui/redundant_clone.rs:14:42
    |
 LL |     let _s = ["lorem", "ipsum"].join(" ").to_string();
-   |                                          ^^^^^^^^^^^^ help: remove this
+   |                                          ^^^^^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:14:14
@@ -11,174 +11,249 @@ LL |     let _s = ["lorem", "ipsum"].join(" ").to_string();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::redundant-clone` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::redundant_clone)]`
+help: remove this
+   |
+LL -     let _s = ["lorem", "ipsum"].join(" ").to_string();
+LL +     let _s = ["lorem", "ipsum"].join(" ");
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:17:15
    |
 LL |     let _s = s.clone();
-   |               ^^^^^^^^ help: remove this
+   |               ^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:17:14
    |
 LL |     let _s = s.clone();
    |              ^
+help: remove this
+   |
+LL -     let _s = s.clone();
+LL +     let _s = s;
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:20:15
    |
 LL |     let _s = s.to_string();
-   |               ^^^^^^^^^^^^ help: remove this
+   |               ^^^^^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:20:14
    |
 LL |     let _s = s.to_string();
    |              ^
+help: remove this
+   |
+LL -     let _s = s.to_string();
+LL +     let _s = s;
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:23:15
    |
 LL |     let _s = s.to_owned();
-   |               ^^^^^^^^^^^ help: remove this
+   |               ^^^^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:23:14
    |
 LL |     let _s = s.to_owned();
    |              ^
+help: remove this
+   |
+LL -     let _s = s.to_owned();
+LL +     let _s = s;
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:25:42
    |
 LL |     let _s = Path::new("/a/b/").join("c").to_owned();
-   |                                          ^^^^^^^^^^^ help: remove this
+   |                                          ^^^^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:25:14
    |
 LL |     let _s = Path::new("/a/b/").join("c").to_owned();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: remove this
+   |
+LL -     let _s = Path::new("/a/b/").join("c").to_owned();
+LL +     let _s = Path::new("/a/b/").join("c");
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:27:42
    |
 LL |     let _s = Path::new("/a/b/").join("c").to_path_buf();
-   |                                          ^^^^^^^^^^^^^^ help: remove this
+   |                                          ^^^^^^^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:27:14
    |
 LL |     let _s = Path::new("/a/b/").join("c").to_path_buf();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: remove this
+   |
+LL -     let _s = Path::new("/a/b/").join("c").to_path_buf();
+LL +     let _s = Path::new("/a/b/").join("c");
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:29:29
    |
 LL |     let _s = OsString::new().to_owned();
-   |                             ^^^^^^^^^^^ help: remove this
+   |                             ^^^^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:29:14
    |
 LL |     let _s = OsString::new().to_owned();
    |              ^^^^^^^^^^^^^^^
+help: remove this
+   |
+LL -     let _s = OsString::new().to_owned();
+LL +     let _s = OsString::new();
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:31:29
    |
 LL |     let _s = OsString::new().to_os_string();
-   |                             ^^^^^^^^^^^^^^^ help: remove this
+   |                             ^^^^^^^^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:31:14
    |
 LL |     let _s = OsString::new().to_os_string();
    |              ^^^^^^^^^^^^^^^
+help: remove this
+   |
+LL -     let _s = OsString::new().to_os_string();
+LL +     let _s = OsString::new();
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:42:19
    |
 LL |     let _t = tup.0.clone();
-   |                   ^^^^^^^^ help: remove this
+   |                   ^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:42:14
    |
 LL |     let _t = tup.0.clone();
    |              ^^^^^
+help: remove this
+   |
+LL -     let _t = tup.0.clone();
+LL +     let _t = tup.0;
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:74:25
    |
 LL |     if b { (a.clone(), a.clone()) } else { (Alpha, a) }
-   |                         ^^^^^^^^ help: remove this
+   |                         ^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:74:24
    |
 LL |     if b { (a.clone(), a.clone()) } else { (Alpha, a) }
    |                        ^
+help: remove this
+   |
+LL -     if b { (a.clone(), a.clone()) } else { (Alpha, a) }
+LL +     if b { (a.clone(), a) } else { (Alpha, a) }
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:131:15
    |
 LL |     let _s = s.clone();
-   |               ^^^^^^^^ help: remove this
+   |               ^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:131:14
    |
 LL |     let _s = s.clone();
    |              ^
+help: remove this
+   |
+LL -     let _s = s.clone();
+LL +     let _s = s;
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:132:15
    |
 LL |     let _t = t.clone();
-   |               ^^^^^^^^ help: remove this
+   |               ^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:132:14
    |
 LL |     let _t = t.clone();
    |              ^
+help: remove this
+   |
+LL -     let _t = t.clone();
+LL +     let _t = t;
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:142:19
    |
 LL |         let _f = f.clone();
-   |                   ^^^^^^^^ help: remove this
+   |                   ^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:142:18
    |
 LL |         let _f = f.clone();
    |                  ^
+help: remove this
+   |
+LL -         let _f = f.clone();
+LL +         let _f = f;
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:154:14
    |
 LL |     let y = x.clone().join("matthias");
-   |              ^^^^^^^^ help: remove this
+   |              ^^^^^^^^
    |
 note: cloned value is neither consumed nor mutated
   --> tests/ui/redundant_clone.rs:154:13
    |
 LL |     let y = x.clone().join("matthias");
    |             ^^^^^^^^^
+help: remove this
+   |
+LL -     let y = x.clone().join("matthias");
+LL +     let y = x.join("matthias");
+   |
 
 error: redundant clone
   --> tests/ui/redundant_clone.rs:208:11
    |
 LL |     foo(&x.clone(), move || {
-   |           ^^^^^^^^ help: remove this
+   |           ^^^^^^^^
    |
 note: this value is dropped without further use
   --> tests/ui/redundant_clone.rs:208:10
    |
 LL |     foo(&x.clone(), move || {
    |          ^
+help: remove this
+   |
+LL -     foo(&x.clone(), move || {
+LL +     foo(&x, move || {
+   |
 
 error: aborting due to 15 previous errors
 

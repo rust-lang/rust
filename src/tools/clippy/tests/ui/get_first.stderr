@@ -2,34 +2,58 @@ error: accessing first element with `x.get(0)`
   --> tests/ui/get_first.rs:17:13
    |
 LL |     let _ = x.get(0);
-   |             ^^^^^^^^ help: try: `x.first()`
+   |             ^^^^^^^^
    |
    = note: `-D clippy::get-first` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::get_first)]`
+help: try
+   |
+LL |     let _ = x.first();
+   |             ~~~~~~~~~
 
 error: accessing first element with `y.get(0)`
   --> tests/ui/get_first.rs:23:13
    |
 LL |     let _ = y.get(0);
-   |             ^^^^^^^^ help: try: `y.first()`
+   |             ^^^^^^^^
+   |
+help: try
+   |
+LL |     let _ = y.first();
+   |             ~~~~~~~~~
 
 error: accessing first element with `z.get(0)`
   --> tests/ui/get_first.rs:29:13
    |
 LL |     let _ = z.get(0);
-   |             ^^^^^^^^ help: try: `z.first()`
+   |             ^^^^^^^^
+   |
+help: try
+   |
+LL |     let _ = z.first();
+   |             ~~~~~~~~~
 
 error: accessing first element with `vecdeque.get(0)`
   --> tests/ui/get_first.rs:35:13
    |
 LL |     let _ = vecdeque.get(0);
-   |             ^^^^^^^^^^^^^^^ help: try: `vecdeque.front()`
+   |             ^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let _ = vecdeque.front();
+   |             ~~~~~~~~~~~~~~~~
 
 error: accessing first element with `non_primitives.get(0)`
   --> tests/ui/get_first.rs:48:13
    |
 LL |     let _ = non_primitives.get(0);
-   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `non_primitives.first()`
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let _ = non_primitives.first();
+   |             ~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 5 previous errors
 

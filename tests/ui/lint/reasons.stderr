@@ -21,7 +21,7 @@ warning: variable `Social_exchange_psychology` should have a snake case name
   --> $DIR/reasons.rs:29:9
    |
 LL |     let Social_exchange_psychology = CheaterDetectionMechanism {};
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case (notice the capitalization): `social_exchange_psychology`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: people shouldn't have to change their usual style habits
            to contribute to our project
@@ -31,6 +31,10 @@ note: the lint level is defined here
 LL |     nonstandard_style,
    |     ^^^^^^^^^^^^^^^^^
    = note: `#[warn(non_snake_case)]` implied by `#[warn(nonstandard_style)]`
+help: convert the identifier to snake case (notice the capitalization difference)
+   |
+LL |     let social_exchange_psychology = CheaterDetectionMechanism {};
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 warning: 2 warnings emitted
 

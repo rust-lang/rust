@@ -2,22 +2,36 @@ error: this `let...else` may be rewritten with the `?` operator
   --> tests/ui/manual_let_else_question_mark.rs:29:5
    |
 LL |     let Some(v) = g() else { return None };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `let v = g()?;`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::question-mark` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::question_mark)]`
+help: replace it with
+   |
+LL |     let v = g()?;
+   |
 
 error: this `let...else` may be rewritten with the `?` operator
   --> tests/ui/manual_let_else_question_mark.rs:35:5
    |
 LL |     let Some((v, w)) = g() else { return None };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `let (v, w) = g()?;`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with
+   |
+LL |     let (v, w) = g()?;
+   |
 
 error: this block may be rewritten with the `?` operator
   --> tests/ui/manual_let_else_question_mark.rs:38:13
    |
 LL |     let v = if let Some(v_some) = g() { v_some } else { return None };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `g()?`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with
+   |
+LL |     let v = g()?;
+   |             ~~~~
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else_question_mark.rs:42:5
@@ -45,13 +59,23 @@ LL | /         let v = match g() {
 LL | |             Some(v_some) => v_some,
 LL | |             _ => return None,
 LL | |         };
-   | |__________^ help: consider writing: `let Some(v) = g() else { return None };`
+   | |__________^
+   |
+help: consider writing
+   |
+LL |         let Some(v) = g() else { return None };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else_question_mark.rs:63:9
    |
 LL |         let v = if let Some(v_some) = g() { v_some } else { return None };
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { return None };`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider writing
+   |
+LL |         let Some(v) = g() else { return None };
+   |
 
 error: this `let...else` may be rewritten with the `?` operator
   --> tests/ui/manual_let_else_question_mark.rs:71:5
@@ -59,7 +83,12 @@ error: this `let...else` may be rewritten with the `?` operator
 LL | /     let Some(x) = y else {
 LL | |         return None;
 LL | |     };
-   | |______^ help: replace it with: `let x = y?;`
+   | |______^
+   |
+help: replace it with
+   |
+LL |     let x = y?;
+   |
 
 error: aborting due to 7 previous errors
 

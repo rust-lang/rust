@@ -2,10 +2,7 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/consts.rs:15:5
    |
 LL | const Z: () = {
-   | -----------
-   | |     |
-   | |     help: use a const-anon item to suppress this lint: `_`
-   | move the `impl` block outside of this constant `Z`
+   | ----------- move the `impl` block outside of this constant `Z`
 ...
 LL |     impl Uto for &Test {}
    |     ^^^^^---^^^^^-----
@@ -22,6 +19,10 @@ note: the lint level is defined here
    |
 LL | #![warn(non_local_definitions)]
    |         ^^^^^^^^^^^^^^^^^^^^^
+help: use a const-anon item to suppress this lint
+   |
+LL | const _: () = {
+   |       ~
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:26:5

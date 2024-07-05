@@ -24,13 +24,23 @@ error: byte constant must be escaped: `\t`
   --> $DIR/byte-literals.rs:8:7
    |
 LL |     b'    ';
-   |       ^^^^ help: escape the character: `\t`
+   |       ^^^^
+   |
+help: escape the character
+   |
+LL |     b'\t';
+   |       ++
 
 error: byte constant must be escaped: `'`
   --> $DIR/byte-literals.rs:9:7
    |
 LL |     b''';
-   |       ^ help: escape the character: `\'`
+   |       ^
+   |
+help: escape the character
+   |
+LL |     b'\'';
+   |       ~~
 
 error: non-ASCII character in byte literal
   --> $DIR/byte-literals.rs:10:7

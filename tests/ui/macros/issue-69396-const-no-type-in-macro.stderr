@@ -17,7 +17,7 @@ error: missing type for `const` item
   --> $DIR/issue-69396-const-no-type-in-macro.rs:4:20
    |
 LL |               const A = "A".$fn();
-   |                      ^ help: provide a type for the constant: `: usize`
+   |                      ^
 ...
 LL | / suite! {
 LL | |     len;
@@ -26,15 +26,16 @@ LL | | }
    | |_- in this macro invocation
    |
    = note: this error originates in the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: provide a type for the constant
+   |
+LL |             const A: usize = "A".$fn();
+   |                    +++++++
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/issue-69396-const-no-type-in-macro.rs:4:20
    |
 LL |               const A = "A".$fn();
-   |                      ^
-   |                      |
-   |                      not allowed in type signatures
-   |                      help: replace with the correct type: `bool`
+   |                      ^ not allowed in type signatures
 ...
 LL | / suite! {
 LL | |     len;
@@ -43,6 +44,10 @@ LL | | }
    | |_- in this macro invocation
    |
    = note: this error originates in the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: replace with the correct type
+   |
+LL |             const Abool = "A".$fn();
+   |                    ++++
 
 error: aborting due to 3 previous errors
 

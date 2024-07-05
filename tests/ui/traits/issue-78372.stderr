@@ -58,9 +58,6 @@ LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/issue-78372.rs:12:17
    |
-LL |     fn foo(self: Smaht<Self, T>);
-   |                  -------------- help: consider changing method `foo`'s `self` parameter to be `&self`: `&Self`
-...
 LL | impl Marker for dyn Foo {}
    |                 ^^^^^^^ `Foo` cannot be made into an object
    |
@@ -72,6 +69,10 @@ LL | trait Foo: X<u32> {}
 LL | trait X<T> {
 LL |     fn foo(self: Smaht<Self, T>);
    |                  ^^^^^^^^^^^^^^ ...because method `foo`'s `self` parameter cannot be dispatched on
+help: consider changing method `foo`'s `self` parameter to be `&self`
+   |
+LL |     fn foo(self: &Self);
+   |                  ~~~~~
 
 error[E0307]: invalid `self` parameter type: `Smaht<Self, T>`
   --> $DIR/issue-78372.rs:9:18

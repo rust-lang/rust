@@ -6,6 +6,6 @@ struct Local;
 impl missing_item_sugg::Foo for Local {
     //~^ ERROR not all trait items implemented, missing: `Gat`
 }
-//~^ HELP implement the missing item: `type Gat<T> = /* Type */ where T: std::fmt::Display;`
+//~^ HELP implement the missing item
 
 fn main() {}

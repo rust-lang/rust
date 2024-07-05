@@ -257,7 +257,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             if is_loop_move & !in_pattern && !matches!(use_spans, UseSpans::ClosureUse { .. }) {
                 if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
                     // We have a `&mut` ref, we need to reborrow on each iteration (#62112).
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span.shrink_to_lo(),
                         format!(
                             "consider creating a fresh reborrow of {} here",
@@ -500,7 +500,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 if let Some(pat) = finder.parent_pat {
                     sugg.insert(0, (pat.span.shrink_to_lo(), "ref ".to_string()));
                 }
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "borrow this binding in the pattern to avoid moving the value",
                     sugg,
                     Applicability::MachineApplicable,
@@ -680,7 +680,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             return;
         };
 
-        err.span_suggestion_verbose(
+        err.span_suggestion(
             sugg_span.shrink_to_hi(),
             "consider assigning a value",
             format!(" = {assign_value}"),
@@ -748,7 +748,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 (move_span.shrink_to_lo(), suggestion)
             })
             .collect();
-        err.multipart_suggestion_verbose(
+        err.multipart_suggestion(
             format!("consider {}borrowing {value_name}", borrow_level.mutably_str()),
             sugg,
             Applicability::MaybeIncorrect,
@@ -1071,7 +1071,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             "{prefix}clone the value from the field instead of using the functional record update \
              syntax",
         );
-        err.span_suggestion_verbose(span, msg, sugg, Applicability::MachineApplicable);
+        err.span_suggestion(span, msg, sugg, Applicability::MachineApplicable);
     }
 
     pub(crate) fn suggest_cloning(
@@ -1345,7 +1345,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         } else {
             "consider cloning the value if the performance cost is acceptable"
         };
-        err.multipart_suggestion_verbose(msg, sugg, Applicability::MachineApplicable);
+        err.multipart_suggestion(msg, sugg, Applicability::MachineApplicable);
         true
     }
 
@@ -2604,7 +2604,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 sugg.push((span, suggest));
             }
 
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 "try explicitly pass `&Self` into the Closure as an argument",
                 sugg,
                 Applicability::MachineApplicable,
@@ -3164,7 +3164,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                                 && path.ident.name == sym::iter
                                 && let Some(ty) = expr_ty
                             {
-                                err.span_suggestion_verbose(
+                                err.span_suggestion(
                                     path.ident.span,
                                     format!(
                                         "consider consuming the `{ty}` when turning it into an \
@@ -3176,7 +3176,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                             }
                             if !is_format_arguments_item {
                                 let addition = format!("let binding = {};\n{}", s, " ".repeat(p));
-                                err.multipart_suggestion_verbose(
+                                err.multipart_suggestion(
                                     msg,
                                     vec![
                                         (stmt.span.shrink_to_lo(), addition),
@@ -3297,7 +3297,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     .type_implements_trait(iter_trait, [return_ty], self.param_env)
                     .must_apply_modulo_regions()
             {
-                err.span_suggestion_hidden(
+                err.span_suggestion(
                     return_span.shrink_to_hi(),
                     "use `.collect()` to allocate the iterator",
                     ".collect::<Vec<_>>()",
@@ -3384,7 +3384,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             var_span,
             scope,
         );
-        err.span_suggestion_verbose(
+        err.span_suggestion(
             sugg_span,
             format!(
                 "to force the {kind} to take ownership of {captured_var} (and any \
@@ -3795,7 +3795,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         if let Some(decl) = local_decl
             && decl.can_be_made_mutable()
         {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 decl.source_info.span.shrink_to_lo(),
                 "consider making this binding mutable",
                 "mut ".to_string(),
@@ -3810,7 +3810,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     }))
                 )
             {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     decl.source_info.span.shrink_to_lo(),
                     "to modify the original value, take a borrow instead",
                     "ref mut ".to_string(),

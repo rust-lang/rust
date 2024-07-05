@@ -69,7 +69,7 @@ impl<'a> Parser<'a> {
                         },
                     ) {
                         err.note(fluent::parse_note);
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             replacement_span,
                             fluent::parse_suggestion,
                             "",
@@ -176,7 +176,7 @@ impl<'a> Parser<'a> {
                 // FIXME(#100717)
                 err.arg("item", item.kind.descr());
                 err.span_label(item.span, fluent::parse_label_does_not_annotate_this);
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     replacement_span,
                     fluent::parse_sugg_change_inner_to_outer,
                     match attr_type {

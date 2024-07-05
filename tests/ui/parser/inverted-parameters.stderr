@@ -2,19 +2,23 @@ error: expected one of `:`, `@`, or `|`, found `bar`
   --> $DIR/inverted-parameters.rs:4:24
    |
 LL |     fn foo(&self, &str bar) {}
-   |                   -----^^^
-   |                   |    |
-   |                   |    expected one of `:`, `@`, or `|`
-   |                   help: declare the type after the parameter binding: `<identifier>: <type>`
+   |                        ^^^ expected one of `:`, `@`, or `|`
+   |
+help: declare the type after the parameter binding
+   |
+LL |     fn foo(&self, <identifier>: <type>) {}
+   |                   ~~~~~~~~~~~~~~~~~~~~
 
 error: expected one of `:`, `@`, or `|`, found `quux`
   --> $DIR/inverted-parameters.rs:10:10
    |
 LL | fn baz(S quux, xyzzy: i32) {}
-   |        --^^^^
-   |        | |
-   |        | expected one of `:`, `@`, or `|`
-   |        help: declare the type after the parameter binding: `<identifier>: <type>`
+   |          ^^^^ expected one of `:`, `@`, or `|`
+   |
+help: declare the type after the parameter binding
+   |
+LL | fn baz(<identifier>: <type>, xyzzy: i32) {}
+   |        ~~~~~~~~~~~~~~~~~~~~
 
 error: expected one of `:`, `@`, or `|`, found `a`
   --> $DIR/inverted-parameters.rs:15:12
@@ -52,10 +56,12 @@ error: expected one of `:`, `@`, or `|`, found `S`
   --> $DIR/inverted-parameters.rs:27:23
    |
 LL | fn missing_colon(quux S) {}
-   |                  -----^
-   |                  |    |
-   |                  |    expected one of `:`, `@`, or `|`
-   |                  help: declare the type after the parameter binding: `<identifier>: <type>`
+   |                       ^ expected one of `:`, `@`, or `|`
+   |
+help: declare the type after the parameter binding
+   |
+LL | fn missing_colon(<identifier>: <type>) {}
+   |                  ~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 6 previous errors
 

@@ -94,7 +94,11 @@ LL |     // if access_level != "user" { // Check if admin
    |
    = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
    = note: `#[deny(text_direction_codepoint_in_comment)]` on by default
-   = help: if their presence wasn't intentional, you can remove them
+help: if their presence wasn't intentional, you can remove them
+   |
+LL -     // if access_level != "user" { // Check if admin
+LL +     // if access_level != "user" { // Check if admin
+   |
 
 error: unicode codepoint changing visible direction of text present in comment
   --> $DIR/unicode-control-codepoints.rs:30:1
@@ -109,7 +113,11 @@ LL | //"/* } if isAdmin  begin admins only */"
    | this comment contains invisible unicode text flow control codepoints
    |
    = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
-   = help: if their presence wasn't intentional, you can remove them
+help: if their presence wasn't intentional, you can remove them
+   |
+LL - //"/* } if isAdmin  begin admins only */"
+LL + //"/* } if isAdmin  begin admins only */"
+   |
 
 error: unicode codepoint changing visible direction of text present in literal
   --> $DIR/unicode-control-codepoints.rs:11:22
@@ -125,7 +133,11 @@ LL |     println!("{:?}", "/* } if isAdmin  begin admins only ");
    |
    = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
    = note: `#[deny(text_direction_codepoint_in_literal)]` on by default
-   = help: if their presence wasn't intentional, you can remove them
+help: if their presence wasn't intentional, you can remove them
+   |
+LL -     println!("{:?}", "/* } if isAdmin  begin admins only ");
+LL +     println!("{:?}", "/* } if isAdmin  begin admins only ");
+   |
 help: if you want to keep them but make them visible in your source code, you can escape them
    |
 LL |     println!("{:?}", "/*\u{202e} } \u{2066}if isAdmin\u{2069} \u{2066} begin admins only ");
@@ -144,7 +156,11 @@ LL |     println!("{:?}", r##"/* } if isAdmin  begin admins only "##);
    |                      this literal contains invisible unicode text flow control codepoints
    |
    = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
-   = help: if their presence wasn't intentional, you can remove them
+help: if their presence wasn't intentional, you can remove them
+   |
+LL -     println!("{:?}", r##"/* } if isAdmin  begin admins only "##);
+LL +     println!("{:?}", r##"/* } if isAdmin  begin admins only "##);
+   |
 help: if you want to keep them but make them visible in your source code, you can escape them
    |
 LL |     println!("{:?}", r##"/*\u{202e} } \u{2066}if isAdmin\u{2069} \u{2066} begin admins only "##);
@@ -160,7 +176,11 @@ LL |     println!("{:?}", '');
    |                      this literal contains an invisible unicode text flow control codepoint
    |
    = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
-   = help: if their presence wasn't intentional, you can remove them
+help: if their presence wasn't intentional, you can remove them
+   |
+LL -     println!("{:?}", '');
+LL +     println!("{:?}", '');
+   |
 help: if you want to keep them but make them visible in your source code, you can escape them
    |
 LL |     println!("{:?}", '\u{202e}');

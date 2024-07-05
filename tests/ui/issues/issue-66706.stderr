@@ -2,9 +2,12 @@ error: expected one of `,` or `|`, found `&`
   --> $DIR/issue-66706.rs:2:16
    |
 LL |     [0; [|_: _ &_| ()].len()]
-   |               -^ expected one of `,` or `|`
-   |               |
-   |               help: missing `,`
+   |                ^ expected one of `,` or `|`
+   |
+help: missing `,`
+   |
+LL |     [0; [|_: _, &_| ()].len()]
+   |               +
 
 error: expected identifier, found reserved identifier `_`
   --> $DIR/issue-66706.rs:8:20
@@ -16,9 +19,12 @@ error: expected one of `,` or `|`, found `&`
   --> $DIR/issue-66706.rs:13:17
    |
 LL |     [0; [|&_: _ &_| {}; 0 ].len()]
-   |                -^ expected one of `,` or `|`
-   |                |
-   |                help: missing `,`
+   |                 ^ expected one of `,` or `|`
+   |
+help: missing `,`
+   |
+LL |     [0; [|&_: _, &_| {}; 0 ].len()]
+   |                +
 
 error: expected identifier, found reserved identifier `_`
   --> $DIR/issue-66706.rs:19:26

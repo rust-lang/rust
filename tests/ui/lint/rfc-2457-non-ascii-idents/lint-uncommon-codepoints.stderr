@@ -31,9 +31,13 @@ warning: constant `µ` should have an upper case name
   --> $DIR/lint-uncommon-codepoints.rs:3:7
    |
 LL | const µ: f64 = 0.000001;
-   |       ^ help: convert the identifier to upper case: `Μ`
+   |       ^
    |
    = note: `#[warn(non_upper_case_globals)]` on by default
+help: convert the identifier to upper case
+   |
+LL | const Μ: f64 = 0.000001;
+   |       ~
 
 error: aborting due to 3 previous errors; 1 warning emitted
 

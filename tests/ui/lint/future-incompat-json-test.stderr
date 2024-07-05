@@ -2,6 +2,11 @@
   --> $DIR/future-incompat-json-test.rs:9:9
    |
 LL |     let x = 1;
-   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |         ^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |     let _x = 1;
+   |         ~~
 
 "}}]}

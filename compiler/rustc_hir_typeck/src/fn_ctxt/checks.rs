@@ -615,7 +615,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .all(|(expected, found)| self.can_coerce(*expected, *found))
                 && fn_sig.inputs()[1..].len() == input_types.len()
             {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     call_name.span,
                     format!("you might have meant to use `{}`", assoc.name),
                     assoc.name,
@@ -802,7 +802,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ),
                         );
                         err.code(err_code.to_owned());
-                        err.multipart_suggestion_verbose(
+                        err.multipart_suggestion(
                             "wrap these arguments in parentheses to construct a tuple",
                             vec![
                                 (lo.shrink_to_lo(), "(".to_string()),
@@ -1434,7 +1434,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggestion += &suggestion_text;
             }
             suggestion += ")";
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 suggestion_span,
                 suggestion_text,
                 suggestion,
@@ -2067,7 +2067,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     if block_num > 1 && found_semi {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             // use the span of the *whole* expr
                             self.tcx.hir().span(binding_hir_id).shrink_to_lo(),
                             "you might have meant to return this to infer its type parameters",

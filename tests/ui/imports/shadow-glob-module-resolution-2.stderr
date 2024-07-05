@@ -16,10 +16,12 @@ error[E0432]: unresolved import `e`
   --> $DIR/shadow-glob-module-resolution-2.rs:13:5
    |
 LL | use e as b;
-   |     -^^^^^
-   |     |
-   |     no `e` in the root
-   |     help: a similar name exists in the module: `a`
+   |     ^^^^^^ no `e` in the root
+   |
+help: a similar name exists in the module
+   |
+LL | use a as b;
+   |     ~
 
 error: aborting due to 3 previous errors
 

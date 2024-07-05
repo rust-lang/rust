@@ -13,12 +13,15 @@ error[E0277]: `()` doesn't implement `std::fmt::Display`
 LL | fn ok() -> impl core::fmt::Display {
    |            ^^^^^^^^^^^^^^^^^^^^^^^ `()` cannot be formatted with the default formatter
 LL |     1;
-   |     -- help: remove this semicolon
-   |     |
-   |     this expression has type `{integer}`, which implements `std::fmt::Display`
+   |     - this expression has type `{integer}`, which implements `std::fmt::Display`
    |
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+help: remove this semicolon
+   |
+LL -     1;
+LL +     1
+   |
 
 error: aborting due to 2 previous errors
 

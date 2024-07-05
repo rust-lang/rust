@@ -249,7 +249,12 @@ error[E0170]: pattern binding `beta` is named the same as one of the variants of
   --> $DIR/missing-bindings.rs:22:22
    |
 LL |         Some(alpha | beta) => {}
-   |                      ^^^^ help: to match on the variant, qualify the path: `check_handling_of_paths::bar::foo::beta`
+   |                      ^^^^
+   |
+help: to match on the variant, qualify the path
+   |
+LL |         Some(alpha | check_handling_of_paths::bar::foo::beta) => {}
+   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0004]: non-exhaustive patterns: `None` not covered
   --> $DIR/missing-bindings.rs:21:11

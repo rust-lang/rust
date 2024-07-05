@@ -148,7 +148,7 @@ impl LateLintPass<'_> for NeedlessMaybeSized {
                             diag.note(format!("...because `{current}` has the bound `{next}`"));
                         }
 
-                        diag.span_suggestion_verbose(
+                        diag.span_suggestion(
                             generics.span_for_bound_removal(sized_bound.predicate_pos, sized_bound.bound_pos),
                             "change the bounds that require `Sized`, or remove the `?Sized` bound",
                             "",

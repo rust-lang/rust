@@ -134,7 +134,6 @@ fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
 #[suggestion(
     middle_deprecated_suggestion,
     code = "{suggestion}",
-    style = "verbose",
     applicability = "machine-applicable"
 )]
 pub struct DeprecationSuggestion {

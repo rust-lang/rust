@@ -6,10 +6,14 @@ LL | |
 LL | |         Some(v) => v,
 LL | |         None => Vec::default(),
 LL | |     };
-   | |_____^ help: replace it with: `x.unwrap_or_default()`
+   | |_____^
    |
    = note: `-D clippy::manual-unwrap-or-default` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_unwrap_or_default)]`
+help: replace it with
+   |
+LL |     x.unwrap_or_default();
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: match can be simplified with `.unwrap_or_default()`
   --> tests/ui/manual_unwrap_or_default.rs:13:5
@@ -19,7 +23,12 @@ LL | |
 LL | |         Some(v) => v,
 LL | |         _ => Vec::default(),
 LL | |     };
-   | |_____^ help: replace it with: `x.unwrap_or_default()`
+   | |_____^
+   |
+help: replace it with
+   |
+LL |     x.unwrap_or_default();
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: match can be simplified with `.unwrap_or_default()`
   --> tests/ui/manual_unwrap_or_default.rs:20:5
@@ -29,7 +38,12 @@ LL | |
 LL | |         Some(v) => v,
 LL | |         None => String::new(),
 LL | |     };
-   | |_____^ help: replace it with: `x.unwrap_or_default()`
+   | |_____^
+   |
+help: replace it with
+   |
+LL |     x.unwrap_or_default();
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: match can be simplified with `.unwrap_or_default()`
   --> tests/ui/manual_unwrap_or_default.rs:27:5
@@ -39,7 +53,12 @@ LL | |
 LL | |         None => Vec::default(),
 LL | |         Some(v) => v,
 LL | |     };
-   | |_____^ help: replace it with: `x.unwrap_or_default()`
+   | |_____^
+   |
+help: replace it with
+   |
+LL |     x.unwrap_or_default();
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: if let can be simplified with `.unwrap_or_default()`
   --> tests/ui/manual_unwrap_or_default.rs:34:5
@@ -50,7 +69,12 @@ LL | |         v
 LL | |     } else {
 LL | |         Vec::default()
 LL | |     };
-   | |_____^ help: replace it with: `x.unwrap_or_default()`
+   | |_____^
+   |
+help: replace it with
+   |
+LL |     x.unwrap_or_default();
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: match can be simplified with `.unwrap_or_default()`
   --> tests/ui/manual_unwrap_or_default.rs:52:5
@@ -60,7 +84,12 @@ LL | |
 LL | |         Ok(v) => v,
 LL | |         Err(_) => String::new(),
 LL | |     };
-   | |_____^ help: replace it with: `x.unwrap_or_default()`
+   | |_____^
+   |
+help: replace it with
+   |
+LL |     x.unwrap_or_default();
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: if let can be simplified with `.unwrap_or_default()`
   --> tests/ui/manual_unwrap_or_default.rs:59:5
@@ -71,7 +100,12 @@ LL | |         v
 LL | |     } else {
 LL | |         String::new()
 LL | |     };
-   | |_____^ help: replace it with: `x.unwrap_or_default()`
+   | |_____^
+   |
+help: replace it with
+   |
+LL |     x.unwrap_or_default();
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: match can be simplified with `.unwrap_or_default()`
   --> tests/ui/manual_unwrap_or_default.rs:71:20
@@ -81,7 +115,12 @@ LL |           Some(_) => match *b {
 LL | |             Some(v) => v,
 LL | |             _ => 0,
 LL | |         },
-   | |_________^ help: replace it with: `(*b).unwrap_or_default()`
+   | |_________^
+   |
+help: replace it with
+   |
+LL |         Some(_) => (*b).unwrap_or_default(),
+   |                    ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 8 previous errors
 

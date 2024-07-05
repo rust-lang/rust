@@ -2,16 +2,23 @@ error: missing type for `const` item
   --> $DIR/unnamable-types.rs:6:8
    |
 LL | const A = 5;
-   |        ^ help: provide a type for the constant: `: i32`
+   |        ^
+   |
+help: provide a type for the constant
+   |
+LL | const A: i32 = 5;
+   |        +++++
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/unnamable-types.rs:10:11
    |
 LL | static B: _ = "abc";
-   |           ^
-   |           |
-   |           not allowed in type signatures
-   |           help: replace with the correct type: `&str`
+   |           ^ not allowed in type signatures
+   |
+help: replace with the correct type
+   |
+LL | static B: &str = "abc";
+   |           ~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/unnamable-types.rs:17:10
@@ -41,13 +48,23 @@ error: missing type for `const` item
   --> $DIR/unnamable-types.rs:29:8
    |
 LL | const E = foo;
-   |        ^ help: provide a type for the constant: `: fn() -> i32`
+   |        ^
+   |
+help: provide a type for the constant
+   |
+LL | const E: fn() -> i32 = foo;
+   |        +++++++++++++
 
 error: missing type for `const` item
   --> $DIR/unnamable-types.rs:32:8
    |
 LL | const F = S { t: foo };
-   |        ^ help: provide a type for the constant: `: S<fn() -> i32>`
+   |        ^
+   |
+help: provide a type for the constant
+   |
+LL | const F: S<fn() -> i32> = S { t: foo };
+   |        ++++++++++++++++
 
 error: missing type for `const` item
   --> $DIR/unnamable-types.rs:37:8

@@ -10,40 +10,56 @@ error[E0432]: unresolved import `bar::Baz`
   --> $DIR/unresolved-import.rs:5:5
    |
 LL | use bar::Baz as x;
-   |     ^^^^^---^^^^^
-   |     |    |
-   |     |    help: a similar name exists in the module: `Bar`
-   |     no `Baz` in `bar`
+   |     ^^^^^^^^^^^^^ no `Baz` in `bar`
+   |
+help: a similar name exists in the module
+   |
+LL | use bar::Bar as x;
+   |          ~~~
 
 error[E0432]: unresolved import `food::baz`
   --> $DIR/unresolved-import.rs:10:5
    |
 LL | use food::baz;
-   |     ^^^^^^---
-   |     |     |
-   |     |     help: a similar name exists in the module: `bag`
-   |     no `baz` in `food`
+   |     ^^^^^^^^^ no `baz` in `food`
+   |
+help: a similar name exists in the module
+   |
+LL | use food::bag;
+   |           ~~~
 
 error[E0432]: unresolved import `food::beens`
   --> $DIR/unresolved-import.rs:15:12
    |
 LL | use food::{beens as Foo};
-   |            -----^^^^^^^
-   |            |
-   |            no `beens` in `food`
-   |            help: a similar name exists in the module: `beans`
+   |            ^^^^^^^^^^^^ no `beens` in `food`
+   |
+help: a similar name exists in the module
+   |
+LL | use food::{beans as Foo};
+   |            ~~~~~
 
 error[E0432]: unresolved import `MyEnum`
   --> $DIR/unresolved-import.rs:39:9
    |
 LL |     use MyEnum::*;
-   |         ^^^^^^ help: a similar path exists: `self::MyEnum`
+   |         ^^^^^^
+   |
+help: a similar path exists
+   |
+LL |     use self::MyEnum::*;
+   |         ~~~~~~~~~~~~
 
 error[E0432]: unresolved import `Enum`
   --> $DIR/unresolved-import.rs:49:9
    |
 LL |     use Enum::*;
-   |         ^^^^ help: a similar path exists: `self::Enum`
+   |         ^^^^
+   |
+help: a similar path exists
+   |
+LL |     use self::Enum::*;
+   |         ~~~~~~~~~~
 
 error: aborting due to 6 previous errors
 

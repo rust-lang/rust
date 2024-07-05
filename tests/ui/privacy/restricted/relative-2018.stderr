@@ -8,9 +8,12 @@ error: relative paths are not supported in visibilities in 2018 edition or later
   --> $DIR/relative-2018.rs:9:12
    |
 LL |     pub(in a::b) struct S5;
-   |            ^---
-   |            |
-   |            help: try: `crate::a::b`
+   |            ^
+   |
+help: try
+   |
+LL |     pub(in crate::a::b) struct S5;
+   |            ~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

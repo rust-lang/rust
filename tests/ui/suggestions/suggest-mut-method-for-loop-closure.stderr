@@ -2,13 +2,15 @@ error[E0594]: cannot assign to `t.v`, which is behind a `&` reference
   --> $DIR/suggest-mut-method-for-loop-closure.rs:15:13
    |
 LL |         for mut t in buzz.values() {
-   |                      -------------
-   |                      |    |
-   |                      |    help: use mutable method: `values_mut()`
-   |                      this iterator yields `&` references
+   |                      ------------- this iterator yields `&` references
 ...
 LL |             t.v += 1;
    |             ^^^^^^^^ `t` is a `&` reference, so the data it refers to cannot be written
+   |
+help: use mutable method
+   |
+LL |         for mut t in buzz.values_mut() {
+   |                           ~~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

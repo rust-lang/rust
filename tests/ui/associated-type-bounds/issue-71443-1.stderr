@@ -1,10 +1,13 @@
 error[E0308]: mismatched types
   --> $DIR/issue-71443-1.rs:4:5
    |
-LL | fn hello<F: for<'a> Iterator<Item: 'a>>() {
-   |                                          - help: try adding a return type: `-> Incorrect`
 LL |     Incorrect
    |     ^^^^^^^^^ expected `()`, found `Incorrect`
+   |
+help: try adding a return type
+   |
+LL | fn hello<F: for<'a> Iterator<Item: 'a>>() -> Incorrect {
+   |                                           ++++++++++++
 
 error: aborting due to 1 previous error
 

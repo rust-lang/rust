@@ -162,7 +162,7 @@ fn check_manual_split_once_indirect(
                 UnwrapKind::Unwrap => ".unwrap()",
                 UnwrapKind::QuestionMark => "?",
             };
-            diag.span_suggestion_verbose(
+            diag.span_suggestion(
                 local.span,
                 format!("try `{r}split_once`"),
                 format!("let ({lhs}, {rhs}) = {self_snip}.{r}split_once({pat_snip}){unwrap};"),

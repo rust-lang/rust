@@ -2,13 +2,15 @@ error[E0594]: cannot assign to `v.v`, which is behind a `&` reference
   --> $DIR/suggest-mut-method-for-loop-hashmap.rs:17:9
    |
 LL |     for (_k, v) in map.iter() {
-   |                    ----------
-   |                    |   |
-   |                    |   help: use mutable method: `iter_mut()`
-   |                    this iterator yields `&` references
+   |                    ---------- this iterator yields `&` references
 ...
 LL |         v.v += 1;
    |         ^^^^^^^^ `v` is a `&` reference, so the data it refers to cannot be written
+   |
+help: use mutable method
+   |
+LL |     for (_k, v) in map.iter_mut() {
+   |                        ~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

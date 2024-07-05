@@ -107,7 +107,7 @@ fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
 
     span_lint_and_then(cx, UNNESTED_OR_PATTERNS, pat.span, "unnested or-patterns", |db| {
         insert_necessary_parens(&mut pat);
-        db.span_suggestion_verbose(
+        db.span_suggestion(
             pat.span,
             "nest the patterns",
             pprust::pat_to_string(&pat),

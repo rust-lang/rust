@@ -18,7 +18,12 @@ error: cannot concatenate string literals
   --> $DIR/concat-bytes-error.rs:6:19
    |
 LL |     concat_bytes!("tnrsi", "tnri");
-   |                   ^^^^^^^ help: try using a byte string: `b"tnrsi"`
+   |                   ^^^^^^^
+   |
+help: try using a byte string
+   |
+LL |     concat_bytes!(b"tnrsi", "tnri");
+   |                   ~~~~~~~~
 
 error: cannot concatenate float literals
   --> $DIR/concat-bytes-error.rs:7:19
@@ -30,13 +35,23 @@ error: cannot concatenate numeric literals
   --> $DIR/concat-bytes-error.rs:8:19
    |
 LL |     concat_bytes!(300);
-   |                   ^^^ help: try wrapping the number in an array: `[300]`
+   |                   ^^^
+   |
+help: try wrapping the number in an array
+   |
+LL |     concat_bytes!([300]);
+   |                   ~~~~~
 
 error: cannot concatenate character literals
   --> $DIR/concat-bytes-error.rs:9:19
    |
 LL |     concat_bytes!('a');
-   |                   ^^^ help: try using a byte character: `b'a'`
+   |                   ^^^
+   |
+help: try using a byte character
+   |
+LL |     concat_bytes!(b'a');
+   |                   ~~~~
 
 error: cannot concatenate boolean literals
   --> $DIR/concat-bytes-error.rs:10:19
@@ -48,13 +63,23 @@ error: cannot concatenate numeric literals
   --> $DIR/concat-bytes-error.rs:11:19
    |
 LL |     concat_bytes!(42, b"va", b'l');
-   |                   ^^ help: try wrapping the number in an array: `[42]`
+   |                   ^^
+   |
+help: try wrapping the number in an array
+   |
+LL |     concat_bytes!([42], b"va", b'l');
+   |                   ~~~~
 
 error: cannot concatenate numeric literals
   --> $DIR/concat-bytes-error.rs:12:19
    |
 LL |     concat_bytes!(42, b"va", b'l', [1, 2]);
-   |                   ^^ help: try wrapping the number in an array: `[42]`
+   |                   ^^
+   |
+help: try wrapping the number in an array
+   |
+LL |     concat_bytes!([42], b"va", b'l', [1, 2]);
+   |                   ~~~~
 
 error: cannot concatenate string literals
   --> $DIR/concat-bytes-error.rs:14:9
@@ -66,7 +91,12 @@ error: cannot concatenate character literals
   --> $DIR/concat-bytes-error.rs:17:9
    |
 LL |         'a',
-   |         ^^^ help: try using a byte character: `b'a'`
+   |         ^^^
+   |
+help: try using a byte character
+   |
+LL |         b'a',
+   |         ~~~~
 
 error: cannot concatenate boolean literals
   --> $DIR/concat-bytes-error.rs:20:9
@@ -119,7 +149,12 @@ error: cannot concatenate numeric literals
   --> $DIR/concat-bytes-error.rs:40:19
    |
 LL |     concat_bytes!(5u16);
-   |                   ^^^^ help: try wrapping the number in an array: `[5u16]`
+   |                   ^^^^
+   |
+help: try wrapping the number in an array
+   |
+LL |     concat_bytes!([5u16]);
+   |                   ~~~~~~
 
 error: numeric literal is not a `u8`
   --> $DIR/concat-bytes-error.rs:41:20

@@ -9,7 +9,10 @@ LL |     let g = if n % 2 == 0 { &foo } else { &bar };
    = note: expected reference `&fn(_) -> _ {foo}`
               found reference `&fn(_) -> _ {bar}`
    = note: different fn items have unique types, even if their signatures are the same
-   = help: consider casting both fn items to fn pointers using `as fn(u32) -> u32`
+help: consider casting both fn items to fn pointers using `as fn(u32) -> u32`
+   |
+LL |     let g = if n % 2 == 0 { &foo } else { &(bar as fn(u32) -> u32) };
+   |                                           ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/fn-pointer-mismatch.rs:23:9
@@ -22,7 +25,10 @@ LL |     a = bar;
    = note: expected fn item `fn(_) -> _ {foo}`
               found fn item `fn(_) -> _ {bar}`
    = note: different fn items have unique types, even if their signatures are the same
-   = help: consider casting both fn items to fn pointers using `as fn(u32) -> u32`
+help: consider casting both fn items to fn pointers using `as fn(u32) -> u32`
+   |
+LL |     a = bar as fn(u32) -> u32;
+   |         ~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/fn-pointer-mismatch.rs:31:18
@@ -37,7 +43,10 @@ LL |     b = Box::new(bar);
    = note: different fn items have unique types, even if their signatures are the same
 note: associated function defined here
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
-   = help: consider casting both fn items to fn pointers using `as fn(u32) -> u32`
+help: consider casting both fn items to fn pointers using `as fn(u32) -> u32`
+   |
+LL |     b = Box::new(bar as fn(u32) -> u32);
+   |                  ~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/fn-pointer-mismatch.rs:36:29

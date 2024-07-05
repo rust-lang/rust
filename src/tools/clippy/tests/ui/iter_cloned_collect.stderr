@@ -2,16 +2,25 @@ error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling 
   --> tests/ui/iter_cloned_collect.rs:8:27
    |
 LL |     let v2: Vec<isize> = v.iter().cloned().collect();
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::iter-cloned-collect` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_cloned_collect)]`
+help: try
+   |
+LL |     let v2: Vec<isize> = v.to_vec();
+   |                           ~~~~~~~~~
 
 error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
   --> tests/ui/iter_cloned_collect.rs:13:38
    |
 LL |     let _: Vec<isize> = vec![1, 2, 3].iter().cloned().collect();
-   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let _: Vec<isize> = vec![1, 2, 3].to_vec();
+   |                                      ~~~~~~~~~
 
 error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
   --> tests/ui/iter_cloned_collect.rs:18:24
@@ -21,19 +30,34 @@ LL |               .to_bytes()
 LL | |             .iter()
 LL | |             .cloned()
 LL | |             .collect();
-   | |______________________^ help: try: `.to_vec()`
+   | |______________________^
+   |
+help: try
+   |
+LL |             .to_bytes().to_vec();
+   |                        ~~~~~~~~~
 
 error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
   --> tests/ui/iter_cloned_collect.rs:26:24
    |
 LL |     let _: Vec<_> = arr.iter().cloned().collect();
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let _: Vec<_> = arr.to_vec();
+   |                        ~~~~~~~~~
 
 error: called `iter().copied().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
   --> tests/ui/iter_cloned_collect.rs:29:26
    |
 LL |     let _: Vec<isize> = v.iter().copied().collect();
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let _: Vec<isize> = v.to_vec();
+   |                          ~~~~~~~~~
 
 error: aborting due to 5 previous errors
 

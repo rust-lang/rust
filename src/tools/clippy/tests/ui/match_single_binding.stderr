@@ -38,7 +38,12 @@ error: this match could be replaced by its body itself
 LL | /     match a {
 LL | |         _ => println!("whatever"),
 LL | |     }
-   | |_____^ help: consider using the match body instead: `println!("whatever");`
+   | |_____^
+   |
+help: consider using the match body instead
+   |
+LL |     println!("whatever");
+   |
 
 error: this match could be replaced by its body itself
   --> tests/ui/match_single_binding.rs:60:5
@@ -175,7 +180,12 @@ LL | /     match x {
 LL | |         // =>
 LL | |         _ => println!("Not an array index start"),
 LL | |     }
-   | |_____^ help: consider using the match body instead: `println!("Not an array index start")`
+   | |_____^
+   |
+help: consider using the match body instead
+   |
+LL |     println!("Not an array index start")
+   |
 
 error: this assignment could be simplified
   --> tests/ui/match_single_binding.rs:138:5
@@ -245,7 +255,12 @@ error: this match could be replaced by its body itself
 LL | /     match 1 {
 LL | |         _ => (),
 LL | |     }
-   | |_____^ help: consider using the match body instead: `();`
+   | |_____^
+   |
+help: consider using the match body instead
+   |
+LL |     ();
+   |
 
 error: this match could be replaced by its body itself
   --> tests/ui/match_single_binding.rs:174:13
@@ -254,7 +269,12 @@ LL |       let a = match 1 {
    |  _____________^
 LL | |         _ => (),
 LL | |     };
-   | |_____^ help: consider using the match body instead: `()`
+   | |_____^
+   |
+help: consider using the match body instead
+   |
+LL |     let a = ();
+   |             ~~
 
 error: this match could be replaced by its body itself
   --> tests/ui/match_single_binding.rs:178:5
@@ -262,7 +282,12 @@ error: this match could be replaced by its body itself
 LL | /     match 1 {
 LL | |         _ => side_effects(),
 LL | |     }
-   | |_____^ help: consider using the match body instead: `side_effects();`
+   | |_____^
+   |
+help: consider using the match body instead
+   |
+LL |     side_effects();
+   |
 
 error: this match could be replaced by its body itself
   --> tests/ui/match_single_binding.rs:182:13
@@ -271,7 +296,12 @@ LL |       let b = match 1 {
    |  _____________^
 LL | |         _ => side_effects(),
 LL | |     };
-   | |_____^ help: consider using the match body instead: `side_effects()`
+   | |_____^
+   |
+help: consider using the match body instead
+   |
+LL |     let b = side_effects();
+   |             ~~~~~~~~~~~~~~
 
 error: this match could be replaced by its body itself
   --> tests/ui/match_single_binding.rs:186:5
@@ -279,7 +309,12 @@ error: this match could be replaced by its body itself
 LL | /     match 1 {
 LL | |         _ => println!("1"),
 LL | |     }
-   | |_____^ help: consider using the match body instead: `println!("1");`
+   | |_____^
+   |
+help: consider using the match body instead
+   |
+LL |     println!("1");
+   |
 
 error: this match could be replaced by its body itself
   --> tests/ui/match_single_binding.rs:190:13
@@ -288,7 +323,12 @@ LL |       let c = match 1 {
    |  _____________^
 LL | |         _ => println!("1"),
 LL | |     };
-   | |_____^ help: consider using the match body instead: `println!("1")`
+   | |_____^
+   |
+help: consider using the match body instead
+   |
+LL |     let c = println!("1");
+   |             ~~~~~~~~~~~~~
 
 error: this match could be replaced by its body itself
   --> tests/ui/match_single_binding.rs:195:9
@@ -296,7 +336,12 @@ error: this match could be replaced by its body itself
 LL | /         match 1 {
 LL | |             _ => (),
 LL | |         },
-   | |_________^ help: consider using the match body instead: `()`
+   | |_________^
+   |
+help: consider using the match body instead
+   |
+LL |         (),
+   |         ~~
 
 error: this match could be replaced by its body itself
   --> tests/ui/match_single_binding.rs:198:9
@@ -304,7 +349,12 @@ error: this match could be replaced by its body itself
 LL | /         match 1 {
 LL | |             _ => side_effects(),
 LL | |         },
-   | |_________^ help: consider using the match body instead: `side_effects()`
+   | |_________^
+   |
+help: consider using the match body instead
+   |
+LL |         side_effects(),
+   |         ~~~~~~~~~~~~~~
 
 error: this match could be replaced by its body itself
   --> tests/ui/match_single_binding.rs:201:9
@@ -312,7 +362,12 @@ error: this match could be replaced by its body itself
 LL | /         match 1 {
 LL | |             _ => println!("1"),
 LL | |         },
-   | |_________^ help: consider using the match body instead: `println!("1")`
+   | |_________^
+   |
+help: consider using the match body instead
+   |
+LL |         println!("1"),
+   |         ~~~~~~~~~~~~~
 
 error: aborting due to 24 previous errors
 

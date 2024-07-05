@@ -8,11 +8,15 @@ LL | |         if s == String::new() {
 ...  |
 LL | |     }
 LL | |     None
-   | |________^ help: replace with an iterator: `strings.into_iter().find(|s| s == String::new())`
+   | |________^
    |
    = note: you may need to dereference some variables
    = note: `-D clippy::manual-find` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_find)]`
+help: replace with an iterator
+   |
+LL |     strings.into_iter().find(|s| s == String::new())
+   |
 
 error: manual implementation of `Iterator::find`
   --> tests/ui/manual_find.rs:16:5
@@ -24,9 +28,13 @@ LL | |         if s == String::new() {
 ...  |
 LL | |     }
 LL | |     None
-   | |________^ help: replace with an iterator: `arr.into_iter().map(|(s, _)| s).find(|s| s == String::new())`
+   | |________^
    |
    = note: you may need to dereference some variables
+help: replace with an iterator
+   |
+LL |     arr.into_iter().map(|(s, _)| s).find(|s| s == String::new())
+   |
 
 error: aborting due to 2 previous errors
 

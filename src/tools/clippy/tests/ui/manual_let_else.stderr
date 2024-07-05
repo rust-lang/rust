@@ -2,10 +2,14 @@ error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:29:5
    |
 LL |     let v = if let Some(v_some) = g() { v_some } else { return };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { return };`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::manual-let-else` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
+help: consider writing
+   |
+LL |     let Some(v) = g() else { return };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:32:5
@@ -50,19 +54,34 @@ error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:51:9
    |
 LL |         let v = if let Some(v_some) = g() { v_some } else { continue };
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { continue };`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider writing
+   |
+LL |         let Some(v) = g() else { continue };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:53:9
    |
 LL |         let v = if let Some(v_some) = g() { v_some } else { break };
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { break };`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider writing
+   |
+LL |         let Some(v) = g() else { break };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:58:5
    |
 LL |     let v = if let Some(v_some) = g() { v_some } else { panic!() };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { panic!() };`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider writing
+   |
+LL |     let Some(v) = g() else { panic!() };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:62:5
@@ -367,24 +386,38 @@ error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:214:13
    |
 LL |             let $n = if let Some(v) = $e { v } else { return };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some($n) = g() else { return };`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     create_binding_if_some!(w, g());
    |     ------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `create_binding_if_some` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider writing
+   |
+LL |             let Some($n) = g() else { return };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:223:5
    |
 LL |     let v = if let Variant::A(a, 0) = e() { a } else { return };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Variant::A(v, 0) = e() else { return };`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider writing
+   |
+LL |     let Variant::A(v, 0) = e() else { return };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:227:5
    |
 LL |     let mut v = if let Variant::B(b) = e() { b } else { return };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Variant::B(mut v) = e() else { return };`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider writing
+   |
+LL |     let Variant::B(mut v) = e() else { return };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:232:5
@@ -408,13 +441,23 @@ error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:239:5
    |
 LL |     let v = if let Variant::A(.., a) = e() { a } else { return };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Variant::A(.., v) = e() else { return };`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider writing
+   |
+LL |     let Variant::A(.., v) = e() else { return };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:243:5
    |
 LL |     let w = if let (Some(v), ()) = (g(), ()) { v } else { return };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let (Some(w), ()) = (g(), ()) else { return };`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider writing
+   |
+LL |     let (Some(w), ()) = (g(), ()) else { return };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:247:5
@@ -478,13 +521,23 @@ LL | |
 LL | |         Some(value) => value,
 LL | |         _ => macro_call!(),
 LL | |     };
-   | |______^ help: consider writing: `let Some(_) = ff else { macro_call!() };`
+   | |______^
+   |
+help: consider writing
+   |
+LL |     let Some(_) = ff else { macro_call!() };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:457:9
    |
 LL |         let v = if let Some(v_some) = g() { v_some } else { return };
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { return };`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider writing
+   |
+LL |         let Some(v) = g() else { return };
+   |
 
 error: aborting due to 31 previous errors
 

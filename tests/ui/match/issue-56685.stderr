@@ -29,13 +29,23 @@ error: unused variable: `a`
   --> $DIR/issue-56685.rs:27:14
    |
 LL |         F::C(a, b) => { 3 }
-   |              ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |              ^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         F::C(_a, b) => { 3 }
+   |              ~~
 
 error: unused variable: `b`
   --> $DIR/issue-56685.rs:27:17
    |
 LL |         F::C(a, b) => { 3 }
-   |                 ^ help: if this is intentional, prefix it with an underscore: `_b`
+   |                 ^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         F::C(a, _b) => { 3 }
+   |                 ~~
 
 error: unused variable: `x`
   --> $DIR/issue-56685.rs:32:25

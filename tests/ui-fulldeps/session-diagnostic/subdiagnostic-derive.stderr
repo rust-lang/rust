@@ -385,13 +385,13 @@ LL |     #[suggestion_part(code())]
 error: specified multiple times
   --> $DIR/subdiagnostic-derive.rs:763:1
    |
-LL | #[suggestion(no_crate_example, code = "", style = "hidden", style = "normal")]
+LL | #[suggestion(no_crate_example, code = "", style = "normal", style = "tool-only")]
    | ^
    |
 note: previously specified here
   --> $DIR/subdiagnostic-derive.rs:763:1
    |
-LL | #[suggestion(no_crate_example, code = "", style = "hidden", style = "normal")]
+LL | #[suggestion(no_crate_example, code = "", style = "normal", style = "tool-only")]
    | ^
 
 error: `#[suggestion_hidden(...)]` is not a valid attribute
@@ -399,16 +399,12 @@ error: `#[suggestion_hidden(...)]` is not a valid attribute
    |
 LL | #[suggestion_hidden(no_crate_example, code = "")]
    | ^
-   |
-   = help: Use `#[suggestion(..., style = "hidden")]` instead
 
 error: `#[suggestion_hidden(...)]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:780:1
    |
 LL | #[suggestion_hidden(no_crate_example, code = "", style = "normal")]
    | ^
-   |
-   = help: Use `#[suggestion(..., style = "hidden")]` instead
 
 error: invalid suggestion style
   --> $DIR/subdiagnostic-derive.rs:788:51

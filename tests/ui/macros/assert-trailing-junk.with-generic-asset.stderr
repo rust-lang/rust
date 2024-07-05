@@ -14,45 +14,59 @@ error: no rules expected the token `blah`
   --> $DIR/assert-trailing-junk.rs:15:30
    |
 LL |     assert!(true, "whatever" blah);
-   |                             -^^^^ no rules expected this token in macro call
-   |                             |
-   |                             help: missing comma here
+   |                              ^^^^ no rules expected this token in macro call
    |
    = note: while trying to match sequence start
+help: missing comma here
+   |
+LL |     assert!(true, "whatever",  blah);
+   |                             +
 
 error: unexpected string literal
   --> $DIR/assert-trailing-junk.rs:18:18
    |
 LL |     assert!(true "whatever" blah);
-   |                 -^^^^^^^^^^
-   |                 |
-   |                 help: try adding a comma
+   |                  ^^^^^^^^^^
+   |
+help: try adding a comma
+   |
+LL |     assert!(true,  "whatever" blah);
+   |                 +
 
 error: no rules expected the token `blah`
   --> $DIR/assert-trailing-junk.rs:18:29
    |
 LL |     assert!(true "whatever" blah);
-   |                            -^^^^ no rules expected this token in macro call
-   |                            |
-   |                            help: missing comma here
+   |                             ^^^^ no rules expected this token in macro call
    |
    = note: while trying to match sequence start
+help: missing comma here
+   |
+LL |     assert!(true "whatever",  blah);
+   |                            +
 
 error: macro requires an expression as an argument
   --> $DIR/assert-trailing-junk.rs:22:5
    |
 LL |     assert!(true;);
-   |     ^^^^^^^^^^^^-^
-   |                 |
-   |                 help: try removing semicolon
+   |     ^^^^^^^^^^^^^^
+   |
+help: try removing semicolon
+   |
+LL -     assert!(true;);
+LL +     assert!(true);
+   |
 
 error: unexpected string literal
   --> $DIR/assert-trailing-junk.rs:25:27
    |
 LL |     assert!(false || true "error message");
-   |                          -^^^^^^^^^^^^^^^
-   |                          |
-   |                          help: try adding a comma
+   |                           ^^^^^^^^^^^^^^^
+   |
+help: try adding a comma
+   |
+LL |     assert!(false || true,  "error message");
+   |                          +
 
 error: aborting due to 7 previous errors
 

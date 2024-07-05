@@ -57,19 +57,34 @@ error: `match` arm with no body
   --> $DIR/feature-gate-never_patterns.rs:38:9
    |
 LL |         Some(_)
-   |         ^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+   |         ^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) => todo!(),
+   |                 +++++++++++
 
 error: `match` arm with no body
   --> $DIR/feature-gate-never_patterns.rs:43:9
    |
 LL |         Some(_) if false,
-   |         ^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+   |         ^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) => todo!(), if false,
+   |                 +++++++++++
 
 error: `match` arm with no body
   --> $DIR/feature-gate-never_patterns.rs:45:9
    |
 LL |         Some(_) if false
-   |         ^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+   |         ^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) => todo!(), if false
+   |                 +++++++++++
 
 error[E0658]: `!` patterns are experimental
   --> $DIR/feature-gate-never_patterns.rs:50:13
@@ -95,19 +110,35 @@ error: `match` arm with no body
   --> $DIR/feature-gate-never_patterns.rs:64:9
    |
 LL |         Some(_)
-   |         ^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+   |         ^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) => todo!(),
+   |                 +++++++++++
 
 error: `match` arm with no body
   --> $DIR/feature-gate-never_patterns.rs:70:9
    |
 LL |         Some(_) if false
-   |         ^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+   |         ^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) => todo!(), if false
+   |                 +++++++++++
 
 error: a guard on a never pattern will never be run
   --> $DIR/feature-gate-never_patterns.rs:54:19
    |
 LL |         Err(!) if false,
-   |                   ^^^^^ help: remove this guard
+   |                   ^^^^^
+   |
+help: remove this guard
+   |
+LL -         Err(!) if false,
+LL +         Err(!) if ,
+   |
 
 error: aborting due to 13 previous errors
 

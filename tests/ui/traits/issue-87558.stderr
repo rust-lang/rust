@@ -40,7 +40,10 @@ error[E0046]: not all trait items implemented, missing: `call`
 LL | impl Fn(&isize) for Error {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ missing `call` in implementation
    |
-   = help: implement the missing item: `fn call(&self, _: (&isize,)) -> <Self as FnOnce<(&isize,)>>::Output { todo!() }`
+help: implement the missing item
+   |
+LL + fn call(&self, _: (&isize,)) -> <Self as FnOnce<(&isize,)>>::Output { todo!() }
+   |
 
 error: aborting due to 5 previous errors
 

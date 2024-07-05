@@ -69,7 +69,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.downgrade_to_delayed_bug();
                     } else {
                         // Otherwise, it's valid to suggest dereferencing the LHS here.
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             lhs.span.shrink_to_lo(),
                             "consider dereferencing the left-hand side of this operation",
                             "*",
@@ -412,7 +412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             },
                             lhs_deref_ty,
                         );
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             lhs_expr.span.shrink_to_lo(),
                             msg,
                             "*",
@@ -444,7 +444,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 && lhs_new_mutbl.is_not()
                                 && rhs_new_mutbl.is_not()
                             {
-                                err.multipart_suggestion_verbose(
+                                err.multipart_suggestion(
                                     "consider reborrowing both sides",
                                     vec![
                                         (lhs_expr.span.shrink_to_lo(), "&*".to_string()),
@@ -457,7 +457,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     |new_mutbl: ast::Mutability, sp: Span| {
                                         // Can reborrow (&mut -> &)
                                         if new_mutbl.is_not() {
-                                            err.span_suggestion_verbose(
+                                            err.span_suggestion(
                                                 sp.shrink_to_lo(),
                                                 "consider reborrowing this side",
                                                 "&*",
@@ -716,14 +716,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_label(op.span, "`+` cannot be used to concatenate two `&str` strings");
                     err.note(str_concat_note);
                     if let hir::ExprKind::AddrOf(_, _, lhs_inner_expr) = lhs_expr.kind {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             lhs_expr.span.until(lhs_inner_expr.span),
                             rm_borrow_msg,
                             "",
                             Applicability::MachineApplicable
                         );
                     } else {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             lhs_expr.span.shrink_to_hi(),
                             to_owned_msg,
                             ".to_owned()",
@@ -754,7 +754,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             lhs_sugg,
                             (rhs_expr.span.shrink_to_lo(), "&".to_owned()),
                         ];
-                        err.multipart_suggestion_verbose(
+                        err.multipart_suggestion(
                             sugg_msg,
                             suggestions,
                             Applicability::MachineApplicable,

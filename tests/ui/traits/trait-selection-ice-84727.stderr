@@ -34,12 +34,14 @@ LL |     fn over(self) -> Cell<NewFg> {
    |        ----          ^^^^^^^^^^^ expected `Cell<NewFg>`, found `()`
    |        |
    |        implicitly returns `()` as its body has no tail or `return` expression
-LL |
-LL |         self.over();
-   |                    - help: remove this semicolon to return this value
    |
    = note: expected struct `Cell<NewFg>`
            found unit type `()`
+help: remove this semicolon to return this value
+   |
+LL -         self.over();
+LL +         self.over()
+   |
 
 error: aborting due to 5 previous errors
 

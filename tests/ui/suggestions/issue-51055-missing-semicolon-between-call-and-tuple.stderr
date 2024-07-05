@@ -5,11 +5,14 @@ LL |   fn vindictive() -> bool { true }
    |   ----------------------- `vindictive` defined here returns `bool`
 ...
 LL |       vindictive()
-   |       -^^^^^^^^^^^- help: consider using a semicolon here to finish the statement: `;`
-   |  _____|
-   | |
+   |  _____-^^^^^^^^^^^
 LL | |     (1, 2)
    | |__________- call expression requires function
+   |
+help: consider using a semicolon here to finish the statement
+   |
+LL |     vindictive();
+   |                 +
 
 error: aborting due to 1 previous error
 

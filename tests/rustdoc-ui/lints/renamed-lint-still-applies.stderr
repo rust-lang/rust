@@ -2,15 +2,24 @@ warning: lint `broken_intra_doc_links` has been renamed to `rustdoc::broken_intr
   --> $DIR/renamed-lint-still-applies.rs:2:9
    |
 LL | #![deny(broken_intra_doc_links)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `rustdoc::broken_intra_doc_links`
+   |         ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(renamed_and_removed_lints)]` on by default
+help: use the new name
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 warning: lint `rustdoc::non_autolinks` has been renamed to `rustdoc::bare_urls`
   --> $DIR/renamed-lint-still-applies.rs:7:9
    |
 LL | #![deny(rustdoc::non_autolinks)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `rustdoc::bare_urls`
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use the new name
+   |
+LL | #![deny(rustdoc::bare_urls)]
+   |         ~~~~~~~~~~~~~~~~~~
 
 error: unresolved link to `x`
   --> $DIR/renamed-lint-still-applies.rs:4:6

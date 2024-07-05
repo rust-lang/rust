@@ -16,10 +16,12 @@ LL |     let x: u8 = mac3!('b: {
    |                       -- a label with a similar name is reachable
 LL |         if true {
 LL |             break 'a 3;
-   |                   ^^
-   |                   |
-   |                   undeclared label `'a`
-   |                   help: try using similarly named label: `'b`
+   |                   ^^ undeclared label `'a`
+   |
+help: try using similarly named label
+   |
+LL |             break 'b 3;
+   |                   ~~
 
 error[E0426]: use of undeclared label `'a`
   --> $DIR/label_break_value_invalid.rs:33:29

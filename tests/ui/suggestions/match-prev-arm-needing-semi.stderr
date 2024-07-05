@@ -94,10 +94,7 @@ LL |       let _ = match true {
    |  _____________-
 LL | |         true => {
 LL | |             dummy();
-   | |             --------
-   | |             |      |
-   | |             |      help: consider removing this semicolon
-   | |             this is found to be of type `()`
+   | |             -------- this is found to be of type `()`
 LL | |
 LL | |         }
 LL | |         false => dummy(),
@@ -105,6 +102,12 @@ LL | |         false => dummy(),
 LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
+   |
+help: consider removing this semicolon
+   |
+LL -             dummy();
+LL +             dummy()
+   |
 
 error: aborting due to 4 previous errors
 

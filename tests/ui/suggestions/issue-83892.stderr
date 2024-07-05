@@ -6,8 +6,11 @@ LL | fn main() {
 LL |     match () {
 LL |         () => func()
    |               ^^^^^^ expected `()`, found `u8`
-LL |     }
-   |      - help: consider using a semicolon here: `;`
+   |
+help: consider using a semicolon here
+   |
+LL |     };
+   |      +
 
 error: aborting due to 1 previous error
 

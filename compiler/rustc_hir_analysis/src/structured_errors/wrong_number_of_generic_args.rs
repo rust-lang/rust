@@ -667,12 +667,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let sugg = format!("<{suggested_args}>");
                 debug!("sugg: {:?}", sugg);
 
-                err.span_suggestion_verbose(
-                    span.shrink_to_hi(),
-                    msg,
-                    sugg,
-                    Applicability::HasPlaceholders,
-                );
+                err.span_suggestion(span.shrink_to_hi(), msg, sugg, Applicability::HasPlaceholders);
             }
 
             AngleBrackets::Available => {
@@ -692,7 +687,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let sugg = format!("{sugg_prefix}{suggested_args}{sugg_suffix}");
                 debug!("sugg: {:?}", sugg);
 
-                err.span_suggestion_verbose(sugg_span, msg, sugg, Applicability::HasPlaceholders);
+                err.span_suggestion(sugg_span, msg, sugg, Applicability::HasPlaceholders);
             }
             AngleBrackets::Implied => {
                 // We never encounter missing lifetimes in situations in which lifetimes are elided
@@ -717,12 +712,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let sugg = format!("<{suggested_args}>");
                 debug!("sugg: {:?}", sugg);
 
-                err.span_suggestion_verbose(
-                    span.shrink_to_hi(),
-                    msg,
-                    sugg,
-                    Applicability::HasPlaceholders,
-                );
+                err.span_suggestion(span.shrink_to_hi(), msg, sugg, Applicability::HasPlaceholders);
             }
             AngleBrackets::Available => {
                 let gen_args_span = self.gen_args.span().unwrap();
@@ -750,7 +740,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let sugg = format!("{sugg_prefix}{suggested_args}{sugg_suffix}");
                 debug!("sugg: {:?}", sugg);
 
-                err.span_suggestion_verbose(sugg_span, msg, sugg, Applicability::HasPlaceholders);
+                err.span_suggestion(sugg_span, msg, sugg, Applicability::HasPlaceholders);
             }
         }
     }
@@ -1019,7 +1009,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     .collect::<Vec<_>>();
 
                 if !suggestions.is_empty() {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "replace the generic bound{s} with the associated type{s}",
                             s = pluralize!(unbound_types.len())

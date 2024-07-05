@@ -2169,7 +2169,7 @@ fn suggest_disambiguator(
             diag.multipart_suggestion(help, spans, Applicability::MaybeIncorrect);
         } else {
             let (sp, suggestion_text) = spans.pop().unwrap();
-            diag.span_suggestion_verbose(sp, help, suggestion_text, Applicability::MaybeIncorrect);
+            diag.span_suggestion(sp, help, suggestion_text, Applicability::MaybeIncorrect);
         }
     } else {
         diag.help(format!("{help}: {}", suggestion.as_help(path_str)));

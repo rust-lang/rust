@@ -268,7 +268,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
 
                 let place = Place::ty_from(local, proj_base, self.body, self.infcx.tcx);
                 if let Some(span) = get_mut_span_in_struct_field(self.infcx.tcx, place.ty, *field) {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span,
                         "consider changing this to be mutable",
                         " mut ",
@@ -325,7 +325,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                         if snippet.starts_with("&mut ") {
                             // We don't have access to the HIR to get accurate spans, but we can
                             // give a best effort structured suggestion.
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 source_info.span.with_hi(source_info.span.lo() + BytePos(5)),
                                 "try removing `&mut` here",
                                 "",
@@ -348,7 +348,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                         );
                         err.note("however, `&mut self` expands to `self: &mut Self`, therefore `self` cannot be borrowed mutably");
                     } else {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             decl.source_info.span.shrink_to_lo(),
                             "consider making the binding mutable",
                             "mut ",
@@ -408,7 +408,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                                     fn_decl.implicit_self,
                                     hir::ImplicitSelfKind::RefImm | hir::ImplicitSelfKind::RefMut
                                 ) {
-                                    err.span_suggestion_verbose(
+                                    err.span_suggestion(
                                         upvar_ident.span.shrink_to_lo(),
                                         "consider changing this to be mutable",
                                         "mut ",
@@ -419,7 +419,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                             }
                         }
                     } else {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             upvar_ident.span.shrink_to_lo(),
                             "consider changing this to be mutable",
                             "mut ",
@@ -449,7 +449,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     .is_ok_and(|snippet| snippet.starts_with("&mut ")) =>
             {
                 err.span_label(span, format!("cannot {act}"));
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     span.with_hi(span.lo() + BytePos(5)),
                     "try removing `&mut` here",
                     "",
@@ -770,7 +770,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             return;
         }
 
-        err.span_suggestion_verbose(
+        err.span_suggestion(
             local_decl.source_info.span.shrink_to_lo(),
             "consider changing this to be mutable",
             "mut ",
@@ -915,7 +915,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     }
                     AddrOf(BorrowKind::Ref, Mutability::Not, expr) => {
                         // We have `for _ in &i`, suggest `for _ in &mut i`.
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             expr.span.shrink_to_lo(),
                             "use a mutable iterator instead",
                             "mut ",
@@ -1070,7 +1070,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     if let Some(mut res) = res
                         && res.peek().is_some()
                     {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             path_segment.ident.span,
                             "you may want to use `iter_mut` here",
                             "iter_mut",
@@ -1198,7 +1198,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     sugg.push(s);
                 }
 
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     format!(
                         "consider changing this to be a mutable {pointer_desc}{}",
                         if is_trait_sig {
@@ -1330,7 +1330,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                             ("specifying", local.pat.span.shrink_to_hi(), format!(": {message}"))
                         }
                     };
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span,
                         format!("consider {changing} this binding's type"),
                         sugg,

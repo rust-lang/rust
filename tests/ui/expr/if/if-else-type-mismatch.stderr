@@ -35,15 +35,18 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       let _ = if true {
    |  _____________-
 LL | |         3u32;
-   | |         -----
-   | |         |   |
-   | |         |   help: consider removing this semicolon
-   | |         expected because of this
+   | |         ----- expected because of this
 LL | |     } else {
 LL | |         4u32
    | |         ^^^^ expected `()`, found `u32`
 LL | |     };
    | |_____- `if` and `else` have incompatible types
+   |
+help: consider removing this semicolon
+   |
+LL -         3u32;
+LL +         3u32
+   |
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/if-else-type-mismatch.rs:19:9
@@ -54,12 +57,15 @@ LL | |         5u32
    | |         ---- expected because of this
 LL | |     } else {
 LL | |         6u32;
-   | |         ^^^^-
-   | |         |   |
-   | |         |   help: consider removing this semicolon
-   | |         expected `u32`, found `()`
+   | |         ^^^^^ expected `u32`, found `()`
 LL | |     };
    | |_____- `if` and `else` have incompatible types
+   |
+help: consider removing this semicolon
+   |
+LL -         6u32;
+LL +         6u32
+   |
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/if-else-type-mismatch.rs:25:9

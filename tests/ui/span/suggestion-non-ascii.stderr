@@ -2,7 +2,12 @@ error[E0608]: cannot index into a value of type `({integer},)`
   --> $DIR/suggestion-non-ascii.rs:3:24
    |
 LL |     println!("☃{}", tup[0]);
-   |                        ^^^ help: to access tuple elements, use: `.0`
+   |                        ^^^
+   |
+help: to access tuple elements, use
+   |
+LL |     println!("☃{}", tup.0);
+   |                        ~~
 
 error: aborting due to 1 previous error
 

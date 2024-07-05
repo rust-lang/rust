@@ -868,26 +868,9 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             msg,
             suggestion,
             applicability,
-            SuggestionStyle::ShowCode,
-        )
-    } }
-
-    /// Show a suggestion that has multiple parts to it, always as it's own subdiagnostic.
-    /// In other words, multiple changes need to be applied as part of this suggestion.
-    #[rustc_lint_diagnostics]
-    pub fn multipart_suggestion_verbose(
-        &mut self,
-        msg: impl Into<SubdiagMessage>,
-        suggestion: Vec<(Span, String)>,
-        applicability: Applicability,
-    ) -> &mut Self {
-        self.multipart_suggestion_with_style(
-            msg,
-            suggestion,
-            applicability,
             SuggestionStyle::ShowAlways,
         )
-    }
+    } }
 
     /// [`Diag::multipart_suggestion()`] but you can set the [`SuggestionStyle`].
     #[rustc_lint_diagnostics]
@@ -948,42 +931,6 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         )
     }
 
-    with_fn! { with_span_suggestion,
-    /// Prints out a message with a suggested edit of the code.
-    ///
-    /// In case of short messages and a simple suggestion, rustc displays it as a label:
-    ///
-    /// ```text
-    /// try adding parentheses: `(tup.0).1`
-    /// ```
-    ///
-    /// The message
-    ///
-    /// * should not end in any punctuation (a `:` is added automatically)
-    /// * should not be a question (avoid language like "did you mean")
-    /// * should not contain any phrases like "the following", "as shown", etc.
-    /// * may look like "to do xyz, use" or "to do xyz, use abc"
-    /// * may contain a name of a function, variable, or type, but not whole expressions
-    ///
-    /// See `CodeSuggestion` for more information.
-    #[rustc_lint_diagnostics]
-    pub fn span_suggestion(
-        &mut self,
-        sp: Span,
-        msg: impl Into<SubdiagMessage>,
-        suggestion: impl ToString,
-        applicability: Applicability,
-    ) -> &mut Self {
-        self.span_suggestion_with_style(
-            sp,
-            msg,
-            suggestion,
-            applicability,
-            SuggestionStyle::ShowCode,
-        );
-        self
-    } }
-
     /// [`Diag::span_suggestion()`] but you can set the [`SuggestionStyle`].
     #[rustc_lint_diagnostics]
     pub fn span_suggestion_with_style(
@@ -1009,10 +956,10 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     }
 
-    with_fn! { with_span_suggestion_verbose,
+    with_fn! { with_span_suggestion,
     /// Always show the suggested change.
     #[rustc_lint_diagnostics]
-    pub fn span_suggestion_verbose(
+    pub fn span_suggestion(
         &mut self,
         sp: Span,
         msg: impl Into<SubdiagMessage>,
@@ -1045,7 +992,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             msg,
             suggestions,
             applicability,
-            SuggestionStyle::ShowCode,
+            SuggestionStyle::ShowAlways,
         )
     } }
 
@@ -1116,56 +1063,9 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self.push_suggestion(CodeSuggestion {
             substitutions,
             msg: self.subdiagnostic_message_to_diagnostic_message(msg),
-            style: SuggestionStyle::ShowCode,
+            style: SuggestionStyle::ShowAlways,
             applicability,
         });
-        self
-    }
-
-    with_fn! { with_span_suggestion_short,
-    /// Prints out a message with a suggested edit of the code. If the suggestion is presented
-    /// inline, it will only show the message and not the suggestion.
-    ///
-    /// See `CodeSuggestion` for more information.
-    #[rustc_lint_diagnostics]
-    pub fn span_suggestion_short(
-        &mut self,
-        sp: Span,
-        msg: impl Into<SubdiagMessage>,
-        suggestion: impl ToString,
-        applicability: Applicability,
-    ) -> &mut Self {
-        self.span_suggestion_with_style(
-            sp,
-            msg,
-            suggestion,
-            applicability,
-            SuggestionStyle::HideCodeInline,
-        );
-        self
-    } }
-
-    /// Prints out a message for a suggestion without showing the suggested code.
-    ///
-    /// This is intended to be used for suggestions that are obvious in what the changes need to
-    /// be from the message, showing the span label inline would be visually unpleasant
-    /// (marginally overlapping spans or multiline spans) and showing the snippet window wouldn't
-    /// improve understandability.
-    #[rustc_lint_diagnostics]
-    pub fn span_suggestion_hidden(
-        &mut self,
-        sp: Span,
-        msg: impl Into<SubdiagMessage>,
-        suggestion: impl ToString,
-        applicability: Applicability,
-    ) -> &mut Self {
-        self.span_suggestion_with_style(
-            sp,
-            msg,
-            suggestion,
-            applicability,
-            SuggestionStyle::HideCodeAlways,
-        );
         self
     }
 

@@ -60,9 +60,14 @@ error: Ferris cannot be used as an identifier
   --> $DIR/emoji-identifiers.rs:17:9
    |
 LL |     let 🦀 = 1;
-   |         ^^ help: try using their name instead: `ferris`
+   |         ^^
 LL |     dbg!(🦀);
    |          ^^
+   |
+help: try using their name instead
+   |
+LL |     let ferris = 1;
+   |         ~~~~~~
 
 error[E0599]: no function or associated item named `full_of✨` found for struct `👀` in the current scope
   --> $DIR/emoji-identifiers.rs:9:8
@@ -90,7 +95,12 @@ LL | fn i_like_to_😅_a_lot() -> 👀 {
    | ----------------------------- similarly named function `i_like_to_😅_a_lot` defined here
 ...
 LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
-   |             ^^^^^^^^^^^^^^^^^^ help: a function with a similar name exists: `i_like_to_😅_a_lot`
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+help: a function with a similar name exists
+   |
+LL |     let _ = i_like_to_😅_a_lot() ➖ 4;
+   |             ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 10 previous errors
 

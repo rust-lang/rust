@@ -149,7 +149,7 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
     }
 
     // Suggest a where clause bound for a non-type parameter.
-    err.span_suggestion_verbose(
+    err.span_suggestion(
         generics.tail_span_for_predicate_suggestion(),
         format!(
             "consider {} `where` clause, but there might be an alternative better way to express \
@@ -438,9 +438,9 @@ pub fn suggest_constraining_type_params<'a>(
             }
         };
 
-        err.span_suggestion_verbose(span, msg, suggestion, applicability);
+        err.span_suggestion(span, msg, suggestion, applicability);
     } else if suggestions.len() > 1 {
-        err.multipart_suggestion_verbose(
+        err.multipart_suggestion(
             "consider restricting type parameters",
             suggestions.into_iter().map(|(span, suggestion, _)| (span, suggestion)).collect(),
             applicability,

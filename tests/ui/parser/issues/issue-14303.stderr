@@ -2,31 +2,56 @@ error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/issue-14303.rs:1:18
    |
 LL | enum Enum<'a, T, 'b> {
-   |          --------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, 'b, T>`
+   |                  ^^
+   |
+help: reorder the parameters: lifetimes, then consts and types
+   |
+LL | enum Enum<'a, 'b, T> {
+   |          ~~~~~~~~~~~
 
 error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/issue-14303.rs:6:22
    |
 LL | struct Struct<'a, T, 'b> {
-   |              --------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, 'b, T>`
+   |                      ^^
+   |
+help: reorder the parameters: lifetimes, then consts and types
+   |
+LL | struct Struct<'a, 'b, T> {
+   |              ~~~~~~~~~~~
 
 error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/issue-14303.rs:11:20
    |
 LL | trait Trait<'a, T, 'b> {}
-   |            --------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, 'b, T>`
+   |                    ^^
+   |
+help: reorder the parameters: lifetimes, then consts and types
+   |
+LL | trait Trait<'a, 'b, T> {}
+   |            ~~~~~~~~~~~
 
 error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/issue-14303.rs:14:15
    |
 LL | fn foo<'a, T, 'b>(x: &'a T) {}
-   |       --------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, 'b, T>`
+   |               ^^
+   |
+help: reorder the parameters: lifetimes, then consts and types
+   |
+LL | fn foo<'a, 'b, T>(x: &'a T) {}
+   |       ~~~~~~~~~~~
 
 error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/issue-14303.rs:18:13
    |
 LL | impl<'a, T, 'b> Y<T> {}
-   |     --------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, 'b, T>`
+   |             ^^
+   |
+help: reorder the parameters: lifetimes, then consts and types
+   |
+LL | impl<'a, 'b, T> Y<T> {}
+   |     ~~~~~~~~~~~
 
 error[E0747]: type provided when a lifetime was expected
   --> $DIR/issue-14303.rs:30:37

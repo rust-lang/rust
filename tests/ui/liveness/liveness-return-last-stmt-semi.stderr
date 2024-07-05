@@ -13,8 +13,12 @@ LL | fn bar(x: u32) -> u32 {
    |    ---            ^^^ expected `u32`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
-LL |     x * 2;
-   |          - help: remove this semicolon to return this value
+   |
+help: remove this semicolon to return this value
+   |
+LL -     x * 2;
+LL +     x * 2
+   |
 
 error[E0308]: mismatched types
   --> $DIR/liveness-return-last-stmt-semi.rs:12:19

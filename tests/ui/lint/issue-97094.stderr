@@ -15,9 +15,13 @@ error: lint `bare_trait_object` has been renamed to `bare_trait_objects`
   --> $DIR/issue-97094.rs:7:26
    |
 LL | #![cfg_attr(all(), allow(bare_trait_object))]
-   |                          ^^^^^^^^^^^^^^^^^ help: use the new name: `bare_trait_objects`
+   |                          ^^^^^^^^^^^^^^^^^
    |
    = note: `#[deny(renamed_and_removed_lints)]` implied by `#[deny(warnings)]`
+help: use the new name
+   |
+LL | #![cfg_attr(all(), allow(bare_trait_objects))]
+   |                          ~~~~~~~~~~~~~~~~~~
 
 error: unknown lint: `nonex_lint_mod`
   --> $DIR/issue-97094.rs:10:25

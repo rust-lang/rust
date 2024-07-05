@@ -309,7 +309,7 @@ pub struct DocTestUnknownAny {
 #[note(passes_no_op_note)]
 pub struct DocTestUnknownSpotlight {
     pub path: String,
-    #[suggestion(style = "short", applicability = "machine-applicable", code = "notable_trait")]
+    #[suggestion(applicability = "machine-applicable", code = "notable_trait")]
     pub span: Span,
 }
 
@@ -869,7 +869,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for InvalidAttrAtCrateLevel {
         // Only emit an error with a suggestion if we can create a string out
         // of the attribute span
         if let Some(span) = self.sugg_span {
-            diag.span_suggestion_verbose(
+            diag.span_suggestion(
                 span,
                 fluent::passes_suggestion,
                 String::new(),
@@ -1776,7 +1776,7 @@ pub struct AttrCrateLevelOnly {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(passes_suggestion, applicability = "maybe-incorrect", code = "!", style = "verbose")]
+#[suggestion(passes_suggestion, applicability = "maybe-incorrect", code = "!")]
 pub struct AttrCrateLevelOnlySugg {
     #[primary_span]
     pub attr: Span,

@@ -2,18 +2,25 @@ error: this creates an owned instance just for comparison
   --> tests/ui/cmp_owned/comparison_flip.rs:6:8
    |
 LL |     if a.to_string() != "bar" {
-   |        ^^^^^^^^^^^^^ help: try: `a`
+   |        ^^^^^^^^^^^^^
    |
    = note: `-D clippy::cmp-owned` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
+help: try
+   |
+LL |     if a != "bar" {
+   |        ~
 
 error: this creates an owned instance just for comparison
   --> tests/ui/cmp_owned/comparison_flip.rs:10:17
    |
 LL |     if "bar" != a.to_string() {
-   |        ---------^^^^^^^^^^^^^
-   |        |
-   |        help: try: `a != "bar"`
+   |                 ^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     if a != "bar" {
+   |        ~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

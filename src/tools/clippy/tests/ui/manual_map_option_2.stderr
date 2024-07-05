@@ -29,7 +29,12 @@ LL |       let _ = match &s {
 LL | |         Some(x) => Some({ if let Some(ref s) = s { (x.clone(), s) } else { panic!() } }),
 LL | |         None => None,
 LL | |     };
-   | |_____^ help: try: `s.as_ref().map(|x| { if let Some(ref s) = s { (x.clone(), s) } else { panic!() } })`
+   | |_____^
+   |
+help: try
+   |
+LL |     let _ = s.as_ref().map(|x| { if let Some(ref s) = s { (x.clone(), s) } else { panic!() } });
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::map`
   --> tests/ui/manual_map_option_2.rs:58:17
@@ -39,7 +44,12 @@ LL |           let _ = match Some(0) {
 LL | |             Some(x) => Some(f(x)),
 LL | |             None => None,
 LL | |         };
-   | |_________^ help: try: `Some(0).map(|x| f(x))`
+   | |_________^
+   |
+help: try
+   |
+LL |         let _ = Some(0).map(|x| f(x));
+   |                 ~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::map`
   --> tests/ui/manual_map_option_2.rs:63:13
@@ -49,7 +59,12 @@ LL |       let _ = match Some(0) {
 LL | |         Some(x) => unsafe { Some(f(x)) },
 LL | |         None => None,
 LL | |     };
-   | |_____^ help: try: `Some(0).map(|x| unsafe { f(x) })`
+   | |_____^
+   |
+help: try
+   |
+LL |     let _ = Some(0).map(|x| unsafe { f(x) });
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: manual implementation of `Option::map`
   --> tests/ui/manual_map_option_2.rs:67:13
@@ -59,7 +74,12 @@ LL |       let _ = match Some(0) {
 LL | |         Some(x) => Some(unsafe { f(x) }),
 LL | |         None => None,
 LL | |     };
-   | |_____^ help: try: `Some(0).map(|x| unsafe { f(x) })`
+   | |_____^
+   |
+help: try
+   |
+LL |     let _ = Some(0).map(|x| unsafe { f(x) });
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 5 previous errors
 

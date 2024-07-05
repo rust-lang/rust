@@ -46,15 +46,24 @@ warning: use of deprecated attribute `crate_id`: no longer used
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:84:1
    |
 LL | #![crate_id = "10"]
-   | ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(deprecated)]` on by default
+help: remove this attribute
+   |
+LL - #![crate_id = "10"]
+   |
 
 warning: use of deprecated attribute `no_start`: no longer used
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:94:1
    |
 LL | #![no_start]
-   | ^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^
+   |
+help: remove this attribute
+   |
+LL - #![no_start]
+   |
 
 warning: unknown lint: `x5400`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:105:8

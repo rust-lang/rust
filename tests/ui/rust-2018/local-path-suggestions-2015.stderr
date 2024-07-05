@@ -2,10 +2,12 @@ error[E0432]: unresolved import `foobar`
   --> $DIR/local-path-suggestions-2015.rs:24:5
    |
 LL | use foobar::Baz;
-   |     ^^^^^^
-   |     |
-   |     unresolved import
-   |     help: a similar path exists: `aux_baz::foobar`
+   |     ^^^^^^ unresolved import
+   |
+help: a similar path exists
+   |
+LL | use aux_baz::foobar::Baz;
+   |     ~~~~~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

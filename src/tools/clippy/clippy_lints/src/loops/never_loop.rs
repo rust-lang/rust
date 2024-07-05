@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
                     // Suggests using an `if let` instead. This is `Unspecified` because the
                     // loop may (probably) contain `break` statements which would be invalid
                     // in an `if let`.
-                    diag.span_suggestion_verbose(
+                    diag.span_suggestion(
                         for_span.with_hi(iterator.span.hi()),
                         "if you need the first element of the iterator, try writing",
                         for_to_if_let_sugg(cx, iterator, pat),

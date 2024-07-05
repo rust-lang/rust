@@ -2,10 +2,12 @@ error: expected one of `extern`, `fn`, `safe`, or `unsafe`, found keyword `pub`
   --> $DIR/issue-76437-const-async.rs:4:17
    |
 LL |     const async pub fn t() {}
-   |     ------------^^^
-   |     |           |
-   |     |           expected one of `extern`, `fn`, `safe`, or `unsafe`
-   |     help: visibility `pub` must come before `const async`: `pub const async`
+   |                 ^^^ expected one of `extern`, `fn`, `safe`, or `unsafe`
+   |
+help: visibility `pub` must come before `const async`
+   |
+LL |     pub const async fn t() {}
+   |     ~~~~~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

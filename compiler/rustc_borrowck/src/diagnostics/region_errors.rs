@@ -293,7 +293,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         });
         if suggestions.len() > 0 {
             suggestions.dedup();
-            diag.multipart_suggestion_verbose(
+            diag.multipart_suggestion(
                 "consider restricting the type parameter to the `'static` lifetime",
                 suggestions,
                 Applicability::MaybeIncorrect,
@@ -912,7 +912,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 spans_suggs.push((alias_span.shrink_to_hi(), "<'a>".to_string()));
             }
 
-            diag.multipart_suggestion_verbose(
+            diag.multipart_suggestion(
                 format!(
                     "to declare that the trait object {captures}, you can add a lifetime parameter `'a` in the type alias"
                 ),
@@ -1009,7 +1009,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     "calling this method introduces the `impl`'s `'static` requirement",
                 );
                 err.subdiagnostic(RequireStaticErr::UsedImpl { multi_span });
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     span.shrink_to_hi(),
                     "consider relaxing the implicit `'static` requirement",
                     " + '_",
@@ -1172,7 +1172,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         }));
 
         if ocx.select_all_or_error().is_empty() && count > 0 {
-            diag.span_suggestion_verbose(
+            diag.span_suggestion(
                 tcx.hir().body(*body).value.peel_blocks().span.shrink_to_lo(),
                 "dereference the return value",
                 "*".repeat(count),
@@ -1219,7 +1219,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             _ => {}
         }
         if let Some(closure_span) = closure_span {
-            diag.span_suggestion_verbose(
+            diag.span_suggestion(
                 closure_span,
                 "consider adding 'move' keyword before the nested closure",
                 "move ",

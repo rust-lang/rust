@@ -5,7 +5,12 @@ LL | impl<B> A<B> {
    | ------------ the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
 ...
 LL |             Self(1)
-   |             ^^^^ help: replace `Self` with the actual type: `A`
+   |             ^^^^
+   |
+help: replace `Self` with the actual type
+   |
+LL |             A(1)
+   |             ~
 
 error: aborting due to 1 previous error
 

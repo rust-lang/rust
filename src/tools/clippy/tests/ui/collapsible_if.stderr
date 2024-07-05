@@ -125,7 +125,12 @@ error: this `if` statement can be collapsed
 LL | /     if matches!(true, true) {
 LL | |         if matches!(true, true) {}
 LL | |     }
-   | |_____^ help: collapse nested if block: `if matches!(true, true) && matches!(true, true) {}`
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL |     if matches!(true, true) && matches!(true, true) {}
+   |
 
 error: this `if` statement can be collapsed
   --> tests/ui/collapsible_if.rs:165:5
@@ -133,7 +138,12 @@ error: this `if` statement can be collapsed
 LL | /     if matches!(true, true) && truth() {
 LL | |         if matches!(true, true) {}
 LL | |     }
-   | |_____^ help: collapse nested if block: `if matches!(true, true) && truth() && matches!(true, true) {}`
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL |     if matches!(true, true) && truth() && matches!(true, true) {}
+   |
 
 error: aborting due to 9 previous errors
 

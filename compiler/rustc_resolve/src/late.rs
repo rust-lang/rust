@@ -4013,7 +4013,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     })
                 {
                     let mut diag = self.r.tcx.dcx().struct_allow("");
-                    diag.span_suggestion_verbose(
+                    diag.span_suggestion(
                         path_span.shrink_to_lo(),
                         "there is an associated type with the same name",
                         "Self::",

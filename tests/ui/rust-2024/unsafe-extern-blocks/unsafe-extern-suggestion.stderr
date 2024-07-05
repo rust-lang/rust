@@ -1,11 +1,7 @@
 error: extern blocks should be unsafe
   --> $DIR/unsafe-extern-suggestion.rs:7:1
    |
-LL |   extern "C" {
-   |   ^
-   |   |
-   |  _help: needs `unsafe` before the extern keyword: `unsafe`
-   | |
+LL | / extern "C" {
 LL | |
 LL | |
 LL | |     static TEST1: i32;
@@ -20,6 +16,10 @@ note: the lint level is defined here
    |
 LL | #![deny(missing_unsafe_on_extern)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+help: needs `unsafe` before the extern keyword
+   |
+LL | unsafe extern "C" {
+   | ++++++
 
 error: aborting due to 1 previous error
 

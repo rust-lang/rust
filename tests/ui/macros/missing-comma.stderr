@@ -11,15 +11,17 @@ LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
 LL |     foo!(a b);
-   |           -^ no rules expected this token in macro call
-   |           |
-   |           help: missing comma here
+   |            ^ no rules expected this token in macro call
    |
 note: while trying to match meta-variable `$a:ident`
   --> $DIR/missing-comma.rs:2:6
    |
 LL |     ($a:ident) => ();
    |      ^^^^^^^^
+help: missing comma here
+   |
+LL |     foo!(a,  b);
+   |           +
 
 error: no rules expected the token `e`
   --> $DIR/missing-comma.rs:23:21
@@ -28,15 +30,17 @@ LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
 LL |     foo!(a, b, c, d e);
-   |                    -^ no rules expected this token in macro call
-   |                    |
-   |                    help: missing comma here
+   |                     ^ no rules expected this token in macro call
    |
 note: while trying to match meta-variable `$d:ident`
   --> $DIR/missing-comma.rs:5:36
    |
 LL |     ($a:ident, $b:ident, $c:ident, $d:ident) => ();
    |                                    ^^^^^^^^
+help: missing comma here
+   |
+LL |     foo!(a, b, c, d,  e);
+   |                    +
 
 error: no rules expected the token `d`
   --> $DIR/missing-comma.rs:25:18
@@ -45,15 +49,17 @@ LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
 LL |     foo!(a, b, c d, e);
-   |                 -^ no rules expected this token in macro call
-   |                 |
-   |                 help: missing comma here
+   |                  ^ no rules expected this token in macro call
    |
 note: while trying to match meta-variable `$c:ident`
   --> $DIR/missing-comma.rs:4:26
    |
 LL |     ($a:ident, $b:ident, $c:ident) => ();
    |                          ^^^^^^^^
+help: missing comma here
+   |
+LL |     foo!(a, b, c,  d, e);
+   |                 +
 
 error: no rules expected the token `d`
   --> $DIR/missing-comma.rs:27:18

@@ -5,11 +5,15 @@ LL | /     a = b;
 LL | |
 LL | |
 LL | |     b = a;
-   | |_________^ help: try: `core::mem::swap(&mut a, &mut b)`
+   | |_________^
    |
    = note: or maybe you should use `core::mem::replace`?
    = note: `-D clippy::almost-swapped` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::almost_swapped)]`
+help: try
+   |
+LL |     core::mem::swap(&mut a, &mut b);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

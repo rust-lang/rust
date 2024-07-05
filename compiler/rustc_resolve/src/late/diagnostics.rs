@@ -432,7 +432,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
 
         if let Some(ref sugg) = base_error.suggestion {
-            err.span_suggestion_verbose(sugg.0, sugg.1, &sugg.2, Applicability::MaybeIncorrect);
+            err.span_suggestion(sugg.0, sugg.1, &sugg.2, Applicability::MaybeIncorrect);
         }
 
         self.suggest_bare_struct_literal(&mut err);
@@ -517,7 +517,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         continue;
                     };
                     if base_error.span == trait_ref.span {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             constraint.ident.span.between(trait_ref.span),
                             "you might have meant to write a path instead of an associated type bound",
                             "::",
@@ -537,7 +537,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let item_str = path_last_segment.ident;
         // Emit help message for fake-self from other languages (e.g., `this` in JavaScript).
         if ["this", "my"].contains(&item_str.as_str()) {
-            err.span_suggestion_short(
+            err.span_suggestion(
                 span,
                 "you might have meant to use `self` here instead",
                 "self",
@@ -560,7 +560,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             "&self",
                         )
                     };
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span,
                         "if you meant to use `self`, you are also missing a `self` receiver \
                          argument",
@@ -675,7 +675,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 match candidate {
                     AssocSuggestion::Field(field_span) => {
                         if self_is_available {
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 span.shrink_to_lo(),
                                 "you might have meant to use the available field",
                                 format!("{pre}self."),
@@ -691,7 +691,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         } else {
                             "you might have meant to refer to the method"
                         };
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             span.shrink_to_lo(),
                             msg,
                             "self.",
@@ -702,7 +702,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     | AssocSuggestion::AssocFn { .. }
                     | AssocSuggestion::AssocConst
                     | AssocSuggestion::AssocType => {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             span.shrink_to_lo(),
                             format!("you might have meant to {}", candidate.action()),
                             "Self::",
@@ -874,7 +874,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 Some((pat_sp, Some(ty_sp), None))
                     if ty_sp.contains(base_error.span) && base_error.could_be_expr =>
                 {
-                    err.span_suggestion_short(
+                    err.span_suggestion(
                         pat_sp.between(ty_sp),
                         "use `=` if you meant to assign",
                         " = ",
@@ -1052,7 +1052,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 "&self",
                             )
                         });
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span,
                         "add a `self` receiver parameter to make the associated `fn` a method",
                         sugg,
@@ -1226,7 +1226,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             // `if (i + 2) = 2` => `if let (i + 2) = 2` (approximately pattern)
             // `if 2 = i` => `if let 2 = i` (lhs needs to contain error span)
             if lhs.is_approximately_pattern() && lhs.span.contains(span) {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     expr_span.shrink_to_lo(),
                     "you might have meant to use pattern matching",
                     "let ",
@@ -1330,7 +1330,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         else {
                             return false;
                         };
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             *where_span,
                             format!("constrain the associated type to `{ident}`"),
                             where_bound_predicate_to_string(&new_where_bound_predicate),
@@ -1439,7 +1439,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 // The LHS is a type that originates from a macro call.
                 // We have to add angle brackets around it.
 
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     lhs_source_span.until(rhs_span),
                     MESSAGE,
                     format!("<{snippet}>::"),
@@ -1612,7 +1612,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     .is_some_and(|segment| !segment.has_generic_args && !segment.has_lifetime_args)
                     && suggestable
                 {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         span.shrink_to_hi(),
                         "use `!` to invoke the macro",
                         "!",
@@ -1745,7 +1745,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
                     if non_visible_spans.len() > 0 {
                         if let Some(fields) = self.r.field_visibility_spans.get(&def_id) {
-                            err.multipart_suggestion_verbose(
+                            err.multipart_suggestion(
                                 format!(
                                     "consider making the field{} publicly accessible",
                                     pluralize!(fields.len())
@@ -1860,7 +1860,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         match &items[..] {
             [] => {}
             [(_, name, len)] if *len == args.len() => {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     path_span.shrink_to_hi(),
                     format!("you might have meant to use the `{name}` associated function",),
                     format!("::{name}"),
@@ -1868,7 +1868,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 );
             }
             [(_, name, len)] => {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     path_span.shrink_to_hi().with_hi(call_span.hi()),
                     format!("you might have meant to use the `{name}` associated function",),
                     suggestion(name, *len),
@@ -2266,7 +2266,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     _ => (ident_span.shrink_to_lo(), "let ".to_string()),
                 };
 
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     span,
                     "you might have meant to introduce a new binding",
                     text,
@@ -2719,15 +2719,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             &mut err,
             Some(lifetime_ref.ident.name.as_str()),
             |err, _, span, message, suggestion, span_suggs| {
-                err.multipart_suggestion_with_style(
+                err.multipart_suggestion(
                     message,
                     std::iter::once((span, suggestion)).chain(span_suggs.clone()).collect(),
                     Applicability::MaybeIncorrect,
-                    if span_suggs.is_empty() {
-                        SuggestionStyle::ShowCode
-                    } else {
-                        SuggestionStyle::ShowAlways
-                    },
                 );
                 true
             },
@@ -3111,7 +3106,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     err,
                     None,
                     |err, higher_ranked, span, message, intro_sugg, _| {
-                        err.multipart_suggestion_verbose(
+                        err.multipart_suggestion(
                             message,
                             std::iter::once((span, intro_sugg))
                                 .chain(spans_suggs.clone())
@@ -3138,7 +3133,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 } else {
                     String::new()
                 };
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     format!("consider using the `{existing_name}` lifetime{post}"),
                     spans_suggs,
                     Applicability::MaybeIncorrect,
@@ -3184,7 +3179,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             } else {
                                 ("one of the", "s")
                             };
-                            err.multipart_suggestion_verbose(
+                            err.multipart_suggestion(
                                 format!(
                                     "instead, you are more likely to want to change {the} \
                                      argument{s} to be borrowed...",
@@ -3239,7 +3234,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 err,
                                 None,
                                 |err, higher_ranked, span, message, intro_sugg, _| {
-                                    err.multipart_suggestion_verbose(
+                                    err.multipart_suggestion(
                                         message,
                                         std::iter::once((span, intro_sugg))
                                             .chain(spans_suggs.clone())
@@ -3347,7 +3342,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             }
                         }
                         if owned_sugg {
-                            err.multipart_suggestion_verbose(
+                            err.multipart_suggestion(
                                 format!("{pre} to return an owned value"),
                                 sugg,
                                 Applicability::MaybeIncorrect,
@@ -3370,7 +3365,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 if spans_suggs.len() > 0 {
                     // This happens when we have `Foo<T>` where we point at the space before `T`,
                     // but this can be confusing so we give a suggestion with placeholders.
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         "consider using one of the available lifetimes here",
                         spans_suggs,
                         Applicability::HasPlaceholders,

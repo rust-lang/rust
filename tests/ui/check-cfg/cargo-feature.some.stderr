@@ -13,11 +13,15 @@ warning: unexpected `cfg` condition value: (none)
   --> $DIR/cargo-feature.rs:18:7
    |
 LL | #[cfg(feature)]
-   |       ^^^^^^^- help: specify a config value: `= "bitcode"`
+   |       ^^^^^^^
    |
    = note: expected values for `feature` are: `bitcode`
    = help: consider defining some features in `Cargo.toml`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+help: specify a config value
+   |
+LL | #[cfg(feature = "bitcode")]
+   |               +++++++++++
 
 warning: unexpected `cfg` condition name: `tokio_unstable`
   --> $DIR/cargo-feature.rs:22:7
@@ -37,9 +41,7 @@ warning: unexpected `cfg` condition value: `m`
   --> $DIR/cargo-feature.rs:26:7
    |
 LL | #[cfg(CONFIG_NVME = "m")]
-   |       ^^^^^^^^^^^^^^---
-   |                     |
-   |                     help: there is a expected value with a similar name: `"y"`
+   |       ^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `CONFIG_NVME` are: `y`
    = help: consider using a Cargo feature instead
@@ -48,6 +50,10 @@ LL | #[cfg(CONFIG_NVME = "m")]
             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(CONFIG_NVME, values("m"))'] }
    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(CONFIG_NVME, values(\"m\"))");` to the top of the `build.rs`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+help: there is a expected value with a similar name
+   |
+LL | #[cfg(CONFIG_NVME = "y")]
+   |                     ~~~
 
 warning: 4 warnings emitted
 

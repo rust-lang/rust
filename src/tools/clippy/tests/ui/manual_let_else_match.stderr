@@ -7,10 +7,14 @@ LL | |
 LL | |         Some(v_some) => v_some,
 LL | |         None => return,
 LL | |     };
-   | |______^ help: consider writing: `let Some(v) = g() else { return };`
+   | |______^
    |
    = note: `-D clippy::manual-let-else` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
+help: consider writing
+   |
+LL |     let Some(v) = g() else { return };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else_match.rs:43:5
@@ -20,7 +24,12 @@ LL | |
 LL | |         Some(v_some) => v_some,
 LL | |         _ => return,
 LL | |     };
-   | |______^ help: consider writing: `let Some(v) = g() else { return };`
+   | |______^
+   |
+help: consider writing
+   |
+LL |     let Some(v) = g() else { return };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else_match.rs:51:9
@@ -30,7 +39,12 @@ LL | |
 LL | |             (Some(v), None) | (None, Some(v)) => v,
 LL | |             (Some(_), Some(_)) | (None, None) => continue,
 LL | |         };
-   | |__________^ help: consider writing: `let ((Some(v), None) | (None, Some(v))) = h() else { continue };`
+   | |__________^
+   |
+help: consider writing
+   |
+LL |         let ((Some(v), None) | (None, Some(v))) = h() else { continue };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else_match.rs:57:9
@@ -40,7 +54,12 @@ LL | |
 LL | |             Variant::Bar(v) | Variant::Baz(v) => v,
 LL | |             _ => continue,
 LL | |         };
-   | |__________^ help: consider writing: `let (Variant::Bar(v) | Variant::Baz(v)) = build_enum() else { continue };`
+   | |__________^
+   |
+help: consider writing
+   |
+LL |         let (Variant::Bar(v) | Variant::Baz(v)) = build_enum() else { continue };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else_match.rs:66:5
@@ -50,7 +69,12 @@ LL | |
 LL | |         Ok(v) => v,
 LL | |         Err(_) => return,
 LL | |     };
-   | |______^ help: consider writing: `let Ok(v) = f() else { return };`
+   | |______^
+   |
+help: consider writing
+   |
+LL |     let Ok(v) = f() else { return };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else_match.rs:73:5
@@ -60,7 +84,12 @@ LL | |
 LL | |         Ok(v) => v,
 LL | |         Err(()) => return,
 LL | |     };
-   | |______^ help: consider writing: `let Ok(v) = f().map_err(|_| ()) else { return };`
+   | |______^
+   |
+help: consider writing
+   |
+LL |     let Ok(v) = f().map_err(|_| ()) else { return };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else_match.rs:81:5
@@ -70,7 +99,12 @@ LL | |
 LL | |         Variant::Bar(v) | Variant::Baz(v) => v,
 LL | |         _ => return,
 LL | |     };
-   | |______^ help: consider writing: `let (Variant::Bar(_value) | Variant::Baz(_value)) = f else { return };`
+   | |______^
+   |
+help: consider writing
+   |
+LL |     let (Variant::Bar(_value) | Variant::Baz(_value)) = f else { return };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else_match.rs:87:5
@@ -80,7 +114,12 @@ LL | |
 LL | |         Some(Variant::Bar(v) | Variant::Baz(v)) => v,
 LL | |         _ => return,
 LL | |     };
-   | |______^ help: consider writing: `let Some(Variant::Bar(_value) | Variant::Baz(_value)) = Some(build_enum()) else { return };`
+   | |______^
+   |
+help: consider writing
+   |
+LL |     let Some(Variant::Bar(_value) | Variant::Baz(_value)) = Some(build_enum()) else { return };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else_match.rs:94:5
@@ -90,7 +129,12 @@ LL | |
 LL | |         [data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0] => data,
 LL | |         _ => return,
 LL | |     };
-   | |______^ help: consider writing: `let ([data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0]) = data.as_slice() else { return };`
+   | |______^
+   |
+help: consider writing
+   |
+LL |     let ([data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0]) = data.as_slice() else { return };
+   |
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else_match.rs:175:5
@@ -100,7 +144,12 @@ LL | |
 LL | |         Some(m) => m,
 LL | |         _ => unreachable!("can't happen"),
 LL | |     };
-   | |______^ help: consider writing: `let Some(msg) = Some("hi") else { unreachable!("can't happen") };`
+   | |______^
+   |
+help: consider writing
+   |
+LL |     let Some(msg) = Some("hi") else { unreachable!("can't happen") };
+   |
 
 error: aborting due to 10 previous errors
 

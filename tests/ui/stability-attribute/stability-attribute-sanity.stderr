@@ -2,13 +2,18 @@ error: multiple `deprecated` attributes
   --> $DIR/stability-attribute-sanity.rs:62:1
    |
 LL | #[deprecated(since = "5.5.5", note = "text")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: attribute also specified here
   --> $DIR/stability-attribute-sanity.rs:61:1
    |
 LL | #[deprecated(since = "5.5.5", note = "text")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: remove this attribute
+   |
+LL - #[deprecated(since = "5.5.5", note = "text")]
+LL +
+   |
 
 error[E0541]: unknown meta item 'reason'
   --> $DIR/stability-attribute-sanity.rs:8:46

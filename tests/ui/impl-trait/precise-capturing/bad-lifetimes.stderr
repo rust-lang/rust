@@ -14,9 +14,12 @@ error[E0261]: use of undeclared lifetime name `'missing`
   --> $DIR/bad-lifetimes.rs:10:37
    |
 LL | fn missing_lt() -> impl Sized + use<'missing> {}
-   |              -                      ^^^^^^^^ undeclared lifetime
-   |              |
-   |              help: consider introducing lifetime `'missing` here: `<'missing>`
+   |                                     ^^^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'missing` here
+   |
+LL | fn missing_lt<'missing>() -> impl Sized + use<'missing> {}
+   |              ++++++++++
 
 error: expected lifetime parameter in `use<...>` precise captures list, found `'_`
   --> $DIR/bad-lifetimes.rs:3:39

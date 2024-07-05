@@ -2,34 +2,37 @@ error[E0599]: no method named `count` found for array `[{integer}; 4]` in the cu
   --> $DIR/count2len.rs:5:11
    |
 LL |     slice.count();
-   |           ^^^^^
-   |           |
-   |           method cannot be called on `[{integer}; 4]` due to unsatisfied trait bounds
-   |           help: consider using `len` instead
+   |           ^^^^^ method cannot be called on `[{integer}; 4]` due to unsatisfied trait bounds
    |
    = note: `count` is defined on `Iterator`, which `[{integer}; 4]` does not implement
+help: consider using `len` instead
+   |
+LL |     slice.len();
+   |           ~~~
 
 error[E0599]: no method named `count` found for struct `Vec<{integer}>` in the current scope
   --> $DIR/count2len.rs:6:9
    |
 LL |     vec.count();
-   |         ^^^^^
-   |         |
-   |         method cannot be called on `Vec<{integer}>` due to unsatisfied trait bounds
-   |         help: consider using `len` instead
+   |         ^^^^^ method cannot be called on `Vec<{integer}>` due to unsatisfied trait bounds
    |
    = note: `count` is defined on `Iterator`, which `Vec<{integer}>` does not implement
+help: consider using `len` instead
+   |
+LL |     vec.len();
+   |         ~~~
 
 error[E0599]: no method named `count` found for reference `&[{integer}]` in the current scope
   --> $DIR/count2len.rs:7:20
    |
 LL |     vec.as_slice().count();
-   |                    ^^^^^
-   |                    |
-   |                    method cannot be called on `&[{integer}]` due to unsatisfied trait bounds
-   |                    help: consider using `len` instead
+   |                    ^^^^^ method cannot be called on `&[{integer}]` due to unsatisfied trait bounds
    |
    = note: `count` is defined on `Iterator`, which `&[{integer}]` does not implement
+help: consider using `len` instead
+   |
+LL |     vec.as_slice().len();
+   |                    ~~~
 
 error: aborting due to 3 previous errors
 

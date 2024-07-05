@@ -55,9 +55,14 @@ warning: where clause not allowed here
   --> $DIR/where-clause-placement-assoc-type-in-impl.rs:32:17
    |
 LL |     type Assoc3 where = () where;
-   |                 ^^^^^ help: remove this `where`
+   |                 ^^^^^
    |
    = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
+help: remove this `where`
+   |
+LL -     type Assoc3 where = () where;
+LL +     type Assoc3  = () where;
+   |
 
 warning: 5 warnings emitted
 

@@ -2,19 +2,23 @@ error[E0407]: method `foo3` is not a member of trait `Trait`
   --> $DIR/explicit-paths.rs:51:9
    |
 LL |         reuse to_reuse::foo3;
-   |         ^^^^^^^^^^^^^^^^----^
-   |         |               |
-   |         |               help: there is an associated function with a similar name: `foo1`
-   |         not a member of trait `Trait`
+   |         ^^^^^^^^^^^^^^^^^^^^^ not a member of trait `Trait`
+   |
+help: there is an associated function with a similar name
+   |
+LL |         reuse to_reuse::foo1;
+   |                         ~~~~
 
 error[E0407]: method `foo4` is not a member of trait `Trait`
   --> $DIR/explicit-paths.rs:53:9
    |
 LL |         reuse F::foo4 { &self.0 }
-   |         ^^^^^^^^^----^^^^^^^^^^^^
-   |         |        |
-   |         |        help: there is an associated function with a similar name: `foo1`
-   |         not a member of trait `Trait`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ not a member of trait `Trait`
+   |
+help: there is an associated function with a similar name
+   |
+LL |         reuse F::foo1 { &self.0 }
+   |                  ~~~~
 
 error[E0425]: cannot find function `foo4` in `S`
   --> $DIR/explicit-paths.rs:29:14

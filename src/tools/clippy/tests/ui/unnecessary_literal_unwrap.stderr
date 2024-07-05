@@ -52,7 +52,12 @@ error: used `unwrap()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap.rs:20:16
    |
 LL |     let _val = None::<()>.unwrap();
-   |                ^^^^^^^^^^^^^^^^^^^ help: remove the `None` and `unwrap()`: `panic!()`
+   |                ^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap()`
+   |
+LL |     let _val = panic!();
+   |                ~~~~~~~~
 
 error: used `expect()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap.rs:21:16
@@ -69,7 +74,12 @@ error: used `unwrap_or_default()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap.rs:22:24
    |
 LL |     let _val: String = None.unwrap_or_default();
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the `None` and `unwrap_or_default()`: `String::default()`
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap_or_default()`
+   |
+LL |     let _val: String = String::default();
+   |                        ~~~~~~~~~~~~~~~~~
 
 error: used `unwrap_or()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap.rs:23:21
@@ -123,7 +133,12 @@ error: used `unwrap()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap.rs:28:5
    |
 LL |     None::<()>.unwrap();
-   |     ^^^^^^^^^^^^^^^^^^^ help: remove the `None` and `unwrap()`: `panic!()`
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap()`
+   |
+LL |     panic!();
+   |     ~~~~~~~~
 
 error: used `expect()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap.rs:29:5
@@ -140,7 +155,12 @@ error: used `unwrap_or_default()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap.rs:30:5
    |
 LL |     None::<String>.unwrap_or_default();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the `None` and `unwrap_or_default()`: `String::default()`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap_or_default()`
+   |
+LL |     String::default();
+   |     ~~~~~~~~~~~~~~~~~
 
 error: used `unwrap_or()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap.rs:31:5

@@ -18,15 +18,18 @@ error[E0107]: associated type takes 0 generic arguments but 1 generic argument w
   --> $DIR/invalid_const_in_lifetime_position.rs:4:26
    |
 LL | fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
-   |                          ^--- help: remove these generics
-   |                          |
-   |                          expected 0 generic arguments
+   |                          ^ expected 0 generic arguments
    |
 note: associated type defined here, with 0 generic parameters
   --> $DIR/invalid_const_in_lifetime_position.rs:2:10
    |
 LL |     type Y<'a>;
    |          ^
+help: remove these generics
+   |
+LL - fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+LL + fn f<'a>(arg : Box<dyn X<Y = &'a ()>>) {}
+   |
 
 error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/invalid_const_in_lifetime_position.rs:4:26
@@ -49,9 +52,7 @@ error[E0107]: associated type takes 0 generic arguments but 1 generic argument w
   --> $DIR/invalid_const_in_lifetime_position.rs:4:26
    |
 LL | fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
-   |                          ^--- help: remove these generics
-   |                          |
-   |                          expected 0 generic arguments
+   |                          ^ expected 0 generic arguments
    |
 note: associated type defined here, with 0 generic parameters
   --> $DIR/invalid_const_in_lifetime_position.rs:2:10
@@ -59,6 +60,11 @@ note: associated type defined here, with 0 generic parameters
 LL |     type Y<'a>;
    |          ^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: remove these generics
+   |
+LL - fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+LL + fn f<'a>(arg : Box<dyn X<Y = &'a ()>>) {}
+   |
 
 error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/invalid_const_in_lifetime_position.rs:4:26
@@ -81,9 +87,7 @@ error[E0107]: associated type takes 0 generic arguments but 1 generic argument w
   --> $DIR/invalid_const_in_lifetime_position.rs:4:26
    |
 LL | fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
-   |                          ^--- help: remove these generics
-   |                          |
-   |                          expected 0 generic arguments
+   |                          ^ expected 0 generic arguments
    |
 note: associated type defined here, with 0 generic parameters
   --> $DIR/invalid_const_in_lifetime_position.rs:2:10
@@ -91,6 +95,11 @@ note: associated type defined here, with 0 generic parameters
 LL |     type Y<'a>;
    |          ^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: remove these generics
+   |
+LL - fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+LL + fn f<'a>(arg : Box<dyn X<Y = &'a ()>>) {}
+   |
 
 error[E0038]: the trait `X` cannot be made into an object
   --> $DIR/invalid_const_in_lifetime_position.rs:4:20

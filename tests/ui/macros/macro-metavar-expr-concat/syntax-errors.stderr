@@ -20,7 +20,13 @@ error: expected identifier, found `1`
   --> $DIR/syntax-errors.rs:14:24
    |
 LL |         ${concat(aaaa, 1)}
-   |                        ^ help: try removing `1`
+   |                        ^
+   |
+help: try removing `1`
+   |
+LL -         ${concat(aaaa, 1)}
+LL +         ${concat(aaaa, )}
+   |
 
 error: expected comma
   --> $DIR/syntax-errors.rs:19:10
@@ -50,7 +56,13 @@ error: expected identifier, found `123`
   --> $DIR/syntax-errors.rs:34:29
    |
 LL |         ${concat($ex, aaaa, 123)}
-   |                             ^^^ help: try removing `123`
+   |                             ^^^
+   |
+help: try removing `123`
+   |
+LL -         ${concat($ex, aaaa, 123)}
+LL +         ${concat($ex, aaaa, )}
+   |
 
 error: `${concat(..)}` currently only accepts identifiers or meta-variables as parameters
   --> $DIR/syntax-errors.rs:25:19

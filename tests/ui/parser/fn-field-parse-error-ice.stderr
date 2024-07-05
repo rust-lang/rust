@@ -2,7 +2,12 @@ error: expected `,`, or `}`, found keyword `fn`
   --> $DIR/fn-field-parse-error-ice.rs:4:16
    |
 LL |     inner : dyn fn ()
-   |                ^ help: try adding a comma: `,`
+   |                ^
+   |
+help: try adding a comma
+   |
+LL |     inner : dyn, fn ()
+   |                +
 
 error: expected identifier, found keyword `fn`
   --> $DIR/fn-field-parse-error-ice.rs:4:17

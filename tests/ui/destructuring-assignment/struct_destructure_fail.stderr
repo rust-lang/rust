@@ -10,7 +10,13 @@ error: functional record updates are not allowed in destructuring assignments
   --> $DIR/struct_destructure_fail.rs:13:19
    |
 LL |     Struct { a, ..d } = Struct { a: 1, b: 2 };
-   |                   ^ help: consider removing the trailing pattern
+   |                   ^
+   |
+help: consider removing the trailing pattern
+   |
+LL -     Struct { a, ..d } = Struct { a: 1, b: 2 };
+LL +     Struct { a, .. } = Struct { a: 1, b: 2 };
+   |
 
 error[E0797]: base expression required after `..`
   --> $DIR/struct_destructure_fail.rs:15:19

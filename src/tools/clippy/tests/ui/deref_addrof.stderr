@@ -2,74 +2,126 @@ error: immediately dereferencing a reference
   --> tests/ui/deref_addrof.rs:23:13
    |
 LL |     let b = *&a;
-   |             ^^^ help: try: `a`
+   |             ^^^
    |
    = note: `-D clippy::deref-addrof` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::deref_addrof)]`
+help: try
+   |
+LL |     let b = a;
+   |             ~
 
 error: immediately dereferencing a reference
   --> tests/ui/deref_addrof.rs:25:13
    |
 LL |     let b = *&get_number();
-   |             ^^^^^^^^^^^^^^ help: try: `get_number()`
+   |             ^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let b = get_number();
+   |             ~~~~~~~~~~~~
 
 error: immediately dereferencing a reference
   --> tests/ui/deref_addrof.rs:30:13
    |
 LL |     let b = *&bytes[1..2][0];
-   |             ^^^^^^^^^^^^^^^^ help: try: `bytes[1..2][0]`
+   |             ^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let b = bytes[1..2][0];
+   |             ~~~~~~~~~~~~~~
 
 error: immediately dereferencing a reference
   --> tests/ui/deref_addrof.rs:34:13
    |
 LL |     let b = *&(a);
-   |             ^^^^^ help: try: `(a)`
+   |             ^^^^^
+   |
+help: try
+   |
+LL |     let b = (a);
+   |             ~~~
 
 error: immediately dereferencing a reference
   --> tests/ui/deref_addrof.rs:36:13
    |
 LL |     let b = *(&a);
-   |             ^^^^^ help: try: `a`
+   |             ^^^^^
+   |
+help: try
+   |
+LL |     let b = a;
+   |             ~
 
 error: immediately dereferencing a reference
   --> tests/ui/deref_addrof.rs:39:13
    |
 LL |     let b = *((&a));
-   |             ^^^^^^^ help: try: `a`
+   |             ^^^^^^^
+   |
+help: try
+   |
+LL |     let b = a;
+   |             ~
 
 error: immediately dereferencing a reference
   --> tests/ui/deref_addrof.rs:41:13
    |
 LL |     let b = *&&a;
-   |             ^^^^ help: try: `&a`
+   |             ^^^^
+   |
+help: try
+   |
+LL |     let b = &a;
+   |             ~~
 
 error: immediately dereferencing a reference
   --> tests/ui/deref_addrof.rs:43:14
    |
 LL |     let b = **&aref;
-   |              ^^^^^^ help: try: `aref`
+   |              ^^^^^^
+   |
+help: try
+   |
+LL |     let b = *aref;
+   |              ~~~~
 
 error: immediately dereferencing a reference
   --> tests/ui/deref_addrof.rs:47:19
    |
 LL |     let _repeat = *&[0; 64];
-   |                   ^^^^^^^^^ help: try: `[0; 64]`
+   |                   ^^^^^^^^^
+   |
+help: try
+   |
+LL |     let _repeat = [0; 64];
+   |                   ~~~~~~~
 
 error: immediately dereferencing a reference
   --> tests/ui/deref_addrof.rs:57:17
    |
 LL |         inline!(*& $(@expr self))
-   |                 ^^^^^^^^^^^^^^^^ help: try: `$(@expr self)`
+   |                 ^^^^^^^^^^^^^^^^
    |
    = note: this error originates in the macro `__inline_mac_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: try
+   |
+LL |         inline!($(@expr self))
+   |                 ~~~~~~~~~~~~~
 
 error: immediately dereferencing a reference
   --> tests/ui/deref_addrof.rs:61:17
    |
 LL |         inline!(*&mut $(@expr self))
-   |                 ^^^^^^^^^^^^^^^^^^^ help: try: `$(@expr self)`
+   |                 ^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in the macro `__inline_mac_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: try
+   |
+LL |         inline!($(@expr self))
+   |                 ~~~~~~~~~~~~~
 
 error: aborting due to 11 previous errors
 

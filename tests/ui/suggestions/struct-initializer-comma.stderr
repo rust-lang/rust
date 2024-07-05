@@ -5,12 +5,14 @@ LL |     let _ = Foo {
    |             --- while parsing this struct
 LL |
 LL |         first: true
-   |                    -
-   |                    |
-   |                    expected one of `,`, `.`, `?`, `}`, or an operator
-   |                    help: try adding a comma: `,`
+   |                    - expected one of `,`, `.`, `?`, `}`, or an operator
 LL |         second: 25
    |         ^^^^^^ unexpected token
+   |
+help: try adding a comma
+   |
+LL |         first: true,
+   |                    +
 
 error[E0063]: missing field `second` in initializer of `Foo`
   --> $DIR/struct-initializer-comma.rs:9:13

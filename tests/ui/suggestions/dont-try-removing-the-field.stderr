@@ -2,9 +2,13 @@ warning: unused variable: `baz`
   --> $DIR/dont-try-removing-the-field.rs:12:25
    |
 LL |     let Foo { foo, bar, baz } = x;
-   |                         ^^^ help: try ignoring the field: `baz: _`
+   |                         ^^^
    |
    = note: `#[warn(unused_variables)]` on by default
+help: try ignoring the field
+   |
+LL |     let Foo { foo, bar, baz: _ } = x;
+   |                         ~~~~~~
 
 warning: 1 warning emitted
 

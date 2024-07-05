@@ -2,7 +2,12 @@ error[E0608]: cannot index into a value of type `({integer}, {integer}, {integer
   --> $DIR/issue-27842.rs:4:16
    |
 LL |     let _ = tup[0];
-   |                ^^^ help: to access tuple elements, use: `.0`
+   |                ^^^
+   |
+help: to access tuple elements, use
+   |
+LL |     let _ = tup.0;
+   |                ~~
 
 error[E0608]: cannot index into a value of type `({integer}, {integer}, {integer})`
   --> $DIR/issue-27842.rs:9:16

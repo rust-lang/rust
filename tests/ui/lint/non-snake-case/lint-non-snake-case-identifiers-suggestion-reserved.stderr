@@ -2,7 +2,7 @@ warning: unused variable: `Mod`
   --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:12:9
    |
 LL |     let Mod: usize = 0;
-   |         ^^^ help: if this is intentional, prefix it with an underscore: `_Mod`
+   |         ^^^
    |
 note: the lint level is defined here
   --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:1:9
@@ -10,12 +10,21 @@ note: the lint level is defined here
 LL | #![warn(unused)]
    |         ^^^^^^
    = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+help: if this is intentional, prefix it with an underscore
+   |
+LL |     let _Mod: usize = 0;
+   |         ~~~~
 
 warning: unused variable: `Super`
   --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:16:9
    |
 LL |     let Super: usize = 0;
-   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_Super`
+   |         ^^^^^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |     let _Super: usize = 0;
+   |         ~~~~~~
 
 error: module `Impl` should have a snake case name
   --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:5:5
@@ -59,9 +68,14 @@ error: variable `Super` should have a snake case name
   --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:16:9
    |
 LL |     let Super: usize = 0;
-   |         ^^^^^ help: rename the identifier
+   |         ^^^^^
    |
    = note: `super` cannot be used as a raw identifier
+help: rename the identifier
+   |
+LL -     let Super: usize = 0;
+LL +     let : usize = 0;
+   |
 
 error: aborting due to 4 previous errors; 2 warnings emitted
 

@@ -2,7 +2,7 @@ warning: unused variable: `t1`
   --> $DIR/destructure_patterns.rs:14:14
    |
 LL |         let (t1, t2) = t;
-   |              ^^ help: if this is intentional, prefix it with an underscore: `_t1`
+   |              ^^
    |
 note: the lint level is defined here
   --> $DIR/destructure_patterns.rs:3:9
@@ -10,30 +10,54 @@ note: the lint level is defined here
 LL | #![warn(unused)]
    |         ^^^^^^
    = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         let (_t1, t2) = t;
+   |              ~~~
 
 warning: unused variable: `t2`
   --> $DIR/destructure_patterns.rs:14:18
    |
 LL |         let (t1, t2) = t;
-   |                  ^^ help: if this is intentional, prefix it with an underscore: `_t2`
+   |                  ^^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         let (t1, _t2) = t;
+   |                  ~~~
 
 warning: unused variable: `t1`
   --> $DIR/destructure_patterns.rs:26:14
    |
 LL |         let (t1, _) = t;
-   |              ^^ help: if this is intentional, prefix it with an underscore: `_t1`
+   |              ^^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         let (_t1, _) = t;
+   |              ~~~
 
 warning: unused variable: `t2`
   --> $DIR/destructure_patterns.rs:37:17
    |
 LL |         let (_, t2) = t;
-   |                 ^^ help: if this is intentional, prefix it with an underscore: `_t2`
+   |                 ^^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         let (_, _t2) = t;
+   |                 ~~~
 
 warning: unused variable: `x`
   --> $DIR/destructure_patterns.rs:88:21
    |
 LL |         let Point { x, y } = p;
-   |                     ^ help: try ignoring the field: `x: _`
+   |                     ^
+   |
+help: try ignoring the field
+   |
+LL |         let Point { x: _, y } = p;
+   |                     ~~~~
 
 warning: 5 warnings emitted
 

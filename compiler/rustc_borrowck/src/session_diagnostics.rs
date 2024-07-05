@@ -49,7 +49,7 @@ pub(crate) struct GenericDoesNotLiveLongEnough {
 #[derive(LintDiagnostic)]
 #[diag(borrowck_var_does_not_need_mut)]
 pub(crate) struct VarNeedNotMut {
-    #[suggestion(style = "short", applicability = "machine-applicable", code = "")]
+    #[suggestion(applicability = "machine-applicable", code = "")]
     pub span: Span,
 }
 #[derive(Diagnostic)]
@@ -405,8 +405,7 @@ pub(crate) enum CaptureReasonSuggest<'tcx> {
     #[suggestion(
         borrowck_suggest_iterate_over_slice,
         applicability = "maybe-incorrect",
-        code = "&",
-        style = "verbose"
+        code = "&"
     )]
     IterateSlice {
         ty: Ty<'tcx>,
@@ -416,8 +415,7 @@ pub(crate) enum CaptureReasonSuggest<'tcx> {
     #[suggestion(
         borrowck_suggest_create_freash_reborrow,
         applicability = "maybe-incorrect",
-        code = ".as_mut()",
-        style = "verbose"
+        code = ".as_mut()"
     )]
     FreshReborrow {
         #[primary_span]

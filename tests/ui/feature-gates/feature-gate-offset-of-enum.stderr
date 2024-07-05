@@ -2,10 +2,12 @@ error[E0573]: expected type, found variant `Alpha::One`
   --> $DIR/feature-gate-offset-of-enum.rs:11:16
    |
 LL |     offset_of!(Alpha::One, 0);
-   |                ^^^^^^^^^^
-   |                |
-   |                not a type
-   |                help: try using the variant's enum: `Alpha`
+   |                ^^^^^^^^^^ not a type
+   |
+help: try using the variant's enum
+   |
+LL |     offset_of!(Alpha, 0);
+   |                ~~~~~
 
 error[E0658]: using enums in offset_of is experimental
   --> $DIR/feature-gate-offset-of-enum.rs:12:23

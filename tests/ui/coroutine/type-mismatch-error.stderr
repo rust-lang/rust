@@ -3,16 +3,19 @@ error[E0308]: `if` and `else` have incompatible types
    |
 LL | /             if false {
 LL | |                 yield ();
-   | |                 ---------
-   | |                 |       |
-   | |                 |       help: consider removing this semicolon
-   | |                 expected because of this
+   | |                 --------- expected because of this
 LL | |             } else {
 LL | |                 a
    | |                 ^ expected `()`, found `u8`
 LL | |
 LL | |             }
    | |_____________- `if` and `else` have incompatible types
+   |
+help: consider removing this semicolon
+   |
+LL -                 yield ();
+LL +                 yield ()
+   |
 
 error: aborting due to 1 previous error
 

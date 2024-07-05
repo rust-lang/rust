@@ -16,9 +16,12 @@ LL | pub fn square(num: i32) -> i32 {
    |        ------              ^^^ expected `i32`, found `()`
    |        |
    |        implicitly returns `()` as its body has no tail or `return` expression
-LL |
-LL |     num * num;
-   |              - help: remove this semicolon to return this value
+   |
+help: remove this semicolon to return this value
+   |
+LL -     num * num;
+LL +     num * num
+   |
 
 error: aborting due to 2 previous errors
 

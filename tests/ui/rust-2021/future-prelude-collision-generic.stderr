@@ -2,7 +2,7 @@ warning: trait-associated function `from_iter` will become ambiguous in Rust 202
   --> $DIR/future-prelude-collision-generic.rs:28:5
    |
 LL |     Generic::from_iter(1);
-   |     ^^^^^^^^^^^^^^^^^^ help: disambiguate the associated function: `<Generic<'_, _> as MyFromIter>::from_iter`
+   |     ^^^^^^^^^^^^^^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/prelude.html>
@@ -11,24 +11,36 @@ note: the lint level is defined here
    |
 LL | #![warn(rust_2021_prelude_collisions)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: disambiguate the associated function
+   |
+LL |     <Generic<'_, _> as MyFromIter>::from_iter(1);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 warning: trait-associated function `from_iter` will become ambiguous in Rust 2021
   --> $DIR/future-prelude-collision-generic.rs:31:5
    |
 LL |     Generic::<'static, i32>::from_iter(1);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: disambiguate the associated function: `<Generic::<'static, i32> as MyFromIter>::from_iter`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/prelude.html>
+help: disambiguate the associated function
+   |
+LL |     <Generic::<'static, i32> as MyFromIter>::from_iter(1);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 warning: trait-associated function `from_iter` will become ambiguous in Rust 2021
   --> $DIR/future-prelude-collision-generic.rs:34:5
    |
 LL |     Generic::<'_, _>::from_iter(1);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: disambiguate the associated function: `<Generic::<'_, _> as MyFromIter>::from_iter`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/prelude.html>
+help: disambiguate the associated function
+   |
+LL |     <Generic::<'_, _> as MyFromIter>::from_iter(1);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 warning: 3 warnings emitted
 

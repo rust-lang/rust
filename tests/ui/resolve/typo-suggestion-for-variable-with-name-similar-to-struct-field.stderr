@@ -5,7 +5,12 @@ LL |     config: String,
    |     -------------- a field by that name exists in `Self`
 ...
 LL |         Self { config }
-   |                ^^^^^^ help: a local variable with a similar name exists: `cofig`
+   |                ^^^^^^
+   |
+help: a local variable with a similar name exists
+   |
+LL |         Self { cofig }
+   |                ~~~~~
 
 error[E0425]: cannot find value `config` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:11:20
@@ -14,7 +19,12 @@ LL |     config: String,
    |     -------------- a field by that name exists in `Self`
 ...
 LL |         println!("{config}");
-   |                    ^^^^^^ help: a local variable with a similar name exists: `cofig`
+   |                    ^^^^^^
+   |
+help: a local variable with a similar name exists
+   |
+LL |         println!("{cofig}");
+   |                    ~~~~~
 
 error[E0425]: cannot find value `config` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:15:20

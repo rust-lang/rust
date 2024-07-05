@@ -342,7 +342,7 @@ impl<'a> Parser<'a> {
                             .rev()
                             .find(|arg| !matches!(arg, AngleBracketedArg::Constraint(_)))
                         {
-                            err.span_suggestion_verbose(
+                            err.span_suggestion(
                                 arg.span().shrink_to_hi(),
                                 "you might have meant to end the type parameters here",
                                 ">",
@@ -474,7 +474,7 @@ impl<'a> Parser<'a> {
             return;
         }
 
-        error.span_suggestion_verbose(
+        error.span_suggestion(
             prev_token_before_parsing.span,
             format!(
                 "consider removing the `::` here to {}",
@@ -662,7 +662,7 @@ impl<'a> Parser<'a> {
                     // Handle `,` to `;` substitution
                     let mut err = self.unexpected().unwrap_err();
                     self.bump();
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         self.prev_token.span.until(self.token.span),
                         "use a comma to separate type parameters",
                         ", ",

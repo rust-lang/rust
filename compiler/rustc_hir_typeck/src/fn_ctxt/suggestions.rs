@@ -50,7 +50,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn suggest_semicolon_at_end(&self, span: Span, err: &mut Diag<'_>) {
         // This suggestion is incorrect for
         // fn foo() -> bool { match () { () => true } || match () { () => true } }
-        err.span_suggestion_short(
+        err.span_suggestion(
             span.shrink_to_hi(),
             "consider using a semicolon here",
             ";",
@@ -156,11 +156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
 
-            err.multipart_suggestion_verbose(
-                format!("use parentheses to {msg}"),
-                sugg,
-                applicability,
-            );
+            err.multipart_suggestion(format!("use parentheses to {msg}"), sugg, applicability);
             return true;
         }
         false
@@ -242,7 +238,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
 
-            err.multipart_suggestion_verbose("use parentheses to call these", sugg, applicability);
+            err.multipart_suggestion("use parentheses to call these", sugg, applicability);
 
             true
         } else {
@@ -268,7 +264,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 expr.span.with_lo(method.span.lo() - rustc_span::BytePos(1))
             };
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 span,
                 "try removing the method call",
                 "",
@@ -295,7 +291,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.suggest_deref_or_ref(expr, found, expected)
         {
             if verbose {
-                err.multipart_suggestion_verbose(msg, suggestion, applicability);
+                err.multipart_suggestion(msg, suggestion, applicability);
             } else {
                 err.multipart_suggestion(msg, suggestion, applicability);
             }
@@ -489,7 +485,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
             {
                 let sugg = prefix_wrap(".map(|x| x.as_str())");
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     expr.span.shrink_to_hi(),
                     fluent::hir_typeck_convert_to_str,
                     sugg,
@@ -1156,7 +1152,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if !is_in_arm(expr, self.tcx) {
                 suggs.push((span.shrink_to_hi(), ";".to_string()));
             }
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 "you might have meant to return this value",
                 suggs,
                 Applicability::MaybeIncorrect,
@@ -1233,7 +1229,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None => ".clone()".to_string(),
             };
 
-            diag.span_suggestion_verbose(
+            diag.span_suggestion(
                 expr.span.shrink_to_hi(),
                 "consider using clone here",
                 suggestion,
@@ -1398,7 +1394,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => ".is_some()".to_string(),
         };
 
-        diag.span_suggestion_verbose(
+        diag.span_suggestion(
             expr.span.shrink_to_hi(),
             "use `Option::is_some` to test if the `Option` has a value",
             suggestion,
@@ -1424,7 +1420,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let source_map = self.tcx.sess.source_map();
                 if let Ok(snippet) = source_map.span_to_snippet(blk.span) {
                     if snippet.starts_with('{') && snippet.ends_with('}') {
-                        diag.multipart_suggestion_verbose(
+                        diag.multipart_suggestion(
                             "to create an array, use square brackets instead of curly braces",
                             vec![
                                 (
@@ -1460,7 +1456,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         match expr.kind {
             ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), [start, end], _) => {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     start.span.shrink_to_hi().with_hi(end.span.lo()),
                     "remove the unnecessary `.` operator for a floating point literal",
                     '.',
@@ -1469,7 +1465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, ..), [start], _) => {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     expr.span.with_lo(start.span.hi()),
                     "remove the unnecessary `.` operator for a floating point literal",
                     '.',
@@ -1478,7 +1474,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, ..), [end], _) => {
-                err.span_suggestion_verbose(
+                err.span_suggestion(
                     expr.span.until(end.span),
                     "remove the unnecessary `.` operator and add an integer part for a floating point literal",
                     "0.",
@@ -1628,7 +1624,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         if self.can_coerce(item_ty, expected_ty) {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 segment.ident.span,
                 format!("try referring to the associated const `{capitalized_name}` instead",),
                 capitalized_name,
@@ -1933,7 +1929,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let span = expr.span.find_oldest_ancestor_in_same_ctxt();
-        err.span_suggestion_verbose(span.shrink_to_hi(), msg, sugg, Applicability::HasPlaceholders);
+        err.span_suggestion(span.shrink_to_hi(), msg, sugg, Applicability::HasPlaceholders);
         return true;
     }
 
@@ -2053,7 +2049,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 format!(" /* {suggestion} */")
             };
 
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 span.shrink_to_hi(),
                 msg,
                 suggestion,
@@ -2084,7 +2080,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if self.can_eq(self.param_env, base_ty, expected)
                     && let Some(base_span) = base.span.find_ancestor_inside(expr.span)
                 {
-                    err.span_suggestion_verbose(
+                    err.span_suggestion(
                         expr.span.with_lo(base_span.hi()),
                         format!("consider removing the tuple struct field `{ident}`"),
                         "",
@@ -2225,7 +2221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 [] => { /* No variants to format */ }
                 [(variant, ctor_kind, field_name, note)] => {
                     // Just a single matching variant.
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "try wrapping the expression in `{variant}`{note}",
                             note = note.as_deref().unwrap_or("")
@@ -2946,7 +2942,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ));
                     (msg, suggestion)
                 };
-                err.multipart_suggestion_verbose(msg, suggestion, Applicability::MachineApplicable);
+                err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
             };
 
         let suggest_to_change_suffix_or_into =
@@ -2981,7 +2977,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     into_suggestion.clone()
                 };
-                err.multipart_suggestion_verbose(msg, suggestion, Applicability::MachineApplicable);
+                err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
             };
 
         match (&expected_ty.kind(), &checked_ty.kind()) {
@@ -3035,14 +3031,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if found.bit_width() < exp.bit_width() {
                     suggest_to_change_suffix_or_into(err, false, true);
                 } else if literal_is_ty_suffixed(expr) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else if can_cast {
                     // Missing try_into implementation for `f64` to `f32`
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!("{cast_msg}, producing the closest possible value"),
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
@@ -3052,14 +3048,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             (&ty::Uint(_) | &ty::Int(_), &ty::Float(_)) => {
                 if literal_is_ty_suffixed(expr) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else if can_cast {
                     // Missing try_into implementation for `{float}` to `{integer}`
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!("{msg}, rounding the float towards zero"),
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
@@ -3070,7 +3066,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (ty::Float(exp), ty::Uint(found)) => {
                 // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "{msg}, producing the floating point representation of the integer",
                         ),
@@ -3078,14 +3074,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 } else if literal_is_ty_suffixed(expr) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else {
                     // Missing try_into implementation for `{integer}` to `{float}`
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "{cast_msg}, producing the floating point representation of the integer, \
                                  rounded if necessary",
@@ -3099,7 +3095,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (ty::Float(exp), ty::Int(found)) => {
                 // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "{}, producing the floating point representation of the integer",
                             msg.clone(),
@@ -3108,14 +3104,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 } else if literal_is_ty_suffixed(expr) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else {
                     // Missing try_into implementation for `{integer}` to `{float}`
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "{}, producing the floating point representation of the integer, \
                                 rounded if necessary",
@@ -3132,7 +3128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | &ty::Int(ty::IntTy::I32 | ty::IntTy::I64 | ty::IntTy::I128),
                 &ty::Char,
             ) => {
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     format!("{cast_msg}, since a `char` always occupies 4 bytes"),
                     cast_suggestion,
                     Applicability::MachineApplicable,
@@ -3212,7 +3208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span = span.with_lo(span.lo() + BytePos(1));
             sugg = "";
         }
-        err.span_suggestion_verbose(
+        err.span_suggestion(
             span,
             "you likely meant to write a method call instead of a range",
             sugg,
@@ -3263,7 +3259,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         if self.can_eq(self.param_env, expected_ty, ty) {
-            err.span_suggestion_short(
+            err.span_suggestion(
                 stmt.span.with_lo(tail_expr.span.hi()),
                 "remove this semicolon",
                 "",

@@ -541,7 +541,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNo
             } else {
                 (" ".to_string(), "")
             };
-            diag.span_suggestion_verbose(
+            diag.span_suggestion(
                 braces_span,
                 fluent::mir_build_suggestion,
                 format!(" {{{indentation}{more}_ => todo!(),{indentation}}}"),

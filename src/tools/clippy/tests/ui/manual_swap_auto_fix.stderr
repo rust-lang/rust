@@ -35,7 +35,12 @@ error: this looks like you are swapping elements of `v` manually
 LL | /     let temp = v[i1];
 LL | |     v[i1] = v[i2];
 LL | |     v[i2] = temp;
-   | |_________________^ help: try: `v.swap(i1, i2);`
+   | |_________________^
+   |
+help: try
+   |
+LL |     v.swap(i1, i2);
+   |
 
 error: this looks like you are swapping elements of `v` manually
   --> tests/ui/manual_swap_auto_fix.rs:34:5
@@ -43,7 +48,12 @@ error: this looks like you are swapping elements of `v` manually
 LL | /     let temp = v[i1];
 LL | |     v[i1] = v[i2 + 1];
 LL | |     v[i2 + 1] = temp;
-   | |_____________________^ help: try: `v.swap(i1, i2 + 1);`
+   | |_____________________^
+   |
+help: try
+   |
+LL |     v.swap(i1, i2 + 1);
+   |
 
 error: this looks like you are swapping elements of `v` manually
   --> tests/ui/manual_swap_auto_fix.rs:43:5
@@ -51,7 +61,12 @@ error: this looks like you are swapping elements of `v` manually
 LL | /     let temp = v[i1];
 LL | |     v[i1] = v[i2 + 1];
 LL | |     v[i2 + 1] = temp;
-   | |_____________________^ help: try: `v.swap(i1, i2 + 1);`
+   | |_____________________^
+   |
+help: try
+   |
+LL |     v.swap(i1, i2 + 1);
+   |
 
 error: this looks like you are swapping elements of `v` manually
   --> tests/ui/manual_swap_auto_fix.rs:50:5
@@ -74,7 +89,12 @@ error: this looks like you are swapping elements of `v` manually
 LL | /     let tmp = v[i1 * 3];
 LL | |     v[i1 * 3] = v[i2 / 2];
 LL | |     v[i2 / 2] = tmp;
-   | |____________________^ help: try: `v.swap(i1 * 3, i2 / 2);`
+   | |____________________^
+   |
+help: try
+   |
+LL |     v.swap(i1 * 3, i2 / 2);
+   |
 
 error: this looks like you are swapping elements of `v` manually
   --> tests/ui/manual_swap_auto_fix.rs:69:5
@@ -82,7 +102,12 @@ error: this looks like you are swapping elements of `v` manually
 LL | /     let tmp = v[i1 + i2];
 LL | |     v[i1 + i2] = v[i2];
 LL | |     v[i2] = tmp;
-   | |________________^ help: try: `v.swap(i1 + i2, i2);`
+   | |________________^
+   |
+help: try
+   |
+LL |     v.swap(i1 + i2, i2);
+   |
 
 error: aborting due to 8 previous errors
 

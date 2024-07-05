@@ -45,10 +45,8 @@ error[E0308]: mismatched types
   --> $DIR/return-impl-trait-bad.rs:28:5
    |
 LL | fn used_in_trait<T>() -> T
-   |                  -       -
-   |                  |       |
-   |                  |       expected `T` because of return type
-   |                  |       help: consider using an impl return type: `impl Send`
+   |                  -       - expected `T` because of return type
+   |                  |
    |                  expected this type parameter
 ...
 LL |     "don't suggest this, because the generic param is used in the bound."
@@ -57,6 +55,10 @@ LL |     "don't suggest this, because the generic param is used in the bound."
    = note: expected type parameter `T`
                    found reference `&'static str`
    = note: the caller chooses a type for `T` which can be different from `&'static str`
+help: consider using an impl return type
+   |
+LL | fn used_in_trait<T>() -> impl Send
+   |                          ~~~~~~~~~
 
 error: aborting due to 4 previous errors
 

@@ -2,19 +2,34 @@ error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:17:5
    |
 LL |     a.I
-   |     ^- help: use the path separator to refer to an item: `::`
+   |     ^
+   |
+help: use the path separator to refer to an item
+   |
+LL |     a::I
+   |      ~~
 
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:23:5
    |
 LL |     a.g()
-   |     ^- help: use the path separator to refer to an item: `::`
+   |     ^
+   |
+help: use the path separator to refer to an item
+   |
+LL |     a::g()
+   |      ~~
 
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:29:5
    |
 LL |     a.b.J
-   |     ^- help: use the path separator to refer to an item: `::`
+   |     ^
+   |
+help: use the path separator to refer to an item
+   |
+LL |     a::b.J
+   |      ~~
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:35:5
@@ -38,7 +53,12 @@ error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:42:5
    |
 LL |     a.b.f();
-   |     ^- help: use the path separator to refer to an item: `::`
+   |     ^
+   |
+help: use the path separator to refer to an item
+   |
+LL |     a::b.f();
+   |      ~~
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:46:12
@@ -47,9 +67,12 @@ LL |     pub const I: i32 = 1;
    |     --------------------- similarly named constant `I` defined here
 ...
 LL |     v.push(a::b);
-   |            ^^^-
-   |               |
-   |               help: a constant with a similar name exists: `I`
+   |            ^^^^
+   |
+help: a constant with a similar name exists
+   |
+LL |     v.push(a::I);
+   |               ~
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:52:5
@@ -76,9 +99,12 @@ LL |     pub const I: i32 = 1;
    |     --------------------- similarly named constant `I` defined here
 ...
 LL |     a::b
-   |     ^^^-
-   |        |
-   |        help: a constant with a similar name exists: `I`
+   |     ^^^^
+   |
+help: a constant with a similar name exists
+   |
+LL |     a::I
+   |        ~
 
 error[E0423]: expected function, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:65:5
@@ -87,9 +113,12 @@ LL |     pub const I: i32 = 1;
    |     --------------------- similarly named constant `I` defined here
 ...
 LL |     a::b()
-   |     ^^^-
-   |        |
-   |        help: a constant with a similar name exists: `I`
+   |     ^^^^
+   |
+help: a constant with a similar name exists
+   |
+LL |     a::I()
+   |        ~
 
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:72:9
@@ -117,23 +146,31 @@ error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:80:9
    |
 LL |         a.f()
-   |         ^- help: use the path separator to refer to an item: `::`
+   |         ^
 ...
 LL |     let _ = create!(method);
    |             --------------- in this macro invocation
    |
    = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL |         a::f()
+   |          ~~
 
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:85:9
    |
 LL |         a.f
-   |         ^- help: use the path separator to refer to an item: `::`
+   |         ^
 ...
 LL |     let _ = create!(field);
    |             -------------- in this macro invocation
    |
    = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL |         a::f
+   |          ~~
 
 error: aborting due to 13 previous errors
 

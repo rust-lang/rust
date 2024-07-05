@@ -2,7 +2,7 @@ warning: unused variable: `e`
   --> $DIR/liveness-consts.rs:24:13
    |
 LL |         let e = 1;
-   |             ^ help: if this is intentional, prefix it with an underscore: `_e`
+   |             ^
    |
 note: the lint level is defined here
   --> $DIR/liveness-consts.rs:2:9
@@ -10,18 +10,32 @@ note: the lint level is defined here
 LL | #![warn(unused)]
    |         ^^^^^^
    = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         let _e = 1;
+   |             ~~
 
 warning: unused variable: `s`
   --> $DIR/liveness-consts.rs:33:24
    |
 LL | pub fn f(x: [u8; { let s = 17; 100 }]) -> [u8;  { let z = 18; 100 }] {
-   |                        ^ help: if this is intentional, prefix it with an underscore: `_s`
+   |                        ^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL | pub fn f(x: [u8; { let _s = 17; 100 }]) -> [u8;  { let z = 18; 100 }] {
+   |                        ~~
 
 warning: unused variable: `z`
   --> $DIR/liveness-consts.rs:33:55
    |
 LL | pub fn f(x: [u8; { let s = 17; 100 }]) -> [u8;  { let z = 18; 100 }] {
-   |                                                       ^ help: if this is intentional, prefix it with an underscore: `_z`
+   |                                                       ^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL | pub fn f(x: [u8; { let s = 17; 100 }]) -> [u8;  { let _z = 18; 100 }] {
+   |                                                       ~~
 
 warning: variable `a` is assigned to, but never used
   --> $DIR/liveness-consts.rs:7:13
@@ -44,7 +58,12 @@ warning: unused variable: `z`
   --> $DIR/liveness-consts.rs:60:13
    |
 LL |         let z = 42;
-   |             ^ help: if this is intentional, prefix it with an underscore: `_z`
+   |             ^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         let _z = 42;
+   |             ~~
 
 warning: value assigned to `t` is never read
   --> $DIR/liveness-consts.rs:42:9
@@ -58,7 +77,12 @@ warning: unused variable: `w`
   --> $DIR/liveness-consts.rs:49:13
    |
 LL |         let w = 10;
-   |             ^ help: if this is intentional, prefix it with an underscore: `_w`
+   |             ^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         let _w = 10;
+   |             ~~
 
 warning: 8 warnings emitted
 

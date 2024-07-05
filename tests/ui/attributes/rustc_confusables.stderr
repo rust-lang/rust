@@ -2,7 +2,12 @@ error: malformed `rustc_confusables` attribute input
   --> $DIR/rustc_confusables.rs:34:5
    |
 LL |     #[rustc_confusables]
-   |     ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_confusables("name1", "name2", ...)]`
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: must be of the form
+   |
+LL |     #[rustc_confusables("name1", "name2", ...)]
+   |
 
 error: attribute should be applied to an inherent method
   --> $DIR/rustc_confusables.rs:45:1

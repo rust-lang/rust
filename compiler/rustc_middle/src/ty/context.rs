@@ -2936,7 +2936,7 @@ impl<'tcx> TyCtxt<'tcx> {
             let msg =
                 format!("add `#![feature({feature})]` to the crate attributes to enable{desc}");
             if let Some(span) = span {
-                diag.span_suggestion_verbose(
+                diag.span_suggestion(
                     span,
                     msg,
                     format!("#![feature({feature})]\n"),

@@ -13,9 +13,12 @@ error: expected one of `)` or `,`, found `Citron`
   --> $DIR/issue-103748-ICE-wrong-braces.rs:3:38
    |
 LL | struct Apple((Apple, Option(Banana ? Citron)));
-   |                                     -^^^^^^ expected one of `)` or `,`
-   |                                     |
-   |                                     help: missing `,`
+   |                                      ^^^^^^ expected one of `)` or `,`
+   |
+help: missing `,`
+   |
+LL | struct Apple((Apple, Option(Banana ?, Citron)));
+   |                                     +
 
 error[E0412]: cannot find type `Citron` in this scope
   --> $DIR/issue-103748-ICE-wrong-braces.rs:3:38

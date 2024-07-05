@@ -27,15 +27,18 @@ error[E0107]: struct takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/invalid-const-arg-for-type-param.rs:12:5
    |
 LL |     S::<0>;
-   |     ^----- help: remove these generics
-   |     |
-   |     expected 0 generic arguments
+   |     ^ expected 0 generic arguments
    |
 note: struct defined here, with 0 generic parameters
   --> $DIR/invalid-const-arg-for-type-param.rs:3:8
    |
 LL | struct S;
    |        ^
+help: remove these generics
+   |
+LL -     S::<0>;
+LL +     S;
+   |
 
 error: aborting due to 3 previous errors
 

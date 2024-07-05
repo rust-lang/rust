@@ -2,31 +2,43 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
   --> $DIR/fn-trait-notation.rs:4:8
    |
 LL |     F: Fn<i32, Output = i32>,
-   |        ^^^^^^^^^^^^^^^^^^^^^ help: use parenthetical notation instead: `Fn(i32) -> i32`
+   |        ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+help: use parenthetical notation instead
+   |
+LL |     F: Fn(i32) -> i32,
+   |        ~~~~~~~~~~~~~~
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/fn-trait-notation.rs:6:8
    |
 LL |     G: Fn<(i32, i32, ), Output = (i32, i32)>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use parenthetical notation instead: `Fn(i32, i32) -> (i32, i32)`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+help: use parenthetical notation instead
+   |
+LL |     G: Fn(i32, i32) -> (i32, i32),
+   |        ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/fn-trait-notation.rs:7:8
    |
 LL |     H: Fn<(i32,), Output = i32>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^ help: use parenthetical notation instead: `Fn(i32) -> i32`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+help: use parenthetical notation instead
+   |
+LL |     H: Fn(i32) -> i32,
+   |        ~~~~~~~~~~~~~~
 
 error[E0059]: type parameter to bare `Fn` trait must be a tuple
   --> $DIR/fn-trait-notation.rs:4:8

@@ -158,7 +158,12 @@ LL |       }else{
    |  __________^
 LL | |         if false {}
 LL | |     }
-   | |_____^ help: collapse nested if block: `if false {}`
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL |     }else if false {}
+   |           ~~~~~~~~~~~
 
 error: aborting due to 8 previous errors
 

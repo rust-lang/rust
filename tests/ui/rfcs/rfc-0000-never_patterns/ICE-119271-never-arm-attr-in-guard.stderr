@@ -22,7 +22,13 @@ error: a guard on a never pattern will never be run
   --> $DIR/ICE-119271-never-arm-attr-in-guard.rs:8:13
    |
 LL |             false
-   |             ^^^^^ help: remove this guard
+   |             ^^^^^
+   |
+help: remove this guard
+   |
+LL -             false
+LL +
+   |
 
 error: mismatched types
   --> $DIR/ICE-119271-never-arm-attr-in-guard.rs:5:14

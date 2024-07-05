@@ -2,10 +2,12 @@ error: expected one of `)`, `,`, `@`, or `|`, found `[`
   --> $DIR/pat-lt-bracket-7.rs:5:16
    |
 LL |     for Thing(x[]) in foo {}
-   |                ^
-   |                |
-   |                expected one of `)`, `,`, `@`, or `|`
-   |                help: missing `,`
+   |                ^ expected one of `)`, `,`, `@`, or `|`
+   |
+help: missing `,`
+   |
+LL |     for Thing(x,[]) in foo {}
+   |                +
 
 error[E0308]: mismatched types
   --> $DIR/pat-lt-bracket-7.rs:9:30

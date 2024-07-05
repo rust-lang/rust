@@ -70,7 +70,7 @@ impl<'a> Parser<'a> {
                             );
                             err.span_label(span, "not a trait");
                             if let [bound, ..] = &bounds[..] {
-                                err.span_suggestion_verbose(
+                                err.span_suggestion(
                                     impl_span.until(bound.span()),
                                     "use the trait bounds directly",
                                     String::new(),
@@ -145,7 +145,7 @@ impl<'a> Parser<'a> {
                 mistyped_const_ident.span,
                 format!("`const` keyword was mistyped as `{}`", mistyped_const_ident.as_str()),
             )
-            .with_span_suggestion_verbose(
+            .with_span_suggestion(
                 mistyped_const_ident.span,
                 "use the `const` keyword",
                 kw::Const,

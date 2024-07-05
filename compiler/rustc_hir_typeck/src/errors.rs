@@ -144,7 +144,7 @@ pub struct ExplicitDestructorCall {
 pub enum ExplicitDestructorCallSugg {
     #[suggestion(hir_typeck_suggestion, code = "drop", applicability = "maybe-incorrect")]
     Empty(#[primary_span] Span),
-    #[multipart_suggestion(hir_typeck_suggestion, style = "short")]
+    #[multipart_suggestion(hir_typeck_suggestion)]
     Snippet {
         #[suggestion_part(code = "drop(")]
         lo: Span,
@@ -196,7 +196,6 @@ pub struct DependencyOnUnitNeverTypeFallback<'tcx> {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     hir_typeck_add_missing_parentheses_in_range,
-    style = "verbose",
     applicability = "maybe-incorrect"
 )]
 pub struct AddMissingParenthesesInRange {
@@ -354,7 +353,6 @@ pub enum OptionResultRefMismatch {
     #[suggestion(
         hir_typeck_option_result_copied,
         code = ".copied()",
-        style = "verbose",
         applicability = "machine-applicable"
     )]
     Copied {
@@ -365,7 +363,6 @@ pub enum OptionResultRefMismatch {
     #[suggestion(
         hir_typeck_option_result_cloned,
         code = ".cloned()",
-        style = "verbose",
         applicability = "machine-applicable"
     )]
     Cloned {
@@ -377,7 +374,7 @@ pub enum OptionResultRefMismatch {
     // #[suggestion(
     //     hir_typeck_option_result_asref,
     //     code = ".as_ref()",
-    //     style = "verbose",
+    //
     //     applicability = "machine-applicable"
     // )]
     // AsRef {
@@ -449,11 +446,7 @@ pub struct UnionPatDotDot {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    hir_typeck_use_is_empty,
-    applicability = "maybe-incorrect",
-    style = "verbose"
-)]
+#[multipart_suggestion(hir_typeck_use_is_empty, applicability = "maybe-incorrect")]
 pub struct UseIsEmpty {
     #[suggestion_part(code = "!")]
     pub lo: Span,
@@ -594,12 +587,7 @@ impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
 
 #[derive(Subdiagnostic)]
 pub enum CannotCastToBoolHelp {
-    #[suggestion(
-        hir_typeck_suggestion,
-        applicability = "machine-applicable",
-        code = " != 0",
-        style = "verbose"
-    )]
+    #[suggestion(hir_typeck_suggestion, applicability = "machine-applicable", code = " != 0")]
     Numeric(#[primary_span] Span),
     #[label(hir_typeck_label)]
     Unsupported(#[primary_span] Span),
@@ -622,11 +610,7 @@ pub struct DerefImplsIsEmpty {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    hir_typeck_convert_using_method,
-    applicability = "machine-applicable",
-    style = "verbose"
-)]
+#[multipart_suggestion(hir_typeck_convert_using_method, applicability = "machine-applicable")]
 pub struct SuggestConvertViaMethod<'tcx> {
     #[suggestion_part(code = "{sugg}")]
     pub span: Span,

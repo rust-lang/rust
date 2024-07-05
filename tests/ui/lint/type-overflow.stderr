@@ -48,9 +48,13 @@ warning: literal out of range for `u32`
   --> $DIR/type-overflow.rs:14:16
    |
 LL |     let fail = 0x1_FFFF_FFFFu32;
-   |                ^^^^^^^^^^^^^^^^ help: consider using the type `u64` instead: `0x1_FFFF_FFFFu64`
+   |                ^^^^^^^^^^^^^^^^
    |
    = note: the literal `0x1_FFFF_FFFFu32` (decimal `8589934591`) does not fit into the type `u32` and will become `4294967295u32`
+help: consider using the type `u64` instead
+   |
+LL |     let fail = 0x1_FFFF_FFFFu64;
+   |                ~~~~~~~~~~~~~~~~
 
 warning: literal out of range for `i128`
   --> $DIR/type-overflow.rs:16:22
@@ -82,10 +86,14 @@ warning: literal out of range for `i8`
   --> $DIR/type-overflow.rs:21:17
    |
 LL |     let fail = -0b1111_1111i8;
-   |                 ^^^^^^^^^^^^^ help: consider using the type `i16` instead: `0b1111_1111i16`
+   |                 ^^^^^^^^^^^^^
    |
    = note: the literal `0b1111_1111i8` (decimal `255`) does not fit into the type `i8`
    = note: and the value `-0b1111_1111i8` will become `1i8`
+help: consider using the type `i16` instead
+   |
+LL |     let fail = -0b1111_1111i16;
+   |                 ~~~~~~~~~~~~~~
 
 warning: 7 warnings emitted
 

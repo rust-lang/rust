@@ -13,12 +13,15 @@ warning: unexpected `cfg` condition value: `value`
   --> $DIR/exhaustive-names-values.rs:14:7
    |
 LL | #[cfg(test = "value")]
-   |       ^^^^----------
-   |           |
-   |           help: remove the value
+   |       ^^^^^^^^^^^^^^
    |
    = note: no expected value for `test`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: remove the value
+   |
+LL - #[cfg(test = "value")]
+LL + #[cfg(test)]
+   |
 
 warning: unexpected `cfg` condition name: `feature`
   --> $DIR/exhaustive-names-values.rs:18:7

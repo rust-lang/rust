@@ -10,13 +10,23 @@ error: path statement drops value
   --> $DIR/warn-path-statement.rs:13:5
    |
 LL |     y;
-   |     ^^ help: use `drop` to clarify the intent: `drop(y);`
+   |     ^^
+   |
+help: use `drop` to clarify the intent
+   |
+LL |     drop(y);
+   |     ~~~~~~~~
 
 error: path statement drops value
   --> $DIR/warn-path-statement.rs:16:5
    |
 LL |     z;
-   |     ^^ help: use `drop` to clarify the intent: `drop(z);`
+   |     ^^
+   |
+help: use `drop` to clarify the intent
+   |
+LL |     drop(z);
+   |     ~~~~~~~~
 
 error: aborting due to 3 previous errors
 

@@ -5,7 +5,6 @@ LL |     impl Test for &Local {}
    |     ^^^^^----^^^^^------
    |          |        |
    |          |        `&'_ Local` is not local
-   |          |        help: remove `&` to make the `impl` local
    |          `Test` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -23,6 +22,11 @@ note: the lint level is defined here
    |
 LL | #![warn(non_local_definitions)]
    |         ^^^^^^^^^^^^^^^^^^^^^
+help: remove `&` to make the `impl` local
+   |
+LL -     impl Test for &Local {}
+LL +     impl Test for Local {}
+   |
 
 warning: 1 warning emitted
 

@@ -19,7 +19,10 @@ error[E0046]: not all trait items implemented, missing: `from_iter`
 LL | impl FromIterator<()> for X {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `from_iter` in implementation
    |
-   = help: implement the missing item: `fn from_iter<T: IntoIterator<Item = ()>>(_: T) -> Self { todo!() }`
+help: implement the missing item
+   |
+LL + fn from_iter<T: IntoIterator<Item = ()>>(_: T) -> Self { todo!() }
+   |
 
 error: aborting due to 2 previous errors
 

@@ -5,7 +5,15 @@ LL |       next: Option<String>>
    |  _________________________^
 LL | |
 LL | | }
-   | |_ help: remove extra angle bracket
+   | |_
+   |
+help: remove extra angle bracket
+   |
+LL -     next: Option<String>>
+LL -
+LL - }
+LL +     next: Option<String>}
+   |
 
 error: aborting due to 1 previous error
 

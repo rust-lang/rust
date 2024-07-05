@@ -15,9 +15,13 @@ error: constant `foo` should have an upper case name
   --> $DIR/issue-17718-const-naming.rs:4:7
    |
 LL | const foo: isize = 3;
-   |       ^^^ help: convert the identifier to upper case (notice the capitalization): `FOO`
+   |       ^^^
    |
    = note: `#[deny(non_upper_case_globals)]` implied by `#[deny(warnings)]`
+help: convert the identifier to upper case (notice the capitalization difference)
+   |
+LL | const FOO: isize = 3;
+   |       ~~~
 
 error: aborting due to 2 previous errors
 

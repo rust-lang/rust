@@ -30,7 +30,7 @@ error[E0423]: expected value, found enum `B`
   --> $DIR/issue-73427.rs:35:5
    |
 LL |     B.foo();
-   |     ^ help: the following enum variant is available: `(B::TupleWithFields(/* fields */))`
+   |     ^
    |
 note: the enum is defined here
   --> $DIR/issue-73427.rs:9:1
@@ -40,6 +40,10 @@ LL | |     StructWithFields { x: () },
 LL | |     TupleWithFields(()),
 LL | | }
    | |_^
+help: the following enum variant is available
+   |
+LL |     (B::TupleWithFields(/* fields */)).foo();
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0423]: expected value, found enum `C`
   --> $DIR/issue-73427.rs:37:5

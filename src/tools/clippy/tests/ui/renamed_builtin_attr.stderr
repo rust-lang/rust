@@ -2,7 +2,12 @@ error: usage of deprecated attribute
   --> tests/ui/renamed_builtin_attr.rs:3:11
    |
 LL | #[clippy::cyclomatic_complexity = "1"]
-   |           ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `cognitive_complexity`
+   |           ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using
+   |
+LL | #[clippy::cognitive_complexity = "1"]
+   |           ~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

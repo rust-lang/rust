@@ -1,18 +1,17 @@
 error: incorrect function inside `extern` block
   --> $DIR/extern-ffi-fn-with-body.rs:2:8
    |
-LL |   extern "C" {
-   |   ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
-LL |       fn foo() -> i32 {
-   |  ________^^^__________-
-   | |        |
-   | |        cannot have a body
-LL | |         return 0;
-LL | |     }
-   | |_____- help: remove the invalid body: `;`
+LL | extern "C" {
+   | ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+LL |     fn foo() -> i32 {
+   |        ^^^ cannot have a body
    |
    = help: you might have meant to write a function accessible through FFI, which can be done by writing `extern fn` outside of the `extern` block
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+help: remove the invalid body
+   |
+LL |     fn foo() -> i32 ;
+   |                     ~
 
 error: aborting due to 1 previous error
 

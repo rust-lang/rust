@@ -31,19 +31,24 @@ error: const items should never be `#[no_mangle]`
   --> $DIR/lint-unexported-no-mangle.rs:9:1
    |
 LL | const FOO: u64 = 1;
-   | -----^^^^^^^^^^^^^^
-   | |
-   | help: try a static value: `pub static`
+   | ^^^^^^^^^^^^^^^^^^^
    |
    = note: requested on the command line with `-F no-mangle-const-items`
+help: try a static value
+   |
+LL | pub static FOO: u64 = 1;
+   | ~~~~~~~~~~
 
 error: const items should never be `#[no_mangle]`
   --> $DIR/lint-unexported-no-mangle.rs:12:1
    |
 LL | pub const PUB_FOO: u64 = 1;
-   | ---------^^^^^^^^^^^^^^^^^^
-   | |
-   | help: try a static value: `pub static`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try a static value
+   |
+LL | pub static PUB_FOO: u64 = 1;
+   | ~~~~~~~~~~
 
 warning: lint `private_no_mangle_fns` has been removed: no longer a warning, `#[no_mangle]` functions always exported
    |

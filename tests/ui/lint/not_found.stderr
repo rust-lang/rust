@@ -10,13 +10,23 @@ warning: unknown lint: `DEAD_CODE`
   --> $DIR/not_found.rs:10:8
    |
 LL | #[warn(DEAD_CODE)]
-   |        ^^^^^^^^^ help: did you mean: `dead_code`
+   |        ^^^^^^^^^
+   |
+help: did you mean
+   |
+LL | #[warn(dead_code)]
+   |        ~~~~~~~~~
 
 warning: unknown lint: `Warnings`
   --> $DIR/not_found.rs:15:8
    |
 LL | #[deny(Warnings)]
-   |        ^^^^^^^^ help: did you mean (notice the capitalization): `warnings`
+   |        ^^^^^^^^
+   |
+help: did you mean (notice the capitalization difference)
+   |
+LL | #[deny(warnings)]
+   |        ~~~~~~~~
 
 warning: 3 warnings emitted
 

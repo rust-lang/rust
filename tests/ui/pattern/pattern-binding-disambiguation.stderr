@@ -5,10 +5,12 @@ LL | struct TupleStruct();
    | --------------------- the tuple struct `TupleStruct` is defined here
 ...
 LL |         TupleStruct => {}
-   |         ^^^^^^^^^^^
-   |         |
-   |         cannot be named the same as a tuple struct
-   |         help: try specify the pattern arguments: `TupleStruct(..)`
+   |         ^^^^^^^^^^^ cannot be named the same as a tuple struct
+   |
+help: try specify the pattern arguments
+   |
+LL |         TupleStruct(..) => {}
+   |         ~~~~~~~~~~~~~~~
 
 error[E0530]: match bindings cannot shadow tuple variants
   --> $DIR/pattern-binding-disambiguation.rs:33:9
@@ -17,10 +19,12 @@ LL | use E::*;
    |     ---- the tuple variant `TupleVariant` is imported here
 ...
 LL |         TupleVariant => {}
-   |         ^^^^^^^^^^^^
-   |         |
-   |         cannot be named the same as a tuple variant
-   |         help: try specify the pattern arguments: `TupleVariant(..)`
+   |         ^^^^^^^^^^^^ cannot be named the same as a tuple variant
+   |
+help: try specify the pattern arguments
+   |
+LL |         TupleVariant(..) => {}
+   |         ~~~~~~~~~~~~~~~~
 
 error[E0530]: match bindings cannot shadow statics
   --> $DIR/pattern-binding-disambiguation.rs:42:9

@@ -2,29 +2,36 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/in-signature.rs:7:21
    |
 LL | fn arr_fn() -> [u8; _] {
-   |                -----^-
-   |                |    |
-   |                |    not allowed in type signatures
-   |                help: replace with the correct return type: `[u8; 3]`
+   |                     ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL | fn arr_fn() -> [u8; 3] {
+   |                ~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/in-signature.rs:12:24
    |
 LL | fn ty_fn() -> Bar<i32, _> {
-   |               ---------^-
-   |               |        |
-   |               |        not allowed in type signatures
-   |               help: replace with the correct return type: `Bar<i32, 3>`
+   |                        ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL | fn ty_fn() -> Bar<i32, 3> {
+   |               ~~~~~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/in-signature.rs:17:25
    |
 LL | fn ty_fn_mixed() -> Bar<_, _> {
-   |                     ----^--^-
-   |                     |   |  |
-   |                     |   |  not allowed in type signatures
-   |                     |   not allowed in type signatures
-   |                     help: replace with the correct return type: `Bar<i32, 3>`
+   |                         ^  ^ not allowed in type signatures
+   |                         |
+   |                         not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL | fn ty_fn_mixed() -> Bar<i32, 3> {
+   |                     ~~~~~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/in-signature.rs:22:15
@@ -42,37 +49,45 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/in-signature.rs:26:14
    |
 LL | const TY_CT: Bar<i32, _> = Bar::<i32, 3>(0);
-   |              ^^^^^^^^^^^
-   |              |
-   |              not allowed in type signatures
-   |              help: replace with the correct type: `Bar<i32, 3>`
+   |              ^^^^^^^^^^^ not allowed in type signatures
+   |
+help: replace with the correct type
+   |
+LL | const TY_CT: Bar<i32, 3> = Bar::<i32, 3>(0);
+   |              ~~~~~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/in-signature.rs:28:19
    |
 LL | static TY_STATIC: Bar<i32, _> = Bar::<i32, 3>(0);
-   |                   ^^^^^^^^^^^
-   |                   |
-   |                   not allowed in type signatures
-   |                   help: replace with the correct type: `Bar<i32, 3>`
+   |                   ^^^^^^^^^^^ not allowed in type signatures
+   |
+help: replace with the correct type
+   |
+LL | static TY_STATIC: Bar<i32, 3> = Bar::<i32, 3>(0);
+   |                   ~~~~~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/in-signature.rs:30:20
    |
 LL | const TY_CT_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
-   |                    ^^^^^^^^^
-   |                    |
-   |                    not allowed in type signatures
-   |                    help: replace with the correct type: `Bar<i32, 3>`
+   |                    ^^^^^^^^^ not allowed in type signatures
+   |
+help: replace with the correct type
+   |
+LL | const TY_CT_MIXED: Bar<i32, 3> = Bar::<i32, 3>(0);
+   |                    ~~~~~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/in-signature.rs:32:25
    |
 LL | static TY_STATIC_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
-   |                         ^^^^^^^^^
-   |                         |
-   |                         not allowed in type signatures
-   |                         help: replace with the correct type: `Bar<i32, 3>`
+   |                         ^^^^^^^^^ not allowed in type signatures
+   |
+help: replace with the correct type
+   |
+LL | static TY_STATIC_MIXED: Bar<i32, 3> = Bar::<i32, 3>(0);
+   |                         ~~~~~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
   --> $DIR/in-signature.rs:51:23
