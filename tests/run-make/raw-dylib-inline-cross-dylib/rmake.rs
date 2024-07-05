@@ -32,8 +32,8 @@ fn main() {
         // Make sure we do find an import to the functions we expect to be imported.
         .assert_stdout_contains("library_function");
     if is_msvc() {
-        cc().arg("-c").out_exe("extern_1.obj").input("extern_1.c").run();
-        cc().arg("-c").out_exe("extern_2.obj").input("extern_2.c").run();
+        cc().arg("-c").out_exe("extern_1").input("extern_1.c").run();
+        cc().arg("-c").out_exe("extern_2").input("extern_2.c").run();
         cc().input("extern_1.obj")
             .arg("-link")
             .arg("-dll")
@@ -47,15 +47,15 @@ fn main() {
             .arg("-noimplib")
             .run();
     } else {
-        cc().arg("-v").arg("-c").out_exe("extern_1.obj").input("extern_1.c").run();
-        cc().arg("-v").arg("-c").out_exe("extern_2.obj").input("extern_2.c").run();
-        cc().input("extern_1.obj").out_exe("extern_1.dll").arg("-shared").run();
-        cc().input("extern_2.obj").out_exe("extern_2.dll").arg("-shared").run();
+        cc().arg("-v").arg("-c").out_exe("extern_1").input("extern_1.c").run();
+        cc().arg("-v").arg("-c").out_exe("extern_2").input("extern_2.c").run();
+        cc().input("extern_1").out_exe("extern_1.dll").arg("-shared").run();
+        cc().input("extern_2").out_exe("extern_2.dll").arg("-shared").run();
     }
     let out = run("driver").stdout_utf8();
     diff()
         .expected_file("output.txt")
         .actual_text("actual_output", out)
-        .normalize(r#"\\r"#, "")
+        .normalize(r#"\r"#, "")
         .run();
 }
