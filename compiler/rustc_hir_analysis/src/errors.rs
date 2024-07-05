@@ -693,20 +693,6 @@ pub(crate) struct TypeOf<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_pass_to_variadic_function, code = E0617)]
-pub(crate) struct PassToVariadicFunction<'tcx, 'a> {
-    #[primary_span]
-    pub span: Span,
-    pub ty: Ty<'tcx>,
-    pub cast_ty: &'a str,
-    #[suggestion(code = "{replace}", applicability = "machine-applicable")]
-    pub sugg_span: Option<Span>,
-    pub replace: String,
-    #[help]
-    pub help: Option<()>,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_invalid_union_field, code = E0740)]
 pub(crate) struct InvalidUnionField {
     #[primary_span]
