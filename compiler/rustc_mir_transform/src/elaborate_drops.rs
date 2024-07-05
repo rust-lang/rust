@@ -33,16 +33,16 @@ use std::fmt;
 /// as it would allow running a destructor on a place behind a reference:
 ///
 /// ```text
-// fn drop_term<T>(t: &mut T) {
-//     mir! {
-//         {
-//             Drop(*t, exit)
-//         }
-//         exit = {
-//             Return()
-//         }
-//     }
-// }
+/// fn drop_term<T>(t: &mut T) {
+///     mir! {
+///         {
+///             Drop(*t, exit)
+///         }
+///         exit = {
+///             Return()
+///         }
+///     }
+/// }
 /// ```
 pub struct ElaborateDrops;
 

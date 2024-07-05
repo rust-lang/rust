@@ -18,7 +18,7 @@ use rustc_trait_selection::traits::{
 use std::cell::RefCell;
 use std::ops::Deref;
 
-// Data shared between a "typeck root" and its nested bodies,
+/// Data shared between a "typeck root" and its nested bodies,
 /// e.g. closures defined within the function. For example:
 /// ```ignore (illustrative)
 /// fn foo() {
