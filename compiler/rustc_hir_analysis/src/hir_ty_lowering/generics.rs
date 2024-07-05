@@ -1,9 +1,9 @@
 use super::IsMethodCall;
+use crate::errors::wrong_number_of_generic_args::{GenericArgsInfo, WrongNumberOfGenericArgs};
 use crate::hir_ty_lowering::{
     errors::prohibit_assoc_item_constraint, ExplicitLateBound, GenericArgCountMismatch,
     GenericArgCountResult, GenericArgPosition, GenericArgsLowerer,
 };
-use crate::structured_errors::{GenericArgsInfo, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{
     codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,

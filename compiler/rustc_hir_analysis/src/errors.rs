@@ -9,6 +9,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
 mod pattern_types;
 pub use pattern_types::*;
+pub mod wrong_number_of_generic_args;
 
 mod precise_captures;
 pub(crate) use precise_captures::*;
