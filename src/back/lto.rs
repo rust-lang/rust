@@ -307,7 +307,6 @@ fn fat_lto(
             match bc_decoded {
                 SerializedModule::Local(ref module_buffer) => {
                     module.module_llvm.should_combine_object_files = true;
-                    module.module_llvm.fat_lto = true;
                     module
                         .module_llvm
                         .context
@@ -490,6 +489,7 @@ fn thin_lto(
                 //let path = module_buffer.0.to_str().expect("path");
                 //let my_path = PathBuf::from(path);
                 //let exists = my_path.exists();
+                //println!("Path: {:?}: {}", path, exists);
                 /*module.module_llvm.should_combine_object_files = true;
                 module
                 .module_llvm
@@ -626,6 +626,11 @@ pub unsafe fn optimize_thin_module(
             match *module {
                 SerializedModule::Local(ref module_buffer) => {
                     let path = module_buffer.0.to_str().expect("path");
+
+                    //let my_path = PathBuf::from(path);
+                    //let exists = my_path.exists();
+                    //println!("Path2: {:?}: {}", path, exists);
+
                     context.add_driver_option(path);
                     should_combine_object_files = true;
                     /*module.module_llvm.should_combine_object_files = true;
@@ -643,12 +648,7 @@ pub unsafe fn optimize_thin_module(
         }
     };
     let module = ModuleCodegen {
-        module_llvm: GccContext {
-            context,
-            should_combine_object_files,
-            fat_lto: false,
-            temp_dir: None,
-        },
+        module_llvm: GccContext { context, should_combine_object_files, temp_dir: None },
         name: thin_module.name().to_string(),
         kind: ModuleKind::Regular,
     };

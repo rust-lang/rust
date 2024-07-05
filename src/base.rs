@@ -225,7 +225,6 @@ pub fn compile_codegen_unit(
             name: cgu_name.to_string(),
             module_llvm: GccContext {
                 context: Arc::new(SyncContext::new(context)),
-                fat_lto: false,
                 should_combine_object_files: false,
                 temp_dir: None,
             },
