@@ -10,6 +10,7 @@ use rustc_ast::ast;
 use rustc_attr::DeprecatedSince;
 use rustc_hir::{def::CtorKind, def::DefKind, def_id::DefId};
 use rustc_metadata::rendered_const;
+use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::{Pos, Symbol};
@@ -512,9 +513,15 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
                     })
                     .collect(),
             },
-            RegionPredicate { lifetime, bounds } => WherePredicate::RegionPredicate {
+            RegionPredicate { lifetime, bounds } => WherePredicate::LifetimePredicate {
                 lifetime: convert_lifetime(lifetime),
-                bounds: bounds.into_tcx(tcx),
+                outlives: bounds
+                    .iter()
+                    .map(|bound| match bound {
+                        clean::GenericBound::Outlives(lt) => convert_lifetime(*lt),
+                        _ => bug!("found non-outlives-bound on lifetime predicate"),
+                    })
+                    .collect(),
             },
             EqPredicate { lhs, rhs } => {
                 WherePredicate::EqPredicate { lhs: lhs.into_tcx(tcx), rhs: rhs.into_tcx(tcx) }

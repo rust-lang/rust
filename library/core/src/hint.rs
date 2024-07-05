@@ -189,7 +189,7 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 /// ```
 ///
 /// This example is quite unlike anything that would be used in the real world: it is redundant
-/// to put an an assertion right next to code that checks the same thing, and dereferencing a
+/// to put an assertion right next to code that checks the same thing, and dereferencing a
 /// pointer already has the builtin assumption that it is nonnull. However, it illustrates the
 /// kind of changes the optimizer can make even when the behavior is less obviously related.
 #[track_caller]

@@ -745,7 +745,7 @@ fn mutability<'tcx>(ecx: &InterpCx<'tcx, impl Machine<'tcx>>, alloc_id: AllocId)
             }
         }
         GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
-        GlobalAlloc::Function(..) | GlobalAlloc::VTable(..) => {
+        GlobalAlloc::Function { .. } | GlobalAlloc::VTable(..) => {
             // These are immutable, we better don't allow mutable pointers here.
             Mutability::Not
         }

@@ -56,6 +56,8 @@ pub enum CommandKind {
 
 impl CommandKind {
     fn validate(&self, args: &[String], lineno: usize) -> bool {
+        // FIXME(adotinthevoid): We should "parse, don't validate" here, so we avoid ad-hoc
+        // indexing in check_command.
         let count = match self {
             CommandKind::Has => (1..=2).contains(&args.len()),
             CommandKind::IsMany => args.len() >= 2,
@@ -71,7 +73,7 @@ impl CommandKind {
         if let CommandKind::Count = self {
             if args[1].parse::<usize>().is_err() {
                 print_err(
-                    &format!("Second argument to @count must be a valid usize (got `{}`)", args[2]),
+                    &format!("Second argument to @count must be a valid usize (got `{}`)", args[1]),
                     lineno,
                 );
                 return false;

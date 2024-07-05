@@ -1449,7 +1449,7 @@ pub fn write_allocations<'tcx>(
             // This can't really happen unless there are bugs, but it doesn't cost us anything to
             // gracefully handle it and allow buggy rustc to be debugged via allocation printing.
             None => write!(w, " (deallocated)")?,
-            Some(GlobalAlloc::Function(inst)) => write!(w, " (fn: {inst})")?,
+            Some(GlobalAlloc::Function { instance, .. }) => write!(w, " (fn: {instance})")?,
             Some(GlobalAlloc::VTable(ty, Some(trait_ref))) => {
                 write!(w, " (vtable: impl {trait_ref} for {ty})")?
             }

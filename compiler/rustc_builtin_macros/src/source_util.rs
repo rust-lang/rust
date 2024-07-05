@@ -1,3 +1,4 @@
+use crate::errors;
 use crate::util::{
     check_zero_tts, get_single_str_from_tts, get_single_str_spanned_from_tts, parse_expr,
 };
@@ -165,9 +166,13 @@ pub(crate) fn expand_include<'cx>(
                     Ok(Some(item)) => ret.push(item),
                     Ok(None) => {
                         if self.p.token != token::Eof {
-                            let token = pprust::token_to_string(&self.p.token);
-                            let msg = format!("expected item, found `{token}`");
-                            self.p.dcx().span_err(self.p.token.span, msg);
+                            self.p
+                                .dcx()
+                                .create_err(errors::ExpectedItem {
+                                    span: self.p.token.span,
+                                    token: &pprust::token_to_string(&self.p.token),
+                                })
+                                .emit();
                         }
 
                         break;

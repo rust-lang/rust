@@ -208,6 +208,11 @@ impl<I: Idx, T> IndexVec<I, Option<T>> {
     pub fn remove(&mut self, index: I) -> Option<T> {
         self.get_mut(index)?.take()
     }
+
+    #[inline]
+    pub fn contains(&self, index: I) -> bool {
+        self.get(index).and_then(Option::as_ref).is_some()
+    }
 }
 
 impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexVec<I, T> {
