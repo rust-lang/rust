@@ -27,7 +27,6 @@ fn main() {
         .input("b.rs")
         .arg("--verbose")
         .run();
-    fs_wrapper::create_dir("wrong_directory");
     bare_rustc()
         .extern_("b", rust_lib_name("b"))
         .crate_type("rlib")
