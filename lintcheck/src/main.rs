@@ -5,6 +5,7 @@
 // When a new lint is introduced, we can search the results for new warnings and check for false
 // positives.
 
+#![feature(iter_collect_into)]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
@@ -352,7 +353,7 @@ impl Crate {
         target_dir_index: &AtomicUsize,
         total_crates_to_lint: usize,
         config: &LintcheckConfig,
-        lint_filter: &[String],
+        lint_levels_args: &[String],
         server: &Option<LintcheckServer>,
     ) -> Vec<ClippyCheckOutput> {
         // advance the atomic index by one
@@ -398,16 +399,9 @@ impl Crate {
             for opt in options {
                 clippy_args.push(opt);
             }
-        } else {
-            clippy_args.extend(["-Wclippy::pedantic", "-Wclippy::cargo"]);
         }
 
-        if lint_filter.is_empty() {
-            clippy_args.push("--cap-lints=warn");
-        } else {
-            clippy_args.push("--cap-lints=allow");
-            clippy_args.extend(lint_filter.iter().map(String::as_str));
-        }
+        clippy_args.extend(lint_levels_args.iter().map(String::as_str));
 
         let mut cmd = Command::new("cargo");
         cmd.arg(if config.fix { "fix" } else { "check" })
@@ -638,15 +632,39 @@ fn lintcheck(config: LintcheckConfig) {
     let (crates, recursive_options) = read_crates(&config.sources_toml_path);
 
     let counter = AtomicUsize::new(1);
-    let lint_filter: Vec<String> = config
-        .lint_filter
-        .iter()
-        .map(|filter| {
-            let mut filter = filter.clone();
-            filter.insert_str(0, "--force-warn=");
-            filter
-        })
-        .collect();
+    let mut lint_level_args: Vec<String> = vec![];
+    if config.lint_filter.is_empty() {
+        lint_level_args.push("--cap-lints=warn".to_string());
+
+        // Set allow-by-default to warn
+        if config.warn_all {
+            [
+                "clippy::cargo",
+                "clippy::nursery",
+                "clippy::pedantic",
+                "clippy::restriction",
+            ]
+            .iter()
+            .map(|group| format!("--warn={group}"))
+            .collect_into(&mut lint_level_args);
+        } else {
+            ["clippy::cargo", "clippy::pedantic"]
+                .iter()
+                .map(|group| format!("--warn={group}"))
+                .collect_into(&mut lint_level_args);
+        }
+    } else {
+        lint_level_args.push("--cap-lints=allow".to_string());
+        config
+            .lint_filter
+            .iter()
+            .map(|filter| {
+                let mut filter = filter.clone();
+                filter.insert_str(0, "--force-warn=");
+                filter
+            })
+            .collect_into(&mut lint_level_args);
+    };
 
     let crates: Vec<Crate> = crates
         .into_iter()
@@ -698,7 +716,7 @@ fn lintcheck(config: LintcheckConfig) {
                 &counter,
                 crates.len(),
                 &config,
-                &lint_filter,
+                &lint_level_args,
                 &server,
             )
         })
