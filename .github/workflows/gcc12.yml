@@ -70,7 +70,6 @@ jobs:
         ./y.sh build --no-default-features --sysroot-panic-abort
         # Uncomment when we no longer need to remove global variables.
         #./y.sh build --sysroot --no-default-features --sysroot-panic-abort
-        #./y.sh build --sysroot --no-default-features --sysroot-panic-abort
         #cargo test --no-default-features
         #./y.sh clean all
 
