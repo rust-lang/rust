@@ -836,11 +836,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 let ((with, with_label), without) = match sp {
                     Some(sp) if !self.tcx.sess.source_map().is_multiline(sp) => {
-                        let sp = sp.with_lo(BytePos(sp.lo().0 - (current.len() as u32)));
+                        let sp = sp
+                            .with_lo(BytePos(sp.lo().0 - (current.len() as u32)))
+                            .until(ident.span);
                         (
                         (Some(errs::AttemptToUseNonConstantValueInConstantWithSuggestion {
                                 span: sp,
-                                ident,
                                 suggestion,
                                 current,
                             }), Some(errs::AttemptToUseNonConstantValueInConstantLabelWithSuggestion {span})),
