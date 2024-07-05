@@ -1,10 +1,10 @@
-use crate::infer::outlives::components::{compute_alias_components_recursive, Component};
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::region_constraints::VerifyIfEq;
 use crate::infer::{GenericKind, VerifyBound};
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
+use rustc_type_ir::outlives::{compute_alias_components_recursive, Component};
 
 use smallvec::smallvec;
 
