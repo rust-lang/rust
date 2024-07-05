@@ -1524,9 +1524,6 @@ impl PathBuf {
     /// Returns `false` and does nothing if [`self.file_name`] is [`None`],
     /// returns `true` and updates the extension otherwise.
     ///
-    /// If [`self.extension`] is [`None`], the extension is added; otherwise
-    /// it is appended.
-    ///
     /// # Caveats
     ///
     /// The appended `extension` may contain dots and will be used in its entirety,
@@ -2727,7 +2724,7 @@ impl Path {
         new_path
     }
 
-    /// Creates an owned [`PathBuf`] like `self` but with an extra extension.
+    /// Creates an owned [`PathBuf`] like `self` but with the extension added.
     ///
     /// See [`PathBuf::add_extension`] for more details.
     ///
