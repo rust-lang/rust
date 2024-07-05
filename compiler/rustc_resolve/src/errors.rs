@@ -242,13 +242,13 @@ pub(crate) struct AttemptToUseNonConstantValueInConstant<'a> {
 #[derive(Subdiagnostic)]
 #[suggestion(
     resolve_attempt_to_use_non_constant_value_in_constant_with_suggestion,
-    code = "{suggestion} {ident}",
+    code = "{suggestion} ",
+    style = "verbose",
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct AttemptToUseNonConstantValueInConstantWithSuggestion<'a> {
     #[primary_span]
     pub(crate) span: Span,
-    pub(crate) ident: Ident,
     pub(crate) suggestion: &'a str,
     pub(crate) current: &'a str,
 }
