@@ -3,6 +3,7 @@
 /// descriptors.
 mod pal;
 
+pub(crate) mod exit_guard;
 mod personality;
 
 pub mod backtrace;

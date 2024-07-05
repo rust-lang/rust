@@ -11,7 +11,6 @@
 #![allow(dead_code)]
 
 pub mod alloc;
-pub mod exit_guard;
 pub mod small_c_string;
 
 #[cfg(test)]
