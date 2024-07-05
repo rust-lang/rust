@@ -1,6 +1,7 @@
 //@ run-pass
 //@ check-run-results
 //@ edition:2021
+//@ exec-env:RUST_BACKTRACE=0
 use std::thread;
 const PANIC_MESSAGE: &str = "oops oh no woe is me";
 
