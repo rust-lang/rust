@@ -140,6 +140,21 @@ mod msrv {
         let bar = Bar { val: 1 };
         let _ = unsafe { bar.val };
     }
+
+    #[clippy::msrv = "1.62"]
+    mod with_extern {
+        const extern "C" fn c() {}
+        //~^ ERROR: this could be a `const fn`
+
+        #[rustfmt::skip]
+        const extern fn implicit_c() {}
+        //~^ ERROR: this could be a `const fn`
+
+        // any item functions in extern block won't trigger this lint
+        extern "C" {
+            fn c_in_block();
+        }
+    }
 }
 
 mod issue12677 {

@@ -180,4 +180,13 @@ mod msrv {
             unsafe { *self.1 as usize }
         }
     }
+
+    #[clippy::msrv = "1.61"]
+    extern "C" fn c() {}
+}
+
+mod with_extern {
+    extern "C-unwind" fn c_unwind() {}
+    extern "system" fn system() {}
+    extern "system-unwind" fn system_unwind() {}
 }

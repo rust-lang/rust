@@ -200,7 +200,29 @@ LL |     const fn union_access_can_be_const() {
    |     +++++
 
 error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:152:9
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:146:9
+   |
+LL |         extern "C" fn c() {}
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |         const extern "C" fn c() {}
+   |         +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:150:9
+   |
+LL |         extern fn implicit_c() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `const`
+   |
+LL |         const extern fn implicit_c() {}
+   |         +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:167:9
    |
 LL | /         pub fn new(strings: Vec<String>) -> Self {
 LL | |             Self { strings }
@@ -213,7 +235,7 @@ LL |         pub const fn new(strings: Vec<String>) -> Self {
    |             +++++
 
 error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:157:9
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:172:9
    |
 LL | /         pub fn empty() -> Self {
 LL | |             Self { strings: Vec::new() }
@@ -226,7 +248,7 @@ LL |         pub const fn empty() -> Self {
    |             +++++
 
 error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:168:9
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:183:9
    |
 LL | /         pub fn new(text: String) -> Self {
 LL | |             let vec = Vec::new();
@@ -239,5 +261,5 @@ help: make the function `const`
 LL |         pub const fn new(text: String) -> Self {
    |             +++++
 
-error: aborting due to 17 previous errors
+error: aborting due to 19 previous errors
 
