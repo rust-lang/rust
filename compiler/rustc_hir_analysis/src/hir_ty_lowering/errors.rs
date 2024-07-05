@@ -462,9 +462,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
         }
-        let reported = err.emit();
-        self.set_tainted_by_errors(reported);
-        reported
+        err.emit()
     }
 
     pub(crate) fn complain_about_ambiguous_inherent_assoc_ty(
@@ -481,9 +479,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         );
         err.span_label(name.span, format!("multiple `{name}` found"));
         self.note_ambiguous_inherent_assoc_ty(&mut err, candidates, span);
-        let reported = err.emit();
-        self.set_tainted_by_errors(reported);
-        reported
+        err.emit()
     }
 
     // FIXME(fmease): Heavily adapted from `rustc_hir_typeck::method::suggest`. Deduplicate.
@@ -973,7 +969,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        self.set_tainted_by_errors(err.emit());
+        err.emit();
     }
 
     /// On ambiguous associated type, look for an associated function whose name matches the
@@ -1010,17 +1006,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .filter_by_name_unhygienic(Symbol::intern(&name))
                 .next()
         {
-            let reported =
-                struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated type")
-                    .with_span_suggestion_verbose(
-                        ident2.span.to(ident3.span),
-                        format!("there is an associated function with a similar name: `{name}`"),
-                        name,
-                        Applicability::MaybeIncorrect,
-                    )
-                    .emit();
-            self.set_tainted_by_errors(reported);
-            Err(reported)
+            Err(struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated type")
+                .with_span_suggestion_verbose(
+                    ident2.span.to(ident3.span),
+                    format!("there is an associated function with a similar name: `{name}`"),
+                    name,
+                    Applicability::MaybeIncorrect,
+                )
+                .emit())
         } else {
             Ok(())
         }
@@ -1129,9 +1122,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             err.span_label(span, format!("not allowed on {what}"));
         }
         generics_args_err_extend(self.tcx(), segments, &mut err, err_extend);
-        let reported = err.emit();
-        self.set_tainted_by_errors(reported);
-        reported
+        err.emit()
     }
 
     pub fn report_trait_object_addition_traits_error(
@@ -1167,9 +1158,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
              for more information on them, visit \
              <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>",
         );
-        let reported = err.emit();
-        self.set_tainted_by_errors(reported);
-        reported
+        err.emit()
     }
 
     pub fn report_trait_object_with_no_traits_error(
@@ -1183,10 +1172,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|&(trait_ref, _)| trait_ref.def_id())
             .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
             .map(|trait_ref| tcx.def_span(trait_ref));
-        let reported =
-            self.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
-        self.set_tainted_by_errors(reported);
-        reported
+
+        self.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span })
     }
 }
 

@@ -262,7 +262,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 if references_self {
                     let def_id = i.bottom().0.def_id();
-                    let reported = struct_span_code_err!(
+                    struct_span_code_err!(
                         self.dcx(),
                         i.bottom().1,
                         E0038,
@@ -275,7 +275,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             .error_msg(),
                     )
                     .emit();
-                    self.set_tainted_by_errors(reported);
                 }
 
                 ty::ExistentialTraitRef { def_id: trait_ref.def_id, args }

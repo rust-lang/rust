@@ -180,12 +180,6 @@ pub trait HirTyLowerer<'tcx> {
     /// The inference context of the lowering context if applicable.
     fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
 
-    /// Taint the context with errors.
-    ///
-    /// Invoke this when you encounter an error from some prior pass like name resolution.
-    /// This is used to help suppress derived errors typeck might otherwise report.
-    fn set_tainted_by_errors(&self, e: ErrorGuaranteed);
-
     /// Convenience method for coercing the lowering context into a trait object type.
     ///
     /// Most lowering routines are defined on the trait object type directly
@@ -405,10 +399,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             self_ty.is_some(),
         );
 
-        if let Err(err) = &arg_count.correct {
-            self.set_tainted_by_errors(err.reported);
-        }
-
         // Skip processing if type has no generic parameters.
         // Traits always have `Self` as a generic parameter, which means they will not return early
         // here and so associated item constraints will be handled regardless of whether there are
@@ -569,7 +559,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span,
                 modifier: constness.as_str(),
             });
-            self.set_tainted_by_errors(reported);
             arg_count.correct = Err(GenericArgCountMismatch { reported, invalid_args: vec![] });
         }
 
@@ -876,7 +865,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span,
                 constraint,
             );
-            self.set_tainted_by_errors(reported);
             return Err(reported);
         };
         debug!(?bound);
@@ -959,7 +947,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ));
             }
             let reported = err.emit();
-            self.set_tainted_by_errors(reported);
             if !where_bounds.is_empty() {
                 return Err(reported);
             }
@@ -1152,7 +1139,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         assoc_ident.name,
                     )
                 };
-                self.set_tainted_by_errors(reported);
                 return Err(reported);
             }
         };
@@ -1403,13 +1389,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         if !tcx.visibility(item_def_id).is_accessible_from(scope, tcx) {
-            let reported = self.dcx().emit_err(crate::errors::AssocItemIsPrivate {
+            self.dcx().emit_err(crate::errors::AssocItemIsPrivate {
                 span,
                 kind: tcx.def_descr(item_def_id),
                 name: ident,
                 defined_here_label: tcx.def_span(item_def_id),
             });
-            self.set_tainted_by_errors(reported);
         }
 
         tcx.check_stability(item_def_id, Some(block), span, None);
@@ -1835,7 +1820,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         err.span_note(impl_.self_ty.span, "not a concrete type");
                     }
                     let reported = err.emit();
-                    self.set_tainted_by_errors(reported);
                     Ty::new_error(tcx, reported)
                 } else {
                     ty
@@ -1882,7 +1866,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .tcx()
                     .dcx()
                     .span_delayed_bug(path.span, "path with `Res::Err` but no error emitted");
-                self.set_tainted_by_errors(e);
                 Ty::new_error(self.tcx(), e)
             }
             Res::Def(..) => {
@@ -2017,7 +2000,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if self.check_delegation_constraints(sig_id, span, idx == hir::InferDelegationKind::Output)
         {
             let e = self.dcx().span_delayed_bug(span, "not supported delegation case");
-            self.set_tainted_by_errors(e);
             return Ty::new_error(self.tcx(), e);
         };
         let sig = self.tcx().fn_sig(sig_id);
@@ -2442,7 +2424,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 err.note("consider introducing a named lifetime parameter");
             }
 
-            self.set_tainted_by_errors(err.emit());
+            err.emit();
         }
     }
 
