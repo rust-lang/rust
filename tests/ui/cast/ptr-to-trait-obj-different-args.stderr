@@ -6,47 +6,48 @@ LL |     let b: *const dyn B = a as _;
    |
    = note: vtable kinds may not match
 
-error[E0277]: the trait bound `dyn Trait<X>: Unsize<dyn Trait<Y>>` is not satisfied
+error[E0308]: mismatched types
   --> $DIR/ptr-to-trait-obj-different-args.rs:21:34
    |
 LL |     let y: *const dyn Trait<Y> = x as _;
-   |                                  ^^^^^^ the trait `Unsize<dyn Trait<Y>>` is not implemented for `dyn Trait<X>`
+   |                                  ^^^^^^ expected `X`, found `Y`
    |
-   = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
+   = note: expected trait object `dyn Trait<X>`
+              found trait object `dyn Trait<Y>`
 
-error[E0277]: the trait bound `dyn Trait<X>: Unsize<dyn Trait<T>>` is not satisfied
+error[E0308]: mismatched types
   --> $DIR/ptr-to-trait-obj-different-args.rs:27:34
    |
+LL | fn generic<T>(x: *const dyn Trait<X>, t: *const dyn Trait<T>) {
+   |            - found this type parameter
 LL |     let _: *const dyn Trait<T> = x as _;
-   |                                  ^^^^^^ the trait `Unsize<dyn Trait<T>>` is not implemented for `dyn Trait<X>`
+   |                                  ^^^^^^ expected `X`, found type parameter `T`
    |
-   = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | fn generic<T>(x: *const dyn Trait<X>, t: *const dyn Trait<T>) where dyn Trait<X>: Unsize<dyn Trait<T>> {
-   |                                                               ++++++++++++++++++++++++++++++++++++++++
+   = note: expected trait object `dyn Trait<X>`
+              found trait object `dyn Trait<T>`
 
-error[E0277]: the trait bound `dyn Trait<T>: Unsize<dyn Trait<X>>` is not satisfied
+error[E0308]: mismatched types
   --> $DIR/ptr-to-trait-obj-different-args.rs:28:34
    |
+LL | fn generic<T>(x: *const dyn Trait<X>, t: *const dyn Trait<T>) {
+   |            - expected this type parameter
+LL |     let _: *const dyn Trait<T> = x as _;
 LL |     let _: *const dyn Trait<X> = t as _;
-   |                                  ^^^^^^ the trait `Unsize<dyn Trait<X>>` is not implemented for `dyn Trait<T>`
+   |                                  ^^^^^^ expected type parameter `T`, found `X`
    |
-   = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | fn generic<T>(x: *const dyn Trait<X>, t: *const dyn Trait<T>) where dyn Trait<T>: Unsize<dyn Trait<X>> {
-   |                                                               ++++++++++++++++++++++++++++++++++++++++
+   = note: expected trait object `dyn Trait<T>`
+              found trait object `dyn Trait<X>`
 
-error[E0277]: the trait bound `dyn Assocked<Assoc = u8>: Unsize<dyn Assocked<Assoc = u32>>` is not satisfied
+error[E0308]: mismatched types
   --> $DIR/ptr-to-trait-obj-different-args.rs:36:5
    |
 LL |     x as _
-   |     ^^^^^^ the trait `Unsize<dyn Assocked<Assoc = u32>>` is not implemented for `dyn Assocked<Assoc = u8>`
+   |     ^^^^^^ expected `u8`, found `u32`
    |
-   = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
+   = note: expected trait object `dyn Assocked<Assoc = u8>`
+              found trait object `dyn Assocked<Assoc = u32>`
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0277, E0606.
-For more information about an error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0308, E0606.
+For more information about an error, try `rustc --explain E0308`.

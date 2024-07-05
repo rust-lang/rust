@@ -57,7 +57,7 @@ pub fn user2() -> &'static dyn Trait<u8, u16> {
 fn main() {
     let p: *const dyn Trait<u8, u8> = &();
     let p = p as *const dyn Trait<u8, u16>; // <- this is bad!
-    //~^ error: the trait bound `dyn Trait<u8, u8>: Unsize<dyn Trait<u8, u16>>` is not satisfied
+    //~^ error: mismatched types
     let p = p as *const dyn Super<u16>; // <- this upcast accesses improper vtable entry
     // accessing from L__unnamed_2 the position for the 'Super<u16> vtable (pointer)',
     // thus reading 'null pointer for missing_method'

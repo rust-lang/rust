@@ -34,8 +34,7 @@ use crate::errors;
 use crate::type_error_struct;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{codes::*, Applicability, Diag, ErrorGuaranteed};
-use rustc_hir::{self as hir, ExprKind, LangItem};
-use rustc_infer::traits::Obligation;
+use rustc_hir::{self as hir, ExprKind};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
 use rustc_middle::mir::Mutability;
@@ -835,9 +834,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     (Some(src_principal), Some(dst_principal)) => {
                         let tcx = fcx.tcx;
 
-                        // Check that the traits are actually the same
-                        // (this is required as the `Unsize` check below would allow upcasting, etc)
-                        // N.B.: this is only correct as long as we don't support `trait A<T>: A<()>`.
+                        // Check that the traits are actually the same.
+                        // The `dyn Src = dyn Dst` check below would suffice,
+                        // but this may produce a better diagnostic.
                         //
                         // Note that trait upcasting goes through a different mechanism (`coerce_unsized`)
                         // and is unaffected by this check.
@@ -867,20 +866,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             ty::Dyn,
                         ));
 
-                        // `dyn Src: Unsize<dyn Dst>`, this checks for matching generics
-                        let cause = fcx.misc(self.span);
-                        let obligation = Obligation::new(
-                            tcx,
-                            cause,
-                            fcx.param_env,
-                            ty::TraitRef::new(
-                                tcx,
-                                tcx.require_lang_item(LangItem::Unsize, Some(self.span)),
-                                [src_obj, dst_obj],
-                            ),
-                        );
-
-                        fcx.register_predicate(obligation);
+                        // `dyn Src = dyn Dst`, this checks for matching traits/generics
+                        fcx.demand_eqtype(self.span, src_obj, dst_obj);
 
                         // Check that `SrcAuto` is a superset of `DstAuto`.
                         // Emit an FCW otherwise.

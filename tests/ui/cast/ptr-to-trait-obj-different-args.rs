@@ -18,14 +18,14 @@ fn main() {
     let b: *const dyn B = a as _; //~ error: casting `*const dyn A` as `*const dyn B` is invalid
 
     let x: *const dyn Trait<X> = &();
-    let y: *const dyn Trait<Y> = x as _; //~ error: the trait bound `dyn Trait<X>: Unsize<dyn Trait<Y>>` is not satisfied
+    let y: *const dyn Trait<Y> = x as _; //~ error: mismatched types
 
     _ = (b, y);
 }
 
 fn generic<T>(x: *const dyn Trait<X>, t: *const dyn Trait<T>) {
-    let _: *const dyn Trait<T> = x as _; //~ error: the trait bound `dyn Trait<X>: Unsize<dyn Trait<T>>` is not satisfied
-    let _: *const dyn Trait<X> = t as _; //~ error: the trait bound `dyn Trait<T>: Unsize<dyn Trait<X>>` is not satisfied
+    let _: *const dyn Trait<T> = x as _; //~ error: mismatched types
+    let _: *const dyn Trait<X> = t as _; //~ error: mismatched types
 }
 
 trait Assocked {
@@ -33,5 +33,5 @@ trait Assocked {
 }
 
 fn change_assoc(x: *mut dyn Assocked<Assoc = u8>) -> *mut dyn Assocked<Assoc = u32> {
-    x as _ //~ error: the trait bound `dyn Assocked<Assoc = u8>: Unsize<dyn Assocked<Assoc = u32>>` is not satisfied
+    x as _ //~ error: mismatched types
 }

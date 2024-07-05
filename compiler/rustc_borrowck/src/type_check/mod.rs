@@ -38,6 +38,7 @@ use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
@@ -49,6 +50,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::ResultsCursor;
 
+use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::{
     borrow_set::BorrowSet,
@@ -2335,51 +2337,39 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                     && src_tty.principal().is_some()
                                     && dst_tty.principal().is_some()
                                 {
-                                    // Erase trait object lifetimes, to allow casts like `*mut dyn FnOnce()` -> `*mut dyn FnOnce() + 'static`
-                                    // and remove auto traits.
+                                    // Remove auto traits.
+                                    // Auto trait checks are handled in `rustc_hir_typeck` as FCW.
                                     let src_obj = tcx.mk_ty_from_kind(ty::Dynamic(
                                         tcx.mk_poly_existential_predicates(
                                             &src_tty.without_auto_traits().collect::<Vec<_>>(),
                                         ),
-                                        tcx.lifetimes.re_erased,
+                                        tcx.lifetimes.re_static,
                                         ty::Dyn,
                                     ));
                                     let dst_obj = tcx.mk_ty_from_kind(ty::Dynamic(
                                         tcx.mk_poly_existential_predicates(
                                             &dst_tty.without_auto_traits().collect::<Vec<_>>(),
                                         ),
-                                        tcx.lifetimes.re_erased,
+                                        tcx.lifetimes.re_static,
                                         ty::Dyn,
                                     ));
 
-                                    // FIXME:
-                                    // this currently does nothing, but once we make `ptr_cast_add_auto_to_object`
-                                    // into a hard error, we can remove the above removal of auto traits and only
-                                    // keep this.
-                                    let src_obj = erase_single_trait_object_lifetime(tcx, src_obj);
-                                    let dst_obj = erase_single_trait_object_lifetime(tcx, dst_obj);
-
-                                    let trait_ref = ty::TraitRef::new(
-                                        tcx,
-                                        tcx.require_lang_item(LangItem::Unsize, Some(span)),
-                                        [src_obj, dst_obj],
-                                    );
+                                    // Replace trait object lifetimes with fresh vars, to allow casts like
+                                    // `*mut dyn FnOnce() + 'a` -> `*mut dyn FnOnce() + 'static`,
+                                    let src_obj =
+                                        freshen_single_trait_object_lifetime(self.infcx, src_obj);
+                                    let dst_obj =
+                                        freshen_single_trait_object_lifetime(self.infcx, dst_obj);
 
                                     debug!(?src_tty, ?dst_tty, ?src_obj, ?dst_obj);
 
-                                    self.prove_trait_ref(
-                                        trait_ref,
+                                    self.eq_types(
+                                        src_obj,
+                                        dst_obj,
                                         location.to_locations(),
-                                        ConstraintCategory::Cast {
-                                            unsize_to: Some(tcx.fold_regions(dst_obj, |r, _| {
-                                                if let ty::ReVar(_) = r.kind() {
-                                                    tcx.lifetimes.re_erased
-                                                } else {
-                                                    r
-                                                }
-                                            })),
-                                        },
-                                    );
+                                        ConstraintCategory::Cast { unsize_to: None },
+                                    )
+                                    .unwrap();
                                 }
                             }
                             _ => {
@@ -2905,14 +2895,15 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
     }
 }
 
-fn erase_single_trait_object_lifetime<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    let &ty::Dynamic(tty, region, dyn_kind @ ty::Dyn) = ty.kind() else {
-        bug!("expected trait object")
-    };
+fn freshen_single_trait_object_lifetime<'tcx>(
+    infcx: &BorrowckInferCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Ty<'tcx> {
+    let &ty::Dynamic(tty, _, dyn_kind @ ty::Dyn) = ty.kind() else { bug!("expected trait object") };
 
-    if region.is_erased() {
-        return ty;
-    }
-
-    tcx.mk_ty_from_kind(ty::Dynamic(tty, tcx.lifetimes.re_erased, dyn_kind))
+    let fresh = infcx
+        .next_region_var(rustc_infer::infer::RegionVariableOrigin::MiscVariable(DUMMY_SP), || {
+            RegionCtxt::Unknown
+        });
+    infcx.tcx.mk_ty_from_kind(ty::Dynamic(tty, fresh, dyn_kind))
 }
