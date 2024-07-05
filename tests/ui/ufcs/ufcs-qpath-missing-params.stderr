@@ -41,7 +41,7 @@ note: method defined here, with 0 generic parameters
    |
 LL |     fn into_cow(self) -> Cow<'a, B>;
    |        ^^^^^^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     <String as IntoCow>::into_cow::<str>("foo".to_string());
 LL +     <String as IntoCow>::into_cow("foo".to_string());

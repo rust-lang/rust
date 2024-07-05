@@ -315,7 +315,7 @@ note: type alias defined here, with 0 generic parameters
    |
 LL | type AliasFixed = Enum<()>;
    |      ^^^^^^^^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     AliasFixed::<()>::TSVariant(());
 LL +     AliasFixed::TSVariant(());
@@ -332,7 +332,7 @@ note: type alias defined here, with 0 generic parameters
    |
 LL | type AliasFixed = Enum<()>;
    |      ^^^^^^^^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     AliasFixed::<()>::TSVariant::<()>(());
 LL +     AliasFixed::TSVariant::<()>(());
@@ -412,7 +412,7 @@ note: type alias defined here, with 0 generic parameters
    |
 LL | type AliasFixed = Enum<()>;
    |      ^^^^^^^^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     AliasFixed::<()>::SVariant { v: () };
 LL +     AliasFixed::SVariant { v: () };
@@ -429,7 +429,7 @@ note: type alias defined here, with 0 generic parameters
    |
 LL | type AliasFixed = Enum<()>;
    |      ^^^^^^^^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     AliasFixed::<()>::SVariant::<()> { v: () };
 LL +     AliasFixed::SVariant::<()> { v: () };
@@ -493,7 +493,7 @@ note: type alias defined here, with 0 generic parameters
    |
 LL | type AliasFixed = Enum<()>;
    |      ^^^^^^^^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     AliasFixed::<()>::UVariant;
 LL +     AliasFixed::UVariant;
@@ -510,7 +510,7 @@ note: type alias defined here, with 0 generic parameters
    |
 LL | type AliasFixed = Enum<()>;
    |      ^^^^^^^^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     AliasFixed::<()>::UVariant::<()>;
 LL +     AliasFixed::UVariant::<()>;

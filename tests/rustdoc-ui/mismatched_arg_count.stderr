@@ -9,7 +9,7 @@ note: type alias defined here, with 1 lifetime parameter: `'a`
    |
 LL | type Alias<'a, T> = <T as Trait<'a>>::Assoc;
    |      ^^^^^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL - fn bar<'a, T: Trait<'a>>(_: Alias<'a, 'a, T>) {}
 LL + fn bar<'a, T: Trait<'a>>(_: Alias<'a, , T>) {}

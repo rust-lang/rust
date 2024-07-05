@@ -9,7 +9,7 @@ note: trait defined here, with 0 generic parameters
    |
 LL | trait Trait {}
    |       ^^^^^
-help: remove these parenthetical generics
+help: remove the unnecessary parenthetical generics
    |
 LL - fn f<F:Trait(isize) -> isize>(x: F) {}
 LL + fn f<F:Trait -> isize>(x: F) {}

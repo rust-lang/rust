@@ -9,7 +9,7 @@ note: trait defined here, with 0 generic parameters
    |
 LL |     trait Seq { }
    |           ^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     impl<T> Seq<T> for Vec<T> {
 LL +     impl<T> Seq for Vec<T> {
@@ -26,7 +26,7 @@ note: trait defined here, with 0 generic parameters
    |
 LL |     trait Seq { }
    |           ^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     impl Seq<bool> for u32 {
 LL +     impl Seq for u32 {

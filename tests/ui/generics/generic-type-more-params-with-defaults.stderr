@@ -9,7 +9,7 @@ note: struct defined here, with at most 2 generic parameters: `T`, `A`
    |
 LL | struct Vec<T, A = Heap>(
    |        ^^^ -  --------
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     let _: Vec<isize, Heap, bool>;
 LL +     let _: Vec<isize, Heap, >;

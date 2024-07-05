@@ -27,7 +27,7 @@ note: method defined here, with 0 generic parameters
    |
 LL |     fn a(&self) {}
    |        ^
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     b.a::<'_, T>();
 LL +     b.a::<'_, >();

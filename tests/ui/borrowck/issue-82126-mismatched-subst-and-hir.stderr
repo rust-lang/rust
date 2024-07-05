@@ -9,7 +9,7 @@ note: struct defined here, with 0 lifetime parameters
    |
 LL | struct LockedMarket<T>(T);
    |        ^^^^^^^^^^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL - async fn buy_lock(coroutine: &Mutex<MarketMultiplier>) -> LockedMarket<'_> {
 LL + async fn buy_lock(coroutine: &Mutex<MarketMultiplier>) -> LockedMarket {
@@ -43,7 +43,7 @@ note: struct defined here, with 0 lifetime parameters
 LL | struct LockedMarket<T>(T);
    |        ^^^^^^^^^^^^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL - async fn buy_lock(coroutine: &Mutex<MarketMultiplier>) -> LockedMarket<'_> {
 LL + async fn buy_lock(coroutine: &Mutex<MarketMultiplier>) -> LockedMarket {

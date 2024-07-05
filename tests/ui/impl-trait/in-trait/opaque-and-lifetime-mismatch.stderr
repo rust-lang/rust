@@ -45,7 +45,7 @@ note: struct defined here, with 0 generic parameters
    |
 LL | struct Wrapper<'rom>(&'rom ());
    |        ^^^^^^^
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     fn bar() -> Wrapper<impl Sized>;
 LL +     fn bar() -> Wrapper<>;
@@ -62,7 +62,7 @@ note: struct defined here, with 0 generic parameters
    |
 LL | struct Wrapper<'rom>(&'rom ());
    |        ^^^^^^^
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     fn foo() -> Wrapper<impl Sized>;
 LL +     fn foo() -> Wrapper<>;
@@ -106,7 +106,7 @@ note: struct defined here, with 0 generic parameters
    |
 LL | struct Wrapper<'rom>(&'rom ());
    |        ^^^^^^^
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     fn foo() -> Wrapper<impl Sized> {
 LL +     fn foo() -> Wrapper<> {

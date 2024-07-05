@@ -13,7 +13,7 @@ note: associated function defined here, with 0 generic parameters
 LL |     fn f() {}
    |        ^
    = note: this error originates in the macro `impl_add` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -                 S::f::<i64>();
 LL +                 S::f();
@@ -35,7 +35,7 @@ LL |     fn f() {}
    |        ^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
    = note: this error originates in the macro `impl_add` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -                 S::f::<i64>();
 LL +                 S::f();

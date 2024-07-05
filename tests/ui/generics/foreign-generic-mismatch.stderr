@@ -27,7 +27,7 @@ note: function defined here, with 1 lifetime parameter: `'a`
    |
 LL | pub fn lt_arg<'a: 'a>() {}
    |        ^^^^^^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     foreign_generic_mismatch::lt_arg::<'static, 'static>();
 LL +     foreign_generic_mismatch::lt_arg::<'static, >();

@@ -27,7 +27,7 @@ note: method defined here, with 2 lifetime parameters: `'a`, `'b`
    |
 LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
    |        ^^^^^ --  --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     S.early::<'static, 'static, 'static>();
 LL +     S.early::<'static, 'static, >();
@@ -230,7 +230,7 @@ note: method defined here, with 2 lifetime parameters: `'a`, `'b`
    |
 LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
    |        ^^^^^ --  --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     S::early::<'static, 'static, 'static>(S);
 LL +     S::early::<'static, 'static, >(S);

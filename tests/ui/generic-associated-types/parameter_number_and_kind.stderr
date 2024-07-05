@@ -9,7 +9,7 @@ note: associated type defined here, with 1 lifetime parameter: `'a`
    |
 LL |     type E<'a, T>;
    |          ^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     type FErr1 = Self::E<'static, 'static>;
 LL +     type FErr1 = Self::E<'static, >;
@@ -42,7 +42,7 @@ note: associated type defined here, with 1 generic parameter: `T`
    |
 LL |     type E<'a, T>;
    |          ^     -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     type FErr2<T> = Self::E<'static, T, u32>;
 LL +     type FErr2<T> = Self::E<'static, T, >;

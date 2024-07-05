@@ -9,7 +9,7 @@ note: method defined here, with 0 generic parameters
    |
 LL |     fn foo(&self) {}
    |        ^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     foo::<()>(x);
 LL +     foo(x);

@@ -9,7 +9,7 @@ note: struct defined here, with 2 lifetime parameters: `'c`, `'d`
    |
 LL | struct Foo<'c, 'd>(&'c (), &'d ());
    |        ^^^ --  --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     fn boom(&self, foo: &mut Foo<'_, '_, 'a>) -> Result<(), &'a ()> {
 LL +     fn boom(&self, foo: &mut Foo<'_, '_, >) -> Result<(), &'a ()> {

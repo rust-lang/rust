@@ -10,7 +10,7 @@ note: function defined here, with 0 generic parameters
 LL | fn foo(i: impl std::fmt::Display) {}
    |    ^^^
    = note: `impl Trait` cannot be explicitly specified as a generic argument
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     foo::<()>(());
 LL +     foo(());

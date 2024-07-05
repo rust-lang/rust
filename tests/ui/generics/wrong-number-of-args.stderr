@@ -178,7 +178,7 @@ note: struct defined here, with 0 lifetime parameters
    |
 LL |     struct Ty;
    |            ^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     type B = Ty<'static>;
 LL +     type B = Ty;
@@ -195,7 +195,7 @@ note: struct defined here, with 0 lifetime parameters
    |
 LL |     struct Ty;
    |            ^^
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     type C = Ty<'static, usize>;
 LL +     type C = Ty<, usize>;
@@ -212,7 +212,7 @@ note: struct defined here, with 0 generic parameters
    |
 LL |     struct Ty;
    |            ^^
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     type C = Ty<'static, usize>;
 LL +     type C = Ty<'static, >;
@@ -229,7 +229,7 @@ note: struct defined here, with 0 lifetime parameters
    |
 LL |     struct Ty;
    |            ^^
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     type D = Ty<'static, usize, { 0 }>;
 LL +     type D = Ty<, usize, { 0 }>;
@@ -246,7 +246,7 @@ note: struct defined here, with 0 generic parameters
    |
 LL |     struct Ty;
    |            ^^
-help: remove these generic arguments
+help: remove the unnecessary generic arguments
    |
 LL -     type D = Ty<'static, usize, { 0 }>;
 LL +     type D = Ty<'static, >;
@@ -297,7 +297,7 @@ note: struct defined here, with 2 generic parameters: `A`, `B`
    |
 LL |     struct Ty<A, B>(A, B);
    |            ^^ -  -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     type D = Ty<usize, String, char>;
 LL +     type D = Ty<usize, String, >;
@@ -378,7 +378,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
    |
 LL |     struct Ty<'a, T>(&'a T);
    |            ^^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     type F = Ty<'static, usize, 'static, usize>;
 LL +     type F = Ty<'static, usize, , usize>;
@@ -395,7 +395,7 @@ note: struct defined here, with 1 generic parameter: `T`
    |
 LL |     struct Ty<'a, T>(&'a T);
    |            ^^     -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     type F = Ty<'static, usize, 'static, usize>;
 LL +     type F = Ty<'static, usize, 'static, >;
@@ -446,7 +446,7 @@ note: struct defined here, with at most 3 generic parameters: `A`, `B`, `C`
    |
 LL |     struct Ty<A, B, C = &'static str>(A, B, C);
    |            ^^ -  -  ----------------
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     type E = Ty<usize, String, char, f64>;
 LL +     type E = Ty<usize, String, char, >;
@@ -479,7 +479,7 @@ note: trait defined here, with 0 generic parameters
    |
 LL |     trait NonGeneric {
    |           ^^^^^^^^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     type A = Box<dyn NonGeneric<usize>>;
 LL +     type A = Box<dyn NonGeneric>;
@@ -496,7 +496,7 @@ note: trait defined here, with 1 lifetime parameter: `'a`
    |
 LL |     trait GenericLifetime<'a> {
    |           ^^^^^^^^^^^^^^^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     type C = Box<dyn GenericLifetime<'static, 'static>>;
 LL +     type C = Box<dyn GenericLifetime<'static, >>;
@@ -529,7 +529,7 @@ note: trait defined here, with 1 generic parameter: `A`
    |
 LL |     trait GenericType<A> {
    |           ^^^^^^^^^^^ -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     type E = Box<dyn GenericType<String, usize>>;
 LL +     type E = Box<dyn GenericType<String, >>;
@@ -562,7 +562,7 @@ note: trait defined here, with 0 generic parameters
    |
 LL |         trait NonGenericAT {
    |               ^^^^^^^^^^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -         type A = Box<dyn NonGenericAT<usize, AssocTy=()>>;
 LL +         type A = Box<dyn NonGenericAT>;
@@ -579,7 +579,7 @@ note: trait defined here, with 1 lifetime parameter: `'a`
    |
 LL |         trait GenericLifetimeAT<'a> {
    |               ^^^^^^^^^^^^^^^^^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -         type B = Box<dyn GenericLifetimeAT<'static, 'static, AssocTy=()>>;
 LL +         type B = Box<dyn GenericLifetimeAT<'static, , AssocTy=()>>;
@@ -596,7 +596,7 @@ note: trait defined here, with 0 generic parameters
    |
 LL |         trait GenericLifetimeAT<'a> {
    |               ^^^^^^^^^^^^^^^^^
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -         type C = Box<dyn GenericLifetimeAT<(), AssocTy=()>>;
 LL +         type C = Box<dyn GenericLifetimeAT<, AssocTy=()>>;
@@ -629,7 +629,7 @@ note: trait defined here, with 1 generic parameter: `A`
    |
 LL |         trait GenericTypeAT<A> {
    |               ^^^^^^^^^^^^^ -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -         type B = Box<dyn GenericTypeAT<(), (), AssocTy=()>>;
 LL +         type B = Box<dyn GenericTypeAT<(), , AssocTy=()>>;
@@ -646,7 +646,7 @@ note: trait defined here, with 0 lifetime parameters
    |
 LL |         trait GenericTypeAT<A> {
    |               ^^^^^^^^^^^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -         type C = Box<dyn GenericTypeAT<'static, AssocTy=()>>;
 LL +         type C = Box<dyn GenericTypeAT>;
@@ -711,7 +711,7 @@ note: trait defined here, with 1 lifetime parameter: `'a`
    |
 LL |         trait GenericLifetimeTypeAT<'a, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -         type C = Box<dyn GenericLifetimeTypeAT<'static, 'static, AssocTy=()>>;
 LL +         type C = Box<dyn GenericLifetimeTypeAT<'static, , AssocTy=()>>;
@@ -744,7 +744,7 @@ note: trait defined here, with 1 generic parameter: `A`
    |
 LL |         trait GenericLifetimeTypeAT<'a, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^     -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -         type E = Box<dyn GenericLifetimeTypeAT<(), (), AssocTy=()>>;
 LL +         type E = Box<dyn GenericLifetimeTypeAT<(), , AssocTy=()>>;
@@ -761,7 +761,7 @@ note: trait defined here, with 1 lifetime parameter: `'a`
    |
 LL |         trait GenericLifetimeTypeAT<'a, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -         type F = Box<dyn GenericLifetimeTypeAT<'static, 'static, (), AssocTy=()>>;
 LL +         type F = Box<dyn GenericLifetimeTypeAT<'static, , (), AssocTy=()>>;
@@ -778,7 +778,7 @@ note: trait defined here, with 1 generic parameter: `A`
    |
 LL |         trait GenericLifetimeTypeAT<'a, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^     -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -         type G = Box<dyn GenericLifetimeTypeAT<'static, (), (), AssocTy=()>>;
 LL +         type G = Box<dyn GenericLifetimeTypeAT<'static, (), , AssocTy=()>>;
@@ -795,7 +795,7 @@ note: trait defined here, with 1 lifetime parameter: `'a`
    |
 LL |         trait GenericLifetimeTypeAT<'a, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -         type H = Box<dyn GenericLifetimeTypeAT<'static, 'static, (), (), AssocTy=()>>;
 LL +         type H = Box<dyn GenericLifetimeTypeAT<'static, , (), (), AssocTy=()>>;
@@ -812,7 +812,7 @@ note: trait defined here, with 1 generic parameter: `A`
    |
 LL |         trait GenericLifetimeTypeAT<'a, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^     -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -         type H = Box<dyn GenericLifetimeTypeAT<'static, 'static, (), (), AssocTy=()>>;
 LL +         type H = Box<dyn GenericLifetimeTypeAT<'static, 'static, (), , AssocTy=()>>;
@@ -863,7 +863,7 @@ note: trait defined here, with 2 generic parameters: `A`, `B`
    |
 LL |         trait GenericTypeTypeAT<A, B> {
    |               ^^^^^^^^^^^^^^^^^ -  -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -         type C = Box<dyn GenericTypeTypeAT<(), (), (), AssocTy=()>>;
 LL +         type C = Box<dyn GenericTypeTypeAT<(), (), , AssocTy=()>>;
@@ -985,7 +985,7 @@ error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supp
 LL |         type C = HashMap<'static>;
    |                  ^^^^^^^ expected 0 lifetime arguments
    |
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -         type C = HashMap<'static>;
 LL +         type C = HashMap;
@@ -1008,7 +1008,7 @@ error[E0107]: struct takes at most 3 generic arguments but 4 generic arguments w
 LL |         type D = HashMap<usize, String, char, f64>;
    |                  ^^^^^^^ expected at most 3 generic arguments
    |
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -         type D = HashMap<usize, String, char, f64>;
 LL +         type D = HashMap<usize, String, char, >;
@@ -1055,7 +1055,7 @@ error[E0107]: enum takes 0 lifetime arguments but 1 lifetime argument was suppli
 LL |         type C = Result<'static>;
    |                  ^^^^^^ expected 0 lifetime arguments
    |
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -         type C = Result<'static>;
 LL +         type C = Result;
@@ -1078,7 +1078,7 @@ error[E0107]: enum takes 2 generic arguments but 3 generic arguments were suppli
 LL |         type D = Result<usize, String, char>;
    |                  ^^^^^^ expected 2 generic arguments
    |
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -         type D = Result<usize, String, char>;
 LL +         type D = Result<usize, String, >;

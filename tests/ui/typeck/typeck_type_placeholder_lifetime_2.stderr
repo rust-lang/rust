@@ -9,7 +9,7 @@ note: struct defined here, with 1 generic parameter: `T`
    |
 LL | struct Foo<'a, T:'a> {
    |        ^^^     -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     let c: Foo<_, usize> = Foo { r: &5 };
 LL +     let c: Foo<_, > = Foo { r: &5 };

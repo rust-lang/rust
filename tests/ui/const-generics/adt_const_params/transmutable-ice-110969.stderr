@@ -4,7 +4,7 @@ error[E0107]: trait takes at most 2 generic arguments but 3 generic arguments we
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME>,
    |              ^^^^^^^^^^^^^^^^^^^^^ expected at most 2 generic arguments
    |
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME>,
 LL +         Dst: BikeshedIntrinsicFrom<Src, Context, >,

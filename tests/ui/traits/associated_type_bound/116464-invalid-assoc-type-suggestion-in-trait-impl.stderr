@@ -124,7 +124,7 @@ note: struct defined here, with 1 generic parameter: `T`
    |
 LL | struct Struct<T: Trait<u32, String>> {
    |        ^^^^^^ -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL - impl<T: Trait<u32, Assoc=String>, U> YetAnotherTrait for Struct<T, U> {}
 LL + impl<T: Trait<u32, Assoc=String>, U> YetAnotherTrait for Struct<T, > {}

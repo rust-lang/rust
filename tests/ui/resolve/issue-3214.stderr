@@ -19,7 +19,7 @@ note: struct defined here, with 0 generic parameters
    |
 LL |     struct Foo {
    |            ^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     impl<T> Drop for Foo<T> {
 LL +     impl<T> Drop for Foo {

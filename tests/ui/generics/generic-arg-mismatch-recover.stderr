@@ -9,7 +9,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
    |
 LL | struct Foo<'a, T: 'a>(&'a T);
    |        ^^^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     Foo::<'static, 'static, ()>(&0);
 LL +     Foo::<'static, , ()>(&0);
@@ -26,7 +26,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
    |
 LL | struct Bar<'a>(&'a ());
    |        ^^^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     Bar::<'static, 'static, ()>(&());
 LL +     Bar::<'static, , ()>(&());
@@ -43,7 +43,7 @@ note: struct defined here, with 0 generic parameters
    |
 LL | struct Bar<'a>(&'a ());
    |        ^^^
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     Bar::<'static, 'static, ()>(&());
 LL +     Bar::<'static, 'static, >(&());

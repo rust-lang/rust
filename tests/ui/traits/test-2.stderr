@@ -9,7 +9,7 @@ note: method defined here, with 0 generic parameters
    |
 LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    |                ^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     10.dup::<i32>();
 LL +     10.dup();
@@ -26,7 +26,7 @@ note: method defined here, with 1 generic parameter: `X`
    |
 LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    |                                       ^^^^ -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     10.blah::<i32, i32>();
 LL +     10.blah::<i32, >();

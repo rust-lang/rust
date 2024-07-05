@@ -50,7 +50,7 @@ note: associated type defined here, with 0 generic parameters
    |
 LL |   type Y<'a>;
    |        ^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL - fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
 LL + fn foo<'a>(arg: Box<dyn X<Y = &'a ()>>) {}
@@ -85,7 +85,7 @@ note: associated type defined here, with 0 generic parameters
 LL |   type Y<'a>;
    |        ^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL - fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
 LL + fn foo<'a>(arg: Box<dyn X<Y = &'a ()>>) {}
@@ -120,7 +120,7 @@ note: associated type defined here, with 0 generic parameters
 LL |   type Y<'a>;
    |        ^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL - fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
 LL + fn foo<'a>(arg: Box<dyn X<Y = &'a ()>>) {}

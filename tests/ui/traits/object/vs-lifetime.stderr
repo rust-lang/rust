@@ -15,7 +15,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
    |
 LL | struct S<'a, T>(&'a u8, T);
    |        ^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     let _: S<'static, 'static>;
 LL +     let _: S<'static, >;

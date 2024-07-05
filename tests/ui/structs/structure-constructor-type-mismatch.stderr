@@ -75,7 +75,7 @@ note: type alias defined here, with 0 generic parameters
    |
 LL | type PointF = Point<f32>;
    |      ^^^^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     let pt3 = PointF::<i32> {
 LL +     let pt3 = PointF {
@@ -114,7 +114,7 @@ note: type alias defined here, with 0 generic parameters
    |
 LL | type PointF = Point<f32>;
    |      ^^^^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -         PointF::<u32> { .. } => {}
 LL +         PointF { .. } => {}

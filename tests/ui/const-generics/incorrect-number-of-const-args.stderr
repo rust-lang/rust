@@ -27,7 +27,7 @@ note: function defined here, with 2 generic parameters: `X`, `Y`
    |
 LL | fn foo<const X: usize, const Y: usize>() -> usize {
    |    ^^^ --------------  --------------
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     foo::<0, 0, 0>();
 LL +     foo::<0, 0, >();

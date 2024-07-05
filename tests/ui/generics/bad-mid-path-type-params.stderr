@@ -9,7 +9,7 @@ note: associated function defined here, with 1 generic parameter: `U`
    |
 LL |     fn new<U>(x: T, _: U) -> S<T> {
    |        ^^^ -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     let _ = S::new::<isize,f64>(1, 1.0);
 LL +     let _ = S::new::<isize,>(1, 1.0);
@@ -26,7 +26,7 @@ note: struct defined here, with 0 lifetime parameters
    |
 LL | struct S<T> {
    |        ^
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     let _ = S::<'a,isize>::new::<f64>(1, 1.0);
 LL +     let _ = S::<,isize>::new::<f64>(1, 1.0);
@@ -43,7 +43,7 @@ note: associated function defined here, with 1 generic parameter: `U`
    |
 LL |     fn new<U>(x: T, y: U) -> Self;
    |        ^^^ -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     let _: S2 = Trait::new::<isize,f64>(1, 1.0);
 LL +     let _: S2 = Trait::new::<isize,>(1, 1.0);
@@ -60,7 +60,7 @@ note: trait defined here, with 0 lifetime parameters
    |
 LL | trait Trait<T> {
    |       ^^^^^
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     let _: S2 = Trait::<'a,isize>::new::<f64,f64>(1, 1.0);
 LL +     let _: S2 = Trait::<,isize>::new::<f64,f64>(1, 1.0);
@@ -77,7 +77,7 @@ note: associated function defined here, with 1 generic parameter: `U`
    |
 LL |     fn new<U>(x: T, y: U) -> Self;
    |        ^^^ -
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     let _: S2 = Trait::<'a,isize>::new::<f64,f64>(1, 1.0);
 LL +     let _: S2 = Trait::<'a,isize>::new::<f64,>(1, 1.0);

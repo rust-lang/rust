@@ -4,7 +4,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
 LL | fn foo1<T:Copy<U>, U>(x: T) {}
    |           ^^^^ expected 0 generic arguments
    |
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL - fn foo1<T:Copy<U>, U>(x: T) {}
 LL + fn foo1<T:Copy, U>(x: T) {}
@@ -16,7 +16,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
 LL | trait Trait: Copy<dyn Send> {}
    |              ^^^^ expected 0 generic arguments
    |
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL - trait Trait: Copy<dyn Send> {}
 LL + trait Trait: Copy {}
@@ -29,7 +29,7 @@ LL | trait Trait: Copy<dyn Send> {}
    |              ^^^^ expected 0 generic arguments
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL - trait Trait: Copy<dyn Send> {}
 LL + trait Trait: Copy {}
@@ -42,7 +42,7 @@ LL | trait Trait: Copy<dyn Send> {}
    |              ^^^^ expected 0 generic arguments
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL - trait Trait: Copy<dyn Send> {}
 LL + trait Trait: Copy {}
@@ -54,7 +54,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
 LL | struct MyStruct1<T: Copy<T>>(T);
    |                     ^^^^ expected 0 generic arguments
    |
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL - struct MyStruct1<T: Copy<T>>(T);
 LL + struct MyStruct1<T: Copy>(T);
@@ -66,7 +66,7 @@ error[E0107]: trait takes 0 lifetime arguments but 1 lifetime argument was suppl
 LL | struct MyStruct2<'a, T: Copy<'a>>(&'a T);
    |                         ^^^^ expected 0 lifetime arguments
    |
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL - struct MyStruct2<'a, T: Copy<'a>>(&'a T);
 LL + struct MyStruct2<'a, T: Copy>(&'a T);
@@ -78,7 +78,7 @@ error[E0107]: trait takes 0 lifetime arguments but 1 lifetime argument was suppl
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
    |               ^^^^ expected 0 lifetime arguments
    |
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL - fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
 LL + fn foo2<'a, T:Copy<, U>, U>(x: T) {}
@@ -90,7 +90,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
    |               ^^^^ expected 0 generic arguments
    |
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL - fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
 LL + fn foo2<'a, T:Copy<'a, >, U>(x: T) {}

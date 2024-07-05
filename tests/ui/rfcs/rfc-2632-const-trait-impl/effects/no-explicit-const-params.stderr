@@ -23,7 +23,7 @@ note: function defined here, with 0 generic parameters
    |
 LL | const fn foo() {}
    |          ^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     foo::<false>();
 LL +     foo();
@@ -65,7 +65,7 @@ note: function defined here, with 0 generic parameters
    |
 LL | const fn foo() {}
    |          ^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     foo::<true>();
 LL +     foo();

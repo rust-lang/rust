@@ -30,7 +30,7 @@ note: struct defined here, with 2 generic parameters: `T`, `N`
    |
 LL | struct All<'a, T, const N: usize> {
    |        ^^^     -  --------------
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -   let a: All<_, _, _>;
 LL +   let a: All<_, _, >;

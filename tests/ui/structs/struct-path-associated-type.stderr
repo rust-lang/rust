@@ -15,7 +15,7 @@ note: associated type defined here, with 0 generic parameters
    |
 LL |     type A;
    |          ^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     let z = T::A::<u8> {};
 LL +     let z = T::A {};
@@ -44,7 +44,7 @@ note: associated type defined here, with 0 generic parameters
    |
 LL |     type A;
    |          ^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     let z = T::A::<u8> {};
 LL +     let z = T::A {};

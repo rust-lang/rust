@@ -947,8 +947,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
             let num_redundant_lt_args = lt_arg_spans.len() - self.num_expected_lifetime_args();
             let msg_lifetimes = format!(
-                "remove {these} lifetime argument{s}",
-                these = pluralize!("this", num_redundant_lt_args),
+                "remove the lifetime argument{s}",
                 s = pluralize!(num_redundant_lt_args),
             );
 
@@ -989,8 +988,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             let num_redundant_gen_args =
                 gen_arg_spans.len() - self.num_expected_type_or_const_args();
             let msg_types_or_consts = format!(
-                "remove {these} generic argument{s}",
-                these = pluralize!("this", num_redundant_gen_args),
+                "remove the unnecessary generic argument{s}",
                 s = pluralize!(num_redundant_gen_args),
             );
 
@@ -1036,7 +1034,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 .with_lo(self.path_segment.ident.span.hi());
 
             let msg = format!(
-                "remove these {}generics",
+                "remove the unnecessary {}generics",
                 if self.gen_args.parenthesized == hir::GenericArgsParentheses::ParenSugar {
                     "parenthetical "
                 } else {

@@ -4,7 +4,7 @@ error[E0107]: method takes 0 generic arguments but 1 generic argument was suppli
 LL |     i8::checked_sub::<false>(42, 43);
    |         ^^^^^^^^^^^ expected 0 generic arguments
    |
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     i8::checked_sub::<false>(42, 43);
 LL +     i8::checked_sub(42, 43);
@@ -16,7 +16,7 @@ error[E0107]: method takes 0 generic arguments but 1 generic argument was suppli
 LL |     i8::checked_sub::<true>(42, 43);
    |         ^^^^^^^^^^^ expected 0 generic arguments
    |
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     i8::checked_sub::<true>(42, 43);
 LL +     i8::checked_sub(42, 43);
@@ -28,7 +28,7 @@ error[E0107]: method takes 0 generic arguments but 1 generic argument was suppli
 LL |     i8::checked_sub::<true>(42, 43);
    |         ^^^^^^^^^^^ expected 0 generic arguments
    |
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     i8::checked_sub::<true>(42, 43);
 LL +     i8::checked_sub(42, 43);
@@ -40,7 +40,7 @@ error[E0107]: method takes 0 generic arguments but 1 generic argument was suppli
 LL |     i8::checked_sub::<false>(42, 43);
    |         ^^^^^^^^^^^ expected 0 generic arguments
    |
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     i8::checked_sub::<false>(42, 43);
 LL +     i8::checked_sub(42, 43);

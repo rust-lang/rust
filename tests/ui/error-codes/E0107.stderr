@@ -27,7 +27,7 @@ note: enum defined here, with 0 lifetime parameters
    |
 LL | enum Bar {
    |      ^^^
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     bar: Bar<'a>,
 LL +     bar: Bar,
@@ -44,7 +44,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
    |
 LL | struct Foo<'a>(&'a str);
    |        ^^^ --
-help: remove these lifetime arguments
+help: remove the lifetime arguments
    |
 LL -     foo2: Foo<'a, 'b, 'c>,
 LL +     foo2: Foo<'a, >,
@@ -61,7 +61,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
    |
 LL | struct Qux<'a, T>(&'a T);
    |        ^^^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     qux1: Qux<'a, 'b, i32>,
 LL +     qux1: Qux<'a, , i32>,
@@ -78,7 +78,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
    |
 LL | struct Qux<'a, T>(&'a T);
    |        ^^^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     qux2: Qux<'a, i32, 'b>,
 LL +     qux2: Qux<'a, i32, >,
@@ -95,7 +95,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
    |
 LL | struct Qux<'a, T>(&'a T);
    |        ^^^ --
-help: remove these lifetime arguments
+help: remove the lifetime arguments
    |
 LL -     qux3: Qux<'a, 'b, 'c, i32>,
 LL +     qux3: Qux<'a, , i32>,
@@ -112,7 +112,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
    |
 LL | struct Qux<'a, T>(&'a T);
    |        ^^^ --
-help: remove these lifetime arguments
+help: remove the lifetime arguments
    |
 LL -     qux4: Qux<'a, i32, 'b, 'c>,
 LL +     qux4: Qux<'a, i32, >,
@@ -129,7 +129,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
    |
 LL | struct Qux<'a, T>(&'a T);
    |        ^^^ --
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     qux5: Qux<'a, 'b, i32, 'c>,
 LL +     qux5: Qux<'a, , i32, 'c>,
@@ -146,7 +146,7 @@ note: struct defined here, with 0 lifetime parameters
    |
 LL | struct Quux<T>(T);
    |        ^^^^
-help: remove this lifetime argument
+help: remove the lifetime argument
    |
 LL -     quux: Quux<'a, i32, 'b>,
 LL +     quux: Quux<, i32, 'b>,

@@ -9,7 +9,7 @@ note: function defined here, with 1 generic parameter: `N`
    |
 LL | fn foo<const N: usize>(
    |    ^^^ --------------
-help: remove this generic argument
+help: remove the unnecessary generic argument
    |
 LL -     foo::<_, L>([(); L + 1 + L]);
 LL +     foo::<_, >([(); L + 1 + L]);
