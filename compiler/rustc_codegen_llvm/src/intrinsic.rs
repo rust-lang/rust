@@ -566,7 +566,20 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 
     fn assume(&mut self, val: Self::Value) {
-        self.call_intrinsic("llvm.assume", &[val]);
+        match self.const_to_opt_uint(val) {
+            Some(0) => {
+                // See https://github.com/llvm/llvm-project/blob/1347b9a3aa671d610e812579ab5e5f05870586cf/llvm/docs/Frontend/PerformanceTips.rst?plain=1#L204-L211.
+                self.store(
+                    self.const_bool(true),
+                    self.const_poison(self.type_ptr()),
+                    self.tcx().data_layout.i1_align.abi,
+                );
+            }
+            Some(_) => {}
+            None => {
+                self.call_intrinsic("llvm.assume", &[val]);
+            }
+        }
     }
 
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value {
