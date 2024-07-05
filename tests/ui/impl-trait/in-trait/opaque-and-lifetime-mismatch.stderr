@@ -38,29 +38,35 @@ error[E0107]: struct takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/opaque-and-lifetime-mismatch.rs:4:17
    |
 LL |     fn bar() -> Wrapper<impl Sized>;
-   |                 ^^^^^^^ ---------- help: remove this generic argument
-   |                 |
-   |                 expected 0 generic arguments
+   |                 ^^^^^^^ expected 0 generic arguments
    |
 note: struct defined here, with 0 generic parameters
   --> $DIR/opaque-and-lifetime-mismatch.rs:1:8
    |
 LL | struct Wrapper<'rom>(&'rom ());
    |        ^^^^^^^
+help: remove this generic argument
+   |
+LL -     fn bar() -> Wrapper<impl Sized>;
+LL +     fn bar() -> Wrapper<>;
+   |
 
 error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/opaque-and-lifetime-mismatch.rs:18:17
    |
 LL |     fn foo() -> Wrapper<impl Sized>;
-   |                 ^^^^^^^ ---------- help: remove this generic argument
-   |                 |
-   |                 expected 0 generic arguments
+   |                 ^^^^^^^ expected 0 generic arguments
    |
 note: struct defined here, with 0 generic parameters
   --> $DIR/opaque-and-lifetime-mismatch.rs:1:8
    |
 LL | struct Wrapper<'rom>(&'rom ());
    |        ^^^^^^^
+help: remove this generic argument
+   |
+LL -     fn foo() -> Wrapper<impl Sized>;
+LL +     fn foo() -> Wrapper<>;
+   |
 
 error[E0053]: method `bar` has an incompatible return type for trait
   --> $DIR/opaque-and-lifetime-mismatch.rs:10:17
@@ -93,15 +99,18 @@ error[E0107]: struct takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/opaque-and-lifetime-mismatch.rs:24:17
    |
 LL |     fn foo() -> Wrapper<impl Sized> {
-   |                 ^^^^^^^ ---------- help: remove this generic argument
-   |                 |
-   |                 expected 0 generic arguments
+   |                 ^^^^^^^ expected 0 generic arguments
    |
 note: struct defined here, with 0 generic parameters
   --> $DIR/opaque-and-lifetime-mismatch.rs:1:8
    |
 LL | struct Wrapper<'rom>(&'rom ());
    |        ^^^^^^^
+help: remove this generic argument
+   |
+LL -     fn foo() -> Wrapper<impl Sized> {
+LL +     fn foo() -> Wrapper<> {
+   |
 
 error: aborting due to 8 previous errors
 

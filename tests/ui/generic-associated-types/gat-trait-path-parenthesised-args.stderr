@@ -43,15 +43,18 @@ error[E0107]: associated type takes 0 generic arguments but 1 generic argument w
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:27
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
-   |                           ^---- help: remove these generics
-   |                           |
-   |                           expected 0 generic arguments
+   |                           ^ expected 0 generic arguments
    |
 note: associated type defined here, with 0 generic parameters
   --> $DIR/gat-trait-path-parenthesised-args.rs:2:8
    |
 LL |   type Y<'a>;
    |        ^
+help: remove these generics
+   |
+LL - fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
+LL + fn foo<'a>(arg: Box<dyn X<Y = &'a ()>>) {}
+   |
 
 error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:27
@@ -74,9 +77,7 @@ error[E0107]: associated type takes 0 generic arguments but 1 generic argument w
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:27
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
-   |                           ^---- help: remove these generics
-   |                           |
-   |                           expected 0 generic arguments
+   |                           ^ expected 0 generic arguments
    |
 note: associated type defined here, with 0 generic parameters
   --> $DIR/gat-trait-path-parenthesised-args.rs:2:8
@@ -84,6 +85,11 @@ note: associated type defined here, with 0 generic parameters
 LL |   type Y<'a>;
    |        ^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: remove these generics
+   |
+LL - fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
+LL + fn foo<'a>(arg: Box<dyn X<Y = &'a ()>>) {}
+   |
 
 error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:27
@@ -106,9 +112,7 @@ error[E0107]: associated type takes 0 generic arguments but 1 generic argument w
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:27
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
-   |                           ^---- help: remove these generics
-   |                           |
-   |                           expected 0 generic arguments
+   |                           ^ expected 0 generic arguments
    |
 note: associated type defined here, with 0 generic parameters
   --> $DIR/gat-trait-path-parenthesised-args.rs:2:8
@@ -116,6 +120,11 @@ note: associated type defined here, with 0 generic parameters
 LL |   type Y<'a>;
    |        ^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: remove these generics
+   |
+LL - fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
+LL + fn foo<'a>(arg: Box<dyn X<Y = &'a ()>>) {}
+   |
 
 error[E0224]: at least one trait is required for an object type
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:29

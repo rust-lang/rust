@@ -20,15 +20,18 @@ error[E0107]: method takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/issue-60622.rs:10:7
    |
 LL |     b.a::<'_, T>();
-   |       ^       - help: remove this generic argument
-   |       |
-   |       expected 0 generic arguments
+   |       ^ expected 0 generic arguments
    |
 note: method defined here, with 0 generic parameters
   --> $DIR/issue-60622.rs:6:8
    |
 LL |     fn a(&self) {}
    |        ^
+help: remove this generic argument
+   |
+LL -     b.a::<'_, T>();
+LL +     b.a::<'_, >();
+   |
 
 error: aborting due to 2 previous errors
 

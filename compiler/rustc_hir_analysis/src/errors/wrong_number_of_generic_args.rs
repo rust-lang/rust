@@ -888,7 +888,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let comma = if args.len() > 0 { ", " } else { "" };
         let trait_path = self.tcx.def_path_str(trait_def_id);
         let method_name = self.tcx.item_name(self.def_id);
-        err.span_suggestion(
+        err.span_suggestion_verbose(
             expr.span,
             msg,
             format!("{trait_path}::{generics}::{method_name}({rcvr}{comma}{rest})"),
@@ -952,7 +952,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 s = pluralize!(num_redundant_lt_args),
             );
 
-            err.span_suggestion(
+            err.span_suggestion_verbose(
                 span_redundant_lt_args,
                 msg_lifetimes,
                 "",
@@ -994,7 +994,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 s = pluralize!(num_redundant_gen_args),
             );
 
-            err.span_suggestion(
+            err.span_suggestion_verbose(
                 span_redundant_type_or_const_args,
                 msg_types_or_consts,
                 "",
@@ -1044,7 +1044,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 },
             );
 
-            err.span_suggestion(span, msg, "", Applicability::MaybeIncorrect);
+            err.span_suggestion_verbose(span, msg, "", Applicability::MaybeIncorrect);
         } else if redundant_lifetime_args && redundant_type_or_const_args {
             remove_lifetime_args(err);
             remove_type_or_const_args(err);
