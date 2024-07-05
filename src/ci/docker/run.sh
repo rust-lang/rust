@@ -93,8 +93,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     docker --version
 
     REGISTRY=ghcr.io
-    # PR CI runs on rust-lang, but we want to use the cache from rust-lang-ci
-    REGISTRY_USERNAME=rust-lang-ci
+    REGISTRY_USERNAME=${GITHUB_REPOSITORY_OWNER}
     # Tag used to push the final Docker image, so that it can be pulled by e.g. rustup
     IMAGE_TAG=${REGISTRY}/${REGISTRY_USERNAME}/rust-ci:${cksum}
     # Tag used to cache the Docker build
