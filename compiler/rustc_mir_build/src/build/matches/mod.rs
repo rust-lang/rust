@@ -1437,17 +1437,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidates: &mut [&mut Candidate<'_, 'tcx>],
     ) -> BasicBlock {
         ensure_sufficient_stack(|| {
-            self.match_candidates_with_enough_stack(span, scrutinee_span, start_block, candidates)
+            self.match_candidates_inner(span, scrutinee_span, start_block, candidates)
         })
     }
 
     /// Construct the decision tree for `candidates`. Don't call this, call `match_candidates`
     /// instead to reserve sufficient stack space.
-    fn match_candidates_with_enough_stack(
+    fn match_candidates_inner(
         &mut self,
         span: Span,
         scrutinee_span: Span,
-        start_block: BasicBlock,
+        mut start_block: BasicBlock,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
     ) -> BasicBlock {
         if let [first, ..] = candidates {
@@ -1480,7 +1480,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         // Process any candidates that remain.
-        let BlockAnd(start_block, remaining_candidates) = rest;
+        let remaining_candidates = unpack!(start_block = rest);
         self.match_candidates(span, scrutinee_span, start_block, remaining_candidates)
     }
 
