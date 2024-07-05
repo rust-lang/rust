@@ -788,6 +788,8 @@ impl<'a> Parser<'a> {
     fn make_all_value_bindings_mutable(pat: &mut P<Pat>) -> bool {
         struct AddMut(bool);
         impl MutVisitor for AddMut {
+            const NEVER_RESIZE: bool = true;
+
             fn visit_pat(&mut self, pat: &mut P<Pat>) {
                 if let PatKind::Ident(BindingMode(ByRef::No, m @ Mutability::Not), ..) =
                     &mut pat.kind

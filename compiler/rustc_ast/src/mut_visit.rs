@@ -20,7 +20,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use smallvec::{smallvec, Array, SmallVec};
 use std::ops::DerefMut;
-use std::{panic, ptr};
+use std::{panic, ptr, slice};
 use thin_vec::ThinVec;
 
 pub trait ExpectOne<A: Array> {
@@ -38,11 +38,49 @@ pub trait NoopVisitItemKind {
     fn noop_visit(&mut self, visitor: &mut impl MutVisitor);
 }
 
+// FIXME: Improve when `${concat}` is available on bootstrap compiler.
+macro_rules! generate_flat_map_methods {
+    (
+        $Node:ty,
+        $never_resize:ident
+        $visit:ident
+        $noop_visit:ident
+        $flat_map:ident
+        $noop_flat_map:ident
+    ) => {
+        fn $never_resize(&mut self, _nodes: &[$Node]) -> bool {
+            Self::NEVER_RESIZE
+        }
+
+        fn $visit(&mut self, node: &mut $Node) {
+            $noop_visit(node, self)
+        }
+
+        fn $flat_map(&mut self, node: $Node) -> SmallVec<[$Node; 1]> {
+            assert!(!Self::NEVER_RESIZE);
+            $noop_flat_map(node, self)
+        }
+    };
+}
+
+macro_rules! visit_or_flat_map {
+    ($visitor:ident $nodes:ident $never_resize:ident $visit:ident $flat_map:ident) => {
+        if $visitor.$never_resize($nodes) {
+            for node in $nodes {
+                $visitor.$visit(node);
+            }
+        } else {
+            $nodes.flat_map_in_place(|node| $visitor.$flat_map(node));
+        }
+    };
+}
+
 pub trait MutVisitor: Sized {
     /// Mutable token visiting only exists for the `macro_rules` token marker and should not be
     /// used otherwise. Token visitor would be entirely separate from the regular visitor if
     /// the marker didn't have to visit AST fragments in nonterminal tokens.
     const VISIT_TOKENS: bool = false;
+    const NEVER_RESIZE: bool = false;
 
     // Methods in this trait have one of three forms:
     //
@@ -93,29 +131,54 @@ pub trait MutVisitor: Sized {
         noop_visit_use_tree(use_tree, self);
     }
 
-    fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
-        noop_flat_map_item(ni, self)
-    }
+    generate_flat_map_methods!(
+        P<ForeignItem>,
+        never_resize_foreign_items
+        visit_foreign_item
+        noop_visit_item
+        flat_map_foreign_item
+        noop_flat_map_item
+    );
 
-    fn flat_map_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
-        noop_flat_map_item(i, self)
-    }
+    generate_flat_map_methods!(
+        P<Item>,
+        never_resize_items
+        visit_item
+        noop_visit_item
+        flat_map_item
+        noop_flat_map_item
+    );
 
     fn visit_fn_header(&mut self, header: &mut FnHeader) {
         noop_visit_fn_header(header, self);
     }
 
-    fn flat_map_field_def(&mut self, fd: FieldDef) -> SmallVec<[FieldDef; 1]> {
-        noop_flat_map_field_def(fd, self)
-    }
+    generate_flat_map_methods!(
+        FieldDef,
+        never_resize_field_defs
+        visit_field_def
+        noop_visit_field_def
+        flat_map_field_def
+        noop_flat_map_field_def
+    );
 
-    fn flat_map_trait_item(&mut self, i: P<AssocItem>) -> SmallVec<[P<AssocItem>; 1]> {
-        noop_flat_map_item(i, self)
-    }
+    generate_flat_map_methods!(
+        P<AssocItem>,
+        never_resize_trait_items
+        visit_trait_item
+        noop_visit_item
+        flat_map_trait_item
+        noop_flat_map_item
+    );
 
-    fn flat_map_impl_item(&mut self, i: P<AssocItem>) -> SmallVec<[P<AssocItem>; 1]> {
-        noop_flat_map_item(i, self)
-    }
+    generate_flat_map_methods!(
+        P<AssocItem>,
+        never_resize_impl_items
+        visit_impl_item
+        noop_visit_item
+        flat_map_impl_item
+        noop_flat_map_item
+    );
 
     fn visit_fn_decl(&mut self, d: &mut P<FnDecl>) {
         noop_visit_fn_decl(d, self);
@@ -133,13 +196,23 @@ pub trait MutVisitor: Sized {
         noop_visit_block(b, self);
     }
 
-    fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
-        noop_flat_map_stmt(s, self)
-    }
+    generate_flat_map_methods!(
+        Stmt,
+        never_resize_stmts
+        visit_stmt
+        noop_visit_stmt
+        flat_map_stmt
+        noop_flat_map_stmt
+    );
 
-    fn flat_map_arm(&mut self, arm: Arm) -> SmallVec<[Arm; 1]> {
-        noop_flat_map_arm(arm, self)
-    }
+    generate_flat_map_methods!(
+        Arm,
+        never_resize_arms
+        visit_arm
+        noop_visit_arm
+        flat_map_arm
+        noop_flat_map_arm
+    );
 
     fn visit_pat(&mut self, p: &mut P<Pat>) {
         noop_visit_pat(p, self);
@@ -159,7 +232,12 @@ pub trait MutVisitor: Sized {
         self.visit_expr(ex)
     }
 
+    fn never_resize_expr(&mut self, _exprs: &[P<Expr>]) -> bool {
+        Self::NEVER_RESIZE
+    }
+
     fn filter_map_expr(&mut self, e: P<Expr>) -> Option<P<Expr>> {
+        assert!(!Self::NEVER_RESIZE);
         noop_filter_map_expr(e, self)
     }
 
@@ -183,9 +261,14 @@ pub trait MutVisitor: Sized {
         noop_visit_foreign_mod(nm, self);
     }
 
-    fn flat_map_variant(&mut self, v: Variant) -> SmallVec<[Variant; 1]> {
-        noop_flat_map_variant(v, self)
-    }
+    generate_flat_map_methods!(
+        Variant,
+        never_resize_variants
+        visit_variant
+        noop_visit_variant
+        flat_map_variant
+        noop_flat_map_variant
+    );
 
     fn visit_ident(&mut self, i: &mut Ident) {
         noop_visit_ident(i, self);
@@ -231,9 +314,14 @@ pub trait MutVisitor: Sized {
         noop_visit_attribute(at, self);
     }
 
-    fn flat_map_param(&mut self, param: Param) -> SmallVec<[Param; 1]> {
-        noop_flat_map_param(param, self)
-    }
+    generate_flat_map_methods!(
+        Param,
+        never_resize_params
+        visit_param
+        noop_visit_param
+        flat_map_param
+        noop_flat_map_param
+    );
 
     fn visit_generics(&mut self, generics: &mut Generics) {
         noop_visit_generics(generics, self);
@@ -251,9 +339,14 @@ pub trait MutVisitor: Sized {
         noop_visit_variant_data(vdata, self);
     }
 
-    fn flat_map_generic_param(&mut self, param: GenericParam) -> SmallVec<[GenericParam; 1]> {
-        noop_flat_map_generic_param(param, self)
-    }
+    generate_flat_map_methods!(
+        GenericParam,
+        never_resize_generic_params
+        visit_generic_param
+        noop_visit_generic_param
+        flat_map_generic_param
+        noop_flat_map_generic_param
+    );
 
     fn visit_param_bound(&mut self, tpb: &mut GenericBound) {
         noop_visit_param_bound(tpb, self);
@@ -267,9 +360,14 @@ pub trait MutVisitor: Sized {
         noop_visit_mt(mt, self);
     }
 
-    fn flat_map_expr_field(&mut self, f: ExprField) -> SmallVec<[ExprField; 1]> {
-        noop_flat_map_expr_field(f, self)
-    }
+    generate_flat_map_methods!(
+        ExprField,
+        never_resize_expr_fields
+        visit_expr_field
+        noop_visit_expr_field
+        flat_map_expr_field
+        noop_flat_map_expr_field
+    );
 
     fn visit_where_clause(&mut self, where_clause: &mut WhereClause) {
         noop_visit_where_clause(where_clause, self);
@@ -291,9 +389,14 @@ pub trait MutVisitor: Sized {
         // Do nothing.
     }
 
-    fn flat_map_pat_field(&mut self, fp: PatField) -> SmallVec<[PatField; 1]> {
-        noop_flat_map_pat_field(fp, self)
-    }
+    generate_flat_map_methods!(
+        PatField,
+        never_resize_pat_fields
+        visit_pat_field
+        noop_visit_pat_field
+        flat_map_pat_field
+        noop_flat_map_pat_field
+    );
 
     fn visit_inline_asm(&mut self, asm: &mut InlineAsm) {
         noop_visit_inline_asm(asm, self)
@@ -374,14 +477,8 @@ fn visit_attrs<T: MutVisitor>(attrs: &mut AttrVec, vis: &mut T) {
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-#[allow(unused)]
-fn visit_exprs<T: MutVisitor>(exprs: &mut Vec<P<Expr>>, vis: &mut T) {
-    exprs.flat_map_in_place(|expr| vis.filter_map_expr(expr))
-}
-
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_thin_exprs<T: MutVisitor>(exprs: &mut ThinVec<P<Expr>>, vis: &mut T) {
-    exprs.flat_map_in_place(|expr| vis.filter_map_expr(expr))
+    visit_or_flat_map!(vis exprs never_resize_expr visit_expr filter_map_expr)
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
@@ -427,13 +524,17 @@ pub fn noop_flat_map_pat_field<T: MutVisitor>(
     mut fp: PatField,
     vis: &mut T,
 ) -> SmallVec<[PatField; 1]> {
-    let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = &mut fp;
+    noop_visit_pat_field(&mut fp, vis);
+    smallvec![fp]
+}
+
+pub fn noop_visit_pat_field<T: MutVisitor>(fp: &mut PatField, vis: &mut T) {
+    let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = fp;
     vis.visit_id(id);
     visit_attrs(attrs, vis);
     vis.visit_ident(ident);
     vis.visit_pat(pat);
     vis.visit_span(span);
-    smallvec![fp]
 }
 
 fn noop_visit_use_tree<T: MutVisitor>(use_tree: &mut UseTree, vis: &mut T) {
@@ -454,14 +555,18 @@ fn noop_visit_use_tree<T: MutVisitor>(use_tree: &mut UseTree, vis: &mut T) {
 }
 
 pub fn noop_flat_map_arm<T: MutVisitor>(mut arm: Arm, vis: &mut T) -> SmallVec<[Arm; 1]> {
-    let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = &mut arm;
+    noop_visit_arm(&mut arm, vis);
+    smallvec![arm]
+}
+
+pub fn noop_visit_arm<T: MutVisitor>(arm: &mut Arm, vis: &mut T) {
+    let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = arm;
     vis.visit_id(id);
     visit_attrs(attrs, vis);
     vis.visit_pat(pat);
     visit_opt(guard, |guard| vis.visit_expr(guard));
     visit_opt(body, |body| vis.visit_expr(body));
     vis.visit_span(span);
-    smallvec![arm]
 }
 
 fn noop_visit_assoc_item_constraint<T: MutVisitor>(
@@ -499,7 +604,7 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
         TyKind::BareFn(bft) => {
             let BareFnTy { safety, ext: _, generic_params, decl, decl_span } = bft.deref_mut();
             visit_safety(safety, vis);
-            generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
+            visit_or_flat_map!(vis generic_params never_resize_generic_params visit_generic_param flat_map_generic_param);
             vis.visit_fn_decl(decl);
             vis.visit_span(decl_span);
         }
@@ -528,7 +633,7 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
         TyKind::AnonStruct(id, fields) | TyKind::AnonUnion(id, fields) => {
             vis.visit_id(id);
-            fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
+            visit_or_flat_map!(vis fields never_resize_field_defs visit_field_def flat_map_field_def);
         }
     }
     visit_lazy_tts(tokens, vis);
@@ -538,14 +643,19 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
 fn noop_visit_foreign_mod<T: MutVisitor>(foreign_mod: &mut ForeignMod, vis: &mut T) {
     let ForeignMod { safety, abi: _, items } = foreign_mod;
     visit_safety(safety, vis);
-    items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
+    visit_or_flat_map!(vis items never_resize_foreign_items visit_foreign_item flat_map_foreign_item);
 }
 
 pub fn noop_flat_map_variant<T: MutVisitor>(
     mut variant: Variant,
     visitor: &mut T,
 ) -> SmallVec<[Variant; 1]> {
-    let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } = &mut variant;
+    noop_visit_variant(&mut variant, visitor);
+    smallvec![variant]
+}
+
+pub fn noop_visit_variant<T: MutVisitor>(variant: &mut Variant, visitor: &mut T) {
+    let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } = variant;
     visitor.visit_id(id);
     visit_attrs(attrs, visitor);
     visitor.visit_vis(vis);
@@ -553,7 +663,6 @@ pub fn noop_flat_map_variant<T: MutVisitor>(
     visitor.visit_variant_data(data);
     visit_opt(disr_expr, |disr_expr| visitor.visit_anon_const(disr_expr));
     visitor.visit_span(span);
-    smallvec![variant]
 }
 
 fn noop_visit_ident<T: MutVisitor>(Ident { name: _, span }: &mut Ident, vis: &mut T) {
@@ -685,13 +794,17 @@ fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
 }
 
 pub fn noop_flat_map_param<T: MutVisitor>(mut param: Param, vis: &mut T) -> SmallVec<[Param; 1]> {
-    let Param { attrs, id, pat, span, ty, is_placeholder: _ } = &mut param;
+    noop_visit_param(&mut param, vis);
+    smallvec![param]
+}
+
+pub fn noop_visit_param<T: MutVisitor>(param: &mut Param, vis: &mut T) {
+    let Param { attrs, id, pat, span, ty, is_placeholder: _ } = param;
     vis.visit_id(id);
     visit_attrs(attrs, vis);
     vis.visit_pat(pat);
     vis.visit_ty(ty);
     vis.visit_span(span);
-    smallvec![param]
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
@@ -808,19 +921,33 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
 // multiple items there....
 fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
     match nt {
-        token::NtItem(item) => visit_clobber(item, |item| {
-            // This is probably okay, because the only visitors likely to
-            // peek inside interpolated nodes will be renamings/markings,
-            // which map single items to single items.
-            vis.flat_map_item(item).expect_one("expected visitor to produce exactly one item")
-        }),
+        token::NtItem(item) => {
+            if vis.never_resize_items(slice::from_ref(&item)) {
+                vis.visit_item(item)
+            } else {
+                visit_clobber(item, |item| {
+                    // This is probably okay, because the only visitors likely to
+                    // peek inside interpolated nodes will be renamings/markings,
+                    // which map single items to single items.
+                    vis.flat_map_item(item)
+                        .expect_one("expected visitor to produce exactly one item")
+                })
+            }
+        }
         token::NtBlock(block) => vis.visit_block(block),
-        token::NtStmt(stmt) => visit_clobber(stmt, |stmt| {
-            // See reasoning above.
-            stmt.map(|stmt| {
-                vis.flat_map_stmt(stmt).expect_one("expected visitor to produce exactly one item")
-            })
-        }),
+        token::NtStmt(stmt) => {
+            if vis.never_resize_stmts(slice::from_ref(&stmt)) {
+                vis.visit_stmt(stmt);
+            } else {
+                visit_clobber(stmt, |stmt| {
+                    // See reasoning above.
+                    stmt.map(|stmt| {
+                        vis.flat_map_stmt(stmt)
+                            .expect_one("expected visitor to produce exactly one item")
+                    })
+                })
+            }
+        }
         token::NtPat(pat) => vis.visit_pat(pat),
         token::NtExpr(expr) => vis.visit_expr(expr),
         token::NtTy(ty) => vis.visit_ty(ty),
@@ -873,7 +1000,7 @@ fn noop_visit_closure_binder<T: MutVisitor>(binder: &mut ClosureBinder, vis: &mu
     match binder {
         ClosureBinder::NotPresent => {}
         ClosureBinder::For { span: _, generic_params } => {
-            generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
+            visit_or_flat_map!(vis generic_params never_resize_generic_params visit_generic_param flat_map_generic_param);
         }
     }
 }
@@ -892,7 +1019,7 @@ fn noop_visit_coroutine_kind<T: MutVisitor>(coroutine_kind: &mut CoroutineKind, 
 
 fn noop_visit_fn_decl<T: MutVisitor>(decl: &mut P<FnDecl>, vis: &mut T) {
     let FnDecl { inputs, output } = decl.deref_mut();
-    inputs.flat_map_in_place(|param| vis.flat_map_param(param));
+    visit_or_flat_map!(vis inputs never_resize_params visit_param flat_map_param);
     noop_visit_fn_ret_ty(output, vis);
 }
 
@@ -932,7 +1059,12 @@ pub fn noop_flat_map_generic_param<T: MutVisitor>(
     mut param: GenericParam,
     vis: &mut T,
 ) -> SmallVec<[GenericParam; 1]> {
-    let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } = &mut param;
+    noop_visit_generic_param(&mut param, vis);
+    smallvec![param]
+}
+
+pub fn noop_visit_generic_param<T: MutVisitor>(param: &mut GenericParam, vis: &mut T) {
+    let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } = param;
     vis.visit_id(id);
     visit_attrs(attrs, vis);
     vis.visit_ident(ident);
@@ -950,7 +1082,6 @@ pub fn noop_flat_map_generic_param<T: MutVisitor>(
     if let Some(colon_span) = colon_span {
         vis.visit_span(colon_span);
     }
-    smallvec![param]
 }
 
 fn noop_visit_label<T: MutVisitor>(Label { ident }: &mut Label, vis: &mut T) {
@@ -964,7 +1095,7 @@ fn noop_visit_lifetime<T: MutVisitor>(Lifetime { id, ident }: &mut Lifetime, vis
 
 fn noop_visit_generics<T: MutVisitor>(generics: &mut Generics, vis: &mut T) {
     let Generics { params, where_clause, span } = generics;
-    params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
+    visit_or_flat_map!(vis params never_resize_generic_params visit_generic_param flat_map_generic_param);
     vis.visit_where_clause(where_clause);
     vis.visit_span(span);
 }
@@ -987,7 +1118,7 @@ fn noop_visit_where_predicate<T: MutVisitor>(pred: &mut WherePredicate, vis: &mu
     match pred {
         WherePredicate::BoundPredicate(bp) => {
             let WhereBoundPredicate { span, bound_generic_params, bounded_ty, bounds } = bp;
-            bound_generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
+            visit_or_flat_map!(vis bound_generic_params never_resize_generic_params visit_generic_param flat_map_generic_param);
             vis.visit_ty(bounded_ty);
             visit_vec(bounds, |bound| vis.visit_param_bound(bound));
             vis.visit_span(span);
@@ -1010,11 +1141,11 @@ fn noop_visit_where_predicate<T: MutVisitor>(pred: &mut WherePredicate, vis: &mu
 fn noop_visit_variant_data<T: MutVisitor>(vdata: &mut VariantData, vis: &mut T) {
     match vdata {
         VariantData::Struct { fields, recovered: _ } => {
-            fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
+            visit_or_flat_map!(vis fields never_resize_field_defs visit_field_def flat_map_field_def);
         }
         VariantData::Tuple(fields, id) => {
             vis.visit_id(id);
-            fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
+            visit_or_flat_map!(vis fields never_resize_field_defs visit_field_def flat_map_field_def);
         }
         VariantData::Unit(id) => vis.visit_id(id),
     }
@@ -1027,7 +1158,7 @@ fn noop_visit_trait_ref<T: MutVisitor>(TraitRef { path, ref_id }: &mut TraitRef,
 
 fn noop_visit_poly_trait_ref<T: MutVisitor>(p: &mut PolyTraitRef, vis: &mut T) {
     let PolyTraitRef { bound_generic_params, trait_ref, span } = p;
-    bound_generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
+    visit_or_flat_map!(vis bound_generic_params never_resize_generic_params visit_generic_param flat_map_generic_param);
     vis.visit_trait_ref(trait_ref);
     vis.visit_span(span);
 }
@@ -1036,27 +1167,35 @@ pub fn noop_flat_map_field_def<T: MutVisitor>(
     mut fd: FieldDef,
     visitor: &mut T,
 ) -> SmallVec<[FieldDef; 1]> {
-    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _ } = &mut fd;
+    noop_visit_field_def(&mut fd, visitor);
+    smallvec![fd]
+}
+
+pub fn noop_visit_field_def<T: MutVisitor>(fd: &mut FieldDef, visitor: &mut T) {
+    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _ } = fd;
     visitor.visit_id(id);
     visit_attrs(attrs, visitor);
     visitor.visit_vis(vis);
     visit_opt(ident, |ident| visitor.visit_ident(ident));
     visitor.visit_ty(ty);
     visitor.visit_span(span);
-    smallvec![fd]
 }
 
 pub fn noop_flat_map_expr_field<T: MutVisitor>(
     mut f: ExprField,
     vis: &mut T,
 ) -> SmallVec<[ExprField; 1]> {
-    let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = &mut f;
+    noop_visit_expr_field(&mut f, vis);
+    smallvec![f]
+}
+
+pub fn noop_visit_expr_field<T: MutVisitor>(f: &mut ExprField, vis: &mut T) {
+    let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = f;
     vis.visit_id(id);
     visit_attrs(attrs, vis);
     vis.visit_ident(ident);
     vis.visit_expr(expr);
     vis.visit_span(span);
-    smallvec![f]
 }
 
 fn noop_visit_mt<T: MutVisitor>(MutTy { ty, mutbl: _ }: &mut MutTy, vis: &mut T) {
@@ -1066,7 +1205,7 @@ fn noop_visit_mt<T: MutVisitor>(MutTy { ty, mutbl: _ }: &mut MutTy, vis: &mut T)
 pub fn noop_visit_block<T: MutVisitor>(block: &mut P<Block>, vis: &mut T) {
     let Block { id, stmts, rules: _, span, tokens, could_be_bare_literal: _ } = block.deref_mut();
     vis.visit_id(id);
-    stmts.flat_map_in_place(|stmt| vis.flat_map_stmt(stmt));
+    visit_or_flat_map!(vis stmts never_resize_stmts visit_stmt flat_map_stmt);
     visit_lazy_tts(tokens, vis);
     vis.visit_span(span);
 }
@@ -1097,7 +1236,7 @@ impl NoopVisitItemKind for ItemKind {
                 visit_safety(safety, vis);
                 match mod_kind {
                     ModKind::Loaded(items, _inline, ModSpans { inner_span, inject_use_span }) => {
-                        items.flat_map_in_place(|item| vis.flat_map_item(item));
+                        visit_or_flat_map!(vis items never_resize_items visit_item flat_map_item);
                         vis.visit_span(inner_span);
                         vis.visit_span(inject_use_span);
                     }
@@ -1115,7 +1254,7 @@ impl NoopVisitItemKind for ItemKind {
             }
             ItemKind::Enum(EnumDef { variants }, generics) => {
                 vis.visit_generics(generics);
-                variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
+                visit_or_flat_map!(vis variants never_resize_variants visit_variant flat_map_variant);
             }
             ItemKind::Struct(variant_data, generics) | ItemKind::Union(variant_data, generics) => {
                 vis.visit_generics(generics);
@@ -1138,13 +1277,13 @@ impl NoopVisitItemKind for ItemKind {
                 visit_polarity(polarity, vis);
                 visit_opt(of_trait, |trait_ref| vis.visit_trait_ref(trait_ref));
                 vis.visit_ty(self_ty);
-                items.flat_map_in_place(|item| vis.flat_map_impl_item(item));
+                visit_or_flat_map!(vis items never_resize_impl_items visit_impl_item flat_map_impl_item);
             }
             ItemKind::Trait(box Trait { safety, is_auto: _, generics, bounds, items }) => {
                 visit_safety(safety, vis);
                 vis.visit_generics(generics);
                 visit_bounds(bounds, vis);
-                items.flat_map_in_place(|item| vis.flat_map_trait_item(item));
+                visit_or_flat_map!(vis items never_resize_trait_items visit_trait_item flat_map_trait_item);
             }
             ItemKind::TraitAlias(generics, bounds) => {
                 vis.visit_generics(generics);
@@ -1273,7 +1412,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
     let Crate { attrs, items, spans, id, is_placeholder: _ } = krate;
     vis.visit_id(id);
     visit_attrs(attrs, vis);
-    items.flat_map_in_place(|item| vis.flat_map_item(item));
+    visit_or_flat_map!(vis items never_resize_items visit_item flat_map_item);
     let ModSpans { inner_span, inject_use_span } = spans;
     vis.visit_span(inner_span);
     vis.visit_span(inject_use_span);
@@ -1284,7 +1423,12 @@ pub fn noop_flat_map_item<K: NoopVisitItemKind>(
     mut item: P<Item<K>>,
     visitor: &mut impl MutVisitor,
 ) -> SmallVec<[P<Item<K>>; 1]> {
-    let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
+    noop_visit_item(&mut item, visitor);
+    smallvec![item]
+}
+
+pub fn noop_visit_item<K: NoopVisitItemKind>(item: &mut Item<K>, visitor: &mut impl MutVisitor) {
+    let Item { ident, attrs, id, kind, vis, span, tokens } = item;
     visitor.visit_id(id);
     visit_attrs(attrs, visitor);
     visitor.visit_vis(vis);
@@ -1292,7 +1436,6 @@ pub fn noop_flat_map_item<K: NoopVisitItemKind>(
     kind.noop_visit(visitor);
     visit_lazy_tts(tokens, visitor);
     visitor.visit_span(span);
-    smallvec![item]
 }
 
 impl NoopVisitItemKind for ForeignItemKind {
@@ -1349,7 +1492,7 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
         PatKind::Struct(qself, path, fields, _etc) => {
             vis.visit_qself(qself);
             vis.visit_path(path);
-            fields.flat_map_in_place(|field| vis.flat_map_pat_field(field));
+            visit_or_flat_map!(vis fields never_resize_pat_fields visit_pat_field flat_map_pat_field);
         }
         PatKind::Box(inner) => vis.visit_pat(inner),
         PatKind::Deref(inner) => vis.visit_pat(inner),
@@ -1503,7 +1646,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
         }
         ExprKind::Match(expr, arms, _kind) => {
             vis.visit_expr(expr);
-            arms.flat_map_in_place(|arm| vis.flat_map_arm(arm));
+            visit_or_flat_map!(vis arms never_resize_arms visit_arm flat_map_arm)
         }
         ExprKind::Closure(box Closure {
             binder,
@@ -1591,7 +1734,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             let StructExpr { qself, path, fields, rest } = se.deref_mut();
             vis.visit_qself(qself);
             vis.visit_path(path);
-            fields.flat_map_in_place(|field| vis.flat_map_expr_field(field));
+            visit_or_flat_map!(vis fields never_resize_expr_fields visit_expr_field flat_map_expr_field);
             match rest {
                 StructRest::Base(expr) => vis.visit_expr(expr),
                 StructRest::Rest(_span) => {}
@@ -1641,6 +1784,12 @@ pub fn noop_flat_map_stmt<T: MutVisitor>(
     stmts
 }
 
+pub fn noop_visit_stmt<T: MutVisitor>(Stmt { kind, span, id }: &mut Stmt, vis: &mut T) {
+    vis.visit_id(id);
+    noop_visit_stmt_kind(kind, vis);
+    vis.visit_span(span);
+}
+
 fn noop_flat_map_stmt_kind<T: MutVisitor>(kind: StmtKind, vis: &mut T) -> SmallVec<[StmtKind; 1]> {
     match kind {
         StmtKind::Let(mut local) => smallvec![StmtKind::Let({
@@ -1657,6 +1806,21 @@ fn noop_flat_map_stmt_kind<T: MutVisitor>(kind: StmtKind, vis: &mut T) -> SmallV
             vis.visit_mac_call(mac_);
             visit_lazy_tts(tokens, vis);
             smallvec![StmtKind::MacCall(mac)]
+        }
+    }
+}
+
+fn noop_visit_stmt_kind<T: MutVisitor>(kind: &mut StmtKind, vis: &mut T) {
+    match kind {
+        StmtKind::Let(local) => vis.visit_local(local),
+        StmtKind::Item(item) => vis.visit_item(item),
+        StmtKind::Expr(expr) | StmtKind::Semi(expr) => vis.visit_expr(expr),
+        StmtKind::Empty => {}
+        StmtKind::MacCall(mac) => {
+            let MacCallStmt { mac: mac_, style: _, attrs, tokens } = mac.deref_mut();
+            visit_attrs(attrs, vis);
+            vis.visit_mac_call(mac_);
+            visit_lazy_tts(tokens, vis);
         }
     }
 }

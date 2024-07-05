@@ -3930,6 +3930,8 @@ impl<'a> CondChecker<'a> {
 }
 
 impl MutVisitor for CondChecker<'_> {
+    const NEVER_RESIZE: bool = true;
+
     fn visit_expr(&mut self, e: &mut P<Expr>) {
         use ForbiddenLetReason::*;
 

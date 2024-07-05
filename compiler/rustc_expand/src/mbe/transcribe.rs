@@ -24,6 +24,7 @@ struct Marker(LocalExpnId, Transparency, FxHashMap<SyntaxContext, SyntaxContext>
 
 impl MutVisitor for Marker {
     const VISIT_TOKENS: bool = true;
+    const NEVER_RESIZE: bool = true;
 
     fn visit_span(&mut self, span: &mut Span) {
         // `apply_mark` is a relatively expensive operation, both due to taking hygiene lock, and
