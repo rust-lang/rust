@@ -1,21 +1,18 @@
 use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalVarInfo, CanonicalVarValues,
 };
-use rustc_infer::infer::{
-    BoundRegionConversionTime, InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt,
-};
+use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::util::supertraits;
 use rustc_infer::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
-use rustc_type_ir::relate::Relate;
 use rustc_type_ir::solve::{Certainty, NoSolution, SolverMode};
 
 use crate::traits::coherence::trait_ref_is_knowable;
@@ -48,13 +45,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
     type Span = Span;
 
-    fn solver_mode(&self) -> ty::solve::SolverMode {
-        match self.intercrate {
-            true => SolverMode::Coherence,
-            false => SolverMode::Normal,
-        }
-    }
-
     fn build_with_canonical<V>(
         interner: TyCtxt<'tcx>,
         solver_mode: SolverMode,
@@ -74,104 +64,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         (SolverDelegate(infcx), value, vars)
     }
 
-    fn universe(&self) -> ty::UniverseIndex {
-        self.0.universe()
-    }
-
-    fn create_next_universe(&self) -> ty::UniverseIndex {
-        self.0.create_next_universe()
-    }
-
-    fn universe_of_ty(&self, vid: ty::TyVid) -> Option<ty::UniverseIndex> {
-        // FIXME(BoxyUwU): this is kind of jank and means that printing unresolved
-        // ty infers will give you the universe of the var it resolved to not the universe
-        // it actually had. It also means that if you have a `?0.1` and infer it to `u8` then
-        // try to print out `?0.1` it will just print `?0`.
-        match self.0.probe_ty_var(vid) {
-            Err(universe) => Some(universe),
-            Ok(_) => None,
-        }
-    }
-
-    fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex> {
-        match self.0.inner.borrow_mut().unwrap_region_constraints().probe_value(lt) {
-            Err(universe) => Some(universe),
-            Ok(_) => None,
-        }
-    }
-
-    fn universe_of_ct(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex> {
-        // Same issue as with `universe_of_ty`
-        match self.0.probe_const_var(ct) {
-            Err(universe) => Some(universe),
-            Ok(_) => None,
-        }
-    }
-
-    fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid {
-        self.0.root_var(var)
-    }
-
-    fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid {
-        self.0.root_const_var(var)
-    }
-
-    fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> Ty<'tcx> {
-        match self.0.probe_ty_var(vid) {
-            Ok(ty) => ty,
-            Err(_) => Ty::new_var(self.0.tcx, self.0.root_var(vid)),
-        }
-    }
-
-    fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {
-        self.0.opportunistic_resolve_int_var(vid)
-    }
-
-    fn opportunistic_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
-        self.0.opportunistic_resolve_float_var(vid)
-    }
-
-    fn opportunistic_resolve_ct_var(&self, vid: ty::ConstVid) -> ty::Const<'tcx> {
-        match self.0.probe_const_var(vid) {
-            Ok(ct) => ct,
-            Err(_) => ty::Const::new_var(self.0.tcx, self.0.root_const_var(vid)),
-        }
-    }
-
-    fn opportunistic_resolve_effect_var(&self, vid: ty::EffectVid) -> ty::Const<'tcx> {
-        match self.0.probe_effect_var(vid) {
-            Some(ct) => ct,
-            None => ty::Const::new_infer(
-                self.0.tcx,
-                ty::InferConst::EffectVar(self.0.root_effect_var(vid)),
-            ),
-        }
-    }
-
-    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
-        self.0
-            .inner
-            .borrow_mut()
-            .unwrap_region_constraints()
-            .opportunistic_resolve_var(self.0.tcx, vid)
-    }
-
-    fn defining_opaque_types(&self) -> &'tcx ty::List<LocalDefId> {
-        self.0.defining_opaque_types()
-    }
-
-    fn next_ty_infer(&self) -> Ty<'tcx> {
-        self.0.next_ty_var(DUMMY_SP)
-    }
-
-    fn next_const_infer(&self) -> ty::Const<'tcx> {
-        self.0.next_const_var(DUMMY_SP)
-    }
-
-    fn fresh_args_for_item(&self, def_id: DefId) -> ty::GenericArgsRef<'tcx> {
-        self.0.fresh_args_for_item(DUMMY_SP, def_id)
-    }
-
     fn fresh_var_for_kind_with_span(
         &self,
         arg: ty::GenericArg<'tcx>,
@@ -184,57 +76,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             ty::GenericArgKind::Type(_) => self.next_ty_var(span).into(),
             ty::GenericArgKind::Const(_) => self.next_const_var(span).into(),
         }
-    }
-
-    fn instantiate_binder_with_infer<T: TypeFoldable<TyCtxt<'tcx>> + Copy>(
-        &self,
-        value: ty::Binder<'tcx, T>,
-    ) -> T {
-        self.0.instantiate_binder_with_fresh_vars(
-            DUMMY_SP,
-            BoundRegionConversionTime::HigherRankedType,
-            value,
-        )
-    }
-
-    fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>> + Copy, U>(
-        &self,
-        value: ty::Binder<'tcx, T>,
-        f: impl FnOnce(T) -> U,
-    ) -> U {
-        self.0.enter_forall(value, f)
-    }
-
-    fn relate<T: Relate<TyCtxt<'tcx>>>(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        lhs: T,
-        variance: ty::Variance,
-        rhs: T,
-    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
-        self.0.at(&ObligationCause::dummy(), param_env).relate_no_trace(lhs, variance, rhs)
-    }
-
-    fn eq_structurally_relating_aliases<T: Relate<TyCtxt<'tcx>>>(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        lhs: T,
-        rhs: T,
-    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
-        self.0
-            .at(&ObligationCause::dummy(), param_env)
-            .eq_structurally_relating_aliases_no_trace(lhs, rhs)
-    }
-
-    fn resolve_vars_if_possible<T>(&self, value: T) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        self.0.resolve_vars_if_possible(value)
-    }
-
-    fn probe<T>(&self, probe: impl FnOnce() -> T) -> T {
-        self.0.probe(|_| probe())
     }
 
     fn leak_check(&self, max_input_universe: ty::UniverseIndex) -> Result<(), NoSolution> {
@@ -263,14 +104,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             Ok(None) | Err(ErrorHandled::TooGeneric(_)) => None,
             Err(ErrorHandled::Reported(e, _)) => Some(ty::Const::new_error(self.tcx, e.into())),
         }
-    }
-
-    fn sub_regions(&self, sub: ty::Region<'tcx>, sup: ty::Region<'tcx>) {
-        self.0.sub_regions(SubregionOrigin::RelateRegionParamBound(DUMMY_SP), sub, sup)
-    }
-
-    fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>) {
-        self.0.register_region_obligation_with_cause(ty, r, &ObligationCause::dummy());
     }
 
     fn well_formed_goals(
