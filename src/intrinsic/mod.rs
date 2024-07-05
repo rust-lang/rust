@@ -791,6 +791,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         } else {
             arg
         };
+        let arg_type = arg.get_type();
         let (count_trailing_zeroes, expected_type) =
             // TODO(antoyo): write a new function Type::is_compatible_with(&Type) and use it here
             // instead of using is_uint().
