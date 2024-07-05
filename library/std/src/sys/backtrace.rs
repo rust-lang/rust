@@ -7,44 +7,41 @@ use crate::fmt;
 use crate::io;
 use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
-use crate::sync::{Mutex, PoisonError};
+use crate::sync::{Mutex, MutexGuard, PoisonError};
 
 /// Max number of frames to print.
 const MAX_NB_FRAMES: usize = 100;
 
-pub fn lock() -> impl Drop {
+pub(crate) struct BacktraceLock<'a>(#[allow(dead_code)] MutexGuard<'a, ()>);
+
+pub(crate) fn lock<'a>() -> BacktraceLock<'a> {
     static LOCK: Mutex<()> = Mutex::new(());
-    LOCK.lock().unwrap_or_else(PoisonError::into_inner)
+    BacktraceLock(LOCK.lock().unwrap_or_else(PoisonError::into_inner))
 }
 
-/// Prints the current backtrace.
-pub fn print(w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
-    // There are issues currently linking libbacktrace into tests, and in
-    // general during std's own unit tests we're not testing this path. In
-    // test mode immediately return here to optimize away any references to the
-    // libbacktrace symbols
-    if cfg!(test) {
-        return Ok(());
-    }
-
-    // Use a lock to prevent mixed output in multithreading context.
-    // Some platforms also requires it, like `SymFromAddr` on Windows.
-    unsafe {
-        let _lock = lock();
-        _print(w, format)
-    }
-}
-
-unsafe fn _print(w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
-    struct DisplayBacktrace {
-        format: PrintFmt,
-    }
-    impl fmt::Display for DisplayBacktrace {
-        fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-            unsafe { _print_fmt(fmt, self.format) }
+impl BacktraceLock<'_> {
+    /// Prints the current backtrace.
+    ///
+    /// NOTE: this function is not Sync. The caller must hold a mutex lock, or there must be only one thread in the program.
+    pub(crate) fn print(&mut self, w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
+        // There are issues currently linking libbacktrace into tests, and in
+        // general during std's own unit tests we're not testing this path. In
+        // test mode immediately return here to optimize away any references to the
+        // libbacktrace symbols
+        if cfg!(test) {
+            return Ok(());
         }
+
+        struct DisplayBacktrace {
+            format: PrintFmt,
+        }
+        impl fmt::Display for DisplayBacktrace {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                unsafe { _print_fmt(fmt, self.format) }
+            }
+        }
+        write!(w, "{}", DisplayBacktrace { format })
     }
-    write!(w, "{}", DisplayBacktrace { format })
 }
 
 unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::Result {
