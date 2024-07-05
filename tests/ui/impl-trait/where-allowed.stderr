@@ -397,10 +397,7 @@ LL |     type Out = impl Debug;
    |                ---------- the expected opaque type
 ...
 LL |     fn in_trait_impl_return() -> impl Debug { () }
-   |                                  ^^^^^^^^^^
-   |                                  |
-   |                                  expected opaque type, found a different opaque type
-   |                                  help: change the output type to match the trait: `<() as DummyTrait>::Out`
+   |                                  ^^^^^^^^^^ expected opaque type, found a different opaque type
    |
 note: type in trait
   --> $DIR/where-allowed.rs:119:34
@@ -410,6 +407,10 @@ LL |     fn in_trait_impl_return() -> Self::Out;
    = note: expected signature `fn() -> <() as DummyTrait>::Out`
               found signature `fn() -> impl Debug`
    = note: distinct uses of `impl Trait` result in different opaque types
+help: change the output type to match the trait
+   |
+LL |     fn in_trait_impl_return() -> <() as DummyTrait>::Out { () }
+   |                                  ~~~~~~~~~~~~~~~~~~~~~~~
 
 error: unconstrained opaque type
   --> $DIR/where-allowed.rs:122:16
