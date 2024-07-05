@@ -1,6 +1,6 @@
 use clippy_config::msrvs::Msrv;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::is_in_test_function;
+use clippy_utils::is_in_test;
 use rustc_attr::{StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{Expr, ExprKind, HirId};
@@ -88,7 +88,7 @@ impl IncompatibleMsrv {
             return;
         }
         let version = self.get_def_id_version(cx.tcx, def_id);
-        if self.msrv.meets(version) || is_in_test_function(cx.tcx, node) {
+        if self.msrv.meets(version) || is_in_test(cx.tcx, node) {
             return;
         }
         if let ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) = span.ctxt().outer_expn_data().kind {
