@@ -199,6 +199,15 @@ rustc_queries! {
         feedable
     }
 
+    /// Gives access to the HIR owner.
+    ///
+    /// This can be conveniently accessed by methods on `tcx.hir()`.
+    /// Avoid calling this query directly.
+    query opt_hir_owner(key: LocalDefId) -> Option<&'tcx hir::OwnerInfo<'tcx>> {
+        desc { |tcx| "getting HIR owner info in `{}`", tcx.def_path_str(key) }
+        feedable
+    }
+
     /// Gives access to the HIR attributes inside the HIR owner `key`.
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.

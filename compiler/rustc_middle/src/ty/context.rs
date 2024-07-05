@@ -1145,30 +1145,31 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
         self.key
     }
 
-    // Caller must ensure that `self.key` ID is indeed an owner.
-    pub fn feed_owner_id(&self) -> TyCtxtFeed<'tcx, hir::OwnerId> {
-        TyCtxtFeed { tcx: self.tcx, key: hir::OwnerId { def_id: self.key } }
-    }
-
     // Fills in all the important parts needed by HIR queries
     pub fn feed_hir(&self) {
         self.local_def_id_to_hir_id(HirId::make_owner(self.def_id()));
 
         let node = hir::OwnerNode::Synthetic;
         let bodies = Default::default();
-        let attrs = hir::AttributeMap::EMPTY;
+        let attrs =
+            hir::AttributeMap { map: Default::default(), opt_hash: Some(Fingerprint::ZERO) };
 
         let (opt_hash_including_bodies, _) = self.tcx.hash_owner_nodes(node, &bodies, &attrs.map);
         let node = node.into();
-        self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes {
+        let nodes = hir::OwnerNodes {
             opt_hash_including_bodies,
             nodes: IndexVec::from_elem_n(
                 hir::ParentedNode { parent: hir::ItemLocalId::INVALID, node },
                 1,
             ),
             bodies,
+        };
+        self.opt_hir_owner(Some(self.tcx.arena.alloc(hir::OwnerInfo {
+            nodes,
+            parenting: Default::default(),
+            attrs,
+            trait_map: Default::default(),
         })));
-        self.feed_owner_id().hir_attrs(attrs);
     }
 }
 
@@ -1843,7 +1844,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> &'tcx rustc_hir::def_path_hash_map::DefPathHashMap {
         // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
-        self.ensure().hir_crate(());
+        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
         // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
         self.untracked.definitions.freeze().def_path_hash_to_def_index_map()

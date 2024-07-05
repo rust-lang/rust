@@ -168,14 +168,15 @@ pub fn provide(providers: &mut Providers) {
         MaybeOwner::NonOwner(hir_id) => hir_id,
         MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
     };
-    providers.opt_hir_owner_nodes =
-        |tcx, id| tcx.hir_crate(()).owners.get(id)?.as_owner().map(|i| &i.nodes);
+    providers.opt_hir_owner_nodes = |tcx, id| tcx.opt_hir_owner(id).map(|i| &i.nodes);
+    providers.opt_hir_owner = |tcx, id| tcx.hir_crate(()).owners.get(id)?.as_owner();
     providers.hir_owner_parent = |tcx, owner_id| {
         tcx.opt_local_parent(owner_id.def_id).map_or(CRATE_HIR_ID, |parent_def_id| {
             let parent_owner_id = tcx.local_def_id_to_hir_id(parent_def_id).owner;
             HirId {
                 owner: parent_owner_id,
-                local_id: tcx.hir_crate(()).owners[parent_owner_id.def_id]
+                local_id: tcx
+                    .opt_hir_owner(parent_owner_id.def_id)
                     .unwrap()
                     .parenting
                     .get(&owner_id.def_id)
@@ -184,9 +185,8 @@ pub fn provide(providers: &mut Providers) {
             }
         })
     };
-    providers.hir_attrs = |tcx, id| {
-        tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
-    };
+    providers.hir_attrs =
+        |tcx, id| tcx.opt_hir_owner(id.def_id).map_or(AttributeMap::EMPTY, |o| &o.attrs);
     providers.def_span = |tcx, def_id| tcx.hir().span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
@@ -217,7 +217,6 @@ pub fn provide(providers: &mut Providers) {
     providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;
     providers.expn_that_defined =
         |tcx, id| tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root());
-    providers.in_scope_traits_map = |tcx, id| {
-        tcx.hir_crate(()).owners[id.def_id].as_owner().map(|owner_info| &owner_info.trait_map)
-    };
+    providers.in_scope_traits_map =
+        |tcx, id| tcx.opt_hir_owner(id.def_id).map(|owner_info| &owner_info.trait_map);
 }

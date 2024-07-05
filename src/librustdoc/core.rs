@@ -359,7 +359,7 @@ pub(crate) fn run_global_ctxt(
         ctxt.external_traits.borrow_mut().insert(sized_trait_did, sized_trait);
     }
 
-    debug!("crate: {:?}", tcx.hir().krate());
+    debug!("crate: {:?}", tcx.hir_crate(()));
 
     let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
 

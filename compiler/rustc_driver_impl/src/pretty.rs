@@ -293,7 +293,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         }
         HirTree => {
             debug!("pretty printing HIR tree");
-            format!("{:#?}", ex.tcx().hir().krate())
+            format!("{:#?}", ex.tcx().hir_crate(()))
         }
         Mir => {
             let mut out = Vec::new();
