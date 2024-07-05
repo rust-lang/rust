@@ -641,9 +641,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         });
         store.register_early_pass(|| Box::new(utils::internal_lints::produce_ice::ProduceIce));
         store.register_late_pass(|_| Box::new(utils::internal_lints::collapsible_calls::CollapsibleCalls));
-        store.register_late_pass(|_| {
-            Box::new(utils::internal_lints::compiler_lint_functions::CompilerLintFunctions::new())
-        });
         store.register_late_pass(|_| Box::new(utils::internal_lints::invalid_paths::InvalidPaths));
         store.register_late_pass(|_| {
             Box::<utils::internal_lints::interning_defined_symbol::InterningDefinedSymbol>::default()
