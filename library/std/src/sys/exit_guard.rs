@@ -19,6 +19,7 @@ cfg_if::cfg_if! {
         /// * If it is called again on the same thread as the first call, it will abort.
         /// * If it is called again on a different thread, it will wait in a loop
         ///   (waiting for the process to exit).
+        #[cfg_attr(any(test, doctest), allow(dead_code))]
         pub(crate) fn unique_thread_exit() {
             let this_thread_id = unsafe { libc::pthread_self() };
             use crate::sync::{Mutex, PoisonError};
@@ -54,6 +55,7 @@ cfg_if::cfg_if! {
         ///
         /// Mitigation is ***NOT*** implemented on this platform, either because this platform
         /// is not affected, or because mitigation is not yet implemented for this platform.
+        #[cfg_attr(any(test, doctest), allow(dead_code))]
         pub(crate) fn unique_thread_exit() {
             // Mitigation not required on platforms where `exit` is thread-safe.
         }
