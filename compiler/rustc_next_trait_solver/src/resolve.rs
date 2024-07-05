@@ -2,7 +2,7 @@ use crate::delegate::SolverDelegate;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::visit::TypeVisitableExt;
-use rustc_type_ir::{self as ty, Interner};
+use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 
 ///////////////////////////////////////////////////////////////////////////
 // EAGER RESOLUTION
