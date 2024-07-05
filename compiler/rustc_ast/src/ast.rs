@@ -176,7 +176,7 @@ pub enum GenericArgs {
     AngleBracketed(AngleBracketedArgs),
     /// The `(A, B)` and `C` in `Foo(A, B) -> C`.
     Parenthesized(ParenthesizedArgs),
-    /// `(..)` in return type notation
+    /// `(..)` in return type notation.
     ParenthesizedElided(Span),
 }
 
@@ -197,11 +197,11 @@ impl GenericArgs {
 /// Concrete argument in the sequence of generic args.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum GenericArg {
-    /// `'a` in `Foo<'a>`
+    /// `'a` in `Foo<'a>`.
     Lifetime(Lifetime),
-    /// `Bar` in `Foo<Bar>`
+    /// `Bar` in `Foo<Bar>`.
     Type(P<Ty>),
-    /// `1` in `Foo<1>`
+    /// `1` in `Foo<1>`.
     Const(AnonConst),
 }
 
@@ -355,7 +355,7 @@ pub enum GenericParamKind {
         ty: P<Ty>,
         /// Span of the `const` keyword.
         kw_span: Span,
-        /// Optional default value for the const generic param
+        /// Optional default value for the const generic param.
         default: Option<AnonConst>,
     },
 }
@@ -833,7 +833,7 @@ pub enum PatKind {
     /// only one rest pattern may occur in the pattern sequences.
     Rest,
 
-    // A never pattern `!`
+    // A never pattern `!`.
     Never,
 
     /// Parentheses in patterns used for grouping (i.e., `(PAT)`).
@@ -1122,9 +1122,9 @@ impl LocalKind {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Arm {
     pub attrs: AttrVec,
-    /// Match arm pattern, e.g. `10` in `match foo { 10 => {}, _ => {} }`
+    /// Match arm pattern, e.g. `10` in `match foo { 10 => {}, _ => {} }`.
     pub pat: P<Pat>,
-    /// Match arm guard, e.g. `n > 10` in `match foo { n if n > 10 => {}, _ => {} }`
+    /// Match arm guard, e.g. `n > 10` in `match foo { n if n > 10 => {}, _ => {} }`.
     pub guard: Option<P<Expr>>,
     /// Match arm body. Omitted if the pattern is a never pattern.
     pub body: Option<P<Expr>>,
@@ -1355,12 +1355,12 @@ pub struct Closure {
     pub fn_arg_span: Span,
 }
 
-/// Limit types of a range (inclusive or exclusive)
+/// Limit types of a range (inclusive or exclusive).
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug)]
 pub enum RangeLimits {
-    /// Inclusive at the beginning, exclusive at the end
+    /// Inclusive at the beginning, exclusive at the end.
     HalfOpen,
-    /// Inclusive at the beginning and end
+    /// Inclusive at the beginning and end.
     Closed,
 }
 
@@ -1401,9 +1401,9 @@ pub struct StructExpr {
 pub enum ExprKind {
     /// An array (e.g, `[a, b, c, d]`).
     Array(ThinVec<P<Expr>>),
-    /// Allow anonymous constants from an inline `const` block
+    /// Allow anonymous constants from an inline `const` block.
     ConstBlock(AnonConst),
-    /// A function call
+    /// A function call.
     ///
     /// The first field resolves to the function itself,
     /// and the second field is the list of arguments.
@@ -1457,7 +1457,7 @@ pub enum ExprKind {
     /// A block (`'label: { ... }`).
     Block(P<Block>, Option<Label>),
     /// An `async` block (`async move { ... }`),
-    /// or a `gen` block (`gen move { ... }`)
+    /// or a `gen` block (`gen move { ... }`).
     ///
     /// The span is the "decl", which is the header before the body `{ }`
     /// including the `asyng`/`gen` keywords and possibly `move`.
@@ -2157,9 +2157,9 @@ pub enum TyKind {
     Never,
     /// A tuple (`(A, B, C, D,...)`).
     Tup(ThinVec<P<Ty>>),
-    /// An anonymous struct type i.e. `struct { foo: Type }`
+    /// An anonymous struct type i.e. `struct { foo: Type }`.
     AnonStruct(NodeId, ThinVec<FieldDef>),
-    /// An anonymous union type i.e. `union { bar: Type }`
+    /// An anonymous union type i.e. `union { bar: Type }`.
     AnonUnion(NodeId, ThinVec<FieldDef>),
     /// A path (`module::module::...::Type`), optionally
     /// "qualified", e.g., `<Vec<T> as SomeTrait>::SomeType`.
@@ -2233,9 +2233,9 @@ pub enum TraitObjectSyntax {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum PreciseCapturingArg {
-    /// Lifetime parameter
+    /// Lifetime parameter.
     Lifetime(Lifetime),
-    /// Type or const parameter
+    /// Type or const parameter.
     Arg(Path, NodeId),
 }
 
@@ -2529,11 +2529,11 @@ pub enum Safety {
 /// Iterator`.
 #[derive(Copy, Clone, Encodable, Decodable, Debug)]
 pub enum CoroutineKind {
-    /// `async`, which returns an `impl Future`
+    /// `async`, which returns an `impl Future`.
     Async { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
-    /// `gen`, which returns an `impl Iterator`
+    /// `gen`, which returns an `impl Iterator`.
     Gen { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
-    /// `async gen`, which returns an `impl AsyncIterator`
+    /// `async gen`, which returns an `impl AsyncIterator`.
     AsyncGen { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
 }
 
@@ -2750,7 +2750,7 @@ pub struct Variant {
     pub data: VariantData,
     /// Explicit discriminant, e.g., `Foo = 1`.
     pub disr_expr: Option<AnonConst>,
-    /// Is a macro placeholder
+    /// Is a macro placeholder.
     pub is_placeholder: bool,
 }
 
@@ -3024,19 +3024,19 @@ impl Item {
 /// `extern` qualifier on a function item or function type.
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub enum Extern {
-    /// No explicit extern keyword was used
+    /// No explicit extern keyword was used.
     ///
-    /// E.g. `fn foo() {}`
+    /// E.g. `fn foo() {}`.
     None,
-    /// An explicit extern keyword was used, but with implicit ABI
+    /// An explicit extern keyword was used, but with implicit ABI.
     ///
-    /// E.g. `extern fn foo() {}`
+    /// E.g. `extern fn foo() {}`.
     ///
-    /// This is just `extern "C"` (see `rustc_target::spec::abi::Abi::FALLBACK`)
+    /// This is just `extern "C"` (see `rustc_target::spec::abi::Abi::FALLBACK`).
     Implicit(Span),
-    /// An explicit extern keyword was used with an explicit ABI
+    /// An explicit extern keyword was used with an explicit ABI.
     ///
-    /// E.g. `extern "C" fn foo() {}`
+    /// E.g. `extern "C" fn foo() {}`.
     Explicit(StrLit, Span),
 }
 
@@ -3055,13 +3055,13 @@ impl Extern {
 /// included in this struct (e.g., `async unsafe fn` or `const extern "C" fn`).
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub struct FnHeader {
-    /// Whether this is `unsafe`, or has a default safety
+    /// Whether this is `unsafe`, or has a default safety.
     pub safety: Safety,
     /// Whether this is `async`, `gen`, or nothing.
     pub coroutine_kind: Option<CoroutineKind>,
     /// The `const` keyword, if any
     pub constness: Const,
-    /// The `extern` keyword and corresponding ABI string, if any
+    /// The `extern` keyword and corresponding ABI string, if any.
     pub ext: Extern,
 }
 
@@ -3255,7 +3255,7 @@ pub enum ItemKind {
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
     Trait(Box<Trait>),
-    /// Trait alias
+    /// Trait alias.
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
     TraitAlias(Generics, GenericBounds),
