@@ -92,6 +92,7 @@ mod box_default;
 mod byte_char_slices;
 mod cargo;
 mod casts;
+mod cfg_not_test;
 mod checked_conversions;
 mod cognitive_complexity;
 mod collapsible_if;
@@ -1176,6 +1177,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_early_pass(|| Box::new(field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers));
     store.register_late_pass(|_| Box::new(set_contains_or_insert::HashsetInsertAfterContains));
     store.register_early_pass(|| Box::new(byte_char_slices::ByteCharSlice));
+    store.register_early_pass(|| Box::new(cfg_not_test::CfgNotTest));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
