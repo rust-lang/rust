@@ -62,7 +62,6 @@ run-make/issue-28595/Makefile
 run-make/issue-33329/Makefile
 run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
-run-make/issue-37839/Makefile
 run-make/issue-47551/Makefile
 run-make/issue-69368/Makefile
 run-make/issue-83045/Makefile

@@ -35,7 +35,7 @@ pub use llvm::{
     LlvmProfdata, LlvmReadobj,
 };
 pub use run::{cmd, run, run_fail, run_with_args};
-pub use rustc::{aux_build, rustc, Rustc};
+pub use rustc::{aux_build, bare_rustc, rustc, Rustc};
 pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 
 #[track_caller]
