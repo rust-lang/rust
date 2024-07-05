@@ -253,16 +253,20 @@ fn default_hook(info: &PanicHookInfo<'_>) {
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
+        // Use a lock to prevent mixed output in multithreading context.
+        // Some platforms also require it when printing a backtrace, like `SymFromAddr` on Windows.
+        let mut lock = backtrace::lock();
         let _ = writeln!(err, "thread '{name}' panicked at {location}:\n{msg}");
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
         match backtrace {
+            // SAFETY: we took out a lock just a second ago.
             Some(BacktraceStyle::Short) => {
-                drop(backtrace::print(err, crate::backtrace_rs::PrintFmt::Short))
+                drop(lock.print(err, crate::backtrace_rs::PrintFmt::Short))
             }
             Some(BacktraceStyle::Full) => {
-                drop(backtrace::print(err, crate::backtrace_rs::PrintFmt::Full))
+                drop(lock.print(err, crate::backtrace_rs::PrintFmt::Full))
             }
             Some(BacktraceStyle::Off) => {
                 if FIRST_PANIC.swap(false, Ordering::Relaxed) {
