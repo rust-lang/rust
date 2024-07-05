@@ -6,7 +6,8 @@ use gccjit::{
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeMethods, MiscMethods};
-use rustc_data_structures::base_n;
+use rustc_data_structures::base_n::ToBaseN;
+use rustc_data_structures::base_n::ALPHANUMERIC_ONLY;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::span_bug;
@@ -20,13 +21,12 @@ use rustc_span::{source_map::respan, Span};
 use rustc_target::abi::{
     call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx,
 };
-use rustc_target::spec::{HasTargetSpec, Target, TlsModel};
+use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, TlsModel, WasmCAbi};
 
 use crate::callee::get_fn;
 use crate::common::SignType;
 
 pub struct CodegenCx<'gcc, 'tcx> {
-    pub check_overflow: bool,
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
     pub context: &'gcc Context<'gcc>,
 
@@ -114,6 +114,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     local_gen_sym_counter: Cell<usize>,
 
     eh_personality: Cell<Option<RValue<'gcc>>>,
+    #[cfg(feature = "master")]
     pub rust_try_fn: Cell<Option<(Type<'gcc>, Function<'gcc>)>>,
 
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
@@ -125,6 +126,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// FIXME(antoyo): fix the rustc API to avoid having this hack.
     pub structs_as_pointer: RefCell<FxHashSet<RValue<'gcc>>>,
 
+    #[cfg(feature = "master")]
     pub cleanup_blocks: RefCell<FxHashSet<Block<'gcc>>>,
 }
 
@@ -140,8 +142,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         supports_f64_type: bool,
         supports_f128_type: bool,
     ) -> Self {
-        let check_overflow = tcx.sess.overflow_checks();
-
         let create_type = |ctype, rust_type| {
             let layout = tcx.layout_of(ParamEnv::reveal_all().and(rust_type)).unwrap();
             let align = layout.align.abi.bytes();
@@ -277,7 +277,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
 
         let mut cx = Self {
-            check_overflow,
             codegen_unit,
             context,
             current_func: RefCell::new(None),
@@ -338,9 +337,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             struct_types: Default::default(),
             local_gen_sym_counter: Cell::new(0),
             eh_personality: Cell::new(None),
+            #[cfg(feature = "master")]
             rust_try_fn: Cell::new(None),
             pointee_infos: Default::default(),
             structs_as_pointer: Default::default(),
+            #[cfg(feature = "master")]
             cleanup_blocks: Default::default(),
         };
         // TODO(antoyo): instead of doing this, add SsizeT to libgccjit.
@@ -488,14 +489,12 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let tcx = self.tcx;
         let func = match tcx.lang_items().eh_personality() {
             Some(def_id) if !wants_msvc_seh(self.sess()) => {
-                let instance = ty::Instance::resolve(
+                let instance = ty::Instance::expect_resolve(
                     tcx,
                     ty::ParamEnv::reveal_all(),
                     def_id,
                     ty::List::empty(),
-                )
-                .unwrap()
-                .unwrap();
+                );
 
                 let symbol_name = tcx.symbol_name(instance).name;
                 let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
@@ -511,7 +510,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     "rust_eh_personality"
                 };
                 let func = self.declare_func(name, self.type_i32(), &[], true);
-                unsafe { std::mem::transmute(func) }
+                unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) }
             }
         };
         // TODO(antoyo): apply target cpu attributes.
@@ -521,10 +520,6 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn sess(&self) -> &Session {
         self.tcx.sess
-    }
-
-    fn check_overflow(&self) -> bool {
-        self.check_overflow
     }
 
     fn codegen_unit(&self) -> &'tcx CodegenUnit<'tcx> {
@@ -567,6 +562,12 @@ impl<'gcc, 'tcx> HasDataLayout for CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> HasTargetSpec for CodegenCx<'gcc, 'tcx> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target
+    }
+}
+
+impl<'gcc, 'tcx> HasWasmCAbiOpt for CodegenCx<'gcc, 'tcx> {
+    fn wasm_c_abi_opt(&self) -> WasmCAbi {
+        self.tcx.sess.opts.unstable_opts.wasm_c_abi
     }
 }
 
@@ -628,7 +629,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
         name.push('.');
-        base_n::push_str(idx as u128, base_n::ALPHANUMERIC_ONLY, &mut name);
+        name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }
 }

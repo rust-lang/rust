@@ -13,12 +13,14 @@ use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, BuilderMethods};
+#[cfg(feature = "master")]
 use rustc_hir as hir;
+use rustc_middle::mir::BinOp;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{sym, Span, Symbol};
-use rustc_target::abi::Align;
+use rustc_target::abi::{Align, Size};
 
 use crate::builder::Builder;
 #[cfg(not(feature = "master"))]
@@ -82,7 +84,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let place = PlaceRef::alloca(bx, args[0].layout);
                 args[0].val.store(bx, place);
                 let int_ty = bx.type_ix(expected_bytes * 8);
-                let ptr = bx.pointercast(place.llval, bx.cx.type_ptr_to(int_ty));
+                let ptr = bx.pointercast(place.val.llval, bx.cx.type_ptr_to(int_ty));
                 bx.load(int_ty, ptr, Align::ONE)
             }
             _ => return_error!(InvalidMonomorphization::InvalidBitmask {
@@ -122,12 +124,12 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     let in_ty = arg_tys[0];
 
     let comparison = match name {
-        sym::simd_eq => Some(hir::BinOpKind::Eq),
-        sym::simd_ne => Some(hir::BinOpKind::Ne),
-        sym::simd_lt => Some(hir::BinOpKind::Lt),
-        sym::simd_le => Some(hir::BinOpKind::Le),
-        sym::simd_gt => Some(hir::BinOpKind::Gt),
-        sym::simd_ge => Some(hir::BinOpKind::Ge),
+        sym::simd_eq => Some(BinOp::Eq),
+        sym::simd_ne => Some(BinOp::Ne),
+        sym::simd_lt => Some(BinOp::Lt),
+        sym::simd_le => Some(BinOp::Le),
+        sym::simd_gt => Some(BinOp::Gt),
+        sym::simd_ge => Some(BinOp::Ge),
         _ => None,
     };
 
@@ -340,11 +342,13 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             .map(|i| {
                 let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
                 let value = bx.extract_element(vector, index).to_rvalue();
-                if name == sym::simd_ctlz {
-                    bx.count_leading_zeroes(value.get_type().get_size() as u64 * 8, value)
+                let value_type = value.get_type();
+                let element = if name == sym::simd_ctlz {
+                    bx.count_leading_zeroes(value_type.get_size() as u64 * 8, value)
                 } else {
-                    bx.count_trailing_zeroes(value.get_type().get_size() as u64 * 8, value)
-                }
+                    bx.count_trailing_zeroes(value_type.get_size() as u64 * 8, value)
+                };
+                bx.context.new_cast(None, element, value_type)
             })
             .collect();
         return Ok(bx.context.new_rvalue_from_vector(None, vector.get_type(), &elements));
@@ -451,8 +455,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         );
 
         match *in_elem.kind() {
-            ty::RawPtr(p) => {
-                let metadata = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+            ty::RawPtr(p_ty, _) => {
+                let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
                 require!(
@@ -465,8 +469,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             }
         }
         match *out_elem.kind() {
-            ty::RawPtr(p) => {
-                let metadata = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+            ty::RawPtr(p_ty, _) => {
+                let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
                 require!(
@@ -491,7 +495,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         return Ok(bx.context.new_rvalue_from_vector(bx.location, llret_ty, &values));
     }
 
-    if name == sym::simd_expose_addr {
+    if name == sym::simd_expose_provenance {
         require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
 
@@ -508,7 +512,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         );
 
         match *in_elem.kind() {
-            ty::RawPtr(_) => {}
+            ty::RawPtr(_, _) => {}
             _ => {
                 return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: in_elem })
             }
@@ -530,7 +534,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         return Ok(bx.context.new_rvalue_from_vector(bx.location, llret_ty, &values));
     }
 
-    if name == sym::simd_from_exposed_addr {
+    if name == sym::simd_with_exposed_provenance {
         require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
 
@@ -551,7 +555,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             _ => return_error!(InvalidMonomorphization::ExpectedUsize { span, name, ty: in_elem }),
         }
         match *out_elem.kind() {
-            ty::RawPtr(_) => {}
+            ty::RawPtr(_, _) => {}
             _ => {
                 return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: out_elem })
             }
@@ -690,7 +694,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let ze = bx.zext(result, bx.type_ix(expected_bytes * 8));
 
                 // Convert the integer to a byte array
-                let ptr = bx.alloca(bx.type_ix(expected_bytes * 8), Align::ONE);
+                let ptr = bx.alloca(Size::from_bytes(expected_bytes), Align::ONE);
                 bx.store(ze, ptr, Align::ONE);
                 let array_ty = bx.type_array(bx.type_i8(), expected_bytes);
                 let ptr = bx.pointercast(ptr, bx.cx.type_ptr_to(array_ty));
@@ -929,7 +933,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // This counts how many pointers
         fn ptr_count(t: Ty<'_>) -> usize {
             match *t.kind() {
-                ty::RawPtr(p) => 1 + ptr_count(p.ty),
+                ty::RawPtr(p_ty, _) => 1 + ptr_count(p_ty),
                 _ => 0,
             }
         }
@@ -937,7 +941,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // Non-ptr type
         fn non_ptr(t: Ty<'_>) -> Ty<'_> {
             match *t.kind() {
-                ty::RawPtr(p) => non_ptr(p.ty),
+                ty::RawPtr(p_ty, _) => non_ptr(p_ty),
                 _ => t,
             }
         }
@@ -947,7 +951,9 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let (_, element_ty0) = arg_tys[0].simd_size_and_type(bx.tcx());
         let (_, element_ty1) = arg_tys[1].simd_size_and_type(bx.tcx());
         let (pointer_count, underlying_ty) = match *element_ty1.kind() {
-            ty::RawPtr(p) if p.ty == in_elem => (ptr_count(element_ty1), non_ptr(element_ty1)),
+            ty::RawPtr(p_ty, _) if p_ty == in_elem => {
+                (ptr_count(element_ty1), non_ptr(element_ty1))
+            }
             _ => {
                 require!(
                     false,
@@ -1043,7 +1049,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // This counts how many pointers
         fn ptr_count(t: Ty<'_>) -> usize {
             match *t.kind() {
-                ty::RawPtr(p) => 1 + ptr_count(p.ty),
+                ty::RawPtr(p_ty, _) => 1 + ptr_count(p_ty),
                 _ => 0,
             }
         }
@@ -1051,7 +1057,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // Non-ptr type
         fn non_ptr(t: Ty<'_>) -> Ty<'_> {
             match *t.kind() {
-                ty::RawPtr(p) => non_ptr(p.ty),
+                ty::RawPtr(p_ty, _) => non_ptr(p_ty),
                 _ => t,
             }
         }
@@ -1062,7 +1068,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let (_, element_ty1) = arg_tys[1].simd_size_and_type(bx.tcx());
         let (_, element_ty2) = arg_tys[2].simd_size_and_type(bx.tcx());
         let (pointer_count, underlying_ty) = match *element_ty1.kind() {
-            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::Mutability::Mut => {
+            ty::RawPtr(p_ty, mutbl) if p_ty == in_elem && mutbl == hir::Mutability::Mut => {
                 (ptr_count(element_ty1), non_ptr(element_ty1))
             }
             _ => {

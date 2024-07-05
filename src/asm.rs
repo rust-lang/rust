@@ -539,7 +539,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             let builtin_unreachable = self.context.get_builtin_function("__builtin_unreachable");
             let builtin_unreachable: RValue<'gcc> =
                 unsafe { std::mem::transmute(builtin_unreachable) };
-            self.call(self.type_void(), None, None, builtin_unreachable, &[], None);
+            self.call(self.type_void(), None, None, builtin_unreachable, &[], None, None);
         }
 
         // Write results to outputs.

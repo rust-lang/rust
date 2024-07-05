@@ -153,7 +153,7 @@ fn array_as_slice(arr: &[u8; 3]) -> &[u8] {
     arr
 }
 
-unsafe fn use_ctlz_nonzero(a: u16) -> u16 {
+unsafe fn use_ctlz_nonzero(a: u16) -> u32 {
     intrinsics::ctlz_nonzero(a)
 }
 

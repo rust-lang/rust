@@ -7,7 +7,6 @@ tests/run-make/doctests-runtool/
 tests/run-make/emit-shared-files/
 tests/run-make/exit-code/
 tests/run-make/issue-22131/
-tests/run-make/issue-38237/
 tests/run-make/issue-64153/
 tests/run-make/llvm-ident/
 tests/run-make/native-link-modifier-bundle/

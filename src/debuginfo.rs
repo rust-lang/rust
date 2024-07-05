@@ -1,10 +1,9 @@
-use crate::rustc_index::Idx;
 use gccjit::{Location, RValue};
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::{DebugInfoBuilderMethods, DebugInfoMethods};
 use rustc_data_structures::sync::Lrc;
 use rustc_index::bit_set::BitSet;
-use rustc_index::IndexVec;
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{self, Body, SourceScope};
 use rustc_middle::ty::{Instance, PolyExistentialTraitRef, Ty};
 use rustc_session::config::DebugInfo;

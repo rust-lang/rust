@@ -11,7 +11,7 @@ use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
-use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::{
     ArgAbiMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods,
 };
@@ -130,13 +130,16 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let llval = match name {
             _ if simple.is_some() => {
                 // FIXME(antoyo): remove this cast when the API supports function.
-                let func = unsafe { std::mem::transmute(simple.expect("simple")) };
+                let func = unsafe {
+                    std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(simple.expect("simple"))
+                };
                 self.call(
                     self.type_void(),
                     None,
                     None,
                     func,
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                    None,
                     None,
                 )
             }
@@ -217,12 +220,12 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             let after_block = func.new_block("after");
 
                             let arg = args[0].immediate();
-                            let result = func.new_local(None, arg.get_type(), "zeros");
+                            let result = func.new_local(None, self.u32_type, "zeros");
                             let zero = self.cx.gcc_zero(arg.get_type());
                             let cond = self.gcc_icmp(IntPredicate::IntEQ, arg, zero);
                             self.llbb().end_with_conditional(None, cond, then_block, else_block);
 
-                            let zero_result = self.cx.gcc_uint(arg.get_type(), width);
+                            let zero_result = self.cx.gcc_uint(self.u32_type, width);
                             then_block.add_assignment(None, result, zero_result);
                             then_block.end_with_jump(None, after_block);
 
@@ -358,7 +361,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                 let block = self.llbb();
                 let extended_asm = block.add_extended_asm(None, "");
-                extended_asm.add_input_operand(None, "r", result.llval);
+                extended_asm.add_input_operand(None, "r", result.val.llval);
                 extended_asm.add_clobber("memory");
                 extended_asm.set_volatile_flag(true);
 
@@ -392,8 +395,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         if !fn_abi.ret.is_ignore() {
             if let PassMode::Cast { cast: ref ty, .. } = fn_abi.ret.mode {
                 let ptr_llty = self.type_ptr_to(ty.gcc_type(self));
-                let ptr = self.pointercast(result.llval, ptr_llty);
-                self.store(llval, ptr, result.align);
+                let ptr = self.pointercast(result.val.llval, ptr_llty);
+                self.store(llval, ptr, result.val.align);
             } else {
                 OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)
                     .val
@@ -406,7 +409,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn abort(&mut self) {
         let func = self.context.get_builtin_function("abort");
         let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
-        self.call(self.type_void(), None, None, func, &[], None);
+        self.call(self.type_void(), None, None, func, &[], None, None);
     }
 
     fn assume(&mut self, value: Self::Value) {
@@ -506,7 +509,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             return;
         }
         if self.is_sized_indirect() {
-            OperandValue::Ref(val, None, self.layout.align.abi).store(bx, dst)
+            OperandValue::Ref(PlaceValue::new_sized(val, self.layout.align.abi)).store(bx, dst)
         } else if self.is_unsized_indirect() {
             bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
         } else if let PassMode::Cast { ref cast, .. } = self.mode {
@@ -515,7 +518,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
                 let cast_ptr_llty = bx.type_ptr_to(cast.gcc_type(bx));
-                let cast_dst = bx.pointercast(dst.llval, cast_ptr_llty);
+                let cast_dst = bx.pointercast(dst.val.llval, cast_ptr_llty);
                 bx.store(val, cast_dst, self.layout.align.abi);
             } else {
                 // The actual return type is a struct, but the ABI
@@ -535,7 +538,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 // We instead thus allocate some scratch space...
                 let scratch_size = cast.size(bx);
                 let scratch_align = cast.align(bx);
-                let llscratch = bx.alloca(cast.gcc_type(bx), scratch_align);
+                let llscratch = bx.alloca(scratch_size, scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
 
                 // ... where we first store the value...
@@ -543,7 +546,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
 
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
-                    dst.llval,
+                    dst.val.llval,
                     self.layout.align.abi,
                     llscratch,
                     scratch_align,
@@ -575,7 +578,12 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
             PassMode::Indirect { meta_attrs: Some(_), .. } => {
-                OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
+                let place_val = PlaceValue {
+                    llval: next(),
+                    llextra: Some(next()),
+                    align: self.layout.align.abi,
+                };
+                OperandValue::Ref(place_val).store(bx, dst);
             }
             PassMode::Direct(_)
             | PassMode::Indirect { meta_attrs: None, .. }
@@ -701,6 +709,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     fn count_leading_zeroes(&mut self, width: u64, arg: RValue<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): use width?
         let arg_type = arg.get_type();
+        let result_type = self.u32_type;
         let count_leading_zeroes =
             // TODO(antoyo): write a new function Type::is_compatible_with(&Type) and use it here
             // instead of using is_uint().
@@ -758,7 +767,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
                 let res = self.context.new_array_access(self.location, result, index);
 
-                return self.gcc_int_cast(res.to_rvalue(), arg_type);
+                return self.gcc_int_cast(res.to_rvalue(), result_type);
             }
             else {
                 let count_leading_zeroes = self.context.get_builtin_function("__builtin_clzll");
@@ -766,17 +775,18 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let diff = self.ulonglong_type.get_size() as i64 - arg_type.get_size() as i64;
                 let diff = self.context.new_rvalue_from_long(self.int_type, diff * 8);
                 let res = self.context.new_call(self.location, count_leading_zeroes, &[arg]) - diff;
-                return self.context.new_cast(self.location, res, arg_type);
+                return self.context.new_cast(self.location, res, result_type);
             };
         let count_leading_zeroes = self.context.get_builtin_function(count_leading_zeroes);
         let res = self.context.new_call(self.location, count_leading_zeroes, &[arg]);
-        self.context.new_cast(self.location, res, arg_type)
+        self.context.new_cast(self.location, res, result_type)
     }
 
     fn count_trailing_zeroes(&mut self, _width: u64, arg: RValue<'gcc>) -> RValue<'gcc> {
-        let result_type = arg.get_type();
-        let arg = if result_type.is_signed(self.cx) {
-            let new_type = result_type.to_unsigned(self.cx);
+        let arg_type = arg.get_type();
+        let result_type = self.u32_type;
+        let arg = if arg_type.is_signed(self.cx) {
+            let new_type = arg_type.to_unsigned(self.cx);
             self.gcc_int_cast(arg, new_type)
         } else {
             arg
@@ -866,14 +876,12 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
     fn pop_count(&mut self, value: RValue<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): use the optimized version with fewer operations.
-        let result_type = value.get_type();
-        let value_type = result_type.to_unsigned(self.cx);
+        let result_type = self.u32_type;
+        let arg_type = value.get_type();
+        let value_type = arg_type.to_unsigned(self.cx);
 
-        let value = if result_type.is_signed(self.cx) {
-            self.gcc_int_cast(value, value_type)
-        } else {
-            value
-        };
+        let value =
+            if arg_type.is_signed(self.cx) { self.gcc_int_cast(value, value_type) } else { value };
 
         // only break apart 128-bit ints if they're not natively supported
         // TODO(antoyo): remove this if/when native 128-bit integers land in libgccjit
@@ -1108,7 +1116,7 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(
     dest: RValue<'gcc>,
 ) {
     if bx.sess().panic_strategy() == PanicStrategy::Abort {
-        bx.call(bx.type_void(), None, None, try_func, &[data], None);
+        bx.call(bx.type_void(), None, None, try_func, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
         let ret_align = bx.tcx.data_layout.i32_align.abi;
@@ -1182,21 +1190,21 @@ fn codegen_gnu_try<'gcc>(
         let zero = bx.cx.context.new_rvalue_zero(bx.int_type);
         let ptr = bx.cx.context.new_call(None, eh_pointer_builtin, &[zero]);
         let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
-        bx.call(catch_ty, None, None, catch_func, &[data, ptr], None);
+        bx.call(catch_ty, None, None, catch_func, &[data, ptr], None, None);
         bx.ret(bx.const_i32(1));
 
         // NOTE: the blocks must be filled before adding the try/catch, otherwise gcc will not
         // generate a try/catch.
         // FIXME(antoyo): add a check in the libgccjit API to prevent this.
         bx.switch_to_block(current_block);
-        bx.invoke(try_func_ty, None, None, try_func, &[data], then, catch, None);
+        bx.invoke(try_func_ty, None, None, try_func, &[data], then, catch, None, None);
     });
 
-    let func = unsafe { std::mem::transmute(func) };
+    let func = unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) };
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(llty, None, None, func, &[try_func, data, catch_func], None);
+    let ret = bx.call(llty, None, None, func, &[try_func, data, catch_func], None, None);
     let i32_align = bx.tcx().data_layout.i32_align.abi;
     bx.store(ret, dest, i32_align);
 }
@@ -1222,9 +1230,9 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
         tcx,
         ty::Binder::dummy(tcx.mk_fn_sig(
             iter::once(i8p),
-            Ty::new_unit(tcx),
+            tcx.types.unit,
             false,
-            rustc_hir::Unsafety::Unsafe,
+            rustc_hir::Safety::Unsafe,
             Abi::Rust,
         )),
     );
@@ -1233,9 +1241,9 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
         tcx,
         ty::Binder::dummy(tcx.mk_fn_sig(
             [i8p, i8p].iter().cloned(),
-            Ty::new_unit(tcx),
+            tcx.types.unit,
             false,
-            rustc_hir::Unsafety::Unsafe,
+            rustc_hir::Safety::Unsafe,
             Abi::Rust,
         )),
     );
@@ -1244,7 +1252,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
         [try_fn_ty, i8p, catch_fn_ty],
         tcx.types.i32,
         false,
-        rustc_hir::Unsafety::Unsafe,
+        rustc_hir::Safety::Unsafe,
         Abi::Rust,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
@@ -1266,7 +1274,7 @@ fn gen_fn<'a, 'gcc, 'tcx>(
     // FIXME(eddyb) find a nicer way to do this.
     cx.linkage.set(FunctionType::Internal);
     let func = cx.declare_fn(name, fn_abi);
-    let func_val = unsafe { std::mem::transmute(func) };
+    let func_val = unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) };
     cx.set_frame_pointer_type(func_val);
     cx.apply_target_cpu_attr(func_val);
     let block = Builder::append_block(cx, func_val, "entry-block");

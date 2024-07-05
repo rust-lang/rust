@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::env;
+use std::sync::Arc;
 use std::time::Instant;
 
 use gccjit::{CType, FunctionType, GlobalKind};
@@ -18,8 +19,8 @@ use rustc_target::spec::PanicStrategy;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::GccContext;
 use crate::{gcc_util, new_context, LockedTargetInfo};
+use crate::{GccContext, SyncContext};
 
 #[cfg(feature = "master")]
 pub fn visibility_to_gcc(linkage: Visibility) -> gccjit::Visibility {
@@ -222,7 +223,11 @@ pub fn compile_codegen_unit(
 
         ModuleCodegen {
             name: cgu_name.to_string(),
-            module_llvm: GccContext { context, should_combine_object_files: false, temp_dir: None },
+            module_llvm: GccContext {
+                context: Arc::new(SyncContext::new(context)),
+                should_combine_object_files: false,
+                temp_dir: None,
+            },
             kind: ModuleKind::Regular,
         }
     }

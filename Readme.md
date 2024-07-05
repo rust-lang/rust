@@ -121,8 +121,7 @@ If you compiled cg_gccjit in debug mode (aka you didn't pass `--release` to `./y
 
 ### LTO
 
-To use LTO, you need to set the variable `FAT_LTO=1` and `EMBED_LTO_BITCODE=1` in addition to setting `lto = "fat"` in the `Cargo.toml`.
-Don't set `FAT_LTO` when compiling the sysroot, though: only set `EMBED_LTO_BITCODE=1`.
+To use LTO, you need to set the variable `EMBED_LTO_BITCODE=1` in addition to setting `lto = "fat"` in the `Cargo.toml`.
 
 Failing to set `EMBED_LTO_BITCODE` will give you the following error:
 

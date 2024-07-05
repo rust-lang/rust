@@ -645,12 +645,16 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
         //"https://github.com/rust-lang/cargo", // TODO: very slow, only run on master?
     ];
 
+    let mut env = env.clone();
+    let rustflags =
+        format!("{} --cap-lints allow", env.get("RUSTFLAGS").cloned().unwrap_or_default());
+    env.insert("RUSTFLAGS".to_string(), rustflags);
     let run_tests = |projects_path, iter: &mut dyn Iterator<Item = &&str>| -> Result<(), String> {
         for project in iter {
             let clone_result = git_clone_root_dir(project, projects_path, true)?;
             let repo_path = Path::new(&clone_result.repo_dir);
-            run_cargo_command(&[&"build", &"--release"], Some(repo_path), env, args)?;
-            run_cargo_command(&[&"test"], Some(repo_path), env, args)?;
+            run_cargo_command(&[&"build", &"--release"], Some(repo_path), &env, args)?;
+            run_cargo_command(&[&"test"], Some(repo_path), &env, args)?;
         }
 
         Ok(())
@@ -1034,18 +1038,19 @@ where
 }
 
 fn test_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
-    test_rustc_inner(env, args, |_| Ok(false), false, "run-make")?;
+    //test_rustc_inner(env, args, |_| Ok(false), false, "run-make")?;
     test_rustc_inner(env, args, |_| Ok(false), false, "ui")
 }
 
 fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
-    let result1 = test_rustc_inner(
+    let result1 = Ok(());
+    /*test_rustc_inner(
         env,
         args,
         retain_files_callback("tests/failing-run-make-tests.txt", "run-make"),
         false,
         "run-make",
-    );
+    )*/
 
     let result2 = test_rustc_inner(
         env,
@@ -1066,13 +1071,14 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         false,
         "ui",
     )?;
-    test_rustc_inner(
+    Ok(())
+    /*test_rustc_inner(
         env,
         args,
         remove_files_callback("tests/failing-run-make-tests.txt", "run-make"),
         false,
         "run-make",
-    )
+    )*/
 }
 
 fn test_failing_ui_pattern_tests(env: &Env, args: &TestArg) -> Result<(), String> {

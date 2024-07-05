@@ -81,7 +81,19 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let b = self.context.new_cast(self.location, b, a_type);
                 a >> b
             } else {
-                a >> b
+                let a_size = a_type.get_size();
+                let b_size = b_type.get_size();
+                match a_size.cmp(&b_size) {
+                    std::cmp::Ordering::Less => {
+                        let a = self.context.new_cast(self.location, a, b_type);
+                        a >> b
+                    }
+                    std::cmp::Ordering::Equal => a >> b,
+                    std::cmp::Ordering::Greater => {
+                        let b = self.context.new_cast(self.location, b, a_type);
+                        a >> b
+                    }
+                }
             }
         } else if a_type.is_vector() && a_type.is_vector() {
             a >> b
@@ -636,7 +648,19 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let b = self.context.new_cast(self.location, b, a_type);
                 a << b
             } else {
-                a << b
+                let a_size = a_type.get_size();
+                let b_size = b_type.get_size();
+                match a_size.cmp(&b_size) {
+                    std::cmp::Ordering::Less => {
+                        let a = self.context.new_cast(self.location, a, b_type);
+                        a << b
+                    }
+                    std::cmp::Ordering::Equal => a << b,
+                    std::cmp::Ordering::Greater => {
+                        let b = self.context.new_cast(self.location, b, a_type);
+                        a << b
+                    }
+                }
             }
         } else if a_type.is_vector() && a_type.is_vector() {
             a << b
