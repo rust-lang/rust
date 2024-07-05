@@ -2625,16 +2625,6 @@ pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
             .any(|attr| attr.has_name(sym::cfg))
 }
 
-/// Checks whether item either has `test` attribute applied, or
-/// is a module with `test` in its name.
-///
-/// Note: Add `//@compile-flags: --test` to UI tests with a `#[test]` function
-pub fn is_test_module_or_function(tcx: TyCtxt<'_>, item: &Item<'_>) -> bool {
-    is_in_test_function(tcx, item.hir_id())
-        || matches!(item.kind, ItemKind::Mod(..))
-            && item.ident.name.as_str().split('_').any(|a| a == "test" || a == "tests")
-}
-
 /// Walks up the HIR tree from the given expression in an attempt to find where the value is
 /// consumed.
 ///
