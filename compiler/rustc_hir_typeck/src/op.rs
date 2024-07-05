@@ -838,8 +838,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     },
                                 ) = ex.kind
                                 {
-                                    err.span_suggestion(
-                                        ex.span,
+                                    let span = if let hir::Node::Expr(parent) =
+                                        self.tcx.parent_hir_node(ex.hir_id)
+                                        && let hir::ExprKind::Cast(..) = parent.kind
+                                    {
+                                        // `-1 as usize` -> `usize::MAX`
+                                        parent.span
+                                    } else {
+                                        ex.span
+                                    };
+                                    err.span_suggestion_verbose(
+                                        span,
                                         format!(
                                             "you may have meant the maximum value of `{actual}`",
                                         ),

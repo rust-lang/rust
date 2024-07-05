@@ -28,7 +28,7 @@ fn main() {
             files.push(path.to_path_buf());
         }
     });
-    cmd(llvm_bin_dir().join("llvm-dis")).args(&files).run();
+    cmd(llvm_bin_dir().join("llvm-dis")).args(files).run();
 
     // Check LLVM IR files (including temporary outputs) have `!llvm.ident`
     // named metadata, reusing the related codegen test.

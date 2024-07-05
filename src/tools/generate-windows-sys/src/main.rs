@@ -17,6 +17,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut f = std::fs::File::options().append(true).open("windows_sys.rs")?;
     writeln!(&mut f, "// ignore-tidy-filelength")?;
+    writeln!(&mut f, "use super::windows_targets;")?;
 
     Ok(())
 }
