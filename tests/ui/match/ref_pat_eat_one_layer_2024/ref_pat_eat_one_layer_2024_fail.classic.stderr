@@ -180,7 +180,20 @@ LL |     let Foo(mut a) = &mut Foo(0);
    = help: add `#![feature(mut_ref)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 16 previous errors
+error[E0277]: the trait bound `&_: main::Ref` is not satisfied
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:83:14
+   |
+LL |     let &_ = generic();
+   |              ^^^^^^^^^ the trait `main::Ref` is not implemented for `&_`
+   |
+   = help: the trait `main::Ref` is implemented for `&'static mut [(); 0]`
+note: required by a bound in `generic`
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:69:19
+   |
+LL |     fn generic<R: Ref>() -> R {
+   |                   ^^^ required by this bound in `generic`
 
-Some errors have detailed explanations: E0308, E0658.
-For more information about an error, try `rustc --explain E0308`.
+error: aborting due to 17 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0658.
+For more information about an error, try `rustc --explain E0277`.
