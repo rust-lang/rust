@@ -310,7 +310,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 GlobalAlloc::Static(def_id) => {
                     self.propagate_item(Res::Def(self.tcx.def_kind(def_id), def_id))
                 }
-                GlobalAlloc::Function(instance) => {
+                GlobalAlloc::Function { instance, .. } => {
                     // Manually visit to actually see the instance's `DefId`. Type visitors won't see it
                     self.propagate_item(Res::Def(
                         self.tcx.def_kind(instance.def_id()),

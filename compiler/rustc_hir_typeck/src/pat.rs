@@ -2499,7 +2499,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
             && let Some(span) = ti.span
             && let Some(_) = ti.origin_expr
-            && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
         {
             let resolved_ty = self.resolve_vars_if_possible(ti.expected);
             let (is_slice_or_array_or_vector, resolved_ty) =
@@ -2510,10 +2509,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         || self.tcx.is_diagnostic_item(sym::Result, adt_def.did()) =>
                 {
                     // Slicing won't work here, but `.as_deref()` might (issue #91328).
-                    err.span_suggestion(
-                        span,
+                    err.span_suggestion_verbose(
+                        span.shrink_to_hi(),
                         "consider using `as_deref` here",
-                        format!("{snippet}.as_deref()"),
+                        ".as_deref()",
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -2522,10 +2521,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let is_top_level = current_depth <= 1;
             if is_slice_or_array_or_vector && is_top_level {
-                err.span_suggestion(
-                    span,
+                err.span_suggestion_verbose(
+                    span.shrink_to_hi(),
                     "consider slicing here",
-                    format!("{snippet}[..]"),
+                    "[..]",
                     Applicability::MachineApplicable,
                 );
             }

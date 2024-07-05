@@ -453,12 +453,11 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MissingTypeParams {
             } else {
                 // The user wrote `Iterator`, so we don't have a type we can suggest, but at
                 // least we can clue them to the correct syntax `Iterator<Type>`.
-                err.span_suggestion(
-                    self.span,
+                err.span_suggestion_verbose(
+                    self.span.shrink_to_hi(),
                     fluent::hir_analysis_suggestion,
                     format!(
-                        "{}<{}>",
-                        snippet,
+                        "<{}>",
                         self.missing_type_params
                             .iter()
                             .map(|n| n.to_string())
@@ -705,15 +704,6 @@ pub(crate) struct PassToVariadicFunction<'tcx, 'a> {
     pub replace: String,
     #[help]
     pub help: Option<()>,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_cast_thin_pointer_to_fat_pointer, code = E0607)]
-pub(crate) struct CastThinPointerToFatPointer<'tcx> {
-    #[primary_span]
-    pub span: Span,
-    pub expr_ty: Ty<'tcx>,
-    pub cast_ty: String,
 }
 
 #[derive(Diagnostic)]

@@ -23,11 +23,10 @@
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::{env, iter};
 
 use crate::core::config::TargetSelection;
-use crate::utils::helpers::output;
+use crate::utils::exec::BootstrapCommand;
 use crate::{Build, CLang, GitRepo};
 
 // The `cc` crate doesn't provide a way to obtain a path to the detected archiver,
@@ -183,14 +182,15 @@ fn default_compiler(
                 return None;
             }
 
-            let output = output(c.to_command().arg("--version"));
+            let cmd = BootstrapCommand::from(c.to_command());
+            let output = build.run(cmd.capture_stdout().arg("--version")).stdout();
             let i = output.find(" 4.")?;
             match output[i + 3..].chars().next().unwrap() {
                 '0'..='6' => {}
                 _ => return None,
             }
             let alternative = format!("e{gnu_compiler}");
-            if Command::new(&alternative).output().is_ok() {
+            if build.run(BootstrapCommand::new(&alternative).capture()).is_success() {
                 Some(PathBuf::from(alternative))
             } else {
                 None

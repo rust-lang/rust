@@ -1121,8 +1121,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if name == sym::simd_select_bitmask {
         let (len, _) = require_simd!(arg_tys[1], SimdArgument);
 
-        let expected_int_bits = (len.max(8) - 1).next_power_of_two();
-        let expected_bytes = len / 8 + ((len % 8 > 0) as u64);
+        let expected_int_bits = len.max(8).next_power_of_two();
+        let expected_bytes = len.div_ceil(8);
 
         let mask_ty = arg_tys[0];
         let mask = match mask_ty.kind() {
@@ -1379,17 +1379,16 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_bitmask {
-        // The `fn simd_bitmask(vector) -> unsigned integer` intrinsic takes a
-        // vector mask and returns the most significant bit (MSB) of each lane in the form
-        // of either:
+        // The `fn simd_bitmask(vector) -> unsigned integer` intrinsic takes a vector mask and
+        // returns one bit for each lane (which must all be `0` or `!0`) in the form of either:
         // * an unsigned integer
         // * an array of `u8`
         // If the vector has less than 8 lanes, a u8 is returned with zeroed trailing bits.
         //
         // The bit order of the result depends on the byte endianness, LSB-first for little
         // endian and MSB-first for big endian.
-        let expected_int_bits = in_len.max(8);
-        let expected_bytes = expected_int_bits / 8 + ((expected_int_bits % 8 > 0) as u64);
+        let expected_int_bits = in_len.max(8).next_power_of_two();
+        let expected_bytes = in_len.div_ceil(8);
 
         // Integer vector <i{in_bitwidth} x in_len>:
         let (i_xn, in_elem_bitwidth) = match in_elem.kind() {
@@ -1409,7 +1408,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }),
         };
 
-        // Shift the MSB to the right by "in_elem_bitwidth - 1" into the first bit position.
+        // LLVM doesn't always know the inputs are `0` or `!0`, so we shift here so it optimizes to
+        // `pmovmskb` and similar on x86.
         let shift_indices =
             vec![
                 bx.cx.const_int(bx.type_ix(in_elem_bitwidth), (in_elem_bitwidth - 1) as _);

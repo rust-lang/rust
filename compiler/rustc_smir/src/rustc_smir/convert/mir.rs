@@ -709,7 +709,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::GlobalAlloc<'tcx> {
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match self {
-            mir::interpret::GlobalAlloc::Function(instance) => {
+            mir::interpret::GlobalAlloc::Function { instance, .. } => {
                 GlobalAlloc::Function(instance.stable(tables))
             }
             mir::interpret::GlobalAlloc::VTable(ty, trait_ref) => {

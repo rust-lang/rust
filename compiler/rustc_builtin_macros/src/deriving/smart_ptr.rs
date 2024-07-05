@@ -3,8 +3,9 @@ use std::mem::swap;
 use ast::HasAttrs;
 use rustc_ast::{
     self as ast, GenericArg, GenericBound, GenericParamKind, ItemKind, MetaItem,
-    TraitBoundModifiers,
+    TraitBoundModifiers, VariantData,
 };
+use rustc_attr as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -24,11 +25,43 @@ pub fn expand_deriving_smart_ptr(
     _is_const: bool,
 ) {
     let (name_ident, generics) = if let Annotatable::Item(aitem) = item
-        && let ItemKind::Struct(_, g) = &aitem.kind
+        && let ItemKind::Struct(struct_data, g) = &aitem.kind
     {
+        let is_transparent = aitem.attrs.iter().any(|attr| {
+            attr::find_repr_attrs(cx.sess, attr)
+                .into_iter()
+                .any(|r| matches!(r, attr::ReprTransparent))
+        });
+        if !is_transparent {
+            cx.dcx()
+                .struct_span_err(
+                    span,
+                    "`SmartPointer` can only be derived on `struct`s with `#[repr(transparent)]`",
+                )
+                .emit();
+            return;
+        }
+        if !matches!(
+            struct_data,
+            VariantData::Struct { fields, recovered: _ } | VariantData::Tuple(fields, _)
+                if !fields.is_empty())
+        {
+            cx.dcx()
+                .struct_span_err(
+                    span,
+                    "`SmartPointer` can only be derived on `struct`s with at least one field",
+                )
+                .emit();
+            return;
+        }
         (aitem.ident, g)
     } else {
-        cx.dcx().struct_span_err(span, "`SmartPointer` can only be derived on `struct`s").emit();
+        cx.dcx()
+            .struct_span_err(
+                span,
+                "`SmartPointer` can only be derived on `struct`s with `#[repr(transparent)]`",
+            )
+            .emit();
         return;
     };
 

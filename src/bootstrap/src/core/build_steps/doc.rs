@@ -738,7 +738,7 @@ fn doc_std(
         format!("library{} in {} format", crate_description(requested_crates), format.as_str());
     let _guard = builder.msg_doc(compiler, description, target);
 
-    builder.run(cargo);
+    builder.run(cargo.into_cmd());
     builder.cp_link_r(&out_dir, out);
 }
 
@@ -863,7 +863,7 @@ impl Step for Rustc {
         let proc_macro_out_dir = builder.stage_out(compiler, Mode::Rustc).join("doc");
         symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
 
-        builder.run(cargo);
+        builder.run(cargo.into_cmd());
 
         if !builder.config.dry_run() {
             // Sanity check on linked compiler crates
@@ -996,7 +996,7 @@ macro_rules! tool_doc {
                 symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
 
                 let _guard = builder.msg_doc(compiler, stringify!($tool).to_lowercase(), target);
-                builder.run(cargo);
+                builder.run(cargo.into_cmd());
 
                 if !builder.config.dry_run() {
                     // Sanity check on linked doc directories

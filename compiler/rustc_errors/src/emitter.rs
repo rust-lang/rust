@@ -2273,9 +2273,26 @@ impl HumanEmitter {
                     &normalize_whitespace(last_line),
                     Style::NoStyle,
                 );
-                buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
-                buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
-                buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
+                if !line_to_add.trim().is_empty() {
+                    // Check if after the removal, the line is left with only whitespace. If so, we
+                    // will not show an "addition" line, as removing the whole line is what the user
+                    // would really want.
+                    // For example, for the following:
+                    //   |
+                    // 2 -     .await
+                    // 2 +     (note the left over whitepsace)
+                    //   |
+                    // We really want
+                    //   |
+                    // 2 -     .await
+                    //   |
+                    // *row_num -= 1;
+                    buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
+                    buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
+                    buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
+                } else {
+                    *row_num -= 1;
+                }
             } else {
                 *row_num -= 2;
             }

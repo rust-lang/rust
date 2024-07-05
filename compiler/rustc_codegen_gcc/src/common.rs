@@ -220,7 +220,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         }
                         value
                     }
-                    GlobalAlloc::Function(fn_instance) => self.get_fn_addr(fn_instance),
+                    GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance),
                     GlobalAlloc::VTable(ty, trait_ref) => {
                         let alloc = self
                             .tcx
