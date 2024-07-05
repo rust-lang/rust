@@ -494,11 +494,15 @@ fn write_coverage_info_hi(
         mcdc_decision_spans,
     } = coverage_info_hi;
 
+    // Only add an extra trailing newline if we printed at least one thing.
+    let mut did_print = false;
+
     for coverage::BranchSpan { span, true_marker, false_marker } in branch_spans {
         writeln!(
             w,
             "{INDENT}coverage branch {{ true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
         )?;
+        did_print = true;
     }
 
     for coverage::MCDCBranchSpan {
@@ -514,6 +518,7 @@ fn write_coverage_info_hi(
             "{INDENT}coverage mcdc branch {{ condition_id: {:?}, true: {true_marker:?}, false: {false_marker:?}, depth: {decision_depth:?} }} => {span:?}",
             condition_info.map(|info| info.condition_id)
         )?;
+        did_print = true;
     }
 
     for coverage::MCDCDecisionSpan { span, num_conditions, end_markers, decision_depth } in
@@ -523,10 +528,10 @@ fn write_coverage_info_hi(
             w,
             "{INDENT}coverage mcdc decision {{ num_conditions: {num_conditions:?}, end: {end_markers:?}, depth: {decision_depth:?} }} => {span:?}"
         )?;
+        did_print = true;
     }
 
-    if !branch_spans.is_empty() || !mcdc_branch_spans.is_empty() || !mcdc_decision_spans.is_empty()
-    {
+    if did_print {
         writeln!(w)?;
     }
 
