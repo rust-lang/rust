@@ -304,6 +304,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
     ) -> Self::Module {
         let mut mods = GccContext {
             context: Arc::new(SyncContext::new(new_context(tcx))),
+            fat_lto: false,
             should_combine_object_files: false,
             temp_dir: None,
         };
@@ -336,6 +337,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
 pub struct GccContext {
     context: Arc<SyncContext>,
     should_combine_object_files: bool,
+    fat_lto: bool,
     // Temporary directory used by LTO. We keep it here so that it's not removed before linking.
     temp_dir: Option<TempDir>,
 }

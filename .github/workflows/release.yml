@@ -53,7 +53,7 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        EMBED_LTO_BITCODE=1 ./y.sh build --sysroot --release --release-sysroot
+        ./y.sh build --sysroot --release --release-sysroot
         cargo test
         ./y.sh clean all
 
@@ -70,4 +70,4 @@ jobs:
       run: |
         # FIXME(antoyo): we cannot enable LTO for stdarch tests currently because of some failing LTO tests using proc-macros.
         echo -n 'lto = "fat"' >> build_system/build_sysroot/Cargo.toml
-        EMBED_LTO_BITCODE=1 ./y.sh test --release --clean --release-sysroot --build-sysroot ${{ matrix.commands }}
+        ./y.sh test --release --clean --release-sysroot --build-sysroot ${{ matrix.commands }}

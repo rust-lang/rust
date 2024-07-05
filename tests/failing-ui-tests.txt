@@ -94,3 +94,4 @@ tests/ui/consts/const-eval/parse_ints.rs
 tests/ui/simd/intrinsic/generic-arithmetic-pass.rs
 tests/ui/backtrace/backtrace.rs
 tests/ui/lifetimes/tail-expr-lock-poisoning.rs
+tests/ui/runtime/rt-explody-panic-payloads.rs
