@@ -405,14 +405,14 @@ impl<'tcx, O: Elaboratable<'tcx>> Iterator for Elaborator<'tcx, O> {
 pub fn supertraits<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
-) -> FilterToTraits<Elaborator<'tcx, ty::Predicate<'tcx>>> {
+) -> FilterToTraits<Elaborator<'tcx, ty::Clause<'tcx>>> {
     elaborate(tcx, [trait_ref.upcast(tcx)]).filter_only_self().filter_to_traits()
 }
 
 pub fn transitive_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-) -> FilterToTraits<Elaborator<'tcx, ty::Predicate<'tcx>>> {
+) -> FilterToTraits<Elaborator<'tcx, ty::Clause<'tcx>>> {
     elaborate(tcx, trait_refs.map(|trait_ref| trait_ref.upcast(tcx)))
         .filter_only_self()
         .filter_to_traits()
@@ -427,7 +427,7 @@ pub fn transitive_bounds_that_define_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
     assoc_name: Ident,
-) -> FilterToTraits<Elaborator<'tcx, ty::Predicate<'tcx>>> {
+) -> FilterToTraits<Elaborator<'tcx, ty::Clause<'tcx>>> {
     elaborate(tcx, trait_refs.map(|trait_ref| trait_ref.upcast(tcx)))
         .filter_only_self_that_defines(assoc_name)
         .filter_to_traits()
@@ -437,7 +437,7 @@ pub fn transitive_bounds_that_define_assoc_item<'tcx>(
 // Other
 ///////////////////////////////////////////////////////////////////////////
 
-impl<'tcx> Elaborator<'tcx, ty::Predicate<'tcx>> {
+impl<'tcx> Elaborator<'tcx, ty::Clause<'tcx>> {
     fn filter_to_traits(self) -> FilterToTraits<Self> {
         FilterToTraits { base_iterator: self }
     }
@@ -449,7 +449,7 @@ pub struct FilterToTraits<I> {
     base_iterator: I,
 }
 
-impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<I> {
+impl<'tcx, I: Iterator<Item = ty::Clause<'tcx>>> Iterator for FilterToTraits<I> {
     type Item = ty::PolyTraitRef<'tcx>;
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
