@@ -202,6 +202,8 @@ pub(super) fn lower_generic_args(
                     continue;
                 }
                 if let Some(name_ref) = assoc_type_arg.name_ref() {
+                    // Nested impl traits like `impl Foo<Assoc = impl Bar>` are allowed
+                    let _guard = lower_ctx.outer_impl_trait_scope(false);
                     let name = name_ref.as_name();
                     let args = assoc_type_arg
                         .generic_arg_list()

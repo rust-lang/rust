@@ -245,7 +245,13 @@ impl TypeRef {
             // for types are close enough for our purposes to the inner type for now...
             ast::Type::ForType(inner) => TypeRef::from_ast_opt(ctx, inner.ty()),
             ast::Type::ImplTraitType(inner) => {
-                TypeRef::ImplTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
+                if ctx.outer_impl_trait() {
+                    // Disallow nested impl traits
+                    TypeRef::Error
+                } else {
+                    let _guard = ctx.outer_impl_trait_scope(true);
+                    TypeRef::ImplTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
+                }
             }
             ast::Type::DynTraitType(inner) => {
                 TypeRef::DynTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
