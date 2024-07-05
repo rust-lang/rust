@@ -46,7 +46,6 @@ run-make/fmt-write-bloat/Makefile
 run-make/foreign-double-unwind/Makefile
 run-make/foreign-exceptions/Makefile
 run-make/foreign-rust-exceptions/Makefile
-run-make/include_bytes_deps/Makefile
 run-make/incr-add-rust-src-component/Makefile
 run-make/incr-foreign-head-span/Makefile
 run-make/interdependent-c-libraries/Makefile
@@ -64,7 +63,6 @@ run-make/issue-33329/Makefile
 run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
 run-make/issue-37839/Makefile
-run-make/issue-40535/Makefile
 run-make/issue-47551/Makefile
 run-make/issue-69368/Makefile
 run-make/issue-83045/Makefile
@@ -102,8 +100,6 @@ run-make/no-alloc-shim/Makefile
 run-make/no-builtins-attribute/Makefile
 run-make/no-duplicate-libs/Makefile
 run-make/obey-crate-type-flag/Makefile
-run-make/optimization-remarks-dir-pgo/Makefile
-run-make/optimization-remarks-dir/Makefile
 run-make/output-type-permutations/Makefile
 run-make/panic-abort-eh_frame/Makefile
 run-make/pass-linker-flags-flavor/Makefile
@@ -136,7 +132,6 @@ run-make/return-non-c-like-enum-from-c/Makefile
 run-make/rlib-format-packed-bundled-libs-2/Makefile
 run-make/rlib-format-packed-bundled-libs-3/Makefile
 run-make/rlib-format-packed-bundled-libs/Makefile
-run-make/rmeta-preferred/Makefile
 run-make/rustc-macro-dep-files/Makefile
 run-make/sanitizer-cdylib-link/Makefile
 run-make/sanitizer-dylib-link/Makefile
