@@ -120,6 +120,10 @@ macro_rules! define_rust_probestack {
     };
 }
 
+// FIXME(rust-lang/rust#126984): Remove allow once lint is fixed
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+use define_rust_probestack;
+
 // Our goal here is to touch each page between %rsp+8 and %rsp+8-%rax,
 // ensuring that if any pages are unmapped we'll make a page fault.
 //

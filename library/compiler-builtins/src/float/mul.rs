@@ -149,18 +149,13 @@ where
         }
 
         // Otherwise, shift the significand of the result so that the round
-        // bit is the high bit of productLo.
-        if shift < bits {
-            let sticky = product_low << (bits - shift);
-            product_low = product_high << (bits - shift) | product_low >> shift | sticky;
-            product_high >>= shift;
-        } else if shift < (2 * bits) {
-            let sticky = product_high << (2 * bits - shift) | product_low;
-            product_low = product_high >> (shift - bits) | sticky;
-            product_high = zero;
-        } else {
-            product_high = zero;
-        }
+        // bit is the high bit of `product_low`.
+        // Ensure one of the non-highest bits in `product_low` is set if the shifted out bit are
+        // not all zero so that the result is correctly rounded below.
+        let sticky = product_low << (bits - shift) != zero;
+        product_low =
+            product_high << (bits - shift) | product_low >> shift | (sticky as u32).cast();
+        product_high >>= shift;
     } else {
         // Result is normal before rounding; insert the exponent.
         product_high &= significand_mask;

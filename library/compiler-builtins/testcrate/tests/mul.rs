@@ -107,14 +107,11 @@ macro_rules! float_mul {
                 fuzz_float_2(N, |x: $f, y: $f| {
                     let mul0 = apfloat_fallback!($f, $apfloat_ty, $sys_available, Mul::mul, x, y);
                     let mul1: $f = $fn(x, y);
-                    // multiplication of subnormals is not currently handled
-                    if !(Float::is_subnormal(mul0) || Float::is_subnormal(mul1)) {
-                        if !Float::eq_repr(mul0, mul1) {
-                            panic!(
-                                "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
-                                stringify!($fn), x, y, mul0, mul1
-                            );
-                        }
+                    if !Float::eq_repr(mul0, mul1) {
+                        panic!(
+                            "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
+                            stringify!($fn), x, y, mul0, mul1
+                        );
                     }
                 });
             }
@@ -126,9 +123,11 @@ macro_rules! float_mul {
 mod float_mul {
     use super::*;
 
+    // FIXME(#616): Stop ignoring arches that don't have native support once fix for builtins is in
+    // nightly.
     float_mul! {
-        f32, __mulsf3, Single, all();
-        f64, __muldf3, Double, all();
+        f32, __mulsf3, Single, not(target_arch = "arm");
+        f64, __muldf3, Double, not(target_arch = "arm");
     }
 }
 
