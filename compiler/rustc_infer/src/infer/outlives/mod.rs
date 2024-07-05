@@ -7,8 +7,9 @@ use crate::infer::free_regions::RegionRelations;
 use crate::infer::lexical_region_resolve;
 use rustc_middle::traits::query::{NoSolution, OutlivesBound};
 use rustc_middle::ty;
+// TODO: Remove me
+pub use rustc_type_ir::outlives as components;
 
-pub mod components;
 pub mod env;
 pub mod for_liveness;
 pub mod obligations;

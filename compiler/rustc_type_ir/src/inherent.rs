@@ -232,6 +232,10 @@ pub trait Region<I: Interner<Region = Self>>:
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
     fn new_static(interner: I) -> Self;
+
+    fn is_bound(self) -> bool {
+        matches!(self.kind(), ty::ReBound(..))
+    }
 }
 
 pub trait Const<I: Interner<Const = Self>>:
@@ -270,6 +274,10 @@ pub trait Const<I: Interner<Const = Self>>:
     fn is_ct_var(self) -> bool {
         matches!(self.kind(), ty::ConstKind::Infer(ty::InferConst::Var(_)))
     }
+}
+
+pub trait ExprConst<I: Interner<ExprConst = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
+    fn args(self) -> I::GenericArgs;
 }
 
 pub trait GenericsOf<I: Interner<GenericsOf = Self>> {

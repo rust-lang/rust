@@ -109,7 +109,7 @@ pub trait Interner:
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
     type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type ValueConst: Copy + Debug + Hash + Eq;
-    type ExprConst: Copy + Debug + Hash + Eq + Relate<Self>;
+    type ExprConst: ExprConst<Self>;
 
     // Kinds of regions
     type Region: Region<Self>;

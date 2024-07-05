@@ -139,7 +139,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
     fn bound_from_components(
         &self,
-        components: &[Component<'tcx>],
+        components: &[Component<TyCtxt<'tcx>>],
         visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> VerifyBound<'tcx> {
         let mut bounds = components
@@ -158,7 +158,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
     fn bound_from_single_component(
         &self,
-        component: &Component<'tcx>,
+        component: &Component<TyCtxt<'tcx>>,
         visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> VerifyBound<'tcx> {
         match *component {
