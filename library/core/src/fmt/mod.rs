@@ -517,7 +517,10 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {origin:?}"), "The origin is: Point { x: 0, y: 0 }");
+/// assert_eq!(
+///     format!("The origin is: {origin:?}"),
+///     "The origin is: Point { x: 0, y: 0 }",
+/// );
 /// ```
 ///
 /// Manually implementing:
@@ -541,7 +544,10 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {origin:?}"), "The origin is: Point { x: 0, y: 0 }");
+/// assert_eq!(
+///     format!("The origin is: {origin:?}"),
+///     "The origin is: Point { x: 0, y: 0 }",
+/// );
 /// ```
 ///
 /// There are a number of helper methods on the [`Formatter`] struct to help you with manual
@@ -582,11 +588,11 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {origin:#?}"),
-/// "The origin is: Point {
+/// let expected = "The origin is: Point {
 ///     x: 0,
 ///     y: 0,
-/// }");
+/// }";
+/// assert_eq!(format!("The origin is: {origin:#?}"), expected);
 /// ```
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -738,8 +744,10 @@ pub trait Display {
     ///     }
     /// }
     ///
-    /// assert_eq!("(1.987, 2.983)",
-    ///            format!("{}", Position { longitude: 1.987, latitude: 2.983, }));
+    /// assert_eq!(
+    ///     "(1.987, 2.983)",
+    ///     format!("{}", Position { longitude: 1.987, latitude: 2.983, }),
+    /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
