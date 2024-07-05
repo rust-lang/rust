@@ -46,7 +46,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return;
         }
 
-        self.tcx().dcx().emit_err(MissingTypeParams {
+        self.dcx().emit_err(MissingTypeParams {
             span,
             def_span: self.tcx().def_span(def_id),
             span_snippet: self.tcx().sess.source_map().span_to_snippet(span).ok(),
@@ -109,7 +109,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         if is_impl {
             let trait_name = self.tcx().def_path_str(trait_def_id);
-            self.tcx().dcx().emit_err(ManualImplementation { span, trait_name });
+            self.dcx().emit_err(ManualImplementation { span, trait_name });
         }
     }
 
@@ -156,7 +156,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         if is_dummy {
             err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span });
-            return tcx.dcx().emit_err(err);
+            return self.dcx().emit_err(err);
         }
 
         let all_candidate_names: Vec<_> = all_candidates()
@@ -174,7 +174,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 assoc_kind: assoc_kind_str,
                 suggested_name,
             });
-            return tcx.dcx().emit_err(err);
+            return self.dcx().emit_err(err);
         }
 
         // If we didn't find a good item in the supertraits (or couldn't get
@@ -239,10 +239,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             assoc_kind: assoc_kind_str,
                             suggested_name,
                         });
-                        return tcx.dcx().emit_err(err);
+                        return self.dcx().emit_err(err);
                     }
 
-                    let mut err = tcx.dcx().create_err(err);
+                    let mut err = self.dcx().create_err(err);
                     if suggest_constraining_type_param(
                         tcx,
                         generics,
@@ -264,7 +264,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
                     return err.emit();
                 }
-                return tcx.dcx().emit_err(err);
+                return self.dcx().emit_err(err);
             }
         }
 
@@ -291,7 +291,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span: assoc_name.span });
         }
 
-        tcx.dcx().emit_err(err)
+        self.dcx().emit_err(err)
     }
 
     fn complain_about_assoc_kind_mismatch(
@@ -347,7 +347,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             (ident.span, None, assoc_kind, assoc_item.kind)
         };
 
-        tcx.dcx().emit_err(errors::AssocKindMismatch {
+        self.dcx().emit_err(errors::AssocKindMismatch {
             span,
             expected: super::assoc_kind_str(expected),
             got: super::assoc_kind_str(got),
@@ -366,8 +366,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         traits: &[String],
         name: Symbol,
     ) -> ErrorGuaranteed {
-        let mut err =
-            struct_span_code_err!(self.tcx().dcx(), span, E0223, "ambiguous associated type");
+        let mut err = struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated type");
         if self
             .tcx()
             .resolutions(())
@@ -475,7 +474,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
     ) -> ErrorGuaranteed {
         let mut err = struct_span_code_err!(
-            self.tcx().dcx(),
+            self.dcx(),
             name.span,
             E0034,
             "multiple applicable items in scope"
@@ -576,7 +575,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             };
 
             let mut err = struct_span_code_err!(
-                tcx.dcx(),
+                self.dcx(),
                 name.span,
                 E0220,
                 "associated type `{name}` not found for `{self_ty}` in the current scope"
@@ -662,7 +661,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bounds.sort();
         bounds.dedup();
 
-        let mut err = tcx.dcx().struct_span_err(
+        let mut err = self.dcx().struct_span_err(
             name.span,
             format!("the associated type `{name}` exists for `{self_ty}`, but its trait bounds were not satisfied")
         );
@@ -829,7 +828,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         trait_bound_spans.sort();
         let mut err = struct_span_code_err!(
-            tcx.dcx(),
+            self.dcx(),
             trait_bound_spans,
             E0191,
             "the value of the associated type{} {} must be specified",
@@ -1012,7 +1011,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .next()
         {
             let reported =
-                struct_span_code_err!(tcx.dcx(), span, E0223, "ambiguous associated type")
+                struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated type")
                     .with_span_suggestion_verbose(
                         ident2.span.to(ident3.span),
                         format!("there is an associated function with a similar name: `{name}`"),
@@ -1120,7 +1119,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let last_span = *arg_spans.last().unwrap();
         let span: MultiSpan = arg_spans.into();
         let mut err = struct_span_code_err!(
-            self.tcx().dcx(),
+            self.dcx(),
             span,
             E0109,
             "{kind} arguments are not allowed on {this_type}",
@@ -1139,11 +1138,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         regular_traits: &Vec<TraitAliasExpansionInfo<'_>>,
     ) -> ErrorGuaranteed {
-        let tcx = self.tcx();
         let first_trait = &regular_traits[0];
         let additional_trait = &regular_traits[1];
         let mut err = struct_span_code_err!(
-            tcx.dcx(),
+            self.dcx(),
             additional_trait.bottom().1,
             E0225,
             "only auto traits can be used as additional traits in a trait object"
@@ -1186,7 +1184,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
             .map(|trait_ref| tcx.def_span(trait_ref));
         let reported =
-            tcx.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
+            self.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
         self.set_tainted_by_errors(reported);
         reported
     }
@@ -1194,11 +1192,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
 /// Emit an error for the given associated item constraint.
 pub fn prohibit_assoc_item_constraint(
-    tcx: TyCtxt<'_>,
+    cx: &dyn HirTyLowerer<'_>,
     constraint: &hir::AssocItemConstraint<'_>,
     segment: Option<(DefId, &hir::PathSegment<'_>, Span)>,
 ) -> ErrorGuaranteed {
-    let mut err = tcx.dcx().create_err(AssocItemConstraintsNotAllowedHere {
+    let tcx = cx.tcx();
+    let mut err = cx.dcx().create_err(AssocItemConstraintsNotAllowedHere {
         span: constraint.span,
         fn_trait_expansion: if let Some((_, segment, span)) = segment
             && segment.args().parenthesized == hir::GenericArgsParentheses::ParenSugar

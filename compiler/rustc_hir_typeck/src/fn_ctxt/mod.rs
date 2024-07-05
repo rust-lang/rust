@@ -217,6 +217,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         self.tcx
     }
 
+    fn dcx(&self) -> DiagCtxtHandle<'_> {
+        self.root_ctxt.dcx()
+    }
+
     fn item_def_id(&self) -> LocalDefId {
         self.body_id
     }
