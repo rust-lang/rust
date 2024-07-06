@@ -181,8 +181,7 @@ impl Rewrite for ast::Local {
                     && allow_single_line_let_else_block(assign_str_with_else_kw, block);
 
                 let mut rw_else_block =
-                    rewrite_let_else_block(block, allow_single_line, context, shape)
-                        .unknown_error()?;
+                    rewrite_let_else_block(block, allow_single_line, context, shape)?;
 
                 let single_line_else = !rw_else_block.contains('\n');
                 // +1 for the trailing `;`
@@ -191,8 +190,7 @@ impl Rewrite for ast::Local {
                 if allow_single_line && single_line_else && else_block_exceeds_width {
                     // writing this on one line would exceed the available width
                     // so rewrite the else block over multiple lines.
-                    rw_else_block =
-                        rewrite_let_else_block(block, false, context, shape).unknown_error()?;
+                    rw_else_block = rewrite_let_else_block(block, false, context, shape)?;
                 }
 
                 result.push_str(&rw_else_block);

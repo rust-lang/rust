@@ -22,7 +22,7 @@ use crate::macros::{rewrite_macro, MacroPosition};
 use crate::matches::rewrite_match;
 use crate::overflow::{self, IntoOverflowableItem, OverflowableItem};
 use crate::pairs::{rewrite_all_pairs, rewrite_pair, PairParts};
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::{Indent, Shape};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
@@ -145,7 +145,7 @@ pub(crate) fn format_expr(
                     // not the `ast::Block` node we're about to rewrite. To prevent dropping inner
                     // attributes call `rewrite_block` directly.
                     // See https://github.com/rust-lang/rustfmt/issues/6158
-                    rewrite_block(block, Some(&expr.attrs), opt_label, context, shape)?
+                    rewrite_block(block, Some(&expr.attrs), opt_label, context, shape).ok()?
                 }
                 _ => anon_const.rewrite(context, shape)?,
             };
@@ -155,7 +155,7 @@ pub(crate) fn format_expr(
             match expr_type {
                 ExprType::Statement => {
                     if is_unsafe_block(block) {
-                        rewrite_block(block, Some(&expr.attrs), opt_label, context, shape)
+                        rewrite_block(block, Some(&expr.attrs), opt_label, context, shape).ok()
                     } else if let rw @ Some(_) =
                         rewrite_empty_block(context, block, Some(&expr.attrs), opt_label, "", shape)
                     {
@@ -173,10 +173,11 @@ pub(crate) fn format_expr(
                             shape,
                             true,
                         )
+                        .ok()
                     }
                 }
                 ExprType::SubExpression => {
-                    rewrite_block(block, Some(&expr.attrs), opt_label, context, shape)
+                    rewrite_block(block, Some(&expr.attrs), opt_label, context, shape).ok()
                 }
             }
         }
@@ -352,10 +353,10 @@ pub(crate) fn format_expr(
         // https://github.com/rust-dev-tools/fmt-rfcs/issues/152
         ast::ExprKind::InlineAsm(..) => Some(context.snippet(expr.span).to_owned()),
         ast::ExprKind::TryBlock(ref block) => {
-            if let rw @ Some(_) =
+            if let rw @ Ok(_) =
                 rewrite_single_line_block(context, "try ", block, Some(&expr.attrs), None, shape)
             {
-                rw
+                rw.ok()
             } else {
                 // 9 = `try `
                 let budget = shape.width.saturating_sub(9);
@@ -368,7 +369,8 @@ pub(crate) fn format_expr(
                         None,
                         context,
                         Shape::legacy(budget, shape.indent)
-                    )?
+                    )
+                    .ok()?
                 ))
             }
         }
@@ -378,7 +380,7 @@ pub(crate) fn format_expr(
             } else {
                 ""
             };
-            if let rw @ Some(_) = rewrite_single_line_block(
+            if let rw @ Ok(_) = rewrite_single_line_block(
                 context,
                 format!("{kind} {mover}").as_str(),
                 block,
@@ -386,7 +388,7 @@ pub(crate) fn format_expr(
                 None,
                 shape,
             ) {
-                rw
+                rw.ok()
             } else {
                 // 6 = `async `
                 let budget = shape.width.saturating_sub(6);
@@ -398,7 +400,8 @@ pub(crate) fn format_expr(
                         None,
                         context,
                         Shape::legacy(budget, shape.indent)
-                    )?
+                    )
+                    .ok()?
                 ))
             }
         }
@@ -522,17 +525,19 @@ fn rewrite_single_line_block(
     attrs: Option<&[ast::Attribute]>,
     label: Option<ast::Label>,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     if let Some(block_expr) = stmt::Stmt::from_simple_block(context, block, attrs) {
-        let expr_shape = shape.offset_left(last_line_width(prefix))?;
-        let expr_str = block_expr.rewrite(context, expr_shape)?;
+        let expr_shape = shape
+            .offset_left(last_line_width(prefix))
+            .max_width_error(shape.width, block_expr.span())?;
+        let expr_str = block_expr.rewrite_result(context, expr_shape)?;
         let label_str = rewrite_label(label);
         let result = format!("{prefix}{label_str}{{ {expr_str} }}");
         if result.len() <= shape.width && !result.contains('\n') {
-            return Some(result);
+            return Ok(result);
         }
     }
-    None
+    Err(RewriteError::Unknown)
 }
 
 pub(crate) fn rewrite_block_with_visitor(
@@ -543,9 +548,9 @@ pub(crate) fn rewrite_block_with_visitor(
     label: Option<ast::Label>,
     shape: Shape,
     has_braces: bool,
-) -> Option<String> {
-    if let rw @ Some(_) = rewrite_empty_block(context, block, attrs, label, prefix, shape) {
-        return rw;
+) -> RewriteResult {
+    if let Some(rw_str) = rewrite_empty_block(context, block, attrs, label, prefix, shape) {
+        return Ok(rw_str);
     }
 
     let mut visitor = FmtVisitor::from_context(context);
@@ -554,7 +559,7 @@ pub(crate) fn rewrite_block_with_visitor(
     match (block.rules, label) {
         (ast::BlockCheckMode::Unsafe(..), _) | (ast::BlockCheckMode::Default, Some(_)) => {
             let snippet = context.snippet(block.span);
-            let open_pos = snippet.find_uncommented("{")?;
+            let open_pos = snippet.find_uncommented("{").unknown_error()?;
             visitor.last_pos = block.span.lo() + BytePos(open_pos as u32)
         }
         (ast::BlockCheckMode::Default, None) => visitor.last_pos = block.span.lo(),
@@ -568,11 +573,15 @@ pub(crate) fn rewrite_block_with_visitor(
         .skipped_range
         .borrow_mut()
         .append(&mut visitor_context.skipped_range.borrow_mut());
-    Some(format!("{}{}{}", prefix, label_str, visitor.buffer))
+    Ok(format!("{}{}{}", prefix, label_str, visitor.buffer))
 }
 
 impl Rewrite for ast::Block {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         rewrite_block(self, None, None, context, shape)
     }
 }
@@ -583,7 +592,7 @@ fn rewrite_block(
     label: Option<ast::Label>,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     rewrite_block_inner(block, attrs, label, true, context, shape)
 }
 
@@ -594,27 +603,24 @@ fn rewrite_block_inner(
     allow_single_line: bool,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String> {
-    let prefix = block_prefix(context, block, shape)?;
+) -> RewriteResult {
+    let prefix = block_prefix(context, block, shape).unknown_error()?;
 
     // shape.width is used only for the single line case: either the empty block `{}`,
     // or an unsafe expression `unsafe { e }`.
-    if let rw @ Some(_) = rewrite_empty_block(context, block, attrs, label, &prefix, shape) {
-        return rw;
+    if let Some(rw_str) = rewrite_empty_block(context, block, attrs, label, &prefix, shape) {
+        return Ok(rw_str);
     }
 
-    let result = rewrite_block_with_visitor(context, &prefix, block, attrs, label, shape, true);
-    if let Some(ref result_str) = result {
-        if allow_single_line && result_str.lines().count() <= 3 {
-            if let rw @ Some(_) =
-                rewrite_single_line_block(context, &prefix, block, attrs, label, shape)
-            {
-                return rw;
-            }
+    let result_str =
+        rewrite_block_with_visitor(context, &prefix, block, attrs, label, shape, true)?;
+    if allow_single_line && result_str.lines().count() <= 3 {
+        if let rw @ Ok(_) = rewrite_single_line_block(context, &prefix, block, attrs, label, shape)
+        {
+            return rw;
         }
     }
-
-    result
+    Ok(result_str)
 }
 
 /// Rewrite the divergent block of a `let-else` statement.
@@ -623,7 +629,7 @@ pub(crate) fn rewrite_let_else_block(
     allow_single_line: bool,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     rewrite_block_inner(block, None, None, allow_single_line, context, shape)
 }
 
@@ -1112,7 +1118,8 @@ impl<'a> Rewrite for ControlFlow<'a> {
         let block_str = {
             let old_val = context.is_if_else_block.replace(self.else_block.is_some());
             let result =
-                rewrite_block_with_visitor(context, "", self.block, None, None, block_shape, true);
+                rewrite_block_with_visitor(context, "", self.block, None, None, block_shape, true)
+                    .ok();
             context.is_if_else_block.replace(old_val);
             result?
         };

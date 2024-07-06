@@ -183,7 +183,8 @@ fn rewrite_closure_with_block(
         None,
         shape,
         false,
-    )?;
+    )
+    .ok()?;
     Some(format!("{prefix} {block}"))
 }
 
