@@ -92,6 +92,40 @@ fn leading_zeros() {
     })
 }
 
+#[test]
+#[cfg(not(target_arch = "avr"))]
+fn bswap() {
+    use compiler_builtins::int::bswap::{__bswapdi2, __bswapsi2};
+    fuzz(N, |x: u32| {
+        assert_eq!(x.swap_bytes(), __bswapsi2(x));
+    });
+    fuzz(N, |x: u64| {
+        assert_eq!(x.swap_bytes(), __bswapdi2(x));
+    });
+
+    assert_eq!(__bswapsi2(0x12345678u32), 0x78563412u32);
+    assert_eq!(__bswapsi2(0x00000001u32), 0x01000000u32);
+    assert_eq!(__bswapdi2(0x123456789ABCDEF0u64), 0xF0DEBC9A78563412u64);
+    assert_eq!(__bswapdi2(0x0200000001000000u64), 0x0000000100000002u64);
+
+    #[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
+    {
+        use compiler_builtins::int::bswap::__bswapti2;
+        fuzz(N, |x: u128| {
+            assert_eq!(x.swap_bytes(), __bswapti2(x));
+        });
+
+        assert_eq!(
+            __bswapti2(0x123456789ABCDEF013579BDF02468ACEu128),
+            0xCE8A4602DF9B5713F0DEBC9A78563412u128
+        );
+        assert_eq!(
+            __bswapti2(0x04000000030000000200000001000000u128),
+            0x00000001000000020000000300000004u128
+        );
+    }
+}
+
 // This is approximate because of issues related to
 // https://github.com/rust-lang/rust/issues/73920.
 // TODO how do we resolve this indeterminacy?

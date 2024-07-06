@@ -154,6 +154,9 @@ rely on CI.
 - [ ] arm/unordsf2vfp.S
 - [x] ashldi3.c
 - [x] ashrdi3.c
+- [x] bswapdi2.c
+- [x] bswapsi2.c
+- [x] bswapti2.c
 - [x] comparedf2.c
 - [x] comparesf2.c
 - [x] divdf3.c
