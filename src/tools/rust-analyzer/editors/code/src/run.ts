@@ -66,9 +66,12 @@ export class RunnableQuickPick implements vscode.QuickPickItem {
     }
 }
 
-export function prepareBaseEnv(): Record<string, string> {
+export function prepareBaseEnv(base?: Record<string, string>): Record<string, string> {
     const env: Record<string, string> = { RUST_BACKTRACE: "short" };
-    Object.assign(env, process.env as { [key: string]: string });
+    Object.assign(env, process.env);
+    if (base) {
+        Object.assign(env, base);
+    }
     return env;
 }
 
@@ -77,12 +80,7 @@ export function prepareEnv(
     runnableArgs: ra.CargoRunnableArgs,
     runnableEnvCfg: RunnableEnvCfg,
 ): Record<string, string> {
-    const env = prepareBaseEnv();
-
-    if (runnableArgs.expectTest) {
-        env["UPDATE_EXPECT"] = "1";
-    }
-
+    const env = prepareBaseEnv(runnableArgs.environment);
     const platform = process.platform;
 
     const checkPlatform = (it: RunnableEnvCfgItem) => {
@@ -167,9 +165,6 @@ export async function createTaskFromRunnable(
 
 export function createCargoArgs(runnableArgs: ra.CargoRunnableArgs): string[] {
     const args = [...runnableArgs.cargoArgs]; // should be a copy!
-    if (runnableArgs.cargoExtraArgs) {
-        args.push(...runnableArgs.cargoExtraArgs); // Append user-specified cargo options.
-    }
     if (runnableArgs.executableArgs.length > 0) {
         args.push("--", ...runnableArgs.executableArgs);
     }

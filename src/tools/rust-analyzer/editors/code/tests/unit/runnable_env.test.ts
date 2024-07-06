@@ -12,7 +12,6 @@ function makeRunnable(label: string): ra.Runnable {
             cargoArgs: [],
             cwd: ".",
             executableArgs: [],
-            cargoExtraArgs: [],
         },
     };
 }

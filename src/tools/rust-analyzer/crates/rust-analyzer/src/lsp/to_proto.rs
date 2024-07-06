@@ -1390,10 +1390,9 @@ pub(crate) fn runnable(
                     workspace_root: Some(workspace_root.into()),
                     override_cargo: config.override_cargo,
                     cargo_args,
-                    cwd: Some(cwd.into()),
-                    cargo_extra_args: config.cargo_extra_args,
+                    cwd: cwd.into(),
                     executable_args,
-                    expect_test: None,
+                    environment: Default::default(),
                 }),
             }))
         }
@@ -1407,6 +1406,7 @@ pub(crate) fn runnable(
                         program: json_shell_runnable_args.program,
                         args: json_shell_runnable_args.args,
                         cwd: json_shell_runnable_args.cwd,
+                        environment: Default::default(),
                     };
                     Ok(Some(lsp_ext::Runnable {
                         label,
@@ -1419,6 +1419,9 @@ pub(crate) fn runnable(
             }
         }
         None => {
+            let Some(path) = snap.file_id_to_file_path(runnable.nav.file_id).parent() else {
+                return Ok(None);
+            };
             let (cargo_args, executable_args) =
                 CargoTargetSpec::runnable_args(snap, None, &runnable.kind, &runnable.cfg);
 
@@ -1433,10 +1436,9 @@ pub(crate) fn runnable(
                     workspace_root: None,
                     override_cargo: config.override_cargo,
                     cargo_args,
-                    cwd: None,
-                    cargo_extra_args: config.cargo_extra_args,
+                    cwd: path.as_path().unwrap().to_path_buf().into(),
                     executable_args,
-                    expect_test: None,
+                    environment: Default::default(),
                 }),
             }))
         }
