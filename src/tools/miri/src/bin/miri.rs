@@ -592,6 +592,9 @@ fn main() {
             let num_cpus = param
                 .parse::<u32>()
                 .unwrap_or_else(|err| show_error!("-Zmiri-num-cpus requires a `u32`: {}", err));
+            if !(1..=miri::MAX_CPUS).contains(&usize::try_from(num_cpus).unwrap()) {
+                show_error!("-Zmiri-num-cpus must be in the range 1..={}", miri::MAX_CPUS);
+            }
             miri_config.num_cpus = num_cpus;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-force-page-size=") {
             let page_size = param.parse::<u64>().unwrap_or_else(|err| {
