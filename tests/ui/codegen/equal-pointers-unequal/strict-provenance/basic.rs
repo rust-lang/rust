@@ -1,0 +1,25 @@
+//@ known-bug: #107975
+//@ compile-flags: -Copt-level=2
+//@ run-pass
+
+#![feature(strict_provenance)]
+
+use std::ptr::addr_of;
+
+fn main() {
+    let a: usize = {
+        let v = 0u8;
+        addr_of!(v).addr()
+    };
+    let b: usize = {
+        let v = 0u8;
+        addr_of!(v).addr()
+    };
+
+    // `a` and `b` are not equal.
+    assert_ne!(a, b);
+    // But they are the same number.
+    assert_eq!(format!("{a}"), format!("{b}"));
+    // And they are equal.
+    assert_eq!(a, b);
+}
