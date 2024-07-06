@@ -428,6 +428,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let ptr_ty = self.resolve_vars_if_possible(ptr_ty);
                         variadic_error(tcx.sess, arg.span, arg_ty, &ptr_ty.to_string());
                     }
+                    // generics? in C variadic? naaah
+                    ty::Adt(_def, gen_args) if gen_args.len() > 0 => {
+                        bug!("what the ferris are you doing")
+                    }
                     _ => {}
                 }
             }
