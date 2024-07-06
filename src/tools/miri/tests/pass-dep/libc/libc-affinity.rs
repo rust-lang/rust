@@ -105,6 +105,24 @@ fn get_small_cpu_mask() {
     }
 }
 
+fn set_small_cpu_mask() {
+    let mut cpuset: cpu_set_t = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
+
+    let err = unsafe { sched_getaffinity(PID, size_of::<cpu_set_t>(), &mut cpuset) };
+    assert_eq!(err, 0);
+
+    // setting a mask of size 0 is invalid
+    let err = unsafe { sched_setaffinity(PID, 0, &cpuset) };
+    assert_eq!(err, -1);
+    assert_eq!(std::io::Error::last_os_error().kind(), std::io::ErrorKind::InvalidInput);
+
+    // any other number of bytes (at least up to `size_of<cpu_set_t>()` will work
+    for i in 1..24 {
+        let err = unsafe { sched_setaffinity(PID, i, &cpuset) };
+        assert_eq!(err, 0, "fail for {i}");
+    }
+}
+
 fn set_custom_cpu_mask() {
     let cpu_count = std::thread::available_parallelism().unwrap().get();
 
@@ -189,6 +207,7 @@ fn main() {
     configure_unavailable_cpu();
     large_set();
     get_small_cpu_mask();
+    set_small_cpu_mask();
     set_custom_cpu_mask();
     parent_child();
 }

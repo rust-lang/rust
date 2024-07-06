@@ -645,7 +645,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.set_last_error(einval)?;
                     this.write_scalar(Scalar::from_i32(-1), dest)?;
                 } else {
-                    // NOTE: cpusetsize might be smaller than `CpuAffinityMask::CPU_MASK_BYTES`
+                    // NOTE: cpusetsize might be smaller than `CpuAffinityMask::CPU_MASK_BYTES`.
+                    // Any unspecified bytes are treated as zero here (none of the CPUs are configured).
+                    // This is not exactly documented, so we assume that this is the behavior in practice.
                     let bits_slice = this.read_bytes_ptr_strip_provenance(mask, Size::from_bytes(cpusetsize))?;
                     // This ignores the bytes beyond `CpuAffinityMask::CPU_MASK_BYTES`
                     let bits_array: [u8; CpuAffinityMask::CPU_MASK_BYTES] =
