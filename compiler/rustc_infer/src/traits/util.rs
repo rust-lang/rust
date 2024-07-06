@@ -3,6 +3,7 @@ use smallvec::smallvec;
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{self, Obligation, ObligationCauseCode, PredicateObligation};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::ty::ToPolyTraitRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
@@ -82,7 +83,6 @@ pub struct Elaborator<'tcx, O> {
 enum Filter {
     All,
     OnlySelf,
-    OnlySelfThatDefines(Ident),
 }
 
 /// Describes how to elaborate an obligation into a sub-obligation.
@@ -252,12 +252,6 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
         self
     }
 
-    /// Filter to only the supertraits of trait predicates that define the assoc_ty.
-    pub fn filter_only_self_that_defines(mut self, assoc_ty: Ident) -> Self {
-        self.mode = Filter::OnlySelfThatDefines(assoc_ty);
-        self
-    }
-
     fn elaborate(&mut self, elaboratable: &O) {
         let tcx = self.visited.tcx;
 
@@ -277,9 +271,6 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                 let predicates = match self.mode {
                     Filter::All => tcx.explicit_implied_predicates_of(data.def_id()),
                     Filter::OnlySelf => tcx.explicit_super_predicates_of(data.def_id()),
-                    Filter::OnlySelfThatDefines(ident) => {
-                        tcx.explicit_supertraits_containing_assoc_item((data.def_id(), ident))
-                    }
                 };
 
                 let obligations =
@@ -405,14 +396,14 @@ impl<'tcx, O: Elaboratable<'tcx>> Iterator for Elaborator<'tcx, O> {
 pub fn supertraits<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
-) -> FilterToTraits<Elaborator<'tcx, ty::Predicate<'tcx>>> {
+) -> FilterToTraits<Elaborator<'tcx, ty::Clause<'tcx>>> {
     elaborate(tcx, [trait_ref.upcast(tcx)]).filter_only_self().filter_to_traits()
 }
 
 pub fn transitive_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-) -> FilterToTraits<Elaborator<'tcx, ty::Predicate<'tcx>>> {
+) -> FilterToTraits<Elaborator<'tcx, ty::Clause<'tcx>>> {
     elaborate(tcx, trait_refs.map(|trait_ref| trait_ref.upcast(tcx)))
         .filter_only_self()
         .filter_to_traits()
@@ -427,17 +418,37 @@ pub fn transitive_bounds_that_define_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
     assoc_name: Ident,
-) -> FilterToTraits<Elaborator<'tcx, ty::Predicate<'tcx>>> {
-    elaborate(tcx, trait_refs.map(|trait_ref| trait_ref.upcast(tcx)))
-        .filter_only_self_that_defines(assoc_name)
-        .filter_to_traits()
+) -> impl Iterator<Item = ty::PolyTraitRef<'tcx>> {
+    let mut seen = FxHashSet::default();
+    let mut stack: Vec<_> = trait_refs.collect();
+
+    std::iter::from_fn(move || {
+        while let Some(trait_ref) = stack.pop() {
+            if !seen.insert(tcx.anonymize_bound_vars(trait_ref)) {
+                continue;
+            }
+
+            stack.extend(
+                tcx.explicit_supertraits_containing_assoc_item((trait_ref.def_id(), assoc_name))
+                    .instantiate_own_identity()
+                    .map(|(clause, _)| clause.instantiate_supertrait(tcx, trait_ref))
+                    .filter_map(|clause| clause.as_trait_clause())
+                    // FIXME: Negative supertraits are elaborated here lol
+                    .map(|trait_pred| trait_pred.to_poly_trait_ref()),
+            );
+
+            return Some(trait_ref);
+        }
+
+        None
+    })
 }
 
 ///////////////////////////////////////////////////////////////////////////
 // Other
 ///////////////////////////////////////////////////////////////////////////
 
-impl<'tcx> Elaborator<'tcx, ty::Predicate<'tcx>> {
+impl<'tcx> Elaborator<'tcx, ty::Clause<'tcx>> {
     fn filter_to_traits(self) -> FilterToTraits<Self> {
         FilterToTraits { base_iterator: self }
     }
@@ -449,7 +460,7 @@ pub struct FilterToTraits<I> {
     base_iterator: I,
 }
 
-impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<I> {
+impl<'tcx, I: Iterator<Item = ty::Clause<'tcx>>> Iterator for FilterToTraits<I> {
     type Item = ty::PolyTraitRef<'tcx>;
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
