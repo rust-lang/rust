@@ -395,6 +395,8 @@ pub mod panicking;
 #[unstable(feature = "core_pattern_types", issue = "none")]
 pub mod pat;
 pub mod pin;
+#[unstable(feature = "new_range_api", issue = "125687")]
+pub mod range;
 pub mod result;
 pub mod sync;
 
