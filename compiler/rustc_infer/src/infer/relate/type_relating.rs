@@ -1,7 +1,7 @@
 use super::combine::CombineFields;
 use crate::infer::relate::{PredicateEmittingRelation, StructurallyRelateAliases};
 use crate::infer::BoundRegionConversionTime::HigherRankedType;
-use crate::infer::{DefineOpaqueTypes, SubregionOrigin};
+use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::relate::{
     relate_args_invariantly, relate_args_with_variances, Relate, RelateResult, TypeRelation,
@@ -296,7 +296,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> PredicateEmittingRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
+impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
     fn span(&self) -> Span {
         self.fields.trace.span()
     }
