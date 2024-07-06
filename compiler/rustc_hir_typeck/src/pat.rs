@@ -2217,7 +2217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!("check_pat_ref: expected={:?}", expected);
                 match *expected.kind() {
                     ty::Ref(_, r_ty, r_mutbl)
-                        if (new_match_ergonomics && r_mutbl >= pat_mutbl)
+                        if (no_ref_mut_behind_and && r_mutbl >= pat_mutbl)
                             || r_mutbl == pat_mutbl =>
                     {
                         if no_ref_mut_behind_and && r_mutbl == Mutability::Not {
