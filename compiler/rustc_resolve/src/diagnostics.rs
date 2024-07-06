@@ -1726,11 +1726,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         )) = binding.kind
         {
             let def_id = self.tcx.parent(ctor_def_id);
-            return self
-                .field_def_ids(def_id)?
-                .iter()
-                .map(|&field_id| self.def_span(field_id))
-                .reduce(Span::to); // None for `struct Foo()`
+            return self.field_idents(def_id)?.iter().map(|&f| f.span).reduce(Span::to); // None for `struct Foo()`
         }
         None
     }
