@@ -1396,8 +1396,8 @@ fn op_to_prop_const<'tcx>(
         // by `GlobalAlloc::Memory`, so do fall through to copying if needed.
         // FIXME: find a way to treat this more uniformly (probably by fixing codegen)
         if let GlobalAlloc::Memory(alloc) = ecx.tcx.global_alloc(alloc_id)
-            // Transmuting a constant is just an offset in the allocation. If the alignement of the
-            // allocation is noe enough, fallback to copying into a properly aligned value.
+            // Transmuting a constant is just an offset in the allocation. If the alignment of the
+            // allocation is not enough, fallback to copying into a properly aligned value.
             && alloc.inner().align >= op.layout.align.abi
         {
             return Some(ConstValue::Indirect { alloc_id, offset });
