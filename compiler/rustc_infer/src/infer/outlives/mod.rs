@@ -8,7 +8,6 @@ use crate::infer::lexical_region_resolve;
 use rustc_middle::traits::query::{NoSolution, OutlivesBound};
 use rustc_middle::ty;
 
-pub mod components;
 pub mod env;
 pub mod for_liveness;
 pub mod obligations;
