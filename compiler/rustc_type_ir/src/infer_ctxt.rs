@@ -73,6 +73,11 @@ pub trait InferCtxtLike {
         rhs: T,
     ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>;
 
+    fn shallow_resolve(
+        &self,
+        ty: <Self::Interner as Interner>::Ty,
+    ) -> <Self::Interner as Interner>::Ty;
+
     fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
         T: TypeFoldable<Self::Interner>;

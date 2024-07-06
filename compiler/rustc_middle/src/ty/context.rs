@@ -524,6 +524,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.is_object_safe(trait_def_id)
     }
 
+    fn trait_is_fundamental(self, def_id: DefId) -> bool {
+        self.trait_def(def_id).is_fundamental
+    }
+
     fn trait_may_be_implemented_via_object(self, trait_def_id: DefId) -> bool {
         self.trait_def(trait_def_id).implement_via_object
     }
@@ -635,6 +639,10 @@ bidirectional_lang_item_map! {
 }
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
+    fn is_local(self) -> bool {
+        self.is_local()
+    }
+
     fn as_local(self) -> Option<LocalDefId> {
         self.as_local()
     }

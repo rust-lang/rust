@@ -246,6 +246,8 @@ pub trait Interner:
 
     fn trait_is_object_safe(self, trait_def_id: Self::DefId) -> bool;
 
+    fn trait_is_fundamental(self, def_id: Self::DefId) -> bool;
+
     fn trait_may_be_implemented_via_object(self, trait_def_id: Self::DefId) -> bool;
 
     fn supertrait_def_ids(self, trait_def_id: Self::DefId)
