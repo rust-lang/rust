@@ -333,14 +333,6 @@
             {
                 "title": "general",
                 "properties": {
-                    "rust-analyzer.cargoRunner": {
-                        "type": [
-                            "null",
-                            "string"
-                        ],
-                        "default": null,
-                        "description": "Custom cargo runner extension ID."
-                    },
                     "rust-analyzer.restartServerOnConfigChange": {
                         "markdownDescription": "Whether to restart the server automatically when certain settings that require a restart are changed.",
                         "default": false,

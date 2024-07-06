@@ -36,6 +36,12 @@ async function getServer(
     config: Config,
     state: PersistentState,
 ): Promise<string | undefined> {
+    const packageJson: {
+        version: string;
+        releaseTag: string | null;
+        enableProposedApi: boolean | undefined;
+    } = context.extension.packageJSON;
+
     const explicitPath = process.env["__RA_LSP_SERVER_DEBUG"] ?? config.serverPath;
     if (explicitPath) {
         if (explicitPath.startsWith("~/")) {
@@ -43,7 +49,7 @@ async function getServer(
         }
         return explicitPath;
     }
-    if (config.package.releaseTag === null) return "rust-analyzer";
+    if (packageJson.releaseTag === null) return "rust-analyzer";
 
     const ext = process.platform === "win32" ? ".exe" : "";
     const bundled = vscode.Uri.joinPath(context.extensionUri, "server", `rust-analyzer${ext}`);
@@ -54,8 +60,15 @@ async function getServer(
     if (bundledExists) {
         let server = bundled;
         if (await isNixOs()) {
-            server = await getNixOsServer(config, ext, state, bundled, server);
-            await state.updateServerVersion(config.package.version);
+            server = await getNixOsServer(
+                context.globalStorageUri,
+                packageJson.version,
+                ext,
+                state,
+                bundled,
+                server,
+            );
+            await state.updateServerVersion(packageJson.version);
         }
         return server.fsPath;
     }
@@ -86,19 +99,20 @@ export function isValidExecutable(path: string, extraEnv: Env): boolean {
 }
 
 async function getNixOsServer(
-    config: Config,
+    globalStorageUri: vscode.Uri,
+    version: string,
     ext: string,
     state: PersistentState,
     bundled: vscode.Uri,
     server: vscode.Uri,
 ) {
-    await vscode.workspace.fs.createDirectory(config.globalStorageUri).then();
-    const dest = vscode.Uri.joinPath(config.globalStorageUri, `rust-analyzer${ext}`);
+    await vscode.workspace.fs.createDirectory(globalStorageUri).then();
+    const dest = vscode.Uri.joinPath(globalStorageUri, `rust-analyzer${ext}`);
     let exists = await vscode.workspace.fs.stat(dest).then(
         () => true,
         () => false,
     );
-    if (exists && config.package.version !== state.serverVersion) {
+    if (exists && version !== state.serverVersion) {
         await vscode.workspace.fs.delete(dest);
         exists = false;
     }
