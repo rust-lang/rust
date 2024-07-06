@@ -40,14 +40,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Generate better code for things that don't need to be
                 // dropped.
                 if lhs_expr.ty.needs_drop(this.tcx, this.param_env) {
-                    let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
-                    let lhs = unpack!(block = this.as_place(block, lhs));
+                    let rhs = this.as_local_rvalue(block, rhs).unpack(&mut block);
+                    let lhs = this.as_place(block, lhs).unpack(&mut block);
                     block = this
                         .build_drop_and_replace(block, lhs_expr.span, lhs, rhs)
                         .unpack_block_and_unit();
                 } else {
-                    let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
-                    let lhs = unpack!(block = this.as_place(block, lhs));
+                    let rhs = this.as_local_rvalue(block, rhs).unpack(&mut block);
+                    let lhs = this.as_place(block, lhs).unpack(&mut block);
                     this.cfg.push_assign(block, source_info, lhs, rhs);
                 }
 
@@ -69,16 +69,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.block_context.push(BlockFrame::SubExpr);
 
                 // As above, RTL.
-                let rhs = unpack!(block = this.as_local_operand(block, rhs));
-                let lhs = unpack!(block = this.as_place(block, lhs));
+                let rhs = this.as_local_operand(block, rhs).unpack(&mut block);
+                let lhs = this.as_place(block, lhs).unpack(&mut block);
 
                 // we don't have to drop prior contents or anything
                 // because AssignOp is only legal for Copy types
                 // (overloaded ops should be desugared into a call).
-                let result = unpack!(
-                    block =
-                        this.build_binary_op(block, op, expr_span, lhs_ty, Operand::Copy(lhs), rhs)
-                );
+                let result = this
+                    .build_binary_op(block, op, expr_span, lhs_ty, Operand::Copy(lhs), rhs)
+                    .unpack(&mut block);
                 this.cfg.push_assign(block, source_info, lhs, result);
 
                 this.block_context.pop();
@@ -137,8 +136,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 };
 
-                let temp =
-                    unpack!(block = this.as_temp(block, statement_scope, expr_id, Mutability::Not));
+                let temp = this
+                    .as_temp(block, statement_scope, expr_id, Mutability::Not)
+                    .unpack(&mut block);
 
                 if let Some(span) = adjusted_span {
                     this.local_decls[temp].source_info.span = span;

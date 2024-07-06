@@ -128,7 +128,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Operand::Constant(Box::new(constant)))
             }
             Category::Constant | Category::Place | Category::Rvalue(..) => {
-                let operand = unpack!(block = this.as_temp(block, scope, expr_id, Mutability::Mut));
+                let operand =
+                    this.as_temp(block, scope, expr_id, Mutability::Mut).unpack(&mut block);
                 // Overwrite temp local info if we have something more interesting to record.
                 if !matches!(local_info, LocalInfo::Boring) {
                     let decl_info =
@@ -174,7 +175,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // type, and that value is coming from the deref of a box.
                 if let ExprKind::Deref { arg } = expr.kind {
                     // Generate let tmp0 = arg0
-                    let operand = unpack!(block = this.as_temp(block, scope, arg, Mutability::Mut));
+                    let operand =
+                        this.as_temp(block, scope, arg, Mutability::Mut).unpack(&mut block);
 
                     // Return the operand *tmp0 to be used as the call argument
                     let place = Place {

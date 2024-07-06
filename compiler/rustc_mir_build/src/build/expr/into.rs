@@ -102,8 +102,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
 
                 // Unpack `BlockAnd<BasicBlock>` into `(then_blk, else_blk)`.
-                let (then_blk, mut else_blk);
-                else_blk = unpack!(then_blk = then_and_else_blocks);
+                let (then_blk, mut else_blk) = then_and_else_blocks.unpack_to_pair();
 
                 // If there is an `else` arm, lower it into `else_blk`.
                 if let Some(else_expr) = else_opt {
@@ -138,9 +137,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // (#66975) Source could be a const of type `!`, so has to
                 // exist in the generated MIR.
-                unpack!(
-                    block = this.as_temp(block, Some(this.local_scope()), source, Mutability::Mut)
-                );
+                let _: Local = this
+                    .as_temp(block, Some(this.local_scope()), source, Mutability::Mut)
+                    .unpack(&mut block);
 
                 // This is an optimization. If the expression was a call then we already have an
                 // unreachable block. Don't bother to terminate it and create a new one.
@@ -244,12 +243,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
             ExprKind::Call { ty: _, fun, ref args, from_hir_call, fn_span } => {
-                let fun = unpack!(block = this.as_local_operand(block, fun));
+                let fun = this.as_local_operand(block, fun).unpack(&mut block);
                 let args: Box<[_]> = args
                     .into_iter()
                     .copied()
                     .map(|arg| Spanned {
-                        node: unpack!(block = this.as_local_call_operand(block, arg)),
+                        node: this.as_local_call_operand(block, arg).unpack(&mut block),
                         span: this.thir.exprs[arg].span,
                     })
                     .collect();
@@ -295,10 +294,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // by this method anyway, so this shouldn't cause too many
                 // unnecessary temporaries.
                 let arg_place = match borrow_kind {
-                    BorrowKind::Shared => {
-                        unpack!(block = this.as_read_only_place(block, arg))
-                    }
-                    _ => unpack!(block = this.as_place(block, arg)),
+                    BorrowKind::Shared => this.as_read_only_place(block, arg).unpack(&mut block),
+                    _ => this.as_place(block, arg).unpack(&mut block),
                 };
                 let borrow = Rvalue::Ref(this.tcx.lifetimes.re_erased, borrow_kind, arg_place);
                 this.cfg.push_assign(block, source_info, destination, borrow);
@@ -309,7 +306,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     hir::Mutability::Not => this.as_read_only_place(block, arg),
                     hir::Mutability::Mut => this.as_place(block, arg),
                 };
-                let address_of = Rvalue::AddressOf(mutability, unpack!(block = place));
+                let address_of = Rvalue::AddressOf(mutability, place.unpack(&mut block));
                 this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }
@@ -335,15 +332,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .map(|f| {
                         (
                             f.name,
-                            unpack!(
-                                block = this.as_operand(
-                                    block,
-                                    Some(scope),
-                                    f.expr,
-                                    LocalInfo::AggregateTemp,
-                                    NeedsTemporary::Maybe,
-                                )
-                            ),
+                            this.as_operand(
+                                block,
+                                Some(scope),
+                                f.expr,
+                                LocalInfo::AggregateTemp,
+                                NeedsTemporary::Maybe,
+                            )
+                            .unpack(&mut block),
                         )
                     })
                     .collect();
@@ -351,7 +347,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let field_names = adt_def.variant(variant_index).fields.indices();
 
                 let fields = if let Some(FruInfo { base, field_types }) = base {
-                    let place_builder = unpack!(block = this.as_place_builder(block, *base));
+                    let place_builder = this.as_place_builder(block, *base).unpack(&mut block);
 
                     // MIR does not natively support FRU, so for each
                     // base-supplied field, generate an operand that
@@ -412,17 +408,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .map(|op| match *op {
                         thir::InlineAsmOperand::In { reg, expr } => mir::InlineAsmOperand::In {
                             reg,
-                            value: unpack!(block = this.as_local_operand(block, expr)),
+                            value: this.as_local_operand(block, expr).unpack(&mut block),
                         },
                         thir::InlineAsmOperand::Out { reg, late, expr } => {
                             mir::InlineAsmOperand::Out {
                                 reg,
                                 late,
-                                place: expr.map(|expr| unpack!(block = this.as_place(block, expr))),
+                                place: expr
+                                    .map(|expr| this.as_place(block, expr).unpack(&mut block)),
                             }
                         }
                         thir::InlineAsmOperand::InOut { reg, late, expr } => {
-                            let place = unpack!(block = this.as_place(block, expr));
+                            let place = this.as_place(block, expr).unpack(&mut block);
                             mir::InlineAsmOperand::InOut {
                                 reg,
                                 late,
@@ -435,9 +432,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             mir::InlineAsmOperand::InOut {
                                 reg,
                                 late,
-                                in_value: unpack!(block = this.as_local_operand(block, in_expr)),
+                                in_value: this.as_local_operand(block, in_expr).unpack(&mut block),
                                 out_place: out_expr.map(|out_expr| {
-                                    unpack!(block = this.as_place(block, out_expr))
+                                    this.as_place(block, out_expr).unpack(&mut block)
                                 }),
                             }
                         }
@@ -531,7 +528,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::ValueTypeAscription { .. } => {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
-                let place = unpack!(block = this.as_place(block, expr_id));
+                let place = this.as_place(block, expr_id).unpack(&mut block);
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
@@ -546,7 +543,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.local_decls.push(LocalDecl::new(expr.ty, expr.span));
                 }
 
-                let place = unpack!(block = this.as_place(block, expr_id));
+                let place = this.as_place(block, expr_id).unpack(&mut block);
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
@@ -554,15 +551,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::Yield { value } => {
                 let scope = this.local_scope();
-                let value = unpack!(
-                    block = this.as_operand(
-                        block,
-                        Some(scope),
-                        value,
-                        LocalInfo::Boring,
-                        NeedsTemporary::No
-                    )
-                );
+                let value = this
+                    .as_operand(block, Some(scope), value, LocalInfo::Boring, NeedsTemporary::No)
+                    .unpack(&mut block);
                 let resume = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,
@@ -604,7 +595,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     _ => true,
                 });
 
-                let rvalue = unpack!(block = this.as_local_rvalue(block, expr_id));
+                let rvalue = this.as_local_rvalue(block, expr_id).unpack(&mut block);
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }

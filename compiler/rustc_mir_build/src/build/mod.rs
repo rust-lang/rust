@@ -403,6 +403,28 @@ enum NeedsTemporary {
 #[must_use = "if you don't use one of these results, you're leaving a dangling edge"]
 struct BlockAnd<T>(BasicBlock, T);
 
+impl<T> BlockAnd<T> {
+    /// Unpacks `BlockAnd<T>` by writing the block to the given reference,
+    /// and then returning the value.
+    #[must_use]
+    fn unpack(self, block_mut: &mut BasicBlock) -> T {
+        let Self(block, value) = self;
+        *block_mut = block;
+        value
+    }
+
+    /// Unpacks `BlockAnd<T>` into `(BasicBlock, T)`.
+    ///
+    /// This is an alternative to [`Self::unpack`] for cases where the block
+    /// variable hasn't been initialized yet, so a `&mut` reference can't be
+    /// taken.
+    #[must_use]
+    fn unpack_to_pair(self) -> (BasicBlock, T) {
+        let Self(block, value) = self;
+        (block, value)
+    }
+}
+
 impl BlockAnd<()> {
     /// Unpacks `BlockAnd<()>` into a [`BasicBlock`].
     #[must_use]
@@ -425,16 +447,6 @@ impl BlockAndExtension for BasicBlock {
     fn unit(self) -> BlockAnd<()> {
         BlockAnd(self, ())
     }
-}
-
-/// Update a block pointer and return the value.
-/// Use it like `let x = unpack!(block = self.foo(block, foo))`.
-macro_rules! unpack {
-    ($x:ident = $c:expr) => {{
-        let BlockAnd(b, v) = $c;
-        $x = b;
-        v
-    }};
 }
 
 ///////////////////////////////////////////////////////////////////////////

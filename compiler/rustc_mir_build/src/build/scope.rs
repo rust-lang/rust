@@ -585,8 +585,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.maybe_new_source_scope(region_scope.1.span, current_hir_id, parent_id);
         }
         self.push_scope(region_scope);
-        let mut block;
-        let rv = unpack!(block = f(self));
+
+        let (mut block, rv) = f(self).unpack_to_pair();
         block = self.pop_scope(region_scope, block).unpack_block_and_unit();
         self.source_scope = source_scope;
         debug!(?block);

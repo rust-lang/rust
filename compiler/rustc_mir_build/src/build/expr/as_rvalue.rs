@@ -60,39 +60,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 if Some(0) == count.try_eval_target_usize(this.tcx, this.param_env) {
                     this.build_zero_repeat(block, value, scope, source_info)
                 } else {
-                    let value_operand = unpack!(
-                        block = this.as_operand(
-                            block,
-                            scope,
-                            value,
-                            LocalInfo::Boring,
-                            NeedsTemporary::No
-                        )
-                    );
+                    let value_operand = this
+                        .as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
+                        .unpack(&mut block);
                     block.and(Rvalue::Repeat(value_operand, count))
                 }
             }
             ExprKind::Binary { op, lhs, rhs } => {
-                let lhs = unpack!(
-                    block = this.as_operand(
-                        block,
-                        scope,
-                        lhs,
-                        LocalInfo::Boring,
-                        NeedsTemporary::Maybe
-                    )
-                );
-                let rhs = unpack!(
-                    block =
-                        this.as_operand(block, scope, rhs, LocalInfo::Boring, NeedsTemporary::No)
-                );
+                let lhs = this
+                    .as_operand(block, scope, lhs, LocalInfo::Boring, NeedsTemporary::Maybe)
+                    .unpack(&mut block);
+                let rhs = this
+                    .as_operand(block, scope, rhs, LocalInfo::Boring, NeedsTemporary::No)
+                    .unpack(&mut block);
                 this.build_binary_op(block, op, expr_span, expr.ty, lhs, rhs)
             }
             ExprKind::Unary { op, arg } => {
-                let arg = unpack!(
-                    block =
-                        this.as_operand(block, scope, arg, LocalInfo::Boring, NeedsTemporary::No)
-                );
+                let arg = this
+                    .as_operand(block, scope, arg, LocalInfo::Boring, NeedsTemporary::No)
+                    .unpack(&mut block);
                 // Check for -MIN on signed integers
                 if this.check_overflow && op == UnOp::Neg && expr.ty.is_signed() {
                     let bool_ty = this.tcx.types.bool;
@@ -200,7 +186,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     && adt_def.is_enum()
                 {
                     let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
-                    let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
+                    let temp =
+                        this.as_temp(block, scope, source, Mutability::Not).unpack(&mut block);
                     let layout = this.tcx.layout_of(this.param_env.and(source_expr.ty));
                     let discr = this.temp(discr_ty, source_expr.span);
                     this.cfg.push_assign(
@@ -282,15 +269,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     (op, ty)
                 } else {
                     let ty = source_expr.ty;
-                    let source = unpack!(
-                        block = this.as_operand(
-                            block,
-                            scope,
-                            source,
-                            LocalInfo::Boring,
-                            NeedsTemporary::No
-                        )
-                    );
+                    let source = this
+                        .as_operand(block, scope, source, LocalInfo::Boring, NeedsTemporary::No)
+                        .unpack(&mut block);
                     (source, ty)
                 };
                 let from_ty = CastTy::from_ty(ty);
@@ -300,15 +281,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::Cast(cast_kind, source, expr.ty))
             }
             ExprKind::PointerCoercion { cast, source } => {
-                let source = unpack!(
-                    block = this.as_operand(
-                        block,
-                        scope,
-                        source,
-                        LocalInfo::Boring,
-                        NeedsTemporary::No
-                    )
-                );
+                let source = this
+                    .as_operand(block, scope, source, LocalInfo::Boring, NeedsTemporary::No)
+                    .unpack(&mut block);
                 block.and(Rvalue::Cast(CastKind::PointerCoercion(cast), source, expr.ty))
             }
             ExprKind::Array { ref fields } => {
@@ -344,15 +319,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .into_iter()
                     .copied()
                     .map(|f| {
-                        unpack!(
-                            block = this.as_operand(
-                                block,
-                                scope,
-                                f,
-                                LocalInfo::Boring,
-                                NeedsTemporary::Maybe
-                            )
-                        )
+                        this.as_operand(block, scope, f, LocalInfo::Boring, NeedsTemporary::Maybe)
+                            .unpack(&mut block)
                     })
                     .collect();
 
@@ -365,15 +333,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .into_iter()
                     .copied()
                     .map(|f| {
-                        unpack!(
-                            block = this.as_operand(
-                                block,
-                                scope,
-                                f,
-                                LocalInfo::Boring,
-                                NeedsTemporary::Maybe
-                            )
-                        )
+                        this.as_operand(block, scope, f, LocalInfo::Boring, NeedsTemporary::Maybe)
+                            .unpack(&mut block)
                     })
                     .collect();
 
@@ -401,7 +362,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // ```
                 //
                 for (thir_place, cause, hir_id) in fake_reads.into_iter() {
-                    let place_builder = unpack!(block = this.as_place_builder(block, *thir_place));
+                    let place_builder =
+                        this.as_place_builder(block, *thir_place).unpack(&mut block);
 
                     if let Some(mir_place) = place_builder.try_to_place(this) {
                         this.cfg.push_fake_read(
@@ -429,7 +391,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             // This occurs when capturing by copy/move, while
                             // by reference captures use as_operand
                             Some(Category::Place) => {
-                                let place = unpack!(block = this.as_place(block, upvar));
+                                let place = this.as_place(block, upvar).unpack(&mut block);
                                 this.consume_by_copy_or_move(place)
                             }
                             _ => {
@@ -442,26 +404,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         borrow_kind:
                                             BorrowKind::Mut { kind: MutBorrowKind::Default },
                                         arg,
-                                    } => unpack!(
-                                        block = this.limit_capture_mutability(
+                                    } => this
+                                        .limit_capture_mutability(
                                             upvar_expr.span,
                                             upvar_expr.ty,
                                             scope,
                                             block,
                                             arg,
                                         )
-                                    ),
-                                    _ => {
-                                        unpack!(
-                                            block = this.as_operand(
-                                                block,
-                                                scope,
-                                                upvar,
-                                                LocalInfo::Boring,
-                                                NeedsTemporary::Maybe
-                                            )
+                                        .unpack(&mut block),
+                                    _ => this
+                                        .as_operand(
+                                            block,
+                                            scope,
+                                            upvar,
+                                            LocalInfo::Boring,
+                                            NeedsTemporary::Maybe,
                                         )
-                                    }
+                                        .unpack(&mut block),
                                 }
                             }
                         }
@@ -536,15 +496,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Category::of(&expr.kind),
                     Some(Category::Rvalue(RvalueFunc::AsRvalue) | Category::Constant)
                 ));
-                let operand = unpack!(
-                    block = this.as_operand(
-                        block,
-                        scope,
-                        expr_id,
-                        LocalInfo::Boring,
-                        NeedsTemporary::No,
-                    )
-                );
+                let operand = this
+                    .as_operand(block, scope, expr_id, LocalInfo::Boring, NeedsTemporary::No)
+                    .unpack(&mut block);
                 block.and(Rvalue::Use(operand))
             }
         }
@@ -716,9 +670,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Repeating a const does nothing
         } else {
             // For a non-const, we may need to generate an appropriate `Drop`
-            let value_operand = unpack!(
-                block = this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
-            );
+            let value_operand = this
+                .as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
+                .unpack(&mut block);
             if let Operand::Move(to_drop) = value_operand {
                 let success = this.cfg.start_new_block();
                 this.cfg.terminate(
@@ -754,7 +708,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         this.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });
 
-        let arg_place_builder = unpack!(block = this.as_place_builder(block, arg));
+        let arg_place_builder = this.as_place_builder(block, arg).unpack(&mut block);
 
         let mutability = match arg_place_builder.base() {
             // We are capturing a path that starts off a local variable in the parent.

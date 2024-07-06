@@ -369,7 +369,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         expr_id: ExprId,
     ) -> BlockAnd<Place<'tcx>> {
-        let place_builder = unpack!(block = self.as_place_builder(block, expr_id));
+        let place_builder = self.as_place_builder(block, expr_id).unpack(&mut block);
         block.and(place_builder.to_place(self))
     }
 
@@ -393,7 +393,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         expr_id: ExprId,
     ) -> BlockAnd<Place<'tcx>> {
-        let place_builder = unpack!(block = self.as_read_only_place_builder(block, expr_id));
+        let place_builder = self.as_read_only_place_builder(block, expr_id).unpack(&mut block);
         block.and(place_builder.to_place(self))
     }
 
@@ -432,8 +432,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Field { lhs, variant_index, name } => {
                 let lhs_expr = &this.thir[lhs];
-                let mut place_builder =
-                    unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
+                let mut place_builder = this
+                    .expr_as_place(block, lhs, mutability, fake_borrow_temps)
+                    .unpack(&mut block);
                 if let ty::Adt(adt_def, _) = lhs_expr.ty.kind() {
                     if adt_def.is_enum() {
                         place_builder = place_builder.downcast(*adt_def, variant_index);
@@ -442,8 +443,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(place_builder.field(name, expr.ty))
             }
             ExprKind::Deref { arg } => {
-                let place_builder =
-                    unpack!(block = this.expr_as_place(block, arg, mutability, fake_borrow_temps,));
+                let place_builder = this
+                    .expr_as_place(block, arg, mutability, fake_borrow_temps)
+                    .unpack(&mut block);
                 block.and(place_builder.deref())
             }
             ExprKind::Index { lhs, index } => this.lower_index_expression(
@@ -472,9 +474,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             ExprKind::PlaceTypeAscription { source, ref user_ty } => {
-                let place_builder = unpack!(
-                    block = this.expr_as_place(block, source, mutability, fake_borrow_temps,)
-                );
+                let place_builder = this
+                    .expr_as_place(block, source, mutability, fake_borrow_temps)
+                    .unpack(&mut block);
                 if let Some(user_ty) = user_ty {
                     let annotation_index =
                         this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
@@ -502,9 +504,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::ValueTypeAscription { source, ref user_ty } => {
                 let source_expr = &this.thir[source];
-                let temp = unpack!(
-                    block = this.as_temp(block, source_expr.temp_lifetime, source, mutability)
-                );
+                let temp = this
+                    .as_temp(block, source_expr.temp_lifetime, source, mutability)
+                    .unpack(&mut block);
                 if let Some(user_ty) = user_ty {
                     let annotation_index =
                         this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
@@ -570,7 +572,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // these are not places, so we need to make a temporary.
                 debug_assert!(!matches!(Category::of(&expr.kind), Some(Category::Place)));
                 let temp =
-                    unpack!(block = this.as_temp(block, expr.temp_lifetime, expr_id, mutability));
+                    this.as_temp(block, expr.temp_lifetime, expr_id, mutability).unpack(&mut block);
                 block.and(PlaceBuilder::from(temp))
             }
         }
@@ -612,12 +614,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let fake_borrow_temps = fake_borrow_temps.unwrap_or(base_fake_borrow_temps);
 
         let base_place =
-            unpack!(block = self.expr_as_place(block, base, mutability, Some(fake_borrow_temps),));
+            self.expr_as_place(block, base, mutability, Some(fake_borrow_temps)).unpack(&mut block);
 
         // Making this a *fresh* temporary means we do not have to worry about
         // the index changing later: Nothing will ever change this temporary.
         // The "retagging" transformation (for Stacked Borrows) relies on this.
-        let idx = unpack!(block = self.as_temp(block, temp_lifetime, index, Mutability::Not));
+        let idx = self.as_temp(block, temp_lifetime, index, Mutability::Not).unpack(&mut block);
 
         block = self.bounds_check(block, &base_place, idx, expr_span, source_info);
 

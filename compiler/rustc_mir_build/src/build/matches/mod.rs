@@ -213,7 +213,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // further down.
                 this.mcdc_increment_depth_if_enabled();
                 let place =
-                    unpack!(block = this.as_temp(block, Some(temp_scope), expr_id, mutability));
+                    this.as_temp(block, Some(temp_scope), expr_id, mutability).unpack(&mut block);
                 this.mcdc_decrement_depth_if_enabled();
 
                 let operand = Operand::Move(Place::from(place));
@@ -361,7 +361,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
     ) -> BlockAnd<()> {
         let scrutinee_place =
-            unpack!(block = self.lower_scrutinee(block, scrutinee_id, scrutinee_span));
+            self.lower_scrutinee(block, scrutinee_id, scrutinee_span).unpack(&mut block);
 
         let mut arm_candidates = self.create_match_candidates(&scrutinee_place, arms);
 
@@ -405,7 +405,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_id: ExprId,
         scrutinee_span: Span,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        let scrutinee_place_builder = unpack!(block = self.as_place_builder(block, scrutinee_id));
+        let scrutinee_place_builder = self.as_place_builder(block, scrutinee_id).unpack(&mut block);
         if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
             let source_info = self.source_info(scrutinee_span);
             self.cfg.push_place_mention(block, source_info, scrutinee_place);
@@ -706,8 +706,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             _ => {
                 let initializer = &self.thir[initializer_id];
-                let place_builder =
-                    unpack!(block = self.lower_scrutinee(block, initializer_id, initializer.span));
+                let place_builder = self
+                    .lower_scrutinee(block, initializer_id, initializer.span)
+                    .unpack(&mut block);
                 self.place_into_pattern(block, irrefutable_pat, place_builder, true)
             }
         }
@@ -2078,7 +2079,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         emit_storage_live: EmitStorageLive,
     ) -> BlockAnd<()> {
         let expr_span = self.thir[expr_id].span;
-        let scrutinee = unpack!(block = self.lower_scrutinee(block, expr_id, expr_span));
+        let scrutinee = self.lower_scrutinee(block, expr_id, expr_span).unpack(&mut block);
         let mut candidate = Candidate::new(scrutinee.clone(), pat, false, self);
         let otherwise_block = self.lower_match_tree(
             block,

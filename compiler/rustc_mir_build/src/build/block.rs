@@ -226,7 +226,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             });
                         matching.and(failure)
                     });
-                    let failure = unpack!(block = failure_and_block);
+                    let failure = failure_and_block.unpack(&mut block);
                     this.cfg.goto(failure, source_info, failure_entry);
 
                     if let Some(source_scope) = visibility_scope {
