@@ -32,12 +32,6 @@ pub trait SolverDelegate:
     // FIXME: Uplift the leak check into this crate.
     fn leak_check(&self, max_input_universe: ty::UniverseIndex) -> Result<(), NoSolution>;
 
-    // FIXME: This is only here because elaboration lives in `rustc_infer`!
-    fn elaborate_supertraits(
-        cx: Self::Interner,
-        trait_ref: ty::Binder<Self::Interner, ty::TraitRef<Self::Interner>>,
-    ) -> impl Iterator<Item = ty::Binder<Self::Interner, ty::TraitRef<Self::Interner>>>;
-
     fn try_const_eval_resolve(
         &self,
         param_env: <Self::Interner as Interner>::ParamEnv,

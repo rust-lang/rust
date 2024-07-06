@@ -2,6 +2,7 @@
 
 pub(super) mod structural_traits;
 
+use rustc_type_ir::elaborate;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
@@ -667,7 +668,7 @@ where
         // a projection goal.
         if let Some(principal) = bounds.principal() {
             let principal_trait_ref = principal.with_self_ty(cx, self_ty);
-            for (idx, assumption) in D::elaborate_supertraits(cx, principal_trait_ref).enumerate() {
+            for (idx, assumption) in elaborate::supertraits(cx, principal_trait_ref).enumerate() {
                 candidates.extend(G::probe_and_consider_object_bound_candidate(
                     self,
                     CandidateSource::BuiltinImpl(BuiltinImplSource::Object(idx)),
