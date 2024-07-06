@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use rustc_type_ir::Interner;
+use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;

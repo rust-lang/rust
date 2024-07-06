@@ -261,10 +261,16 @@ pub(super) fn unexpected_cfg_value(
         lints::unexpected_cfg_value::CodeSuggestion::RemoveCondition { suggestion, name }
     };
 
-    // We don't want to suggest adding values to well known names
-    // since those are defined by rustc it-self. Users can still
-    // do it if they want, but should not encourage them.
-    let is_cfg_a_well_know_name = sess.psess.check_config.well_known_names.contains(&name);
+    // We don't want to encourage people to add values to a well-known names, as these are
+    // defined by rustc/Rust itself. Users can still do this if they wish, but should not be
+    // encouraged to do so.
+    let can_suggest_adding_value = !sess.psess.check_config.well_known_names.contains(&name)
+        // Except when working on rustc or the standard library itself, in which case we want to
+        // suggest adding these cfgs to the "normal" place because of bootstraping reasons. As a
+        // basic heuristic, we use the "cheat" unstable feature enable method and the
+        // non-ui-testing enabled option.
+        || (matches!(sess.psess.unstable_features, rustc_feature::UnstableFeatures::Cheat)
+            && !sess.opts.unstable_opts.ui_testing);
 
     let inst = |escape_quotes| to_check_cfg_arg(name, value.map(|(v, _s)| v), escape_quotes);
 
@@ -275,14 +281,14 @@ pub(super) fn unexpected_cfg_value(
             } else {
                 Some(lints::unexpected_cfg_value::CargoHelp::DefineFeatures)
             }
-        } else if !is_cfg_a_well_know_name {
+        } else if can_suggest_adding_value {
             Some(lints::unexpected_cfg_value::CargoHelp::Other(cargo_help_sub(sess, &inst)))
         } else {
             None
         };
         lints::unexpected_cfg_value::InvocationHelp::Cargo(help)
     } else {
-        let help = if !is_cfg_a_well_know_name {
+        let help = if can_suggest_adding_value {
             Some(lints::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No)))
         } else {
             None

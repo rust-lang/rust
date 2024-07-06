@@ -1402,6 +1402,37 @@ pub fn test_set_extension() {
 }
 
 #[test]
+pub fn test_add_extension() {
+    macro_rules! tfe (
+        ($path:expr, $ext:expr, $expected:expr, $output:expr) => ({
+            let mut p = PathBuf::from($path);
+            let output = p.add_extension($ext);
+            assert!(p.to_str() == Some($expected) && output == $output,
+                    "adding extension of {:?} to {:?}: Expected {:?}/{:?}, got {:?}/{:?}",
+                    $path, $ext, $expected, $output,
+                    p.to_str().unwrap(), output);
+        });
+    );
+
+    tfe!("foo", "txt", "foo.txt", true);
+    tfe!("foo.bar", "txt", "foo.bar.txt", true);
+    tfe!("foo.bar.baz", "txt", "foo.bar.baz.txt", true);
+    tfe!(".test", "txt", ".test.txt", true);
+    tfe!("foo.txt", "", "foo.txt", true);
+    tfe!("foo", "", "foo", true);
+    tfe!("", "foo", "", false);
+    tfe!(".", "foo", ".", false);
+    tfe!("foo/", "bar", "foo.bar", true);
+    tfe!("foo/.", "bar", "foo.bar", true);
+    tfe!("..", "foo", "..", false);
+    tfe!("foo/..", "bar", "foo/..", false);
+    tfe!("/", "foo", "/", false);
+
+    // edge cases
+    tfe!("/foo.ext////", "bar", "/foo.ext.bar", true);
+}
+
+#[test]
 pub fn test_with_extension() {
     macro_rules! twe (
         ($input:expr, $extension:expr, $expected:expr) => ({
@@ -1439,6 +1470,49 @@ pub fn test_with_extension() {
     twe!("ccc.aaa_aaa_aaa", "bbb_bbb", "ccc.bbb_bbb");
     // New extension is greater than previous extension
     twe!("ccc.bbb_bbb", "aaa_aaa_aaa", "ccc.aaa_aaa_aaa");
+}
+
+#[test]
+pub fn test_with_added_extension() {
+    macro_rules! twe (
+        ($input:expr, $extension:expr, $expected:expr) => ({
+            let input = Path::new($input);
+            let output = input.with_added_extension($extension);
+
+            assert!(
+                output.to_str() == Some($expected),
+                "calling Path::new({:?}).with_added_extension({:?}): Expected {:?}, got {:?}",
+                $input, $extension, $expected, output,
+            );
+        });
+    );
+
+    twe!("foo", "txt", "foo.txt");
+    twe!("foo.bar", "txt", "foo.bar.txt");
+    twe!("foo.bar.baz", "txt", "foo.bar.baz.txt");
+    twe!(".test", "txt", ".test.txt");
+    twe!("foo.txt", "", "foo.txt");
+    twe!("foo", "", "foo");
+    twe!("", "foo", "");
+    twe!(".", "foo", ".");
+    twe!("foo/", "bar", "foo.bar");
+    twe!("foo/.", "bar", "foo.bar");
+    twe!("..", "foo", "..");
+    twe!("foo/..", "bar", "foo/..");
+    twe!("/", "foo", "/");
+
+    // edge cases
+    twe!("/foo.ext////", "bar", "/foo.ext.bar");
+
+    // New extension is smaller than file name
+    twe!("aaa_aaa_aaa", "bbb_bbb", "aaa_aaa_aaa.bbb_bbb");
+    // New extension is greater than file name
+    twe!("bbb_bbb", "aaa_aaa_aaa", "bbb_bbb.aaa_aaa_aaa");
+
+    // New extension is smaller than previous extension
+    twe!("ccc.aaa_aaa_aaa", "bbb_bbb", "ccc.aaa_aaa_aaa.bbb_bbb");
+    // New extension is greater than previous extension
+    twe!("ccc.bbb_bbb", "aaa_aaa_aaa", "ccc.bbb_bbb.aaa_aaa_aaa");
 }
 
 #[test]

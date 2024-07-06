@@ -640,8 +640,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
-    type Result = ();
-
     fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
         debug!("wf bounds for t={:?} t.kind={:#?}", t, t.kind());
 
