@@ -5,10 +5,7 @@ LL | type MyPrivate = impl Sized;
    |                  ---------- the found opaque type
 LL | impl Trait for u32 {
 LL |     fn dont_define_this(private: MyPrivate) {
-   |                                  ^^^^^^^^^
-   |                                  |
-   |                                  expected `Private`, found opaque type
-   |                                  help: change the parameter type to match the trait: `Private`
+   |                                  ^^^^^^^^^ expected `Private`, found opaque type
    |
 note: type in trait
   --> $DIR/unnameable_type.rs:10:39
@@ -17,6 +14,10 @@ LL |         fn dont_define_this(_private: Private) {}
    |                                       ^^^^^^^
    = note: expected signature `fn(Private)`
               found signature `fn(MyPrivate)`
+help: change the parameter type to match the trait
+   |
+LL |     fn dont_define_this(private: Private) {
+   |                                  ~~~~~~~
 
 error: aborting due to 1 previous error
 

@@ -981,7 +981,7 @@ fn report_trait_method_mismatch<'tcx>(
                 .next()
                 .unwrap_or(impl_err_span);
 
-            diag.span_suggestion(
+            diag.span_suggestion_verbose(
                 span,
                 "change the self-receiver type to match the trait",
                 sugg,
@@ -1005,12 +1005,12 @@ fn report_trait_method_mismatch<'tcx>(
                         }
                         hir::FnRetTy::Return(hir_ty) => {
                             let sugg = trait_sig.output();
-                            diag.span_suggestion(hir_ty.span, msg, sugg, ap);
+                            diag.span_suggestion_verbose(hir_ty.span, msg, sugg, ap);
                         }
                     };
                 };
             } else if let Some(trait_ty) = trait_sig.inputs().get(*i) {
-                diag.span_suggestion(
+                diag.span_suggestion_verbose(
                     impl_err_span,
                     "change the parameter type to match the trait",
                     trait_ty,
