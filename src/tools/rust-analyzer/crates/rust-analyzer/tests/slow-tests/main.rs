@@ -258,7 +258,6 @@ fn main() {}
             "args": {
               "cargoArgs": ["test", "--package", "foo", "--test", "spam"],
               "executableArgs": ["test_eggs", "--exact", "--show-output"],
-              "cargoExtraArgs": [],
               "overrideCargo": null,
               "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
@@ -289,7 +288,6 @@ fn main() {}
                 "--test",
                 "spam"
               ],
-              "cargoExtraArgs": [],
               "executableArgs": [
                 "",
                 "--show-output"
@@ -325,7 +323,6 @@ fn main() {}
             "args": {
               "cargoArgs": ["check", "--package", "foo", "--all-targets"],
               "executableArgs": [],
-              "cargoExtraArgs": [],
               "overrideCargo": null,
               "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
@@ -337,7 +334,6 @@ fn main() {}
             "args": {
               "cargoArgs": ["test", "--package", "foo", "--all-targets"],
               "executableArgs": [],
-              "cargoExtraArgs": [],
               "overrideCargo": null,
               "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
@@ -426,7 +422,6 @@ mod tests {
                             runnable,
                             "--all-targets"
                         ],
-                        "cargoExtraArgs": [],
                         "executableArgs": []
                     },
                 },
@@ -489,7 +484,6 @@ fn otherpkg() {}
                         "mainpkg",
                         "--all-targets"
                     ],
-                    "cargoExtraArgs": [],
                     "executableArgs": []
                 },
             },
@@ -515,7 +509,6 @@ fn otherpkg() {}
                         "otherpkg",
                         "--all-targets"
                     ],
-                    "cargoExtraArgs": [],
                     "executableArgs": []
                 },
             },

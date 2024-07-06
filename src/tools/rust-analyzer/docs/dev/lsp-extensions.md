@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: 3605fab9e66e14a0
+lsp/ext.rs hash: a0867710490bf8da
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -379,7 +379,7 @@ rust-analyzer supports two `kind`s of runnables, `"cargo"` and `"shell"`. The `a
     /**
      * Environment variables to set before running the command.
      */
-    environment: Record<string, string>;
+    environment?: Record<string, string>;
     /**
      * The working directory to run the command in.
      */
@@ -392,11 +392,6 @@ rust-analyzer supports two `kind`s of runnables, `"cargo"` and `"shell"`. The `a
      * The cargo command to run.
      */
     cargoArgs: string[];
-    /**
-     * Extra arguments to pass to cargo.
-     */
-    // What is the point of this when cargoArgs exists?
-    cargoExtraArgs: string[];
     /**
      * Arguments to pass to the executable, these will be passed to the command after a `--` argument.
      */
@@ -415,7 +410,7 @@ The args for `"shell"` look like this:
     /**
      * Environment variables to set before running the command.
      */
-    environment: Record<string, string>;
+    environment?: Record<string, string>;
     /**
      * The working directory to run the command in.
      */

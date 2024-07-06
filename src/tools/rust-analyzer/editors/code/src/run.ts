@@ -165,9 +165,6 @@ export async function createTaskFromRunnable(
 
 export function createCargoArgs(runnableArgs: ra.CargoRunnableArgs): string[] {
     const args = [...runnableArgs.cargoArgs]; // should be a copy!
-    if (runnableArgs.cargoExtraArgs) {
-        args.push(...runnableArgs.cargoExtraArgs); // Append user-specified cargo options.
-    }
     if (runnableArgs.executableArgs.length > 0) {
         args.push("--", ...runnableArgs.executableArgs);
     }

@@ -874,6 +874,7 @@ pub(crate) fn handle_runnables(
                 if all_targets {
                     cargo_args.push("--all-targets".to_owned());
                 }
+                cargo_args.extend(config.cargo_extra_args.iter().cloned());
                 res.push(lsp_ext::Runnable {
                     label: format!(
                         "cargo {cmd} -p {}{all_targets}",
@@ -887,7 +888,6 @@ pub(crate) fn handle_runnables(
                         cwd: cwd.into(),
                         override_cargo: config.override_cargo.clone(),
                         cargo_args,
-                        cargo_extra_args: config.cargo_extra_args.clone(),
                         executable_args: Vec::new(),
                         environment: Default::default(),
                     }),
@@ -897,6 +897,8 @@ pub(crate) fn handle_runnables(
         Some(TargetSpec::ProjectJson(_)) => {}
         None => {
             if !snap.config.linked_or_discovered_projects().is_empty() {
+                let mut cargo_args = vec!["check".to_owned(), "--workspace".to_owned()];
+                cargo_args.extend(config.cargo_extra_args.iter().cloned());
                 res.push(lsp_ext::Runnable {
                     label: "cargo check --workspace".to_owned(),
                     location: None,
@@ -905,8 +907,7 @@ pub(crate) fn handle_runnables(
                         workspace_root: None,
                         cwd: ".".into(),
                         override_cargo: config.override_cargo,
-                        cargo_args: vec!["check".to_owned(), "--workspace".to_owned()],
-                        cargo_extra_args: config.cargo_extra_args,
+                        cargo_args,
                         executable_args: Vec::new(),
                         environment: Default::default(),
                     }),

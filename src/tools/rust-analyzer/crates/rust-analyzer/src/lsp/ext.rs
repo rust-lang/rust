@@ -460,6 +460,7 @@ pub enum RunnableKind {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CargoRunnableArgs {
+    #[serde(skip_serializing_if = "FxHashMap::is_empty")]
     pub environment: FxHashMap<String, String>,
     pub cwd: Utf8PathBuf,
     /// Command to be executed instead of cargo
@@ -468,8 +469,6 @@ pub struct CargoRunnableArgs {
     pub workspace_root: Option<Utf8PathBuf>,
     // command, --package and --lib stuff
     pub cargo_args: Vec<String>,
-    // user-specified additional cargo args, like `--release`.
-    pub cargo_extra_args: Vec<String>,
     // stuff after --
     pub executable_args: Vec<String>,
 }
@@ -477,6 +476,7 @@ pub struct CargoRunnableArgs {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ShellRunnableArgs {
+    #[serde(skip_serializing_if = "FxHashMap::is_empty")]
     pub environment: FxHashMap<String, String>,
     pub cwd: Utf8PathBuf,
     pub program: String,

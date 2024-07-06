@@ -239,7 +239,7 @@ export type CommonRunnableArgs = {
     /**
      * Environment variables to set before running the command.
      */
-    environment: Record<string, string>;
+    environment?: Record<string, string>;
     /**
      * The working directory to run the command in.
      */
@@ -258,21 +258,18 @@ export type CargoRunnableArgs = {
      */
     workspaceRoot?: string;
     /**
-     * The cargo command to run.
-     */
-    cargoArgs: string[];
-    /**
-     * Extra arguments to pass to cargo.
-     */
-    // What is the point of this when cargoArgs exists?
-    cargoExtraArgs: string[];
-    /**
      * Arguments to pass to the executable, these will be passed to the command after a `--` argument.
      */
     executableArgs: string[];
     /**
+     * Arguments to pass to cargo.
+     */
+    cargoArgs: string[];
+    /**
      * Command to execute instead of `cargo`.
      */
+    // This is supplied by the user via config. We could pull this through the client config in the
+    // extension directly, but that would prevent us from honoring the rust-analyzer.toml for it.
     overrideCargo?: string;
 } & CommonRunnableArgs;
 
