@@ -305,6 +305,16 @@
                 "command": "rust-analyzer.toggleLSPLogs",
                 "title": "Toggle LSP Logs",
                 "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.openWalkthrough",
+                "title": "Open Walkthrough",
+                "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.openFAQ",
+                "title": "Open FAQ",
+                "category": "rust-analyzer"
             }
         ],
         "keybindings": [
@@ -3142,6 +3152,14 @@
                 {
                     "command": "rust-analyzer.toggleLSPLogs",
                     "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.openWalkthrough",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.openFAQ",
+                    "when": "inRustProject"
                 }
             ],
             "editor/context": [
@@ -3170,6 +3188,94 @@
             {
                 "fileMatch": "rust-project.json",
                 "url": "https://json.schemastore.org/rust-project.json"
+            }
+        ],
+        "walkthroughs": [
+            {
+                "id": "landing",
+                "title": "Learn about rust-analyzer",
+                "description": "A brief introduction to get started with rust-analyzer. Learn about key features and resources to help you get the most out of the extension.",
+                "steps": [
+                    {
+                        "id": "docs",
+                        "title": "Visit the docs!",
+                        "description": "Confused about configurations? Want to learn more about rust-analyzer? Visit the [User Manual](https://rust-analyzer.github.io/manual.html)!",
+                        "media": {
+                            "image": "./icon.png",
+                            "altText": "rust-analyzer logo"
+                        },
+                        "completionEvents": [
+                            "onLink:https://rust-analyzer.github.io/manual.html"
+                        ]
+                    },
+                    {
+                        "id": "faq",
+                        "title": "FAQ",
+                        "description": "Have questions about rust-analyzer? Check out the [FAQ Walkthrough](command:rust-analyzer.openFAQ)!",
+                        "media": {
+                            "image": "icon.png",
+                            "altText": "rust-analyzer logo"
+                        }
+                    },
+                    {
+                        "id": "changelog",
+                        "title": "Changelog",
+                        "description": "Stay up-to-date with the latest changes in rust-analyzer. Check out the changelog [here](https://rust-analyzer.github.io/thisweek)!",
+                        "media": {
+                            "image": "icon.png",
+                            "altText": "rust-analyzer logo"
+                        },
+                        "completionEvents": [
+                            "onLink:https://rust-analyzer.github.io/thisweek"
+                        ]
+                    },
+                    {
+                        "id": "revisit",
+                        "title": "Want to revisit a walkthrough?",
+                        "description": "Use the ``Welcome: Open Walkthrough`` command to revisit any walkthrough!",
+                        "media": {
+                            "image": "icon.png",
+                            "altText": "rust-analyzer logo"
+                        }
+                    }
+                ]
+            },
+            {
+                "id": "faq",
+                "title": "FAQ",
+                "description": "Here are some frequently asked questions about rust-analyzer.",
+                "steps": [
+                    {
+                        "id": "faq1",
+                        "title": "What is rust-analyzer?",
+                        "description": "rust-analyzer is a language server for Rust. It provides features like code completion, find references, and more.",
+                        "media": {
+                            "image": "icon.png",
+                            "altText": "rust-analyzer logo"
+                        }
+                    },
+                    {
+                        "id": "faq2",
+                        "title": "Why are all of these type hints showing up in my code?",
+                        "description": "By default, rust-analyzer displays __inlay hints__ to help you understand your code better. You can disable them in your settings.json file with ``\"editor.inlayHints.enabled\": \"off\"``",
+                        "media": {
+                            "image": "icon.png",
+                            "altText": "rust-analyzer logo"
+                        }
+                    },
+                    {
+                        "id": "faq3",
+                        "title": "Where can I find more information about rust-analyzer?",
+                        "description": "You can find more information about rust-analyzer in the [User Manual](https://rust-analyzer.github.io/manual.html).",
+                        "media": {
+                            "image": "icon.png",
+                            "altText": "rust-analyzer logo"
+                        },
+                        "completionEvents": [
+                            "onLink:https://rust-analyzer.github.io/manual.html"
+                        ]
+                    }
+                ]
             }
         ]
     }
