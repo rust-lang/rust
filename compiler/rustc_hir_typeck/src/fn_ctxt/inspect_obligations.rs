@@ -104,8 +104,6 @@ struct NestedObligationsForSelfTy<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'a, 'tcx> {
-    type Result = ();
-
     fn span(&self) -> Span {
         self.root_cause.span
     }

@@ -53,6 +53,7 @@ use type_variable::TypeVariableOrigin;
 
 pub mod at;
 pub mod canonical;
+mod context;
 pub mod error_reporting;
 pub mod free_regions;
 mod freshen;

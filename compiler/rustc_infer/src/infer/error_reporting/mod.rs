@@ -1168,14 +1168,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let output1 = sig1.output();
         let output2 = sig2.output();
         let (x1, x2) = self.cmp(output1, output2);
-        if !output1.is_unit() {
+        let output_diff = x1 != x2;
+        if !output1.is_unit() || output_diff {
             values.0.push_normal(" -> ");
             (values.0).0.extend(x1.0);
         }
-        if !output2.is_unit() {
+        if !output2.is_unit() || output_diff {
             values.1.push_normal(" -> ");
             (values.1).0.extend(x2.0);
         }
+
         values
     }
 

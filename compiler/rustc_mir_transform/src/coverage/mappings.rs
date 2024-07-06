@@ -3,7 +3,9 @@ use std::collections::BTreeSet;
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
-use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, ConditionInfo, CoverageKind};
+use rustc_middle::mir::coverage::{
+    BlockMarkerId, BranchSpan, ConditionInfo, CoverageInfoHi, CoverageKind,
+};
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
@@ -157,12 +159,12 @@ impl ExtractedMappings {
 }
 
 fn resolve_block_markers(
-    branch_info: &mir::coverage::BranchInfo,
+    coverage_info_hi: &CoverageInfoHi,
     mir_body: &mir::Body<'_>,
 ) -> IndexVec<BlockMarkerId, Option<BasicBlock>> {
     let mut block_markers = IndexVec::<BlockMarkerId, Option<BasicBlock>>::from_elem_n(
         None,
-        branch_info.num_block_markers,
+        coverage_info_hi.num_block_markers,
     );
 
     // Fill out the mapping from block marker IDs to their enclosing blocks.
@@ -188,11 +190,11 @@ pub(super) fn extract_branch_pairs(
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
 ) -> Vec<BranchPair> {
-    let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else { return vec![] };
+    let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() else { return vec![] };
 
-    let block_markers = resolve_block_markers(branch_info, mir_body);
+    let block_markers = resolve_block_markers(coverage_info_hi, mir_body);
 
-    branch_info
+    coverage_info_hi
         .branch_spans
         .iter()
         .filter_map(|&BranchSpan { span: raw_span, true_marker, false_marker }| {
@@ -222,9 +224,9 @@ pub(super) fn extract_mcdc_mappings(
     mcdc_branches: &mut impl Extend<MCDCBranch>,
     mcdc_decisions: &mut impl Extend<MCDCDecision>,
 ) {
-    let Some(branch_info) = mir_body.coverage_branch_info.as_deref() else { return };
+    let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() else { return };
 
-    let block_markers = resolve_block_markers(branch_info, mir_body);
+    let block_markers = resolve_block_markers(coverage_info_hi, mir_body);
 
     let bcb_from_marker =
         |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
@@ -243,7 +245,7 @@ pub(super) fn extract_mcdc_mappings(
             Some((span, true_bcb, false_bcb))
         };
 
-    mcdc_branches.extend(branch_info.mcdc_branch_spans.iter().filter_map(
+    mcdc_branches.extend(coverage_info_hi.mcdc_branch_spans.iter().filter_map(
         |&mir::coverage::MCDCBranchSpan {
              span: raw_span,
              condition_info,
@@ -257,7 +259,7 @@ pub(super) fn extract_mcdc_mappings(
         },
     ));
 
-    mcdc_decisions.extend(branch_info.mcdc_decision_spans.iter().filter_map(
+    mcdc_decisions.extend(coverage_info_hi.mcdc_decision_spans.iter().filter_map(
         |decision: &mir::coverage::MCDCDecisionSpan| {
             let span = unexpand_into_body_span(decision.span, body_span)?;
 

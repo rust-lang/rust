@@ -2,6 +2,7 @@
 
 use crate::intrinsics::const_eval_select;
 use crate::ops;
+use crate::range;
 use crate::ub_checks::assert_unsafe_precondition;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -147,7 +148,8 @@ const unsafe fn get_offset_len_mut_noubcheck<T>(
 }
 
 mod private_slice_index {
-    use super::ops;
+    use super::{ops, range};
+
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     pub trait Sealed {}
 
@@ -167,6 +169,13 @@ mod private_slice_index {
     impl Sealed for ops::RangeToInclusive<usize> {}
     #[stable(feature = "slice_index_with_ops_bound_pair", since = "1.53.0")]
     impl Sealed for (ops::Bound<usize>, ops::Bound<usize>) {}
+
+    #[unstable(feature = "new_range_api", issue = "125687")]
+    impl Sealed for range::Range<usize> {}
+    #[unstable(feature = "new_range_api", issue = "125687")]
+    impl Sealed for range::RangeInclusive<usize> {}
+    #[unstable(feature = "new_range_api", issue = "125687")]
+    impl Sealed for range::RangeFrom<usize> {}
 
     impl Sealed for ops::IndexRange {}
 }
@@ -473,6 +482,43 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
     }
 }
 
+#[unstable(feature = "new_range_api", issue = "125687")]
+unsafe impl<T> SliceIndex<[T]> for range::Range<usize> {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        ops::Range::from(self).get(slice)
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        ops::Range::from(self).get_mut(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
+        unsafe { ops::Range::from(self).get_unchecked(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
+        unsafe { ops::Range::from(self).get_unchecked_mut(slice) }
+    }
+
+    #[inline(always)]
+    fn index(self, slice: &[T]) -> &[T] {
+        ops::Range::from(self).index(slice)
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        ops::Range::from(self).index_mut(slice)
+    }
+}
+
 /// The methods `index` and `index_mut` panic if the end of the range is out of bounds.
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
@@ -559,6 +605,43 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
     }
 }
 
+#[unstable(feature = "new_range_api", issue = "125687")]
+unsafe impl<T> SliceIndex<[T]> for range::RangeFrom<usize> {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        ops::RangeFrom::from(self).get(slice)
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        ops::RangeFrom::from(self).get_mut(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
+        unsafe { ops::RangeFrom::from(self).get_unchecked(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
+        unsafe { ops::RangeFrom::from(self).get_unchecked_mut(slice) }
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        ops::RangeFrom::from(self).index(slice)
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        ops::RangeFrom::from(self).index_mut(slice)
+    }
+}
+
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::RangeFull {
@@ -640,6 +723,43 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
             slice_end_index_overflow_fail();
         }
         self.into_slice_range().index_mut(slice)
+    }
+}
+
+#[unstable(feature = "new_range_api", issue = "125687")]
+unsafe impl<T> SliceIndex<[T]> for range::RangeInclusive<usize> {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        ops::RangeInclusive::from(self).get(slice)
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        ops::RangeInclusive::from(self).get_mut(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
+        unsafe { ops::RangeInclusive::from(self).get_unchecked(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
+        unsafe { ops::RangeInclusive::from(self).get_unchecked_mut(slice) }
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        ops::RangeInclusive::from(self).index(slice)
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        ops::RangeInclusive::from(self).index_mut(slice)
     }
 }
 
@@ -780,7 +900,7 @@ where
 
 /// Performs bounds-checking of a range without panicking.
 ///
-/// This is a version of [`range`] that returns [`None`] instead of panicking.
+/// This is a version of [`range()`] that returns [`None`] instead of panicking.
 ///
 /// # Examples
 ///

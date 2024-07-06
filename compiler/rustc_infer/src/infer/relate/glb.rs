@@ -123,7 +123,7 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 
     }
 }
 
-impl<'tcx> PredicateEmittingRelation<'tcx> for Glb<'_, '_, 'tcx> {
+impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for Glb<'_, '_, 'tcx> {
     fn span(&self) -> Span {
         self.fields.trace.span()
     }

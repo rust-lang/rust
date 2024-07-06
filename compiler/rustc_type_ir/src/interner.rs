@@ -32,6 +32,7 @@ pub trait Interner:
 {
     type DefId: DefId<Self>;
     type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
+    type Span: Copy + Debug + Hash + Eq;
 
     type GenericArgs: GenericArgs<Self>;
     type GenericArgsSlice: Copy + Debug + Hash + Eq + SliceLike<Item = Self::GenericArg>;
@@ -109,7 +110,7 @@ pub trait Interner:
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
     type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type ValueConst: Copy + Debug + Hash + Eq;
-    type ExprConst: Copy + Debug + Hash + Eq + Relate<Self>;
+    type ExprConst: ExprConst<Self>;
 
     // Kinds of regions
     type Region: Region<Self>;

@@ -78,23 +78,6 @@ impl<'tcx> GenericArg<'tcx> {
     pub fn walk(self) -> TypeWalker<'tcx> {
         TypeWalker::new(self)
     }
-
-    /// Iterator that walks the immediate children of `self`. Hence
-    /// `Foo<Bar<i32>, u32>` yields the sequence `[Bar<i32>, u32]`
-    /// (but not `i32`, like `walk`).
-    ///
-    /// Iterator only walks items once.
-    /// It accepts visited set, updates it with all visited types
-    /// and skips any types that are already there.
-    pub fn walk_shallow(
-        self,
-        visited: &mut SsoHashSet<GenericArg<'tcx>>,
-    ) -> impl Iterator<Item = GenericArg<'tcx>> {
-        let mut stack = SmallVec::new();
-        push_inner(&mut stack, self);
-        stack.retain(|a| visited.insert(*a));
-        stack.into_iter()
-    }
 }
 
 impl<'tcx> Ty<'tcx> {

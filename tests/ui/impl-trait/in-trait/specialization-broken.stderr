@@ -5,10 +5,7 @@ LL | default impl<U> Foo for U
    |              - found this type parameter
 ...
 LL |     fn bar(&self) -> U {
-   |                      ^
-   |                      |
-   |                      expected associated type, found type parameter `U`
-   |                      help: change the output type to match the trait: `impl Sized`
+   |                      ^ expected associated type, found type parameter `U`
    |
 note: type in trait
   --> $DIR/specialization-broken.rs:8:22
@@ -17,6 +14,10 @@ LL |     fn bar(&self) -> impl Sized;
    |                      ^^^^^^^^^^
    = note: expected signature `fn(&_) -> impl Sized`
               found signature `fn(&_) -> U`
+help: change the output type to match the trait
+   |
+LL |     fn bar(&self) -> impl Sized {
+   |                      ~~~~~~~~~~
 
 error: method with return-position `impl Trait` in trait cannot be specialized
   --> $DIR/specialization-broken.rs:15:5
