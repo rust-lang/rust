@@ -92,7 +92,7 @@ LL |     extern "rust-call" fn call(self, args: ()) -> () {}
    |                                ^^^^ expected `&Foo`, found `Foo`
    |
    = note: expected signature `extern "rust-call" fn(&Foo, ()) -> _`
-              found signature `extern "rust-call" fn(Foo, ())`
+              found signature `extern "rust-call" fn(Foo, ()) -> ()`
 help: change the self-receiver type to match the trait
    |
 LL |     extern "rust-call" fn call(&self, args: ()) -> () {}
@@ -162,7 +162,7 @@ LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
    |                                    ^^^^^ types differ in mutability
    |
    = note: expected signature `extern "rust-call" fn(&mut Bar, ()) -> _`
-              found signature `extern "rust-call" fn(&Bar, ())`
+              found signature `extern "rust-call" fn(&Bar, ()) -> ()`
 help: change the self-receiver type to match the trait
    |
 LL |     extern "rust-call" fn call_mut(&mut self, args: ()) -> () {}
