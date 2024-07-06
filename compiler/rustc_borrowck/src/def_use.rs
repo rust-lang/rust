@@ -4,13 +4,13 @@ use rustc_middle::mir::visit::{
 };
 
 #[derive(Eq, PartialEq, Clone)]
-pub enum DefUse {
+pub(crate) enum DefUse {
     Def,
     Use,
     Drop,
 }
 
-pub fn categorize(context: PlaceContext) -> Option<DefUse> {
+pub(crate) fn categorize(context: PlaceContext) -> Option<DefUse> {
     match context {
         ///////////////////////////////////////////////////////////////////////////
         // DEFS
