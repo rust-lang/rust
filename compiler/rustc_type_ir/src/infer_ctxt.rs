@@ -3,7 +3,7 @@ use crate::relate::Relate;
 use crate::solve::{Goal, NoSolution, SolverMode};
 use crate::{self as ty, Interner};
 
-pub trait InferCtxtLike {
+pub trait InferCtxtLike: Sized {
     type Interner: Interner;
     fn cx(&self) -> Self::Interner;
 
