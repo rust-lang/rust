@@ -75,10 +75,7 @@ error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/opaque-and-lifetime-mismatch.rs:10:17
    |
 LL |     fn bar() -> i32 {
-   |                 ^^^
-   |                 |
-   |                 expected `Wrapper<'static>`, found `i32`
-   |                 help: change the output type to match the trait: `Wrapper<'static>`
+   |                 ^^^ expected `Wrapper<'static>`, found `i32`
    |
 note: type in trait
   --> $DIR/opaque-and-lifetime-mismatch.rs:4:17
@@ -87,6 +84,10 @@ LL |     fn bar() -> Wrapper<impl Sized>;
    |                 ^^^^^^^^^^^^^^^^^^^
    = note: expected signature `fn() -> Wrapper<'static>`
               found signature `fn() -> i32`
+help: change the output type to match the trait
+   |
+LL |     fn bar() -> Wrapper<'static> {
+   |                 ~~~~~~~~~~~~~~~~
 
 error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/opaque-and-lifetime-mismatch.rs:24:17
