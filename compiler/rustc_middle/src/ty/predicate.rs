@@ -444,12 +444,7 @@ impl<'tcx> Clause<'tcx> {
         let bound_vars =
             tcx.mk_bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(pred_bound_vars));
 
-        // FIXME: Is it really perf sensitive to use reuse_or_mk_predicate here?
-        tcx.reuse_or_mk_predicate(
-            self.as_predicate(),
-            ty::Binder::bind_with_vars(PredicateKind::Clause(new), bound_vars),
-        )
-        .expect_clause()
+        ty::Binder::bind_with_vars(new, bound_vars).upcast(tcx)
     }
 }
 
