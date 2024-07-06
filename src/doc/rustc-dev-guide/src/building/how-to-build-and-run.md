@@ -356,7 +356,7 @@ in other sections:
 ### Cleaning out build directories
 
 Sometimes you need to start fresh, but this is normally not the case.
-If you need to run this then `rustbuild` is most likely not acting right and
+If you need to run this then bootstrap is most likely not acting right and
 you should file a bug as to what is going wrong. If you do need to clean
 everything up then you only need to run one command!
 

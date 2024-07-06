@@ -75,7 +75,7 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 * The Markdown renderer is loaded up in `html/markdown.rs`, including functions
   for extracting doctests from a given block of Markdown.
 * The tests on the structure of rustdoc HTML output are located in `tests/rustdoc`, where
-  they're handled by the test runner of rustbuild and the supplementary script
+  they're handled by the test runner of bootstrap and the supplementary script
   `src/etc/htmldocck.py`.
 
 ## Tests
