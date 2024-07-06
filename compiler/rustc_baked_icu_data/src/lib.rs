@@ -23,6 +23,7 @@
 // tidy-alphabetical-start
 #![allow(elided_lifetimes_in_paths)]
 #![allow(internal_features)]
+#![deny(unreachable_pub)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
