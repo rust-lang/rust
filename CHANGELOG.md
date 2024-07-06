@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.7.1] 2024-06-24
+
 ### Fixed
 
 - Fix an idempotency issue when rewriting where clauses in which rustfmt would continuously add a trailing comma `,` to the end of trailing line comments [#5941](https://github.com/rust-lang/rustfmt/issues/5941).
