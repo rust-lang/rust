@@ -282,7 +282,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         )
                     } else {
                         let scope = (*init_scope, source_info);
-                        unpack!(this.in_scope(scope, *lint_level, |this| {
+                        let _: BlockAnd<()> = this.in_scope(scope, *lint_level, |this| {
                             this.declare_bindings(
                                 visibility_scope,
                                 remainder_span,
@@ -291,7 +291,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 None,
                             );
                             block.unit()
-                        }));
+                        });
 
                         debug!("ast_block_stmts: pattern={:?}", pattern);
                         this.visit_primary_bindings(

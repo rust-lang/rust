@@ -121,8 +121,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match expr.kind {
             ExprKind::LogicalOp { op: op @ LogicalOp::And, lhs, rhs } => {
                 this.visit_coverage_branch_operation(op, expr_span);
-                let lhs_then_block = unpack!(this.then_else_break_inner(block, lhs, args));
-                let rhs_then_block = unpack!(this.then_else_break_inner(lhs_then_block, rhs, args));
+                let lhs_then_block =
+                    this.then_else_break_inner(block, lhs, args).unpack_block_and_unit();
+                let rhs_then_block =
+                    this.then_else_break_inner(lhs_then_block, rhs, args).unpack_block_and_unit();
                 rhs_then_block.unit()
             }
             ExprKind::LogicalOp { op: op @ LogicalOp::Or, lhs, rhs } => {
@@ -139,14 +141,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             },
                         )
                     });
-                let rhs_success_block = unpack!(this.then_else_break_inner(
-                    failure_block,
-                    rhs,
-                    ThenElseArgs {
-                        declare_let_bindings: DeclareLetBindings::LetNotPermitted,
-                        ..args
-                    },
-                ));
+                let rhs_success_block = this
+                    .then_else_break_inner(
+                        failure_block,
+                        rhs,
+                        ThenElseArgs {
+                            declare_let_bindings: DeclareLetBindings::LetNotPermitted,
+                            ..args
+                        },
+                    )
+                    .unpack_block_and_unit();
 
                 // Make the LHS and RHS success arms converge to a common block.
                 // (We can't just make LHS goto RHS, because `rhs_success_block`
@@ -451,7 +455,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         outer_source_info: SourceInfo,
         fake_borrow_temps: Vec<(Place<'tcx>, Local, FakeBorrowKind)>,
     ) -> BlockAnd<()> {
-        let arm_end_blocks: Vec<_> = arm_candidates
+        let arm_end_blocks: Vec<BasicBlock> = arm_candidates
             .into_iter()
             .map(|(arm, candidate)| {
                 debug!("lowering arm {:?}\ncandidate = {:?}", arm, candidate);
@@ -502,6 +506,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     this.expr_into_dest(destination, arm_block, arm.body)
                 })
+                .unpack_block_and_unit()
             })
             .collect();
 
@@ -512,10 +517,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             outer_source_info.span.with_lo(outer_source_info.span.hi() - BytePos::from_usize(1)),
         );
         for arm_block in arm_end_blocks {
-            let block = &self.cfg.basic_blocks[arm_block.0];
+            let block = &self.cfg.basic_blocks[arm_block];
             let last_location = block.statements.last().map(|s| s.source_info);
 
-            self.cfg.goto(unpack!(arm_block), last_location.unwrap_or(end_brace), end_block);
+            self.cfg.goto(arm_block, last_location.unwrap_or(end_brace), end_block);
         }
 
         self.source_scope = outer_source_info.scope;
