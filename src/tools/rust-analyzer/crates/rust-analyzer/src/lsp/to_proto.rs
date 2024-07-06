@@ -15,7 +15,7 @@ use ide::{
 };
 use ide_db::{rust_doc::format_docs, FxHasher};
 use itertools::Itertools;
-use paths::{Utf8Component, Utf8PathBuf, Utf8Prefix};
+use paths::{Utf8Component, Utf8Prefix};
 use semver::VersionReq;
 use serde_json::to_value;
 use vfs::AbsPath;
@@ -1419,6 +1419,9 @@ pub(crate) fn runnable(
             }
         }
         None => {
+            let Some(path) = snap.file_id_to_file_path(runnable.nav.file_id).parent() else {
+                return Ok(None);
+            };
             let (cargo_args, executable_args) =
                 CargoTargetSpec::runnable_args(snap, None, &runnable.kind, &runnable.cfg);
 
@@ -1433,7 +1436,7 @@ pub(crate) fn runnable(
                     workspace_root: None,
                     override_cargo: config.override_cargo,
                     cargo_args,
-                    cwd: Utf8PathBuf::from("."),
+                    cwd: path.as_path().unwrap().to_path_buf().into(),
                     executable_args,
                     environment: Default::default(),
                 }),

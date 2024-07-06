@@ -897,21 +897,23 @@ pub(crate) fn handle_runnables(
         Some(TargetSpec::ProjectJson(_)) => {}
         None => {
             if !snap.config.linked_or_discovered_projects().is_empty() {
-                let mut cargo_args = vec!["check".to_owned(), "--workspace".to_owned()];
-                cargo_args.extend(config.cargo_extra_args.iter().cloned());
-                res.push(lsp_ext::Runnable {
-                    label: "cargo check --workspace".to_owned(),
-                    location: None,
-                    kind: lsp_ext::RunnableKind::Cargo,
-                    args: lsp_ext::RunnableArgs::Cargo(lsp_ext::CargoRunnableArgs {
-                        workspace_root: None,
-                        cwd: ".".into(),
-                        override_cargo: config.override_cargo,
-                        cargo_args,
-                        executable_args: Vec::new(),
-                        environment: Default::default(),
-                    }),
-                });
+                if let Some(path) = snap.file_id_to_file_path(file_id).parent() {
+                    let mut cargo_args = vec!["check".to_owned(), "--workspace".to_owned()];
+                    cargo_args.extend(config.cargo_extra_args.iter().cloned());
+                    res.push(lsp_ext::Runnable {
+                        label: "cargo check --workspace".to_owned(),
+                        location: None,
+                        kind: lsp_ext::RunnableKind::Cargo,
+                        args: lsp_ext::RunnableArgs::Cargo(lsp_ext::CargoRunnableArgs {
+                            workspace_root: None,
+                            cwd: path.as_path().unwrap().to_path_buf().into(),
+                            override_cargo: config.override_cargo,
+                            cargo_args,
+                            executable_args: Vec::new(),
+                            environment: Default::default(),
+                        }),
+                    });
+                };
             }
         }
     }
