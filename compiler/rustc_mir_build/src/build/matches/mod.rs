@@ -160,8 +160,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Improve branch coverage instrumentation by noting conditions
                 // nested within one or more `!` expressions.
                 // (Skipped if branch coverage is not enabled.)
-                if let Some(branch_info) = this.coverage_branch_info.as_mut() {
-                    branch_info.visit_unary_not(this.thir, expr_id);
+                if let Some(coverage_info) = this.coverage_info.as_mut() {
+                    coverage_info.visit_unary_not(this.thir, expr_id);
                 }
 
                 let local_scope = this.local_scope();

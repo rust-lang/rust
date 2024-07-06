@@ -30,7 +30,7 @@ use rustc_middle::ty::{self, Ty};
 ///
 /// GLB moves "down" the lattice (to smaller values); LUB moves
 /// "up" the lattice (to bigger values).
-pub trait LatticeDir<'f, 'tcx>: PredicateEmittingRelation<'tcx> {
+pub trait LatticeDir<'f, 'tcx>: PredicateEmittingRelation<InferCtxt<'tcx>> {
     fn infcx(&self) -> &'f InferCtxt<'tcx>;
 
     fn cause(&self) -> &ObligationCause<'tcx>;

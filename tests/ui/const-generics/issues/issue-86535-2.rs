@@ -7,6 +7,7 @@ pub trait Foo {
     fn foo() where [(); Self::ASSOC_C]:;
 }
 
+#[allow(dead_code)]
 struct Bar<const N: &'static ()>;
 impl<const N: &'static ()> Foo for Bar<N> {
     const ASSOC_C: usize = 3;

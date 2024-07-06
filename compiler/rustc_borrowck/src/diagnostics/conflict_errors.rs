@@ -39,6 +39,7 @@ use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::error_reporting::FindExprBySpan;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use std::iter;
+use std::ops::ControlFlow;
 
 use crate::borrow_set::TwoPhaseActivation;
 use crate::borrowck_errors;
@@ -784,20 +785,20 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         /// binding declaration within every scope we inspect.
         struct Finder {
             hir_id: hir::HirId,
-            found: bool,
         }
         impl<'hir> Visitor<'hir> for Finder {
-            fn visit_pat(&mut self, pat: &'hir hir::Pat<'hir>) {
+            type Result = ControlFlow<()>;
+            fn visit_pat(&mut self, pat: &'hir hir::Pat<'hir>) -> Self::Result {
                 if pat.hir_id == self.hir_id {
-                    self.found = true;
+                    return ControlFlow::Break(());
                 }
-                hir::intravisit::walk_pat(self, pat);
+                hir::intravisit::walk_pat(self, pat)
             }
-            fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
+            fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) -> Self::Result {
                 if ex.hir_id == self.hir_id {
-                    self.found = true;
+                    return ControlFlow::Break(());
                 }
-                hir::intravisit::walk_expr(self, ex);
+                hir::intravisit::walk_expr(self, ex)
             }
         }
         // The immediate HIR parent of the moved expression. We'll look for it to be a call.
@@ -822,9 +823,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 _ => continue,
             };
             if let Some(&hir_id) = local_hir_id {
-                let mut finder = Finder { hir_id, found: false };
-                finder.visit_expr(e);
-                if finder.found {
+                if (Finder { hir_id }).visit_expr(e).is_break() {
                     // The current scope includes the declaration of the binding we're accessing, we
                     // can't look up any further for loops.
                     break;
@@ -839,9 +838,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                         hir::Node::Expr(hir::Expr {
                             kind: hir::ExprKind::If(cond, ..), ..
                         }) => {
-                            let mut finder = Finder { hir_id: expr.hir_id, found: false };
-                            finder.visit_expr(cond);
-                            if finder.found {
+                            if (Finder { hir_id: expr.hir_id }).visit_expr(cond).is_break() {
                                 // The expression where the move error happened is in a `while let`
                                 // condition Don't suggest clone as it will likely end in an
                                 // infinite loop.
@@ -1837,7 +1834,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
 
         pub struct Holds<'tcx> {
             ty: Ty<'tcx>,
-            holds: bool,
         }
 
         impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Holds<'tcx> {
@@ -1845,7 +1841,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
 
             fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
                 if t == self.ty {
-                    self.holds = true;
+                    return ControlFlow::Break(());
                 }
                 t.super_visit_with(self)
             }
@@ -1863,9 +1859,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 && rcvr_ty == ty
                 && let ty::Ref(_, inner, _) = rcvr_ty.kind()
                 && let inner = inner.peel_refs()
-                && let mut v = (Holds { ty: inner, holds: false })
-                && let _ = v.visit_ty(local_ty)
-                && v.holds
+                && (Holds { ty: inner }).visit_ty(local_ty).is_break()
                 && let None = self.infcx.type_implements_trait_shallow(clone, inner, self.param_env)
             {
                 err.span_label(
@@ -4325,15 +4319,14 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
 }
 
 /// Detect whether one of the provided spans is a statement nested within the top-most visited expr
-struct ReferencedStatementsVisitor<'a>(&'a [Span], bool);
+struct ReferencedStatementsVisitor<'a>(&'a [Span]);
 
-impl<'a, 'v> Visitor<'v> for ReferencedStatementsVisitor<'a> {
-    fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) {
+impl<'v> Visitor<'v> for ReferencedStatementsVisitor<'_> {
+    type Result = ControlFlow<()>;
+    fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) -> Self::Result {
         match s.kind {
-            hir::StmtKind::Semi(expr) if self.0.contains(&expr.span) => {
-                self.1 = true;
-            }
-            _ => {}
+            hir::StmtKind::Semi(expr) if self.0.contains(&expr.span) => ControlFlow::Break(()),
+            _ => ControlFlow::Continue(()),
         }
     }
 }
@@ -4375,9 +4368,7 @@ impl<'b, 'v, 'tcx> Visitor<'v> for ConditionVisitor<'b, 'tcx> {
             hir::ExprKind::If(cond, body, None) => {
                 // `if` expressions with no `else` that initialize the binding might be missing an
                 // `else` arm.
-                let mut v = ReferencedStatementsVisitor(self.spans, false);
-                v.visit_expr(body);
-                if v.1 {
+                if ReferencedStatementsVisitor(self.spans).visit_expr(body).is_break() {
                     self.errors.push((
                         cond.span,
                         format!(
@@ -4394,11 +4385,9 @@ impl<'b, 'v, 'tcx> Visitor<'v> for ConditionVisitor<'b, 'tcx> {
             hir::ExprKind::If(cond, body, Some(other)) => {
                 // `if` expressions where the binding is only initialized in one of the two arms
                 // might be missing a binding initialization.
-                let mut a = ReferencedStatementsVisitor(self.spans, false);
-                a.visit_expr(body);
-                let mut b = ReferencedStatementsVisitor(self.spans, false);
-                b.visit_expr(other);
-                match (a.1, b.1) {
+                let a = ReferencedStatementsVisitor(self.spans).visit_expr(body).is_break();
+                let b = ReferencedStatementsVisitor(self.spans).visit_expr(other).is_break();
+                match (a, b) {
                     (true, true) | (false, false) => {}
                     (true, false) => {
                         if other.span.is_desugaring(DesugaringKind::WhileLoop) {
@@ -4437,11 +4426,7 @@ impl<'b, 'v, 'tcx> Visitor<'v> for ConditionVisitor<'b, 'tcx> {
                 // arms might be missing an initialization.
                 let results: Vec<bool> = arms
                     .iter()
-                    .map(|arm| {
-                        let mut v = ReferencedStatementsVisitor(self.spans, false);
-                        v.visit_arm(arm);
-                        v.1
-                    })
+                    .map(|arm| ReferencedStatementsVisitor(self.spans).visit_arm(arm).is_break())
                     .collect();
                 if results.iter().any(|x| *x) && !results.iter().all(|x| *x) {
                     for (arm, seen) in arms.iter().zip(results) {

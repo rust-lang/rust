@@ -91,21 +91,17 @@ def find_run_type(ctx: GitHubCtx) -> Optional[WorkflowRunType]:
     if ctx.event_name == "pull_request":
         return PRRunType()
     elif ctx.event_name == "push":
-        old_bors_try_build = (
-            ctx.ref in ("refs/heads/try", "refs/heads/try-perf") and
-            ctx.repository == "rust-lang-ci/rust"
+        try_build = ctx.ref in (
+            "refs/heads/try",
+            "refs/heads/try-perf",
+            "refs/heads/automation/bors/try"
         )
-        new_bors_try_build = (
-            ctx.ref == "refs/heads/automation/bors/try" and
-            ctx.repository == "rust-lang/rust"
-        )
-        try_build = old_bors_try_build or new_bors_try_build
 
         if try_build:
             jobs = get_custom_jobs(ctx)
             return TryRunType(custom_jobs=jobs)
 
-        if ctx.ref == "refs/heads/auto" and ctx.repository == "rust-lang-ci/rust":
+        if ctx.ref == "refs/heads/auto":
             return AutoRunType()
 
     return None
