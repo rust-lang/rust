@@ -58,11 +58,11 @@ pub(crate) use region_name::{RegionName, RegionNameSource};
 pub(crate) use rustc_middle::util::CallKind;
 
 pub(super) struct DescribePlaceOpt {
-    pub including_downcast: bool,
+    including_downcast: bool,
 
     /// Enable/Disable tuple fields.
     /// For example `x` tuple. if it's `true` `x.0`. Otherwise `x`
-    pub including_tuple_field: bool,
+    including_tuple_field: bool,
 }
 
 pub(super) struct IncludingTupleField(pub(super) bool);

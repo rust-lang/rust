@@ -645,7 +645,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         }
     }
 
-    pub fn suggest_reborrow(
+    pub(crate) fn suggest_reborrow(
         &self,
         err: &mut Diag<'infcx>,
         span: Span,
@@ -1891,10 +1891,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         struct FindUselessClone<'tcx> {
             tcx: TyCtxt<'tcx>,
             typeck_results: &'tcx ty::TypeckResults<'tcx>,
-            pub clones: Vec<&'tcx hir::Expr<'tcx>>,
+            clones: Vec<&'tcx hir::Expr<'tcx>>,
         }
         impl<'tcx> FindUselessClone<'tcx> {
-            pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+            fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
                 Self { tcx, typeck_results: tcx.typeck(def_id), clones: vec![] }
             }
         }
@@ -1916,7 +1916,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         let body = hir.body(body_id).value;
         expr_finder.visit_expr(body);
 
-        pub struct Holds<'tcx> {
+        struct Holds<'tcx> {
             ty: Ty<'tcx>,
         }
 

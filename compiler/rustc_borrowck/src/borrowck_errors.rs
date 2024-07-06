@@ -9,7 +9,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
 impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
-    pub fn dcx(&self) -> DiagCtxtHandle<'infcx> {
+    pub(crate) fn dcx(&self) -> DiagCtxtHandle<'infcx> {
         self.infcx.dcx()
     }
 
