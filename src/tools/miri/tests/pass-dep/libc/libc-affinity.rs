@@ -116,8 +116,13 @@ fn set_small_cpu_mask() {
     assert_eq!(err, -1);
     assert_eq!(std::io::Error::last_os_error().kind(), std::io::ErrorKind::InvalidInput);
 
-    // any other number of bytes (at least up to `size_of<cpu_set_t>()` will work
-    for i in 1..24 {
+    // on LE systems, any other number of bytes (at least up to `size_of<cpu_set_t>()`) will work.
+    // on BE systems the CPUs 0..8 are stored in the right-most byte of the first chunk. If that
+    // byte is not included, no valid CPUs are configured. We skip those cases.
+    let cpu_zero_included_length =
+        if cfg!(target_endian = "little") { 1 } else { core::mem::size_of::<std::ffi::c_ulong>() };
+
+    for i in cpu_zero_included_length..24 {
         let err = unsafe { sched_setaffinity(PID, i, &cpuset) };
         assert_eq!(err, 0, "fail for {i}");
     }
