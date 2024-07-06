@@ -271,13 +271,6 @@ class TestEnvironment:
             logfile_handler.setLevel(logging.DEBUG)
             logfile_handler.setFormatter(fs)
             logging.getLogger().addHandler(logfile_handler)
-        stream_handler = logging.StreamHandler(sys.stdout)
-        stream_handler.setFormatter(fs)
-        if self.verbose:
-            stream_handler.setLevel(logging.DEBUG)
-        else:
-            stream_handler.setLevel(logging.INFO)
-        logging.getLogger().addHandler(stream_handler)
         logging.getLogger().setLevel(logging.DEBUG)
 
     @property
@@ -927,7 +920,7 @@ class TestEnvironment:
                 )
             else:
                 with open(stdout_path, encoding="utf-8", errors="ignore") as f:
-                    runner_logger.info(f.read())
+                    sys.stdout.write(f.read())
         if stderr_path is not None:
             if not os.path.exists(stderr_path):
                 runner_logger.error(
@@ -935,7 +928,7 @@ class TestEnvironment:
                 )
             else:
                 with open(stderr_path, encoding="utf-8", errors="ignore") as f:
-                    runner_logger.error(f.read())
+                    sys.stderr.write(f.read())
 
         runner_logger.info("Done!")
         return return_code
