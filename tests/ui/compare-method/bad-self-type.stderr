@@ -41,7 +41,7 @@ note: type in trait
 LL |     fn bar(self) -> Option<()>;
    |                     ^^^^^^^^^^
    = note: expected signature `fn(MyFuture) -> Option<()>`
-              found signature `fn(MyFuture)`
+              found signature `fn(MyFuture) -> ()`
 help: change the output type to match the trait
    |
 LL |     fn bar(self) -> Option<()> {}
