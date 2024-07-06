@@ -432,6 +432,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Adt(_def, gen_args) if gen_args.len() > 0 => {
                         bug!("what the ferris are you doing")
                     }
+                    ty::Param(_) => bug!("what the ferris are you doing"),
                     _ => {}
                 }
             }

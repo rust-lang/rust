@@ -1,4 +1,5 @@
 //@ compile-flags: --edition 2021
+//@ failure-status: 101
 use core::ffi;
 
 extern "C" {
