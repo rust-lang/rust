@@ -587,7 +587,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.push_scope(region_scope);
         let mut block;
         let rv = unpack!(block = f(self));
-        unpack!(block = self.pop_scope(region_scope, block));
+        block = self.pop_scope(region_scope, block).into_block();
         self.source_scope = source_scope;
         debug!(?block);
         block.and(rv)
@@ -659,7 +659,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (Some(destination), Some(value)) => {
                 debug!("stmt_expr Break val block_context.push(SubExpr)");
                 self.block_context.push(BlockFrame::SubExpr);
-                unpack!(block = self.expr_into_dest(destination, block, value));
+                block = self.expr_into_dest(destination, block, value).into_block();
                 self.block_context.pop();
             }
             (Some(destination), None) => {
