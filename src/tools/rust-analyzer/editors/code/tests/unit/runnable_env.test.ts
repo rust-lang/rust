@@ -16,7 +16,7 @@ function makeRunnable(label: string): ra.Runnable {
     };
 }
 
-function fakePrepareEnv(runnableName: string, config: RunnableEnvCfg): Record<string, string> {
+function fakePrepareEnv(runnableName: string, config?: RunnableEnvCfg): Record<string, string> {
     const runnable = makeRunnable(runnableName);
     const runnableArgs = runnable.args as ra.CargoRunnableArgs;
     return prepareEnv(runnable.label, runnableArgs, config);

@@ -78,7 +78,7 @@ export function prepareBaseEnv(base?: Record<string, string>): Record<string, st
 export function prepareEnv(
     label: string,
     runnableArgs: ra.CargoRunnableArgs,
-    runnableEnvCfg: RunnableEnvCfg,
+    runnableEnvCfg?: RunnableEnvCfg,
 ): Record<string, string> {
     const env = prepareBaseEnv(runnableArgs.environment);
     const platform = process.platform;

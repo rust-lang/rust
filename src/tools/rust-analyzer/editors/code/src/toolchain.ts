@@ -4,6 +4,7 @@ import * as path from "path";
 import * as readline from "readline";
 import * as vscode from "vscode";
 import { execute, log, memoizeAsync, unwrapNullable, unwrapUndefinable } from "./util";
+import type { CargoRunnableArgs } from "./lsp_ext";
 
 interface CompilationArtifact {
     fileName: string;
@@ -25,9 +26,8 @@ export class Cargo {
     ) {}
 
     // Made public for testing purposes
-    static artifactSpec(args: readonly string[]): ArtifactSpec {
-        const cargoArgs = [...args, "--message-format=json"];
-
+    static artifactSpec(cargoArgs: string[], executableArgs?: string[]): ArtifactSpec {
+        cargoArgs = [...cargoArgs, "--message-format=json"];
         // arguments for a runnable from the quick pick should be updated.
         // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_code_lens
         switch (cargoArgs[0]) {
@@ -47,6 +47,9 @@ export class Cargo {
             // for instance, `crates\rust-analyzer\tests\heavy_tests\main.rs` tests
             // produce 2 artifacts: {"kind": "bin"} and {"kind": "test"}
             result.filter = (artifacts) => artifacts.filter((it) => it.isTest);
+        }
+        if (executableArgs) {
+            cargoArgs.push("--", ...executableArgs);
         }
 
         return result;
@@ -84,8 +87,10 @@ export class Cargo {
         return spec.filter?.(artifacts) ?? artifacts;
     }
 
-    async executableFromArgs(args: readonly string[]): Promise<string> {
-        const artifacts = await this.getArtifacts(Cargo.artifactSpec(args));
+    async executableFromArgs(runnableArgs: CargoRunnableArgs): Promise<string> {
+        const artifacts = await this.getArtifacts(
+            Cargo.artifactSpec(runnableArgs.cargoArgs, runnableArgs.executableArgs),
+        );
 
         if (artifacts.length === 0) {
             throw new Error("No compilation artifacts");

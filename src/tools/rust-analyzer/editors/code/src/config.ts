@@ -10,7 +10,7 @@ export type RunnableEnvCfgItem = {
     env: Record<string, string>;
     platform?: string | string[];
 };
-export type RunnableEnvCfg = undefined | Record<string, string> | RunnableEnvCfgItem[];
+export type RunnableEnvCfg = Record<string, string> | RunnableEnvCfgItem[];
 
 export class Config {
     readonly extensionId = "rust-lang.rust-analyzer";
