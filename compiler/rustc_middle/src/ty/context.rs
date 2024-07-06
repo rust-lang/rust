@@ -347,12 +347,16 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn explicit_super_predicates_of(
         self,
         def_id: DefId,
-    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
+        ty::EarlyBinder::bind(self.explicit_super_predicates_of(def_id).instantiate_identity(self))
+    }
+
+    fn explicit_implied_predicates_of(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
         ty::EarlyBinder::bind(
-            self.explicit_super_predicates_of(def_id)
-                .instantiate_identity(self)
-                .predicates
-                .into_iter(),
+            self.explicit_implied_predicates_of(def_id).instantiate_identity(self),
         )
     }
 
@@ -568,6 +572,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         placeholder: Self::PlaceholderConst,
     ) -> Ty<'tcx> {
         placeholder.find_const_ty_from_env(param_env)
+    }
+
+    fn anonymize_bound_vars<T: TypeFoldable<TyCtxt<'tcx>>>(
+        self,
+        binder: ty::Binder<'tcx, T>,
+    ) -> ty::Binder<'tcx, T> {
+        self.anonymize_bound_vars(binder)
     }
 }
 
