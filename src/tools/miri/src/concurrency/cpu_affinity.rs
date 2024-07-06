@@ -1,5 +1,7 @@
-use crate::bug;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_target::abi::Endian;
+
+use crate::*;
 
 /// The maximum number of CPUs supported by miri.
 ///
@@ -19,41 +21,34 @@ pub(crate) struct CpuAffinityMask([u8; Self::CPU_MASK_BYTES]);
 impl CpuAffinityMask {
     pub(crate) const CPU_MASK_BYTES: usize = MAX_CPUS / 8;
 
-    pub fn new(target: &rustc_target::spec::Target, cpu_count: u32) -> Self {
+    pub fn new<'tcx>(cx: &impl LayoutOf<'tcx>, cpu_count: u32) -> Self {
         let mut this = Self([0; Self::CPU_MASK_BYTES]);
 
         // the default affinity mask includes only the available CPUs
         for i in 0..cpu_count as usize {
-            this.set(target, i);
+            this.set(cx, i);
         }
 
         this
     }
 
-    pub fn chunk_size(target: &rustc_target::spec::Target) -> u64 {
-        // The actual representation of the CpuAffinityMask is [c_ulong; _], in practice either
-        //
-        // - [u32; 32] on 32-bit platforms
-        // - [u64; 16] everywhere else
-
-        // FIXME: this should be `size_of::<core::ffi::c_ulong>()`
-        u64::from(target.pointer_width / 8)
+    pub fn chunk_size<'tcx>(cx: &impl LayoutOf<'tcx>) -> u64 {
+        // The actual representation of the CpuAffinityMask is [c_ulong; _].
+        let ulong = helpers::path_ty_layout(cx, &["core", "ffi", "c_ulong"]);
+        ulong.size.bytes()
     }
 
-    fn set(&mut self, target: &rustc_target::spec::Target, cpu: usize) {
+    fn set<'tcx>(&mut self, cx: &impl LayoutOf<'tcx>, cpu: usize) {
         // we silently ignore CPUs that are out of bounds. This matches the behavior of
         // `sched_setaffinity` with a mask that specifies more than `CPU_SETSIZE` CPUs.
         if cpu >= MAX_CPUS {
             return;
         }
 
-        // The actual representation of the CpuAffinityMask is [c_ulong; _], in practice either
-        //
-        // - [u32; 32] on 32-bit platforms
-        // - [u64; 16] everywhere else
-        //
+        // The actual representation of the CpuAffinityMask is [c_ulong; _].
         // Within the array elements, we need to use the endianness of the target.
-        match Self::chunk_size(target) {
+        let target = &cx.tcx().sess.target;
+        match Self::chunk_size(cx) {
             4 => {
                 let start = cpu / 32 * 4; // first byte of the correct u32
                 let chunk = self.0[start..].first_chunk_mut::<4>().unwrap();
@@ -72,7 +67,7 @@ impl CpuAffinityMask {
                     Endian::Big => (u64::from_be_bytes(*chunk) | 1 << offset).to_be_bytes(),
                 };
             }
-            other => bug!("other chunk sizes are not supported: {other}"),
+            other => bug!("chunk size not supported: {other}"),
         };
     }
 
@@ -80,13 +75,13 @@ impl CpuAffinityMask {
         self.0.as_slice()
     }
 
-    pub fn from_array(
-        target: &rustc_target::spec::Target,
+    pub fn from_array<'tcx>(
+        cx: &impl LayoutOf<'tcx>,
         cpu_count: u32,
         bytes: [u8; Self::CPU_MASK_BYTES],
     ) -> Option<Self> {
         // mask by what CPUs are actually available
-        let default = Self::new(target, cpu_count);
+        let default = Self::new(cx, cpu_count);
         let masked = std::array::from_fn(|i| bytes[i] & default.0[i]);
 
         // at least one thread must be set for the input to be valid

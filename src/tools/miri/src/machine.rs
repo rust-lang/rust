@@ -643,10 +643,8 @@ impl<'tcx> MiriMachine<'tcx> {
         let threads = ThreadManager::default();
         let mut thread_cpu_affinity = FxHashMap::default();
         if matches!(&*tcx.sess.target.os, "linux" | "freebsd" | "android") {
-            thread_cpu_affinity.insert(
-                threads.active_thread(),
-                CpuAffinityMask::new(&tcx.sess.target, config.num_cpus),
-            );
+            thread_cpu_affinity
+                .insert(threads.active_thread(), CpuAffinityMask::new(&layout_cx, config.num_cpus));
         }
         MiriMachine {
             tcx,

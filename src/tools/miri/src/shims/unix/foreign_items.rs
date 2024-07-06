@@ -594,11 +594,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => throw_unsup_format!("`sched_getaffinity` is only supported with a pid of 0 (indicating the current thread)"),
                 };
 
-                // The actual representation of the CpuAffinityMask is [c_ulong; _], in practice either
-                //
-                // - [u32; 32] on 32-bit platforms
-                // - [u64; 16] everywhere else
-                let chunk_size = CpuAffinityMask::chunk_size(&this.tcx.sess.target);
+                // The mask is stored in chunks, and the size must be a whole number of chunks.
+                let chunk_size = CpuAffinityMask::chunk_size(this);
 
                 if this.ptr_is_null(mask)? {
                     let einval = this.eval_libc("EFAULT");
@@ -643,7 +640,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => throw_unsup_format!("`sched_setaffinity` is only supported with a pid of 0 (indicating the current thread)"),
                 };
 
-                #[allow(clippy::map_entry)]
                 if this.ptr_is_null(mask)? {
                     let einval = this.eval_libc("EFAULT");
                     this.set_last_error(einval)?;
@@ -652,9 +648,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // NOTE: cpusetsize might be smaller than `CpuAffinityMask::CPU_MASK_BYTES`
                     let bits_slice = this.read_bytes_ptr_strip_provenance(mask, Size::from_bytes(cpusetsize))?;
                     // This ignores the bytes beyond `CpuAffinityMask::CPU_MASK_BYTES`
-                    let bits_array: [u8;CpuAffinityMask::CPU_MASK_BYTES] =
+                    let bits_array: [u8; CpuAffinityMask::CPU_MASK_BYTES] =
                         std::array::from_fn(|i| bits_slice.get(i).copied().unwrap_or(0));
-                    match CpuAffinityMask::from_array(&this.tcx.sess.target, this.machine.num_cpus, bits_array) {
+                    match CpuAffinityMask::from_array(this, this.machine.num_cpus, bits_array) {
                         Some(cpuset) => {
                             this.machine.thread_cpu_affinity.insert(thread_id, cpuset);
                             this.write_scalar(Scalar::from_i32(0), dest)?;

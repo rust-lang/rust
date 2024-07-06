@@ -282,7 +282,8 @@ pub fn create_ecx<'tcx>(
     })?;
 
     // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
-    let sentinel = ecx.try_resolve_path(&["core", "ascii", "escape_default"], Namespace::ValueNS);
+    let sentinel =
+        helpers::try_resolve_path(tcx, &["core", "ascii", "escape_default"], Namespace::ValueNS);
     if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
         tcx.dcx().fatal(
             "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing. \
