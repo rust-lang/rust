@@ -6,5 +6,6 @@
 
 pub mod canonicalizer;
 pub mod delegate;
+pub mod relate;
 pub mod resolve;
 pub mod solve;

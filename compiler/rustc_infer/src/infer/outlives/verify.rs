@@ -1,10 +1,10 @@
-use crate::infer::outlives::components::{compute_alias_components_recursive, Component};
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::region_constraints::VerifyIfEq;
 use crate::infer::{GenericKind, VerifyBound};
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
+use rustc_type_ir::outlives::{compute_alias_components_recursive, Component};
 
 use smallvec::smallvec;
 
@@ -139,7 +139,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
     fn bound_from_components(
         &self,
-        components: &[Component<'tcx>],
+        components: &[Component<TyCtxt<'tcx>>],
         visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> VerifyBound<'tcx> {
         let mut bounds = components
@@ -158,7 +158,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
     fn bound_from_single_component(
         &self,
-        component: &Component<'tcx>,
+        component: &Component<TyCtxt<'tcx>>,
         visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> VerifyBound<'tcx> {
         match *component {

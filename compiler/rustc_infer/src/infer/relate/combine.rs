@@ -18,11 +18,13 @@
 //! On success, the  LUB/GLB operations return the appropriate bound. The
 //! return value of `Equate` or `Sub` shouldn't really be used.
 
+pub use rustc_next_trait_solver::relate::combine::*;
+
 use super::glb::Glb;
 use super::lub::Lub;
 use super::type_relating::TypeRelating;
+use super::RelateResult;
 use super::StructurallyRelateAliases;
-use super::{RelateResult, TypeRelation};
 use crate::infer::relate;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace};
 use crate::traits::{Obligation, PredicateObligation};
@@ -32,7 +34,6 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt, TypeVisitableExt, Upcast};
 use rustc_middle::ty::{IntType, UintType};
-use rustc_span::Span;
 
 #[derive(Clone)]
 pub struct CombineFields<'infcx, 'tcx> {
@@ -76,7 +77,7 @@ impl<'tcx> InferCtxt<'tcx> {
         b: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
-        R: PredicateEmittingRelation<'tcx>,
+        R: PredicateEmittingRelation<InferCtxt<'tcx>>,
     {
         debug_assert!(!a.has_escaping_bound_vars());
         debug_assert!(!b.has_escaping_bound_vars());
@@ -171,7 +172,7 @@ impl<'tcx> InferCtxt<'tcx> {
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>>
     where
-        R: PredicateEmittingRelation<'tcx>,
+        R: PredicateEmittingRelation<InferCtxt<'tcx>>,
     {
         debug!("{}.consts({:?}, {:?})", relation.tag(), a, b);
         debug_assert!(!a.has_escaping_bound_vars());
@@ -322,31 +323,4 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
                 .map(|to_pred| Goal::new(self.infcx.tcx, self.param_env, to_pred)),
         )
     }
-}
-
-pub trait PredicateEmittingRelation<'tcx>: TypeRelation<TyCtxt<'tcx>> {
-    fn span(&self) -> Span;
-
-    fn param_env(&self) -> ty::ParamEnv<'tcx>;
-
-    /// Whether aliases should be related structurally. This is pretty much
-    /// always `No` unless you're equating in some specific locations of the
-    /// new solver. See the comments in these use-cases for more details.
-    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases;
-
-    /// Register obligations that must hold in order for this relation to hold
-    fn register_goals(
-        &mut self,
-        obligations: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
-    );
-
-    /// Register predicates that must hold in order for this relation to hold.
-    /// This uses the default `param_env` of the obligation.
-    fn register_predicates(
-        &mut self,
-        obligations: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
-    );
-
-    /// Register `AliasRelate` obligation(s) that both types must be related to each other.
-    fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>);
 }

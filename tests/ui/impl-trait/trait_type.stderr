@@ -5,7 +5,7 @@ LL |    fn fmt(&self, x: &str) -> () { }
    |                     ^^^^ types differ in mutability
    |
    = note: expected signature `fn(&MyType, &mut Formatter<'_>) -> Result<(), std::fmt::Error>`
-              found signature `fn(&MyType, &str)`
+              found signature `fn(&MyType, &str) -> ()`
 help: change the parameter type to match the trait
    |
 LL |    fn fmt(&self, x: &mut Formatter<'_>) -> () { }

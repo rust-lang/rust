@@ -1,12 +1,12 @@
 use smallvec::smallvec;
 
-use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{self, Obligation, ObligationCauseCode, PredicateObligation};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::ToPolyTraitRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
+use rustc_type_ir::outlives::{push_outlives_components, Component};
 
 pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,

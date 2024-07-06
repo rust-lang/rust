@@ -4168,6 +4168,7 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_middle",
+ "rustc_next_trait_solver",
  "rustc_span",
  "rustc_target",
  "rustc_type_ir",
