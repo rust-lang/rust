@@ -666,7 +666,7 @@ pub fn trait_ref_is_local_or_fundamental<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
 ) -> bool {
-    trait_ref.def_id.is_local() || tcx.has_attr(trait_ref.def_id, sym::fundamental)
+    trait_ref.def_id.is_local() || tcx.trait_def(trait_ref.def_id).is_fundamental
 }
 
 #[derive(Debug, Copy, Clone)]
