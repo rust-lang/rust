@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::has_drop;
 use clippy_utils::{
-    any_parent_is_automatically_derived, is_inside_always_const_context, is_lint_allowed, path_to_local, peel_blocks,
+    in_automatically_derived, is_inside_always_const_context, is_lint_allowed, path_to_local, peel_blocks,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -187,7 +187,7 @@ impl NoEffect {
                 && has_no_effect(cx, init)
                 && let PatKind::Binding(_, hir_id, ident, _) = local.pat.kind
                 && ident.name.to_ident_string().starts_with('_')
-                && !any_parent_is_automatically_derived(cx.tcx, local.hir_id)
+                && !in_automatically_derived(cx.tcx, local.hir_id)
             {
                 if let Some(l) = self.local_bindings.last_mut() {
                     l.push(hir_id);
