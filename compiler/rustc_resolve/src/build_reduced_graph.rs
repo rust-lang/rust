@@ -316,7 +316,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
     }
 
-    fn insert_field_def_ids(&mut self, def_id: LocalDefId, fields: &[ast::FieldDef]) {
+    fn insert_field_idents(&mut self, def_id: LocalDefId, fields: &[ast::FieldDef]) {
         if fields.iter().any(|field| field.is_placeholder) {
             // The fields are not expanded yet.
             return;
@@ -652,7 +652,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         let def_id = feed.key();
 
         // Record field names for error reporting.
-        self.insert_field_def_ids(def_id, fields);
+        self.insert_field_idents(def_id, fields);
         self.insert_field_visibilities_local(def_id.to_def_id(), fields);
 
         for field in fields {
@@ -1520,7 +1520,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
 
         // Record field names for error reporting.
-        self.insert_field_def_ids(def_id, variant.data.fields());
+        self.insert_field_idents(def_id, variant.data.fields());
         self.insert_field_visibilities_local(def_id.to_def_id(), variant.data.fields());
 
         visit::walk_variant(self, variant);
