@@ -842,7 +842,7 @@ impl<T, A: Allocator> Box<[T], A> {
     ///
     /// use std::alloc::System;
     ///
-    /// let mut values = Box::<[u32]>::try_new_uninit_slice_in(3, System)?;
+    /// let mut values = Box::<[u32], _>::try_new_uninit_slice_in(3, System)?;
     /// let values = unsafe {
     ///     // Deferred initialization:
     ///     values[0].as_mut_ptr().write(1);
@@ -885,7 +885,7 @@ impl<T, A: Allocator> Box<[T], A> {
     ///
     /// use std::alloc::System;
     ///
-    /// let values = Box::<[u32]>::try_new_zeroed_slice_in(3, System)?;
+    /// let values = Box::<[u32], _>::try_new_zeroed_slice_in(3, System)?;
     /// let values = unsafe { values.assume_init() };
     ///
     /// assert_eq!(*values, [0, 0, 0]);
