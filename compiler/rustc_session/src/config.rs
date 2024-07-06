@@ -19,8 +19,8 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};
+use rustc_target::spec::{has_ext_ignore_case, SplitDebuginfo, Target, TargetTriple};
 use rustc_target::spec::{FramePointer, LinkSelfContainedComponents, LinkerFeatures};
-use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple};
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
 };
@@ -1991,7 +1991,7 @@ fn collect_print_requests(
 
 pub fn parse_target_triple(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> TargetTriple {
     match matches.opt_str("target") {
-        Some(target) if target.ends_with(".json") => {
+        Some(target) if has_ext_ignore_case(&target, "json") => {
             let path = Path::new(&target);
             TargetTriple::from_path(path).unwrap_or_else(|_| {
                 early_dcx.early_fatal(format!("target file {path:?} does not exist"))

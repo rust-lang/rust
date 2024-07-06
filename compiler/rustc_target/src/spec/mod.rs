@@ -46,6 +46,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::ffi::OsStr;
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
@@ -3715,4 +3716,12 @@ impl fmt::Display for TargetTriple {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.debug_triple())
     }
+}
+
+/// Helper function to check if the given `s` ends with `ext` __case-insensitive__.
+/// The `ext` should not starts with a dot.
+///
+/// Does not check if the path exists.
+pub fn has_ext_ignore_case<S: AsRef<OsStr>, Ext: AsRef<OsStr>>(s: S, ext: Ext) -> bool {
+    Path::new(&s).extension().is_some_and(|s| s.eq_ignore_ascii_case(ext))
 }
