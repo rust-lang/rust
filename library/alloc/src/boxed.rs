@@ -839,7 +839,7 @@ impl<T, A: Allocator> Box<[T], A> {
     ///
     /// ```
     /// #![feature(allocator_api, new_uninit)]
-    /// 
+    ///
     /// use std::alloc::System;
     ///
     /// let mut values = Box::<[u32]>::try_new_uninit_slice(3, System)?;
@@ -856,7 +856,10 @@ impl<T, A: Allocator> Box<[T], A> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn try_new_uninit_slice_in(len: usize, alloc: A) -> Result<Box<[mem::MaybeUninit<T>], A>, AllocError> {
+    pub fn try_new_uninit_slice_in(
+        len: usize,
+        alloc: A,
+    ) -> Result<Box<[mem::MaybeUninit<T>], A>, AllocError> {
         let ptr = if T::IS_ZST || len == 0 {
             NonNull::dangling()
         } else {
@@ -879,7 +882,7 @@ impl<T, A: Allocator> Box<[T], A> {
     ///
     /// ```
     /// #![feature(allocator_api, new_uninit)]
-    /// 
+    ///
     /// use std::alloc::System;
     ///
     /// let values = Box::<[u32]>::try_new_zeroed_slice(3, System)?;
@@ -892,7 +895,10 @@ impl<T, A: Allocator> Box<[T], A> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn try_new_zeroed_slice_in(len: usize, alloc: A) -> Result<Box<[mem::MaybeUninit<T>], A>, AllocError> {
+    pub fn try_new_zeroed_slice_in(
+        len: usize,
+        alloc: A,
+    ) -> Result<Box<[mem::MaybeUninit<T>], A>, AllocError> {
         let ptr = if T::IS_ZST || len == 0 {
             NonNull::dangling()
         } else {
