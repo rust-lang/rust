@@ -229,6 +229,34 @@ impl<I: Interner, O: Elaboratable<I>> Iterator for Elaborator<I, O> {
 // Supertrait iterator
 ///////////////////////////////////////////////////////////////////////////
 
+/// Computes the def-ids of the transitive supertraits of `trait_def_id`. This (intentionally)
+/// does not compute the full elaborated super-predicates but just the set of def-ids. It is used
+/// to identify which traits may define a given associated type to help avoid cycle errors,
+/// and to make size estimates for vtable layout computation.
+pub fn supertrait_def_ids<I: Interner>(
+    cx: I,
+    trait_def_id: I::DefId,
+) -> impl Iterator<Item = I::DefId> {
+    let mut set = HashSet::default();
+    let mut stack = vec![trait_def_id];
+
+    set.insert(trait_def_id);
+
+    std::iter::from_fn(move || {
+        let trait_def_id = stack.pop()?;
+
+        for (predicate, _) in cx.explicit_super_predicates_of(trait_def_id).iter_identity() {
+            if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder() {
+                if set.insert(data.def_id()) {
+                    stack.push(data.def_id());
+                }
+            }
+        }
+
+        Some(trait_def_id)
+    })
+}
+
 pub fn supertraits<I: Interner>(
     tcx: I,
     trait_ref: ty::Binder<I, ty::TraitRef<I>>,

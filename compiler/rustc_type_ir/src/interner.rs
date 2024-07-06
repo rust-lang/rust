@@ -253,9 +253,6 @@ pub trait Interner:
 
     fn trait_may_be_implemented_via_object(self, trait_def_id: Self::DefId) -> bool;
 
-    fn supertrait_def_ids(self, trait_def_id: Self::DefId)
-    -> impl IntoIterator<Item = Self::DefId>;
-
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;
 
     fn is_general_coroutine(self, coroutine_def_id: Self::DefId) -> bool;
