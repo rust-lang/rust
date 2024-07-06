@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: 8e6e340f2899b5e9
+lsp/ext.rs hash: 3605fab9e66e14a0
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -376,12 +376,34 @@ rust-analyzer supports two `kind`s of runnables, `"cargo"` and `"shell"`. The `a
 
 ```typescript
 {
+    /**
+     * Environment variables to set before running the command.
+     */
+    environment: Record<string, string>;
+    /**
+     * The working directory to run the command in.
+     */
+    cwd: string;
+    /**
+     * The workspace root directory of the cargo project.
+     */
     workspaceRoot?: string;
-    cwd?: string;
+    /**
+     * The cargo command to run.
+     */
     cargoArgs: string[];
+    /**
+     * Extra arguments to pass to cargo.
+     */
+    // What is the point of this when cargoArgs exists?
     cargoExtraArgs: string[];
+    /**
+     * Arguments to pass to the executable, these will be passed to the command after a `--` argument.
+     */
     executableArgs: string[];
-    expectTest?: boolean;
+    /**
+     * Command to execute instead of `cargo`.
+     */
     overrideCargo?: string;
 }
 ```
@@ -390,10 +412,17 @@ The args for `"shell"` look like this:
 
 ```typescript
 {
+    /**
+     * Environment variables to set before running the command.
+     */
+    environment: Record<string, string>;
+    /**
+     * The working directory to run the command in.
+     */
+    cwd: string;
     kind: string;
     program: string;
     args: string[];
-    cwd: string;
 }
 ```
 

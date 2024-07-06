@@ -235,22 +235,46 @@ type RunnableShell = {
     args: ShellRunnableArgs;
 };
 
+export type CommonRunnableArgs = {
+    /**
+     * Environment variables to set before running the command.
+     */
+    environment: Record<string, string>;
+    /**
+     * The working directory to run the command in.
+     */
+    cwd: string;
+};
+
 export type ShellRunnableArgs = {
     kind: string;
     program: string;
     args: string[];
-    cwd: string;
-};
+} & CommonRunnableArgs;
 
 export type CargoRunnableArgs = {
+    /**
+     * The workspace root directory of the cargo project.
+     */
     workspaceRoot?: string;
+    /**
+     * The cargo command to run.
+     */
     cargoArgs: string[];
-    cwd: string;
+    /**
+     * Extra arguments to pass to cargo.
+     */
+    // What is the point of this when cargoArgs exists?
     cargoExtraArgs: string[];
+    /**
+     * Arguments to pass to the executable, these will be passed to the command after a `--` argument.
+     */
     executableArgs: string[];
-    expectTest?: boolean;
+    /**
+     * Command to execute instead of `cargo`.
+     */
     overrideCargo?: string;
-};
+} & CommonRunnableArgs;
 
 export type RunnablesParams = {
     textDocument: lc.TextDocumentIdentifier;

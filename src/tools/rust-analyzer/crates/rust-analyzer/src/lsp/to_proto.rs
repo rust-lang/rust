@@ -15,7 +15,7 @@ use ide::{
 };
 use ide_db::{rust_doc::format_docs, FxHasher};
 use itertools::Itertools;
-use paths::{Utf8Component, Utf8Prefix};
+use paths::{Utf8Component, Utf8PathBuf, Utf8Prefix};
 use semver::VersionReq;
 use serde_json::to_value;
 use vfs::AbsPath;
@@ -1390,10 +1390,10 @@ pub(crate) fn runnable(
                     workspace_root: Some(workspace_root.into()),
                     override_cargo: config.override_cargo,
                     cargo_args,
-                    cwd: Some(cwd.into()),
+                    cwd: cwd.into(),
                     cargo_extra_args: config.cargo_extra_args,
                     executable_args,
-                    expect_test: None,
+                    environment: Default::default(),
                 }),
             }))
         }
@@ -1407,6 +1407,7 @@ pub(crate) fn runnable(
                         program: json_shell_runnable_args.program,
                         args: json_shell_runnable_args.args,
                         cwd: json_shell_runnable_args.cwd,
+                        environment: Default::default(),
                     };
                     Ok(Some(lsp_ext::Runnable {
                         label,
@@ -1433,10 +1434,10 @@ pub(crate) fn runnable(
                     workspace_root: None,
                     override_cargo: config.override_cargo,
                     cargo_args,
-                    cwd: None,
+                    cwd: Utf8PathBuf::from("."),
                     cargo_extra_args: config.cargo_extra_args,
                     executable_args,
-                    expect_test: None,
+                    environment: Default::default(),
                 }),
             }))
         }
