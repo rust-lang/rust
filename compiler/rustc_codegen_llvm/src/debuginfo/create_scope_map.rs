@@ -15,7 +15,7 @@ use crate::llvm::debuginfo::{DILocation, DIScope};
 
 /// Produces DIScope DIEs for each MIR Scope which has variables defined in it.
 // FIXME(eddyb) almost all of this should be in `rustc_codegen_ssa::mir::debuginfo`.
-pub fn compute_mir_scopes<'ll, 'tcx>(
+pub(crate) fn compute_mir_scopes<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,

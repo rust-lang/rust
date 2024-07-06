@@ -40,13 +40,13 @@ use crate::llvm::debuginfo::{
 use crate::value::Value;
 
 mod create_scope_map;
-pub mod gdb;
-pub mod metadata;
+mod gdb;
+pub(crate) mod metadata;
 mod namespace;
 mod utils;
 
-pub use self::create_scope_map::compute_mir_scopes;
-pub use self::metadata::build_global_var_di_node;
+use self::create_scope_map::compute_mir_scopes;
+pub(crate) use self::metadata::build_global_var_di_node;
 
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;
@@ -54,7 +54,7 @@ const DW_TAG_auto_variable: c_uint = 0x100;
 const DW_TAG_arg_variable: c_uint = 0x101;
 
 /// A context object for maintaining all state needed by the debuginfo module.
-pub struct CodegenUnitDebugContext<'ll, 'tcx> {
+pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     llcontext: &'ll llvm::Context,
     llmod: &'ll llvm::Module,
     builder: &'ll mut DIBuilder<'ll>,
@@ -74,7 +74,7 @@ impl Drop for CodegenUnitDebugContext<'_, '_> {
 }
 
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
-    pub fn new(llmod: &'ll llvm::Module) -> Self {
+    pub(crate) fn new(llmod: &'ll llvm::Module) -> Self {
         debug!("CodegenUnitDebugContext::new");
         let builder = unsafe { llvm::LLVMRustDIBuilderCreate(llmod) };
         // DIBuilder inherits context from the module, so we'd better use the same one
@@ -90,7 +90,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
         }
     }
 
-    pub fn finalize(&self, sess: &Session) {
+    pub(crate) fn finalize(&self, sess: &Session) {
         unsafe {
             llvm::LLVMRustDIBuilderFinalize(self.builder);
 
@@ -134,7 +134,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
 }
 
 /// Creates any deferred debug metadata nodes
-pub fn finalize(cx: &CodegenCx<'_, '_>) {
+pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     if let Some(dbg_cx) = &cx.dbg_cx {
         debug!("finalize");
 
@@ -241,13 +241,13 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
 // FIXME(eddyb) rename this to better indicate it's a duplicate of
 // `rustc_span::Loc` rather than `DILocation`, perhaps by making
 // `lookup_char_pos` return the right information instead.
-pub struct DebugLoc {
+struct DebugLoc {
     /// Information about the original source file.
-    pub file: Lrc<SourceFile>,
+    file: Lrc<SourceFile>,
     /// The (1-based) line number.
-    pub line: u32,
+    line: u32,
     /// The (1-based) column number.
-    pub col: u32,
+    col: u32,
 }
 
 impl CodegenCx<'_, '_> {
@@ -255,7 +255,7 @@ impl CodegenCx<'_, '_> {
     // FIXME(eddyb) rename this to better indicate it's a duplicate of
     // `lookup_char_pos` rather than `dbg_loc`, perhaps by making
     // `lookup_char_pos` return the right information instead.
-    pub fn lookup_debug_loc(&self, pos: BytePos) -> DebugLoc {
+    fn lookup_debug_loc(&self, pos: BytePos) -> DebugLoc {
         let (file, line, col) = match self.sess().source_map().lookup_line(pos) {
             Ok(SourceFileAndLine { sf: file, line }) => {
                 let line_pos = file.lines()[line];

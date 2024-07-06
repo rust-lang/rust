@@ -29,7 +29,7 @@ use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use crate::{base, debuginfo};
 
-pub fn const_alloc_to_llvm<'ll>(
+pub(crate) fn const_alloc_to_llvm<'ll>(
     cx: &CodegenCx<'ll, '_>,
     alloc: ConstAllocation<'_>,
     is_static: bool,
