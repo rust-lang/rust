@@ -11,11 +11,13 @@ use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, Diag, DiagCtxtHandle, PResult};
+use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::ParseSess;
+use rustc_session::parse::SymbolGallery;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::{with_metavar_spans, Span, Symbol, SyntaxContext};
+use rustc_span::{with_metavar_spans, Span, SyntaxContext};
 use smallvec::{smallvec, SmallVec};
 use std::mem;
 
@@ -312,7 +314,16 @@ pub(super) fn transcribe<'a>(
 
             // Replace meta-variable expressions with the result of their expansion.
             mbe::TokenTree::MetaVarExpr(sp, expr) => {
-                transcribe_metavar_expr(dcx, expr, interp, &mut marker, &repeats, &mut result, sp)?;
+                transcribe_metavar_expr(
+                    dcx,
+                    expr,
+                    interp,
+                    &mut marker,
+                    &repeats,
+                    &mut result,
+                    sp,
+                    &psess.symbol_gallery,
+                )?;
             }
 
             // If we are entering a new delimiter, we push its contents to the `stack` to be
@@ -669,6 +680,7 @@ fn transcribe_metavar_expr<'a>(
     repeats: &[(usize, usize)],
     result: &mut Vec<TokenTree>,
     sp: &DelimSpan,
+    symbol_gallery: &SymbolGallery,
 ) -> PResult<'a, ()> {
     let mut visited_span = || {
         let mut span = sp.entire();
@@ -680,16 +692,26 @@ fn transcribe_metavar_expr<'a>(
             let mut concatenated = String::new();
             for element in elements.into_iter() {
                 let string = match element {
-                    MetaVarExprConcatElem::Ident(ident) => ident.to_string(),
-                    MetaVarExprConcatElem::Var(ident) => extract_ident(dcx, *ident, interp)?,
+                    MetaVarExprConcatElem::Ident(elem) => elem.to_string(),
+                    MetaVarExprConcatElem::Literal(elem) => elem.as_str().into(),
+                    MetaVarExprConcatElem::Var(elem) => extract_ident(dcx, *elem, interp)?,
                 };
                 concatenated.push_str(&string);
             }
+            let symbol = nfc_normalize(&concatenated);
+            let concatenated_span = visited_span();
+            if !rustc_lexer::is_ident(symbol.as_str()) {
+                return Err(dcx.struct_span_err(
+                    concatenated_span,
+                    "`${concat(..)}` is not generating a valid identifier",
+                ));
+            }
+            symbol_gallery.insert(symbol, concatenated_span);
             // The current implementation marks the span as coming from the macro regardless of
             // contexts of the concatenated identifiers but this behavior may change in the
             // future.
             result.push(TokenTree::Token(
-                Token::from_ast_ident(Ident::new(Symbol::intern(&concatenated), visited_span())),
+                Token::from_ast_ident(Ident::new(symbol, concatenated_span)),
                 Spacing::Alone,
             ));
         }
