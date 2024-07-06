@@ -63,4 +63,27 @@ pub fn main() {
     if let Some(&mut x) = &Some(&mut 0) {
         let _: &u32 = x;
     }
+
+    fn generic<R: Ref>() -> (R, bool) {
+        R::meow()
+    }
+
+    trait Ref: Sized {
+        fn meow() -> (Self, bool);
+    }
+
+    impl Ref for &'static [(); 0] {
+        fn meow() -> (Self, bool) {
+            (&[], false)
+        }
+    }
+
+    impl Ref for &'static mut [(); 0] {
+        fn meow() -> (Self, bool) {
+            (&mut [], true)
+        }
+    }
+
+    let (&_, b) = generic();
+    assert!(!b);
 }
