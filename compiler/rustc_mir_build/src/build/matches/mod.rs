@@ -626,7 +626,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
-                unpack!(block = self.expr_into_dest(place, block, initializer_id));
+                block = self.expr_into_dest(place, block, initializer_id).unpack_block_and_unit();
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
@@ -665,7 +665,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
-                unpack!(block = self.expr_into_dest(place, block, initializer_id));
+                block = self.expr_into_dest(place, block, initializer_id).unpack_block_and_unit();
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);

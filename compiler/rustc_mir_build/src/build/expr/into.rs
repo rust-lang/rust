@@ -107,7 +107,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // If there is an `else` arm, lower it into `else_blk`.
                 if let Some(else_expr) = else_opt {
-                    unpack!(else_blk = this.expr_into_dest(destination, else_blk, else_expr));
+                    else_blk = this
+                        .expr_into_dest(destination, else_blk, else_expr)
+                        .unpack_block_and_unit();
                 } else {
                     // There is no `else` arm, so we know both arms have type `()`.
                     // Generate the implicit `else {}` by assigning unit.
@@ -508,7 +510,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // These cases don't actually need a destination
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
-                unpack!(block = this.stmt_expr(block, expr_id, None));
+                block = this.stmt_expr(block, expr_id, None).unpack_block_and_unit();
                 this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
                 block.unit()
             }
@@ -517,7 +519,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Break { .. }
             | ExprKind::Return { .. }
             | ExprKind::Become { .. } => {
-                unpack!(block = this.stmt_expr(block, expr_id, None));
+                block = this.stmt_expr(block, expr_id, None).unpack_block_and_unit();
                 // No assign, as these have type `!`.
                 block.unit()
             }

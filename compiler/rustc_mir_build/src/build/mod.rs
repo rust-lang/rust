@@ -584,7 +584,7 @@ fn construct_const<'a, 'tcx>(
         Builder::new(thir, infcx, def, hir_id, span, 0, const_ty, const_ty_span, None);
 
     let mut block = START_BLOCK;
-    unpack!(block = builder.expr_into_dest(Place::return_place(), block, expr));
+    block = builder.expr_into_dest(Place::return_place(), block, expr).unpack_block_and_unit();
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -966,7 +966,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some((Some(&place), span)),
                     );
                     let place_builder = PlaceBuilder::from(local);
-                    unpack!(block = self.place_into_pattern(block, pat, place_builder, false));
+                    block = self
+                        .place_into_pattern(block, pat, place_builder, false)
+                        .unpack_block_and_unit();
                 }
             }
             self.source_scope = original_source_scope;

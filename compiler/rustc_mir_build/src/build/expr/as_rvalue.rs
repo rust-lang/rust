@@ -185,13 +185,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, Place::from(result), box_);
 
                 // initialize the box contents:
-                unpack!(
-                    block = this.expr_into_dest(
-                        this.tcx.mk_place_deref(Place::from(result)),
-                        block,
-                        value,
-                    )
-                );
+                block = this
+                    .expr_into_dest(this.tcx.mk_place_deref(Place::from(result)), block, value)
+                    .unpack_block_and_unit();
                 block.and(Rvalue::Use(Operand::Move(Place::from(result))))
             }
             ExprKind::Cast { source } => {
