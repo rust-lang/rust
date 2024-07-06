@@ -215,7 +215,7 @@ python x.py build
 
 Right now, building Rust only works with some known versions of Visual Studio.
 If you have a more recent version installed and the build system doesn't
-understand, you may need to force rustbuild to use an older version.
+understand, you may need to force bootstrap to use an older version.
 This can be done by manually calling the appropriate vcvars file before running
 the bootstrap.
 

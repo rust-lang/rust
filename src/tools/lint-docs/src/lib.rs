@@ -532,7 +532,7 @@ impl<'a> LintExtractor<'a> {
         }
         add_rename_redirect(level, &mut result);
         let out_path = self.out_path.join("listing").join(level.doc_filename());
-        // Delete the output because rustbuild uses hard links in its copies.
+        // Delete the output because bootstrap uses hard links in its copies.
         let _ = fs::remove_file(&out_path);
         fs::write(&out_path, result)
             .map_err(|e| format!("could not write to {}: {}", out_path.display(), e))?;

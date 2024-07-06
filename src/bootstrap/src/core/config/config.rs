@@ -658,8 +658,7 @@ impl Merge for TomlConfig {
     }
 }
 
-// We are using a decl macro instead of a derive proc macro here to reduce the compile time of
-// rustbuild.
+// We are using a decl macro instead of a derive proc macro here to reduce the compile time of bootstrap.
 macro_rules! define_config {
     ($(#[$attr:meta])* struct $name:ident {
         $($field:ident: Option<$field_ty:ty> = $field_key:literal,)*
@@ -704,7 +703,7 @@ macro_rules! define_config {
 
         // The following is a trimmed version of what serde_derive generates. All parts not relevant
         // for toml deserialization have been removed. This reduces the binary size and improves
-        // compile time of rustbuild.
+        // compile time of bootstrap.
         impl<'de> Deserialize<'de> for $name {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where

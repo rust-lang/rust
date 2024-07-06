@@ -1,4 +1,4 @@
-//! Documentation generation for rustbuilder.
+//! Documentation generation for bootstrap.
 //!
 //! This module implements generation for all bits and pieces of documentation
 //! for the Rust project. This notably includes suites like the rust book, the
