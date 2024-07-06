@@ -1,7 +1,7 @@
 parse_add_paren = try adding parentheses
 
 parse_ambiguous_range_pattern = the range pattern here has ambiguous interpretation
-    .suggestion = add parentheses to clarify the precedence
+parse_ambiguous_range_pattern_suggestion = add parentheses to clarify the precedence
 
 parse_array_brackets_instead_of_braces = this is a block expression, not an array
     .suggestion = to make an array, use square brackets instead of curly braces
@@ -644,7 +644,7 @@ parse_parentheses_with_struct_fields = invalid `struct` delimiters or `fn` call 
     .suggestion_no_fields_for_fn = if `{$type}` is a function, use the arguments directly
 
 parse_parenthesized_lifetime = parenthesized lifetime bounds are not supported
-    .suggestion = remove the parentheses
+parse_parenthesized_lifetime_suggestion = remove the parentheses
 
 parse_path_single_colon = path separator must be a double colon
     .suggestion = use a double colon instead

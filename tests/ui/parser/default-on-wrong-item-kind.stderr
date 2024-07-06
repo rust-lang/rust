@@ -154,11 +154,13 @@ error: extern items cannot be `const`
   --> $DIR/default-on-wrong-item-kind.rs:38:19
    |
 LL |     default const foo: u8;
-   |     --------------^^^
-   |     |
-   |     help: try using a static value: `static`
+   |                   ^^^
    |
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+help: try using a static value
+   |
+LL |     static foo: u8;
+   |     ~~~~~~
 
 error: a module cannot be `default`
   --> $DIR/default-on-wrong-item-kind.rs:41:5

@@ -24,7 +24,13 @@ error: macro names aren't followed by a `!`
   --> $DIR/missing-bang-in-decl.rs:10:16
    |
 LL | macro_rules bar! {
-   |                ^ help: remove the `!`
+   |                ^
+   |
+help: remove the `!`
+   |
+LL - macro_rules bar! {
+LL + macro_rules bar {
+   |
 
 error: aborting due to 3 previous errors
 

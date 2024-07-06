@@ -2,17 +2,27 @@ error: expected `;`, found `}`
   --> $DIR/missing-semicolon.rs:6:7
    |
 LL |     ()
-   |       ^ help: add `;` here
+   |       ^
 LL | }
    | - unexpected token
+   |
+help: add `;` here
+   |
+LL |     ();
+   |       +
 
 error: expected `;`, found `}`
   --> $DIR/missing-semicolon.rs:32:7
    |
 LL |     ()
-   |       ^ help: add `;` here
+   |       ^
 LL | }
    | - unexpected token
+   |
+help: add `;` here
+   |
+LL |     ();
+   |       +
 
 error[E0618]: expected function, found `{integer}`
   --> $DIR/missing-semicolon.rs:5:13

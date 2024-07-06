@@ -2,12 +2,15 @@ error: labeled expression must be followed by `:`
   --> $DIR/label-after-block-like.rs:2:20
    |
 LL |     if let () = () 'a {}
-   |                    ---^^
-   |                    | |
-   |                    | help: add `:` after the label
+   |                    --^^^
+   |                    |
    |                    the label
    |
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     if let () = () 'a: {}
+   |                      +
 
 error: expected `{`, found `'a`
   --> $DIR/label-after-block-like.rs:2:20
@@ -29,12 +32,15 @@ error: labeled expression must be followed by `:`
   --> $DIR/label-after-block-like.rs:8:13
    |
 LL |     if true 'a {}
-   |             ---^^
-   |             | |
-   |             | help: add `:` after the label
+   |             --^^^
+   |             |
    |             the label
    |
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     if true 'a: {}
+   |               +
 
 error: expected `{`, found `'a`
   --> $DIR/label-after-block-like.rs:8:13
@@ -56,12 +62,15 @@ error: labeled expression must be followed by `:`
   --> $DIR/label-after-block-like.rs:14:10
    |
 LL |     loop 'a {}
-   |          ---^^
-   |          | |
-   |          | help: add `:` after the label
+   |          --^^^
+   |          |
    |          the label
    |
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     loop 'a: {}
+   |            +
 
 error: expected `{`, found `'a`
   --> $DIR/label-after-block-like.rs:14:10
@@ -80,12 +89,15 @@ error: labeled expression must be followed by `:`
   --> $DIR/label-after-block-like.rs:20:16
    |
 LL |     while true 'a {}
-   |                ---^^
-   |                | |
-   |                | help: add `:` after the label
+   |                --^^^
+   |                |
    |                the label
    |
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     while true 'a: {}
+   |                  +
 
 error: expected `{`, found `'a`
   --> $DIR/label-after-block-like.rs:20:16
@@ -105,12 +117,15 @@ error: labeled expression must be followed by `:`
   --> $DIR/label-after-block-like.rs:26:23
    |
 LL |     while let () = () 'a {}
-   |                       ---^^
-   |                       | |
-   |                       | help: add `:` after the label
+   |                       --^^^
+   |                       |
    |                       the label
    |
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     while let () = () 'a: {}
+   |                         +
 
 error: expected `{`, found `'a`
   --> $DIR/label-after-block-like.rs:26:23
@@ -130,12 +145,15 @@ error: labeled expression must be followed by `:`
   --> $DIR/label-after-block-like.rs:32:19
    |
 LL |     for _ in 0..0 'a {}
-   |                   ---^^
-   |                   | |
-   |                   | help: add `:` after the label
+   |                   --^^^
+   |                   |
    |                   the label
    |
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     for _ in 0..0 'a: {}
+   |                     +
 
 error: expected `{`, found `'a`
   --> $DIR/label-after-block-like.rs:32:19
@@ -152,12 +170,15 @@ error: labeled expression must be followed by `:`
   --> $DIR/label-after-block-like.rs:38:12
    |
 LL |     unsafe 'a {}
-   |            ---^^
-   |            | |
-   |            | help: add `:` after the label
+   |            --^^^
+   |            |
    |            the label
    |
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     unsafe 'a: {}
+   |              +
 
 error: expected `{`, found `'a`
   --> $DIR/label-after-block-like.rs:38:12

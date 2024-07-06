@@ -2,7 +2,13 @@ error: macro names aren't followed by a `!`
   --> $DIR/bang-after-name.rs:4:17
    |
 LL | macro_rules! foo! {
-   |                 ^ help: remove the `!`
+   |                 ^
+   |
+help: remove the `!`
+   |
+LL - macro_rules! foo! {
+LL + macro_rules! foo {
+   |
 
 error: aborting due to 1 previous error
 

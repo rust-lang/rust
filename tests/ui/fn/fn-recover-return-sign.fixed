@@ -3,7 +3,7 @@
 fn a() -> usize { 0 }
 //~^ ERROR return types are denoted using `->`
 
-fn b()-> usize { 0 }
+fn b() -> usize { 0 }
 //~^ ERROR return types are denoted using `->`
 
 fn bar(_: u32) {}
@@ -22,7 +22,7 @@ fn main() {
     //~^ ERROR return types are denoted using `->`
     dbg!(foo(false));
 
-    let bar = |a: bool|-> bool { a };
+    let bar = |a: bool| -> bool { a };
     //~^ ERROR return types are denoted using `->`
     dbg!(bar(false));
 }
