@@ -127,7 +127,7 @@ pub(crate) enum InvalidIssueStringCause {
 }
 
 impl InvalidIssueStringCause {
-    pub fn from_int_error_kind(span: Span, kind: &IntErrorKind) -> Option<Self> {
+    pub(crate) fn from_int_error_kind(span: Span, kind: &IntErrorKind) -> Option<Self> {
         match kind {
             IntErrorKind::Empty => Some(Self::Empty { span }),
             IntErrorKind::InvalidDigit => Some(Self::InvalidDigit { span }),
@@ -303,7 +303,7 @@ pub(crate) enum IncorrectReprFormatGenericCause<'a> {
 }
 
 impl<'a> IncorrectReprFormatGenericCause<'a> {
-    pub fn from_lit_kind(span: Span, kind: &ast::LitKind, name: &'a str) -> Option<Self> {
+    pub(crate) fn from_lit_kind(span: Span, kind: &ast::LitKind, name: &'a str) -> Option<Self> {
         match kind {
             ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
                 Some(Self::Int { span, name, int: int.get() })
