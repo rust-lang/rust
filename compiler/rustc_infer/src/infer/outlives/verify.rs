@@ -124,12 +124,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // see the extensive comment in projection_must_outlive
         let recursive_bound = {
             let mut components = smallvec![];
-            compute_alias_components_recursive(
-                self.tcx,
-                alias_ty_as_ty,
-                &mut components,
-                &mut Default::default(),
-            );
+            compute_alias_components_recursive(self.tcx, alias_ty_as_ty, &mut components);
             self.bound_from_components(&components)
         };
 
