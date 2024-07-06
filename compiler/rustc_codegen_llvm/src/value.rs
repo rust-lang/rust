@@ -1,4 +1,4 @@
-pub use crate::llvm::Value;
+pub(crate) use crate::llvm::Value;
 
 use crate::llvm;
 
