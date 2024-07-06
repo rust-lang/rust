@@ -1612,28 +1612,44 @@ pub(crate) struct DefaultNotFollowedByItem {
 
 #[derive(Diagnostic)]
 pub(crate) enum MissingKeywordForItemDefinition {
+    #[diag(parse_missing_enum_for_enum_definition)]
+    Enum {
+        #[primary_span]
+        span: Span,
+        #[suggestion(style = "verbose", applicability = "maybe-incorrect", code = "enum ")]
+        insert_span: Span,
+        ident: Ident,
+    },
+    #[diag(parse_missing_enum_or_struct_for_item_definition)]
+    EnumOrStruct {
+        #[primary_span]
+        span: Span,
+    },
     #[diag(parse_missing_struct_for_struct_definition)]
     Struct {
         #[primary_span]
-        #[suggestion(style = "short", applicability = "maybe-incorrect", code = " struct ")]
         span: Span,
+        #[suggestion(style = "verbose", applicability = "maybe-incorrect", code = "struct ")]
+        insert_span: Span,
         ident: Ident,
     },
     #[diag(parse_missing_fn_for_function_definition)]
     Function {
         #[primary_span]
-        #[suggestion(style = "short", applicability = "maybe-incorrect", code = " fn ")]
         span: Span,
+        #[suggestion(style = "verbose", applicability = "maybe-incorrect", code = "fn ")]
+        insert_span: Span,
         ident: Ident,
     },
     #[diag(parse_missing_fn_for_method_definition)]
     Method {
         #[primary_span]
-        #[suggestion(style = "short", applicability = "maybe-incorrect", code = " fn ")]
         span: Span,
+        #[suggestion(style = "verbose", applicability = "maybe-incorrect", code = "fn ")]
+        insert_span: Span,
         ident: Ident,
     },
-    #[diag(parse_ambiguous_missing_keyword_for_item_definition)]
+    #[diag(parse_missing_fn_or_struct_for_item_definition)]
     Ambiguous {
         #[primary_span]
         span: Span,
@@ -1644,7 +1660,12 @@ pub(crate) enum MissingKeywordForItemDefinition {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum AmbiguousMissingKwForItemSub {
-    #[suggestion(parse_suggestion, applicability = "maybe-incorrect", code = "{snippet}!")]
+    #[suggestion(
+        parse_suggestion,
+        style = "verbose",
+        applicability = "maybe-incorrect",
+        code = "{snippet}!"
+    )]
     SuggestMacro {
         #[primary_span]
         span: Span,

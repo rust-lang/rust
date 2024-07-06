@@ -239,6 +239,7 @@ impl<'a> Parser<'a> {
                 self.recover_const_impl(const_span, attrs, def_())?
             } else {
                 self.recover_const_mut(const_span);
+                self.recover_missing_kw_before_item()?;
                 let (ident, generics, ty, expr) = self.parse_const_item()?;
                 (
                     ident,
@@ -311,6 +312,9 @@ impl<'a> Parser<'a> {
                 Case::Insensitive,
             );
         } else if macros_allowed && self.check_path() {
+            if self.isnt_macro_invocation() {
+                self.recover_missing_kw_before_item()?;
+            }
             // MACRO INVOCATION ITEM
             (Ident::empty(), ItemKind::MacCall(P(self.parse_item_macro(vis)?)))
         } else {
@@ -374,25 +378,25 @@ impl<'a> Parser<'a> {
         self.check_ident() && self.look_ahead(1, |t| *t != token::Not && *t != token::PathSep)
     }
 
-    /// Recover on encountering a struct or method definition where the user
-    /// forgot to add the `struct` or `fn` keyword after writing `pub`: `pub S {}`.
+    /// Recover on encountering a struct, enum, or method definition where the user
+    /// forgot to add the `struct`, `enum`, or `fn` keyword
     fn recover_missing_kw_before_item(&mut self) -> PResult<'a, ()> {
-        // Space between `pub` keyword and the identifier
-        //
-        //     pub   S {}
-        //        ^^^ `sp` points here
-        let sp = self.prev_token.span.between(self.token.span);
-        let full_sp = self.prev_token.span.to(self.token.span);
-        let ident_sp = self.token.span;
+        let is_pub = self.prev_token.is_keyword(kw::Pub);
+        let is_const = self.prev_token.is_keyword(kw::Const);
+        let ident_span = self.token.span;
+        let span = if is_pub { self.prev_token.span.to(ident_span) } else { ident_span };
+        let insert_span = ident_span.shrink_to_lo();
 
-        let ident = if self.look_ahead(1, |t| {
-            [
-                token::Lt,
-                token::OpenDelim(Delimiter::Brace),
-                token::OpenDelim(Delimiter::Parenthesis),
-            ]
-            .contains(&t.kind)
-        }) {
+        let ident = if (!is_const
+            || self.look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Parenthesis)))
+            && self.look_ahead(1, |t| {
+                [
+                    token::Lt,
+                    token::OpenDelim(Delimiter::Brace),
+                    token::OpenDelim(Delimiter::Parenthesis),
+                ]
+                .contains(&t.kind)
+            }) {
             self.parse_ident().unwrap()
         } else {
             return Ok(());
@@ -406,46 +410,56 @@ impl<'a> Parser<'a> {
         }
 
         let err = if self.check(&token::OpenDelim(Delimiter::Brace)) {
-            // possible public struct definition where `struct` was forgotten
-            Some(errors::MissingKeywordForItemDefinition::Struct { span: sp, ident })
+            // possible struct or enum definition where `struct` or `enum` was forgotten
+            if self.look_ahead(1, |t| *t == token::CloseDelim(Delimiter::Brace)) {
+                // `S {}` could be unit enum or struct
+                Some(errors::MissingKeywordForItemDefinition::EnumOrStruct { span })
+            } else if self.look_ahead(2, |t| *t == token::Colon)
+                || self.look_ahead(3, |t| *t == token::Colon)
+            {
+                // `S { f:` or `S { pub f:`
+                Some(errors::MissingKeywordForItemDefinition::Struct { span, insert_span, ident })
+            } else {
+                Some(errors::MissingKeywordForItemDefinition::Enum { span, insert_span, ident })
+            }
         } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
-            // possible public function or tuple struct definition where `fn`/`struct` was
-            // forgotten
+            // possible function or tuple struct definition where `fn` or `struct` was forgotten
             self.bump(); // `(`
             let is_method = self.recover_self_param();
 
             self.consume_block(Delimiter::Parenthesis, ConsumeClosingDelim::Yes);
 
-            let err =
-                if self.check(&token::RArrow) || self.check(&token::OpenDelim(Delimiter::Brace)) {
-                    self.eat_to_tokens(&[&token::OpenDelim(Delimiter::Brace)]);
-                    self.bump(); // `{`
-                    self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
-                    if is_method {
-                        errors::MissingKeywordForItemDefinition::Method { span: sp, ident }
-                    } else {
-                        errors::MissingKeywordForItemDefinition::Function { span: sp, ident }
-                    }
-                } else if self.check(&token::Semi) {
-                    errors::MissingKeywordForItemDefinition::Struct { span: sp, ident }
+            let err = if self.check(&token::RArrow)
+                || self.check(&token::OpenDelim(Delimiter::Brace))
+            {
+                self.eat_to_tokens(&[&token::OpenDelim(Delimiter::Brace)]);
+                self.bump(); // `{`
+                self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
+                if is_method {
+                    errors::MissingKeywordForItemDefinition::Method { span, insert_span, ident }
                 } else {
-                    errors::MissingKeywordForItemDefinition::Ambiguous {
-                        span: sp,
-                        subdiag: if found_generics {
-                            None
-                        } else if let Ok(snippet) = self.span_to_snippet(ident_sp) {
-                            Some(errors::AmbiguousMissingKwForItemSub::SuggestMacro {
-                                span: full_sp,
-                                snippet,
-                            })
-                        } else {
-                            Some(errors::AmbiguousMissingKwForItemSub::HelpMacro)
-                        },
-                    }
-                };
+                    errors::MissingKeywordForItemDefinition::Function { span, insert_span, ident }
+                }
+            } else if is_pub && self.check(&token::Semi) {
+                errors::MissingKeywordForItemDefinition::Struct { span, insert_span, ident }
+            } else {
+                errors::MissingKeywordForItemDefinition::Ambiguous {
+                    span,
+                    subdiag: if found_generics {
+                        None
+                    } else if let Ok(snippet) = self.span_to_snippet(ident_span) {
+                        Some(errors::AmbiguousMissingKwForItemSub::SuggestMacro {
+                            span: ident_span,
+                            snippet,
+                        })
+                    } else {
+                        Some(errors::AmbiguousMissingKwForItemSub::HelpMacro)
+                    },
+                }
+            };
             Some(err)
         } else if found_generics {
-            Some(errors::MissingKeywordForItemDefinition::Ambiguous { span: sp, subdiag: None })
+            Some(errors::MissingKeywordForItemDefinition::Ambiguous { span, subdiag: None })
         } else {
             None
         };
