@@ -2160,9 +2160,7 @@ pub fn lower_to_mir(
     root_expr: ExprId,
 ) -> Result<MirBody> {
     if infer.has_errors {
-        return Err(MirLowerError::TypeMismatch(
-            infer.type_mismatches().next().map(|(_, it)| it.clone()),
-        ));
+        return Err(MirLowerError::TypeMismatch(None));
     }
     let mut ctx = MirLowerCtx::new(db, owner, body, infer);
     // 0 is return local

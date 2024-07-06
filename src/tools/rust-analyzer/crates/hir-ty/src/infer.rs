@@ -701,18 +701,23 @@ impl<'a> InferenceContext<'a> {
         table.propagate_diverging_flag();
         for ty in type_of_expr.values_mut() {
             *ty = table.resolve_completely(ty.clone());
+            *has_errors = *has_errors || ty.contains_unknown();
         }
         for ty in type_of_pat.values_mut() {
             *ty = table.resolve_completely(ty.clone());
+            *has_errors = *has_errors || ty.contains_unknown();
         }
         for ty in type_of_binding.values_mut() {
             *ty = table.resolve_completely(ty.clone());
+            *has_errors = *has_errors || ty.contains_unknown();
         }
         for ty in type_of_rpit.values_mut() {
             *ty = table.resolve_completely(ty.clone());
+            *has_errors = *has_errors || ty.contains_unknown();
         }
         for ty in type_of_for_iterator.values_mut() {
             *ty = table.resolve_completely(ty.clone());
+            *has_errors = *has_errors || ty.contains_unknown();
         }
 
         *has_errors = !type_mismatches.is_empty();
