@@ -12,7 +12,7 @@ pub(crate) fn generate(check: bool) {
     if !check {
         let contents =
             diagnostics.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
-        let contents = add_preamble("sourcegen_diagnostic_docs", contents);
+        let contents = add_preamble("diagnostics-docs", contents);
         let dst = project_root().join("docs/user/generated_diagnostic.adoc");
         fs::write(dst, contents).unwrap();
     }

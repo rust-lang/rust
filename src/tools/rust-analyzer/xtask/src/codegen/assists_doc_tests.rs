@@ -45,7 +45,7 @@ r#####"
                 buf.push_str(&test)
             }
         }
-        let buf = add_preamble("sourcegen_assists_docs", reformat(buf));
+        let buf = add_preamble("assists-doc-tests", reformat(buf));
         ensure_file_contents(
             &project_root().join("crates/ide-assists/src/tests/generated.rs"),
             &buf,

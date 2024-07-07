@@ -195,7 +195,7 @@ impl FromStr for CodegenType {
             "grammar" => Ok(Self::Grammar),
             "assists-doc-tests" => Ok(Self::AssistsDocTests),
             "diagnostics-docs" => Ok(Self::DiagnosticsDocs),
-            "lints-definitions" => Ok(Self::LintDefinitions),
+            "lint-definitions" => Ok(Self::LintDefinitions),
             _ => Err("Invalid option".to_owned()),
         }
     }
