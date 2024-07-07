@@ -182,7 +182,7 @@ fn make_win_dist(
     //Ask gcc where it keeps its stuff
     let mut cmd = command(builder.cc(target));
     cmd.arg("-print-search-dirs");
-    let gcc_out = cmd.capture_stdout().run(builder).stdout();
+    let gcc_out = cmd.run_capture_stdout(builder).stdout();
 
     let mut bin_path: Vec<_> = env::split_paths(&env::var_os("PATH").unwrap_or_default()).collect();
     let mut lib_path = Vec::new();
@@ -1067,7 +1067,7 @@ impl Step for PlainSourceTarball {
                 cmd.arg("--sync").arg(manifest_path);
             }
 
-            let config = cmd.capture().run(builder).stdout();
+            let config = cmd.run_capture(builder).stdout();
 
             let cargo_config_dir = plain_dst_src.join(".cargo");
             builder.create_dir(&cargo_config_dir);
@@ -2075,7 +2075,7 @@ fn maybe_install_llvm(
         let mut cmd = command(llvm_config);
         cmd.arg("--libfiles");
         builder.verbose(|| println!("running {cmd:?}"));
-        let files = cmd.capture_stdout().run(builder).stdout();
+        let files = cmd.run_capture_stdout(builder).stdout();
         let build_llvm_out = &builder.llvm_out(builder.config.build);
         let target_llvm_out = &builder.llvm_out(target);
         for file in files.trim_end().split(' ') {

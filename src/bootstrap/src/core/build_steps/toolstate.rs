@@ -102,12 +102,11 @@ fn print_error(tool: &str, submodule: &str) {
 fn check_changed_files(builder: &Builder<'_>, toolstates: &HashMap<Box<str>, ToolState>) {
     // Changed files
     let output = helpers::git(None)
-        .capture()
         .arg("diff")
         .arg("--name-status")
         .arg("HEAD")
         .arg("HEAD^")
-        .run(builder)
+        .run_capture(builder)
         .stdout();
 
     for (tool, submodule) in STABLE_TOOLS.iter().chain(NIGHTLY_TOOLS.iter()) {
@@ -391,7 +390,7 @@ fn commit_toolstate_change(builder: &Builder<'_>, current_toolstate: &ToolstateD
             .arg("-m")
             .arg(&message)
             .run(builder);
-        if !status.is_success() {
+        if !status {
             success = true;
             break;
         }
@@ -403,7 +402,7 @@ fn commit_toolstate_change(builder: &Builder<'_>, current_toolstate: &ToolstateD
             .arg("master")
             .run(builder);
         // If we successfully push, exit.
-        if status.is_success() {
+        if status {
             success = true;
             break;
         }
@@ -432,7 +431,7 @@ fn commit_toolstate_change(builder: &Builder<'_>, current_toolstate: &ToolstateD
 /// `publish_toolstate.py` script if the PR passes all tests and is merged to
 /// master.
 fn publish_test_results(builder: &Builder<'_>, current_toolstate: &ToolstateData) {
-    let commit = helpers::git(None).capture().arg("rev-parse").arg("HEAD").run(builder).stdout();
+    let commit = helpers::git(None).arg("rev-parse").arg("HEAD").run_capture(builder).stdout();
 
     let toolstate_serialized = t!(serde_json::to_string(&current_toolstate));
 

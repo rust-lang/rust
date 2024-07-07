@@ -275,7 +275,7 @@ impl Step for Link {
 }
 
 fn rustup_installed(builder: &Builder<'_>) -> bool {
-    command("rustup").capture_stdout().arg("--version").run(builder).is_success()
+    command("rustup").arg("--version").run_capture_stdout(builder).is_success()
 }
 
 fn stage_dir_exists(stage_path: &str) -> bool {
@@ -313,10 +313,9 @@ fn attempt_toolchain_link(builder: &Builder<'_>, stage_path: &str) {
 
 fn toolchain_is_linked(builder: &Builder<'_>) -> bool {
     match command("rustup")
-        .capture_stdout()
         .allow_failure()
         .args(["toolchain", "list"])
-        .run(builder)
+        .run_capture_stdout(builder)
         .stdout_if_ok()
     {
         Some(toolchain_list) => {
@@ -341,9 +340,8 @@ fn toolchain_is_linked(builder: &Builder<'_>) -> bool {
 
 fn try_link_toolchain(builder: &Builder<'_>, stage_path: &str) -> bool {
     command("rustup")
-        .capture_stdout()
         .args(["toolchain", "link", "stage1", stage_path])
-        .run(builder)
+        .run_capture_stdout(builder)
         .is_success()
 }
 
@@ -481,9 +479,8 @@ impl Step for Hook {
 // install a git hook to automatically run tidy, if they want
 fn install_git_hook_maybe(builder: &Builder<'_>, config: &Config) -> io::Result<()> {
     let git = helpers::git(Some(&config.src))
-        .capture()
         .args(["rev-parse", "--git-common-dir"])
-        .run(builder)
+        .run_capture(builder)
         .stdout();
     let git = PathBuf::from(git.trim());
     let hooks_dir = git.join("hooks");
