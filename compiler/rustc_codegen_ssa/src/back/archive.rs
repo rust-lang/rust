@@ -292,7 +292,7 @@ impl<'a> ArArchiveBuilder<'a> {
             &entries,
             archive_kind,
             false,
-            self.sess.target.arch == "arm64ec",
+            /* is_ec = */ self.sess.target.arch == "arm64ec",
         )?;
 
         let any_entries = !entries.is_empty();

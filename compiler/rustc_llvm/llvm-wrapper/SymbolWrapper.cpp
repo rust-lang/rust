@@ -38,6 +38,7 @@ static bool isArchiveSymbol(const object::BasicSymbolRef &S) {
 typedef void *(*LLVMRustGetSymbolsCallback)(void *, const char *);
 typedef void *(*LLVMRustGetSymbolsErrorCallback)(const char *);
 
+// This function is copied from ArchiveWriter.cpp.
 static Expected<std::unique_ptr<SymbolicFile>>
 getSymbolicFile(MemoryBufferRef Buf, LLVMContext &Context) {
   const file_magic Type = identify_magic(Buf.getBuffer());
@@ -112,6 +113,8 @@ extern "C" bool LLVMRustIs64BitSymbolicFile(char *BufPtr, size_t BufLen) {
   SmallString<0> SymNameBuf;
   auto SymName = raw_svector_ostream(SymNameBuf);
 
+  // Code starting from this line is copied from s64BitSymbolicFile in
+  // ArchiveWriter.cpp.
   // In the scenario when LLVMContext is populated SymbolicFile will contain a
   // reference to it, thus SymbolicFile should be destroyed first.
   LLVMContext Context;
@@ -145,6 +148,8 @@ extern "C" bool LLVMRustIsECObject(char *BufPtr, size_t BufLen) {
     return false;
   }
 
+  // Code starting from this line is copied from isECObject in
+  // ArchiveWriter.cpp with an extra #if to work with LLVM 17.
   if (Obj->isCOFF())
     return cast<llvm::object::COFFObjectFile>(&*Obj)->getMachine() !=
            COFF::IMAGE_FILE_MACHINE_ARM64;
