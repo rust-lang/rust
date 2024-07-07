@@ -84,18 +84,12 @@ extern "C" {
 
     #[link_name = "llvm.wasm.alltrue.v16i8"]
     fn llvm_i8x16_all_true(x: simd::i8x16) -> i32;
-    #[link_name = "llvm.ctpop.v16i8"]
-    fn llvm_popcnt(a: simd::i8x16) -> simd::i8x16;
     #[link_name = "llvm.wasm.bitmask.v16i8"]
     fn llvm_bitmask_i8x16(a: simd::i8x16) -> i32;
     #[link_name = "llvm.wasm.narrow.signed.v16i8.v8i16"]
     fn llvm_narrow_i8x16_s(a: simd::i16x8, b: simd::i16x8) -> simd::i8x16;
     #[link_name = "llvm.wasm.narrow.unsigned.v16i8.v8i16"]
     fn llvm_narrow_i8x16_u(a: simd::i16x8, b: simd::i16x8) -> simd::i8x16;
-    #[link_name = "llvm.sadd.sat.v16i8"]
-    fn llvm_i8x16_add_sat_s(a: simd::i8x16, b: simd::i8x16) -> simd::i8x16;
-    #[link_name = "llvm.uadd.sat.v16i8"]
-    fn llvm_i8x16_add_sat_u(a: simd::i8x16, b: simd::i8x16) -> simd::i8x16;
     #[link_name = "llvm.wasm.sub.sat.signed.v16i8"]
     fn llvm_i8x16_sub_sat_s(a: simd::i8x16, b: simd::i8x16) -> simd::i8x16;
     #[link_name = "llvm.wasm.sub.sat.unsigned.v16i8"]
@@ -117,10 +111,6 @@ extern "C" {
     fn llvm_narrow_i16x8_s(a: simd::i32x4, b: simd::i32x4) -> simd::i16x8;
     #[link_name = "llvm.wasm.narrow.unsigned.v8i16.v4i32"]
     fn llvm_narrow_i16x8_u(a: simd::i32x4, b: simd::i32x4) -> simd::i16x8;
-    #[link_name = "llvm.sadd.sat.v8i16"]
-    fn llvm_i16x8_add_sat_s(a: simd::i16x8, b: simd::i16x8) -> simd::i16x8;
-    #[link_name = "llvm.uadd.sat.v8i16"]
-    fn llvm_i16x8_add_sat_u(a: simd::i16x8, b: simd::i16x8) -> simd::i16x8;
     #[link_name = "llvm.wasm.sub.sat.signed.v8i16"]
     fn llvm_i16x8_sub_sat_s(a: simd::i16x8, b: simd::i16x8) -> simd::i16x8;
     #[link_name = "llvm.wasm.sub.sat.unsigned.v8i16"]
@@ -144,35 +134,15 @@ extern "C" {
     #[link_name = "llvm.wasm.bitmask.v2i64"]
     fn llvm_bitmask_i64x2(a: simd::i64x2) -> i32;
 
-    #[link_name = "llvm.ceil.v4f32"]
-    fn llvm_f32x4_ceil(x: simd::f32x4) -> simd::f32x4;
-    #[link_name = "llvm.floor.v4f32"]
-    fn llvm_f32x4_floor(x: simd::f32x4) -> simd::f32x4;
-    #[link_name = "llvm.trunc.v4f32"]
-    fn llvm_f32x4_trunc(x: simd::f32x4) -> simd::f32x4;
     #[link_name = "llvm.nearbyint.v4f32"]
     fn llvm_f32x4_nearest(x: simd::f32x4) -> simd::f32x4;
-    #[link_name = "llvm.fabs.v4f32"]
-    fn llvm_f32x4_abs(x: simd::f32x4) -> simd::f32x4;
-    #[link_name = "llvm.sqrt.v4f32"]
-    fn llvm_f32x4_sqrt(x: simd::f32x4) -> simd::f32x4;
     #[link_name = "llvm.minimum.v4f32"]
     fn llvm_f32x4_min(x: simd::f32x4, y: simd::f32x4) -> simd::f32x4;
     #[link_name = "llvm.maximum.v4f32"]
     fn llvm_f32x4_max(x: simd::f32x4, y: simd::f32x4) -> simd::f32x4;
 
-    #[link_name = "llvm.ceil.v2f64"]
-    fn llvm_f64x2_ceil(x: simd::f64x2) -> simd::f64x2;
-    #[link_name = "llvm.floor.v2f64"]
-    fn llvm_f64x2_floor(x: simd::f64x2) -> simd::f64x2;
-    #[link_name = "llvm.trunc.v2f64"]
-    fn llvm_f64x2_trunc(x: simd::f64x2) -> simd::f64x2;
     #[link_name = "llvm.nearbyint.v2f64"]
     fn llvm_f64x2_nearest(x: simd::f64x2) -> simd::f64x2;
-    #[link_name = "llvm.fabs.v2f64"]
-    fn llvm_f64x2_abs(x: simd::f64x2) -> simd::f64x2;
-    #[link_name = "llvm.sqrt.v2f64"]
-    fn llvm_f64x2_sqrt(x: simd::f64x2) -> simd::f64x2;
     #[link_name = "llvm.minimum.v2f64"]
     fn llvm_f64x2_min(x: simd::f64x2, y: simd::f64x2) -> simd::f64x2;
     #[link_name = "llvm.maximum.v2f64"]
@@ -2284,7 +2254,7 @@ pub fn i8x16_neg(a: v128) -> v128 {
 #[doc(alias("i8x16.popcnt"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i8x16_popcnt(v: v128) -> v128 {
-    unsafe { llvm_popcnt(v.as_i8x16()).v128() }
+    unsafe { simd_ctpop(v.as_i8x16()).v128() }
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -2410,7 +2380,7 @@ pub use i8x16_add as u8x16_add;
 #[doc(alias("i8x16.add_sat_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i8x16_add_sat(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i8x16_add_sat_s(a.as_i8x16(), b.as_i8x16()).v128() }
+    unsafe { simd_saturating_add(a.as_i8x16(), b.as_i8x16()).v128() }
 }
 
 /// Adds two 128-bit vectors as if they were two packed sixteen 8-bit unsigned
@@ -2421,7 +2391,7 @@ pub fn i8x16_add_sat(a: v128, b: v128) -> v128 {
 #[doc(alias("i8x16.add_sat_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u8x16_add_sat(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i8x16_add_sat_u(a.as_i8x16(), b.as_i8x16()).v128() }
+    unsafe { simd_saturating_add(a.as_u8x16(), b.as_u8x16()).v128() }
 }
 
 /// Subtracts two 128-bit vectors as if they were two packed sixteen 8-bit integers.
@@ -2778,7 +2748,7 @@ pub use i16x8_add as u16x8_add;
 #[doc(alias("i16x8.add_sat_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i16x8_add_sat(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i16x8_add_sat_s(a.as_i16x8(), b.as_i16x8()).v128() }
+    unsafe { simd_saturating_add(a.as_i16x8(), b.as_i16x8()).v128() }
 }
 
 /// Adds two 128-bit vectors as if they were two packed eight 16-bit unsigned
@@ -2789,7 +2759,7 @@ pub fn i16x8_add_sat(a: v128, b: v128) -> v128 {
 #[doc(alias("i16x8.add_sat_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u16x8_add_sat(a: v128, b: v128) -> v128 {
-    unsafe { llvm_i16x8_add_sat_u(a.as_i16x8(), b.as_i16x8()).v128() }
+    unsafe { simd_saturating_add(a.as_u16x8(), b.as_u16x8()).v128() }
 }
 
 /// Subtracts two 128-bit vectors as if they were two packed eight 16-bit integers.
@@ -3725,7 +3695,7 @@ pub use i64x2_extmul_high_u32x4 as u64x2_extmul_high_u32x4;
 #[doc(alias("f32x4.ceil"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f32x4_ceil(a: v128) -> v128 {
-    unsafe { llvm_f32x4_ceil(a.as_f32x4()).v128() }
+    unsafe { simd_ceil(a.as_f32x4()).v128() }
 }
 
 /// Lane-wise rounding to the nearest integral value not greater than the input.
@@ -3735,7 +3705,7 @@ pub fn f32x4_ceil(a: v128) -> v128 {
 #[doc(alias("f32x4.floor"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f32x4_floor(a: v128) -> v128 {
-    unsafe { llvm_f32x4_floor(a.as_f32x4()).v128() }
+    unsafe { simd_floor(a.as_f32x4()).v128() }
 }
 
 /// Lane-wise rounding to the nearest integral value with the magnitude not
@@ -3746,7 +3716,7 @@ pub fn f32x4_floor(a: v128) -> v128 {
 #[doc(alias("f32x4.trunc"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f32x4_trunc(a: v128) -> v128 {
-    unsafe { llvm_f32x4_trunc(a.as_f32x4()).v128() }
+    unsafe { simd_trunc(a.as_f32x4()).v128() }
 }
 
 /// Lane-wise rounding to the nearest integral value; if two values are equally
@@ -3768,7 +3738,7 @@ pub fn f32x4_nearest(a: v128) -> v128 {
 #[doc(alias("f32x4.abs"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f32x4_abs(a: v128) -> v128 {
-    unsafe { llvm_f32x4_abs(a.as_f32x4()).v128() }
+    unsafe { simd_fabs(a.as_f32x4()).v128() }
 }
 
 /// Negates each lane of a 128-bit vector interpreted as four 32-bit floating
@@ -3779,7 +3749,7 @@ pub fn f32x4_abs(a: v128) -> v128 {
 #[doc(alias("f32x4.neg"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f32x4_neg(a: v128) -> v128 {
-    f32x4_mul(a, f32x4_splat(-1.))
+    unsafe { simd_neg(a.as_f32x4()).v128() }
 }
 
 /// Calculates the square root of each lane of a 128-bit vector interpreted as
@@ -3790,7 +3760,7 @@ pub fn f32x4_neg(a: v128) -> v128 {
 #[doc(alias("f32x4.sqrt"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f32x4_sqrt(a: v128) -> v128 {
-    unsafe { llvm_f32x4_sqrt(a.as_f32x4()).v128() }
+    unsafe { simd_fsqrt(a.as_f32x4()).v128() }
 }
 
 /// Lane-wise addition of two 128-bit vectors interpreted as four 32-bit
@@ -3900,7 +3870,7 @@ pub fn f32x4_pmax(a: v128, b: v128) -> v128 {
 #[doc(alias("f64x2.ceil"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f64x2_ceil(a: v128) -> v128 {
-    unsafe { llvm_f64x2_ceil(a.as_f64x2()).v128() }
+    unsafe { simd_ceil(a.as_f64x2()).v128() }
 }
 
 /// Lane-wise rounding to the nearest integral value not greater than the input.
@@ -3910,7 +3880,7 @@ pub fn f64x2_ceil(a: v128) -> v128 {
 #[doc(alias("f64x2.floor"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f64x2_floor(a: v128) -> v128 {
-    unsafe { llvm_f64x2_floor(a.as_f64x2()).v128() }
+    unsafe { simd_floor(a.as_f64x2()).v128() }
 }
 
 /// Lane-wise rounding to the nearest integral value with the magnitude not
@@ -3921,7 +3891,7 @@ pub fn f64x2_floor(a: v128) -> v128 {
 #[doc(alias("f64x2.trunc"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f64x2_trunc(a: v128) -> v128 {
-    unsafe { llvm_f64x2_trunc(a.as_f64x2()).v128() }
+    unsafe { simd_trunc(a.as_f64x2()).v128() }
 }
 
 /// Lane-wise rounding to the nearest integral value; if two values are equally
@@ -3943,7 +3913,7 @@ pub fn f64x2_nearest(a: v128) -> v128 {
 #[doc(alias("f64x2.abs"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f64x2_abs(a: v128) -> v128 {
-    unsafe { llvm_f64x2_abs(a.as_f64x2()).v128() }
+    unsafe { simd_fabs(a.as_f64x2()).v128() }
 }
 
 /// Negates each lane of a 128-bit vector interpreted as two 64-bit floating
@@ -3954,7 +3924,7 @@ pub fn f64x2_abs(a: v128) -> v128 {
 #[doc(alias("f64x2.neg"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f64x2_neg(a: v128) -> v128 {
-    f64x2_mul(a, f64x2_splat(-1.0))
+    unsafe { simd_neg(a.as_f64x2()).v128() }
 }
 
 /// Calculates the square root of each lane of a 128-bit vector interpreted as
@@ -3965,7 +3935,7 @@ pub fn f64x2_neg(a: v128) -> v128 {
 #[doc(alias("f64x2.sqrt"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f64x2_sqrt(a: v128) -> v128 {
-    unsafe { llvm_f64x2_sqrt(a.as_f64x2()).v128() }
+    unsafe { simd_fsqrt(a.as_f64x2()).v128() }
 }
 
 /// Lane-wise add of two 128-bit vectors interpreted as two 64-bit
