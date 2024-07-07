@@ -765,6 +765,7 @@ mod size_asserts {
     static_assert_size!(AttrTokenStream, 8);
     static_assert_size!(AttrTokenTree, 32);
     static_assert_size!(LazyAttrTokenStream, 8);
+    static_assert_size!(Option<LazyAttrTokenStream>, 8); // must be small, used in many AST nodes
     static_assert_size!(TokenStream, 8);
     static_assert_size!(TokenTree, 32);
     // tidy-alphabetical-end
