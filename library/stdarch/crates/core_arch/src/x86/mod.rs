@@ -335,6 +335,41 @@ types! {
         u16, u16, u16, u16, u16, u16, u16, u16,
         u16, u16, u16, u16, u16, u16, u16, u16
     );
+
+    /// 128-bit wide set of 8 `f16` types, x86-specific
+    ///
+    /// This type is the same as the `__m128h` type defined by Intel,
+    /// representing a 128-bit SIMD register which internally is consisted of
+    /// 8 packed `f16` instances. its purpose is for f16 related intrinsic
+    /// implementations.
+    #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+    pub struct __m128h(f16, f16, f16, f16, f16, f16, f16, f16);
+
+    /// 256-bit wide set of 16 `f16` types, x86-specific
+    ///
+    /// This type is the same as the `__m256h` type defined by Intel,
+    /// representing a 256-bit SIMD register which internally is consisted of
+    /// 16 packed `f16` instances. its purpose is for f16 related intrinsic
+    /// implementations.
+    #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+    pub struct __m256h(
+        f16, f16, f16, f16, f16, f16, f16, f16,
+        f16, f16, f16, f16, f16, f16, f16, f16
+    );
+
+    /// 512-bit wide set of 32 `f16` types, x86-specific
+    ///
+    /// This type is the same as the `__m512h` type defined by Intel,
+    /// representing a 512-bit SIMD register which internally is consisted of
+    /// 32 packed `f16` instances. its purpose is for f16 related intrinsic
+    /// implementations.
+    #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+    pub struct __m512h(
+        f16, f16, f16, f16, f16, f16, f16, f16,
+        f16, f16, f16, f16, f16, f16, f16, f16,
+        f16, f16, f16, f16, f16, f16, f16, f16,
+        f16, f16, f16, f16, f16, f16, f16, f16
+    );
 }
 
 /// The BFloat16 type used in AVX-512 intrinsics.
@@ -758,6 +793,50 @@ impl m512bhExt for __m512bh {
     #[inline]
     fn as_m512bh(self) -> Self {
         self
+    }
+}
+
+#[allow(non_camel_case_types)]
+pub(crate) trait m128hExt: Sized {
+    fn as_m128h(self) -> __m128h;
+
+    #[inline]
+    fn as_f16x8(self) -> crate::core_arch::simd::f16x8 {
+        unsafe { transmute(self.as_m128h()) }
+    }
+}
+
+impl m128hExt for __m128h {
+    #[inline]
+    fn as_m128h(self) -> Self {
+        self
+    }
+}
+
+#[allow(non_camel_case_types)]
+pub(crate) trait m256hExt: Sized {
+    fn as_m256h(self) -> __m256h;
+
+    #[inline]
+    fn as_f16x16(self) -> crate::core_arch::simd::f16x16 {
+        unsafe { transmute(self.as_m256h()) }
+    }
+}
+
+impl m256hExt for __m256h {
+    #[inline]
+    fn as_m256h(self) -> Self {
+        self
+    }
+}
+
+#[allow(non_camel_case_types)]
+pub(crate) trait m512hExt: Sized {
+    fn as_m512h(self) -> __m512h;
+
+    #[inline]
+    fn as_f16x32(self) -> crate::core_arch::simd::f16x32 {
+        unsafe { transmute(self.as_m512h()) }
     }
 }
 
