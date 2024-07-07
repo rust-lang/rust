@@ -45,7 +45,7 @@ impl Drop for DropBomb {
     fn drop(&mut self) {
         if !self.defused && !std::thread::panicking() {
             panic!(
-                "command constructed but not executed at {}: `{}`",
+                "command constructed at `{}` was dropped without being executed: `{}`",
                 self.armed_location,
                 self.command.to_string_lossy()
             )
