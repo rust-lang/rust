@@ -77,6 +77,22 @@ impl<'a> Link<'a> {
     }
 }
 
+pub(crate) mod filters {
+    use std::fmt::Display;
+
+    use rinja::filters::Safe;
+
+    use crate::html::escape::EscapeBodyTextWithWbr;
+    use crate::html::render::display_fn;
+    pub(crate) fn wrapped<T>(v: T) -> rinja::Result<Safe<impl Display>>
+    where
+        T: Display,
+    {
+        let string = v.to_string();
+        Ok(Safe(display_fn(move |f| EscapeBodyTextWithWbr(&string).fmt(f))))
+    }
+}
+
 pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     let blocks: Vec<LinkBlock<'_>> = match *it.kind {
         clean::StructItem(ref s) => sidebar_struct(cx, it, s),

@@ -69,6 +69,8 @@ struct PageLayout<'a> {
     display_krate_version_extra: &'a str,
 }
 
+pub(crate) use crate::html::render::sidebar::filters;
+
 pub(crate) fn render<T: Print, S: Print>(
     layout: &Layout,
     page: &Page<'_>,
