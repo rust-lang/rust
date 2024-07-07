@@ -351,8 +351,8 @@ fn try_find_loop(
                     if blk.label().is_some() && label_matches(blk.label()) =>
                 {
                     let expr = ast::Expr::BlockExpr(blk.clone());
-                    let lbl_tok = blk.label().unwrap().lifetime()?.lifetime_ident_token()?.into();
-                    let nav = NavigationTarget::from_expr(db, InFile::new(file_id, expr), lbl_tok);
+                    let lbl = blk.label().unwrap().syntax().clone().into();
+                    let nav = NavigationTarget::from_expr(db, InFile::new(file_id, expr), lbl);
                     return Some(nav);
                 }
                 _ => {}
@@ -2618,7 +2618,7 @@ fn main() {
             r#"
 fn main() {
     'a:{
- // ^^
+ // ^^^
         break$0 'a;
     }
 }
