@@ -3048,6 +3048,16 @@ impl<T, A: Allocator> Extend<T> for Vec<T, A> {
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
     }
+
+    #[inline]
+    unsafe fn extend_one_unchecked(&mut self, item: T) {
+        // SAFETY: Our preconditions ensure the space has been reserved, and `extend_reserve` is implemented correctly.
+        unsafe {
+            let len = self.len();
+            ptr::write(self.as_mut_ptr().add(len), item);
+            self.set_len(len + 1);
+        }
+    }
 }
 
 impl<T, A: Allocator> Vec<T, A> {
@@ -3243,6 +3253,16 @@ impl<'a, T: Copy + 'a, A: Allocator> Extend<&'a T> for Vec<T, A> {
     #[inline]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
+    }
+
+    #[inline]
+    unsafe fn extend_one_unchecked(&mut self, &item: &'a T) {
+        // SAFETY: Our preconditions ensure the space has been reserved, and `extend_reserve` is implemented correctly.
+        unsafe {
+            let len = self.len();
+            ptr::write(self.as_mut_ptr().add(len), item);
+            self.set_len(len + 1);
+        }
     }
 }
 
