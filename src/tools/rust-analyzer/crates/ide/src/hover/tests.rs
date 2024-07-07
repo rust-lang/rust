@@ -6138,7 +6138,7 @@ fn hover_feature() {
             by the codegen backend, but not the MIR inliner.
 
             ```rust
-            #![feature(rustc_attrs, effects)]
+            #![feature(rustc_attrs)]
             #![allow(internal_features)]
 
             #[rustc_intrinsic]
@@ -6148,7 +6148,7 @@ fn hover_feature() {
             Since these are just regular functions, it is perfectly ok to create the intrinsic twice:
 
             ```rust
-            #![feature(rustc_attrs, effects)]
+            #![feature(rustc_attrs)]
             #![allow(internal_features)]
 
             #[rustc_intrinsic]
@@ -6172,11 +6172,22 @@ fn hover_feature() {
             Various intrinsics have native MIR operations that they correspond to. Instead of requiring
             backends to implement both the intrinsic and the MIR operation, the `lower_intrinsics` pass
             will convert the calls to the MIR operation. Backends do not need to know about these intrinsics
-            at all.
+            at all. These intrinsics only make sense without a body, and can either be declared as a "rust-intrinsic"
+            or as a `#[rustc_intrinsic]`. The body is never used, as calls to the intrinsic do not exist
+            anymore after MIR analyses.
 
             ## Intrinsics without fallback logic
 
             These must be implemented by all backends.
+
+            ### `#[rustc_intrinsic]` declarations
+
+            These are written like intrinsics with fallback bodies, but the body is irrelevant.
+            Use `loop {}` for the body or call the intrinsic recursively and add
+            `#[rustc_intrinsic_must_be_overridden]` to the function to ensure that backends don't
+            invoke the body.
+
+            ### Legacy extern ABI based intrinsics
 
             These are imported as if they were FFI functions, with the special
             `rust-intrinsic` ABI. For example, if one was in a freestanding

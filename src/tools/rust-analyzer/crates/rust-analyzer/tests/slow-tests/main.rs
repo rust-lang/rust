@@ -11,11 +11,8 @@
 #![allow(clippy::disallowed_types)]
 
 mod ratoml;
-#[cfg(not(feature = "in-rust-tree"))]
-mod sourcegen;
 mod support;
 mod testdir;
-mod tidy;
 
 use std::{collections::HashMap, path::PathBuf, time::Instant};
 

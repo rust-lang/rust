@@ -32,6 +32,7 @@ impl flags::Release {
         // Generates bits of manual.adoc.
         codegen::diagnostics_docs::generate(false);
         codegen::assists_doc_tests::generate(false);
+        codegen::feature_docs::generate(false);
 
         let website_root = project_root().join("../rust-analyzer.github.io");
         {

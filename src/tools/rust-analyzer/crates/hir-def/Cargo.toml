@@ -37,7 +37,6 @@ stdx.workspace = true
 intern.workspace = true
 base-db.workspace = true
 syntax.workspace = true
-profile.workspace = true
 hir-expand.workspace = true
 mbe.workspace = true
 cfg.workspace = true

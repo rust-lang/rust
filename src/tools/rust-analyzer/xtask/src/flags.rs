@@ -1,6 +1,6 @@
 #![allow(unreachable_pub)]
 
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
 use crate::install::{ClientOpt, ServerOpt};
 
@@ -73,6 +73,8 @@ xflags::xflags! {
             optional codegen_type: CodegenType
             optional --check
         }
+
+        cmd tidy {}
     }
 }
 
@@ -96,7 +98,11 @@ pub enum XtaskCmd {
     Metrics(Metrics),
     Bb(Bb),
     Codegen(Codegen),
+    Tidy(Tidy),
 }
+
+#[derive(Debug)]
+pub struct Tidy {}
 
 #[derive(Debug)]
 pub struct Install {
@@ -185,6 +191,22 @@ pub enum CodegenType {
     AssistsDocTests,
     DiagnosticsDocs,
     LintDefinitions,
+    ParserTests,
+    FeatureDocs,
+}
+
+impl fmt::Display for CodegenType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::All => write!(f, "all"),
+            Self::Grammar => write!(f, "grammar"),
+            Self::AssistsDocTests => write!(f, "assists-doc-tests"),
+            Self::DiagnosticsDocs => write!(f, "diagnostics-docs"),
+            Self::LintDefinitions => write!(f, "lint-definitions"),
+            Self::ParserTests => write!(f, "parser-tests"),
+            Self::FeatureDocs => write!(f, "feature-docs"),
+        }
+    }
 }
 
 impl FromStr for CodegenType {
@@ -195,7 +217,9 @@ impl FromStr for CodegenType {
             "grammar" => Ok(Self::Grammar),
             "assists-doc-tests" => Ok(Self::AssistsDocTests),
             "diagnostics-docs" => Ok(Self::DiagnosticsDocs),
-            "lints-definitions" => Ok(Self::LintDefinitions),
+            "lint-definitions" => Ok(Self::LintDefinitions),
+            "parser-tests" => Ok(Self::ParserTests),
+            "feature-docs" => Ok(Self::FeatureDocs),
             _ => Err("Invalid option".to_owned()),
         }
     }

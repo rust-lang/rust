@@ -12,13 +12,6 @@ pub use crate::{
     stop_watch::{StopWatch, StopWatchSpan},
 };
 
-pub use countme;
-/// Include `_c: Count<Self>` field in important structs to count them.
-///
-/// To view the counts, run with `RA_COUNT=1`. The overhead of disabled count is
-/// almost zero.
-pub use countme::Count;
-
 thread_local!(static IN_SCOPE: RefCell<bool> = const { RefCell::new(false) });
 
 /// A wrapper around google_cpu_profiler.
