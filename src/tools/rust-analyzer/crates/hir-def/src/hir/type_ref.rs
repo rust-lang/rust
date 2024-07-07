@@ -10,7 +10,7 @@ use hir_expand::{
     AstId,
 };
 use intern::Interned;
-use syntax::ast::{self, HasName, IsString};
+use syntax::ast::{self, HasGenericArgs, HasName, IsString};
 
 use crate::{
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},

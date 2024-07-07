@@ -1,7 +1,6 @@
 use hir::HirDisplay;
 use syntax::{
-    ast::{Expr, GenericArg, GenericArgList},
-    ast::{LetStmt, Type::InferType},
+    ast::{Expr, GenericArg, GenericArgList, HasGenericArgs, LetStmt, Type::InferType},
     AstNode, TextRange,
 };
 

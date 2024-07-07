@@ -8,7 +8,7 @@ use ide_db::{base_db::FileId, famous_defs::FamousDefs, RootDatabase};
 
 use itertools::Itertools;
 use syntax::{
-    ast::{self, AstNode, HasName},
+    ast::{self, AstNode, HasGenericArgs, HasName},
     match_ast,
 };
 

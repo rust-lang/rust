@@ -9,7 +9,7 @@ use hir_expand::{
     name::{name, AsName},
 };
 use intern::Interned;
-use syntax::ast::{self, AstNode, HasTypeBounds};
+use syntax::ast::{self, AstNode, HasGenericArgs, HasTypeBounds};
 
 use crate::{
     path::{AssociatedTypeBinding, GenericArg, GenericArgs, ModPath, Path, PathKind},

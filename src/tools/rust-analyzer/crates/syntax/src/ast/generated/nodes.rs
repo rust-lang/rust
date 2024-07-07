@@ -78,10 +78,10 @@ impl AssocItemList {
 pub struct AssocTypeArg {
     pub(crate) syntax: SyntaxNode,
 }
+impl ast::HasGenericArgs for AssocTypeArg {}
 impl ast::HasTypeBounds for AssocTypeArg {}
 impl AssocTypeArg {
     pub fn const_arg(&self) -> Option<ConstArg> { support::child(&self.syntax) }
-    pub fn generic_arg_list(&self) -> Option<GenericArgList> { support::child(&self.syntax) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
@@ -783,8 +783,8 @@ pub struct MethodCallExpr {
 }
 impl ast::HasArgList for MethodCallExpr {}
 impl ast::HasAttrs for MethodCallExpr {}
+impl ast::HasGenericArgs for MethodCallExpr {}
 impl MethodCallExpr {
-    pub fn generic_arg_list(&self) -> Option<GenericArgList> { support::child(&self.syntax) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn receiver(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
@@ -946,8 +946,8 @@ impl PathPat {
 pub struct PathSegment {
     pub(crate) syntax: SyntaxNode,
 }
+impl ast::HasGenericArgs for PathSegment {}
 impl PathSegment {
-    pub fn generic_arg_list(&self) -> Option<GenericArgList> { support::child(&self.syntax) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
@@ -1762,6 +1762,12 @@ pub struct AnyHasDocComments {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasDocComments for AnyHasDocComments {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AnyHasGenericArgs {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::HasGenericArgs for AnyHasGenericArgs {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AnyHasGenericParams {
@@ -4232,6 +4238,21 @@ impl AstNode for AnyHasDocComments {
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         Self::can_cast(syntax.kind()).then_some(AnyHasDocComments { syntax })
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AnyHasGenericArgs {
+    #[inline]
+    pub fn new<T: ast::HasGenericArgs>(node: T) -> AnyHasGenericArgs {
+        AnyHasGenericArgs { syntax: node.syntax().clone() }
+    }
+}
+impl AstNode for AnyHasGenericArgs {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(kind, ASSOC_TYPE_ARG | METHOD_CALL_EXPR | PATH_SEGMENT)
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(AnyHasGenericArgs { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }

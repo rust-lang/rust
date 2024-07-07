@@ -10,7 +10,7 @@ use hir::{ImportPathConfig, Semantics};
 use ide_db::{base_db::FileRange, FxHashMap};
 use std::{cell::Cell, iter::Peekable};
 use syntax::{
-    ast::{self, AstNode, AstToken},
+    ast::{self, AstNode, AstToken, HasGenericArgs},
     SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 
