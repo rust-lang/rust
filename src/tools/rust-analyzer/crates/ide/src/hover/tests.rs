@@ -5310,6 +5310,28 @@ const FOO$0: f64 = expf64(1.2);
             ```
         "#]],
     );
+    // check `f32` isn't double rounded via `f64`
+    check(
+        r#"
+/// This is a doc
+const FOO$0: f32 = 1.9999999403953552_f32;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: f32 = 1.9999999
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
 }
 
 #[test]

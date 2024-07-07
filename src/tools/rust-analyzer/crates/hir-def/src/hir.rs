@@ -56,29 +56,29 @@ pub struct Label {
 }
 pub type LabelId = Idx<Label>;
 
-// We convert float values into bits and that's how we don't need to deal with f32 and f64.
-// For PartialEq, bits comparison should work, as ordering is not important
+// We leave float values as a string to avoid double rounding.
+// For PartialEq, string comparison should work, as ordering is not important
 // https://github.com/rust-lang/rust-analyzer/issues/12380#issuecomment-1137284360
-#[derive(Default, Debug, Clone, Copy, Eq, PartialEq)]
-pub struct FloatTypeWrapper(u64);
+#[derive(Default, Debug, Clone, Eq, PartialEq)]
+pub struct FloatTypeWrapper(Box<str>);
 
 impl FloatTypeWrapper {
-    pub fn new(value: f64) -> Self {
-        Self(value.to_bits())
+    pub fn new(value: String) -> Self {
+        Self(value.into())
     }
 
-    pub fn into_f64(self) -> f64 {
-        f64::from_bits(self.0)
+    pub fn to_f64(&self) -> f64 {
+        self.0.parse().unwrap_or_default()
     }
 
-    pub fn into_f32(self) -> f32 {
-        f64::from_bits(self.0) as f32
+    pub fn to_f32(&self) -> f32 {
+        self.0.parse().unwrap_or_default()
     }
 }
 
 impl fmt::Display for FloatTypeWrapper {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", f64::from_bits(self.0))
+        f.write_str(&self.0)
     }
 }
 
@@ -120,10 +120,7 @@ impl From<ast::LiteralKind> for Literal {
         match ast_lit_kind {
             LiteralKind::IntNumber(lit) => {
                 if let builtin @ Some(_) = lit.suffix().and_then(BuiltinFloat::from_suffix) {
-                    Literal::Float(
-                        FloatTypeWrapper::new(lit.float_value().unwrap_or(Default::default())),
-                        builtin,
-                    )
+                    Literal::Float(FloatTypeWrapper::new(lit.value_string()), builtin)
                 } else if let builtin @ Some(_) = lit.suffix().and_then(BuiltinUint::from_suffix) {
                     Literal::Uint(lit.value().unwrap_or(0), builtin)
                 } else {
@@ -133,7 +130,7 @@ impl From<ast::LiteralKind> for Literal {
             }
             LiteralKind::FloatNumber(lit) => {
                 let ty = lit.suffix().and_then(BuiltinFloat::from_suffix);
-                Literal::Float(FloatTypeWrapper::new(lit.value().unwrap_or(Default::default())), ty)
+                Literal::Float(FloatTypeWrapper::new(lit.value_string()), ty)
             }
             LiteralKind::ByteString(bs) => {
                 let text = bs.value().map_or_else(|_| Default::default(), Box::from);
