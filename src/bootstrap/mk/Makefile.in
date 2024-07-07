@@ -58,7 +58,7 @@ check-aux:
 		library/core \
 		library/alloc \
 		--no-doc
-	# Some use file system operations to demonstrate dealing with `Result`.
+	# Some doctests use file system operations to demonstrate dealing with `Result`.
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
 		$(BOOTSTRAP) miri --stage 2 \
 		library/core \
