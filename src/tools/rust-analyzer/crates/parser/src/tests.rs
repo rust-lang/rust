@@ -1,5 +1,4 @@
 mod prefix_entries;
-mod sourcegen_inline_tests;
 mod top_entries;
 
 use std::{

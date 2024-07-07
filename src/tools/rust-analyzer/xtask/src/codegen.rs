@@ -14,6 +14,7 @@ pub(crate) mod assists_doc_tests;
 pub(crate) mod diagnostics_docs;
 mod grammar;
 mod lints;
+mod parser_inline_tests;
 
 impl flags::Codegen {
     pub(crate) fn run(self, _sh: &Shell) -> anyhow::Result<()> {
@@ -21,6 +22,7 @@ impl flags::Codegen {
             flags::CodegenType::All => {
                 diagnostics_docs::generate(self.check);
                 assists_doc_tests::generate(self.check);
+                parser_inline_tests::generate(self.check);
                 // diagnostics_docs::generate(self.check) doesn't generate any tests
                 // lints::generate(self.check) Updating clones the rust repo, so don't run it unless
                 // explicitly asked for
@@ -29,6 +31,7 @@ impl flags::Codegen {
             flags::CodegenType::AssistsDocTests => assists_doc_tests::generate(self.check),
             flags::CodegenType::DiagnosticsDocs => diagnostics_docs::generate(self.check),
             flags::CodegenType::LintDefinitions => lints::generate(self.check),
+            flags::CodegenType::ParserTests => parser_inline_tests::generate(self.check),
         }
         Ok(())
     }
@@ -187,7 +190,7 @@ fn add_preamble(cg: CodegenType, mut text: String) -> String {
 /// Checks that the `file` has the specified `contents`. If that is not the
 /// case, updates the file and then fails the test.
 #[allow(clippy::print_stderr)]
-fn ensure_file_contents(file: &Path, contents: &str, check: bool) {
+fn ensure_file_contents(cg: CodegenType, file: &Path, contents: &str, check: bool) {
     if let Ok(old_contents) = fs::read_to_string(file) {
         if normalize_newlines(&old_contents) == normalize_newlines(contents) {
             // File is already up to date.
@@ -201,9 +204,11 @@ fn ensure_file_contents(file: &Path, contents: &str, check: bool) {
             "{} was not up-to-date{}",
             file.display(),
             if std::env::var("CI").is_ok() {
-                "\n    NOTE: run `cargo codegen` locally and commit the updated files\n"
+                format!(
+                    "\n    NOTE: run `cargo codegen {cg}` locally and commit the updated files\n"
+                )
             } else {
-                ""
+                "".to_owned()
             }
         );
     } else {

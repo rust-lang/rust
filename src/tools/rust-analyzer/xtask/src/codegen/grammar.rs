@@ -27,7 +27,12 @@ use self::ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc
 pub(crate) fn generate(check: bool) {
     let syntax_kinds = generate_syntax_kinds(KINDS_SRC);
     let syntax_kinds_file = project_root().join("crates/parser/src/syntax_kind/generated.rs");
-    ensure_file_contents(syntax_kinds_file.as_path(), &syntax_kinds, check);
+    ensure_file_contents(
+        crate::flags::CodegenType::Grammar,
+        syntax_kinds_file.as_path(),
+        &syntax_kinds,
+        check,
+    );
 
     let grammar = fs::read_to_string(project_root().join("crates/syntax/rust.ungram"))
         .unwrap()
@@ -37,11 +42,21 @@ pub(crate) fn generate(check: bool) {
 
     let ast_tokens = generate_tokens(&ast);
     let ast_tokens_file = project_root().join("crates/syntax/src/ast/generated/tokens.rs");
-    ensure_file_contents(ast_tokens_file.as_path(), &ast_tokens, check);
+    ensure_file_contents(
+        crate::flags::CodegenType::Grammar,
+        ast_tokens_file.as_path(),
+        &ast_tokens,
+        check,
+    );
 
     let ast_nodes = generate_nodes(KINDS_SRC, &ast);
     let ast_nodes_file = project_root().join("crates/syntax/src/ast/generated/nodes.rs");
-    ensure_file_contents(ast_nodes_file.as_path(), &ast_nodes, check);
+    ensure_file_contents(
+        crate::flags::CodegenType::Grammar,
+        ast_nodes_file.as_path(),
+        &ast_nodes,
+        check,
+    );
 }
 
 fn generate_tokens(grammar: &AstSrc) -> String {

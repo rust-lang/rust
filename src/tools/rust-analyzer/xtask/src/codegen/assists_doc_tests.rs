@@ -47,6 +47,7 @@ r#####"
         }
         let buf = add_preamble(crate::flags::CodegenType::AssistsDocTests, reformat(buf));
         ensure_file_contents(
+            crate::flags::CodegenType::AssistsDocTests,
             &project_root().join("crates/ide-assists/src/tests/generated.rs"),
             &buf,
             check,
