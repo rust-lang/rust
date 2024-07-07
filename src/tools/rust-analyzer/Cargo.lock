@@ -1244,7 +1244,6 @@ dependencies = [
  "expect-test",
  "limit",
  "ra-ap-rustc_lexer",
- "sourcegen",
  "stdx",
  "tracing",
 ]

@@ -186,6 +186,7 @@ pub enum CodegenType {
     DiagnosticsDocs,
     LintDefinitions,
     ParserTests,
+    FeatureDocs,
 }
 
 impl fmt::Display for CodegenType {
@@ -197,6 +198,7 @@ impl fmt::Display for CodegenType {
             Self::DiagnosticsDocs => write!(f, "diagnostics-docs"),
             Self::LintDefinitions => write!(f, "lint-definitions"),
             Self::ParserTests => write!(f, "parser-tests"),
+            Self::FeatureDocs => write!(f, "feature-docs"),
         }
     }
 }
@@ -211,6 +213,7 @@ impl FromStr for CodegenType {
             "diagnostics-docs" => Ok(Self::DiagnosticsDocs),
             "lint-definitions" => Ok(Self::LintDefinitions),
             "parser-tests" => Ok(Self::ParserTests),
+            "feature-docs" => Ok(Self::FeatureDocs),
             _ => Err("Invalid option".to_owned()),
         }
     }

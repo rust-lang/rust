@@ -12,6 +12,7 @@ use crate::{
 
 pub(crate) mod assists_doc_tests;
 pub(crate) mod diagnostics_docs;
+mod feature_docs;
 mod grammar;
 mod lints;
 mod parser_inline_tests;
@@ -32,6 +33,7 @@ impl flags::Codegen {
             flags::CodegenType::DiagnosticsDocs => diagnostics_docs::generate(self.check),
             flags::CodegenType::LintDefinitions => lints::generate(self.check),
             flags::CodegenType::ParserTests => parser_inline_tests::generate(self.check),
+            flags::CodegenType::FeatureDocs => feature_docs::generate(self.check),
         }
         Ok(())
     }
