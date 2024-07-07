@@ -122,18 +122,21 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
 
                 if field.is_many() {
                     quote! {
+                        #[inline]
                         pub fn #method_name(&self) -> AstChildren<#ty> {
                             support::children(&self.syntax)
                         }
                     }
                 } else if let Some(token_kind) = field.token_kind() {
                     quote! {
+                        #[inline]
                         pub fn #method_name(&self) -> Option<#ty> {
                             support::token(&self.syntax, #token_kind)
                         }
                     }
                 } else {
                     quote! {
+                        #[inline]
                         pub fn #method_name(&self) -> Option<#ty> {
                             support::child(&self.syntax)
                         }
@@ -156,12 +159,15 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                 },
                 quote! {
                     impl AstNode for #name {
+                        #[inline]
                         fn can_cast(kind: SyntaxKind) -> bool {
                             kind == #kind
                         }
+                        #[inline]
                         fn cast(syntax: SyntaxNode) -> Option<Self> {
                             if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
                         }
+                        #[inline]
                         fn syntax(&self) -> &SyntaxNode { &self.syntax }
                     }
                 },
@@ -190,9 +196,11 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
             } else {
                 quote! {
                     impl AstNode for #name {
+                        #[inline]
                         fn can_cast(kind: SyntaxKind) -> bool {
                             matches!(kind, #(#kinds)|*)
                         }
+                        #[inline]
                         fn cast(syntax: SyntaxNode) -> Option<Self> {
                             let res = match syntax.kind() {
                                 #(
@@ -202,6 +210,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                             };
                             Some(res)
                         }
+                        #[inline]
                         fn syntax(&self) -> &SyntaxNode {
                             match self {
                                 #(
@@ -226,6 +235,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                 quote! {
                     #(
                         impl From<#variants> for #name {
+                            #[inline]
                             fn from(node: #variants) -> #name {
                                 #name::#variants(node)
                             }
@@ -270,12 +280,15 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                         }
                     }
                     impl AstNode for #name {
+                        #[inline]
                         fn can_cast(kind: SyntaxKind) -> bool {
                             matches!(kind, #(#kinds)|*)
                         }
+                        #[inline]
                         fn cast(syntax: SyntaxNode) -> Option<Self> {
                             Self::can_cast(syntax.kind()).then_some(#name { syntax })
                         }
+                        #[inline]
                         fn syntax(&self) -> &SyntaxNode {
                             &self.syntax
                         }
