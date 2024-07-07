@@ -9,16 +9,17 @@ use stdarch_test::assert_instr;
 extern "C" {
     #[link_name = "llvm.x86.sse4a.extrq"]
     fn extrq(x: i64x2, y: i8x16) -> i64x2;
+    #[link_name = "llvm.x86.sse4a.extrqi"]
+    fn extrqi(x: i64x2, len: u8, idx: u8) -> i64x2;
     #[link_name = "llvm.x86.sse4a.insertq"]
     fn insertq(x: i64x2, y: i64x2) -> i64x2;
+    #[link_name = "llvm.x86.sse4a.insertqi"]
+    fn insertqi(x: i64x2, y: i64x2, len: u8, idx: u8) -> i64x2;
     #[link_name = "llvm.x86.sse4a.movnt.sd"]
     fn movntsd(x: *mut f64, y: __m128d);
     #[link_name = "llvm.x86.sse4a.movnt.ss"]
     fn movntss(x: *mut f32, y: __m128);
 }
-
-// FIXME(blocked on #248): _mm_extracti_si64(x, len, idx) // EXTRQ
-// FIXME(blocked on #248): _mm_inserti_si64(x, y, len, idx) // INSERTQ
 
 /// Extracts the bit range specified by `y` from the lower 64 bits of `x`.
 ///
@@ -39,6 +40,27 @@ pub unsafe fn _mm_extract_si64(x: __m128i, y: __m128i) -> __m128i {
     transmute(extrq(x.as_i64x2(), y.as_i8x16()))
 }
 
+/// Extracts the specified bits from the lower 64 bits of the 128-bit integer vector operand at the
+/// index `idx` and of the length `len`.
+///
+/// `idx` specifies the index of the LSB. `len` specifies the number of bits to extract. If length
+/// and index are both zero, bits `[63:0]` of parameter `x` are extracted. It is a compile-time error
+/// for `len + idx` to be greater than 64 or for `len` to be zero and `idx` to be non-zero.
+///
+/// Returns a 128-bit integer vector whose lower 64 bits contain the extracted bits.
+#[inline]
+#[target_feature(enable = "sse4a")]
+#[cfg_attr(test, assert_instr(extrq, LEN = 5, IDX = 5))]
+#[rustc_legacy_const_generics(1, 2)]
+#[unstable(feature = "simd_x86_updates", issue = "126936")]
+pub unsafe fn _mm_extracti_si64<const LEN: i32, const IDX: i32>(x: __m128i) -> __m128i {
+    // LLVM mentions that it is UB if these are not satisfied
+    static_assert_uimm_bits!(LEN, 6);
+    static_assert_uimm_bits!(IDX, 6);
+    static_assert!((LEN == 0 && IDX == 0) || (LEN != 0 && LEN + IDX <= 64));
+    transmute(extrqi(x.as_i64x2(), LEN as u8, IDX as u8))
+}
+
 /// Inserts the `[length:0]` bits of `y` into `x` at `index`.
 ///
 /// The bits of `y`:
@@ -54,6 +76,25 @@ pub unsafe fn _mm_extract_si64(x: __m128i, y: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_si64(x: __m128i, y: __m128i) -> __m128i {
     transmute(insertq(x.as_i64x2(), y.as_i64x2()))
+}
+
+/// Inserts the `len` least-significant bits from the lower 64 bits of the 128-bit integer vector operand `y` into
+/// the lower 64 bits of the 128-bit integer vector operand `x` at the index `idx` and of the length `len`.
+///
+/// `idx` specifies the index of the LSB. `len` specifies the number of bits to insert. If length and index
+/// are both zero, bits `[63:0]` of parameter `x` are replaced with bits `[63:0]` of parameter `y`. It is a
+/// compile-time error for `len + idx` to be greater than 64 or for `len` to be zero and `idx` to be non-zero.
+#[inline]
+#[target_feature(enable = "sse4a")]
+#[cfg_attr(test, assert_instr(insertq, LEN = 5, IDX = 5))]
+#[rustc_legacy_const_generics(2, 3)]
+#[unstable(feature = "simd_x86_updates", issue = "126936")]
+pub unsafe fn _mm_inserti_si64<const LEN: i32, const IDX: i32>(x: __m128i, y: __m128i) -> __m128i {
+    // LLVM mentions that it is UB if these are not satisfied
+    static_assert_uimm_bits!(LEN, 6);
+    static_assert_uimm_bits!(IDX, 6);
+    static_assert!((LEN == 0 && IDX == 0) || (LEN != 0 && LEN + IDX <= 64));
+    transmute(insertqi(x.as_i64x2(), y.as_i64x2(), LEN as u8, IDX as u8))
 }
 
 /// Non-temporal store of `a.0` into `p`.
@@ -115,6 +156,14 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4a")]
+    unsafe fn test_mm_extracti_si64() {
+        let a = _mm_setr_epi64x(0x0123456789abcdef, 0);
+        let r = _mm_extracti_si64::<8, 8>(a);
+        let e = _mm_setr_epi64x(0xcd, 0);
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "sse4a")]
     unsafe fn test_mm_insert_si64() {
         let i = 0b0110_i64;
         //        ^^^^ bit range inserted
@@ -129,6 +178,15 @@ mod tests {
         let y = _mm_setr_epi64x(i, v);
         let r = _mm_insert_si64(x, y);
         assert_eq_m128i(r, expected);
+    }
+
+    #[simd_test(enable = "sse4a")]
+    unsafe fn test_mm_inserti_si64() {
+        let a = _mm_setr_epi64x(0x0123456789abcdef, 0);
+        let b = _mm_setr_epi64x(0x0011223344556677, 0);
+        let r = _mm_inserti_si64::<8, 8>(a, b);
+        let e = _mm_setr_epi64x(0x0123456789ab77ef, 0);
+        assert_eq_m128i(r, e);
     }
 
     #[repr(align(16))]
