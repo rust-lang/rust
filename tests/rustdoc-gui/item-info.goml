@@ -12,11 +12,11 @@ assert-position: (".item-info .stab", {"x": 245})
 // test for <https://github.com/rust-lang/rust/issues/118615>.
 set-window-size: (850, 800)
 store-position: (
-    "//*[@class='stab portability']//code[text()='Win32_System']",
+    "//*[@class='stab portability']//code[normalize-space()='Win32_System']",
     {"x": first_line_x, "y": first_line_y},
 )
 store-position: (
-    "//*[@class='stab portability']//code[text()='Win32_System_Diagnostics']",
+    "//*[@class='stab portability']//code[normalize-space()='Win32_System_Diagnostics']",
     {"x": second_line_x, "y": second_line_y},
 )
 assert: |first_line_x| != |second_line_x| && |first_line_x| == 516 && |second_line_x| == 272

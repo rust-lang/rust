@@ -20,11 +20,11 @@ define-function: (
             ALL,
         )
         assert-css: (
-            "//*[@class='desc'][text()='Just a normal struct.']",
+            "//*[@class='desc'][normalize-space()='Just a normal struct.']",
             {"color": |desc_color|},
         )
         assert-css: (
-            "//*[@class='result-name']//*[text()='test_docs::']",
+            "//*[@class='result-name']//*[normalize-space()='test_docs::']",
             {"color": |path_color|},
         )
 
@@ -85,19 +85,19 @@ define-function: (
         move-cursor-to: ".search-input"
         focus: ".search-input" // To ensure the `<a>` container isn't focused or hovered.
         assert-css: (
-            "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
+            "//*[@class='result-name']//*[normalize-space()='test_docs::']/ancestor::a",
             {"color": |path_color|, "background-color": "transparent"},
             ALL,
         )
 
         // Checking color and background on hover.
-        move-cursor-to: "//*[@class='desc'][text()='Just a normal struct.']"
+        move-cursor-to: "//*[@class='desc'][normalize-space()='Just a normal struct.']"
         assert-css: (
-            "//*[@class='result-name']//*[text()='test_docs::']",
+            "//*[@class='result-name']//*[normalize-space()='test_docs::']",
             {"color": |hover_path_color|},
         )
         assert-css: (
-            "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
+            "//*[@class='result-name']//*[normalize-space()='test_docs::']/ancestor::a",
             {"color": |hover_path_color|, "background-color": |hover_background|},
         )
     }
