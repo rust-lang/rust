@@ -19,8 +19,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Serialize, Deserialize)]
 pub(crate) struct DriverInfo {
     pub package_name: String,
-    pub crate_name: String,
-    pub version: String,
 }
 
 pub(crate) fn serialize_line<T, W>(value: &T, writer: &mut W)
@@ -65,7 +63,7 @@ fn process_stream(
     let messages = stderr
         .lines()
         .filter_map(|json_msg| serde_json::from_str::<Diagnostic>(json_msg).ok())
-        .filter_map(|diag| ClippyWarning::new(diag, &driver_info.package_name, &driver_info.version));
+        .filter_map(ClippyWarning::new);
 
     for message in messages {
         sender.send(message).unwrap();
