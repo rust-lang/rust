@@ -1,6 +1,6 @@
 use super::{Capturing, FlatToken, ForceCollect, Parser, ReplaceRange, TokenCursor, TrailingToken};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, AttributesData, DelimSpacing};
+use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, AttrsTarget, DelimSpacing};
 use rustc_ast::tokenstream::{DelimSpan, LazyAttrTokenStream, Spacing, ToAttrTokenStream};
 use rustc_ast::{self as ast};
 use rustc_ast::{AttrVec, Attribute, HasAttrs, HasTokens};
@@ -145,22 +145,22 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
             // start position, we ensure that any replace range which encloses
             // another replace range will capture the *replaced* tokens for the inner
             // range, not the original tokens.
-            for (range, attr_data) in replace_ranges.into_iter().rev() {
+            for (range, target) in replace_ranges.into_iter().rev() {
                 assert!(!range.is_empty(), "Cannot replace an empty range: {range:?}");
 
-                // Replace the tokens in range with zero or one `FlatToken::AttrTarget`s, plus
+                // Replace the tokens in range with zero or one `FlatToken::AttrsTarget`s, plus
                 // enough `FlatToken::Empty`s to fill up the rest of the range. This keeps the
                 // total length of `tokens` constant throughout the replacement process, allowing
                 // us to use all of the `ReplaceRanges` entries without adjusting indices.
-                let attr_data_len = attr_data.is_some() as usize;
+                let target_len = target.is_some() as usize;
                 tokens.splice(
                     (range.start as usize)..(range.end as usize),
-                    attr_data
+                    target
                         .into_iter()
-                        .map(|attr_data| (FlatToken::AttrTarget(attr_data), Spacing::Alone))
+                        .map(|target| (FlatToken::AttrsTarget(target), Spacing::Alone))
                         .chain(
                             iter::repeat((FlatToken::Empty, Spacing::Alone))
-                                .take(range.len() - attr_data_len),
+                                .take(range.len() - target_len),
                         ),
                 );
             }
@@ -346,13 +346,12 @@ impl<'a> Parser<'a> {
         {
             assert!(!self.break_last_token, "Should not have unglued last token with cfg attr");
 
-            // Replace the entire AST node that we just parsed, including attributes,
-            // with `attr_data`. If this AST node is inside an item
-            // that has `#[derive]`, then this will allow us to cfg-expand this
-            // AST node.
+            // Replace the entire AST node that we just parsed, including attributes, with
+            // `target`. If this AST node is inside an item that has `#[derive]`, then this will
+            // allow us to cfg-expand this AST node.
             let start_pos = if has_outer_attrs { attrs.start_pos } else { start_pos };
-            let attr_data = AttributesData { attrs: final_attrs.iter().cloned().collect(), tokens };
-            self.capture_state.replace_ranges.push((start_pos..end_pos, Some(attr_data)));
+            let target = AttrsTarget { attrs: final_attrs.iter().cloned().collect(), tokens };
+            self.capture_state.replace_ranges.push((start_pos..end_pos, Some(target)));
             self.capture_state.replace_ranges.extend(inner_attr_replace_ranges);
         }
 
@@ -414,11 +413,11 @@ fn make_attr_token_stream(
                 .expect("Bottom token frame is missing!")
                 .inner
                 .push(AttrTokenTree::Token(token, spacing)),
-            FlatToken::AttrTarget(data) => stack
+            FlatToken::AttrsTarget(target) => stack
                 .last_mut()
                 .expect("Bottom token frame is missing!")
                 .inner
-                .push(AttrTokenTree::Attributes(data)),
+                .push(AttrTokenTree::AttrsTarget(target)),
             FlatToken::Empty => {}
         }
         token_and_spacing = iter.next();

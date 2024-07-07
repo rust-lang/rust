@@ -172,7 +172,7 @@ impl<'a> StripUnconfigured<'a> {
     fn configure_tokens(&self, stream: &AttrTokenStream) -> AttrTokenStream {
         fn can_skip(stream: &AttrTokenStream) -> bool {
             stream.0.iter().all(|tree| match tree {
-                AttrTokenTree::Attributes(_) => false,
+                AttrTokenTree::AttrsTarget(_) => false,
                 AttrTokenTree::Token(..) => true,
                 AttrTokenTree::Delimited(.., inner) => can_skip(inner),
             })
@@ -186,14 +186,14 @@ impl<'a> StripUnconfigured<'a> {
             .0
             .iter()
             .flat_map(|tree| match tree.clone() {
-                AttrTokenTree::Attributes(mut data) => {
-                    data.attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
+                AttrTokenTree::AttrsTarget(mut target) => {
+                    target.attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
 
-                    if self.in_cfg(&data.attrs) {
-                        data.tokens = LazyAttrTokenStream::new(
-                            self.configure_tokens(&data.tokens.to_attr_token_stream()),
+                    if self.in_cfg(&target.attrs) {
+                        target.tokens = LazyAttrTokenStream::new(
+                            self.configure_tokens(&target.tokens.to_attr_token_stream()),
                         );
-                        Some(AttrTokenTree::Attributes(data)).into_iter()
+                        Some(AttrTokenTree::AttrsTarget(target)).into_iter()
                     } else {
                         None.into_iter()
                     }
