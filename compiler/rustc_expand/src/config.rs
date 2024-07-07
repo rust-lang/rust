@@ -185,7 +185,7 @@ impl<'a> StripUnconfigured<'a> {
         let trees: Vec<_> = stream
             .0
             .iter()
-            .flat_map(|tree| match tree.clone() {
+            .filter_map(|tree| match tree.clone() {
                 AttrTokenTree::AttrsTarget(mut target) => {
                     target.attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
 
@@ -193,14 +193,14 @@ impl<'a> StripUnconfigured<'a> {
                         target.tokens = LazyAttrTokenStream::new(
                             self.configure_tokens(&target.tokens.to_attr_token_stream()),
                         );
-                        Some(AttrTokenTree::AttrsTarget(target)).into_iter()
+                        Some(AttrTokenTree::AttrsTarget(target))
                     } else {
-                        None.into_iter()
+                        None
                     }
                 }
                 AttrTokenTree::Delimited(sp, spacing, delim, mut inner) => {
                     inner = self.configure_tokens(&inner);
-                    Some(AttrTokenTree::Delimited(sp, spacing, delim, inner)).into_iter()
+                    Some(AttrTokenTree::Delimited(sp, spacing, delim, inner))
                 }
                 AttrTokenTree::Token(
                     Token {
@@ -220,9 +220,7 @@ impl<'a> StripUnconfigured<'a> {
                 ) => {
                     panic!("Should be `AttrTokenTree::Delimited`, not delim tokens: {:?}", tree);
                 }
-                AttrTokenTree::Token(token, spacing) => {
-                    Some(AttrTokenTree::Token(token, spacing)).into_iter()
-                }
+                AttrTokenTree::Token(token, spacing) => Some(AttrTokenTree::Token(token, spacing)),
             })
             .collect();
         AttrTokenStream::new(trees)
