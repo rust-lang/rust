@@ -374,7 +374,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for `as` casts between raw pointers that don't change their
-    /// mutability, namely `*const T` to `*const U` and `*mut T` to `*mut U`.
+    /// constness, namely `*const T` to `*const U` and `*mut T` to `*mut U`.
     ///
     /// ### Why is this bad?
     /// Though `as` casts between raw pointers are not terrible,
