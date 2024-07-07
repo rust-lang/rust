@@ -12,7 +12,7 @@ use crate::{
 
 pub(crate) mod assists_doc_tests;
 pub(crate) mod diagnostics_docs;
-mod feature_docs;
+pub(crate) mod feature_docs;
 mod grammar;
 mod lints;
 mod parser_inline_tests;
