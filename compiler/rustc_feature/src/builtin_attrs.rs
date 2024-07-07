@@ -654,7 +654,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes: Type system related:
     // ==========================================================================
 
-    gated!(fundamental, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes, experimental!(fundamental)),
+    gated!(fundamental, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No, experimental!(fundamental)),
     gated!(
         may_dangle, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, dropck_eyepatch,

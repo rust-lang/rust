@@ -1533,6 +1533,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
         let adt_def = tcx.adt_def(def_id);
         record!(self.tables.repr_options[def_id] <- adt_def.repr());
+        record!(self.tables.adt_flags[def_id] <- adt_def.flags());
 
         let params_in_repr = self.tcx.params_in_repr(def_id);
         record!(self.tables.params_in_repr[def_id] <- params_in_repr);

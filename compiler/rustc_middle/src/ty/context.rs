@@ -1408,9 +1408,19 @@ impl<'tcx> TyCtxt<'tcx> {
         self.arena.alloc(Steal::new(promoted))
     }
 
-    pub fn mk_adt_def(
+    pub fn mk_adt_def_from_flags(
         self,
         did: DefId,
+        variants: IndexVec<VariantIdx, ty::VariantDef>,
+        flags: ty::AdtFlags,
+        repr: ReprOptions,
+    ) -> ty::AdtDef<'tcx> {
+        self.mk_adt_def_from_data(ty::AdtDefData::new_from_flags(did, variants, flags, repr))
+    }
+
+    pub fn mk_adt_def(
+        self,
+        did: LocalDefId,
         kind: AdtKind,
         variants: IndexVec<VariantIdx, ty::VariantDef>,
         repr: ReprOptions,

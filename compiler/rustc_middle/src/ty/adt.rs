@@ -9,7 +9,7 @@ use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, LangItem};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
@@ -253,15 +253,25 @@ impl Into<DataTypeKind> for AdtKind {
 }
 
 impl AdtDefData {
+    pub(super) fn new_from_flags(
+        did: DefId,
+        variants: IndexVec<VariantIdx, VariantDef>,
+        flags: AdtFlags,
+        repr: ReprOptions,
+    ) -> Self {
+        AdtDefData { did, variants, flags, repr }
+    }
+
     /// Creates a new `AdtDefData`.
     pub(super) fn new(
         tcx: TyCtxt<'_>,
-        did: DefId,
+        did: LocalDefId,
         kind: AdtKind,
         variants: IndexVec<VariantIdx, VariantDef>,
         repr: ReprOptions,
         is_anonymous: bool,
     ) -> Self {
+        let did = did.to_def_id();
         debug!(
             "AdtDef::new({:?}, {:?}, {:?}, {:?}, {:?})",
             did, kind, variants, repr, is_anonymous

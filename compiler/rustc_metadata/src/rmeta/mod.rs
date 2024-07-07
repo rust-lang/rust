@@ -452,6 +452,7 @@ define_tables! {
     expn_that_defined: Table<DefIndex, LazyValue<ExpnId>>,
     params_in_repr: Table<DefIndex, LazyValue<BitSet<u32>>>,
     repr_options: Table<DefIndex, LazyValue<ReprOptions>>,
+    adt_flags: Table<DefIndex, LazyValue<ty::AdtFlags>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a
     // `DefPathTable`. This allows us to avoid deserializing an entire
     // `DefPathTable` up front, since we may only ever use a few

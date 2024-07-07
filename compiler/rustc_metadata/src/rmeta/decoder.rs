@@ -1151,7 +1151,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             DefKind::Union => ty::AdtKind::Union,
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
+
         let repr = self.root.tables.repr_options.get(self, item_id).unwrap().decode(self);
+        let flags = self.root.tables.adt_flags.get(self, item_id).unwrap().decode(self);
 
         let mut variants: Vec<_> = if let ty::AdtKind::Enum = adt_kind {
             self.root
@@ -1174,12 +1176,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
         variants.sort_by_key(|(idx, _)| *idx);
 
-        tcx.mk_adt_def(
+        tcx.mk_adt_def_from_flags(
             did,
-            adt_kind,
             variants.into_iter().map(|(_, variant)| variant).collect(),
+            flags,
             repr,
-            false,
         )
     }
 
