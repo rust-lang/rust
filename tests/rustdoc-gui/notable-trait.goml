@@ -9,19 +9,19 @@ define-function: (
     block {
         // Checking they have the same y position.
         compare-elements-position: (
-            "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+            "//*[@id='method.create_an_iterator_from_read']//a[normalize-space()='NotableStructWithLongName']",
             "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
             ["y"],
         )
         // Checking they don't have the same x position.
         compare-elements-position-false: (
-            "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+            "//*[@id='method.create_an_iterator_from_read']//a[normalize-space()='NotableStructWithLongName']",
             "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
             ["x"],
         )
         // The `i` should be *after* the type.
         assert-position: (
-            "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+            "//*[@id='method.create_an_iterator_from_read']//a[normalize-space()='NotableStructWithLongName']",
             {"x": |x|},
         )
         assert-position: (
@@ -70,7 +70,7 @@ call-function: ("check-notable-tooltip-position-complete", {
 // Now only the `i` should be on the next line.
 set-window-size: (1055, 600)
 compare-elements-position-false: (
-    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
+    "//*[@id='method.create_an_iterator_from_read']//a[normalize-space()='NotableStructWithLongName']",
     "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
     ["y", "x"],
 )
