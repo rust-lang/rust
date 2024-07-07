@@ -87,7 +87,6 @@ fn has_cfg_or_cfg_attr(attrs: &[Attribute]) -> bool {
 //
 // This also makes `Parser` very cheap to clone, since
 // there is no intermediate collection buffer to clone.
-#[derive(Clone)]
 struct LazyAttrTokenStreamImpl {
     start_token: (Token, Spacing),
     cursor_snapshot: TokenCursor,
