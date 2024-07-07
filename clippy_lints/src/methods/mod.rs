@@ -632,8 +632,7 @@ declare_clippy_lint! {
     /// or `_.or_else(|x| Err(y))`.
     ///
     /// ### Why is this bad?
-    /// This can be written more concisely as `_.map(|x| y)` or `_.map_err(|x|
-    /// y)`.
+    /// This can be written more concisely as `_.map(|x| y)` or `_.map_err(|x| y)`.
     ///
     /// ### Example
     /// ```no_run

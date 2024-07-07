@@ -244,9 +244,9 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Casting a function pointer to anything other than `usize`/`isize` is
-    /// not portable across architectures. It either loses bits if the target
-    /// type is too small, or creates extra bits that waste space and bloat the
-    /// resulting binary.
+    /// not portable across architectures. If the target type is too small the
+    /// address would be truncated, and target types larger than `usize` are
+    /// unnecessary.
     ///
     /// Casting to `isize` also doesn't make sense, since addresses are never
     /// signed.
@@ -373,7 +373,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `as` casts on a raw pointer that don't change its
+    /// Checks for `as` casts between raw pointers that don't change their
     /// mutability, namely `*const T` to `*const U` and `*mut T` to `*mut U`.
     ///
     /// ### Why is this bad?
@@ -398,12 +398,12 @@ declare_clippy_lint! {
     #[clippy::version = "1.51.0"]
     pub PTR_AS_PTR,
     pedantic,
-    "casting using `as` on a raw pointer that doesn't change its mutability, where `pointer::cast` could take the place of `as`"
+    "casting using `as` between raw pointers that doesn't change their constness, where `pointer::cast` could take the place of `as`"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `as` casts on a raw pointer that change its constness, namely `*const T` to
+    /// Checks for `as` casts between raw pointers that change their constness, namely `*const T` to
     /// `*mut T` and `*mut T` to `*const T`.
     ///
     /// ### Why is this bad?
