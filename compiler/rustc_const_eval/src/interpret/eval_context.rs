@@ -899,10 +899,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let return_to_block = frame.return_to_block;
         let return_place = frame.return_place.clone();
 
-        let return_action = if cleanup {
-            M::after_stack_pop(self, frame, unwinding)?
+        let return_action;
+        if cleanup {
+            return_action = M::after_stack_pop(self, frame, unwinding)?;
+            assert_ne!(return_action, ReturnAction::NoCleanup);
         } else {
-            ReturnAction::NoCleanup
+            return_action = ReturnAction::NoCleanup;
         };
 
         Ok(StackPopInfo { return_action, return_to_block, return_place })
