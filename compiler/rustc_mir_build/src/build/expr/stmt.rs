@@ -106,7 +106,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 this.in_scope((region_scope, source_info), lint_level, |this| {
                     let fun = unpack!(block = this.as_local_operand(block, fun));
-                    let args: Vec<_> = args
+                    let args: Box<[_]> = args
                         .into_iter()
                         .copied()
                         .map(|arg| Spanned {
