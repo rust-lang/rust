@@ -3,8 +3,9 @@
 use std::{fmt, fs, io, path::PathBuf};
 
 use crate::{
-    codegen::{list_rust_files, CommentBlock, Location},
+    codegen::{CommentBlock, Location},
     project_root,
+    util::list_rust_files,
 };
 
 pub(crate) fn generate(_check: bool) {

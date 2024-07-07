@@ -6,23 +6,29 @@ use std::{
 
 use xshell::Shell;
 
-#[cfg(not(feature = "in-rust-tree"))]
 use xshell::cmd;
 
-#[test]
-fn check_lsp_extensions_docs() {
-    let sh = &Shell::new().unwrap();
+use crate::{flags::Tidy, project_root, util::list_files};
 
+impl Tidy {
+    pub(crate) fn run(&self, sh: &Shell) -> anyhow::Result<()> {
+        check_lsp_extensions_docs(sh);
+        files_are_tidy(sh);
+        check_licenses(sh);
+        Ok(())
+    }
+}
+
+fn check_lsp_extensions_docs(sh: &Shell) {
     let expected_hash = {
-        let lsp_ext_rs = sh
-            .read_file(sourcegen::project_root().join("crates/rust-analyzer/src/lsp/ext.rs"))
-            .unwrap();
+        let lsp_ext_rs =
+            sh.read_file(project_root().join("crates/rust-analyzer/src/lsp/ext.rs")).unwrap();
         stable_hash(lsp_ext_rs.as_str())
     };
 
     let actual_hash = {
         let lsp_extensions_md =
-            sh.read_file(sourcegen::project_root().join("docs/dev/lsp-extensions.md")).unwrap();
+            sh.read_file(project_root().join("docs/dev/lsp-extensions.md")).unwrap();
         let text = lsp_extensions_md
             .lines()
             .find_map(|line| line.strip_prefix("lsp/ext.rs hash:"))
@@ -45,11 +51,8 @@ Please adjust docs/dev/lsp-extensions.md.
     }
 }
 
-#[test]
-fn files_are_tidy() {
-    let sh = &Shell::new().unwrap();
-
-    let files = sourcegen::list_files(&sourcegen::project_root().join("crates"));
+fn files_are_tidy(sh: &Shell) {
+    let files = list_files(&project_root().join("crates"));
 
     let mut tidy_docs = TidyDocs::default();
     let mut tidy_marks = TidyMarks::default();
@@ -121,11 +124,7 @@ fn check_cargo_toml(path: &Path, text: String) {
     }
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
-#[test]
-fn check_licenses() {
-    let sh = &Shell::new().unwrap();
-
+fn check_licenses(sh: &Shell) {
     let expected = "
 (MIT OR Apache-2.0) AND Unicode-DFS-2016
 0BSD OR MIT OR Apache-2.0
@@ -277,7 +276,7 @@ impl TidyDocs {
 }
 
 fn is_exclude_dir(p: &Path, dirs_to_exclude: &[&str]) -> bool {
-    p.strip_prefix(sourcegen::project_root())
+    p.strip_prefix(project_root())
         .unwrap()
         .components()
         .rev()

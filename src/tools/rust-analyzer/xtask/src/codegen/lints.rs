@@ -6,8 +6,9 @@ use stdx::format_to;
 use xshell::{cmd, Shell};
 
 use crate::{
-    codegen::{add_preamble, ensure_file_contents, list_files, reformat},
+    codegen::{add_preamble, ensure_file_contents, reformat},
     project_root,
+    util::list_files,
 };
 
 const DESTINATION: &str = "crates/ide-db/src/generated/lints.rs";

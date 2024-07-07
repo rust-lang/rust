@@ -9,8 +9,9 @@ use std::{
 };
 
 use crate::{
-    codegen::{ensure_file_contents, list_rust_files, CommentBlock},
+    codegen::{ensure_file_contents, CommentBlock},
     project_root,
+    util::list_rust_files,
 };
 
 pub(crate) fn generate(check: bool) {

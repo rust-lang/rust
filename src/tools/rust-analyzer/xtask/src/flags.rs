@@ -73,6 +73,8 @@ xflags::xflags! {
             optional codegen_type: CodegenType
             optional --check
         }
+
+        cmd tidy {}
     }
 }
 
@@ -96,7 +98,11 @@ pub enum XtaskCmd {
     Metrics(Metrics),
     Bb(Bb),
     Codegen(Codegen),
+    Tidy(Tidy),
 }
+
+#[derive(Debug)]
+pub struct Tidy {}
 
 #[derive(Debug)]
 pub struct Install {

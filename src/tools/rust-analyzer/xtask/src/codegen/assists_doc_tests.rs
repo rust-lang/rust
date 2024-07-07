@@ -5,10 +5,9 @@ use std::{fmt, fs, path::Path};
 use stdx::format_to_acc;
 
 use crate::{
-    codegen::{
-        add_preamble, ensure_file_contents, list_rust_files, reformat, CommentBlock, Location,
-    },
+    codegen::{add_preamble, ensure_file_contents, reformat, CommentBlock, Location},
     project_root,
+    util::list_rust_files,
 };
 
 pub(crate) fn generate(check: bool) {

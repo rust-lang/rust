@@ -426,7 +426,7 @@ fn floating_point() {
             true,
         )),
     );
-    #[allow(unknown_lints, unnecessary_min_or_max)]
+    #[allow(unknown_lints, clippy::unnecessary_min_or_max)]
     check_number(
         r#"
         extern "rust-intrinsic" {
