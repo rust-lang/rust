@@ -258,10 +258,6 @@ impl Step for TheBook {
         // build the version info page and CSS
         let shared_assets = builder.ensure(SharedAssets { target });
 
-        // build the command first so we don't nest GHA groups
-        // FIXME: this doesn't do anything!
-        builder.rustdoc_cmd(compiler);
-
         // build the redirect pages
         let _guard = builder.msg_doc(compiler, "book redirect pages", target);
         for file in t!(fs::read_dir(redirect_path)) {
