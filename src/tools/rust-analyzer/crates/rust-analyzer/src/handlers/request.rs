@@ -1640,7 +1640,9 @@ pub(crate) fn handle_call_hierarchy_incoming(
             from_ranges: call_item
                 .ranges
                 .into_iter()
-                .map(|it| to_proto::range(&line_index, it))
+                // This is the range relative to the item
+                .filter(|it| it.file_id == file_id)
+                .map(|it| to_proto::range(&line_index, it.range))
                 .collect(),
         });
     }
@@ -1675,7 +1677,9 @@ pub(crate) fn handle_call_hierarchy_outgoing(
             from_ranges: call_item
                 .ranges
                 .into_iter()
-                .map(|it| to_proto::range(&line_index, it))
+                // This is the range relative to the caller
+                .filter(|it| it.file_id == fpos.file_id)
+                .map(|it| to_proto::range(&line_index, it.range))
                 .collect(),
         });
     }
