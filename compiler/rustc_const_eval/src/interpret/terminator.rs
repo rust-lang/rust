@@ -54,7 +54,7 @@ struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
     args: Vec<FnArg<'tcx, M::Provenance>>,
     fn_sig: ty::FnSig<'tcx>,
     fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
-    /// True if the function is marked as `#[track_caller]` ([`ty::InstanceDef::requires_caller_location`])
+    /// True if the function is marked as `#[track_caller]` ([`ty::InstanceKind::requires_caller_location`])
     with_caller_location: bool,
 }
 
