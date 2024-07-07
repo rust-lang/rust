@@ -100,7 +100,7 @@ pub(crate) fn handle_did_change_text_document(
         *version = params.text_document.version;
 
         let new_contents = apply_document_changes(
-            state.config.position_encoding(),
+            state.config.negotiated_encoding(),
             std::str::from_utf8(data).unwrap(),
             params.content_changes,
         )

@@ -19,7 +19,6 @@ use ide_db::{
     SnippetCap,
 };
 use itertools::Itertools;
-use lsp_types::{ClientCapabilities, MarkupKind};
 use paths::{Utf8Path, Utf8PathBuf};
 use project_model::{
     CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustLibSource,
@@ -35,10 +34,9 @@ use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, VfsPath};
 
 use crate::{
-    caps::completion_item_edit_resolve,
+    capabilities::ClientCapabilities,
     diagnostics::DiagnosticsMapConfig,
-    line_index::PositionEncoding,
-    lsp_ext::{self, negotiated_encoding, WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
+    lsp_ext::{WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
 mod patch_old_style;
@@ -659,7 +657,7 @@ pub struct Config {
     discovered_projects: Vec<ProjectManifest>,
     /// The workspace roots as registered by the LSP client
     workspace_roots: Vec<AbsPathBuf>,
-    caps: lsp_types::ClientCapabilities,
+    caps: ClientCapabilities,
     root_path: AbsPathBuf,
     snippets: Vec<Snippet>,
     visual_studio_code_version: Option<Version>,
@@ -696,6 +694,15 @@ pub struct Config {
     source_root_parent_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
 
     detached_files: Vec<AbsPathBuf>,
+}
+
+// Delegate capability fetching methods
+impl std::ops::Deref for Config {
+    type Target = ClientCapabilities;
+
+    fn deref(&self) -> &Self::Target {
+        &self.caps
+    }
 }
 
 impl Config {
@@ -954,23 +961,6 @@ impl ConfigChange {
     }
 }
 
-macro_rules! try_ {
-    ($expr:expr) => {
-        || -> _ { Some($expr) }()
-    };
-}
-macro_rules! try_or {
-    ($expr:expr, $or:expr) => {
-        try_!($expr).unwrap_or($or)
-    };
-}
-
-macro_rules! try_or_def {
-    ($expr:expr) => {
-        try_!($expr).unwrap_or_default()
-    };
-}
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LinkedProject {
     ProjectManifest(ProjectManifest),
@@ -1177,7 +1167,7 @@ impl std::error::Error for ConfigErrors {}
 impl Config {
     pub fn new(
         root_path: AbsPathBuf,
-        caps: ClientCapabilities,
+        caps: lsp_types::ClientCapabilities,
         workspace_roots: Vec<AbsPathBuf>,
         visual_studio_code_version: Option<Version>,
         user_config_path: Option<Utf8PathBuf>,
@@ -1205,7 +1195,7 @@ impl Config {
         };
 
         Config {
-            caps,
+            caps: ClientCapabilities::new(caps),
             discovered_projects: Vec::new(),
             root_path,
             snippets: Default::default(),
@@ -1266,7 +1256,7 @@ impl Config {
         &self.root_ratoml_path
     }
 
-    pub fn caps(&self) -> &lsp_types::ClientCapabilities {
+    pub fn caps(&self) -> &ClientCapabilities {
         &self.caps
     }
 }
@@ -1289,7 +1279,7 @@ impl Config {
         CompletionConfig {
             enable_postfix_completions: self.completion_postfix_enable().to_owned(),
             enable_imports_on_the_fly: self.completion_autoimport_enable().to_owned()
-                && completion_item_edit_resolve(&self.caps),
+                && self.caps.completion_item_edit_resolve(),
             enable_self_on_the_fly: self.completion_autoself_enable().to_owned(),
             enable_private_editable: self.completion_privateEditable_enable().to_owned(),
             full_function_signatures: self.completion_fullFunctionSignatures_enable().to_owned(),
@@ -1298,16 +1288,7 @@ impl Config {
                 CallableCompletionDef::AddParentheses => Some(CallableSnippets::AddParentheses),
                 CallableCompletionDef::None => None,
             },
-            snippet_cap: SnippetCap::new(try_or_def!(
-                self.caps
-                    .text_document
-                    .as_ref()?
-                    .completion
-                    .as_ref()?
-                    .completion_item
-                    .as_ref()?
-                    .snippet_support?
-            )),
+            snippet_cap: SnippetCap::new(self.completion_snippet()),
             insert_use: self.insert_use_config(source_root),
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
@@ -1359,7 +1340,7 @@ impl Config {
     }
 
     pub fn hover_actions(&self) -> HoverActionsConfig {
-        let enable = self.experimental("hoverActions") && self.hover_actions_enable().to_owned();
+        let enable = self.caps.hover_actions() && self.hover_actions_enable().to_owned();
         HoverActionsConfig {
             implementations: enable && self.hover_actions_implementations_enable().to_owned(),
             references: enable && self.hover_actions_references_enable().to_owned(),
@@ -1385,17 +1366,7 @@ impl Config {
             }),
             documentation: self.hover_documentation_enable().to_owned(),
             format: {
-                let is_markdown = try_or_def!(self
-                    .caps
-                    .text_document
-                    .as_ref()?
-                    .hover
-                    .as_ref()?
-                    .content_format
-                    .as_ref()?
-                    .as_slice())
-                .contains(&MarkupKind::Markdown);
-                if is_markdown {
+                if self.caps.hover_markdown_support() {
                     HoverDocFormat::Markdown
                 } else {
                     HoverDocFormat::PlainText
@@ -1409,17 +1380,7 @@ impl Config {
     }
 
     pub fn inlay_hints(&self) -> InlayHintsConfig {
-        let client_capability_fields = self
-            .caps
-            .text_document
-            .as_ref()
-            .and_then(|text| text.inlay_hint.as_ref())
-            .and_then(|inlay_hint_caps| inlay_hint_caps.resolve_support.as_ref())
-            .map(|inlay_resolve| inlay_resolve.properties.iter())
-            .into_iter()
-            .flatten()
-            .cloned()
-            .collect::<FxHashSet<_>>();
+        let client_capability_fields = self.inlay_hint_resolve_support_properties();
 
         InlayHintsConfig {
             render_colons: self.inlayHints_renderColons().to_owned(),
@@ -1590,163 +1551,8 @@ impl Config {
         }
     }
 
-    pub fn did_save_text_document_dynamic_registration(&self) -> bool {
-        let caps = try_or_def!(self.caps.text_document.as_ref()?.synchronization.clone()?);
-        caps.did_save == Some(true) && caps.dynamic_registration == Some(true)
-    }
-
-    pub fn did_change_watched_files_dynamic_registration(&self) -> bool {
-        try_or_def!(
-            self.caps.workspace.as_ref()?.did_change_watched_files.as_ref()?.dynamic_registration?
-        )
-    }
-
-    pub fn did_change_watched_files_relative_pattern_support(&self) -> bool {
-        try_or_def!(
-            self.caps
-                .workspace
-                .as_ref()?
-                .did_change_watched_files
-                .as_ref()?
-                .relative_pattern_support?
-        )
-    }
-
     pub fn prefill_caches(&self) -> bool {
         self.cachePriming_enable().to_owned()
-    }
-
-    pub fn location_link(&self) -> bool {
-        try_or_def!(self.caps.text_document.as_ref()?.definition?.link_support?)
-    }
-
-    pub fn line_folding_only(&self) -> bool {
-        try_or_def!(self.caps.text_document.as_ref()?.folding_range.as_ref()?.line_folding_only?)
-    }
-
-    pub fn hierarchical_symbols(&self) -> bool {
-        try_or_def!(
-            self.caps
-                .text_document
-                .as_ref()?
-                .document_symbol
-                .as_ref()?
-                .hierarchical_document_symbol_support?
-        )
-    }
-
-    pub fn code_action_literals(&self) -> bool {
-        try_!(self
-            .caps
-            .text_document
-            .as_ref()?
-            .code_action
-            .as_ref()?
-            .code_action_literal_support
-            .as_ref()?)
-        .is_some()
-    }
-
-    pub fn work_done_progress(&self) -> bool {
-        try_or_def!(self.caps.window.as_ref()?.work_done_progress?)
-    }
-
-    pub fn will_rename(&self) -> bool {
-        try_or_def!(self.caps.workspace.as_ref()?.file_operations.as_ref()?.will_rename?)
-    }
-
-    pub fn change_annotation_support(&self) -> bool {
-        try_!(self
-            .caps
-            .workspace
-            .as_ref()?
-            .workspace_edit
-            .as_ref()?
-            .change_annotation_support
-            .as_ref()?)
-        .is_some()
-    }
-
-    pub fn code_action_resolve(&self) -> bool {
-        try_or_def!(self
-            .caps
-            .text_document
-            .as_ref()?
-            .code_action
-            .as_ref()?
-            .resolve_support
-            .as_ref()?
-            .properties
-            .as_slice())
-        .iter()
-        .any(|it| it == "edit")
-    }
-
-    pub fn signature_help_label_offsets(&self) -> bool {
-        try_or_def!(
-            self.caps
-                .text_document
-                .as_ref()?
-                .signature_help
-                .as_ref()?
-                .signature_information
-                .as_ref()?
-                .parameter_information
-                .as_ref()?
-                .label_offset_support?
-        )
-    }
-
-    pub fn completion_label_details_support(&self) -> bool {
-        try_!(self
-            .caps
-            .text_document
-            .as_ref()?
-            .completion
-            .as_ref()?
-            .completion_item
-            .as_ref()?
-            .label_details_support
-            .as_ref()?)
-        .is_some()
-    }
-
-    pub fn semantics_tokens_augments_syntax_tokens(&self) -> bool {
-        try_!(self.caps.text_document.as_ref()?.semantic_tokens.as_ref()?.augments_syntax_tokens?)
-            .unwrap_or(false)
-    }
-
-    pub fn position_encoding(&self) -> PositionEncoding {
-        negotiated_encoding(&self.caps)
-    }
-
-    fn experimental(&self, index: &'static str) -> bool {
-        try_or_def!(self.caps.experimental.as_ref()?.get(index)?.as_bool()?)
-    }
-
-    pub fn code_action_group(&self) -> bool {
-        self.experimental("codeActionGroup")
-    }
-
-    pub fn local_docs(&self) -> bool {
-        self.experimental("localDocs")
-    }
-
-    pub fn open_server_logs(&self) -> bool {
-        self.experimental("openServerLogs")
-    }
-
-    pub fn server_status_notification(&self) -> bool {
-        self.experimental("serverStatusNotification")
-    }
-
-    /// Whether the client supports colored output for full diagnostics from `checkOnSave`.
-    pub fn color_diagnostic_output(&self) -> bool {
-        self.experimental("colorDiagnosticOutput")
-    }
-
-    pub fn test_explorer(&self) -> bool {
-        self.experimental("testExplorer")
     }
 
     pub fn publish_diagnostics(&self) -> bool {
@@ -2026,7 +1832,7 @@ impl Config {
     pub fn snippet_cap(&self) -> Option<SnippetCap> {
         // FIXME: Also detect the proposed lsp version at caps.workspace.workspaceEdit.snippetEditSupport
         // once lsp-types has it.
-        SnippetCap::new(self.experimental("snippetTextEdit"))
+        SnippetCap::new(self.snippet_text_edit())
     }
 
     pub fn call_info(&self) -> CallInfoConfig {
@@ -2066,36 +1872,8 @@ impl Config {
         }
     }
 
-    pub fn semantic_tokens_refresh(&self) -> bool {
-        try_or_def!(self.caps.workspace.as_ref()?.semantic_tokens.as_ref()?.refresh_support?)
-    }
-
-    pub fn code_lens_refresh(&self) -> bool {
-        try_or_def!(self.caps.workspace.as_ref()?.code_lens.as_ref()?.refresh_support?)
-    }
-
-    pub fn inlay_hints_refresh(&self) -> bool {
-        try_or_def!(self.caps.workspace.as_ref()?.inlay_hint.as_ref()?.refresh_support?)
-    }
-
-    pub fn insert_replace_support(&self) -> bool {
-        try_or_def!(
-            self.caps
-                .text_document
-                .as_ref()?
-                .completion
-                .as_ref()?
-                .completion_item
-                .as_ref()?
-                .insert_replace_support?
-        )
-    }
-
     pub fn client_commands(&self) -> ClientCommandsConfig {
-        let commands =
-            try_or!(self.caps.experimental.as_ref()?.get("commands")?, &serde_json::Value::Null);
-        let commands: Option<lsp_ext::ClientCommandOptions> =
-            serde_json::from_value(commands.clone()).ok();
+        let commands = self.commands();
         let force = commands.is_none() && *self.lens_forceCustomCommands();
         let commands = commands.map(|it| it.commands).unwrap_or_default();
 
