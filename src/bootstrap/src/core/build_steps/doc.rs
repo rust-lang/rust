@@ -146,7 +146,6 @@ impl<P: Step> Step for RustbookSrc<P> {
         let out = out.join(&name);
         let index = out.join("index.html");
         let rustbook = builder.tool_exe(Tool::Rustbook);
-        let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
 
         if !builder.config.dry_run()
             && (!up_to_date(&src, &index) || !up_to_date(&rustbook, &index))
@@ -154,7 +153,13 @@ impl<P: Step> Step for RustbookSrc<P> {
             builder.info(&format!("Rustbook ({target}) - {name}"));
             let _ = fs::remove_dir_all(&out);
 
-            rustbook_cmd.arg("build").arg(&src).arg("-d").arg(&out).run(builder);
+            builder
+                .tool_cmd(Tool::Rustbook)
+                .arg("build")
+                .arg(&src)
+                .arg("-d")
+                .arg(&out)
+                .run(builder);
 
             for lang in &self.languages {
                 let out = out.join(lang);
