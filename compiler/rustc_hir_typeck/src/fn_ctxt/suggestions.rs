@@ -2582,7 +2582,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             (hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr), _, &ty::Ref(_, checked, _))
-                if self.can_sub(self.param_env, checked, expected) =>
+                if self.can_eq(self.param_env, checked, expected) =>
             {
                 let make_sugg = |start: Span, end: BytePos| {
                     // skip `(` for tuples such as `(c) = (&123)`.

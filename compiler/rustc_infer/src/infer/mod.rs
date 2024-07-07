@@ -768,19 +768,9 @@ impl<'tcx> InferCtxt<'tcx> {
             .collect()
     }
 
-    pub fn can_sub<T>(&self, param_env: ty::ParamEnv<'tcx>, expected: T, actual: T) -> bool
-    where
-        T: at::ToTrace<'tcx>,
-    {
-        let origin = &ObligationCause::dummy();
-        self.probe(|_| {
-            // We're only answering whether there could be a subtyping relation, and with
-            // opaque types, "there could be one", via registering a hidden type.
-            self.at(origin, param_env).sub(DefineOpaqueTypes::Yes, expected, actual).is_ok()
-        })
-    }
-
-    pub fn can_eq<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
+    // FIXME(-Znext-solver): Get rid of this method, it's never correct. Either that,
+    // or we need to process the obligations.
+    pub fn can_eq_shallow<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
     where
         T: at::ToTrace<'tcx>,
     {
