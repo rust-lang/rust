@@ -1060,11 +1060,7 @@ impl Step for PlainSourceTarball {
                 cmd.arg("--sync").arg(manifest_path);
             }
 
-            let config = if !builder.config.dry_run() {
-                cmd.capture().run(builder).stdout()
-            } else {
-                String::new()
-            };
+            let config = cmd.capture().run(builder).stdout();
 
             let cargo_config_dir = plain_dst_src.join(".cargo");
             builder.create_dir(&cargo_config_dir);
