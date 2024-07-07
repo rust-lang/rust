@@ -9,6 +9,10 @@ fn escape_body_text_with_wbr() {
     // real(istic) examples
     assert_eq!(&E("FirstSecond").to_string(), "First<wbr>Second");
     assert_eq!(&E("First_Second").to_string(), "First<wbr>_Second");
+    assert_eq!(&E("First Second").to_string(), "First Second");
+    assert_eq!(&E("First HSecond").to_string(), "First HSecond");
+    assert_eq!(&E("First HTTPSecond").to_string(), "First HTTP<wbr>Second");
+    assert_eq!(&E("First SecondThird").to_string(), "First Second<wbr>Third");
     assert_eq!(&E("First<T>_Second").to_string(), "First&lt;<wbr>T&gt;<wbr>_Second");
     assert_eq!(&E("first_second").to_string(), "first<wbr>_second");
     assert_eq!(&E("MY_CONSTANT").to_string(), "MY<wbr>_CONSTANT");
