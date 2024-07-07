@@ -3,11 +3,11 @@
 /// descriptors.
 mod pal;
 
-pub(crate) mod exit_guard;
 mod personality;
 
 pub mod backtrace;
 pub mod cmath;
+pub mod exit_guard;
 pub mod os_str;
 pub mod path;
 pub mod sync;
