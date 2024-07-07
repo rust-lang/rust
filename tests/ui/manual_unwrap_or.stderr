@@ -172,5 +172,15 @@ LL | |             None => 0,
 LL | |         };
    | |_________^ help: replace with: `some_macro!().unwrap_or(0)`
 
-error: aborting due to 16 previous errors
+error: this pattern reimplements `Option::unwrap_or`
+  --> tests/ui/manual_unwrap_or.rs:292:9
+   |
+LL | /         if let Some(names) = index.get(&id) {
+LL | |             names
+LL | |         } else {
+LL | |             &[]
+LL | |         }
+   | |_________^ help: replace with: `index.get(&id).unwrap_or(&[])`
+
+error: aborting due to 17 previous errors
 

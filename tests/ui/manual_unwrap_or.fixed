@@ -234,4 +234,13 @@ fn implicit_deref_ref() {
     };
 }
 
+mod issue_13018 {
+    use std::collections::HashMap;
+
+    type RefName = i32;
+    pub fn get(index: &HashMap<usize, Vec<RefName>>, id: usize) -> &[RefName] {
+        index.get(&id).unwrap_or(&[])
+    }
+}
+
 fn main() {}

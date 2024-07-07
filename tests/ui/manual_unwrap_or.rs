@@ -284,4 +284,17 @@ fn implicit_deref_ref() {
     };
 }
 
+mod issue_13018 {
+    use std::collections::HashMap;
+
+    type RefName = i32;
+    pub fn get(index: &HashMap<usize, Vec<RefName>>, id: usize) -> &[RefName] {
+        if let Some(names) = index.get(&id) {
+            names
+        } else {
+            &[]
+        }
+    }
+}
+
 fn main() {}
