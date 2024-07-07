@@ -17,9 +17,8 @@ use std::path::PathBuf;
 // `rustc_invocation`: the rustc command being tested
 // Any unexpected output files not listed in `must_exist` or `can_exist` will cause a failure.
 fn assert_expected_output_files(expectations: Expectations, rustc_invocation: impl Fn()) {
-    let must_exist = expectations.expected_files;
-    let can_exist = expectations.allowed_files;
-    let dir = expectations.test_dir;
+    let Expectations { expected_files: must_exist, allowed_files: can_exist, test_dir: dir } =
+        expectations;
 
     fs_wrapper::create_dir(&dir);
     rustc_invocation();

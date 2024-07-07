@@ -296,7 +296,8 @@ pub fn not_contains<P: AsRef<Path>>(path: P, expected: &str) -> bool {
 }
 
 /// Returns true if the filename at `path` is not in `expected`.
-pub fn filename_not_in_denylist<P: AsRef<Path>>(path: P, expected: &[String]) -> bool {
+pub fn filename_not_in_denylist<P: AsRef<Path>, V: AsRef<[String]>>(path: P, expected: V) -> bool {
+    let expected = expected.as_ref();
     path.as_ref()
         .file_name()
         .is_some_and(|name| !expected.contains(&name.to_str().unwrap().to_owned()))
