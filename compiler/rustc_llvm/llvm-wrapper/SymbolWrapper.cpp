@@ -7,6 +7,7 @@
 // * https://github.com/llvm/llvm-project/blob/ef6d1ec07c693352c4a60dd58db08d2d8558f6ea/llvm/include/llvm/Object/ArchiveWriter.h
 // * https://github.com/llvm/llvm-project/blob/ef6d1ec07c693352c4a60dd58db08d2d8558f6ea/llvm/lib/Object/ArchiveWriter.cpp
 
+#include "LLVMWrapper.h"
 #include "SuppressLLVMWarnings.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/IR/LLVMContext.h"
@@ -148,9 +149,11 @@ extern "C" bool LLVMRustIsECObject(char *BufPtr, size_t BufLen) {
     return cast<llvm::object::COFFObjectFile>(&*Obj)->getMachine() !=
            COFF::IMAGE_FILE_MACHINE_ARM64;
 
+#if LLVM_VERSION_GE(18, 0)
   if (Obj->isCOFFImportFile())
     return cast<llvm::object::COFFImportFile>(&*Obj)->getMachine() !=
            COFF::IMAGE_FILE_MACHINE_ARM64;
+#endif
 
   if (Obj->isIR()) {
     Expected<std::string> TripleStr =
