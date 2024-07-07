@@ -1,5 +1,5 @@
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::command;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -27,7 +27,7 @@ impl Step for Vendor {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let mut cmd = BootstrapCommand::new(&builder.initial_cargo);
+        let mut cmd = command(&builder.initial_cargo);
         cmd.arg("vendor");
 
         if self.versioned_dirs {
@@ -59,6 +59,6 @@ impl Step for Vendor {
 
         cmd.current_dir(self.root_dir);
 
-        builder.run(cmd);
+        cmd.run(builder);
     }
 }

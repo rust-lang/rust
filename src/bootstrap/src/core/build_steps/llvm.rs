@@ -24,7 +24,7 @@ use crate::utils::helpers::{
 };
 use crate::{generate_smart_stamp_hash, CLang, GitRepo, Kind};
 
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::command;
 use build_helper::ci::CiEnv;
 use build_helper::git::get_git_merge_base;
 
@@ -478,9 +478,8 @@ impl Step for Llvm {
             let LlvmResult { llvm_config, .. } =
                 builder.ensure(Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
-                let llvm_bindir = builder
-                    .run(BootstrapCommand::new(&llvm_config).capture_stdout().arg("--bindir"))
-                    .stdout();
+                let llvm_bindir =
+                    command(&llvm_config).capture_stdout().arg("--bindir").run(builder).stdout();
                 let host_bin = Path::new(llvm_bindir.trim());
                 cfg.define(
                     "LLVM_TABLEGEN",
@@ -530,8 +529,8 @@ impl Step for Llvm {
 
         // Helper to find the name of LLVM's shared library on darwin and linux.
         let find_llvm_lib_name = |extension| {
-            let cmd = BootstrapCommand::new(&res.llvm_config);
-            let version = builder.run(cmd.capture_stdout().arg("--version")).stdout();
+            let version =
+                command(&res.llvm_config).capture_stdout().arg("--version").run(builder).stdout();
             let major = version.split('.').next().unwrap();
 
             match &llvm_version_suffix {
@@ -587,8 +586,7 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
         return;
     }
 
-    let cmd = BootstrapCommand::new(llvm_config);
-    let version = builder.run(cmd.capture_stdout().arg("--version")).stdout();
+    let version = command(llvm_config).capture_stdout().arg("--version").run(builder).stdout();
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
         if major >= 17 {

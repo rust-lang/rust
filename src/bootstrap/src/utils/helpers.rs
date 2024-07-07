@@ -47,7 +47,7 @@ macro_rules! t {
         }
     };
 }
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::{command, BootstrapCommand};
 pub use t;
 
 pub fn exe(name: &str, target: TargetSelection) -> String {
@@ -369,9 +369,9 @@ fn lld_flag_no_threads(builder: &Builder<'_>, lld_mode: LldMode, is_windows: boo
     let (windows_flag, other_flag) = LLD_NO_THREADS.get_or_init(|| {
         let newer_version = match lld_mode {
             LldMode::External => {
-                let mut cmd = BootstrapCommand::new("lld").capture_stdout();
+                let mut cmd = command("lld").capture_stdout();
                 cmd.arg("-flavor").arg("ld").arg("--version");
-                let out = builder.run(cmd).stdout();
+                let out = cmd.run(builder).stdout();
                 match (out.find(char::is_numeric), out.find('.')) {
                     (Some(b), Some(e)) => out.as_str()[b..e].parse::<i32>().ok().unwrap_or(14) > 10,
                     _ => true,
@@ -499,10 +499,10 @@ pub fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
 /// Whenever a git invocation is needed, this function should be preferred over
 /// manually building a git `BootstrapCommand`. This approach allows us to manage
 /// bootstrap-specific needs/hacks from a single source, rather than applying them on next to every
-/// `BootstrapCommand::new("git")`, which is painful to ensure that the required change is applied
+/// git command creation, which is painful to ensure that the required change is applied
 /// on each one of them correctly.
 pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
-    let mut git = BootstrapCommand::new("git");
+    let mut git = command("git");
 
     if let Some(source_dir) = source_dir {
         git.current_dir(source_dir);

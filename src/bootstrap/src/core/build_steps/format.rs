@@ -1,7 +1,7 @@
 //! Runs rustfmt on the repository.
 
 use crate::core::builder::Builder;
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::command;
 use crate::utils::helpers::{self, program_out_of_date, t};
 use build_helper::ci::CiEnv;
 use build_helper::git::get_git_modified_files;
@@ -54,13 +54,13 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
 fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, PathBuf)> {
     let stamp_file = build.out.join("rustfmt.stamp");
 
-    let mut cmd = BootstrapCommand::new(match build.initial_rustfmt() {
+    let mut cmd = command(match build.initial_rustfmt() {
         Some(p) => p,
         None => return None,
     });
     cmd.arg("--version");
 
-    let output = build.run(cmd.capture().allow_failure());
+    let output = cmd.capture().allow_failure().run(build);
     if output.is_failure() {
         return None;
     }
@@ -160,29 +160,25 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
         }
     }
     let git_available =
-        build.run(helpers::git(None).capture().allow_failure().arg("--version")).is_success();
+        helpers::git(None).capture().allow_failure().arg("--version").run(build).is_success();
 
     let mut adjective = None;
     if git_available {
-        let in_working_tree = build
-            .run(
-                helpers::git(Some(&build.src))
-                    .capture()
-                    .allow_failure()
-                    .arg("rev-parse")
-                    .arg("--is-inside-work-tree"),
-            )
+        let in_working_tree = helpers::git(Some(&build.src))
+            .capture()
+            .allow_failure()
+            .arg("rev-parse")
+            .arg("--is-inside-work-tree")
+            .run(build)
             .is_success();
         if in_working_tree {
-            let untracked_paths_output = build
-                .run(
-                    helpers::git(Some(&build.src))
-                        .capture_stdout()
-                        .arg("status")
-                        .arg("--porcelain")
-                        .arg("-z")
-                        .arg("--untracked-files=normal"),
-                )
+            let untracked_paths_output = helpers::git(Some(&build.src))
+                .capture_stdout()
+                .arg("status")
+                .arg("--porcelain")
+                .arg("-z")
+                .arg("--untracked-files=normal")
+                .run(build)
                 .stdout();
             let untracked_paths: Vec<_> = untracked_paths_output
                 .split_terminator('\0')

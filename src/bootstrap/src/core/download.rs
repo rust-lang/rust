@@ -11,7 +11,7 @@ use std::{
 use build_helper::ci::CiEnv;
 use xz2::bufread::XzDecoder;
 
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::{command, BootstrapCommand};
 use crate::utils::helpers::hex_encode;
 use crate::utils::helpers::{check_run, exe, move_file, program_out_of_date};
 use crate::{t, Config};
@@ -212,7 +212,7 @@ impl Config {
     fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
         println!("downloading {url}");
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
-        let mut curl = BootstrapCommand::new("curl");
+        let mut curl = command("curl");
         curl.args([
             "-y",
             "30",
