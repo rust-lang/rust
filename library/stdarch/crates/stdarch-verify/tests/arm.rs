@@ -13,6 +13,7 @@ struct Function {
     file: &'static str,
     required_const: &'static [usize],
     has_test: bool,
+    doc: &'static str,
 }
 
 static F16: Type = Type::PrimFloat(16);

@@ -20,6 +20,7 @@ struct Function {
     file: &'static str,
     required_const: &'static [usize],
     has_test: bool,
+    doc: &'static str,
 }
 
 static BF16: Type = Type::BFloat16;
@@ -658,6 +659,20 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
              available on 32-bit platforms",
             rust.name
         );
+    }
+    if !rust.doc.contains("Intel") {
+        bail!("No link to Intel");
+    }
+    let recognized_links = [
+        "https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html",
+        "https://software.intel.com/sites/landingpage/IntrinsicsGuide/",
+    ];
+    if !recognized_links.iter().any(|link| rust.doc.contains(link)) {
+        bail!("Unrecognized Intel Link");
+    }
+    if !rust.doc.contains(&rust.name[1..]) {
+        // We can leave the leading underscore
+        bail!("Bad link to Intel");
     }
     Ok(())
 }

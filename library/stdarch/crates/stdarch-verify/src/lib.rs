@@ -152,6 +152,8 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
             }
             let has_test = tests.contains(&format!("test_{test_name_id}"));
 
+            let doc = find_doc(&f.attrs);
+
             quote! {
                 Function {
                     name: stringify!(#name),
@@ -162,6 +164,7 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
                     file: stringify!(#path),
                     required_const: &[#(#required_const),*],
                     has_test: #has_test,
+                    doc: #doc
                 }
             }
         })
@@ -506,6 +509,26 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
             }
             _ => None,
         })
+}
+
+fn find_doc(attrs: &[syn::Attribute]) -> String {
+    attrs
+        .iter()
+        .filter_map(|a| {
+            if let syn::Meta::NameValue(ref l) = a.meta {
+                if l.path.is_ident("doc") {
+                    if let syn::Expr::Lit(syn::ExprLit {
+                        lit: syn::Lit::Str(ref s),
+                        ..
+                    }) = l.value
+                    {
+                        return Some(s.value());
+                    }
+                }
+            }
+            return None;
+        })
+        .collect()
 }
 
 fn find_required_const(name: &str, attrs: &[syn::Attribute]) -> Vec<usize> {
