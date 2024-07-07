@@ -76,6 +76,22 @@ impl<'a> Link<'a> {
     }
 }
 
+pub(crate) mod filters {
+    use crate::{html::escape::EscapeBodyTextWithWbr, html::render::display_fn};
+    use askama::{Html, MarkupDisplay};
+    use std::fmt::Display;
+    pub(crate) fn wrapped<T>(v: T) -> askama::Result<MarkupDisplay<Html, impl Display>>
+    where
+        T: Display,
+    {
+        let string = v.to_string();
+        Ok(MarkupDisplay::new_safe(
+            display_fn(move |f| EscapeBodyTextWithWbr(&string).fmt(f)),
+            Html,
+        ))
+    }
+}
+
 pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     let blocks: Vec<LinkBlock<'_>> = match *it.kind {
         clean::StructItem(ref s) => sidebar_struct(cx, it, s),

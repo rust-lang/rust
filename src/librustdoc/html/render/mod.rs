@@ -30,7 +30,7 @@ mod tests;
 
 mod context;
 mod print_item;
-mod sidebar;
+pub(crate) mod sidebar;
 mod span_map;
 mod type_layout;
 mod write_shared;

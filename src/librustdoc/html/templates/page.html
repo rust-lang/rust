@@ -98,7 +98,7 @@
             </a> {# #}
             {% endif %}
             <h2> {# #}
-                <a href="{{page.root_path|safe}}{{display_krate_with_trailing_slash|safe}}index.html">{{display_krate}}</a> {# #}
+                <a href="{{page.root_path|safe}}{{display_krate_with_trailing_slash|safe}}index.html">{{display_krate|wrapped|safe}}</a> {# #}
                 {% if !display_krate_version_number.is_empty() %}
                     <span class="version">{{+ display_krate_version_number}}</span>
                 {% endif %}
