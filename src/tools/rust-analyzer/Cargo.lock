@@ -221,11 +221,6 @@ name = "countme"
 version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7704b5fdd17b18ae31c4c1da5a2e0305a2bf17b5249300a9ee9ed7b72114c636"
-dependencies = [
- "dashmap",
- "once_cell",
- "rustc-hash",
-]
 
 [[package]]
 name = "cov-mark"
@@ -548,7 +543,6 @@ dependencies = [
  "limit",
  "mbe",
  "once_cell",
- "profile",
  "ra-ap-rustc_abi",
  "ra-ap-rustc_parse_format",
  "rustc-hash",
@@ -1400,13 +1394,9 @@ name = "profile"
 version = "0.0.0"
 dependencies = [
  "cfg-if",
- "countme",
- "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc",
- "once_cell",
  "perf-event",
  "tikv-jemalloc-ctl",
- "tracing",
  "windows-sys 0.52.0",
 ]
 

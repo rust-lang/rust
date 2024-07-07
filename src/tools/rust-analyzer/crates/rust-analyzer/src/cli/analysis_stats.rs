@@ -250,10 +250,6 @@ impl flags::AnalysisStats {
         }
         report_metric("total memory", total_span.memory.allocated.megabytes() as u64, "MB");
 
-        if env::var("RA_COUNT").is_ok() {
-            eprintln!("{}", profile::countme::get_all());
-        }
-
         if self.source_stats {
             let mut total_file_size = Bytes::default();
             for e in ide_db::base_db::ParseQuery.in_db(db).entries::<Vec<_>>() {
