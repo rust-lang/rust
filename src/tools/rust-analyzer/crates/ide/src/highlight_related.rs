@@ -541,11 +541,7 @@ fn original_range(
     file_id: HirFileId,
     text_range: Option<TextRange>,
 ) -> Option<TextRange> {
-    if text_range.is_none() || !file_id.is_macro() {
-        return text_range;
-    }
-
-    InFile::new(file_id, text_range.unwrap())
+    InFile::new(file_id, text_range?)
         .original_node_file_range_opt(db)
         .map(|(frange, _)| frange.range)
 }

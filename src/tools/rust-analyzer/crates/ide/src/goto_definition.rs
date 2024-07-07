@@ -5,8 +5,7 @@ use crate::{
     RangeInfo, TryToNav, UpmappingResult,
 };
 use hir::{
-    AsAssocItem, AssocItem, DescendPreference, HirFileId, InFile, MacroFileIdExt, ModuleDef,
-    Semantics,
+    AsAssocItem, AssocItem, DescendPreference, InFile, MacroFileIdExt, ModuleDef, Semantics,
 };
 use ide_db::{
     base_db::{AnchoredPath, FileLoader},
@@ -15,11 +14,12 @@ use ide_db::{
     FileId, RootDatabase,
 };
 use itertools::Itertools;
+use span::FileRange;
 use syntax::{
-    ast::{self, HasLoopBody},
+    ast::{self, HasLoopBody, Label},
     match_ast, AstNode, AstToken,
-    SyntaxKind::{self, *},
-    SyntaxNode, SyntaxToken, TextRange, T,
+    SyntaxKind::*,
+    SyntaxToken, TextRange, T,
 };
 
 // Feature: Go to Definition
@@ -224,30 +224,28 @@ fn try_find_fn_or_closure(
 ) -> Option<Vec<NavigationTarget>> {
     fn find_exit_point(
         sema: &Semantics<'_, RootDatabase>,
-        file_id: HirFileId,
-        ancestors: impl Iterator<Item = SyntaxNode>,
-        cursor_token_kind: SyntaxKind,
+        token: SyntaxToken,
     ) -> Option<UpmappingResult<NavigationTarget>> {
         let db = sema.db;
 
-        for anc in ancestors {
+        for anc in sema.token_ancestors_with_macros(token.clone()) {
+            let file_id = sema.hir_file_for(&anc);
             match_ast! {
                 match anc {
                     ast::Fn(fn_) => {
-                        let hir_fn: hir::Function = sema.to_def(&fn_)?;
-                        let nav = hir_fn.try_to_nav(db)?;
-
+                        let fn_: ast::Fn = fn_;
+                        let nav = sema.to_def(&fn_)?.try_to_nav(db)?;
                         // For async token, we navigate to itself, which triggers
                         // VSCode to find the references
-                        let focus_token = if matches!(cursor_token_kind, T![async]) {
+                        let focus_token = if matches!(token.kind(), T![async]) {
                             fn_.async_token()?
                         } else {
                             fn_.fn_token()?
                         };
-                        let focus_range = InFile::new(file_id, focus_token.text_range())
-                            .original_node_file_range_opt(db)
-                            .map(|(frange, _)| frange.range);
 
+                        let focus_range = InFile::new(file_id, focus_token.text_range())
+                             .original_node_file_range_opt(db)
+                             .map(|(frange, _)| frange.range);
                         return Some(nav.map(|it| {
                             if focus_range.is_some_and(|range| it.full_range.contains_range(range)) {
                                 NavigationTarget { focus_range, ..it }
@@ -258,21 +256,26 @@ fn try_find_fn_or_closure(
                     },
                     ast::ClosureExpr(c) => {
                         let pipe_tok = c.param_list().and_then(|it| it.pipe_token())?.into();
-                        let nav = NavigationTarget::from_expr(db, InFile::new(file_id, c.into()), pipe_tok);
+                        let c_infile = InFile::new(file_id, c.into());
+                        let nav = NavigationTarget::from_expr(db, c_infile, pipe_tok);
                         return Some(nav);
                     },
-                    ast::BlockExpr(blk) => match blk.modifier() {
-                        Some(ast::BlockModifier::Async(_)) => {
-                            let async_tok = blk.async_token()?.into();
-                            let nav = NavigationTarget::from_expr(db, InFile::new(file_id, blk.into()), async_tok);
-                            return Some(nav);
-                        },
-                        Some(ast::BlockModifier::Try(_)) if cursor_token_kind != T![return] => {
-                            let try_tok = blk.try_token()?.into();
-                            let nav = NavigationTarget::from_expr(db, InFile::new(file_id, blk.into()), try_tok);
-                            return Some(nav);
-                        },
-                        _ => {}
+                    ast::BlockExpr(blk) => {
+                        match blk.modifier() {
+                            Some(ast::BlockModifier::Async(_)) => {
+                                let async_tok = blk.async_token()?.into();
+                                let blk_infile = InFile::new(file_id, blk.into());
+                                let nav = NavigationTarget::from_expr(db, blk_infile, async_tok);
+                                return Some(nav);
+                            },
+                            Some(ast::BlockModifier::Try(_)) if token.kind() != T![return] => {
+                                let try_tok = blk.try_token()?.into();
+                                let blk_infile = InFile::new(file_id, blk.into());
+                                let nav = NavigationTarget::from_expr(db, blk_infile, try_tok);
+                                return Some(nav);
+                            },
+                            _ => {}
+                        }
                     },
                     _ => {}
                 }
@@ -281,28 +284,9 @@ fn try_find_fn_or_closure(
         None
     }
 
-    let token_kind = token.kind();
     sema.descend_into_macros(DescendPreference::None, token.clone())
         .into_iter()
-        .filter_map(|descended| {
-            let file_id = sema.hir_file_for(&descended.parent()?);
-
-            // Try to find the function in the macro file
-            find_exit_point(sema, file_id, descended.parent_ancestors(), token_kind).or_else(|| {
-                // If not found, try to find it in the root file
-                if file_id.is_macro() {
-                    token
-                        .parent_ancestors()
-                        .find(|it| ast::TokenTree::can_cast(it.kind()))
-                        .and_then(|parent| {
-                            let file_id = sema.hir_file_for(&parent);
-                            find_exit_point(sema, file_id, parent.ancestors(), token_kind)
-                        })
-                } else {
-                    None
-                }
-            })
-        })
+        .filter_map(|descended| find_exit_point(sema, descended))
         .flatten()
         .collect_vec()
         .into()
@@ -314,19 +298,13 @@ fn try_find_loop(
 ) -> Option<Vec<NavigationTarget>> {
     fn find_break_point(
         sema: &Semantics<'_, RootDatabase>,
-        file_id: HirFileId,
-        ancestors: impl Iterator<Item = SyntaxNode>,
-        lbl: &Option<ast::Lifetime>,
+        token: SyntaxToken,
+        label_matches: impl Fn(Option<Label>) -> bool,
     ) -> Option<UpmappingResult<NavigationTarget>> {
         let db = sema.db;
-        let label_matches = |it: Option<ast::Label>| match lbl {
-            Some(lbl) => {
-                Some(lbl.text()) == it.and_then(|it| it.lifetime()).as_ref().map(|it| it.text())
-            }
-            None => true,
-        };
+        let file_id = sema.hir_file_for(&token.parent()?);
 
-        for anc in ancestors.filter_map(ast::Expr::cast) {
+        for anc in sema.token_ancestors_with_macros(token.clone()).filter_map(ast::Expr::cast) {
             match anc {
                 ast::Expr::LoopExpr(loop_) if label_matches(loop_.label()) => {
                     let expr = ast::Expr::LoopExpr(loop_.clone());
@@ -369,28 +347,16 @@ fn try_find_loop(
             _ => None,
         }
     };
+    let label_matches =
+        |it: Option<ast::Label>| match (lbl.as_ref(), it.and_then(|it| it.lifetime())) {
+            (Some(lbl), Some(it)) => lbl.text() == it.text(),
+            (None, _) => true,
+            (Some(_), None) => false,
+        };
 
     sema.descend_into_macros(DescendPreference::None, token.clone())
         .into_iter()
-        .filter_map(|descended| {
-            let file_id = sema.hir_file_for(&descended.parent()?);
-
-            // Try to find the function in the macro file
-            find_break_point(sema, file_id, descended.parent_ancestors(), &lbl).or_else(|| {
-                // If not found, try to find it in the root file
-                if file_id.is_macro() {
-                    token
-                        .parent_ancestors()
-                        .find(|it| ast::TokenTree::can_cast(it.kind()))
-                        .and_then(|parent| {
-                            let file_id = sema.hir_file_for(&parent);
-                            find_break_point(sema, file_id, parent.ancestors(), &lbl)
-                        })
-                } else {
-                    None
-                }
-            })
-        })
+        .filter_map(|descended| find_break_point(sema, descended, label_matches))
         .flatten()
         .collect_vec()
         .into()
