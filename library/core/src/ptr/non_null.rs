@@ -1663,6 +1663,8 @@ impl<T> NonNull<[T]> {
     /// // Note that calling `memory.as_mut()` is not allowed here as the content may be uninitialized.
     /// # #[allow(unused_variables)]
     /// let slice: &mut [MaybeUninit<u8>] = unsafe { memory.as_uninit_slice_mut() };
+    /// # // Prevent leaks for Miri.
+    /// # unsafe { Global.deallocate(memory.cast(), Layout::new::<[u8; 32]>()); }
     /// # Ok::<_, std::alloc::AllocError>(())
     /// ```
     #[inline]
