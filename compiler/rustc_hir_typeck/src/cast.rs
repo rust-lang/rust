@@ -869,9 +869,16 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         // `dyn Src = dyn Dst`, this checks for matching traits/generics
                         fcx.demand_eqtype(self.span, src_obj, dst_obj);
 
-                        // Check that `SrcAuto` is a superset of `DstAuto`.
+                        // Check that `SrcAuto` (+auto traits implied by `Src`) is a superset of `DstAuto`.
                         // Emit an FCW otherwise.
-                        let src_auto = src_tty.auto_traits().collect::<FxHashSet<_>>();
+                        let src_auto: FxHashSet<_> = src_tty
+                            .auto_traits()
+                            .chain(
+                                tcx.supertrait_def_ids(src_principal.def_id())
+                                    .filter(|def_id| tcx.trait_is_auto(*def_id)),
+                            )
+                            .collect();
+
                         let added = dst_tty
                             .auto_traits()
                             .filter(|trait_did| !src_auto.contains(trait_did))
