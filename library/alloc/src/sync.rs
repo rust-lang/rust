@@ -1428,6 +1428,8 @@ impl<T: ?Sized> Arc<T> {
     ///     // the `Arc` between threads.
     ///     let five = Arc::from_raw(ptr);
     ///     assert_eq!(2, Arc::strong_count(&five));
+    /// #   // Prevent leaks for Miri.
+    /// #   Arc::decrement_strong_count(ptr);
     /// }
     /// ```
     #[inline]
@@ -1487,6 +1489,8 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// let x = Arc::new("hello".to_owned());
     /// let x_ptr = Arc::into_raw(x);
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
+    /// # // Prevent leaks for Miri.
+    /// # drop(unsafe { Arc::from_raw(x_ptr) });
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "rc_raw", since = "1.17.0")]
@@ -1769,6 +1773,8 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     ///     // the `Arc` between threads.
     ///     let five = Arc::from_raw_in(ptr, System);
     ///     assert_eq!(2, Arc::strong_count(&five));
+    /// #   // Prevent leaks for Miri.
+    /// #   Arc::decrement_strong_count_in(ptr, System);
     /// }
     /// ```
     #[inline]
