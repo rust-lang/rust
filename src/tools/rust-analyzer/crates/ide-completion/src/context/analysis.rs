@@ -6,7 +6,10 @@ use ide_db::{active_parameter::ActiveParameter, RootDatabase};
 use itertools::Either;
 use syntax::{
     algo::{ancestors_at_offset, find_node_at_offset, non_trivia_sibling},
-    ast::{self, AttrKind, HasArgList, HasGenericParams, HasLoopBody, HasName, NameOrNameRef},
+    ast::{
+        self, AttrKind, HasArgList, HasGenericArgs, HasGenericParams, HasLoopBody, HasName,
+        NameOrNameRef,
+    },
     match_ast, AstNode, AstToken, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode,
     SyntaxToken, TextRange, TextSize, T,
 };

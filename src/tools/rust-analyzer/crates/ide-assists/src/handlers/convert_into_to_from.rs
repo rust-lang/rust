@@ -1,6 +1,6 @@
 use hir::ImportPathConfig;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast, traits::resolve_target_trait};
-use syntax::ast::{self, AstNode, HasName};
+use syntax::ast::{self, AstNode, HasGenericArgs, HasName};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

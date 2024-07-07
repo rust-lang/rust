@@ -6,6 +6,7 @@ use ide_db::{
     helpers::mod_path_to_ast,
     imports::import_assets::{ImportCandidate, LocatedImport},
 };
+use syntax::ast::HasGenericArgs;
 use syntax::{
     ast,
     ast::{make, HasArgList},

@@ -52,6 +52,11 @@ pub trait HasGenericParams: AstNode {
         support::child(self.syntax())
     }
 }
+pub trait HasGenericArgs: AstNode {
+    fn generic_arg_list(&self) -> Option<ast::GenericArgList> {
+        support::child(self.syntax())
+    }
+}
 
 pub trait HasTypeBounds: AstNode {
     fn type_bound_list(&self) -> Option<ast::TypeBoundList> {

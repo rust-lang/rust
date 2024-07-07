@@ -6,7 +6,7 @@ use hir::{AsAssocItem, HirDisplay, ImportPathConfig, ModuleDef, SemanticsScope};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use syntax::{
-    ast::{self, make, AstNode},
+    ast::{self, make, AstNode, HasGenericArgs},
     ted, SyntaxNode,
 };
 
