@@ -90,7 +90,6 @@ ra-ap-rustc_abi = { version = "0.53.0", default-features = false }
 ra-ap-rustc_pattern_analysis = { version = "0.53.0", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
-sourcegen = { path = "./crates/sourcegen" }
 test-fixture = { path = "./crates/test-fixture" }
 test-utils = { path = "./crates/test-utils" }
 
