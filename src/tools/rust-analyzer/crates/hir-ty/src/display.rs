@@ -1043,7 +1043,11 @@ impl HirDisplay for Ty {
                             module_id,
                             PrefixKind::Plain,
                             false,
-                            ImportPathConfig { prefer_no_std: false, prefer_prelude: true },
+                            ImportPathConfig {
+                                prefer_no_std: false,
+                                prefer_prelude: true,
+                                prefer_absolute: false,
+                            },
                         ) {
                             write!(f, "{}", path.display(f.db.upcast()))?;
                         } else {

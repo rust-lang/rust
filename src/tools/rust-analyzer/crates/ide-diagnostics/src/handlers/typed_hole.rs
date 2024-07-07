@@ -67,6 +67,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
                 ImportPathConfig {
                     prefer_no_std: ctx.config.prefer_no_std,
                     prefer_prelude: ctx.config.prefer_prelude,
+                    prefer_absolute: ctx.config.prefer_absolute,
                 },
             )
             .ok()

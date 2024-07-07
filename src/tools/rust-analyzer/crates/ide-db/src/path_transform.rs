@@ -308,8 +308,11 @@ impl Ctx<'_> {
                             parent.segment()?.name_ref()?,
                         )
                         .and_then(|trait_ref| {
-                            let cfg =
-                                ImportPathConfig { prefer_no_std: false, prefer_prelude: true };
+                            let cfg = ImportPathConfig {
+                                prefer_no_std: false,
+                                prefer_prelude: true,
+                                prefer_absolute: false,
+                            };
                             let found_path = self.target_module.find_path(
                                 self.source_scope.db.upcast(),
                                 hir::ModuleDef::Trait(trait_ref),
@@ -348,7 +351,11 @@ impl Ctx<'_> {
                     }
                 }
 
-                let cfg = ImportPathConfig { prefer_no_std: false, prefer_prelude: true };
+                let cfg = ImportPathConfig {
+                    prefer_no_std: false,
+                    prefer_prelude: true,
+                    prefer_absolute: false,
+                };
                 let found_path =
                     self.target_module.find_path(self.source_scope.db.upcast(), def, cfg)?;
                 let res = mod_path_to_ast(&found_path).clone_for_update();
@@ -383,7 +390,11 @@ impl Ctx<'_> {
 
                 if let Some(adt) = ty.as_adt() {
                     if let ast::Type::PathType(path_ty) = &ast_ty {
-                        let cfg = ImportPathConfig { prefer_no_std: false, prefer_prelude: true };
+                        let cfg = ImportPathConfig {
+                            prefer_no_std: false,
+                            prefer_prelude: true,
+                            prefer_absolute: false,
+                        };
                         let found_path = self.target_module.find_path(
                             self.source_scope.db.upcast(),
                             ModuleDef::from(adt),

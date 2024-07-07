@@ -64,6 +64,7 @@ fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         ImportPathConfig {
             prefer_no_std: ctx.config.prefer_no_std,
             prefer_prelude: ctx.config.prefer_prelude,
+            prefer_absolute: ctx.config.prefer_absolute,
         },
     )?;
 
@@ -111,6 +112,7 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
         ImportPathConfig {
             prefer_no_std: ctx.config.prefer_no_std,
             prefer_prelude: ctx.config.prefer_prelude,
+            prefer_absolute: ctx.config.prefer_absolute,
         },
     )?;
 

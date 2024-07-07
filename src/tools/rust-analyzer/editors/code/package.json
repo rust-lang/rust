@@ -1735,6 +1735,16 @@
                 }
             },
             {
+                "title": "imports",
+                "properties": {
+                    "rust-analyzer.imports.prefixExternPrelude": {
+                        "markdownDescription": "Whether to prefix external (including std, core) crate imports with `::`. e.g. \"use ::std::io::Read;\".",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
                 "title": "inlayHints",
                 "properties": {
                     "rust-analyzer.inlayHints.bindingModeHints.enable": {

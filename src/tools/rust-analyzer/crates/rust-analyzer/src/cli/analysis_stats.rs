@@ -439,7 +439,11 @@ impl flags::AnalysisStats {
                         .gen_source_code(
                             &scope,
                             &mut formatter,
-                            ImportPathConfig { prefer_no_std: false, prefer_prelude: true },
+                            ImportPathConfig {
+                                prefer_no_std: false,
+                                prefer_prelude: true,
+                                prefer_absolute: false,
+                            },
                         )
                         .unwrap();
                     syntax_hit_found |= trim(&original_text) == trim(&generated);
@@ -988,6 +992,7 @@ impl flags::AnalysisStats {
                     },
                     prefer_no_std: false,
                     prefer_prelude: true,
+                    prefer_absolute: false,
                     style_lints: false,
                     term_search_fuel: 400,
                     term_search_borrowck: true,

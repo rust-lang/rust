@@ -663,7 +663,11 @@ impl Match {
             .module();
         for (path, resolved_path) in &template.resolved_paths {
             if let hir::PathResolution::Def(module_def) = resolved_path.resolution {
-                let cfg = ImportPathConfig { prefer_no_std: false, prefer_prelude: true };
+                let cfg = ImportPathConfig {
+                    prefer_no_std: false,
+                    prefer_prelude: true,
+                    prefer_absolute: false,
+                };
                 let mod_path = module.find_path(sema.db, module_def, cfg).ok_or_else(|| {
                     match_error!("Failed to render template path `{}` at match location")
                 })?;

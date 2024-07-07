@@ -183,6 +183,8 @@ fn find_path_for_module(
             let kind = if name_already_occupied_in_type_ns {
                 cov_mark::hit!(ambiguous_crate_start);
                 PathKind::Abs
+            } else if ctx.cfg.prefer_absolute {
+                PathKind::Abs
             } else {
                 PathKind::Plain
             };
@@ -564,7 +566,13 @@ mod tests {
     /// item the `path` refers to returns that same path when called from the
     /// module the cursor is in.
     #[track_caller]
-    fn check_found_path_(ra_fixture: &str, path: &str, prefer_prelude: bool, expect: Expect) {
+    fn check_found_path_(
+        ra_fixture: &str,
+        path: &str,
+        prefer_prelude: bool,
+        prefer_absolute: bool,
+        expect: Expect,
+    ) {
         let (db, pos) = TestDB::with_position(ra_fixture);
         let module = db.module_at_position(pos);
         let parsed_path_file =
@@ -604,7 +612,7 @@ mod tests {
                 module,
                 prefix,
                 ignore_local_imports,
-                ImportPathConfig { prefer_no_std: false, prefer_prelude },
+                ImportPathConfig { prefer_no_std: false, prefer_prelude, prefer_absolute },
             );
             format_to!(
                 res,
@@ -619,11 +627,15 @@ mod tests {
     }
 
     fn check_found_path(ra_fixture: &str, path: &str, expect: Expect) {
-        check_found_path_(ra_fixture, path, false, expect);
+        check_found_path_(ra_fixture, path, false, false, expect);
     }
 
     fn check_found_path_prelude(ra_fixture: &str, path: &str, expect: Expect) {
-        check_found_path_(ra_fixture, path, true, expect);
+        check_found_path_(ra_fixture, path, true, false, expect);
+    }
+
+    fn check_found_path_absolute(ra_fixture: &str, path: &str, expect: Expect) {
+        check_found_path_(ra_fixture, path, false, true, expect);
     }
 
     #[test]
@@ -866,6 +878,39 @@ pub mod ast {
                 ByCrate(imports ✖): syntax::ast::ModuleItem
                 BySelf (imports ✔): syntax::ast::ModuleItem
                 BySelf (imports ✖): syntax::ast::ModuleItem
+            "#]],
+        );
+    }
+
+    #[test]
+    fn partially_imported_with_prefer_absolute() {
+        cov_mark::check!(partially_imported);
+        // Similar to partially_imported test case above, but with prefer_absolute enabled.
+        // Even if the actual imported item is in external crate, if the path to that item
+        // is starting from the imported name, then the path should not start from "::".
+        // i.e. The first line in the expected output should not start from "::".
+        check_found_path_absolute(
+            r#"
+//- /main.rs crate:main deps:syntax
+
+use syntax::ast;
+$0
+
+//- /lib.rs crate:syntax
+pub mod ast {
+    pub enum ModuleItem {
+        A, B, C,
+    }
+}
+        "#,
+            "syntax::ast::ModuleItem",
+            expect![[r#"
+                Plain  (imports ✔): ast::ModuleItem
+                Plain  (imports ✖): ::syntax::ast::ModuleItem
+                ByCrate(imports ✔): crate::ast::ModuleItem
+                ByCrate(imports ✖): ::syntax::ast::ModuleItem
+                BySelf (imports ✔): self::ast::ModuleItem
+                BySelf (imports ✖): ::syntax::ast::ModuleItem
             "#]],
         );
     }
@@ -1766,6 +1811,43 @@ pub mod foo {
                 BySelf (imports ✔): krate::prelude::Foo
                 BySelf (imports ✖): krate::prelude::Foo
             "#]],
+        );
+    }
+
+    #[test]
+    fn respects_absolute_setting() {
+        let ra_fixture = r#"
+//- /main.rs crate:main deps:krate
+$0
+//- /krate.rs crate:krate
+pub mod foo {
+    pub struct Foo;
+}
+"#;
+        check_found_path(
+            ra_fixture,
+            "krate::foo::Foo",
+            expect![[r#"
+            Plain  (imports ✔): krate::foo::Foo
+            Plain  (imports ✖): krate::foo::Foo
+            ByCrate(imports ✔): krate::foo::Foo
+            ByCrate(imports ✖): krate::foo::Foo
+            BySelf (imports ✔): krate::foo::Foo
+            BySelf (imports ✖): krate::foo::Foo
+        "#]],
+        );
+
+        check_found_path_absolute(
+            ra_fixture,
+            "krate::foo::Foo",
+            expect![[r#"
+            Plain  (imports ✔): ::krate::foo::Foo
+            Plain  (imports ✖): ::krate::foo::Foo
+            ByCrate(imports ✔): ::krate::foo::Foo
+            ByCrate(imports ✖): ::krate::foo::Foo
+            BySelf (imports ✔): ::krate::foo::Foo
+            BySelf (imports ✖): ::krate::foo::Foo
+        "#]],
         );
     }
 

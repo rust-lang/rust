@@ -1222,6 +1222,26 @@ use self::foo::{self, Bar, Foo};
     );
 }
 
+#[test]
+fn insert_with_double_colon_prefixed_import_merge() {
+    check_with_config(
+        "use ::ext::foo::Foo",
+        r#"
+use ::ext::foo::Foo as _;
+"#,
+        r#"
+use ::ext::foo::Foo;
+"#,
+        &InsertUseConfig {
+            granularity: ImportGranularity::Crate,
+            prefix_kind: hir::PrefixKind::BySelf,
+            enforce_granularity: true,
+            group: true,
+            skip_glob_imports: true,
+        },
+    );
+}
+
 fn check_with_config(
     path: &str,
     ra_fixture_before: &str,

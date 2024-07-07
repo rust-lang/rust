@@ -93,6 +93,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     let cfg = ImportPathConfig {
         prefer_no_std: ctx.config.prefer_no_std,
         prefer_prelude: ctx.config.prefer_prelude,
+        prefer_absolute: ctx.config.prefer_absolute,
     };
 
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
