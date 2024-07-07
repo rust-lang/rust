@@ -96,6 +96,12 @@ impl<'a> fmt::Display for EscapeBodyTextWithWbr<'a> {
         let _ = it.next(); // don't insert wbr before first char
         while let Some((i, s)) = it.next() {
             let pk = it.peek();
+            if s.chars().all(|c| c.is_whitespace()) {
+                // don't need "First <wbr>Second"; the space is enough
+                EscapeBodyText(&text[last..i]).fmt(fmt)?;
+                last = i;
+                continue;
+            }
             let is_uppercase = || s.chars().any(|c| c.is_uppercase());
             let next_is_uppercase =
                 || pk.map_or(true, |(_, t)| t.chars().any(|c| c.is_uppercase()));
