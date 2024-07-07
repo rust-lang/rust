@@ -149,13 +149,6 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
             })
         })
     }
-
-    /// This is the types of the fields of a coroutine which are not stored in a
-    /// variant.
-    #[inline]
-    fn prefix_tys(self) -> &'tcx List<Ty<'tcx>> {
-        self.upvar_tys()
-    }
 }
 
 #[derive(Debug, Copy, Clone, HashStable, TypeFoldable, TypeVisitable)]

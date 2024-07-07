@@ -444,6 +444,9 @@ pub struct Body<'tcx> {
     /// If `-Cinstrument-coverage` is not active, or if an individual function
     /// is not eligible for coverage, then this should always be `None`.
     pub function_coverage_info: Option<Box<coverage::FunctionCoverageInfo>>,
+
+    /// Coroutine local-upvar map
+    pub local_upvar_map: IndexVec<FieldIdx, Option<Local>>,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -487,6 +490,7 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors,
             coverage_info_hi: None,
             function_coverage_info: None,
+            local_upvar_map: IndexVec::new(),
         };
         body.is_polymorphic = body.has_non_region_param();
         body
@@ -518,6 +522,7 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors: None,
             coverage_info_hi: None,
             function_coverage_info: None,
+            local_upvar_map: IndexVec::new(),
         };
         body.is_polymorphic = body.has_non_region_param();
         body

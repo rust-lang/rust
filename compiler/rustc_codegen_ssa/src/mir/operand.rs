@@ -16,7 +16,7 @@ use std::fmt;
 
 use arrayvec::ArrayVec;
 use either::Either;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -552,13 +552,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    #[instrument(level = "debug", skip(self, bx), ret)]
     fn maybe_codegen_consume_direct(
         &mut self,
         bx: &mut Bx,
         place_ref: mir::PlaceRef<'tcx>,
     ) -> Option<OperandRef<'tcx, Bx::Value>> {
-        debug!("maybe_codegen_consume_direct(place_ref={:?})", place_ref);
-
         match self.locals[place_ref.local] {
             LocalRef::Operand(mut o) => {
                 // Moves out of scalar and scalar pair fields are trivial.
@@ -601,13 +600,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, bx), ret)]
     pub fn codegen_consume(
         &mut self,
         bx: &mut Bx,
         place_ref: mir::PlaceRef<'tcx>,
     ) -> OperandRef<'tcx, Bx::Value> {
-        debug!("codegen_consume(place_ref={:?})", place_ref);
-
         let ty = self.monomorphized_place_ty(place_ref);
         let layout = bx.cx().layout_of(ty);
 
@@ -626,13 +624,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx.load_operand(place)
     }
 
+    #[instrument(level = "debug", skip(self, bx), ret)]
     pub fn codegen_operand(
         &mut self,
         bx: &mut Bx,
         operand: &mir::Operand<'tcx>,
     ) -> OperandRef<'tcx, Bx::Value> {
-        debug!("codegen_operand(operand={:?})", operand);
-
         match *operand {
             mir::Operand::Copy(ref place) | mir::Operand::Move(ref place) => {
                 self.codegen_consume(bx, place.as_ref())

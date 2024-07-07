@@ -19,6 +19,7 @@ extern crate tracing;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -296,6 +297,7 @@ fn do_mir_borrowck<'tcx>(
             regioncx: regioncx.clone(),
             used_mut: Default::default(),
             used_mut_upvars: SmallVec::new(),
+            local_from_upvars: UnordMap::default(),
             borrow_set: Rc::clone(&borrow_set),
             upvars: &[],
             local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
@@ -322,6 +324,12 @@ fn do_mir_borrowck<'tcx>(
         }
     }
 
+    let mut local_from_upvars = UnordMap::default();
+    for (field, &local) in body.local_upvar_map.iter_enumerated() {
+        let Some(local) = local else { continue };
+        local_from_upvars.insert(local, field);
+    }
+    debug!(?local_from_upvars, "dxf");
     let mut mbcx = MirBorrowckCtxt {
         infcx: &infcx,
         param_env,
@@ -337,6 +345,7 @@ fn do_mir_borrowck<'tcx>(
         regioncx: Rc::clone(&regioncx),
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
+        local_from_upvars,
         borrow_set: Rc::clone(&borrow_set),
         upvars: tcx.closure_captures(def),
         local_names,
@@ -572,6 +581,9 @@ struct MirBorrowckCtxt<'a, 'mir, 'infcx, 'tcx> {
     /// If the function we're checking is a closure, then we'll need to report back the list of
     /// mutable upvars that have been used. This field keeps track of them.
     used_mut_upvars: SmallVec<[FieldIdx; 8]>,
+    /// Since upvars are moved to real locals, we need to map mutations to the locals back to
+    /// the upvars, so that used_mut_upvars is up-to-date.
+    local_from_upvars: UnordMap<Local, FieldIdx>,
     /// Region inference context. This contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
     regioncx: Rc<RegionInferenceContext<'tcx>>,
@@ -2232,16 +2244,19 @@ impl<'mir, 'tcx> MirBorrowckCtxt<'_, 'mir, '_, 'tcx> {
     }
 
     /// Adds the place into the used mutable variables set
+    #[instrument(level = "debug", skip(self, flow_state))]
     fn add_used_mut(&mut self, root_place: RootPlace<'tcx>, flow_state: &Flows<'_, 'mir, 'tcx>) {
         match root_place {
             RootPlace { place_local: local, place_projection: [], is_local_mutation_allowed } => {
                 // If the local may have been initialized, and it is now currently being
                 // mutated, then it is justified to be annotated with the `mut`
                 // keyword, since the mutation may be a possible reassignment.
-                if is_local_mutation_allowed != LocalMutationIsAllowed::Yes
-                    && self.is_local_ever_initialized(local, flow_state).is_some()
-                {
-                    self.used_mut.insert(local);
+                if !matches!(is_local_mutation_allowed, LocalMutationIsAllowed::Yes) {
+                    if self.is_local_ever_initialized(local, flow_state).is_some() {
+                        self.used_mut.insert(local);
+                    } else if let Some(&field) = self.local_from_upvars.get(&local) {
+                        self.used_mut_upvars.push(field);
+                    }
                 }
             }
             RootPlace {
@@ -2258,6 +2273,8 @@ impl<'mir, 'tcx> MirBorrowckCtxt<'_, 'mir, '_, 'tcx> {
                     local: place_local,
                     projection: place_projection,
                 }) {
+                    self.used_mut_upvars.push(field);
+                } else if let Some(&field) = self.local_from_upvars.get(&place_local) {
                     self.used_mut_upvars.push(field);
                 }
             }

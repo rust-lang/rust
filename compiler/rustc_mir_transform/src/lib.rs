@@ -299,6 +299,7 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
             // by-move and by-mut bodies if needed. We do this first so
             // they can be optimized in lockstep with their parent bodies.
             &coroutine::ByMoveBody,
+            &coroutine::relocate_upvars::RelocateUpvars,
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::Initial,
             &rustc_peek::SanityCheck, // Just a lint

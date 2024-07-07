@@ -172,7 +172,7 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
         )
         .collect();
 
-        if coroutine_kind == ty::ClosureKind::FnOnce {
+        if matches!(coroutine_kind, ty::ClosureKind::FnOnce) {
             assert_eq!(field_remapping.len(), tcx.closure_captures(parent_def_id).len());
             return;
         }
@@ -234,7 +234,7 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
                 let Some((mir::ProjectionElem::Deref, projection)) = projection.split_first()
                 else {
                     bug!(
-                        "There should be at least a single deref for an upvar local initialization, found {projection:#?}"
+                        "There should be at least a single deref for an upvar local initialization, found {projection:#?} at {location:?}"
                     );
                 };
                 // There may be more derefs, since we may also implicitly reborrow
