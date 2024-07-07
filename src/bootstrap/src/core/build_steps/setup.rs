@@ -474,20 +474,18 @@ impl Step for Hook {
         if config.dry_run() {
             return;
         }
-        t!(install_git_hook_maybe(config));
+        t!(install_git_hook_maybe(builder, config));
     }
 }
 
 // install a git hook to automatically run tidy, if they want
-fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
+fn install_git_hook_maybe(builder: &Builder<'_>, config: &Config) -> io::Result<()> {
     let git = helpers::git(Some(&config.src))
+        .capture()
         .args(["rev-parse", "--git-common-dir"])
-        .as_command_mut()
-        .output()
-        .map(|output| {
-            assert!(output.status.success(), "failed to run `git`");
-            PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
-        })?;
+        .run(builder)
+        .stdout();
+    let git = PathBuf::from(git.trim());
     let hooks_dir = git.join("hooks");
     let dst = hooks_dir.join("pre-push");
     if dst.exists() {
