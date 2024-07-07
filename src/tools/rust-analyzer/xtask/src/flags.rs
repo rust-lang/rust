@@ -1,6 +1,6 @@
 #![allow(unreachable_pub)]
 
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
 use crate::install::{ClientOpt, ServerOpt};
 
@@ -185,6 +185,18 @@ pub enum CodegenType {
     AssistsDocTests,
     DiagnosticsDocs,
     LintDefinitions,
+}
+
+impl fmt::Display for CodegenType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::All => write!(f, "all"),
+            Self::Grammar => write!(f, "grammar"),
+            Self::AssistsDocTests => write!(f, "assists-doc-tests"),
+            Self::DiagnosticsDocs => write!(f, "diagnostics-docs"),
+            Self::LintDefinitions => write!(f, "lint-definitions"),
+        }
+    }
 }
 
 impl FromStr for CodegenType {

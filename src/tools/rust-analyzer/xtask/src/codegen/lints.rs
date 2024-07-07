@@ -73,7 +73,7 @@ pub struct LintGroup {
     .unwrap();
     generate_descriptor_clippy(&mut contents, &lints_json);
 
-    let contents = add_preamble("lint-definitions", reformat(contents));
+    let contents = add_preamble(crate::flags::CodegenType::LintDefinitions, reformat(contents));
 
     let destination = project_root().join(DESTINATION);
     ensure_file_contents(destination.as_path(), &contents, check);

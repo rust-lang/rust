@@ -20,7 +20,6 @@ use ide_db::{
 };
 use itertools::Itertools;
 use profile::{memory_usage, Bytes};
-use std::env;
 use stdx::format_to;
 use syntax::{ast, Parse, SyntaxNode};
 use triomphe::Arc;

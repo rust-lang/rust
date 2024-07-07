@@ -45,7 +45,7 @@ r#####"
                 buf.push_str(&test)
             }
         }
-        let buf = add_preamble("assists-doc-tests", reformat(buf));
+        let buf = add_preamble(crate::flags::CodegenType::AssistsDocTests, reformat(buf));
         ensure_file_contents(
             &project_root().join("crates/ide-assists/src/tests/generated.rs"),
             &buf,
@@ -59,7 +59,7 @@ r#####"
         // a release.
 
         let contents = add_preamble(
-            "sourcegen_assists_docs",
+            crate::flags::CodegenType::AssistsDocTests,
             assists.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n"),
         );
         let dst = project_root().join("docs/user/generated_assists.adoc");
