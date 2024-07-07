@@ -282,7 +282,7 @@ impl<'a> Parser<'a> {
     pub fn parse_inner_attributes(&mut self) -> PResult<'a, ast::AttrVec> {
         let mut attrs = ast::AttrVec::new();
         loop {
-            let start_pos: u32 = self.num_bump_calls.try_into().unwrap();
+            let start_pos = self.num_bump_calls;
             // Only try to parse if it is an inner attribute (has `!`).
             let attr = if self.check(&token::Pound) && self.look_ahead(1, |t| t == &token::Not) {
                 Some(self.parse_attribute(InnerAttrPolicy::Permitted)?)
@@ -303,7 +303,7 @@ impl<'a> Parser<'a> {
                 None
             };
             if let Some(attr) = attr {
-                let end_pos: u32 = self.num_bump_calls.try_into().unwrap();
+                let end_pos = self.num_bump_calls;
                 // If we are currently capturing tokens, mark the location of this inner attribute.
                 // If capturing ends up creating a `LazyAttrTokenStream`, we will include
                 // this replace range with it, removing the inner attribute from the final
@@ -313,7 +313,7 @@ impl<'a> Parser<'a> {
                 // corresponding macro).
                 let range = start_pos..end_pos;
                 if let Capturing::Yes = self.capture_state.capturing {
-                    self.capture_state.inner_attr_ranges.insert(attr.id, (range, vec![]));
+                    self.capture_state.inner_attr_ranges.insert(attr.id, (range, None));
                 }
                 attrs.push(attr);
             } else {

@@ -10,8 +10,6 @@ use crate::{AssocItem, Expr, ForeignItem, Item, NodeId};
 use crate::{AttrItem, AttrKind, Block, Pat, Path, Ty, Visibility};
 use crate::{AttrVec, Attribute, Stmt, StmtKind};
 
-use rustc_span::Span;
-
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -88,37 +86,6 @@ impl<T: AstDeref<Target: HasNodeId>> HasNodeId for T {
     }
     fn node_id_mut(&mut self) -> &mut NodeId {
         self.ast_deref_mut().node_id_mut()
-    }
-}
-
-/// A trait for AST nodes having a span.
-pub trait HasSpan {
-    fn span(&self) -> Span;
-}
-
-macro_rules! impl_has_span {
-    ($($T:ty),+ $(,)?) => {
-        $(
-            impl HasSpan for $T {
-                fn span(&self) -> Span {
-                    self.span
-                }
-            }
-        )+
-    };
-}
-
-impl_has_span!(AssocItem, Block, Expr, ForeignItem, Item, Pat, Path, Stmt, Ty, Visibility);
-
-impl<T: AstDeref<Target: HasSpan>> HasSpan for T {
-    fn span(&self) -> Span {
-        self.ast_deref().span()
-    }
-}
-
-impl HasSpan for AttrItem {
-    fn span(&self) -> Span {
-        self.span()
     }
 }
 
