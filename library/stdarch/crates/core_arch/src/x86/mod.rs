@@ -1004,3 +1004,7 @@ pub use self::avx512bf16::*;
 mod avxneconvert;
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub use self::avxneconvert::*;
+
+mod avx512fp16;
+#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+pub use self::avx512fp16::*;
