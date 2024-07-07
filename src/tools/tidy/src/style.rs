@@ -110,6 +110,7 @@ const ROOT_PROBLEMATIC_CONSTS: &[u32] = &[
     173390526, 721077,
 ];
 
+// Returns all permutations of problematic consts, over 2000 elements.
 fn generate_problematic_strings(
     consts: &[u32],
     letter_digit: &FxHashMap<char, char>,
@@ -319,6 +320,8 @@ pub fn check(path: &Path, bad: &mut bool) {
         ROOT_PROBLEMATIC_CONSTS,
         &[('A', '4'), ('B', '8'), ('E', '3')].iter().cloned().collect(),
     );
+    // This creates a RegexSet as regex contains performance optimizations to be able to deal with these over
+    // 2000 needles efficiently. This runs over the entire source code, so performance matters.
     let problematic_regex = RegexSet::new(problematic_consts_strings.as_slice()).unwrap();
 
     walk(path, skip, &mut |entry, contents| {
