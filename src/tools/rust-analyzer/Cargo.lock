@@ -1670,7 +1670,6 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "sourcegen",
  "stdx",
  "syntax",
  "test-fixture",
@@ -1868,13 +1867,6 @@ name = "snap"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b6b67fb9a61334225b5b790716f609cd58395f895b3fe8b328786812a40bc3b"
-
-[[package]]
-name = "sourcegen"
-version = "0.0.0"
-dependencies = [
- "xshell",
-]
 
 [[package]]
 name = "span"

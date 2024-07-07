@@ -81,7 +81,6 @@ xshell.workspace = true
 
 test-utils.workspace = true
 test-fixture.workspace = true
-sourcegen.workspace = true
 mbe.workspace = true
 
 [features]
