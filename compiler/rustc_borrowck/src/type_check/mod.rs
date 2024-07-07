@@ -28,8 +28,8 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
-    self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
-    Dynamic, GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserArgs,
+    self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, Dynamic,
+    GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserArgs,
     UserTypeAnnotationIndex,
 };
 use rustc_middle::{bug, span_bug};
@@ -1513,11 +1513,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // It doesn't make sense to look at a field beyond the prefix;
                 // these require a variant index, and are not initialized in
                 // aggregate rvalues.
-                match args.as_coroutine().prefix_tys().get(field_index.as_usize()) {
-                    Some(ty) => Ok(*ty),
-                    None => Err(FieldAccessError::OutOfRange {
-                        field_count: args.as_coroutine().prefix_tys().len(),
-                    }),
+                let upvar_tys = &args.as_coroutine().upvar_tys();
+                if let Some(ty) = upvar_tys.get(field_index.as_usize()) {
+                    Ok(*ty)
+                } else {
+                    Err(FieldAccessError::OutOfRange { field_count: upvar_tys.len() })
                 }
             }
             AggregateKind::CoroutineClosure(_, args) => {
