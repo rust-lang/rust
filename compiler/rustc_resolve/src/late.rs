@@ -1744,7 +1744,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                             ) {
                                 self.r.dcx().emit_err(errors::LendingIteratorReportError {
                                     lifetime: lifetime.ident.span,
-                                    ty: ty.span(),
+                                    ty: ty.span,
                                 });
                             } else {
                                 self.r.dcx().emit_err(errors::AnonymousLivetimeNonGatReportError {

@@ -704,7 +704,7 @@ fn visit_attr_tt<T: MutVisitor>(tt: &mut AttrTokenTree, vis: &mut T) {
             visit_attr_tts(tts, vis);
             visit_delim_span(dspan, vis);
         }
-        AttrTokenTree::Attributes(AttributesData { attrs, tokens }) => {
+        AttrTokenTree::AttrsTarget(AttrsTarget { attrs, tokens }) => {
             visit_attrs(attrs, vis);
             visit_lazy_tts_opt_mut(Some(tokens), vis);
         }

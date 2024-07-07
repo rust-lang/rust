@@ -172,7 +172,7 @@ impl<'a> StripUnconfigured<'a> {
     fn configure_tokens(&self, stream: &AttrTokenStream) -> AttrTokenStream {
         fn can_skip(stream: &AttrTokenStream) -> bool {
             stream.0.iter().all(|tree| match tree {
-                AttrTokenTree::Attributes(_) => false,
+                AttrTokenTree::AttrsTarget(_) => false,
                 AttrTokenTree::Token(..) => true,
                 AttrTokenTree::Delimited(.., inner) => can_skip(inner),
             })
@@ -185,22 +185,22 @@ impl<'a> StripUnconfigured<'a> {
         let trees: Vec<_> = stream
             .0
             .iter()
-            .flat_map(|tree| match tree.clone() {
-                AttrTokenTree::Attributes(mut data) => {
-                    data.attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
+            .filter_map(|tree| match tree.clone() {
+                AttrTokenTree::AttrsTarget(mut target) => {
+                    target.attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
 
-                    if self.in_cfg(&data.attrs) {
-                        data.tokens = LazyAttrTokenStream::new(
-                            self.configure_tokens(&data.tokens.to_attr_token_stream()),
+                    if self.in_cfg(&target.attrs) {
+                        target.tokens = LazyAttrTokenStream::new(
+                            self.configure_tokens(&target.tokens.to_attr_token_stream()),
                         );
-                        Some(AttrTokenTree::Attributes(data)).into_iter()
+                        Some(AttrTokenTree::AttrsTarget(target))
                     } else {
-                        None.into_iter()
+                        None
                     }
                 }
                 AttrTokenTree::Delimited(sp, spacing, delim, mut inner) => {
                     inner = self.configure_tokens(&inner);
-                    Some(AttrTokenTree::Delimited(sp, spacing, delim, inner)).into_iter()
+                    Some(AttrTokenTree::Delimited(sp, spacing, delim, inner))
                 }
                 AttrTokenTree::Token(
                     Token {
@@ -220,9 +220,7 @@ impl<'a> StripUnconfigured<'a> {
                 ) => {
                     panic!("Should be `AttrTokenTree::Delimited`, not delim tokens: {:?}", tree);
                 }
-                AttrTokenTree::Token(token, spacing) => {
-                    Some(AttrTokenTree::Token(token, spacing)).into_iter()
-                }
+                AttrTokenTree::Token(token, spacing) => Some(AttrTokenTree::Token(token, spacing)),
             })
             .collect();
         AttrTokenStream::new(trees)
@@ -294,7 +292,7 @@ impl<'a> StripUnconfigured<'a> {
         attr: &Attribute,
         (item, item_span): (ast::AttrItem, Span),
     ) -> Attribute {
-        let orig_tokens = attr.tokens();
+        let orig_tokens = attr.get_tokens();
 
         // We are taking an attribute of the form `#[cfg_attr(pred, attr)]`
         // and producing an attribute of the form `#[attr]`. We
@@ -310,12 +308,11 @@ impl<'a> StripUnconfigured<'a> {
         else {
             panic!("Bad tokens for attribute {attr:?}");
         };
-        let pound_span = pound_token.span;
 
         // We don't really have a good span to use for the synthesized `[]`
         // in `#[attr]`, so just use the span of the `#` token.
         let bracket_group = AttrTokenTree::Delimited(
-            DelimSpan::from_single(pound_span),
+            DelimSpan::from_single(pound_token.span),
             DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
             Delimiter::Bracket,
             item.tokens
