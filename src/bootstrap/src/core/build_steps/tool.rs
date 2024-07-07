@@ -935,7 +935,7 @@ impl Step for LibcxxVersionTool {
             }
         }
 
-        let version_output = command(executable).capture_stdout().run(builder).stdout();
+        let version_output = command(executable).run_capture_stdout(builder).stdout();
 
         let version_str = version_output.split_once("version:").unwrap().1;
         let version = version_str.trim().parse::<usize>().unwrap();

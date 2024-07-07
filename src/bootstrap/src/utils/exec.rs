@@ -59,8 +59,6 @@ impl OutputMode {
 pub struct BootstrapCommand {
     command: Command,
     pub failure_behavior: BehaviorOnFailure,
-    pub stdout: OutputMode,
-    pub stderr: OutputMode,
     // Run the command even during dry run
     pub run_always: bool,
     // This field makes sure that each command is executed (or disarmed) before it is dropped,
@@ -135,22 +133,23 @@ impl BootstrapCommand {
         self
     }
 
-    /// Capture all output of the command, do not print it.
-    #[must_use]
-    pub fn capture(self) -> Self {
-        Self { stdout: OutputMode::Capture, stderr: OutputMode::Capture, ..self }
-    }
-
-    /// Capture stdout of the command, do not print it.
-    #[must_use]
-    pub fn capture_stdout(self) -> Self {
-        Self { stdout: OutputMode::Capture, ..self }
-    }
-
-    /// Run the command, returning its output.
+    /// Run the command, while printing stdout and stderr.
+    /// Returns true if the command has succeeded.
     #[track_caller]
-    pub fn run(&mut self, builder: &Build) -> CommandOutput {
-        builder.run(self)
+    pub fn run(&mut self, builder: &Build) -> bool {
+        builder.run(self, OutputMode::Print, OutputMode::Print).is_success()
+    }
+
+    /// Run the command, while capturing and returning all its output.
+    #[track_caller]
+    pub fn run_capture(&mut self, builder: &Build) -> CommandOutput {
+        builder.run(self, OutputMode::Capture, OutputMode::Capture)
+    }
+
+    /// Run the command, while capturing and returning stdout, and printing stderr.
+    #[track_caller]
+    pub fn run_capture_stdout(&mut self, builder: &Build) -> CommandOutput {
+        builder.run(self, OutputMode::Capture, OutputMode::Print)
     }
 
     /// Provides access to the stdlib Command inside.
@@ -189,11 +188,7 @@ impl BootstrapCommand {
 impl Debug for BootstrapCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.command)?;
-        write!(
-            f,
-            " (failure_mode={:?}, stdout_mode={:?}, stderr_mode={:?})",
-            self.failure_behavior, self.stdout, self.stderr
-        )
+        write!(f, " (failure_mode={:?})", self.failure_behavior)
     }
 }
 
@@ -205,8 +200,6 @@ impl From<Command> for BootstrapCommand {
         Self {
             command,
             failure_behavior: BehaviorOnFailure::Exit,
-            stdout: OutputMode::Print,
-            stderr: OutputMode::Print,
             run_always: false,
             drop_bomb: DropBomb::arm(program),
         }
