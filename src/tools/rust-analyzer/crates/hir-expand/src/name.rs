@@ -82,9 +82,16 @@ impl Name {
         Name { symbol: Symbol::intern(text), ctx: () }
     }
 
-    pub fn new(text: &str, ctx: SyntaxContextId) -> Name {
+    pub fn new(text: &str, raw: tt::IdentIsRaw, ctx: SyntaxContextId) -> Name {
         _ = ctx;
-        Name { symbol: Symbol::intern(text), ctx: () }
+        Name {
+            symbol: if raw.yes() {
+                Symbol::intern(&format_smolstr!("{}{text}", raw.as_str()))
+            } else {
+                Symbol::intern(text)
+            },
+            ctx: (),
+        }
     }
 
     pub fn new_tuple_field(idx: usize) -> Name {

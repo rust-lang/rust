@@ -15,7 +15,7 @@ use span::{Span, FIXUP_ERASED_FILE_AST_ID_MARKER};
 use tt::{TextRange, TextSize};
 
 use crate::server_impl::{
-    delim_to_external, delim_to_internal, literal_with_stringify_parts,
+    delim_to_external, delim_to_internal, literal_kind_to_external, literal_kind_to_internal,
     token_stream::TokenStreamBuilder, Symbol, SymbolInternerRef, SYMBOL_INTERNER,
 };
 mod tt {
@@ -171,20 +171,24 @@ impl server::TokenStream for RaSpanServer {
 
             bridge::TokenTree::Ident(ident) => {
                 let text = ident.sym.text(self.interner);
-                let text =
-                    if ident.is_raw { ::tt::SmolStr::from_iter(["r#", &text]) } else { text };
-                let ident: tt::Ident = tt::Ident { text, span: ident.span };
+                let ident: tt::Ident = tt::Ident {
+                    text,
+                    span: ident.span,
+                    is_raw: if ident.is_raw { tt::IdentIsRaw::Yes } else { tt::IdentIsRaw::No },
+                };
                 let leaf = tt::Leaf::from(ident);
                 let tree = tt::TokenTree::from(leaf);
                 Self::TokenStream::from_iter(iter::once(tree))
             }
 
             bridge::TokenTree::Literal(literal) => {
-                let text = literal_with_stringify_parts(&literal, self.interner, |parts| {
-                    ::tt::SmolStr::from_iter(parts.iter().copied())
-                });
+                let literal = tt::Literal {
+                    text: literal.symbol.text(self.interner),
+                    suffix: literal.suffix.map(|it| Box::new(it.text(self.interner))),
+                    span: literal.span,
+                    kind: literal_kind_to_internal(literal.kind),
+                };
 
-                let literal = tt::Literal { text, span: literal.span };
                 let leaf: tt::Leaf = tt::Leaf::from(literal);
                 let tree = tt::TokenTree::from(leaf);
                 Self::TokenStream::from_iter(iter::once(tree))
@@ -250,23 +254,18 @@ impl server::TokenStream for RaSpanServer {
             .into_iter()
             .map(|tree| match tree {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
-                    bridge::TokenTree::Ident(match ident.text.strip_prefix("r#") {
-                        Some(text) => bridge::Ident {
-                            sym: Symbol::intern(self.interner, text),
-                            is_raw: true,
-                            span: ident.span,
-                        },
-                        None => bridge::Ident {
-                            sym: Symbol::intern(self.interner, &ident.text),
-                            is_raw: false,
-                            span: ident.span,
-                        },
+                    bridge::TokenTree::Ident(bridge::Ident {
+                        sym: Symbol::intern(self.interner, &ident.text),
+                        is_raw: ident.is_raw.yes(),
+                        span: ident.span,
                     })
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
                     bridge::TokenTree::Literal(bridge::Literal {
                         span: lit.span,
-                        ..server::FreeFunctions::literal_from_str(self, &lit.text).unwrap()
+                        kind: literal_kind_to_external(lit.kind),
+                        symbol: Symbol::intern(self.interner, &lit.text),
+                        suffix: lit.suffix.map(|it| Symbol::intern(self.interner, &it)),
                     })
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {

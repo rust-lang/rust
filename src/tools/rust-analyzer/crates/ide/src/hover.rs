@@ -240,7 +240,7 @@ fn hover_simple(
                 .flatten()
                 .unique_by(|&(def, _, _)| def)
                 .map(|(def, macro_arm, node)| {
-                    hover_for_definition(sema, file_id, def, &node, macro_arm, config)
+                    dbg!(hover_for_definition(sema, file_id, def, &node, macro_arm, config))
                 })
                 .reduce(|mut acc: HoverResult, HoverResult { markup, actions }| {
                     acc.actions.extend(actions);

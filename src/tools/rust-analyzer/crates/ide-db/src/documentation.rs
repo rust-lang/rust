@@ -269,12 +269,13 @@ fn get_doc_string_in_attr(it: &ast::Attr) -> Option<ast::String> {
 }
 
 fn doc_indent(attrs: &hir::Attrs) -> usize {
-    attrs
-        .by_key("doc")
-        .attrs()
-        .filter_map(|attr| attr.string_value()) // no need to use unescape version here
-        .flat_map(|s| s.lines())
-        .filter_map(|line| line.chars().position(|c| !c.is_whitespace()))
-        .min()
-        .unwrap_or(0)
+    let mut min = !0;
+    for val in attrs.by_key("doc").attrs().filter_map(|attr| attr.string_value_unescape()) {
+        if let Some(m) =
+            val.lines().filter_map(|line| line.chars().position(|c| !c.is_whitespace())).min()
+        {
+            min = min.min(m);
+        }
+    }
+    min
 }

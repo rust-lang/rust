@@ -2,7 +2,7 @@
 //! `$ident => foo`, interpolates variables in the template, to get `fn foo() {}`
 
 use span::Span;
-use syntax::SmolStr;
+use syntax::{format_smolstr, SmolStr};
 use tt::Delimiter;
 
 use crate::{
@@ -99,6 +99,7 @@ impl Bindings {
                         Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                             text: SmolStr::new_static("missing"),
                             span,
+                            is_raw: tt::IdentIsRaw::No,
                         })))
                     }
                     MetaVarKind::Lifetime => {
@@ -113,6 +114,7 @@ impl Bindings {
                                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                                     text: SmolStr::new_static("missing"),
                                     span,
+                                    is_raw: tt::IdentIsRaw::No,
                                 })),
                             ]),
                         }))
@@ -121,6 +123,7 @@ impl Bindings {
                         Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                             text: SmolStr::new_static("\"missing\""),
                             span,
+                            is_raw: tt::IdentIsRaw::No,
                         })))
                     }
                 }
@@ -236,8 +239,10 @@ fn expand_subtree(
                     ctx.nesting.get(ctx.nesting.len() - 1 - depth).map_or(0, |nest| nest.idx);
                 arena.push(
                     tt::Leaf::Literal(tt::Literal {
-                        text: index.to_string().into(),
+                        text: format_smolstr!("{index}"),
                         span: ctx.call_site,
+                        kind: tt::LitKind::Integer,
+                        suffix: None,
                     })
                     .into(),
                 );
@@ -249,8 +254,10 @@ fn expand_subtree(
                 });
                 arena.push(
                     tt::Leaf::Literal(tt::Literal {
-                        text: length.to_string().into(),
+                        text: format_smolstr!("{length}"),
                         span: ctx.call_site,
+                        kind: tt::LitKind::Integer,
+                        suffix: None,
                     })
                     .into(),
                 );
@@ -314,8 +321,10 @@ fn expand_subtree(
                 };
                 arena.push(
                     tt::Leaf::Literal(tt::Literal {
-                        text: c.to_string().into(),
+                        text: format_smolstr!("{c}"),
                         span: ctx.call_site,
+                        suffix: None,
+                        kind: tt::LitKind::Integer,
                     })
                     .into(),
                 );
@@ -363,7 +372,12 @@ fn expand_var(
                 token_trees: Box::new([
                     tt::Leaf::from(tt::Punct { char: '$', spacing: tt::Spacing::Alone, span: id })
                         .into(),
-                    tt::Leaf::from(tt::Ident { text: v.clone(), span: id }).into(),
+                    tt::Leaf::from(tt::Ident {
+                        text: v.clone(),
+                        span: id,
+                        is_raw: tt::IdentIsRaw::No,
+                    })
+                    .into(),
                 ]),
             }
             .into();

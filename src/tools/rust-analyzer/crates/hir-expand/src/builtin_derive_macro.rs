@@ -370,7 +370,8 @@ fn name_to_token(
         ExpandError::other("missing name")
     })?;
     let span = token_map.span_at(name.syntax().text_range().start());
-    let name_token = tt::Ident { span, text: name.text().into() };
+
+    let name_token = tt::Ident::new(name.text().as_ref(), span);
     Ok(name_token)
 }
 
