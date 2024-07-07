@@ -14,6 +14,8 @@ extern "unadjusted" {
 /// Adds unsigned 32-bit integers `a` and `b` with unsigned 8-bit carry-in `c_in`
 /// (carry or overflow flag), and store the unsigned 32-bit result in `out`, and the carry-out
 /// is returned (carry or overflow flag).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_addcarry_u32)
 #[inline]
 #[cfg_attr(test, assert_instr(adc))]
 #[stable(feature = "simd_x86_adx", since = "1.33.0")]
@@ -26,6 +28,8 @@ pub unsafe fn _addcarry_u32(c_in: u8, a: u32, b: u32, out: &mut u32) -> u8 {
 /// Adds unsigned 32-bit integers `a` and `b` with unsigned 8-bit carry-in `c_in`
 /// (carry or overflow flag), and store the unsigned 32-bit result in `out`, and
 /// the carry-out is returned (carry or overflow flag).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_addcarryx_u32)
 #[inline]
 #[target_feature(enable = "adx")]
 #[cfg_attr(test, assert_instr(adc))]
@@ -37,6 +41,8 @@ pub unsafe fn _addcarryx_u32(c_in: u8, a: u32, b: u32, out: &mut u32) -> u8 {
 /// Adds unsigned 32-bit integers `a` and `b` with unsigned 8-bit carry-in `c_in`
 /// (carry or overflow flag), and store the unsigned 32-bit result in `out`, and
 /// the carry-out is returned (carry or overflow flag).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_subborrow_u32)
 #[inline]
 #[cfg_attr(test, assert_instr(sbb))]
 #[stable(feature = "simd_x86_adx", since = "1.33.0")]

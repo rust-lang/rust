@@ -99,7 +99,7 @@ pub unsafe fn _mm256_cvtneobf16_ps(a: *const __m256bh) -> __m256 {
 /// Convert packed single precision (32-bit) floating-point elements in a to packed BF16 (16-bit) floating-point
 /// elements, and store the results in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneps_avx_bf16)
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneps_avx_pbh)
 #[inline]
 #[target_feature(enable = "avxneconvert,sse")]
 #[cfg_attr(
@@ -121,7 +121,7 @@ pub unsafe fn _mm_cvtneps_avx_pbh(a: __m128) -> __m128bh {
 /// Convert packed single precision (32-bit) floating-point elements in a to packed BF16 (16-bit) floating-point
 /// elements, and store the results in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneps_avx_bf16)
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneps_avx_pbh)
 #[inline]
 #[target_feature(enable = "avxneconvert,sse,avx")]
 #[cfg_attr(

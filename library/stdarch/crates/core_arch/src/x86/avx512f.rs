@@ -1341,7 +1341,7 @@ pub unsafe fn _mm_maskz_mul_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m128
 
 /// Multiply the packed 32-bit integers in a and b, producing intermediate 64-bit integers, and store the low 32 bits of the intermediate integers in dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mullo_epi&expand=4005)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mullo_epi32&expand=4005)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -1437,7 +1437,7 @@ pub unsafe fn _mm_maskz_mullo_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m1
 
 /// Multiplies elements in packed 64-bit integer vectors a and b together, storing the lower 64 bits of the result in dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_mullox_epi64&expand=4017)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mullox_epi64&expand=4017)
 ///
 /// This intrinsic generates a sequence of instructions, which may perform worse than a native instruction. Consider the performance impact of this intrinsic.
 #[inline]
@@ -1449,7 +1449,7 @@ pub unsafe fn _mm512_mullox_epi64(a: __m512i, b: __m512i) -> __m512i {
 
 /// Multiplies elements in packed 64-bit integer vectors a and b together, storing the lower 64 bits of the result in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_mask_mullox&expand=4016)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_mullox_epi64&expand=4016)
 ///
 /// This intrinsic generates a sequence of instructions, which may perform worse than a native instruction. Consider the performance impact of this intrinsic.
 #[inline]
@@ -1467,7 +1467,7 @@ pub unsafe fn _mm512_mask_mullox_epi64(
 
 /// Multiply the low unsigned 32-bit integers from each packed 64-bit element in a and b, and store the unsigned 64-bit results in dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_mul_epu32&expand=3916)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mul_epu32&expand=3916)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -1481,7 +1481,7 @@ pub unsafe fn _mm512_mul_epu32(a: __m512i, b: __m512i) -> __m512i {
 
 /// Multiply the low unsigned 32-bit integers from each packed 64-bit element in a and b, and store the unsigned 64-bit results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_mask_mul_epu32&expand=3914)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_mul_epu32&expand=3914)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -1493,7 +1493,7 @@ pub unsafe fn _mm512_mask_mul_epu32(src: __m512i, k: __mmask8, a: __m512i, b: __
 
 /// Multiply the low unsigned 32-bit integers from each packed 64-bit element in a and b, and store the unsigned 64-bit results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_maskz_mul_epu32&expand=3915)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_mul_epu32&expand=3915)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -1814,7 +1814,7 @@ pub unsafe fn _mm_maskz_div_ps(k: __mmask8, a: __m128, b: __m128) -> __m128 {
 
 /// Divide packed double-precision (64-bit) floating-point elements in a by packed elements in b, and store the results in dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_div_pd&expand=2153)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_div_pd&expand=2153)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -2391,7 +2391,7 @@ pub unsafe fn _mm512_mask_max_epu64(src: __m512i, k: __mmask8, a: __m512i, b: __
 
 /// Compare packed unsigned 64-bit integers in a and b, and store packed maximum values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_max_epu&expand=3626)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_max_epu64&expand=3626)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -2593,7 +2593,7 @@ pub unsafe fn _mm512_mask_min_epi64(src: __m512i, k: __mmask8, a: __m512i, b: __
 
 /// Compare packed signed 64-bit integers in a and b, and store packed minimum values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_maskz_min_epi64&expand=3704)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_min_epi64&expand=3704)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -2774,7 +2774,7 @@ pub unsafe fn _mm_maskz_min_ps(k: __mmask8, a: __m128, b: __m128) -> __m128 {
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b, and store packed minimum values in dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_min_pd&expand=3759)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_min_pd&expand=3759)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -2785,7 +2785,7 @@ pub unsafe fn _mm512_min_pd(a: __m512d, b: __m512d) -> __m512d {
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b, and store packed minimum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_mask_min_pd&expand=3757)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_min_pd&expand=3757)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -2797,7 +2797,7 @@ pub unsafe fn _mm512_mask_min_pd(src: __m512d, k: __mmask8, a: __m512d, b: __m51
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b, and store packed minimum values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_maskz_min_pd&expand=3758)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_min_pd&expand=3758)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -3807,7 +3807,7 @@ pub unsafe fn _mm512_maskz_fmaddsub_pd(k: __mmask8, a: __m512d, b: __m512d, c: _
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask3_fmaddsub_ps&expand=2613)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask3_fmaddsub_pd&expand=2613)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -7757,7 +7757,7 @@ pub unsafe fn _mm512_mask_mul_round_pd<const ROUNDING: i32>(
 ///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions\
 ///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_mul_round_ps&expand=3939)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_mul_round_pd&expand=3939)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -8991,7 +8991,7 @@ pub unsafe fn _mm512_mask3_fnmadd_round_ps<const ROUNDING: i32>(
 ///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions\
 ///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_fnmadd_pd&expand=2711)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_fnmadd_round_pd&expand=2711)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -10291,7 +10291,7 @@ pub unsafe fn _mm512_mask_getmant_round_pd<
 ///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1\
 /// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_512_maskz_getmant_round_pd&expand=2885)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_getmant_round_pd&expand=2885)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -10446,7 +10446,7 @@ pub unsafe fn _mm512_mask_cvtps_epu32(src: __m512i, k: __mmask16, a: __m512) -> 
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed unsigned 32-bit integers, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///    
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_cvt_roundps_epu32&expand=1343)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_cvtps_epu32&expand=1343)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -12824,7 +12824,7 @@ pub unsafe fn _mm512_mask_cvtsepi32_epi16(src: __m256i, k: __mmask16, a: __m512i
 
 /// Convert packed signed 32-bit integers in a to packed 16-bit integers with signed saturation, and store the results in dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_cvtsepi32_epi16&expand=1819)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_cvtsepi32_epi16&expand=1819)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -14130,7 +14130,7 @@ pub unsafe fn _mm512_cvt_roundps_pd<const SAE: i32>(a: __m256) -> __m512d {
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed double-precision (64-bit) floating-point elements, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).\
 /// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_cvt_roundps_epi32&expand=1336)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_cvt_roundps_pd&expand=1336)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -14151,7 +14151,7 @@ pub unsafe fn _mm512_mask_cvt_roundps_pd<const SAE: i32>(
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed double-precision (64-bit) floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
 /// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_cvt_roundps_epi32&expand=1337)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_cvt_roundps_pd&expand=1337)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -15140,7 +15140,7 @@ pub unsafe fn _mm512_mask_cvtt_roundpd_epi32<const SAE: i32>(
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed 32-bit integers with truncation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
 /// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_cvtt_roundps_epi32&expand=1918)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_cvtt_roundpd_epi32&expand=1918)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -16867,7 +16867,7 @@ pub unsafe fn _mm256_i32scatter_epi64<const SCALE: i32>(
 /// indices stored in vindex scaled by scale using writemask k (elements whose corresponding mask bit is not set
 /// are not written to memory).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32scatter_epi64)
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i32scatter_epi64)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[cfg_attr(test, assert_instr(vpscatterdq, SCALE = 1))]
@@ -16904,6 +16904,8 @@ pub unsafe fn _mm256_i32scatter_pd<const SCALE: i32>(
 /// Stores 4 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
 /// at packed 32-bit integer indices stored in vindex scaled by scale using writemask k (elements whose corresponding
 /// mask bit is not set are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i32scatter_pd)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[cfg_attr(test, assert_instr(vscatterdpd, SCALE = 1))]
@@ -17554,6 +17556,8 @@ pub unsafe fn _mm_i64scatter_pd<const SCALE: i32>(base_addr: *mut u8, vindex: __
 /// Stores 2 double-precision (64-bit) floating-point elements from a to memory starting at location base_addr
 /// at packed 64-bit integer indices stored in vindex scaled by scale using writemask k (elements whose corresponding
 /// mask bit is not set are not written to memory).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i64scatter_pd)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[cfg_attr(test, assert_instr(vscatterqpd, SCALE = 1))]
@@ -20820,7 +20824,7 @@ pub unsafe fn _mm256_rolv_epi32(a: __m256i, b: __m256i) -> __m256i {
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_rolv_epi3&expand=4698)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_rolv_epi32&expand=4698)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -21945,7 +21949,7 @@ pub unsafe fn _mm256_permutex_epi64<const MASK: i32>(a: __m256i) -> __m256i {
 
 /// Shuffle 64-bit integers in a within 256-bit lanes using the control in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_permutex_epi6&expand=4203)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_permutex_epi64&expand=4203)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -22469,7 +22473,7 @@ pub unsafe fn _mm256_maskz_permutexvar_epi64(k: __mmask8, idx: __m256i, a: __m25
 
 /// Shuffle single-precision (32-bit) floating-point elements in a across lanes using the corresponding index in idx.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_permutevar_ps&expand=4200)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_permutexvar_ps&expand=4200)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -23380,7 +23384,7 @@ pub unsafe fn _mm_mask2_permutex2var_pd(
 
 /// Shuffle single-precision (32-bit) floating-point elements in a within 128-bit lanes using the control in imm8, and store the results in dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_shuffle_epi32&expand=5150)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shuffle_epi32&expand=5150)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -23807,7 +23811,7 @@ pub unsafe fn _mm_maskz_shuffle_pd<const MASK: i32>(
 
 /// Shuffle 128-bits (composed of 4 32-bit integers) selected by imm8 from a and b, and store the results in dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shuffle_i32&expand=5177)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shuffle_i32x4&expand=5177)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -23844,7 +23848,7 @@ pub unsafe fn _mm512_shuffle_i32x4<const MASK: i32>(a: __m512i, b: __m512i) -> _
 
 /// Shuffle 128-bits (composed of 4 32-bit integers) selected by imm8 from a and b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shuffle_i32x&expand=5175)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shuffle_i32x4&expand=5175)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -23863,7 +23867,7 @@ pub unsafe fn _mm512_mask_shuffle_i32x4<const MASK: i32>(
 
 /// Shuffle 128-bits (composed of 4 32-bit integers) selected by imm8 from a and b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shuffle_i32&expand=5176)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shuffle_i32x4&expand=5176)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -23978,7 +23982,7 @@ pub unsafe fn _mm512_shuffle_i64x2<const MASK: i32>(a: __m512i, b: __m512i) -> _
 
 /// Shuffle 128-bits (composed of 2 64-bit integers) selected by imm8 from a and b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shuffle_i64x&expand=5181)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shuffle_i64x2&expand=5181)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -23997,7 +24001,7 @@ pub unsafe fn _mm512_mask_shuffle_i64x2<const MASK: i32>(
 
 /// Shuffle 128-bits (composed of 2 64-bit integers) selected by imm8 from a and b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shuffle_i64&expand=5182)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shuffle_i64x2&expand=5182)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -24116,7 +24120,7 @@ pub unsafe fn _mm512_shuffle_f32x4<const MASK: i32>(a: __m512, b: __m512) -> __m
 
 /// Shuffle 128-bits (composed of 4 single-precision (32-bit) floating-point elements) selected by imm8 from a and b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shuffle_f32&expand=5163)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shuffle_f32x4&expand=5163)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -24135,7 +24139,7 @@ pub unsafe fn _mm512_mask_shuffle_f32x4<const MASK: i32>(
 
 /// Shuffle 128-bits (composed of 4 single-precision (32-bit) floating-point elements) selected by imm8 from a and b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shuffle_f32&expand=5164)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shuffle_f32x4&expand=5164)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -24796,7 +24800,7 @@ pub unsafe fn _mm_maskz_moveldup_ps(k: __mmask8, a: __m128) -> __m128 {
 
 /// Duplicate odd-indexed single-precision (32-bit) floating-point elements from a, and store the results in dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_movehdup_ps&expand=3852)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_movehdup_ps&expand=3852)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -24808,7 +24812,7 @@ pub unsafe fn _mm512_movehdup_ps(a: __m512) -> __m512 {
 
 /// Duplicate odd-indexed single-precision (32-bit) floating-point elements from a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_movehdup&expand=3850)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_movehdup_ps&expand=3850)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -24820,7 +24824,7 @@ pub unsafe fn _mm512_mask_movehdup_ps(src: __m512, k: __mmask16, a: __m512) -> _
 
 /// Duplicate odd-indexed single-precision (32-bit) floating-point elements from a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_moveh&expand=3851)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_movehdup_ps&expand=3851)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26151,7 +26155,7 @@ pub unsafe fn _mm_maskz_unpacklo_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m1
 
 /// Cast vector of type __m128 to type __m512; the upper 384 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castps128_ps512&expand=621)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castps128_ps512&expand=621)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26165,7 +26169,7 @@ pub unsafe fn _mm512_castps128_ps512(a: __m128) -> __m512 {
 
 /// Cast vector of type __m256 to type __m512; the upper 256 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castps256_ps512&expand=623)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castps256_ps512&expand=623)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26179,7 +26183,7 @@ pub unsafe fn _mm512_castps256_ps512(a: __m256) -> __m512 {
 
 /// Cast vector of type __m128 to type __m512; the upper 384 bits of the result are zeroed. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_zextps128_ps512&expand=6196)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_zextps128_ps512&expand=6196)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26193,7 +26197,7 @@ pub unsafe fn _mm512_zextps128_ps512(a: __m128) -> __m512 {
 
 /// Cast vector of type __m256 to type __m512; the upper 256 bits of the result are zeroed. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_zextps256_ps512&expand=6197)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_zextps256_ps512&expand=6197)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26207,7 +26211,7 @@ pub unsafe fn _mm512_zextps256_ps512(a: __m256) -> __m512 {
 
 /// Cast vector of type __m512 to type __m128. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castps512_ps128&expand=624)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castps512_ps128&expand=624)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26217,7 +26221,7 @@ pub unsafe fn _mm512_castps512_ps128(a: __m512) -> __m128 {
 
 /// Cast vector of type __m512 to type __m256. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castps512_ps256&expand=625)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castps512_ps256&expand=625)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26227,7 +26231,7 @@ pub unsafe fn _mm512_castps512_ps256(a: __m512) -> __m256 {
 
 /// Cast vector of type __m512 to type __m512d. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castps_pd&expand=616)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castps_pd&expand=616)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26237,7 +26241,7 @@ pub unsafe fn _mm512_castps_pd(a: __m512) -> __m512d {
 
 /// Cast vector of type __m512 to type __m512i. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castps_si512&expand=619)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castps_si512&expand=619)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26247,7 +26251,7 @@ pub unsafe fn _mm512_castps_si512(a: __m512) -> __m512i {
 
 /// Cast vector of type __m128d to type __m512d; the upper 384 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castpd128_pd512&expand=609)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castpd128_pd512&expand=609)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26257,7 +26261,7 @@ pub unsafe fn _mm512_castpd128_pd512(a: __m128d) -> __m512d {
 
 /// Cast vector of type __m256d to type __m512d; the upper 256 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castpd256_pd512&expand=611)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castpd256_pd512&expand=611)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26267,7 +26271,7 @@ pub unsafe fn _mm512_castpd256_pd512(a: __m256d) -> __m512d {
 
 /// Cast vector of type __m128d to type __m512d; the upper 384 bits of the result are zeroed. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_zextpd128_pd512&expand=6193)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_zextpd128_pd512&expand=6193)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26277,7 +26281,7 @@ pub unsafe fn _mm512_zextpd128_pd512(a: __m128d) -> __m512d {
 
 /// Cast vector of type __m256d to type __m512d; the upper 256 bits of the result are zeroed. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_zextpd256_pd512&expand=6194)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_zextpd256_pd512&expand=6194)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26287,7 +26291,7 @@ pub unsafe fn _mm512_zextpd256_pd512(a: __m256d) -> __m512d {
 
 /// Cast vector of type __m512d to type __m128d. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castpd512_pd128&expand=612)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castpd512_pd128&expand=612)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26297,7 +26301,7 @@ pub unsafe fn _mm512_castpd512_pd128(a: __m512d) -> __m128d {
 
 /// Cast vector of type __m512d to type __m256d. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castpd512_pd256&expand=613)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castpd512_pd256&expand=613)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26307,7 +26311,7 @@ pub unsafe fn _mm512_castpd512_pd256(a: __m512d) -> __m256d {
 
 /// Cast vector of type __m512d to type __m512. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castpd_ps&expand=604)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castpd_ps&expand=604)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26317,7 +26321,7 @@ pub unsafe fn _mm512_castpd_ps(a: __m512d) -> __m512 {
 
 /// Cast vector of type __m512d to type __m512i. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castpd_si512&expand=607)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castpd_si512&expand=607)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26327,7 +26331,7 @@ pub unsafe fn _mm512_castpd_si512(a: __m512d) -> __m512i {
 
 /// Cast vector of type __m128i to type __m512i; the upper 384 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castsi128_si512&expand=629)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castsi128_si512&expand=629)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26337,7 +26341,7 @@ pub unsafe fn _mm512_castsi128_si512(a: __m128i) -> __m512i {
 
 /// Cast vector of type __m256i to type __m512i; the upper 256 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castsi256_si512&expand=633)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castsi256_si512&expand=633)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26347,7 +26351,7 @@ pub unsafe fn _mm512_castsi256_si512(a: __m256i) -> __m512i {
 
 /// Cast vector of type __m128i to type __m512i; the upper 384 bits of the result are zeroed. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_zextsi128_si512&expand=6199)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_zextsi128_si512&expand=6199)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26357,7 +26361,7 @@ pub unsafe fn _mm512_zextsi128_si512(a: __m128i) -> __m512i {
 
 /// Cast vector of type __m256i to type __m512i; the upper 256 bits of the result are zeroed. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_zextsi256_si512&expand=6200)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_zextsi256_si512&expand=6200)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26367,7 +26371,7 @@ pub unsafe fn _mm512_zextsi256_si512(a: __m256i) -> __m512i {
 
 /// Cast vector of type __m512i to type __m128i. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castsi512_si128&expand=636)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castsi512_si128&expand=636)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26377,7 +26381,7 @@ pub unsafe fn _mm512_castsi512_si128(a: __m512i) -> __m128i {
 
 /// Cast vector of type __m512i to type __m256i. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castsi512_si256&expand=637)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castsi512_si256&expand=637)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26387,7 +26391,7 @@ pub unsafe fn _mm512_castsi512_si256(a: __m512i) -> __m256i {
 
 /// Cast vector of type __m512i to type __m512. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castsi512_ps&expand=635)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castsi512_ps&expand=635)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26397,7 +26401,7 @@ pub unsafe fn _mm512_castsi512_ps(a: __m512i) -> __m512 {
 
 /// Cast vector of type __m512i to type __m512d. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_castsi512_pd&expand=634)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_castsi512_pd&expand=634)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26829,7 +26833,7 @@ pub unsafe fn _mm256_maskz_broadcast_i32x4(k: __mmask8, a: __m128i) -> __m256i {
 
 /// Broadcast the 4 packed 64-bit integers from a to all elements of dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_broadcast_i64x4&expand=522)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_broadcast_i64x4&expand=522)
 #[inline]
 #[target_feature(enable = "avx512f")] //msvc: vbroadcasti64x4, linux: vperm
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26839,7 +26843,7 @@ pub unsafe fn _mm512_broadcast_i64x4(a: __m256i) -> __m512i {
 
 /// Broadcast the 4 packed 64-bit integers from a to all elements of dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_mask_broadcast_i64x4&expand=523)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_broadcast_i64x4&expand=523)
 #[inline]
 #[target_feature(enable = "avx512f")] //msvc: vbroadcasti64x4, linux: vperm
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26850,7 +26854,7 @@ pub unsafe fn _mm512_mask_broadcast_i64x4(src: __m512i, k: __mmask8, a: __m256i)
 
 /// Broadcast the 4 packed 64-bit integers from a to all elements of dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_maskz_broadcast_i64x4&expand=524)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_broadcast_i64x4&expand=524)
 #[inline]
 #[target_feature(enable = "avx512f")] //msvc: vbroadcasti64x4, linux: vperm
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26928,7 +26932,7 @@ pub unsafe fn _mm256_maskz_broadcast_f32x4(k: __mmask8, a: __m128) -> __m256 {
 
 /// Broadcast the 4 packed double-precision (64-bit) floating-point elements from a to all elements of dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_broadcast_f64x4&expand=495)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_broadcast_f64x4&expand=495)
 #[inline]
 #[target_feature(enable = "avx512f")] //msvc: vbroadcastf64x4, linux: vperm
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26938,7 +26942,7 @@ pub unsafe fn _mm512_broadcast_f64x4(a: __m256d) -> __m512d {
 
 /// Broadcast the 4 packed double-precision (64-bit) floating-point elements from a to all elements of dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_mask_broadcast_f64x4&expand=496)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_broadcast_f64x4&expand=496)
 #[inline]
 #[target_feature(enable = "avx512f")] //msvc: vbroadcastf64x4, linux: vper
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -26949,7 +26953,7 @@ pub unsafe fn _mm512_mask_broadcast_f64x4(src: __m512d, k: __mmask8, a: __m256d)
 
 /// Broadcast the 4 packed double-precision (64-bit) floating-point elements from a to all elements of dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_maskz_broadcast_f64x4&expand=497)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_broadcast_f64x4&expand=497)
 #[inline]
 #[target_feature(enable = "avx512f")] //msvc: vbroadcastf64x4, linux: vper
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -27093,7 +27097,7 @@ pub unsafe fn _mm_mask_blend_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d 
 
 /// Concatenate a and b into a 128-byte immediate result, shift the result right by imm8 32-bit elements, and store the low 64 bytes (16 elements) in dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_alignr_epi32&expand=245)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_alignr_epi32&expand=245)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -27167,7 +27171,7 @@ pub unsafe fn _mm512_alignr_epi32<const IMM8: i32>(a: __m512i, b: __m512i) -> __
 
 /// Concatenate a and b into a 128-byte immediate result, shift the result right by imm8 32-bit elements, and store the low 64 bytes (16 elements) in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_mask_alignr_epi32&expand=246)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_alignr_epi32&expand=246)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -27186,7 +27190,7 @@ pub unsafe fn _mm512_mask_alignr_epi32<const IMM8: i32>(
 
 /// Concatenate a and b into a 128-byte immediate result, shift the result right by imm8 32-bit elements, and stores the low 64 bytes (16 elements) in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_maskz_alignr_epi32&expand=247)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_alignr_epi32&expand=247)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -27341,7 +27345,7 @@ pub unsafe fn _mm_maskz_alignr_epi32<const IMM8: i32>(
 
 /// Concatenate a and b into a 128-byte immediate result, shift the result right by imm8 64-bit elements, and store the low 64 bytes (8 elements) in dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_alignr_epi64&expand=254)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_alignr_epi64&expand=254)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -27365,7 +27369,7 @@ pub unsafe fn _mm512_alignr_epi64<const IMM8: i32>(a: __m512i, b: __m512i) -> __
 
 /// Concatenate a and b into a 128-byte immediate result, shift the result right by imm8 64-bit elements, and store the low 64 bytes (8 elements) in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_mask_alignr_epi64&expand=255)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_alignr_epi64&expand=255)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -27384,7 +27388,7 @@ pub unsafe fn _mm512_mask_alignr_epi64<const IMM8: i32>(
 
 /// Concatenate a and b into a 128-byte immediate result, shift the result right by imm8 64-bit elements, and stores the low 64 bytes (8 elements) in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_maskz_alignr_epi64&expand=256)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_alignr_epi64&expand=256)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -28402,7 +28406,7 @@ pub unsafe fn _kand_mask16(a: __mmask16, b: __mmask16) -> __mmask16 {
 
 /// Compute the bitwise AND of 16-bit masks a and b, and store the result in k.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_kand&expand=3210)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_kand&expand=3210)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -28424,7 +28428,7 @@ pub unsafe fn _kor_mask16(a: __mmask16, b: __mmask16) -> __mmask16 {
 
 /// Compute the bitwise OR of 16-bit masks a and b, and store the result in k.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_kor&expand=3237)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_kor&expand=3237)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -28446,7 +28450,7 @@ pub unsafe fn _kxor_mask16(a: __mmask16, b: __mmask16) -> __mmask16 {
 
 /// Compute the bitwise XOR of 16-bit masks a and b, and store the result in k.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_kxor&expand=3289)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_kxor&expand=3289)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -28467,7 +28471,7 @@ pub unsafe fn _knot_mask16(a: __mmask16) -> __mmask16 {
 
 /// Compute the bitwise NOT of 16-bit mask a, and store the result in k.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_knot&expand=3231)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_knot&expand=3231)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -28488,7 +28492,7 @@ pub unsafe fn _kandn_mask16(a: __mmask16, b: __mmask16) -> __mmask16 {
 
 /// Compute the bitwise NOT of 16-bit masks a and then AND with b, and store the result in k.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_kandn&expand=3216)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_kandn&expand=3216)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -28510,7 +28514,7 @@ pub unsafe fn _kxnor_mask16(a: __mmask16, b: __mmask16) -> __mmask16 {
 
 /// Compute the bitwise XNOR of 16-bit masks a and b, and store the result in k.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_kxnor&expand=3283)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_kxnor&expand=3283)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -28609,7 +28613,7 @@ pub unsafe fn _mm512_kmov(a: __mmask16) -> __mmask16 {
 
 /// Converts integer mask into bitmask, storing the result in dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_int2mask&expand=3189)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_int2mask&expand=3189)
 #[inline]
 #[target_feature(enable = "avx512f")] // generate normal and code instead of kmovw
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -28619,7 +28623,7 @@ pub unsafe fn _mm512_int2mask(mask: i32) -> __mmask16 {
 
 /// Converts bit mask k1 into an integer value, storing the results in dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_mask2int&expand=3544)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask2int&expand=3544)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -28630,7 +28634,7 @@ pub unsafe fn _mm512_mask2int(k1: __mmask16) -> i32 {
 
 /// Unpack and interleave 8 bits from masks a and b, and store the 16-bit result in k.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_kunpackb&expand=3280)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_kunpackb&expand=3280)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -28641,7 +28645,7 @@ pub unsafe fn _mm512_kunpackb(a: __mmask16, b: __mmask16) -> __mmask16 {
 
 /// Performs bitwise OR between k1 and k2, storing the result in dst. CF flag is set if dst consists of all 1's.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_kortestc&expand=3247)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_kortestc&expand=3247)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -28653,7 +28657,7 @@ pub unsafe fn _mm512_kortestc(a: __mmask16, b: __mmask16) -> i32 {
 
 /// Performs bitwise OR between k1 and k2, storing the result in dst. ZF flag is set if dst is 0.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_kortestz)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_kortestz)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -29057,7 +29061,7 @@ pub unsafe fn _mm512_stream_si512(mem_addr: *mut i32, a: __m512i) {
 /// must be aligned on a 64-byte boundary or a general-protection exception may be generated. To
 /// minimize caching, the data is flagged as non-temporal (unlikely to be used again soon)
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_stream_load_si256)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_stream_load_si512)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -29202,6 +29206,8 @@ pub unsafe fn _mm512_set1_epi16(a: i16) -> __m512i {
 }
 
 /// Broadcast 32-bit integer `a` to all elements of `dst`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set1_epi32)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -32888,7 +32894,7 @@ pub unsafe fn _mm512_reduce_min_epu64(a: __m512i) -> u64 {
 
 /// Reduce the packed signed 64-bit integers in a by maximum using mask k. Returns the minimum of all active elements in a.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_reduce_min_epi64&expand=4589)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_reduce_min_epu64&expand=4589)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -32979,7 +32985,7 @@ pub unsafe fn _mm512_reduce_and_epi64(a: __m512i) -> i64 {
 
 /// Reduce the packed 64-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_reduce_add_epi64&expand=4557)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_reduce_and_epi64&expand=4557)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -33133,7 +33139,7 @@ pub unsafe fn _mm512_mask_cvtepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask16,
 
 /// Convert packed 32-bit integers in a to packed 16-bit integers with truncation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_cvtepi32_storeu_epi8&expand=1462)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_cvtepi32_storeu_epi16&expand=1462)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -33144,7 +33150,7 @@ pub unsafe fn _mm256_mask_cvtepi32_storeu_epi16(mem_addr: *mut i8, k: __mmask8, 
 
 /// Convert packed 32-bit integers in a to packed 16-bit integers with truncation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_cvtepi32_storeu_epi8&expand=1461)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_cvtepi32_storeu_epi16&expand=1461)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -33790,7 +33796,7 @@ pub unsafe fn _mm512_storeu_ps(mem_addr: *mut f32, a: __m512) {
 
 /// Load 512-bits of integer data from memory into dst. mem_addr must be aligned on a 64-byte boundary or a general-protection exception may be generated.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_load_si512&expand=3345)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_load_si512&expand=3345)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -33801,7 +33807,7 @@ pub unsafe fn _mm512_load_si512(mem_addr: *const i32) -> __m512i {
 
 /// Store 512-bits of integer data from a into memory. mem_addr must be aligned on a 64-byte boundary or a general-protection exception may be generated.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_store_si512&expand=5598)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_store_si512&expand=5598)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -33845,7 +33851,7 @@ pub unsafe fn _mm_load_epi32(mem_addr: *const i32) -> __m128i {
 
 /// Store 512-bits (composed of 16 packed 32-bit integers) from a into memory. mem_addr must be aligned on a 64-byte boundary or a general-protection exception may be generated.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_store_epi32&expand=5569)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_store_epi32&expand=5569)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -37857,7 +37863,7 @@ pub unsafe fn _mm_add_round_sd<const ROUNDING: i32>(a: __m128d, b: __m128d) -> _
 ///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions\
 ///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_mask_add_round_Sd&expand=149)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_mask_add_round_sd&expand=149)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -38412,7 +38418,7 @@ pub unsafe fn _mm_max_round_ss<const SAE: i32>(a: __m128, b: __m128) -> __m128 {
 /// Compare the lower single-precision (32-bit) floating-point elements in a and b, store the maximum value in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.\
 /// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_mask_max_ss&expand=3672)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_max_round_ss&expand=3672)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -38494,7 +38500,7 @@ pub unsafe fn _mm_mask_max_round_sd<const SAE: i32>(
 /// Compare the lower double-precision (64-bit) floating-point elements in a and b, store the maximum value in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.\
 /// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_maskz_max_sd&expand=3670)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_max_round_sd&expand=3670)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -38534,7 +38540,7 @@ pub unsafe fn _mm_min_round_ss<const SAE: i32>(a: __m128, b: __m128) -> __m128 {
 /// Compare the lower single-precision (32-bit) floating-point elements in a and b, store the minimum value in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.\
 /// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_mask_min_round_Ss&expand=3780)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_mask_min_round_ss&expand=3780)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -38616,7 +38622,7 @@ pub unsafe fn _mm_mask_min_round_sd<const SAE: i32>(
 /// Compare the lower double-precision (64-bit) floating-point elements in a and b, store the minimum value in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.\
 /// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_maskz_min_round_Sd&expand=3778)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_maskz_min_round_sd&expand=3778)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -39674,7 +39680,7 @@ pub unsafe fn _mm_maskz_fmadd_round_sd<const ROUNDING: i32>(
 ///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions\
 ///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_mask3_fmadd_round_Sd&expand=2571)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_mask3_fmadd_round_sd&expand=2571)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -40169,7 +40175,7 @@ pub unsafe fn _mm_maskz_fnmadd_round_sd<const ROUNDING: i32>(
 ///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions\
 ///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_mask3_fnmadd_round_Sd&expand=2737)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_mask3_fnmadd_round_sd&expand=2737)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -41075,7 +41081,7 @@ pub unsafe fn _mm_cvt_roundsd_i32<const ROUNDING: i32>(a: __m128d) -> i32 {
 ///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions\
 ///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=cvt_roundsd_u32&expand=1364)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvt_roundsd_u32&expand=1364)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -41201,7 +41207,7 @@ pub unsafe fn _mm_cvti32_sd(a: __m128d, b: i32) -> __m128d {
 /// Convert the lower single-precision (32-bit) floating-point element in a to a 32-bit integer with truncation, and store the result in dst.\
 /// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_cvtt_roundss_Si32&expand=1936)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_cvtt_roundss_si32&expand=1936)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]

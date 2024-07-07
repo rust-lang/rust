@@ -65,7 +65,7 @@ pub unsafe fn _mm256_maskz_and_pd(k: __mmask8, a: __m256d, b: __m256d) -> __m256
 /// Compute the bitwise AND of packed double-precision (64-bit) floating point numbers in a and b
 /// and store the results in dst.
 ///
-/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_and_pd&ig_expand=293)
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_and_pd&ig_expand=293)
 #[inline]
 #[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vandp))]
@@ -3760,7 +3760,7 @@ pub unsafe fn _mm512_maskz_cvttps_epi64(k: __mmask8, a: __m256) -> __m512i {
 /// with truncation, and store the result in dst. Exceptions can be suppressed by passing _MM_FROUND_NO_EXC
 /// to the sae parameter.
 ///
-/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_cvtpd_epu64&ig_expand=1965)
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_cvtt_roundpd_epu64&ig_expand=1965)
 #[inline]
 #[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vcvttpd2uqq, SAE = 8))]
@@ -5209,7 +5209,7 @@ pub unsafe fn _mm512_maskz_range_ps<const IMM8: i32>(k: __mmask16, a: __m512, b:
 ///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
 /// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
 ///
-/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_range_round_sd&ig_expand=5216)
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_range_round_sd&ig_expand=5216)
 #[inline]
 #[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vrangesd, IMM8 = 5, SAE = 8))]
@@ -5345,7 +5345,7 @@ pub unsafe fn _mm_maskz_range_sd<const IMM8: i32>(k: __mmask8, a: __m128d, b: __
 ///     00 = sign from a, 01 = sign from compare result, 10 = clear sign bit, 11 = set sign bit.
 /// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
 ///
-/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_range_round_ss&ig_expand=5219)
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_range_round_ss&ig_expand=5219)
 #[inline]
 #[target_feature(enable = "avx512dq")]
 #[cfg_attr(test, assert_instr(vrangess, IMM8 = 5, SAE = 8))]
@@ -6743,7 +6743,7 @@ pub unsafe fn _mm512_mask_fpclass_ps_mask<const IMM8: i32>(k1: __mmask16, a: __m
 ///     - 0x40 // Negative
 ///     - 0x80 // SNaN
 ///
-/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_fpclass_sd_mask&ig_expand=3511)
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fpclass_sd_mask&ig_expand=3511)
 #[inline]
 #[target_feature(enable = "sse,avx512f,avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclasssd, IMM8 = 0))]
@@ -6792,7 +6792,7 @@ pub unsafe fn _mm_mask_fpclass_sd_mask<const IMM8: i32>(k1: __mmask8, a: __m128d
 ///     - 0x40 // Negative
 ///     - 0x80 // SNaN
 ///
-/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_fpclass_ss_mask&ig_expand=3515)
+/// [Intel's Documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fpclass_ss_mask&ig_expand=3515)
 #[inline]
 #[target_feature(enable = "sse,avx512f,avx512dq")]
 #[cfg_attr(test, assert_instr(vfpclassss, IMM8 = 0))]

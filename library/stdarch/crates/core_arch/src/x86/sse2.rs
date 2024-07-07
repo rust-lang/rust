@@ -2791,7 +2791,7 @@ pub unsafe fn _mm_loadu_si32(mem_addr: *const u8) -> __m128i {
 ///
 /// `mem_addr` does not need to be aligned on any particular boundary.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_loadu_si16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_loadu_si64)
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86_mm_loadu_si64", since = "1.46.0")]

@@ -53,7 +53,7 @@ pub unsafe fn _mm_cvtsd_u64(a: __m128d) -> u64 {
 
 /// Convert the signed 64-bit integer b to a single-precision (32-bit) floating-point element, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_cvti32_ss&expand=1643)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_cvti64_ss&expand=1643)
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]

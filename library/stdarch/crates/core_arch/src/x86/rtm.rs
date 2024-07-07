@@ -60,7 +60,7 @@ pub const _XABORT_NESTED: u32 = 1 << 5;
 /// Specifies the start of a restricted transactional memory (RTM) code region and returns a value
 /// indicating status.
 ///
-/// [Intel's documentation](https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-xbegin).
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_xbegin)
 #[inline]
 #[target_feature(enable = "rtm")]
 #[cfg_attr(test, assert_instr(xbegin))]
@@ -71,7 +71,7 @@ pub unsafe fn _xbegin() -> u32 {
 
 /// Specifies the end of a restricted transactional memory (RTM) code region.
 ///
-/// [Intel's documentation](https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-xend).
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_xend)
 #[inline]
 #[target_feature(enable = "rtm")]
 #[cfg_attr(test, assert_instr(xend))]
@@ -82,7 +82,7 @@ pub unsafe fn _xend() {
 
 /// Forces a restricted transactional memory (RTM) region to abort.
 ///
-/// [Intel's documentation](https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-xabort).
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_xabort)
 #[inline]
 #[target_feature(enable = "rtm")]
 #[cfg_attr(test, assert_instr(xabort, IMM8 = 0x0))]
@@ -96,7 +96,7 @@ pub unsafe fn _xabort<const IMM8: u32>() {
 /// Queries whether the processor is executing in a transactional region identified by restricted
 /// transactional memory (RTM) or hardware lock elision (HLE).
 ///
-/// [Intel's documentation](https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-xtest).
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_xtest)
 #[inline]
 #[target_feature(enable = "rtm")]
 #[cfg_attr(test, assert_instr(xtest))]

@@ -22,6 +22,8 @@ extern "unadjusted" {
 /// Converts the 4 x 16-bit half-precision float values in the lowest 64-bit of
 /// the 128-bit vector `a` into 4 x 32-bit float values stored in a 128-bit wide
 /// vector.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtph_ps)
 #[inline]
 #[target_feature(enable = "f16c")]
 #[cfg_attr(test, assert_instr("vcvtph2ps"))]
@@ -32,6 +34,8 @@ pub unsafe fn _mm_cvtph_ps(a: __m128i) -> __m128 {
 
 /// Converts the 8 x 16-bit half-precision float values in the 128-bit vector
 /// `a` into 8 x 32-bit float values stored in a 256-bit wide vector.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtph_ps)
 #[inline]
 #[target_feature(enable = "f16c")]
 #[cfg_attr(test, assert_instr("vcvtph2ps"))]
@@ -51,6 +55,8 @@ pub unsafe fn _mm256_cvtph_ps(a: __m128i) -> __m256 {
 /// * `_MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC`: round up and suppress exceptions,
 /// * `_MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC`: truncate and suppress exceptions,
 /// * `_MM_FROUND_CUR_DIRECTION`: use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`].
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtps_ph)
 #[inline]
 #[target_feature(enable = "f16c")]
 #[cfg_attr(test, assert_instr("vcvtps2ph", IMM_ROUNDING = 0))]
@@ -73,6 +79,8 @@ pub unsafe fn _mm_cvtps_ph<const IMM_ROUNDING: i32>(a: __m128) -> __m128i {
 /// * `_MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC`: round up and suppress exceptions,
 /// * `_MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC`: truncate and suppress exceptions,
 /// * `_MM_FROUND_CUR_DIRECTION`: use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`].
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtps_ph)
 #[inline]
 #[target_feature(enable = "f16c")]
 #[cfg_attr(test, assert_instr("vcvtps2ph", IMM_ROUNDING = 0))]

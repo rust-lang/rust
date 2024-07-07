@@ -222,7 +222,7 @@ pub unsafe fn _mm512_maskz_add_epi16(k: __mmask32, a: __m512i, b: __m512i) -> __
 
 /// Add packed 16-bit integers in a and b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_add_epi&expand=89)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_add_epi16&expand=89)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -2328,7 +2328,7 @@ pub unsafe fn _mm_maskz_min_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128
 
 /// Compare packed unsigned 16-bit integers in a and b for less-than, and store the results in mask vector k.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_cmplt_epu16_mask&expand=1050)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_cmplt_epu16_mask&expand=1050)
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -2350,7 +2350,7 @@ pub unsafe fn _mm512_mask_cmplt_epu16_mask(k1: __mmask32, a: __m512i, b: __m512i
 
 /// Compare packed unsigned 16-bit integers in a and b for less-than, and store the results in mask vector k.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_cmplt_epu16_mask&expand=1050)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cmplt_epu16_mask&expand=1050)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -2372,7 +2372,7 @@ pub unsafe fn _mm256_mask_cmplt_epu16_mask(k1: __mmask16, a: __m256i, b: __m256i
 
 /// Compare packed unsigned 16-bit integers in a and b for less-than, and store the results in mask vector k.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmplt_epi16_mask&expand=1018)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmplt_epu16_mask&expand=1018)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -2383,7 +2383,7 @@ pub unsafe fn _mm_cmplt_epu16_mask(a: __m128i, b: __m128i) -> __mmask8 {
 
 /// Compare packed unsigned 16-bit integers in a and b for less-than, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_cmplt_epi16_mask&expand=1019)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_cmplt_epu16_mask&expand=1019)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -9316,7 +9316,7 @@ pub unsafe fn _mm512_mask_test_epi16_mask(k: __mmask32, a: __m512i, b: __m512i) 
 
 /// Compute the bitwise AND of packed 16-bit integers in a and b, producing intermediate 16-bit values, and set the corresponding bit in result mask k if the intermediate value is non-zero.
 ///
-// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_test_epi16_mask&expand=5882)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_test_epi16_mask&expand=5882)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -9342,7 +9342,7 @@ pub unsafe fn _mm256_mask_test_epi16_mask(k: __mmask16, a: __m256i, b: __m256i) 
 
 /// Compute the bitwise AND of packed 16-bit integers in a and b, producing intermediate 16-bit values, and set the corresponding bit in result mask k if the intermediate value is non-zero.
 ///
-// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_test_epi16_mask&expand=5880)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_test_epi16_mask&expand=5880)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -9459,7 +9459,7 @@ pub unsafe fn _mm512_testn_epi16_mask(a: __m512i, b: __m512i) -> __mmask32 {
 
 /// Compute the bitwise NAND of packed 16-bit integers in a and b, producing intermediate 16-bit values, and set the corresponding bit in result mask k (subject to writemask k) if the intermediate value is zero.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_testn_epi16&expand=5914)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_testn_epi16_mask&expand=5914)
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -10397,7 +10397,7 @@ pub unsafe fn _ktestz_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
 
 /// Unpack and interleave 16 bits from masks a and b, and store the 32-bit result in k.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_kunpackw)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_kunpackw)
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -10408,7 +10408,7 @@ pub unsafe fn _mm512_kunpackw(a: __mmask32, b: __mmask32) -> __mmask32 {
 
 /// Unpack and interleave 32 bits from masks a and b, and store the 64-bit result in k.
 ///
-/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=512_kunpackd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_kunpackd)
 #[inline]
 #[target_feature(enable = "avx512bw")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
