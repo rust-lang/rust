@@ -230,10 +230,26 @@ fn run_passes_inner<'tcx>(
                 dump_mir_for_pass(tcx, body, name, true);
             }
             if validate {
-                validate_body(tcx, body, format!("after pass {name}"));
+                validate_body(
+                    tcx,
+                    body,
+                    format!(
+                        "after pass {name} {:03}-{:03}",
+                        body.phase.phase_index(),
+                        body.pass_count
+                    ),
+                );
             }
             if lint {
-                lint_body(tcx, body, format!("after pass {name}"));
+                lint_body(
+                    tcx,
+                    body,
+                    format!(
+                        "after pass {name} {:03}-{:03}",
+                        body.phase.phase_index(),
+                        body.pass_count
+                    ),
+                );
             }
 
             body.pass_count += 1;

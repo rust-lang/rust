@@ -22,7 +22,7 @@ use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt};
 rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
-    #[debug_format = "_{}"]
+    #[debug_format = "corsl_{}"]
     pub struct CoroutineSavedLocal {}
 }
 

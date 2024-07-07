@@ -826,7 +826,7 @@ fn coroutine_layout<'tcx>(
     // Build a prefix layout, including "promoting" all ineligible
     // locals as part of the prefix. We compute the layout of all of
     // these fields at once to get optimal packing.
-    let tag_index = args.as_coroutine().prefix_tys().len();
+    let tag_index = 0;
 
     // `info.variant_fields` already accounts for the reserved variants, so no need to add them.
     let max_discr = (info.variant_fields.len() - 1) as u128;
@@ -845,14 +845,8 @@ fn coroutine_layout<'tcx>(
         let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty);
         cx.spanned_layout_of(uninit_ty, info.field_tys[local].source_info.span)
     });
-    let prefix_layouts = args
-        .as_coroutine()
-        .prefix_tys()
-        .iter()
-        .map(|ty| cx.layout_of(ty))
-        .chain(iter::once(Ok(tag_layout)))
-        .chain(promoted_layouts)
-        .try_collect::<IndexVec<_, _>>()?;
+    let prefix_layouts: IndexVec<_, _> =
+        [Ok(tag_layout)].into_iter().chain(promoted_layouts).try_collect()?;
     let prefix = univariant_uninterned(
         cx,
         ty,
@@ -863,10 +857,10 @@ fn coroutine_layout<'tcx>(
 
     let (prefix_size, prefix_align) = (prefix.size, prefix.align);
 
-    // Split the prefix layout into the "outer" fields (upvars and
-    // discriminant) and the "promoted" fields. Promoted fields will
-    // get included in each variant that requested them in
-    // CoroutineLayout.
+    // Split the prefix layout into the discriminant and
+    // the "promoted" fields.
+    // Promoted fields will get included in each variant
+    // that requested them in CoroutineLayout.
     debug!("prefix = {:#?}", prefix);
     let (outer_fields, promoted_offsets, promoted_memory_index) = match prefix.fields {
         FieldsShape::Arbitrary { mut offsets, memory_index } => {
@@ -1206,7 +1200,11 @@ fn variant_info_for_coroutine<'tcx>(
                             .then(|| Symbol::intern(&field_layout.ty.to_string())),
                     }
                 })
-                .chain(upvar_fields.iter().copied())
+                .chain(
+                    if variant_idx.as_usize() == 0 { &upvar_fields[..] } else { &[] }
+                        .iter()
+                        .copied(),
+                )
                 .collect();
 
             // If the variant has no state-specific fields, then it's the size of the upvars.

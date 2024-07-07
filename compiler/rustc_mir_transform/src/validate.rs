@@ -12,8 +12,7 @@ use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{
-    self, CoroutineArgsExt, InstanceKind, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
-    Variance,
+    self, InstanceKind, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Variance,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -782,14 +781,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             };
 
                             ty::EarlyBinder::bind(f_ty.ty).instantiate(self.tcx, args)
-                        } else {
-                            let Some(&f_ty) = args.as_coroutine().prefix_tys().get(f.index())
-                            else {
-                                fail_out_of_bounds(self, location);
-                                return;
-                            };
-
+                        } else if let Some(&f_ty) = args.as_coroutine().upvar_tys().get(f.index()) {
                             f_ty
+                        } else {
+                            fail_out_of_bounds(self, location);
+                            return;
                         };
 
                         check_equal(self, location, f_ty);

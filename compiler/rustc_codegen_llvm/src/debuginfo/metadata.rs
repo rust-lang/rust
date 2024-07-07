@@ -13,8 +13,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{
-    self, AdtKind, CoroutineArgsExt, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt,
-    Visibility,
+    self, AdtKind, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt, Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::symbol::Symbol;
@@ -1098,7 +1097,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
     closure_or_coroutine_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
     let (&def_id, up_var_tys) = match closure_or_coroutine_ty.kind() {
-        ty::Coroutine(def_id, args) => (def_id, args.as_coroutine().prefix_tys()),
+        ty::Coroutine(def_id, args) => (def_id, args.as_coroutine().upvar_tys()),
         ty::Closure(def_id, args) => (def_id, args.as_closure().upvar_tys()),
         ty::CoroutineClosure(def_id, args) => (def_id, args.as_coroutine_closure().upvar_tys()),
         _ => {
