@@ -33,6 +33,7 @@ pub(crate) fn try_run_tests(
     stream: bool,
 ) -> bool {
     if builder.config.dry_run() {
+        cmd.mark_as_executed();
         return true;
     }
 

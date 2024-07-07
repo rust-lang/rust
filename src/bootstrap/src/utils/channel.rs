@@ -58,7 +58,7 @@ impl GitInfo {
 
         // Ok, let's scrape some info
         let ver_date = output(
-            &mut helpers::git(Some(dir))
+            helpers::git(Some(dir))
                 .arg("log")
                 .arg("-1")
                 .arg("--date=short")
