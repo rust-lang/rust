@@ -968,7 +968,9 @@ impl Build {
         let mut message = String::new();
         let output: CommandOutput = match output {
             // Command has succeeded
-            Ok(output) if output.status.success() => output.into(),
+            Ok(output) if output.status.success() => {
+                CommandOutput::from_output(output, stdout, stderr)
+            }
             // Command has started, but then it failed
             Ok(output) => {
                 writeln!(
@@ -982,7 +984,7 @@ Executed at: {executed_at}"#,
                 )
                 .unwrap();
 
-                let output: CommandOutput = output.into();
+                let output: CommandOutput = CommandOutput::from_output(output, stdout, stderr);
 
                 // If the output mode is OutputMode::Capture, we can now print the output.
                 // If it is OutputMode::Print, then the output has already been printed to
