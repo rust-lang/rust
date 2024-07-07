@@ -127,3 +127,8 @@ fn existing_tests(dir: &Path, ok: bool) -> HashMap<String, (PathBuf, Test)> {
     }
     res
 }
+
+#[test]
+fn test() {
+    generate(true);
+}

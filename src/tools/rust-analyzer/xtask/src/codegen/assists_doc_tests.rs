@@ -195,3 +195,8 @@ fn reveal_hash_comments(text: &str) -> String {
         })
         .fold(String::new(), |mut acc, it| format_to_acc!(acc, "{it}\n"))
 }
+
+#[test]
+fn test() {
+    generate(true);
+}

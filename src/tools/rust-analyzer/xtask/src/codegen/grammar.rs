@@ -890,3 +890,8 @@ impl AstNodeSrc {
         });
     }
 }
+
+#[test]
+fn test() {
+    generate(true);
+}

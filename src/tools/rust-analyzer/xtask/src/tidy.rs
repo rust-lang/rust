@@ -338,3 +338,8 @@ fn find_marks(set: &mut HashSet<String>, text: &str, mark: &str) {
         }
     }
 }
+
+#[test]
+fn test() {
+    Tidy {}.run(&Shell::new().unwrap()).unwrap();
+}
