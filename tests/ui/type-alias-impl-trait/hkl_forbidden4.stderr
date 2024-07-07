@@ -39,13 +39,13 @@ LL | type FutNothing<'a> = impl 'a + Future<Output = ()>;
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0792]: expected generic lifetime parameter, found `'any`
-  --> $DIR/hkl_forbidden4.rs:14:5
+  --> $DIR/hkl_forbidden4.rs:14:21
    |
 LL | async fn operation(_: &mut ()) -> () {
    |                       - this generic parameter must be used with a generic lifetime parameter
 LL |
 LL |     call(operation).await
-   |     ^^^^^^^^^^^^^^^
+   |                     ^^^^^
 
 error[E0792]: expected generic lifetime parameter, found `'any`
   --> $DIR/hkl_forbidden4.rs:22:1

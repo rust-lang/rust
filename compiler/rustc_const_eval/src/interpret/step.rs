@@ -305,6 +305,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let variant_dest = self.project_downcast(dest, variant_index)?;
                 (variant_index, variant_dest, active_field_index)
             }
+            mir::AggregateKind::Coroutine(_def_id, _args) => {
+                (FIRST_VARIANT, self.project_downcast(dest, FIRST_VARIANT)?, None)
+            }
             mir::AggregateKind::RawPtr(..) => {
                 // Pointers don't have "fields" in the normal sense, so the
                 // projection-based code below would either fail in projection
