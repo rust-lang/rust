@@ -19,8 +19,12 @@ struct Date {
 
 impl Date {
     fn months_since(self, other: Date) -> Option<u32> {
-        let self_chrono = Utc.ymd(self.year.try_into().unwrap(), self.month, 1);
-        let other_chrono = Utc.ymd(other.year.try_into().unwrap(), other.month, 1);
+        let self_chrono = Utc
+            .with_ymd_and_hms(self.year.try_into().unwrap(), self.month, 1, 0, 0, 0)
+            .unwrap();
+        let other_chrono = Utc
+            .with_ymd_and_hms(other.year.try_into().unwrap(), other.month, 1, 0, 0, 0)
+            .unwrap();
         let duration_since = self_chrono.signed_duration_since(other_chrono);
         let months_since = duration_since.num_days() / 30;
         if months_since < 0 {
@@ -133,7 +137,7 @@ fn main() {
     let root_dir = args.nth(1).unwrap();
     let root_dir_path = Path::new(&root_dir);
     let glob_pat = format!("{}/**/*.md", root_dir);
-    let today_chrono = Utc::today();
+    let today_chrono = Utc::now().date_naive();
     let current_month = Date {
         year: today_chrono.year_ce().1,
         month: today_chrono.month(),
