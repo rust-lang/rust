@@ -1469,8 +1469,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let (elem_ty_str, elem_ty) = if let ty::Float(f) = in_elem.kind() {
             let elem_ty = bx.cx.type_float_from_ty(*f);
             match f.bit_width() {
+                16 => ("f16", elem_ty),
                 32 => ("f32", elem_ty),
                 64 => ("f64", elem_ty),
+                128 => ("f128", elem_ty),
                 _ => return_error!(InvalidMonomorphization::FloatingPointVector {
                     span,
                     name,
