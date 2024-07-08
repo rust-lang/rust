@@ -1,5 +1,5 @@
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:8:18
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:13:18
    |
 LL |         unsafe { mem::zeroed() }
    |                  ^^^^^^^^^^^^^
@@ -7,10 +7,10 @@ LL |         unsafe { mem::zeroed() }
    = warning: this will change its meaning in a future release!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
-   = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` on by default
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` on by default
 
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:23:13
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:30:13
    |
 LL |             core::mem::transmute(Zst)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,8 +19,8 @@ LL |             core::mem::transmute(Zst)
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
-warning: never type fallback affects this union access
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:39:18
+error: never type fallback affects this union access
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:47:18
    |
 LL |         unsafe { Union { a: () }.b }
    |                  ^^^^^^^^^^^^^^^^^
@@ -29,8 +29,8 @@ LL |         unsafe { Union { a: () }.b }
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
-warning: never type fallback affects this raw pointer dereference
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:49:18
+error: never type fallback affects this raw pointer dereference
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:58:18
    |
 LL |         unsafe { *ptr::from_ref(&()).cast() }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,8 +39,8 @@ LL |         unsafe { *ptr::from_ref(&()).cast() }
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:67:18
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:79:18
    |
 LL |         unsafe { internally_create(x) }
    |                  ^^^^^^^^^^^^^^^^^^^^
@@ -49,8 +49,8 @@ LL |         unsafe { internally_create(x) }
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:83:18
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:97:18
    |
 LL |         unsafe { zeroed() }
    |                  ^^^^^^^^
@@ -59,8 +59,8 @@ LL |         unsafe { zeroed() }
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
-warning: never type fallback affects this `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:79:22
+error: never type fallback affects this `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:92:22
    |
 LL |         let zeroed = mem::zeroed;
    |                      ^^^^^^^^^^^
@@ -69,8 +69,8 @@ LL |         let zeroed = mem::zeroed;
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
-warning: never type fallback affects this `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:98:17
+error: never type fallback affects this `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:115:17
    |
 LL |         let f = internally_create;
    |                 ^^^^^^^^^^^^^^^^^
@@ -79,8 +79,8 @@ LL |         let f = internally_create;
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
-warning: never type fallback affects this call to an `unsafe` method
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:122:13
+error: never type fallback affects this call to an `unsafe` method
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:140:13
    |
 LL |             S(marker::PhantomData).create_out_of_thin_air()
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -89,8 +89,8 @@ LL |             S(marker::PhantomData).create_out_of_thin_air()
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
 
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:139:19
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:158:19
    |
 LL |             match send_message::<_ /* ?0 */>() {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -101,7 +101,16 @@ LL |         msg_send!();
    = warning: this will change its meaning in a future release!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
-   = note: this warning originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: 10 warnings emitted
+warning: the type `!` does not permit zero-initialization
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:13:18
+   |
+LL |         unsafe { mem::zeroed() }
+   |                  ^^^^^^^^^^^^^ this code causes undefined behavior when executed
+   |
+   = note: the `!` type has no valid value
+   = note: `#[warn(invalid_value)]` on by default
+
+error: aborting due to 10 previous errors; 1 warning emitted
 
