@@ -854,6 +854,16 @@ impl<'tcx> TerminatorKind<'tcx> {
                 }
                 write!(fmt, ")")
             }
+            TailCall { func, args, .. } => {
+                write!(fmt, "tailcall {func:?}(")?;
+                for (index, arg) in args.iter().enumerate() {
+                    if index > 0 {
+                        write!(fmt, ", ")?;
+                    }
+                    write!(fmt, "{:?}", arg)?;
+                }
+                write!(fmt, ")")
+            }
             Assert { cond, expected, msg, .. } => {
                 write!(fmt, "assert(")?;
                 if !expected {
@@ -921,7 +931,12 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::TerminatorKind::*;
         match *self {
-            Return | UnwindResume | UnwindTerminate(_) | Unreachable | CoroutineDrop => vec![],
+            Return
+            | TailCall { .. }
+            | UnwindResume
+            | UnwindTerminate(_)
+            | Unreachable
+            | CoroutineDrop => vec![],
             Goto { .. } => vec!["".into()],
             SwitchInt { ref targets, .. } => targets
                 .values

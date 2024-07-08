@@ -26,8 +26,8 @@ use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayou
 use super::{
     err_inval, throw_inval, throw_ub, throw_ub_custom, throw_unsup, GlobalId, Immediate,
     InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, MemoryKind,
-    OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic, Projectable, Provenance, Scalar,
-    StackPopJump,
+    OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic, Projectable, Provenance,
+    ReturnAction, Scalar,
 };
 use crate::errors;
 use crate::util;
@@ -157,6 +157,19 @@ pub enum StackPopCleanup {
     /// wants them leaked to intern what they need (and just throw away
     /// the entire `ecx` when it is done).
     Root { cleanup: bool },
+}
+
+/// Return type of [`InterpCx::pop_stack_frame`].
+pub struct StackPopInfo<'tcx, Prov: Provenance> {
+    /// Additional information about the action to be performed when returning from the popped
+    /// stack frame.
+    pub return_action: ReturnAction,
+
+    /// [`return_to_block`](Frame::return_to_block) of the popped stack frame.
+    pub return_to_block: StackPopCleanup,
+
+    /// [`return_place`](Frame::return_place) of the popped stack frame.
+    pub return_place: MPlaceTy<'tcx, Prov>,
 }
 
 /// State of a local variable including a memoized layout
@@ -803,14 +816,31 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
+
+        // First push a stack frame so we have access to the local args
+        self.push_new_stack_frame(instance, body, return_to_block, return_place.clone())?;
+
+        self.after_stack_frame_push(instance, body)?;
+
+        Ok(())
+    }
+
+    /// Creates a new stack frame, initializes it and pushes it onto the stack.
+    /// A private helper for [`push_stack_frame`](InterpCx::push_stack_frame).
+    fn push_new_stack_frame(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        body: &'tcx mir::Body<'tcx>,
+        return_to_block: StackPopCleanup,
+        return_place: MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
         let dead_local = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
         let locals = IndexVec::from_elem(dead_local, &body.local_decls);
-        // First push a stack frame so we have access to the local args
         let pre_frame = Frame {
             body,
             loc: Right(body.span), // Span used for errors caused during preamble.
             return_to_block,
-            return_place: return_place.clone(),
+            return_place,
             locals,
             instance,
             tracing_span: SpanGuard::new(),
@@ -819,6 +849,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let frame = M::init_frame(self, pre_frame)?;
         self.stack_mut().push(frame);
 
+        Ok(())
+    }
+
+    /// A private helper for [`push_stack_frame`](InterpCx::push_stack_frame).
+    fn after_stack_frame_push(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        body: &'tcx mir::Body<'tcx>,
+    ) -> InterpResult<'tcx> {
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
         for &const_ in &body.required_consts {
             let c =
@@ -837,6 +876,61 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.frame_mut().tracing_span.enter(span);
 
         Ok(())
+    }
+
+    /// Pops a stack frame from the stack and returns some information about it.
+    ///
+    /// This also deallocates locals, if necessary.
+    ///
+    /// [`M::before_stack_pop`] should be called before calling this function.
+    /// [`M::after_stack_pop`] is called by this function automatically.
+    ///
+    /// [`M::before_stack_pop`]: Machine::before_stack_pop
+    /// [`M::after_stack_pop`]: Machine::after_stack_pop
+    pub fn pop_stack_frame(
+        &mut self,
+        unwinding: bool,
+    ) -> InterpResult<'tcx, StackPopInfo<'tcx, M::Provenance>> {
+        let cleanup = self.cleanup_current_frame_locals()?;
+
+        let frame =
+            self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
+
+        let return_to_block = frame.return_to_block;
+        let return_place = frame.return_place.clone();
+
+        let return_action;
+        if cleanup {
+            return_action = M::after_stack_pop(self, frame, unwinding)?;
+            assert_ne!(return_action, ReturnAction::NoCleanup);
+        } else {
+            return_action = ReturnAction::NoCleanup;
+        };
+
+        Ok(StackPopInfo { return_action, return_to_block, return_place })
+    }
+
+    /// A private helper for [`pop_stack_frame`](InterpCx::pop_stack_frame).
+    /// Returns `true` if cleanup has been done, `false` otherwise.
+    fn cleanup_current_frame_locals(&mut self) -> InterpResult<'tcx, bool> {
+        // Cleanup: deallocate locals.
+        // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
+        // We do this while the frame is still on the stack, so errors point to the callee.
+        let return_to_block = self.frame().return_to_block;
+        let cleanup = match return_to_block {
+            StackPopCleanup::Goto { .. } => true,
+            StackPopCleanup::Root { cleanup, .. } => cleanup,
+        };
+
+        if cleanup {
+            // We need to take the locals out, since we need to mutate while iterating.
+            let locals = mem::take(&mut self.frame_mut().locals);
+            for local in &locals {
+                self.deallocate_local(local.value)?;
+            }
+        }
+
+        Ok(cleanup)
     }
 
     /// Jump to the given block.
@@ -886,7 +980,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Pops the current frame from the stack, deallocating the
-    /// memory for allocated locals.
+    /// memory for allocated locals, and jumps to an appropriate place.
     ///
     /// If `unwinding` is `false`, then we are performing a normal return
     /// from a function. In this case, we jump back into the frame of the caller,
@@ -899,7 +993,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// The cleanup block ends with a special `Resume` terminator, which will
     /// cause us to continue unwinding.
     #[instrument(skip(self), level = "debug")]
-    pub(super) fn pop_stack_frame(&mut self, unwinding: bool) -> InterpResult<'tcx> {
+    pub(super) fn return_from_current_stack_frame(
+        &mut self,
+        unwinding: bool,
+    ) -> InterpResult<'tcx> {
         info!(
             "popping stack frame ({})",
             if unwinding { "during unwinding" } else { "returning from function" }
@@ -947,45 +1044,31 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Ok(())
         };
 
-        // Cleanup: deallocate locals.
-        // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
-        // We do this while the frame is still on the stack, so errors point to the callee.
-        let return_to_block = self.frame().return_to_block;
-        let cleanup = match return_to_block {
-            StackPopCleanup::Goto { .. } => true,
-            StackPopCleanup::Root { cleanup, .. } => cleanup,
-        };
-        if cleanup {
-            // We need to take the locals out, since we need to mutate while iterating.
-            let locals = mem::take(&mut self.frame_mut().locals);
-            for local in &locals {
-                self.deallocate_local(local.value)?;
-            }
-        }
-
         // All right, now it is time to actually pop the frame.
-        // Note that its locals are gone already, but that's fine.
-        let frame =
-            self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
+        let stack_pop_info = self.pop_stack_frame(unwinding)?;
+
         // Report error from return value copy, if any.
         copy_ret_result?;
 
-        // If we are not doing cleanup, also skip everything else.
-        if !cleanup {
-            assert!(self.stack().is_empty(), "only the topmost frame should ever be leaked");
-            assert!(!unwinding, "tried to skip cleanup during unwinding");
-            // Skip machine hook.
-            return Ok(());
-        }
-        if M::after_stack_pop(self, frame, unwinding)? == StackPopJump::NoJump {
-            // The hook already did everything.
-            return Ok(());
+        match stack_pop_info.return_action {
+            ReturnAction::Normal => {}
+            ReturnAction::NoJump => {
+                // The hook already did everything.
+                return Ok(());
+            }
+            ReturnAction::NoCleanup => {
+                // If we are not doing cleanup, also skip everything else.
+                assert!(self.stack().is_empty(), "only the topmost frame should ever be leaked");
+                assert!(!unwinding, "tried to skip cleanup during unwinding");
+                // Skip machine hook.
+                return Ok(());
+            }
         }
 
         // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
-            let unwind = match return_to_block {
+            let unwind = match stack_pop_info.return_to_block {
                 StackPopCleanup::Goto { unwind, .. } => unwind,
                 StackPopCleanup::Root { .. } => {
                     panic!("encountered StackPopCleanup::Root when unwinding!")
@@ -995,7 +1078,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.unwind_to_block(unwind)
         } else {
             // Follow the normal return edge.
-            match return_to_block {
+            match stack_pop_info.return_to_block {
                 StackPopCleanup::Goto { ret, .. } => self.return_to_block(ret),
                 StackPopCleanup::Root { .. } => {
                     assert!(

@@ -2,7 +2,9 @@ use crate::build::scope::BreakableTarget;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
+use rustc_middle::span_bug;
 use rustc_middle::thir::*;
+use rustc_span::source_map::Spanned;
 use tracing::debug;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -91,9 +93,42 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Return { value } => {
                 this.break_scope(block, value, BreakableTarget::Return, source_info)
             }
-            // FIXME(explicit_tail_calls): properly lower tail calls here
             ExprKind::Become { value } => {
-                this.break_scope(block, Some(value), BreakableTarget::Return, source_info)
+                let v = &this.thir[value];
+                let ExprKind::Scope { value, lint_level, region_scope } = v.kind else {
+                    span_bug!(v.span, "`thir_check_tail_calls` should have disallowed this {v:?}")
+                };
+
+                let v = &this.thir[value];
+                let ExprKind::Call { ref args, fun, fn_span, .. } = v.kind else {
+                    span_bug!(v.span, "`thir_check_tail_calls` should have disallowed this {v:?}")
+                };
+
+                this.in_scope((region_scope, source_info), lint_level, |this| {
+                    let fun = unpack!(block = this.as_local_operand(block, fun));
+                    let args: Box<[_]> = args
+                        .into_iter()
+                        .copied()
+                        .map(|arg| Spanned {
+                            node: unpack!(block = this.as_local_call_operand(block, arg)),
+                            span: this.thir.exprs[arg].span,
+                        })
+                        .collect();
+
+                    this.record_operands_moved(&args);
+
+                    debug!("expr_into_dest: fn_span={:?}", fn_span);
+
+                    unpack!(block = this.break_for_tail_call(block, &args, source_info));
+
+                    this.cfg.terminate(
+                        block,
+                        source_info,
+                        TerminatorKind::TailCall { func: fun, args, fn_span },
+                    );
+
+                    this.cfg.start_new_block().unit()
+                })
             }
             _ => {
                 assert!(
