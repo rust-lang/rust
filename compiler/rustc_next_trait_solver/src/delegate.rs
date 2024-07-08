@@ -1,4 +1,3 @@
-use std::fmt::Debug;
 use std::ops::Deref;
 
 use rustc_type_ir::fold::TypeFoldable;
@@ -31,12 +30,6 @@ pub trait SolverDelegate:
 
     // FIXME: Uplift the leak check into this crate.
     fn leak_check(&self, max_input_universe: ty::UniverseIndex) -> Result<(), NoSolution>;
-
-    // FIXME: This is only here because elaboration lives in `rustc_infer`!
-    fn elaborate_supertraits(
-        cx: Self::Interner,
-        trait_ref: ty::Binder<Self::Interner, ty::TraitRef<Self::Interner>>,
-    ) -> impl Iterator<Item = ty::Binder<Self::Interner, ty::TraitRef<Self::Interner>>>;
 
     fn try_const_eval_resolve(
         &self,
@@ -98,14 +91,6 @@ pub trait SolverDelegate:
     );
 
     fn reset_opaque_types(&self);
-
-    fn trait_ref_is_knowable<E: Debug>(
-        &self,
-        trait_ref: ty::TraitRef<Self::Interner>,
-        lazily_normalize_ty: impl FnMut(
-            <Self::Interner as Interner>::Ty,
-        ) -> Result<<Self::Interner as Interner>::Ty, E>,
-    ) -> Result<bool, E>;
 
     fn fetch_eligible_assoc_item(
         &self,

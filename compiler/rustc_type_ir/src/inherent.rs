@@ -9,6 +9,7 @@ use std::hash::Hash;
 use rustc_ast_ir::Mutability;
 
 use crate::data_structures::HashSet;
+use crate::elaborate::Elaboratable;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
 use crate::solve::{CacheData, CanonicalInput, QueryResult, Reveal};
@@ -39,6 +40,10 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn new_infer(interner: I, var: ty::InferTy) -> Self;
 
     fn new_var(interner: I, var: ty::TyVid) -> Self;
+
+    fn new_param(interner: I, param: I::ParamTy) -> Self;
+
+    fn new_placeholder(interner: I, param: I::PlaceholderTy) -> Self;
 
     fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundTy) -> Self;
 
@@ -429,6 +434,8 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Region>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
 {
+    fn as_clause(self) -> Option<I::Clause>;
+
     fn is_coinductive(self, interner: I) -> bool;
 
     // FIXME: Eventually uplift the impl out of rustc and make this defaulted.
@@ -441,35 +448,35 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + Hash
     + Eq
     + TypeFoldable<I>
-    // FIXME: Remove these, uplift the `Upcast` impls.
+    + UpcastFrom<I, ty::Binder<I, ty::ClauseKind<I>>>
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::ProjectionPredicate<I>>
     + UpcastFrom<I, ty::Binder<I, ty::ProjectionPredicate<I>>>
     + IntoKind<Kind = ty::Binder<I, ty::ClauseKind<I>>>
+    + Elaboratable<I>
 {
     fn as_trait_clause(self) -> Option<ty::Binder<I, ty::TraitPredicate<I>>> {
         self.kind()
-            .map_bound(|clause| {
-                if let ty::ClauseKind::Trait(t) = clause {
-                    Some(t)
-                } else {
-                    None
-                }
-            })
+            .map_bound(|clause| if let ty::ClauseKind::Trait(t) = clause { Some(t) } else { None })
             .transpose()
     }
+
     fn as_projection_clause(self) -> Option<ty::Binder<I, ty::ProjectionPredicate<I>>> {
         self.kind()
-            .map_bound(|clause| {
-                if let ty::ClauseKind::Projection(p) = clause {
-                    Some(p)
-                } else {
-                    None
-                }
-            })
+            .map_bound(
+                |clause| {
+                    if let ty::ClauseKind::Projection(p) = clause { Some(p) } else { None }
+                },
+            )
             .transpose()
     }
+
+    /// Performs a instantiation suitable for going from a
+    /// poly-trait-ref to supertraits that must hold if that
+    /// poly-trait-ref holds. This is slightly different from a normal
+    /// instantiation in terms of what happens with bound regions.
+    fn instantiate_supertrait(self, tcx: I, trait_ref: ty::Binder<I, ty::TraitRef<I>>) -> Self;
 }
 
 /// Common capabilities of placeholder kinds
@@ -514,6 +521,8 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;
 
     fn sized_constraint(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
+
+    fn is_fundamental(self) -> bool;
 }
 
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
@@ -558,6 +567,8 @@ pub trait EvaluationCache<I: Interner> {
 }
 
 pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
+    fn is_local(self) -> bool;
+
     fn as_local(self) -> Option<I::LocalDefId>;
 }
 

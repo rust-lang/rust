@@ -11,6 +11,7 @@ use rustc_type_ir::{self as ty, CanonicalVarValues, InferCtxtLike, Interner};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::{instrument, trace};
 
+use crate::coherence;
 use crate::delegate::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
@@ -906,7 +907,8 @@ where
     ) -> Result<bool, NoSolution> {
         let delegate = self.delegate;
         let lazily_normalize_ty = |ty| self.structurally_normalize_ty(param_env, ty);
-        delegate.trait_ref_is_knowable(trait_ref, lazily_normalize_ty)
+        coherence::trait_ref_is_knowable(&**delegate, trait_ref, lazily_normalize_ty)
+            .map(|is_knowable| is_knowable.is_ok())
     }
 
     pub(super) fn fetch_eligible_assoc_item(

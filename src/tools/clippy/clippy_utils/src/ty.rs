@@ -99,7 +99,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                     for (predicate, _span) in cx
                         .tcx
                         .explicit_item_super_predicates(def_id)
-                        .instantiate_identity_iter_copied()
+                        .iter_identity_copied()
                     {
                         match predicate.kind().skip_binder() {
                             // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through

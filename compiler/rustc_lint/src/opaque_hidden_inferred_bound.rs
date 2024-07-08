@@ -76,9 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
         // of the associated type.
-        for (pred, pred_span) in
-            cx.tcx.explicit_item_bounds(def_id).instantiate_identity_iter_copied()
-        {
+        for (pred, pred_span) in cx.tcx.explicit_item_bounds(def_id).iter_identity_copied() {
             infcx.enter_forall(pred.kind(), |predicate| {
                 let ty::ClauseKind::Projection(proj) = predicate else {
                     return;

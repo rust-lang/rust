@@ -1532,17 +1532,17 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     if !this.has_private_fields(def_id) {
                         // If the fields of the type are private, we shouldn't be suggesting using
                         // the struct literal syntax at all, as that will cause a subsequent error.
-                        let field_ids = this.r.field_def_ids(def_id);
-                        let (fields, applicability) = match field_ids {
-                            Some(field_ids) => {
-                                let fields = field_ids.iter().map(|&id| this.r.tcx.item_name(id));
-
+                        let fields = this.r.field_idents(def_id);
+                        let has_fields = fields.as_ref().is_some_and(|f| !f.is_empty());
+                        let (fields, applicability) = match fields {
+                            Some(fields) => {
                                 let fields = if let Some(old_fields) = old_fields {
                                     fields
+                                        .iter()
                                         .enumerate()
                                         .map(|(idx, new)| (new, old_fields.get(idx)))
                                         .map(|(new, old)| {
-                                            let new = new.to_ident_string();
+                                            let new = new.name.to_ident_string();
                                             if let Some(Some(old)) = old
                                                 && new != *old
                                             {
@@ -1553,17 +1553,17 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                         })
                                         .collect::<Vec<String>>()
                                 } else {
-                                    fields.map(|f| format!("{f}{tail}")).collect::<Vec<String>>()
+                                    fields
+                                        .iter()
+                                        .map(|f| format!("{f}{tail}"))
+                                        .collect::<Vec<String>>()
                                 };
 
                                 (fields.join(", "), applicability)
                             }
                             None => ("/* fields */".to_string(), Applicability::HasPlaceholders),
                         };
-                        let pad = match field_ids {
-                            Some([]) => "",
-                            _ => " ",
-                        };
+                        let pad = if has_fields { " " } else { "" };
                         err.span_suggestion(
                             span,
                             format!("use struct {descr} syntax instead"),
@@ -1723,12 +1723,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             &args[..],
                         );
                         // Use spans of the tuple struct definition.
-                        self.r.field_def_ids(def_id).map(|field_ids| {
-                            field_ids
-                                .iter()
-                                .map(|&field_id| self.r.def_span(field_id))
-                                .collect::<Vec<_>>()
-                        })
+                        self.r
+                            .field_idents(def_id)
+                            .map(|fields| fields.iter().map(|f| f.span).collect::<Vec<_>>())
                     }
                     _ => None,
                 };
@@ -1791,7 +1788,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             (Res::Def(DefKind::Ctor(_, CtorKind::Fn), ctor_def_id), _) if ns == ValueNS => {
                 let def_id = self.r.tcx.parent(ctor_def_id);
                 err.span_label(self.r.def_span(def_id), format!("`{path_str}` defined here"));
-                let fields = self.r.field_def_ids(def_id).map_or_else(
+                let fields = self.r.field_idents(def_id).map_or_else(
                     || "/* fields */".to_string(),
                     |field_ids| vec!["_"; field_ids.len()].join(", "),
                 );
@@ -2017,12 +2014,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     if let Some(Res::Def(DefKind::Struct | DefKind::Union, did)) =
                         resolution.full_res()
                     {
-                        if let Some(field_ids) = self.r.field_def_ids(did) {
-                            if let Some(field_id) = field_ids
-                                .iter()
-                                .find(|&&field_id| ident.name == self.r.tcx.item_name(field_id))
-                            {
-                                return Some(AssocSuggestion::Field(self.r.def_span(*field_id)));
+                        if let Some(fields) = self.r.field_idents(did) {
+                            if let Some(field) = fields.iter().find(|id| ident.name == id.name) {
+                                return Some(AssocSuggestion::Field(field.span));
                             }
                         }
                     }
@@ -2418,7 +2412,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 match kind {
                     CtorKind::Const => false,
                     CtorKind::Fn => {
-                        !self.r.field_def_ids(def_id).is_some_and(|field_ids| field_ids.is_empty())
+                        !self.r.field_idents(def_id).is_some_and(|field_ids| field_ids.is_empty())
                     }
                 }
             };

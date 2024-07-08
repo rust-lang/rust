@@ -7,7 +7,6 @@ pub mod select;
 pub mod solve;
 pub mod specialization_graph;
 mod structural_impls;
-pub mod util;
 
 use crate::mir::ConstraintCategory;
 use crate::ty::abstract_const::NotConstEvaluatable;

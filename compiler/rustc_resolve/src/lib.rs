@@ -991,7 +991,7 @@ pub struct Resolver<'a, 'tcx> {
     extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
-    field_def_ids: LocalDefIdMap<&'tcx [DefId]>,
+    field_names: LocalDefIdMap<Vec<Ident>>,
 
     /// Span of the privacy modifier in fields of an item `DefId` accessible with dot syntax.
     /// Used for hints during error reporting.
@@ -1407,7 +1407,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             prelude: None,
             extern_prelude,
 
-            field_def_ids: Default::default(),
+            field_names: Default::default(),
             field_visibility_spans: FxHashMap::default(),
 
             determined_imports: Vec::new(),
@@ -2128,10 +2128,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn field_def_ids(&self, def_id: DefId) -> Option<&'tcx [DefId]> {
+    fn field_idents(&self, def_id: DefId) -> Option<Vec<Ident>> {
         match def_id.as_local() {
-            Some(def_id) => self.field_def_ids.get(&def_id).copied(),
-            None => Some(self.tcx.associated_item_def_ids(def_id)),
+            Some(def_id) => self.field_names.get(&def_id).cloned(),
+            None => Some(
+                self.tcx
+                    .associated_item_def_ids(def_id)
+                    .iter()
+                    .map(|&def_id| {
+                        Ident::new(self.tcx.item_name(def_id), self.tcx.def_span(def_id))
+                    })
+                    .collect(),
+            ),
         }
     }
 

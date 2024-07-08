@@ -478,7 +478,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
                             param_env,
                             item_def_id,
                             tcx.explicit_item_bounds(item_def_id)
-                                .instantiate_identity_iter_copied()
+                                .iter_identity_copied()
                                 .collect::<Vec<_>>(),
                             &FxIndexSet::default(),
                             gat_def_id,
@@ -1205,17 +1205,16 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
     let bounds = wfcx.tcx().explicit_item_bounds(item.def_id);
 
     debug!("check_associated_type_bounds: bounds={:?}", bounds);
-    let wf_obligations =
-        bounds.instantiate_identity_iter_copied().flat_map(|(bound, bound_span)| {
-            let normalized_bound = wfcx.normalize(span, None, bound);
-            traits::wf::clause_obligations(
-                wfcx.infcx,
-                wfcx.param_env,
-                wfcx.body_def_id,
-                normalized_bound,
-                bound_span,
-            )
-        });
+    let wf_obligations = bounds.iter_identity_copied().flat_map(|(bound, bound_span)| {
+        let normalized_bound = wfcx.normalize(span, None, bound);
+        traits::wf::clause_obligations(
+            wfcx.infcx,
+            wfcx.param_env,
+            wfcx.body_def_id,
+            normalized_bound,
+            bound_span,
+        )
+    });
 
     wfcx.register_obligations(wf_obligations);
 }

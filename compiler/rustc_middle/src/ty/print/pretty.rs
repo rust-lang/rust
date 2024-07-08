@@ -1,7 +1,6 @@
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::query::IntoQueryParam;
 use crate::query::Providers;
-use crate::traits::util::{super_predicates_for_pretty_printing, supertraits_for_pretty_printing};
 use crate::ty::GenericArgKind;
 use crate::ty::{
     ConstInt, Expr, ParamConst, ScalarInt, Term, TermKind, TypeFoldable, TypeSuperFoldable,
@@ -23,6 +22,7 @@ use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::FileNameDisplayPreference;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
+use rustc_type_ir::{elaborate, Upcast as _};
 use smallvec::SmallVec;
 
 use std::cell::Cell;
@@ -1255,14 +1255,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 entry.has_fn_once = true;
                 return;
             } else if self.tcx().is_lang_item(trait_def_id, LangItem::FnMut) {
-                let super_trait_ref = supertraits_for_pretty_printing(self.tcx(), trait_ref)
+                let super_trait_ref = elaborate::supertraits(self.tcx(), trait_ref)
                     .find(|super_trait_ref| super_trait_ref.def_id() == fn_once_trait)
                     .unwrap();
 
                 fn_traits.entry(super_trait_ref).or_default().fn_mut_trait_ref = Some(trait_ref);
                 return;
             } else if self.tcx().is_lang_item(trait_def_id, LangItem::Fn) {
-                let super_trait_ref = supertraits_for_pretty_printing(self.tcx(), trait_ref)
+                let super_trait_ref = elaborate::supertraits(self.tcx(), trait_ref)
                     .find(|super_trait_ref| super_trait_ref.def_id() == fn_once_trait)
                     .unwrap();
 
@@ -1343,10 +1343,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     let bound_principal_with_self = bound_principal
                         .with_self_ty(cx.tcx(), cx.tcx().types.trait_object_dummy_self);
 
-                    let super_projections: Vec<_> =
-                        super_predicates_for_pretty_printing(cx.tcx(), bound_principal_with_self)
-                            .filter_map(|clause| clause.as_projection_clause())
-                            .collect();
+                    let clause: ty::Clause<'tcx> = bound_principal_with_self.upcast(cx.tcx());
+                    let super_projections: Vec<_> = elaborate::elaborate(cx.tcx(), [clause])
+                        .filter_only_self()
+                        .filter_map(|clause| clause.as_projection_clause())
+                        .collect();
 
                     let mut projections: Vec<_> = predicates
                         .projection_bounds()

@@ -4189,6 +4189,7 @@ declare_lint! {
         reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
         reference: "issue #123748 <https://github.com/rust-lang/rust/issues/123748>",
     };
+    @edition Edition2024 => Deny;
     report_in_external_macro
 }
 
