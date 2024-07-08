@@ -3,6 +3,7 @@
 pub mod ambiguity;
 mod infer_ctxt_ext;
 pub mod on_unimplemented;
+mod overflow;
 pub mod suggestions;
 mod type_err_ctxt_ext;
 
@@ -17,6 +18,7 @@ use rustc_span::Span;
 use std::ops::ControlFlow;
 
 pub use self::infer_ctxt_ext::*;
+pub use self::overflow::*;
 pub use self::type_err_ctxt_ext::*;
 
 // When outputting impl candidates, prefer showing those that are more similar.

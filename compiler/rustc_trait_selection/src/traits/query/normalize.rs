@@ -3,7 +3,7 @@
 //! `normalize_canonicalized_projection_ty` query when it encounters projections.
 
 use crate::error_reporting::traits::OverflowCause;
-use crate::error_reporting::traits::TypeErrCtxtExt;
+use crate::error_reporting::traits::TypeErrCtxtOverflowExt;
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
