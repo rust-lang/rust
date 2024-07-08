@@ -202,7 +202,7 @@ fn test_errors() {
     // Opening a non-existing file should fail with a "not found" error.
     assert_eq!(ErrorKind::NotFound, File::open(&path).unwrap_err().kind());
     // Make sure we can also format this.
-    format!("{0}: {0:?}", File::open(&path).unwrap_err());
+    let _ = format!("{0}: {0:?}", File::open(&path).unwrap_err());
     // Removing a non-existing file should fail with a "not found" error.
     assert_eq!(ErrorKind::NotFound, remove_file(&path).unwrap_err().kind());
     // Reading the metadata of a non-existing file should fail with a "not found" error.
@@ -301,5 +301,5 @@ fn test_from_raw_os_error() {
     let error = Error::from_raw_os_error(code);
     assert!(matches!(error.kind(), ErrorKind::Uncategorized));
     // Make sure we can also format this.
-    format!("{error:?}");
+    let _ = format!("{error:?}");
 }

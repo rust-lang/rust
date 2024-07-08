@@ -35,7 +35,7 @@ fn cast_dangling() {
 fn format() {
     // Pointer string formatting! We can't check the output as it changes when libstd changes,
     // but we can make sure Miri does not error.
-    format!("{:?}", &mut 13 as *mut _);
+    let _ = format!("{:?}", &mut 13 as *mut _);
 }
 
 fn transmute() {
@@ -52,7 +52,7 @@ fn ptr_bitops1() {
     let one = bytes.as_ptr().wrapping_offset(1);
     let three = bytes.as_ptr().wrapping_offset(3);
     let res = (one as usize) | (three as usize);
-    format!("{}", res);
+    let _ = format!("{}", res);
 }
 
 fn ptr_bitops2() {

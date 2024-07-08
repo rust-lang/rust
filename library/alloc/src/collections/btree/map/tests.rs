@@ -1796,18 +1796,18 @@ fn test_ord_absence() {
     }
 
     fn map_debug<K: Debug>(mut map: BTreeMap<K, ()>) {
-        format!("{map:?}");
-        format!("{:?}", map.iter());
-        format!("{:?}", map.iter_mut());
-        format!("{:?}", map.keys());
-        format!("{:?}", map.values());
-        format!("{:?}", map.values_mut());
+        let _ = format!("{map:?}");
+        let _ = format!("{:?}", map.iter());
+        let _ = format!("{:?}", map.iter_mut());
+        let _ = format!("{:?}", map.keys());
+        let _ = format!("{:?}", map.values());
+        let _ = format!("{:?}", map.values_mut());
         if true {
-            format!("{:?}", map.into_iter());
+            let _ = format!("{:?}", map.into_iter());
         } else if true {
-            format!("{:?}", map.into_keys());
+            let _ = format!("{:?}", map.into_keys());
         } else {
-            format!("{:?}", map.into_values());
+            let _ = format!("{:?}", map.into_values());
         }
     }
 

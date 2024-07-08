@@ -257,6 +257,7 @@ pub mod vec;
 #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
 pub mod __export {
     pub use core::format_args;
+    pub use core::hint::must_use;
 }
 
 #[cfg(test)]

@@ -705,9 +705,9 @@ fn test_ord_absence() {
     }
 
     fn set_debug<K: Debug>(set: BTreeSet<K>) {
-        format!("{set:?}");
-        format!("{:?}", set.iter());
-        format!("{:?}", set.into_iter());
+        let _ = format!("{set:?}");
+        let _ = format!("{:?}", set.iter());
+        let _ = format!("{:?}", set.into_iter());
     }
 
     fn set_clone<K: Clone>(mut set: BTreeSet<K>) {

@@ -12,6 +12,7 @@
 //! Some examples of the [`format!`] extension are:
 //!
 //! ```
+//! # #![allow(unused_must_use)]
 //! format!("Hello");                 // => "Hello"
 //! format!("Hello, {}!", "world");   // => "Hello, world!"
 //! format!("The number is {}", 1);   // => "The number is 1"
@@ -50,6 +51,7 @@
 //! the iterator advances. This leads to behavior like this:
 //!
 //! ```
+//! # #![allow(unused_must_use)]
 //! format!("{1} {} {0} {}", 1, 2); // => "2 1 1 2"
 //! ```
 //!
@@ -77,6 +79,7 @@
 //! For example, the following [`format!`] expressions all use named arguments:
 //!
 //! ```
+//! # #![allow(unused_must_use)]
 //! format!("{argument}", argument = "test");   // => "test"
 //! format!("{name} {}", 1, name = 2);          // => "2 1"
 //! format!("{a} {c} {b}", a="a", b='b', c=3);  // => "a 3 b"
@@ -86,6 +89,7 @@
 //! reference a variable with that name in the current scope.
 //!
 //! ```
+//! # #![allow(unused_must_use)]
 //! let argument = 2 + 2;
 //! format!("{argument}");   // => "4"
 //!

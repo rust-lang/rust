@@ -29,16 +29,17 @@ fn bar() ({
 
 
 
-    ({
-        let res =
-            ((::alloc::fmt::format as
-                    for<'a> fn(Arguments<'a>) -> String {format})(((format_arguments::new_const
-                        as
-                        fn(&[&'static str; 1]) -> Arguments<'_> {Arguments::<'_>::new_const::<1>})((&([("test"
-                                    as &str)] as [&str; 1]) as &[&str; 1])) as Arguments<'_>))
-                as String);
-        (res as String)
-    } as String);
+    ((::alloc::__export::must_use as
+            fn(String) -> String {must_use::<String>})(({
+            let res =
+                ((::alloc::fmt::format as
+                        for<'a> fn(Arguments<'a>) -> String {format})(((format_arguments::new_const
+                            as
+                            fn(&[&'static str; 1]) -> Arguments<'_> {Arguments::<'_>::new_const::<1>})((&([("test"
+                                        as &str)] as [&str; 1]) as &[&str; 1])) as Arguments<'_>))
+                    as String);
+            (res as String)
+        } as String)) as String);
 } as ())
 type Foo = [i32; (3 as usize)];
 struct Bar {
