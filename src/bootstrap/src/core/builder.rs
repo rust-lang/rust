@@ -8,6 +8,7 @@ use std::fs;
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use std::time::{Duration, Instant};
 
 use crate::core::build_steps::tool::{self, SourceType};
@@ -27,8 +28,6 @@ use crate::utils::exec::{command, BootstrapCommand};
 pub use crate::Compiler;
 
 use clap::ValueEnum;
-// FIXME: replace with std::lazy after it gets stabilized and reaches beta
-use once_cell::sync::Lazy;
 
 #[cfg(test)]
 mod tests;
@@ -498,7 +497,7 @@ impl StepDescription {
 
 enum ReallyDefault<'a> {
     Bool(bool),
-    Lazy(Lazy<bool, Box<dyn Fn() -> bool + 'a>>),
+    Lazy(LazyLock<bool, Box<dyn Fn() -> bool + 'a>>),
 }
 
 pub struct ShouldRun<'a> {
@@ -529,7 +528,7 @@ impl<'a> ShouldRun<'a> {
     }
 
     pub fn lazy_default_condition(mut self, lazy_cond: Box<dyn Fn() -> bool + 'a>) -> Self {
-        self.is_really_default = ReallyDefault::Lazy(Lazy::new(lazy_cond));
+        self.is_really_default = ReallyDefault::Lazy(LazyLock::new(lazy_cond));
         self
     }
 
@@ -2526,7 +2525,7 @@ impl Cargo {
 
         if let Some(target_linker) = builder.linker(target) {
             let target = crate::envify(&target.triple);
-            self.command.env(&format!("CARGO_TARGET_{target}_LINKER"), target_linker);
+            self.command.env(format!("CARGO_TARGET_{target}_LINKER"), target_linker);
         }
         // We want to set -Clinker using Cargo, therefore we only call `linker_flags` and not
         // `linker_args` here.

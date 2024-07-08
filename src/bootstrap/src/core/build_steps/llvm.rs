@@ -753,7 +753,7 @@ fn configure_cmake(
     }
 
     if builder.config.llvm_clang_cl.is_some() {
-        cflags.push(&format!(" --target={target}"));
+        cflags.push(format!(" --target={target}"));
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder
@@ -772,7 +772,7 @@ fn configure_cmake(
         cxxflags.push(s);
     }
     if builder.config.llvm_clang_cl.is_some() {
-        cxxflags.push(&format!(" --target={target}"));
+        cxxflags.push(format!(" --target={target}"));
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
@@ -913,7 +913,7 @@ impl Step for Lld {
                 // Find clang's runtime library directory and push that as a search path to the
                 // cmake linker flags.
                 let clang_rt_dir = get_clang_cl_resource_dir(clang_cl_path);
-                ldflags.push_all(&format!("/libpath:{}", clang_rt_dir.display()));
+                ldflags.push_all(format!("/libpath:{}", clang_rt_dir.display()));
             }
         }
 

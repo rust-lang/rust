@@ -38,6 +38,7 @@ use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
@@ -49,6 +50,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::ResultsCursor;
 
+use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::{
     borrow_set::BorrowSet,
@@ -2333,7 +2335,57 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Ptr(_)), Some(CastTy::Ptr(_))) => (),
+                            (Some(CastTy::Ptr(src)), Some(CastTy::Ptr(dst))) => {
+                                let mut normalize = |t| self.normalize(t, location);
+                                let src_tail =
+                                    tcx.struct_tail_with_normalize(src.ty, &mut normalize, || ());
+                                let dst_tail =
+                                    tcx.struct_tail_with_normalize(dst.ty, &mut normalize, || ());
+
+                                // This checks (lifetime part of) vtable validity for pointer casts,
+                                // which is irrelevant when there are aren't principal traits on both sides (aka only auto traits).
+                                //
+                                // Note that other checks (such as denying `dyn Send` -> `dyn Debug`) are in `rustc_hir_typeck`.
+                                if let ty::Dynamic(src_tty, ..) = src_tail.kind()
+                                    && let ty::Dynamic(dst_tty, ..) = dst_tail.kind()
+                                    && src_tty.principal().is_some()
+                                    && dst_tty.principal().is_some()
+                                {
+                                    // Remove auto traits.
+                                    // Auto trait checks are handled in `rustc_hir_typeck` as FCW.
+                                    let src_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                                        tcx.mk_poly_existential_predicates(
+                                            &src_tty.without_auto_traits().collect::<Vec<_>>(),
+                                        ),
+                                        tcx.lifetimes.re_static,
+                                        ty::Dyn,
+                                    ));
+                                    let dst_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                                        tcx.mk_poly_existential_predicates(
+                                            &dst_tty.without_auto_traits().collect::<Vec<_>>(),
+                                        ),
+                                        tcx.lifetimes.re_static,
+                                        ty::Dyn,
+                                    ));
+
+                                    // Replace trait object lifetimes with fresh vars, to allow casts like
+                                    // `*mut dyn FnOnce() + 'a` -> `*mut dyn FnOnce() + 'static`,
+                                    let src_obj =
+                                        freshen_single_trait_object_lifetime(self.infcx, src_obj);
+                                    let dst_obj =
+                                        freshen_single_trait_object_lifetime(self.infcx, dst_obj);
+
+                                    debug!(?src_tty, ?dst_tty, ?src_obj, ?dst_obj);
+
+                                    self.eq_types(
+                                        src_obj,
+                                        dst_obj,
+                                        location.to_locations(),
+                                        ConstraintCategory::Cast { unsize_to: None },
+                                    )
+                                    .unwrap();
+                                }
+                            }
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -2855,4 +2907,17 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
         output.error_info = Some(self);
         Ok(output)
     }
+}
+
+fn freshen_single_trait_object_lifetime<'tcx>(
+    infcx: &BorrowckInferCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Ty<'tcx> {
+    let &ty::Dynamic(tty, _, dyn_kind @ ty::Dyn) = ty.kind() else { bug!("expected trait object") };
+
+    let fresh = infcx
+        .next_region_var(rustc_infer::infer::RegionVariableOrigin::MiscVariable(DUMMY_SP), || {
+            RegionCtxt::Unknown
+        });
+    infcx.tcx.mk_ty_from_kind(ty::Dynamic(tty, fresh, dyn_kind))
 }

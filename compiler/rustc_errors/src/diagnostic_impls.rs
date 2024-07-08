@@ -298,15 +298,21 @@ impl IntoDiagArg for hir::def::Namespace {
 }
 
 #[derive(Clone)]
-pub struct DiagSymbolList(Vec<Symbol>);
+pub struct DiagSymbolList<S = Symbol>(Vec<S>);
 
-impl From<Vec<Symbol>> for DiagSymbolList {
-    fn from(v: Vec<Symbol>) -> Self {
+impl<S> From<Vec<S>> for DiagSymbolList<S> {
+    fn from(v: Vec<S>) -> Self {
         DiagSymbolList(v)
     }
 }
 
-impl IntoDiagArg for DiagSymbolList {
+impl<S> FromIterator<S> for DiagSymbolList<S> {
+    fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
+        iter.into_iter().collect::<Vec<_>>().into()
+    }
+}
+
+impl<S: std::fmt::Display> IntoDiagArg for DiagSymbolList<S> {
     fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::StrListSepByAnd(
             self.0.into_iter().map(|sym| Cow::Owned(format!("`{sym}`"))).collect(),

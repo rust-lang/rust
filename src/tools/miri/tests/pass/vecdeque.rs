@@ -31,8 +31,8 @@ fn main() {
     }
 
     // Regression test for Debug impl's
-    format!("{:?} {:?}", dst, dst.iter());
-    format!("{:?}", VecDeque::<u32>::new().iter());
+    let _ = format!("{:?} {:?}", dst, dst.iter());
+    let _ = format!("{:?}", VecDeque::<u32>::new().iter());
 
     for a in dst {
         assert_eq!(*a, 2);

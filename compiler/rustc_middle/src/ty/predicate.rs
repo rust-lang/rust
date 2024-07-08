@@ -349,6 +349,14 @@ impl<'tcx> ty::List<ty::PolyExistentialPredicate<'tcx>> {
             _ => None,
         })
     }
+
+    pub fn without_auto_traits(
+        &self,
+    ) -> impl Iterator<Item = ty::PolyExistentialPredicate<'tcx>> + '_ {
+        self.iter().filter(|predicate| {
+            !matches!(predicate.as_ref().skip_binder(), ExistentialPredicate::AutoTrait(_))
+        })
+    }
 }
 
 pub type PolyTraitRef<'tcx> = ty::Binder<'tcx, TraitRef<'tcx>>;

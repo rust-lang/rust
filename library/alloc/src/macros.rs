@@ -111,6 +111,7 @@ macro_rules! vec {
 /// # Examples
 ///
 /// ```
+/// # #![allow(unused_must_use)]
 /// format!("test");                             // => "test"
 /// format!("hello {}", "world!");               // => "hello world!"
 /// format!("x = {}, y = {val}", 10, val = 30);  // => "x = 10, y = 30"
@@ -119,10 +120,13 @@ macro_rules! vec {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable(hint_must_use, liballoc_internals)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "format_macro")]
 macro_rules! format {
-    ($($arg:tt)*) => {{
-        let res = $crate::fmt::format($crate::__export::format_args!($($arg)*));
-        res
-    }}
+    ($($arg:tt)*) => {
+        $crate::__export::must_use({
+            let res = $crate::fmt::format($crate::__export::format_args!($($arg)*));
+            res
+        })
+    }
 }
