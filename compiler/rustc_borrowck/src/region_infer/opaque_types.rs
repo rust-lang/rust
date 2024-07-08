@@ -11,7 +11,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_span::Span;
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::session_diagnostics::LifetimeMismatchOpaqueParam;

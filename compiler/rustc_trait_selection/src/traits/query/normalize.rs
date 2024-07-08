@@ -2,11 +2,11 @@
 //! which folds deeply, invoking the underlying
 //! `normalize_canonicalized_projection_ty` query when it encounters projections.
 
+use crate::error_reporting::traits::OverflowCause;
+use crate::error_reporting::traits::TypeErrCtxtExt;
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::error_reporting::OverflowCause;
-use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::normalize::needs_normalization;
 use crate::traits::Normalized;
 use crate::traits::{BoundVarReplacer, PlaceholderReplacer, ScrubbedTraitError};

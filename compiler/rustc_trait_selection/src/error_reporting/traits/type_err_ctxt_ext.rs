@@ -2,16 +2,16 @@
 
 use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote, TypeErrCtxtExt as _};
 use super::suggestions::{get_explanation_based_on_obligation, TypeErrCtxtExt as _};
+use crate::error_reporting::traits::infer_ctxt_ext::InferCtxtExt;
+use crate::error_reporting::traits::to_pretty_impl_header;
+use crate::error_reporting::traits::{ambiguity, ambiguity::CandidateSource::*};
 use crate::errors::{
     AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
 };
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::InferCtxtExt as _;
 use crate::infer::{self, InferCtxt};
-use crate::traits::error_reporting::infer_ctxt_ext::InferCtxtExt;
-use crate::traits::error_reporting::{ambiguity, ambiguity::CandidateSource::*};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::specialize::to_pretty_impl_header;
 use crate::traits::NormalizeExt;
 use crate::traits::{
     elaborate, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,

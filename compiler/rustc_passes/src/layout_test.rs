@@ -8,7 +8,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, TargetDataLayout};
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
+use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt;
 use rustc_trait_selection::{infer::TyCtxtInferExt, traits};
 
 use crate::errors::{

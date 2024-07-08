@@ -4,7 +4,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::{builtin::BARE_TRAIT_OBJECTS, Applicability};
 use rustc_span::Span;
-use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
+use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 
 use super::HirTyLowerer;
 

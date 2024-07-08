@@ -1,9 +1,9 @@
 //! Deeply normalize types using the old trait solver.
 
-use super::error_reporting::OverflowCause;
-use super::error_reporting::TypeErrCtxtExt;
 use super::SelectionContext;
 use super::{project, with_replaced_escaping_bound_vars, BoundVarReplacer, PlaceholderReplacer};
+use crate::error_reporting::traits::OverflowCause;
+use crate::error_reporting::traits::TypeErrCtxtExt;
 use crate::solve::NextSolverError;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
