@@ -81,7 +81,7 @@ struct AstValidator<'a> {
     features: &'a Features,
 
     /// The span of the `extern` in an `extern { ... }` block, if any.
-    extern_mod: Option<&'a Item>,
+    extern_mod: Option<Span>,
 
     outer_trait_or_trait_impl: Option<TraitOrTraitImpl<'a>>,
 
@@ -579,7 +579,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn current_extern_span(&self) -> Span {
-        self.session.source_map().guess_head_span(self.extern_mod.unwrap().span)
+        self.session.source_map().guess_head_span(self.extern_mod.unwrap())
     }
 
     /// An `fn` in `extern { ... }` cannot have qualifiers, e.g. `async fn`.
@@ -1080,7 +1080,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::ForeignMod(ForeignMod { abi, safety, .. }) => {
                 self.with_in_extern_mod(*safety, |this| {
-                    let old_item = mem::replace(&mut this.extern_mod, Some(item));
+                    let old_item = mem::replace(&mut this.extern_mod, Some(item.span));
                     this.visibility_not_permitted(
                         &item.vis,
                         errors::VisibilityNotPermittedNote::IndividualForeignItems,
