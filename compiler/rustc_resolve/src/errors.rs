@@ -240,16 +240,18 @@ pub(crate) struct AttemptToUseNonConstantValueInConstant<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
+#[multipart_suggestion(
     resolve_attempt_to_use_non_constant_value_in_constant_with_suggestion,
-    code = "{suggestion} ",
     style = "verbose",
-    applicability = "maybe-incorrect"
+    applicability = "has-placeholders"
 )]
 pub(crate) struct AttemptToUseNonConstantValueInConstantWithSuggestion<'a> {
-    #[primary_span]
+    // #[primary_span]
+    #[suggestion_part(code = "{suggestion} ")]
     pub(crate) span: Span,
     pub(crate) suggestion: &'a str,
+    #[suggestion_part(code = ": /* Type */")]
+    pub(crate) type_span: Option<Span>,
     pub(crate) current: &'a str,
 }
 

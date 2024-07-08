@@ -236,11 +236,12 @@ enum ResolutionError<'a> {
     /// Error E0434: can't capture dynamic environment in a fn item.
     CannotCaptureDynamicEnvironmentInFnItem,
     /// Error E0435: attempt to use a non-constant value in a constant.
-    AttemptToUseNonConstantValueInConstant(
-        Ident,
-        /* suggestion */ &'static str,
-        /* current */ &'static str,
-    ),
+    AttemptToUseNonConstantValueInConstant {
+        ident: Ident,
+        suggestion: &'static str,
+        current: &'static str,
+        type_span: Option<Span>,
+    },
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable {
         shadowing_binding: PatternSource,
