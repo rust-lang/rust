@@ -448,7 +448,7 @@ where
 
     /// Similar to [`instantiate_identity`](EarlyBinder::instantiate_identity),
     /// but on an iterator of `TypeFoldable` values.
-    pub fn instantiate_identity_iter(self) -> Iter::IntoIter {
+    pub fn iter_identity(self) -> Iter::IntoIter {
         self.value.into_iter()
     }
 }
@@ -515,9 +515,7 @@ where
 
     /// Similar to [`instantiate_identity`](EarlyBinder::instantiate_identity),
     /// but on an iterator of values that deref to a `TypeFoldable`.
-    pub fn instantiate_identity_iter_copied(
-        self,
-    ) -> impl Iterator<Item = <Iter::Item as Deref>::Target> {
+    pub fn iter_identity_copied(self) -> impl Iterator<Item = <Iter::Item as Deref>::Target> {
         self.value.into_iter().map(|v| *v)
     }
 }

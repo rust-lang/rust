@@ -148,6 +148,7 @@ mod closure;
 mod consts;
 mod context;
 mod diagnostics;
+mod elaborate_impl;
 mod erase_regions;
 mod generic_args;
 mod generics;

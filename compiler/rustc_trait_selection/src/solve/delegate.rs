@@ -8,7 +8,6 @@ use rustc_infer::infer::canonical::{
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::solve::Goal;
-use rustc_infer::traits::util::supertraits;
 use rustc_infer::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
@@ -79,13 +78,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
     fn leak_check(&self, max_input_universe: ty::UniverseIndex) -> Result<(), NoSolution> {
         self.0.leak_check(max_input_universe, None).map_err(|_| NoSolution)
-    }
-
-    fn elaborate_supertraits(
-        interner: TyCtxt<'tcx>,
-        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-    ) -> impl Iterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>> {
-        supertraits(interner, trait_ref)
     }
 
     fn try_const_eval_resolve(
