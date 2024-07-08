@@ -8,6 +8,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{self as hir, Body, Constness, FnDecl, GenericParamKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
@@ -131,6 +132,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             FnKind::Closure => return,
         }
 
+        if fn_inputs_has_impl_trait_ty(cx, def_id) {
+            return;
+        }
+
         let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
 
         // Const fns are not allowed as methods in a trait.
@@ -184,4 +189,16 @@ fn could_be_const_with_abi(cx: &LateContext<'_>, msrv: &Msrv, abi: Abi) -> bool 
         // Rest ABIs are still unstable and need the `const_extern_fn` feature enabled.
         _ => cx.tcx.features().const_extern_fn,
     }
+}
+
+/// Return `true` when the given `def_id` is a function that has `impl Trait` ty as one of
+/// its parameter types.
+fn fn_inputs_has_impl_trait_ty(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
+    let inputs = cx.tcx.fn_sig(def_id).instantiate_identity().inputs().skip_binder();
+    inputs.iter().any(|input| {
+        matches!(
+            input.kind(),
+            ty::Alias(ty::AliasTyKind::Weak, alias_ty) if cx.tcx.type_of(alias_ty.def_id).skip_binder().is_impl_trait()
+        )
+    })
 }
