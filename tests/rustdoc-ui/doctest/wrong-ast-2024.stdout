@@ -1,7 +1,12 @@
 
-running 3 tests
+running 1 test
+test $DIR/wrong-ast-2024.rs - three (line 17) - should panic ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+
+running 2 tests
 test $DIR/wrong-ast-2024.rs - one (line 7) ... FAILED
-test $DIR/wrong-ast-2024.rs - three (line 17) ... ok
 test $DIR/wrong-ast-2024.rs - two (line 12) ... FAILED
 
 failures:
@@ -32,5 +37,5 @@ failures:
     $DIR/wrong-ast-2024.rs - one (line 7)
     $DIR/wrong-ast-2024.rs - two (line 12)
 
-test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

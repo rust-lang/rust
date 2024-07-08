@@ -1,7 +1,0 @@
-
-running 2 tests
-test $DIR/run-as-standalone.rs - one (line 10) ... ok
-test $DIR/run-as-standalone.rs - one (line 14) - compile fail ... ok
-
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
-
