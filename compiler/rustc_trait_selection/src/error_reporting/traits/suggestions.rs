@@ -44,7 +44,7 @@ use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
 
-use crate::error_reporting::traits::type_err_ctxt_ext::InferCtxtPrivExt;
+use crate::error_reporting::traits::fulfillment_errors::InferCtxtPrivExt;
 use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_middle::ty::print::{

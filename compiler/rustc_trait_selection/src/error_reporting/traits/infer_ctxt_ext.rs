@@ -1,3 +1,5 @@
+// FIXME(error_reporting): This should be made into private methods on `TypeErrCtxt`.
+
 use crate::infer::InferCtxt;
 use crate::traits::{Obligation, ObligationCause, ObligationCtxt};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, Diag};
@@ -8,8 +10,6 @@ use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, DUMMY_SP};
 
 use super::ArgKind;
-
-pub use rustc_infer::traits::error_reporting::*;
 
 #[extension(pub trait InferCtxtExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {

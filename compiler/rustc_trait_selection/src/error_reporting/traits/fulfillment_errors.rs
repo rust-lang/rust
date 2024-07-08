@@ -1,8 +1,6 @@
-use super::ambiguity::TypeErrCtxtAmbiguityExt as _;
 use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote, TypeErrCtxtExt as _};
 use super::suggestions::{get_explanation_based_on_obligation, TypeErrCtxtExt as _};
 use crate::error_reporting::traits::infer_ctxt_ext::InferCtxtExt;
-use crate::error_reporting::traits::overflow::TypeErrCtxtOverflowExt;
 use crate::errors::{
     AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
 };
@@ -12,12 +10,12 @@ use crate::infer::{self, InferCtxt};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::NormalizeExt;
 use crate::traits::{
-    elaborate, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
-    ObligationCause, ObligationCauseCode, ObligationCtxt, Overflow, PredicateObligation,
-    SelectionError, SignatureMismatch, TraitNotObjectSafe,
+    elaborate, MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
+    ObligationCtxt, Overflow, PredicateObligation, SelectionError, SignatureMismatch,
+    TraitNotObjectSafe,
 };
 use core::ops::ControlFlow;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{pluralize, struct_span_code_err, Applicability, StringPart};
@@ -44,9 +42,8 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
-use rustc_span::{BytePos, ExpnKind, Span, Symbol, DUMMY_SP};
+use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
 use std::borrow::Cow;
-use std::iter;
 
 use super::{
     ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate, UnsatisfiedConst,
@@ -54,128 +51,8 @@ use super::{
 
 pub use rustc_infer::traits::error_reporting::*;
 
-#[extension(pub trait TypeErrCtxtExt<'a, 'tcx>)]
+#[extension(pub trait TypeErrCtxtSelectionErrExt<'a, 'tcx>)]
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
-    fn report_fulfillment_errors(
-        &self,
-        mut errors: Vec<FulfillmentError<'tcx>>,
-    ) -> ErrorGuaranteed {
-        self.sub_relations
-            .borrow_mut()
-            .add_constraints(self, errors.iter().map(|e| e.obligation.predicate));
-
-        #[derive(Debug)]
-        struct ErrorDescriptor<'tcx> {
-            predicate: ty::Predicate<'tcx>,
-            index: Option<usize>, // None if this is an old error
-        }
-
-        let mut error_map: FxIndexMap<_, Vec<_>> = self
-            .reported_trait_errors
-            .borrow()
-            .iter()
-            .map(|(&span, predicates)| {
-                (
-                    span,
-                    predicates
-                        .0
-                        .iter()
-                        .map(|&predicate| ErrorDescriptor { predicate, index: None })
-                        .collect(),
-                )
-            })
-            .collect();
-
-        // Ensure `T: Sized` and `T: WF` obligations come last. This lets us display diagnostics
-        // with more relevant type information and hide redundant E0282 errors.
-        errors.sort_by_key(|e| match e.obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
-                if self.tcx.is_lang_item(pred.def_id(), LangItem::Sized) =>
-            {
-                1
-            }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
-            ty::PredicateKind::Coerce(_) => 2,
-            _ => 0,
-        });
-
-        for (index, error) in errors.iter().enumerate() {
-            // We want to ignore desugarings here: spans are equivalent even
-            // if one is the result of a desugaring and the other is not.
-            let mut span = error.obligation.cause.span;
-            let expn_data = span.ctxt().outer_expn_data();
-            if let ExpnKind::Desugaring(_) = expn_data.kind {
-                span = expn_data.call_site;
-            }
-
-            error_map.entry(span).or_default().push(ErrorDescriptor {
-                predicate: error.obligation.predicate,
-                index: Some(index),
-            });
-        }
-
-        // We do this in 2 passes because we want to display errors in order, though
-        // maybe it *is* better to sort errors by span or something.
-        let mut is_suppressed = vec![false; errors.len()];
-        for (_, error_set) in error_map.iter() {
-            // We want to suppress "duplicate" errors with the same span.
-            for error in error_set {
-                if let Some(index) = error.index {
-                    // Suppress errors that are either:
-                    // 1) strictly implied by another error.
-                    // 2) implied by an error with a smaller index.
-                    for error2 in error_set {
-                        if error2.index.is_some_and(|index2| is_suppressed[index2]) {
-                            // Avoid errors being suppressed by already-suppressed
-                            // errors, to prevent all errors from being suppressed
-                            // at once.
-                            continue;
-                        }
-
-                        if self.error_implies(error2.predicate, error.predicate)
-                            && !(error2.index >= error.index
-                                && self.error_implies(error.predicate, error2.predicate))
-                        {
-                            info!("skipping {:?} (implied by {:?})", error, error2);
-                            is_suppressed[index] = true;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        let mut reported = None;
-
-        for from_expansion in [false, true] {
-            for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
-                if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
-                    let guar = self.report_fulfillment_error(error);
-                    self.infcx.set_tainted_by_errors(guar);
-                    reported = Some(guar);
-                    // We want to ignore desugarings here: spans are equivalent even
-                    // if one is the result of a desugaring and the other is not.
-                    let mut span = error.obligation.cause.span;
-                    let expn_data = span.ctxt().outer_expn_data();
-                    if let ExpnKind::Desugaring(_) = expn_data.kind {
-                        span = expn_data.call_site;
-                    }
-                    self.reported_trait_errors
-                        .borrow_mut()
-                        .entry(span)
-                        .or_insert_with(|| (vec![], guar))
-                        .0
-                        .push(error.obligation.predicate);
-                }
-            }
-        }
-
-        // It could be that we don't report an error because we have seen an `ErrorReported` from
-        // another source. We should probably be able to fix most of these, but some are delayed
-        // bugs that get a proper error after this function.
-        reported.unwrap_or_else(|| self.dcx().delayed_bug("failed to report fulfillment errors"))
-    }
-
     /// The `root_obligation` parameter should be the `root_obligation` field
     /// from a `FulfillmentError`. If no `FulfillmentError` is available,
     /// then it should be the same as `obligation`.
@@ -803,7 +680,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         self.point_at_returns_when_relevant(&mut err, &obligation);
         err.emit()
     }
+}
 
+#[extension(pub(super) trait TypeErrCtxtExt<'a, 'tcx>)]
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn apply_do_not_recommend(&self, obligation: &mut PredicateObligation<'tcx>) -> bool {
         let mut base_cause = obligation.cause.code().clone();
         let mut applied_do_not_recommend = false;
@@ -1321,72 +1201,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             })
         } else {
             false
-        }
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>) -> ErrorGuaranteed {
-        let mut error = FulfillmentError {
-            obligation: error.obligation.clone(),
-            code: error.code.clone(),
-            root_obligation: error.root_obligation.clone(),
-        };
-        if matches!(
-            error.code,
-            FulfillmentErrorCode::Select(crate::traits::SelectionError::Unimplemented)
-                | FulfillmentErrorCode::Project(_)
-        ) && self.apply_do_not_recommend(&mut error.obligation)
-        {
-            error.code = FulfillmentErrorCode::Select(SelectionError::Unimplemented);
-        }
-
-        match error.code {
-            FulfillmentErrorCode::Select(ref selection_error) => self.report_selection_error(
-                error.obligation.clone(),
-                &error.root_obligation,
-                selection_error,
-            ),
-            FulfillmentErrorCode::Project(ref e) => {
-                self.report_projection_error(&error.obligation, e)
-            }
-            FulfillmentErrorCode::Ambiguity { overflow: None } => {
-                self.maybe_report_ambiguity(&error.obligation)
-            }
-            FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) } => {
-                self.report_overflow_no_abort(error.obligation.clone(), suggest_increasing_limit)
-            }
-            FulfillmentErrorCode::Subtype(ref expected_found, ref err) => self
-                .report_mismatched_types(
-                    &error.obligation.cause,
-                    expected_found.expected,
-                    expected_found.found,
-                    *err,
-                )
-                .emit(),
-            FulfillmentErrorCode::ConstEquate(ref expected_found, ref err) => {
-                let mut diag = self.report_mismatched_consts(
-                    &error.obligation.cause,
-                    expected_found.expected,
-                    expected_found.found,
-                    *err,
-                );
-                let code = error.obligation.cause.code().peel_derives().peel_match_impls();
-                if let ObligationCauseCode::WhereClause(..)
-                | ObligationCauseCode::WhereClauseInExpr(..) = code
-                {
-                    self.note_obligation_cause_code(
-                        error.obligation.cause.body_id,
-                        &mut diag,
-                        error.obligation.predicate,
-                        error.obligation.param_env,
-                        code,
-                        &mut vec![],
-                        &mut Default::default(),
-                    );
-                }
-                diag.emit()
-            }
-            FulfillmentErrorCode::Cycle(ref cycle) => self.report_overflow_obligation_cycle(cycle),
         }
     }
 
