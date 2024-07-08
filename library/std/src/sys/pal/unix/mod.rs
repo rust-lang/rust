@@ -164,6 +164,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "emscripten",
             target_os = "fuchsia",
             target_os = "horizon",
+            target_os = "vxworks",
             // Unikraft's `signal` implementation is currently broken:
             // https://github.com/unikraft/lib-musl/issues/57
             target_vendor = "unikraft",
