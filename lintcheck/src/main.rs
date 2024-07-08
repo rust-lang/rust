@@ -38,7 +38,7 @@ use std::{env, fs, thread};
 use cargo_metadata::diagnostic::{Diagnostic, DiagnosticSpan};
 use cargo_metadata::Message;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use walkdir::{DirEntry, WalkDir};
 
 const LINTCHECK_DOWNLOADS: &str = "target/lintcheck/downloads";
@@ -142,19 +142,17 @@ impl RustcIce {
 }
 
 /// A single warning that clippy issued while checking a `Crate`
-#[derive(Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug)]
 struct ClippyWarning {
-    crate_name: String,
-    crate_version: String,
-    lint_type: String,
+    lint: String,
     diag: Diagnostic,
 }
 
 #[allow(unused)]
 impl ClippyWarning {
-    fn new(mut diag: Diagnostic, crate_name: &str, crate_version: &str) -> Option<Self> {
-        let lint_type = diag.code.clone()?.code;
-        if !(lint_type.contains("clippy") || diag.message.contains("clippy"))
+    fn new(mut diag: Diagnostic) -> Option<Self> {
+        let lint = diag.code.clone()?.code;
+        if !(lint.contains("clippy") || diag.message.contains("clippy"))
             || diag.message.contains("could not read cargo metadata")
         {
             return None;
@@ -164,12 +162,7 @@ impl ClippyWarning {
         let rendered = diag.rendered.as_mut().unwrap();
         *rendered = strip_ansi_escapes::strip_str(&rendered);
 
-        Some(Self {
-            crate_name: crate_name.to_owned(),
-            crate_version: crate_version.to_owned(),
-            lint_type,
-            diag,
-        })
+        Some(Self { lint, diag })
     }
 
     fn span(&self) -> &DiagnosticSpan {
@@ -181,7 +174,7 @@ impl ClippyWarning {
         let mut file = span.file_name.clone();
         let file_with_pos = format!("{file}:{}:{}", span.line_start, span.line_end);
         match format {
-            OutputFormat::Text => format!("{file_with_pos} {} \"{}\"\n", self.lint_type, self.diag.message),
+            OutputFormat::Text => format!("{file_with_pos} {} \"{}\"\n", self.lint, self.diag.message),
             OutputFormat::Markdown => {
                 if file.starts_with("target") {
                     file.insert_str(0, "../");
@@ -189,7 +182,7 @@ impl ClippyWarning {
 
                 let mut output = String::from("| ");
                 write!(output, "[`{file_with_pos}`]({file}#L{})", span.line_start).unwrap();
-                write!(output, r#" | `{:<50}` | "{}" |"#, self.lint_type, self.diag.message).unwrap();
+                write!(output, r#" | `{:<50}` | "{}" |"#, self.lint, self.diag.message).unwrap();
                 output.push('\n');
                 output
             },
@@ -473,7 +466,7 @@ impl Crate {
         // get all clippy warnings and ICEs
         let mut entries: Vec<ClippyCheckOutput> = Message::parse_stream(stdout.as_bytes())
             .filter_map(|msg| match msg {
-                Ok(Message::CompilerMessage(message)) => ClippyWarning::new(message.message, &self.name, &self.version),
+                Ok(Message::CompilerMessage(message)) => ClippyWarning::new(message.message),
                 _ => None,
             })
             .map(ClippyCheckOutput::ClippyWarning)
@@ -572,7 +565,7 @@ fn gather_stats(warnings: &[ClippyWarning]) -> (String, HashMap<&String, usize>)
     let mut counter: HashMap<&String, usize> = HashMap::new();
     warnings
         .iter()
-        .for_each(|wrn| *counter.entry(&wrn.lint_type).or_insert(0) += 1);
+        .for_each(|wrn| *counter.entry(&wrn.lint).or_insert(0) += 1);
 
     // collect into a tupled list for sorting
     let mut stats: Vec<(&&String, &usize)> = counter.iter().collect();
@@ -754,7 +747,7 @@ fn lintcheck(config: LintcheckConfig) {
                 panic!("Some crates ICEd");
             }
 
-            json::output(&warnings)
+            json::output(warnings)
         },
     };
 
