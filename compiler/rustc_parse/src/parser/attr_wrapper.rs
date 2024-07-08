@@ -325,12 +325,9 @@ impl<'a> Parser<'a> {
             replace_ranges,
         });
 
-        // If we support tokens at all
-        if let Some(target_tokens) = ret.tokens_mut() {
-            if target_tokens.is_none() {
-                // Store our newly captured tokens into the AST node.
-                *target_tokens = Some(tokens.clone());
-            }
+        // If we support tokens and don't already have them, store the newly captured tokens.
+        if let Some(target_tokens @ None) = ret.tokens_mut() {
+            *target_tokens = Some(tokens.clone());
         }
 
         let final_attrs = ret.attrs();
