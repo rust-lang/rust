@@ -374,6 +374,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                         self.suggest_floating_point_literal(&obligation, &mut err, leaf_trait_ref);
                         self.suggest_dereferencing_index(&obligation, &mut err, leaf_trait_predicate);
+                        suggested |= self.suggest_remove_unwrap(&obligation, &mut err, leaf_trait_predicate);
                         suggested |= self.suggest_dereferences(&obligation, &mut err, leaf_trait_predicate);
                         suggested |= self.suggest_fn_call(&obligation, &mut err, leaf_trait_predicate);
                         let impl_candidates = self.find_similar_impl_candidates(leaf_trait_predicate);

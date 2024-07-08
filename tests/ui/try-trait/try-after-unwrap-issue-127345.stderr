@@ -1,0 +1,112 @@
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/try-after-unwrap-issue-127345.rs:2:13
+   |
+LL |     let x = Some(42).expect("moop")?;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `{integer}`
+   |
+   = help: the trait `Try` is not implemented for `{integer}`
+help: remove the `.expect()`
+   |
+LL -     let x = Some(42).expect("moop")?;
+LL +     let x = Some(42)?;
+   |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/try-after-unwrap-issue-127345.rs:6:13
+   |
+LL |     let x = Some(42).unwrap()?;
+   |             ^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `{integer}`
+   |
+   = help: the trait `Try` is not implemented for `{integer}`
+help: remove the `.unwrap()`
+   |
+LL -     let x = Some(42).unwrap()?;
+LL +     let x = Some(42)?;
+   |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/try-after-unwrap-issue-127345.rs:14:5
+   |
+LL |     foo().or(Some(43)).unwrap()?
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `usize`
+   |
+   = help: the trait `Try` is not implemented for `usize`
+help: remove the `.unwrap()`
+   |
+LL -     foo().or(Some(43)).unwrap()?
+LL +     foo().or(Some(43))?
+   |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/try-after-unwrap-issue-127345.rs:21:5
+   |
+LL |     Ok(44).unwrap()?
+   |     ^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `{integer}`
+   |
+   = help: the trait `Try` is not implemented for `{integer}`
+help: remove the `.unwrap()`
+   |
+LL -     Ok(44).unwrap()?
+LL +     Ok(44)?
+   |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/try-after-unwrap-issue-127345.rs:28:5
+   |
+LL |     Ok(44).unwrap()?
+   |     ^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `{integer}`
+   |
+   = help: the trait `Try` is not implemented for `{integer}`
+help: remove the `.unwrap()`
+   |
+LL -     Ok(44).unwrap()?
+LL +     Ok(44)?
+   |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/try-after-unwrap-issue-127345.rs:35:5
+   |
+LL |     Ok(44).unwrap()?
+   |     ^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `{integer}`
+   |
+   = help: the trait `Try` is not implemented for `{integer}`
+help: remove the `.unwrap()`
+   |
+LL -     Ok(44).unwrap()?
+LL +     Ok(44)?
+   |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/try-after-unwrap-issue-127345.rs:42:5
+   |
+LL |     Ok(44).unwrap()?
+   |     ^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `{integer}`
+   |
+   = help: the trait `Try` is not implemented for `{integer}`
+help: remove the `.unwrap()`
+   |
+LL -     Ok(44).unwrap()?
+LL +     Ok(44)?
+   |
+
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/try-after-unwrap-issue-127345.rs:42:20
+   |
+LL | fn baz4() {
+   | --------- this function should return `Result` or `Option` to accept `?`
+LL |     Ok(44).unwrap()?
+   |                    ^ cannot use the `?` operator in a function that returns `()`
+   |
+   = help: the trait `FromResidual<_>` is not implemented for `()`
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/try-after-unwrap-issue-127345.rs:57:5
+   |
+LL |     FakeUnwrappable.unwrap()?
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `()`
+   |
+   = help: the trait `Try` is not implemented for `()`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

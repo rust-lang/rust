@@ -1576,6 +1576,55 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         false
     }
 
+    /// When a failed try operator follows an `unwrap()` or `expect()`, suggest removing it
+    fn suggest_remove_unwrap(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diag<'_>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> bool {
+        if !matches!(obligation.cause.code(), ObligationCauseCode::QuestionMark) {
+            return false;
+        }
+
+        let Some(body) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
+            return false;
+        };
+
+        let mut expr_finder = super::FindExprBySpan::new(obligation.cause.span, self.tcx);
+        expr_finder.visit_expr(body.value);
+
+        if let Some(expr) = expr_finder.result
+            && let Some(node) = self.tcx.hir().parent_iter(expr.hir_id).nth(2)
+            && let hir::Node::Expr(expr) = node.1
+            && let hir::ExprKind::Match(expr, _, _) = expr.kind
+            && let hir::ExprKind::Call(_, args) = expr.kind
+            && let Some(expr) = args.get(0)
+            && let hir::ExprKind::MethodCall(pathsegment, receiver, _, span) = expr.kind
+            && let Some(typeck_results) = &self.typeck_results
+            && let receiver_ty = typeck_results.expr_ty_adjusted(receiver)
+            && let ty::Adt(adt, _) = receiver_ty.kind()
+            && (self.tcx.is_diagnostic_item(sym::Option, adt.did())
+                || self.tcx.is_diagnostic_item(sym::Result, adt.did()))
+            && (pathsegment.ident.name == sym::unwrap || pathsegment.ident.name == sym::expect)
+            && self.predicate_may_hold(&self.mk_trait_obligation_with_new_self_ty(
+                obligation.param_env,
+                trait_pred.map_bound(|trait_pred| (trait_pred, receiver_ty)),
+            ))
+        {
+            err.span_suggestion_verbose(
+                receiver.span.shrink_to_hi().to(span),
+                format!("remove the `.{}()`", pathsegment.ident.name),
+                "",
+                Applicability::MaybeIncorrect,
+            );
+
+            return true;
+        }
+
+        false
+    }
+
     fn suggest_remove_await(&self, obligation: &PredicateObligation<'tcx>, err: &mut Diag<'_>) {
         let hir = self.tcx.hir();
         if let ObligationCauseCode::AwaitableExpr(hir_id) = obligation.cause.code().peel_derives()
