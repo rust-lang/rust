@@ -6,8 +6,8 @@ use crate::errors::{
 };
 use rustc_ast::ptr::P;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
+use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, DelimSpacing, DelimSpan, Spacing};
-use rustc_ast::tokenstream::{LazyAttrTokenStream, TokenTree};
 use rustc_ast::NodeId;
 use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem};
 use rustc_attr as attr;
@@ -159,8 +159,7 @@ impl<'a> StripUnconfigured<'a> {
     fn try_configure_tokens<T: HasTokens>(&self, node: &mut T) {
         if self.config_tokens {
             if let Some(Some(tokens)) = node.tokens_mut() {
-                let attr_stream = tokens.to_attr_token_stream();
-                *tokens = LazyAttrTokenStream::new(self.configure_tokens(&attr_stream));
+                *tokens = self.configure_tokens(tokens);
             }
         }
     }
@@ -190,9 +189,7 @@ impl<'a> StripUnconfigured<'a> {
                     target.attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
 
                     if self.in_cfg(&target.attrs) {
-                        target.tokens = LazyAttrTokenStream::new(
-                            self.configure_tokens(&target.tokens.to_attr_token_stream()),
-                        );
+                        target.tokens = self.configure_tokens(&target.tokens);
                         Some(AttrTokenTree::AttrsTarget(target))
                     } else {
                         None
@@ -315,10 +312,7 @@ impl<'a> StripUnconfigured<'a> {
             DelimSpan::from_single(pound_token.span),
             DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
             Delimiter::Bracket,
-            item.tokens
-                .as_ref()
-                .unwrap_or_else(|| panic!("Missing tokens for {item:?}"))
-                .to_attr_token_stream(),
+            item.tokens.as_ref().unwrap_or_else(|| panic!("Missing tokens for {item:?}")).clone(),
         );
         let trees = if attr.style == AttrStyle::Inner {
             // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
@@ -335,7 +329,7 @@ impl<'a> StripUnconfigured<'a> {
         } else {
             vec![AttrTokenTree::Token(pound_token, Spacing::JointHidden), bracket_group]
         };
-        let tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::new(trees)));
+        let tokens = Some(AttrTokenStream::new(trees));
         let attr = attr::mk_attr_from_item(
             &self.sess.psess.attr_id_generator,
             item,

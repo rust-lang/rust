@@ -21,8 +21,7 @@ use crate::AttrVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_serialize::{Decodable, Encodable};
-use rustc_span::{sym, Span, SpanDecoder, SpanEncoder, Symbol, DUMMY_SP};
+use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 
 use std::borrow::Cow;
 use std::{cmp, fmt, iter};
@@ -106,62 +105,18 @@ where
     }
 }
 
-pub trait ToAttrTokenStream: sync::DynSend + sync::DynSync {
-    fn to_attr_token_stream(&self) -> AttrTokenStream;
-}
-
-impl ToAttrTokenStream for AttrTokenStream {
-    fn to_attr_token_stream(&self) -> AttrTokenStream {
-        self.clone()
-    }
-}
-
-/// A lazy version of [`TokenStream`], which defers creation
-/// of an actual `TokenStream` until it is needed.
-/// `Box` is here only to reduce the structure size.
-#[derive(Clone)]
-pub struct LazyAttrTokenStream(Lrc<Box<dyn ToAttrTokenStream>>);
-
-impl LazyAttrTokenStream {
-    pub fn new(inner: impl ToAttrTokenStream + 'static) -> LazyAttrTokenStream {
-        LazyAttrTokenStream(Lrc::new(Box::new(inner)))
-    }
-
-    pub fn to_attr_token_stream(&self) -> AttrTokenStream {
-        self.0.to_attr_token_stream()
-    }
-}
-
-impl fmt::Debug for LazyAttrTokenStream {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "LazyAttrTokenStream({:?})", self.to_attr_token_stream())
-    }
-}
-
-impl<S: SpanEncoder> Encodable<S> for LazyAttrTokenStream {
-    fn encode(&self, _s: &mut S) {
-        panic!("Attempted to encode LazyAttrTokenStream");
-    }
-}
-
-impl<D: SpanDecoder> Decodable<D> for LazyAttrTokenStream {
-    fn decode(_d: &mut D) -> Self {
-        panic!("Attempted to decode LazyAttrTokenStream");
-    }
-}
-
-impl<CTX> HashStable<CTX> for LazyAttrTokenStream {
-    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
-        panic!("Attempted to compute stable hash for LazyAttrTokenStream");
-    }
-}
-
 /// An `AttrTokenStream` is similar to a `TokenStream`, but with extra
 /// information about the tokens for attribute targets. This is used
 /// during expansion to perform early cfg-expansion, and to process attributes
 /// during proc-macro invocations.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
 pub struct AttrTokenStream(pub Lrc<Vec<AttrTokenTree>>);
+
+impl<CTX> HashStable<CTX> for AttrTokenStream {
+    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
+        panic!("Attempted to compute stable hash for AttrTokenStream");
+    }
+}
 
 /// Like `TokenTree`, but for `AttrTokenStream`.
 #[derive(Clone, Debug, Encodable, Decodable)]
@@ -205,7 +160,7 @@ impl AttrTokenStream {
                         .partition_point(|attr| matches!(attr.style, crate::AttrStyle::Outer));
                     let (outer_attrs, inner_attrs) = target.attrs.split_at(idx);
 
-                    let mut target_tokens = target.tokens.to_attr_token_stream().to_token_trees();
+                    let mut target_tokens = target.tokens.to_token_trees();
                     if !inner_attrs.is_empty() {
                         let mut found = false;
                         // Check the last two trees (to account for a trailing semi)
@@ -268,7 +223,7 @@ pub struct AttrsTarget {
     pub attrs: AttrVec,
     /// The underlying tokens for the attribute target that `attrs`
     /// are applied to
-    pub tokens: LazyAttrTokenStream,
+    pub tokens: AttrTokenStream,
 }
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
@@ -442,7 +397,7 @@ impl TokenStream {
         };
         let attrs = node.attrs();
         let attr_stream = if attrs.is_empty() {
-            tokens.to_attr_token_stream()
+            tokens.clone()
         } else {
             let target =
                 AttrsTarget { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
@@ -764,8 +719,7 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(AttrTokenStream, 8);
     static_assert_size!(AttrTokenTree, 32);
-    static_assert_size!(LazyAttrTokenStream, 8);
-    static_assert_size!(Option<LazyAttrTokenStream>, 8); // must be small, used in many AST nodes
+    static_assert_size!(Option<AttrTokenStream>, 8); // must be small, used in many AST nodes
     static_assert_size!(TokenStream, 8);
     static_assert_size!(TokenTree, 32);
     // tidy-alphabetical-end

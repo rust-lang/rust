@@ -4,7 +4,7 @@
 
 use crate::ptr::P;
 use crate::token::Nonterminal;
-use crate::tokenstream::LazyAttrTokenStream;
+use crate::tokenstream::AttrTokenStream;
 use crate::{Arm, Crate, ExprField, FieldDef, GenericParam, Param, PatField, Variant};
 use crate::{AssocItem, Expr, ForeignItem, Item, NodeId};
 use crate::{AttrItem, AttrKind, Block, Pat, Path, Ty, Visibility};
@@ -91,18 +91,18 @@ impl<T: AstDeref<Target: HasNodeId>> HasNodeId for T {
 
 /// A trait for AST nodes having (or not having) collected tokens.
 pub trait HasTokens {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream>;
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>>;
+    fn tokens(&self) -> Option<&AttrTokenStream>;
+    fn tokens_mut(&mut self) -> Option<&mut Option<AttrTokenStream>>;
 }
 
 macro_rules! impl_has_tokens {
     ($($T:ty),+ $(,)?) => {
         $(
             impl HasTokens for $T {
-                fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+                fn tokens(&self) -> Option<&AttrTokenStream> {
                     self.tokens.as_ref()
                 }
-                fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+                fn tokens_mut(&mut self) -> Option<&mut Option<AttrTokenStream>> {
                     Some(&mut self.tokens)
                 }
             }
@@ -114,10 +114,10 @@ macro_rules! impl_has_tokens_none {
     ($($T:ty),+ $(,)?) => {
         $(
             impl HasTokens for $T {
-                fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+                fn tokens(&self) -> Option<&AttrTokenStream> {
                     None
                 }
-                fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+                fn tokens_mut(&mut self) -> Option<&mut Option<AttrTokenStream>> {
                     None
                 }
             }
@@ -129,25 +129,25 @@ impl_has_tokens!(AssocItem, AttrItem, Block, Expr, ForeignItem, Item, Pat, Path,
 impl_has_tokens_none!(Arm, ExprField, FieldDef, GenericParam, Param, PatField, Variant);
 
 impl<T: AstDeref<Target: HasTokens>> HasTokens for T {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+    fn tokens(&self) -> Option<&AttrTokenStream> {
         self.ast_deref().tokens()
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<AttrTokenStream>> {
         self.ast_deref_mut().tokens_mut()
     }
 }
 
 impl<T: HasTokens> HasTokens for Option<T> {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+    fn tokens(&self) -> Option<&AttrTokenStream> {
         self.as_ref().and_then(|inner| inner.tokens())
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<AttrTokenStream>> {
         self.as_mut().and_then(|inner| inner.tokens_mut())
     }
 }
 
 impl HasTokens for StmtKind {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+    fn tokens(&self) -> Option<&AttrTokenStream> {
         match self {
             StmtKind::Let(local) => local.tokens.as_ref(),
             StmtKind::Item(item) => item.tokens(),
@@ -156,7 +156,7 @@ impl HasTokens for StmtKind {
             StmtKind::MacCall(mac) => mac.tokens.as_ref(),
         }
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<AttrTokenStream>> {
         match self {
             StmtKind::Let(local) => Some(&mut local.tokens),
             StmtKind::Item(item) => item.tokens_mut(),
@@ -168,16 +168,16 @@ impl HasTokens for StmtKind {
 }
 
 impl HasTokens for Stmt {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+    fn tokens(&self) -> Option<&AttrTokenStream> {
         self.kind.tokens()
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<AttrTokenStream>> {
         self.kind.tokens_mut()
     }
 }
 
 impl HasTokens for Attribute {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+    fn tokens(&self) -> Option<&AttrTokenStream> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.tokens.as_ref(),
             kind @ AttrKind::DocComment(..) => {
@@ -185,7 +185,7 @@ impl HasTokens for Attribute {
             }
         }
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<AttrTokenStream>> {
         Some(match &mut self.kind {
             AttrKind::Normal(normal) => &mut normal.tokens,
             kind @ AttrKind::DocComment(..) => {
@@ -196,7 +196,7 @@ impl HasTokens for Attribute {
 }
 
 impl HasTokens for Nonterminal {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+    fn tokens(&self) -> Option<&AttrTokenStream> {
         match self {
             Nonterminal::NtItem(item) => item.tokens(),
             Nonterminal::NtStmt(stmt) => stmt.tokens(),
@@ -209,7 +209,7 @@ impl HasTokens for Nonterminal {
             Nonterminal::NtBlock(block) => block.tokens(),
         }
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<AttrTokenStream>> {
         match self {
             Nonterminal::NtItem(item) => item.tokens_mut(),
             Nonterminal::NtStmt(stmt) => stmt.tokens_mut(),

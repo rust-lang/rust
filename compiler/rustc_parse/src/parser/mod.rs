@@ -167,7 +167,7 @@ pub struct Parser<'a> {
     // token. For example, capturing the `Vec<u8>` in `Option<Vec<u8>>`
     // requires us to unglue the trailing `>>` token. The `break_last_token`
     // field is used to track this token. It gets appended to the captured
-    // stream when we evaluate a `LazyAttrTokenStream`.
+    // stream when we create an `AttrTokenStream`.
     break_last_token: bool,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
@@ -1598,11 +1598,10 @@ pub(crate) fn make_unclosed_delims_error(
     Some(err)
 }
 
-/// A helper struct used when building an `AttrTokenStream` from
-/// a `LazyAttrTokenStream`. Both delimiter and non-delimited tokens
-/// are stored as `FlatToken::Token`. A vector of `FlatToken`s
-/// is then 'parsed' to build up an `AttrTokenStream` with nested
-/// `AttrTokenTree::Delimited` tokens.
+/// A helper struct used when building an `AttrTokenStream`. Both delimiter and
+/// non-delimited tokens are stored as `FlatToken::Token`. A sequence of
+/// `FlatToken`s is then "parsed" to build up tree-structured
+/// `AttrTokenStream`.
 #[derive(Debug, Clone)]
 enum FlatToken {
     /// A token - this holds both delimiter (e.g. '{' and '}')

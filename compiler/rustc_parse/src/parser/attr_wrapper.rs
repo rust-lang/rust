@@ -1,7 +1,7 @@
 use super::{Capturing, FlatToken, ForceCollect, Parser, ReplaceRange, TokenCursor, TrailingToken};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, AttrsTarget, DelimSpacing};
-use rustc_ast::tokenstream::{DelimSpan, LazyAttrTokenStream, Spacing, ToAttrTokenStream};
+use rustc_ast::tokenstream::{DelimSpan, Spacing};
 use rustc_ast::{self as ast};
 use rustc_ast::{AttrVec, Attribute, HasAttrs, HasTokens};
 use rustc_errors::PResult;
@@ -76,6 +76,7 @@ fn has_cfg_or_cfg_attr(attrs: &[Attribute]) -> bool {
     })
 }
 
+// njn: remove
 // Produces a `TokenStream` on-demand. Using `cursor_snapshot`
 // and `num_calls`, we can reconstruct the `TokenStream` seen
 // by the callback. This allows us to avoid producing a `TokenStream`
@@ -95,16 +96,15 @@ struct LazyAttrTokenStreamImpl {
     replace_ranges: Box<[ReplaceRange]>,
 }
 
-impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
-    fn to_attr_token_stream(&self) -> AttrTokenStream {
+impl LazyAttrTokenStreamImpl {
+    fn to_attr_token_stream(mut self) -> AttrTokenStream {
         // The token produced by the final call to `{,inlined_}next` was not
         // actually consumed by the callback. The combination of chaining the
         // initial token and using `take` produces the desired result - we
         // produce an empty `TokenStream` if no calls were made, and omit the
         // final token otherwise.
-        let mut cursor_snapshot = self.cursor_snapshot.clone();
-        let tokens = iter::once(FlatToken::Token(self.start_token.clone()))
-            .chain(iter::repeat_with(|| FlatToken::Token(cursor_snapshot.next())))
+        let tokens = iter::once(FlatToken::Token(self.start_token))
+            .chain(iter::repeat_with(|| FlatToken::Token(self.cursor_snapshot.next())))
             .take(self.num_calls as usize);
 
         if self.replace_ranges.is_empty() {
@@ -165,7 +165,7 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
 impl<'a> Parser<'a> {
     /// Records all tokens consumed by the provided callback,
     /// including the current token. These tokens are collected
-    /// into a `LazyAttrTokenStream`, and returned along with the result
+    /// into an `AttrTokenStream`, and returned along with the result
     /// of the callback.
     ///
     /// The `attrs` passed in are in `AttrWrapper` form, which is opaque. The
@@ -289,8 +289,7 @@ impl<'a> Parser<'a> {
             + captured_trailing as u32
             // If we 'broke' the last token (e.g. breaking a '>>' token to two '>' tokens), then
             // extend the range of captured tokens to include it, since the parser was not actually
-            // bumped past it. When the `LazyAttrTokenStream` gets converted into an
-            // `AttrTokenStream`, we will create the proper token.
+            // bumped past it. We will create the proper token below.
             + self.break_last_token as u32;
 
         let num_calls = end_pos - start_pos;
@@ -301,8 +300,7 @@ impl<'a> Parser<'a> {
             Box::new([])
         } else {
             // Grab any replace ranges that occur *inside* the current AST node.
-            // We will perform the actual replacement when we convert the `LazyAttrTokenStream`
-            // to an `AttrTokenStream`.
+            // We will perform the actual replacement below.
             self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end]
                 .iter()
                 .cloned()
@@ -311,13 +309,14 @@ impl<'a> Parser<'a> {
                 .collect()
         };
 
-        let tokens = LazyAttrTokenStream::new(LazyAttrTokenStreamImpl {
+        let tokens = LazyAttrTokenStreamImpl {
             start_token,
             num_calls,
             cursor_snapshot,
             break_last_token: self.break_last_token,
             replace_ranges,
-        });
+        };
+        let tokens = tokens.to_attr_token_stream();
 
         // If we support tokens and don't already have them, store the newly captured tokens.
         if let Some(target_tokens @ None) = ret.tokens_mut() {

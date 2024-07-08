@@ -8,8 +8,8 @@ use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem, NormalAttr};
 use crate::ast::{Path, PathSegment, DUMMY_NODE_ID};
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter, Token};
+use crate::tokenstream::{AttrTokenStream, TokenStream};
 use crate::tokenstream::{DelimSpan, Spacing, TokenTree};
-use crate::tokenstream::{LazyAttrTokenStream, TokenStream};
 use crate::util::comments;
 use crate::util::literal::escape_string_symbol;
 use rustc_index::bit_set::GrowableBitSet;
@@ -210,7 +210,6 @@ impl Attribute {
                     .tokens
                     .as_ref()
                     .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
-                    .to_attr_token_stream()
                     .to_token_trees(),
             ),
             &AttrKind::DocComment(comment_kind, data) => TokenStream::token_alone(
@@ -586,7 +585,7 @@ pub fn mk_attr(
 pub fn mk_attr_from_item(
     g: &AttrIdGenerator,
     item: AttrItem,
-    tokens: Option<LazyAttrTokenStream>,
+    tokens: Option<AttrTokenStream>,
     style: AttrStyle,
     span: Span,
 ) -> Attribute {

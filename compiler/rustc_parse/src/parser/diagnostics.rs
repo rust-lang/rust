@@ -2371,7 +2371,6 @@ impl<'a> Parser<'a> {
             let tokens = nt.tokens();
             labels.push(nt.clone());
             if let Some(tokens) = tokens
-                && let tokens = tokens.to_attr_token_stream()
                 && let tokens = tokens.0.deref()
                 && let [AttrTokenTree::Token(token, _)] = &tokens[..]
             {
