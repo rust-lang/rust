@@ -29,7 +29,6 @@ run-make/extern-fn-generic/Makefile
 run-make/extern-fn-mangle/Makefile
 run-make/extern-fn-reachable/Makefile
 run-make/extern-fn-struct-passing-abi/Makefile
-run-make/extern-fn-with-extern-types/Makefile
 run-make/extern-fn-with-packed-struct/Makefile
 run-make/extern-fn-with-union/Makefile
 run-make/extern-multiple-copies/Makefile
