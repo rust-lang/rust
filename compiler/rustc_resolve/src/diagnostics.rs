@@ -819,7 +819,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ResolutionError::CannotCaptureDynamicEnvironmentInFnItem => {
                 self.dcx().create_err(errs::CannotCaptureDynamicEnvironmentInFnItem { span })
             }
-            ResolutionError::AttemptToUseNonConstantValueInConstant(ident, suggestion, current) => {
+            ResolutionError::AttemptToUseNonConstantValueInConstant {
+                ident,
+                suggestion,
+                current,
+                type_span,
+            } => {
                 // let foo =...
                 //     ^^^ given this Span
                 // ------- get this Span to have an applicable suggestion
@@ -844,6 +849,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 span: sp,
                                 suggestion,
                                 current,
+                                type_span,
                             }), Some(errs::AttemptToUseNonConstantValueInConstantLabelWithSuggestion {span})),
                             None,
                         )

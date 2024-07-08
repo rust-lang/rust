@@ -17,8 +17,8 @@ LL |     let _ = [0; x];
    |
 help: consider using `const` instead of `let`
    |
-LL |     const x = 5;
-   |     ~~~~~
+LL |     const x: /* Type */ = 5;
+   |     ~~~~~  ++++++++++++
 
 error: aborting due to 2 previous errors
 
