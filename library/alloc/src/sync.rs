@@ -197,11 +197,7 @@ macro_rules! acquire {
 ///
 /// Sharing some immutable data between threads:
 ///
-// Note that we **do not** run these tests here. The windows builders get super
-// unhappy if a thread outlives the main thread and then exits at the same time
-// (something deadlocks) so we just avoid this entirely by not running these
-// tests.
-/// ```no_run
+/// ```
 /// use std::sync::Arc;
 /// use std::thread;
 ///
@@ -220,7 +216,7 @@ macro_rules! acquire {
 ///
 /// [`AtomicUsize`]: core::sync::atomic::AtomicUsize "sync::atomic::AtomicUsize"
 ///
-/// ```no_run
+/// ```
 /// use std::sync::Arc;
 /// use std::sync::atomic::{AtomicUsize, Ordering};
 /// use std::thread;
