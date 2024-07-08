@@ -507,8 +507,8 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): remove when `extendhfsf2` and `truncsfhf2` are available
-    /// # #[cfg(target_os = "linux")] {
+    /// # // FIXME(f16_f128): extendhfsf2, truncsfhf2, __gnu_h2f_ieee, __gnu_f2h_ieee missing for many platforms
+    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
     /// let x = 2.0_f16;
     /// let abs_difference = (x.recip() - (1.0 / x)).abs();
@@ -528,8 +528,8 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): remove when `extendhfsf2` and `truncsfhf2` are available
-    /// # #[cfg(target_os = "linux")] {
+    /// # // FIXME(f16_f128): extendhfsf2, truncsfhf2, __gnu_h2f_ieee, __gnu_f2h_ieee missing for many platforms
+    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
     /// let angle = std::f16::consts::PI;
     ///
@@ -551,8 +551,8 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # // FIXME(f16_f128): remove when `extendhfsf2` and `truncsfhf2` are available
-    /// # #[cfg(target_os = "linux")] {
+    /// # // FIXME(f16_f128): extendhfsf2, truncsfhf2, __gnu_h2f_ieee, __gnu_f2h_ieee missing for many platforms
+    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
     /// let angle = 180.0f16;
     ///
@@ -870,6 +870,8 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
+    /// # // FIXME(f16_f128): extendhfsf2, truncsfhf2, __gnu_h2f_ieee, __gnu_f2h_ieee missing for many platforms
+    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
     /// struct GoodBoy {
     ///     name: &'static str,
@@ -897,6 +899,7 @@ impl f16 {
     ///         .zip([-5.0, 0.1, 10.0, 99.0, f16::INFINITY, f16::NAN].iter())
     ///         .for_each(|(a, b)| assert_eq!(a.to_bits(), b.to_bits()))
     /// }
+    /// # }
     /// ```
     #[inline]
     #[must_use]

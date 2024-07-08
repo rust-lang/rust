@@ -99,7 +99,9 @@ fn main() {
         // the compiler-builtins update. <https://github.com/rust-lang/rust/issues/123885>
         ("x86" | "x86_64", _) => false,
         // Missing `__gnu_h2f_ieee` and `__gnu_f2h_ieee`
-        ("powerpc" | "powerpc64" | "powerpc64le", _) => false,
+        ("powerpc" | "powerpc64", _) => false,
+        // Missing `__gnu_h2f_ieee` and `__gnu_f2h_ieee`
+        ("mips" | "mips32r6" | "mips64" | "mips64r6", _) => false,
         // Missing `__extendhfsf` and `__truncsfhf`
         ("riscv32" | "riscv64", _) => false,
         // Most OSs are missing `__extendhfsf` and `__truncsfhf`
