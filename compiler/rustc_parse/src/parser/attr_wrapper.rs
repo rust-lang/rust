@@ -103,11 +103,8 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
         // produce an empty `TokenStream` if no calls were made, and omit the
         // final token otherwise.
         let mut cursor_snapshot = self.cursor_snapshot.clone();
-        let tokens = iter::once((FlatToken::Token(self.start_token.0.clone()), self.start_token.1))
-            .chain(iter::repeat_with(|| {
-                let token = cursor_snapshot.next();
-                (FlatToken::Token(token.0), token.1)
-            }))
+        let tokens = iter::once(FlatToken::Token(self.start_token.clone()))
+            .chain(iter::repeat_with(|| FlatToken::Token(cursor_snapshot.next())))
             .take(self.num_calls as usize);
 
         if self.replace_ranges.is_empty() {
@@ -156,11 +153,8 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
                     (range.start as usize)..(range.end as usize),
                     target
                         .into_iter()
-                        .map(|target| (FlatToken::AttrsTarget(target), Spacing::Alone))
-                        .chain(
-                            iter::repeat((FlatToken::Empty, Spacing::Alone))
-                                .take(range.len() - target_len),
-                        ),
+                        .map(|target| FlatToken::AttrsTarget(target))
+                        .chain(iter::repeat(FlatToken::Empty).take(range.len() - target_len)),
                 );
             }
             make_attr_token_stream(tokens.into_iter(), self.break_last_token)
@@ -367,7 +361,7 @@ impl<'a> Parser<'a> {
 /// `AttrTokenStream`, creating an `AttrTokenTree::Delimited` for each matching pair of open and
 /// close delims.
 fn make_attr_token_stream(
-    iter: impl Iterator<Item = (FlatToken, Spacing)>,
+    iter: impl Iterator<Item = FlatToken>,
     break_last_token: bool,
 ) -> AttrTokenStream {
     #[derive(Debug)]
@@ -379,15 +373,15 @@ fn make_attr_token_stream(
     // The stack always has at least one element. Storing it separately makes for shorter code.
     let mut stack_top = FrameData { open_delim_sp: None, inner: vec![] };
     let mut stack_rest = vec![];
-    for (token, spacing) in iter {
-        match token {
-            FlatToken::Token(Token { kind: TokenKind::OpenDelim(delim), span }) => {
+    for flat_token in iter {
+        match flat_token {
+            FlatToken::Token((Token { kind: TokenKind::OpenDelim(delim), span }, spacing)) => {
                 stack_rest.push(mem::replace(
                     &mut stack_top,
                     FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] },
                 ));
             }
-            FlatToken::Token(Token { kind: TokenKind::CloseDelim(delim), span }) => {
+            FlatToken::Token((Token { kind: TokenKind::CloseDelim(delim), span }, spacing)) => {
                 let frame_data = mem::replace(&mut stack_top, stack_rest.pop().unwrap());
                 let (open_delim, open_sp, open_spacing) = frame_data.open_delim_sp.unwrap();
                 assert_eq!(
@@ -400,7 +394,9 @@ fn make_attr_token_stream(
                 let delimited = AttrTokenTree::Delimited(dspan, dspacing, delim, stream);
                 stack_top.inner.push(delimited);
             }
-            FlatToken::Token(token) => stack_top.inner.push(AttrTokenTree::Token(token, spacing)),
+            FlatToken::Token((token, spacing)) => {
+                stack_top.inner.push(AttrTokenTree::Token(token, spacing))
+            }
             FlatToken::AttrsTarget(target) => {
                 stack_top.inner.push(AttrTokenTree::AttrsTarget(target))
             }
