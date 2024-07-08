@@ -80,6 +80,7 @@ declare_lint_pass! {
         PRIVATE_BOUNDS,
         PRIVATE_INTERFACES,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+        PTR_CAST_ADD_AUTO_TO_OBJECT,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         REDUNDANT_LIFETIMES,
         REFINING_IMPL_TRAIT_INTERNAL,
@@ -4935,6 +4936,58 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
         reference: "issue #123757 <https://github.com/rust-lang/rust/issues/123757>",
+    };
+}
+
+declare_lint! {
+    /// The `ptr_cast_add_auto_to_object` lint detects casts of raw pointers to trait
+    /// objects, which add auto traits.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2021,compile_fail
+    /// let ptr: *const dyn core::any::Any = &();
+    /// _ = ptr as *const dyn core::any::Any + Send;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Adding an auto trait can make the vtable invalid, potentially causing
+    /// UB in safe code afterwards. For example:
+    ///
+    /// ```ignore (causes a warning)
+    /// #![feature(arbitrary_self_types)]
+    ///
+    /// trait Trait {
+    ///     fn f(self: *const Self)
+    ///     where
+    ///         Self: Send;
+    /// }
+    ///
+    /// impl Trait for *const () {
+    ///     fn f(self: *const Self) {
+    ///         unreachable!()
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let unsend: *const () = &();
+    ///     let unsend: *const dyn Trait = &unsend;
+    ///     let send_bad: *const (dyn Trait + Send) = unsend as _;
+    ///     send_bad.f(); // this crashes, since vtable for `*const ()` does not have an entry for `f`
+    /// }
+    /// ```
+    ///
+    /// Generally you must ensure that vtable is right for the pointer's type,
+    /// before passing the pointer to safe code.
+    pub PTR_CAST_ADD_AUTO_TO_OBJECT,
+    Warn,
+    "detects `as` casts from pointers to `dyn Trait` to pointers to `dyn Trait + Auto`",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #127323 <https://github.com/rust-lang/rust/issues/127323>",
     };
 }
 
