@@ -151,6 +151,10 @@ impl<'tcx> InferCtxtLike for InferCtxt<'tcx> {
             .eq_structurally_relating_aliases_no_trace(lhs, rhs)
     }
 
+    fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.shallow_resolve(ty)
+    }
+
     fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
