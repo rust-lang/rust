@@ -367,7 +367,7 @@ impl<'a> Parser<'a> {
 /// `AttrTokenStream`, creating an `AttrTokenTree::Delimited` for each matching pair of open and
 /// close delims.
 fn make_attr_token_stream(
-    mut iter: impl Iterator<Item = (FlatToken, Spacing)>,
+    iter: impl Iterator<Item = (FlatToken, Spacing)>,
     break_last_token: bool,
 ) -> AttrTokenStream {
     #[derive(Debug)]
@@ -377,8 +377,7 @@ fn make_attr_token_stream(
         inner: Vec<AttrTokenTree>,
     }
     let mut stack = vec![FrameData { open_delim_sp: None, inner: vec![] }];
-    let mut token_and_spacing = iter.next();
-    while let Some((token, spacing)) = token_and_spacing {
+    for (token, spacing) in iter {
         match token {
             FlatToken::Token(Token { kind: TokenKind::OpenDelim(delim), span }) => {
                 stack
@@ -416,7 +415,6 @@ fn make_attr_token_stream(
                 .push(AttrTokenTree::AttrsTarget(target)),
             FlatToken::Empty => {}
         }
-        token_and_spacing = iter.next();
     }
     let mut final_buf = stack.pop().expect("Missing final buf!");
     if break_last_token {
