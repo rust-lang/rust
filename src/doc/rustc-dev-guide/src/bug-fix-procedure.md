@@ -276,7 +276,7 @@ FutureIncompatibleInfo {
 
 Remove this too.
 
-#### Add the lint to the list of removed lists.
+#### Add the lint to the list of removed lints.
 
 In `compiler/rustc_lint/src/lib.rs` there is a list of "renamed and removed lints".
 You can add this lint to the list:
