@@ -1531,7 +1531,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter(|(_, ident)| !used_fields.contains_key(ident))
             .collect::<Vec<_>>();
 
-        let inexistent_fields_err = if !(inexistent_fields.is_empty() || variant.is_recovered())
+        let inexistent_fields_err = if !inexistent_fields.is_empty()
             && !inexistent_fields.iter().any(|field| field.ident.name == kw::Underscore)
         {
             Some(self.error_inexistent_fields(
