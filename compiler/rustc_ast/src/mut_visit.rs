@@ -11,7 +11,7 @@ use crate::ast::*;
 use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
-use crate::visit::AssocCtxt;
+use crate::visit::{AssocCtxt, BoundKind};
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -256,7 +256,7 @@ pub trait MutVisitor: Sized {
         noop_flat_map_generic_param(param, self)
     }
 
-    fn visit_param_bound(&mut self, tpb: &mut GenericBound) {
+    fn visit_param_bound(&mut self, tpb: &mut GenericBound, _ctxt: BoundKind) {
         noop_visit_param_bound(tpb, self);
     }
 
@@ -375,8 +375,8 @@ fn visit_thin_exprs<T: MutVisitor>(exprs: &mut ThinVec<P<Expr>>, vis: &mut T) {
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-fn visit_bounds<T: MutVisitor>(bounds: &mut GenericBounds, vis: &mut T) {
-    visit_vec(bounds, |bound| vis.visit_param_bound(bound));
+fn visit_bounds<T: MutVisitor>(bounds: &mut GenericBounds, ctxt: BoundKind, vis: &mut T) {
+    visit_vec(bounds, |bound| vis.visit_param_bound(bound, ctxt));
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
@@ -468,7 +468,7 @@ fn noop_visit_assoc_item_constraint<T: MutVisitor>(
             Term::Ty(ty) => vis.visit_ty(ty),
             Term::Const(c) => vis.visit_anon_const(c),
         },
-        AssocItemConstraintKind::Bound { bounds } => visit_bounds(bounds, vis),
+        AssocItemConstraintKind::Bound { bounds } => visit_bounds(bounds, BoundKind::Bound, vis),
     }
     vis.visit_span(span);
 }
@@ -509,11 +509,11 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
         }
         TyKind::Typeof(expr) => vis.visit_anon_const(expr),
         TyKind::TraitObject(bounds, _syntax) => {
-            visit_vec(bounds, |bound| vis.visit_param_bound(bound))
+            visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::TraitObject))
         }
         TyKind::ImplTrait(id, bounds) => {
             vis.visit_id(id);
-            visit_vec(bounds, |bound| vis.visit_param_bound(bound));
+            visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Impl));
         }
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
         TyKind::AnonStruct(id, fields) | TyKind::AnonUnion(id, fields) => {
@@ -926,7 +926,7 @@ pub fn noop_flat_map_generic_param<T: MutVisitor>(
     vis.visit_id(id);
     visit_attrs(attrs, vis);
     vis.visit_ident(ident);
-    visit_vec(bounds, |bound| vis.visit_param_bound(bound));
+    visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Bound));
     match kind {
         GenericParamKind::Lifetime => {}
         GenericParamKind::Type { default } => {
@@ -979,13 +979,13 @@ fn noop_visit_where_predicate<T: MutVisitor>(pred: &mut WherePredicate, vis: &mu
             let WhereBoundPredicate { span, bound_generic_params, bounded_ty, bounds } = bp;
             bound_generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
             vis.visit_ty(bounded_ty);
-            visit_vec(bounds, |bound| vis.visit_param_bound(bound));
+            visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Bound));
             vis.visit_span(span);
         }
         WherePredicate::RegionPredicate(rp) => {
             let WhereRegionPredicate { span, lifetime, bounds } = rp;
             vis.visit_lifetime(lifetime);
-            visit_vec(bounds, |bound| noop_visit_param_bound(bound, vis));
+            visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Bound));
             vis.visit_span(span);
         }
         WherePredicate::EqPredicate(ep) => {
@@ -1099,7 +1099,7 @@ impl NoopVisitItemKind for ItemKind {
             ItemKind::TyAlias(box TyAlias { defaultness, generics, where_clauses, bounds, ty }) => {
                 visit_defaultness(defaultness, vis);
                 vis.visit_generics(generics);
-                visit_bounds(bounds, vis);
+                visit_bounds(bounds, BoundKind::Bound, vis);
                 visit_opt(ty, |ty| vis.visit_ty(ty));
                 noop_visit_ty_alias_where_clauses(where_clauses, vis);
             }
@@ -1133,12 +1133,12 @@ impl NoopVisitItemKind for ItemKind {
             ItemKind::Trait(box Trait { safety, is_auto: _, generics, bounds, items }) => {
                 visit_safety(safety, vis);
                 vis.visit_generics(generics);
-                visit_bounds(bounds, vis);
+                visit_bounds(bounds, BoundKind::Bound, vis);
                 items.flat_map_in_place(|item| vis.flat_map_assoc_item(item, AssocCtxt::Trait));
             }
             ItemKind::TraitAlias(generics, bounds) => {
                 vis.visit_generics(generics);
-                visit_bounds(bounds, vis);
+                visit_bounds(bounds, BoundKind::Bound, vis);
             }
             ItemKind::MacCall(m) => vis.visit_mac_call(m),
             ItemKind::MacroDef(def) => vis.visit_macro_def(def),
@@ -1200,7 +1200,7 @@ impl NoopVisitItemKind for AssocItemKind {
             }) => {
                 visit_defaultness(defaultness, visitor);
                 visitor.visit_generics(generics);
-                visit_bounds(bounds, visitor);
+                visit_bounds(bounds, BoundKind::Bound, visitor);
                 visit_opt(ty, |ty| visitor.visit_ty(ty));
                 noop_visit_ty_alias_where_clauses(where_clauses, visitor);
             }
@@ -1307,7 +1307,7 @@ impl NoopVisitItemKind for ForeignItemKind {
             }) => {
                 visit_defaultness(defaultness, visitor);
                 visitor.visit_generics(generics);
-                visit_bounds(bounds, visitor);
+                visit_bounds(bounds, BoundKind::Bound, visitor);
                 visit_opt(ty, |ty| visitor.visit_ty(ty));
                 noop_visit_ty_alias_where_clauses(where_clauses, visitor);
             }
