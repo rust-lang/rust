@@ -321,8 +321,14 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             // The fields are not expanded yet.
             return;
         }
-        let def_ids = fields.iter().map(|field| self.r.local_def_id(field.id).to_def_id());
-        self.r.field_def_ids.insert(def_id, self.r.tcx.arena.alloc_from_iter(def_ids));
+        let fields = fields
+            .iter()
+            .enumerate()
+            .map(|(i, field)| {
+                field.ident.unwrap_or_else(|| Ident::from_str_and_span(&format!("{i}"), field.span))
+            })
+            .collect();
+        self.r.field_names.insert(def_id, fields);
     }
 
     fn insert_field_visibilities_local(&mut self, def_id: DefId, fields: &[ast::FieldDef]) {
