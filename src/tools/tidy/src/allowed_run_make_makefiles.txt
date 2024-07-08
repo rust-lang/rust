@@ -65,7 +65,6 @@ run-make/link-path-order/Makefile
 run-make/linkage-attr-on-static/Makefile
 run-make/long-linker-command-lines-cmd-exe/Makefile
 run-make/long-linker-command-lines/Makefile
-run-make/longjmp-across-rust/Makefile
 run-make/lto-linkage-used-attr/Makefile
 run-make/lto-no-link-whole-rlib/Makefile
 run-make/lto-smoke-c/Makefile
