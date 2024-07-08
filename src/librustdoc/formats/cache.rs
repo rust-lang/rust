@@ -462,7 +462,6 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 
             clean::ExternCrateItem { .. }
             | clean::ImportItem(..)
-            | clean::OpaqueTyItem(..)
             | clean::ImplItem(..)
             | clean::TyMethodItem(..)
             | clean::MethodItem(..)

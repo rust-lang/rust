@@ -828,7 +828,6 @@ pub(crate) enum ItemKind {
     FunctionItem(Box<Function>),
     ModuleItem(Module),
     TypeAliasItem(Box<TypeAlias>),
-    OpaqueTyItem(OpaqueTy),
     StaticItem(Static),
     TraitItem(Box<Trait>),
     TraitAliasItem(TraitAlias),
@@ -886,7 +885,6 @@ impl ItemKind {
             | ImportItem(_)
             | FunctionItem(_)
             | TypeAliasItem(_)
-            | OpaqueTyItem(_)
             | StaticItem(_)
             | ConstantItem(_, _, _)
             | TraitAliasItem(_)
@@ -920,7 +918,6 @@ impl ItemKind {
                 | ExternCrateItem { .. }
                 | FunctionItem(_)
                 | TypeAliasItem(_)
-                | OpaqueTyItem(_)
                 | StaticItem(_)
                 | ConstantItem(_, _, _)
                 | TraitAliasItem(_)
@@ -2339,12 +2336,6 @@ pub(crate) struct TypeAlias {
     /// If `item_type.is_none()`, `type_` is guaranteed to come from metadata (and therefore hold the
     /// final type).
     pub(crate) item_type: Option<Type>,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct OpaqueTy {
-    pub(crate) bounds: Vec<GenericBound>,
-    pub(crate) generics: Generics,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
