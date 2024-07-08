@@ -2304,9 +2304,15 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             // if all of its fields are `Copy` and `Clone`
             ty::Adt(adt, args) if adt.is_anonymous() => {
                 // (*) binder moved here
-                Where(obligation.predicate.rebind(
-                    adt.non_enum_variant().fields.iter().map(|f| f.ty(self.tcx(), args)).collect(),
-                ))
+                Where(
+                    obligation.predicate.rebind(
+                        adt.non_enum_variant()
+                            .fields()
+                            .iter()
+                            .map(|f| f.ty(self.tcx(), args))
+                            .collect(),
+                    ),
+                )
             }
 
             ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {

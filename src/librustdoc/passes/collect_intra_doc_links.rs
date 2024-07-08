@@ -296,7 +296,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 ty::Adt(def, _) if def.is_enum() => {
                     if let Some(variant) = def.variants().iter().find(|v| v.name == variant_name)
                         && let Some(field) =
-                            variant.fields.iter().find(|f| f.name == variant_field_name)
+                            variant.fields().iter().find(|f| f.name == variant_field_name)
                     {
                         Ok((ty_res, field.did))
                     } else {

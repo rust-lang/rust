@@ -343,7 +343,7 @@ impl EnumVariantData {
             container.local_id,
             &item_tree,
             &db.crate_graph()[krate].cfg_options,
-            &variant.fields,
+            &variant.fields(),
             Some(item_tree[loc.parent.lookup(db).id.value].visibility),
         );
 

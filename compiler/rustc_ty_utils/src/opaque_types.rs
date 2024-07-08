@@ -291,7 +291,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     return;
                 }
                 for variant in def.variants().iter() {
-                    for field in variant.fields.iter() {
+                    for field in variant.fields().iter() {
                         // Don't use the `ty::Adt` args, we either
                         // * found the opaque in the args
                         // * will find the opaque in the uninstantiated fields

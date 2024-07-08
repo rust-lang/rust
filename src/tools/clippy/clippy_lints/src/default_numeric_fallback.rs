@@ -179,7 +179,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                     && adt_def.is_struct()
                     && let Some(variant) = adt_def.variants().iter().next()
                 {
-                    let fields_def = &variant.fields;
+                    let fields_def = &variant.fields();
 
                     // Push field type then visit each field expr.
                     for field in *fields {

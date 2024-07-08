@@ -1233,19 +1233,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let had_err = diag.map_err(|diag| diag.emit());
 
         // Type-check subpatterns.
-        if subpats.len() == variant.fields.len()
-            || subpats.len() < variant.fields.len() && ddpos.as_opt_usize().is_some()
+        if subpats.len() == variant.fields().len()
+            || subpats.len() < variant.fields().len() && ddpos.as_opt_usize().is_some()
         {
             let ty::Adt(_, args) = pat_ty.kind() else {
                 bug!("unexpected pattern type {:?}", pat_ty);
             };
-            for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
-                let field = &variant.fields[FieldIdx::from_usize(i)];
+            for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields().len(), ddpos) {
+                let field = &variant.fields()[FieldIdx::from_usize(i)];
                 let field_ty = self.field_ty(subpat.span, field, args);
                 self.check_pat(subpat, field_ty, pat_info);
 
                 self.tcx.check_stability(
-                    variant.fields[FieldIdx::from_usize(i)].did,
+                    variant.fields()[FieldIdx::from_usize(i)].did,
                     Some(pat.hir_id),
                     subpat.span,
                     None,
@@ -1261,7 +1261,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 res,
                 qpath,
                 subpats,
-                &variant.fields.raw,
+                &variant.fields().raw,
                 expected,
                 had_err,
             );
@@ -1484,7 +1484,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Index the struct fields' types.
         let field_map = variant
-            .fields
+            .fields()
             .iter_enumerated()
             .map(|(i, field)| (field.ident(self.tcx).normalize_to_macros_2_0(), (i, field)))
             .collect::<FxHashMap<_, _>>();
@@ -1525,7 +1525,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut unmentioned_fields = variant
-            .fields
+            .fields_checked()?
             .iter()
             .map(|field| (field, field.ident(self.tcx).normalize_to_macros_2_0()))
             .filter(|(_, ident)| !used_fields.contains_key(ident))
@@ -1820,14 +1820,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "tuple variant `{}` written as struct variant",
                 path
             );
-            let (sugg, appl) = if fields.len() == variant.fields.len() {
+            let (sugg, appl) = if fields.len() == variant.fields().len() {
                 (
                     self.get_suggested_tuple_struct_pattern(fields, variant),
                     Applicability::MachineApplicable,
                 )
             } else {
                 (
-                    variant.fields.iter().map(|_| "_").collect::<Vec<&str>>().join(", "),
+                    variant.fields().iter().map(|_| "_").collect::<Vec<&str>>().join(", "),
                     Applicability::MaybeIncorrect,
                 )
             };
@@ -1848,7 +1848,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &VariantDef,
     ) -> String {
         let variant_field_idents =
-            variant.fields.iter().map(|f| f.ident(self.tcx)).collect::<Vec<Ident>>();
+            variant.fields().iter().map(|f| f.ident(self.tcx)).collect::<Vec<Ident>>();
         fields
             .iter()
             .map(|field| {

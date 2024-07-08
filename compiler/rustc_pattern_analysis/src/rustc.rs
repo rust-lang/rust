@@ -163,7 +163,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     ) -> impl Iterator<Item = (&'tcx FieldDef, RevealedTy<'tcx>)> + Captures<'p> + Captures<'_>
     {
         let ty::Adt(_, args) = ty.kind() else { bug!() };
-        variant.fields.iter().map(move |field| {
+        variant.fields().iter().map(move |field| {
             let ty = field.ty(self.tcx, args);
             // `field.ty()` doesn't normalize after instantiating.
             let ty = self.tcx.normalize_erasing_regions(self.param_env, ty);
@@ -269,7 +269,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         1
                     } else {
                         let variant_idx = RustcPatCtxt::variant_index_for_adt(&ctor, *adt);
-                        adt.variant(variant_idx).fields.len()
+                        adt.variant(variant_idx).fields().len()
                     }
                 }
                 _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
@@ -512,7 +512,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         };
                         let variant =
                             &adt.variant(RustcPatCtxt::variant_index_for_adt(&ctor, *adt));
-                        arity = variant.fields.len();
+                        arity = variant.fields().len();
                         fields = subpatterns
                             .iter()
                             .map(|ipat| self.lower_pat(&ipat.pattern).at_index(ipat.field.index()))

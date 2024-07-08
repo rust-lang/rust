@@ -95,7 +95,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
             let mut non_send_fields = Vec::new();
 
             for variant in adt_def.variants() {
-                for field in &variant.fields {
+                for field in &variant.fields() {
                     if let Some(field_hir_id) = field
                         .did
                         .as_local()

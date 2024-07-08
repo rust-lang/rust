@@ -213,7 +213,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                 res = Err(tcx.dcx().emit_err(errors::DispatchFromDynRepr { span }));
             }
 
-            let fields = &def_a.non_enum_variant().fields;
+            let fields = &def_a.non_enum_variant().fields();
 
             let coerced_fields = fields
                 .iter()
@@ -411,7 +411,7 @@ pub fn coerce_unsized_info<'tcx>(
             // conversion). This will work out because `U:
             // Unsize<V>`, and we have a builtin rule that `*mut
             // U` can be coerced to `*mut V` if `U: Unsize<V>`.
-            let fields = &def_a.non_enum_variant().fields;
+            let fields = &def_a.non_enum_variant().fields();
             let diff_fields = fields
                 .iter_enumerated()
                 .filter_map(|(i, f)| {

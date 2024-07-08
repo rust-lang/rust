@@ -674,7 +674,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                             }
                             None => {
                                 self.push("S");
-                                for (field_def, field) in iter::zip(&variant_def.fields, fields) {
+                                for (field_def, field) in iter::zip(variant_def.fields(), fields) {
                                     // HACK(eddyb) this mimics `path_append`,
                                     // instead of simply using `field_def.ident`,
                                     // just to be able to handle disambiguators.

@@ -81,7 +81,7 @@ impl Attrs {
                 let krate = loc.parent.lookup(db).container.krate;
                 let item_tree = loc.id.item_tree(db);
                 let variant = &item_tree[loc.id.value];
-                (variant.fields.clone(), item_tree, krate)
+                (variant.fields().clone(), item_tree, krate)
             }
             VariantId::StructId(it) => {
                 let loc = it.lookup(db);

@@ -200,7 +200,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         match self.typeck_results().expr_ty_adjusted(lhs).kind() {
             ty::Adt(def, _) => {
                 let index = self.typeck_results().field_index(hir_id);
-                self.insert_def_id(def.non_enum_variant().fields[index].did);
+                self.insert_def_id(def.non_enum_variant().fields()[index].did);
             }
             ty::Tuple(..) => {}
             ty::Error(_) => {}
@@ -288,7 +288,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 continue;
             }
             let index = self.typeck_results().field_index(pat.hir_id);
-            self.insert_def_id(variant.fields[index].did);
+            self.insert_def_id(variant.fields()[index].did);
         }
     }
 
@@ -311,13 +311,13 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         };
         let dotdot = dotdot.as_opt_usize().unwrap_or(pats.len());
         let first_n = pats.iter().enumerate().take(dotdot);
-        let missing = variant.fields.len() - pats.len();
+        let missing = variant.fields().len() - pats.len();
         let last_n = pats.iter().enumerate().skip(dotdot).map(|(idx, pat)| (idx + missing, pat));
         for (idx, pat) in first_n.chain(last_n) {
             if let PatKind::Wild = pat.kind {
                 continue;
             }
-            self.insert_def_id(variant.fields[FieldIdx::from_usize(idx)].did);
+            self.insert_def_id(variant.fields()[FieldIdx::from_usize(idx)].did);
         }
     }
 
@@ -334,7 +334,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         for &(variant, field) in indices {
             match current_ty.kind() {
                 ty::Adt(def, args) => {
-                    let field = &def.variant(variant).fields[field];
+                    let field = &def.variant(variant).fields()[field];
 
                     self.insert_def_id(field.did);
                     let field_ty = field.ty(self.tcx, args);
@@ -537,10 +537,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     }
 
     fn mark_as_used_if_union(&mut self, adt: ty::AdtDef<'tcx>, fields: &[hir::ExprField<'_>]) {
-        if adt.is_union() && adt.non_enum_variant().fields.len() > 1 && adt.did().is_local() {
+        if adt.is_union() && adt.non_enum_variant().fields().len() > 1 && adt.did().is_local() {
             for field in fields {
                 let index = self.typeck_results().field_index(field.hir_id);
-                self.insert_def_id(adt.non_enum_variant().fields[index].did);
+                self.insert_def_id(adt.non_enum_variant().fields()[index].did);
             }
         }
     }
@@ -1291,13 +1291,13 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                     continue;
                 }
 
-                let is_positional = variant.fields.raw.first().map_or(false, |field| {
+                let is_positional = variant.fields().raw.first().map_or(false, |field| {
                     field.name.as_str().starts_with(|c: char| c.is_ascii_digit())
                 });
                 let report_on =
                     if is_positional { ReportOn::TupleField } else { ReportOn::NamedField };
                 let dead_fields = variant
-                    .fields
+                    .fields()
                     .iter()
                     .filter_map(|field| {
                         let def_id = field.did.expect_local();

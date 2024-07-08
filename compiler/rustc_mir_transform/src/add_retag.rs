@@ -40,7 +40,9 @@ fn may_contain_reference<'tcx>(ty: Ty<'tcx>, depth: u32, tcx: TyCtxt<'tcx>) -> b
         ty::Adt(adt, args) => {
             depth == 0
                 || adt.variants().iter().any(|v| {
-                    v.fields.iter().any(|f| may_contain_reference(f.ty(tcx, args), depth - 1, tcx))
+                    v.fields()
+                        .iter()
+                        .any(|f| may_contain_reference(f.ty(tcx, args), depth - 1, tcx))
                 })
         }
         // Conservative fallback

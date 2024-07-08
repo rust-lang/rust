@@ -1055,8 +1055,8 @@ fn find_vtable_types_for_unsizing<'tcx>(
                     }
                 };
 
-            let source_fields = &source_adt_def.non_enum_variant().fields;
-            let target_fields = &target_adt_def.non_enum_variant().fields;
+            let source_fields = &source_adt_def.non_enum_variant().fields();
+            let target_fields = &target_adt_def.non_enum_variant().fields();
 
             assert!(
                 coerce_index.index() < source_fields.len()

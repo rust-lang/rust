@@ -23,7 +23,7 @@ fn representability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Representability {
     match tcx.def_kind(def_id) {
         DefKind::Struct | DefKind::Union | DefKind::Enum => {
             for variant in tcx.adt_def(def_id).variants() {
-                for field in variant.fields.iter() {
+                for field in variant.fields().iter() {
                     rtry!(tcx.representability(field.did.expect_local()));
                 }
             }
@@ -88,7 +88,7 @@ fn params_in_repr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> BitSet<u32> {
     let generics = tcx.generics_of(def_id);
     let mut params_in_repr = BitSet::new_empty(generics.own_params.len());
     for variant in adt_def.variants() {
-        for field in variant.fields.iter() {
+        for field in variant.fields().iter() {
             params_in_repr_ty(
                 tcx,
                 tcx.type_of(field.did).instantiate_identity(),

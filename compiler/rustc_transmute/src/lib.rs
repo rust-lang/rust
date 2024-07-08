@@ -170,7 +170,7 @@ mod rustc {
 
             let get_field = |name| {
                 let (field_idx, _) = variant
-                    .fields
+                    .fields()
                     .iter()
                     .enumerate()
                     .find(|(_, field_def)| name == field_def.name)

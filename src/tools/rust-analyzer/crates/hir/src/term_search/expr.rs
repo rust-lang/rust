@@ -233,7 +233,7 @@ impl Expr {
                         format!("{generics_str}({args})")
                     }
                     StructKind::Record => {
-                        let fields = variant.fields(db);
+                        let fields = variant.fields()(db);
                         let args = params
                             .iter()
                             .zip(fields.iter())

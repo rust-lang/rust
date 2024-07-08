@@ -678,7 +678,7 @@ fn try_write_constant<'tcx>(
                 (FIRST_VARIANT, def.non_enum_variant(), place, dest.clone())
             };
 
-            for (i, field) in variant_def.fields.iter_enumerated() {
+            for (i, field) in variant_def.fields().iter_enumerated() {
                 let ty = field.ty(*ecx.tcx, args);
                 let Some(field) = map.apply(variant_place, TrackElem::Field(i)) else {
                     throw_machine_stop_str!("missing field in ADT")

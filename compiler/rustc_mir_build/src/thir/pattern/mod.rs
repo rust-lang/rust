@@ -379,7 +379,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     span_bug!(pat.span, "tuple struct pattern not applied to an ADT {:?}", ty);
                 };
                 let variant_def = adt_def.variant_of_res(res);
-                let subpatterns = self.lower_tuple_subpats(pats, variant_def.fields.len(), ddpos);
+                let subpatterns = self.lower_tuple_subpats(pats, variant_def.fields().len(), ddpos);
                 self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
             }
 

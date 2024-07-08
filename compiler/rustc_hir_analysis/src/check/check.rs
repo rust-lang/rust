@@ -102,7 +102,7 @@ fn check_unnamed_fields(tcx: TyCtxt<'_>, def: ty::AdtDef<'_>) {
         let adt_kind = def.descr();
         let span = tcx.def_span(def.did());
         let unnamed_fields = variant
-            .fields
+            .fields()
             .iter()
             .filter(|f| f.is_unnamed())
             .map(|f| {
@@ -122,7 +122,7 @@ fn check_unnamed_fields(tcx: TyCtxt<'_>, def: ty::AdtDef<'_>) {
             });
         }
     }
-    for field in variant.fields.iter().filter(|f| f.is_unnamed()) {
+    for field in variant.fields().iter().filter(|f| f.is_unnamed()) {
         let field_ty = tcx.type_of(field.did).instantiate_identity();
         if let Some(adt) = field_ty.ty_adt_def()
             && !adt.is_enum()
@@ -176,7 +176,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
         }
 
         let param_env = tcx.param_env(item_def_id);
-        for field in &def.non_enum_variant().fields {
+        for field in def.non_enum_variant().fields() {
             let Ok(field_ty) = tcx.try_normalize_erasing_regions(param_env, field.ty(tcx, args))
             else {
                 tcx.dcx().span_delayed_bug(span, "could not normalize field type");
@@ -647,7 +647,8 @@ fn is_enum_of_nonnullable_ptr<'tcx>(
     let [var_one, var_two] = &adt_def.variants().raw[..] else {
         return false;
     };
-    let (([], [field]) | ([field], [])) = (&var_one.fields.raw[..], &var_two.fields.raw[..]) else {
+    let (([], [field]) | ([field], [])) = (&var_one.fields().raw[..], &var_two.fields().raw[..])
+    else {
         return false;
     };
     matches!(field.ty(tcx, args).kind(), ty::FnPtr(..) | ty::Ref(..))
@@ -1059,7 +1060,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
     if let ty::Adt(def, args) = t.kind()
         && def.is_struct()
     {
-        let fields = &def.non_enum_variant().fields;
+        let fields = &def.non_enum_variant().fields();
         if fields.is_empty() {
             struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot be empty").emit();
             return;
@@ -1201,7 +1202,7 @@ pub(super) fn check_packed_inner(
             }
 
             stack.push(def_id);
-            for field in &def.non_enum_variant().fields {
+            for field in def.non_enum_variant().fields() {
                 if let ty::Adt(def, _) = field.ty(tcx, args).kind()
                     && !stack.contains(&def.did())
                     && let Some(mut defs) = check_packed_inner(tcx, def.did(), stack)

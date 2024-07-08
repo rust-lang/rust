@@ -705,7 +705,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         }
 
                         let var = parent_ty.variant_index.unwrap_or(FIRST_VARIANT);
-                        let Some(field) = adt_def.variant(var).fields.get(f) else {
+                        let Some(field) = adt_def.variant(var).fields().get(f) else {
                             fail_out_of_bounds(self, location);
                             return;
                         };
@@ -898,7 +898,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     assert_eq!(idx, FIRST_VARIANT);
                     let dest_ty = self.tcx.normalize_erasing_regions(
                         self.param_env,
-                        adt_def.non_enum_variant().fields[field].ty(self.tcx, args),
+                        adt_def.non_enum_variant().fields()[field].ty(self.tcx, args),
                     );
                     if fields.len() == 1 {
                         let src_ty = fields.raw[0].ty(self.body, self.tcx);
@@ -913,10 +913,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     let adt_def = self.tcx.adt_def(def_id);
                     assert!(!adt_def.is_union());
                     let variant = &adt_def.variants()[idx];
-                    if variant.fields.len() != fields.len() {
+                    if variant.fields().len() != fields.len() {
                         self.fail(location, "adt has the wrong number of initialized fields");
                     }
-                    for (src, dest) in std::iter::zip(fields, &variant.fields) {
+                    for (src, dest) in std::iter::zip(fields.iter(), variant.fields()) {
                         let dest_ty = self
                             .tcx
                             .normalize_erasing_regions(self.param_env, dest.ty(self.tcx, args));
@@ -1327,7 +1327,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             current_ty = self.tcx.normalize_erasing_regions(self.param_env, f_ty);
                         }
                         ty::Adt(adt_def, args) => {
-                            let Some(field) = adt_def.variant(variant).fields.get(field) else {
+                            let Some(field) = adt_def.variant(variant).fields().get(field) else {
                                 fail_out_of_bounds(self, location, field, current_ty);
                                 return;
                             };

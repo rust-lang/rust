@@ -1168,6 +1168,10 @@ bitflags::bitflags! {
 }
 rustc_data_structures::external_bitflags_debug! { VariantFlags }
 
+/// When a variant is recovered from a syntactic error, we don't have complete information about it.
+/// Return an empty list of fields in this case.
+const EMPTY_FIELDS: &IndexVec<FieldIdx, FieldDef> = &IndexVec::new();
+
 /// Definition of a variant -- a struct's fields or an enum variant.
 #[derive(Debug, HashStable, TyEncodable, TyDecodable)]
 pub struct VariantDef {
@@ -1182,7 +1186,7 @@ pub struct VariantDef {
     /// Discriminant of this variant.
     pub discr: VariantDiscr,
     /// Fields of this variant.
-    pub fields: IndexVec<FieldIdx, FieldDef>,
+    fields: Result<IndexVec<FieldIdx, FieldDef>, ErrorGuaranteed>,
     /// Flags of the variant (e.g. is field list non-exhaustive)?
     flags: VariantFlags,
 }
@@ -1212,7 +1216,7 @@ impl VariantDef {
         fields: IndexVec<FieldIdx, FieldDef>,
         adt_kind: AdtKind,
         parent_did: DefId,
-        recovered: bool,
+        recovered: Option<ErrorGuaranteed>,
         is_field_list_non_exhaustive: bool,
         has_unnamed_fields: bool,
     ) -> Self {
@@ -1227,7 +1231,7 @@ impl VariantDef {
             flags |= VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
         }
 
-        if recovered {
+        if recovered.is_some() {
             flags |= VariantFlags::IS_RECOVERED;
         }
 
@@ -1235,6 +1239,7 @@ impl VariantDef {
             flags |= VariantFlags::HAS_UNNAMED_FIELDS;
         }
 
+        let fields = if let Some(guard) = recovered { Err(guard) } else { Ok(fields) };
         VariantDef { def_id: variant_did.unwrap_or(parent_did), ctor, name, discr, fields, flags }
     }
 
@@ -1261,6 +1266,14 @@ impl VariantDef {
         Ident::new(self.name, tcx.def_ident_span(self.def_id).unwrap())
     }
 
+    pub fn fields(&self) -> &IndexVec<FieldIdx, FieldDef> {
+        if let Ok(fields) = &self.fields { fields } else { EMPTY_FIELDS }
+    }
+
+    pub fn fields_checked(&self) -> Result<&IndexVec<FieldIdx, FieldDef>, ErrorGuaranteed> {
+        self.fields.as_ref().map_err(|e| *e)
+    }
+
     #[inline]
     pub fn ctor_kind(&self) -> Option<CtorKind> {
         self.ctor.map(|(kind, _)| kind)
@@ -1276,15 +1289,15 @@ impl VariantDef {
     /// `panic!`s if there are no fields or multiple fields.
     #[inline]
     pub fn single_field(&self) -> &FieldDef {
-        assert!(self.fields.len() == 1);
+        assert!(self.fields().len() == 1);
 
-        &self.fields[FieldIdx::ZERO]
+        &self.fields()[FieldIdx::ZERO]
     }
 
     /// Returns the last field in this variant, if present.
     #[inline]
     pub fn tail_opt(&self) -> Option<&FieldDef> {
-        self.fields.raw.last()
+        self.fields().raw.last()
     }
 
     /// Returns the last field in this variant.
@@ -1631,7 +1644,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<FieldIdx> {
-        variant.fields.iter_enumerated().find_map(|(i, field)| {
+        variant.fields().iter_enumerated().find_map(|(i, field)| {
             self.hygienic_eq(ident, field.ident(self), variant.def_id).then_some(i)
         })
     }

@@ -480,7 +480,7 @@ pub(crate) mod rustc {
                 return Err(Err::NotYetSupported);
             };
 
-            let fields = &def.non_enum_variant().fields;
+            let fields = &def.non_enum_variant().fields();
             let fields = fields.iter_enumerated().try_fold(
                 Self::uninhabited(),
                 |fields, (idx, ref field_def)| {

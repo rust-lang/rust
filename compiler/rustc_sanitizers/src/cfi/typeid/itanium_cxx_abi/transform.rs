@@ -135,7 +135,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                     }
                     let variant = adt_def.non_enum_variant();
                     let param_env = self.tcx.param_env(variant.def_id);
-                    let field = variant.fields.iter().find(|field| {
+                    let field = variant.fields().iter().find(|field| {
                         let ty = self.tcx.type_of(field.did).instantiate_identity();
                         let is_zst = self
                             .tcx

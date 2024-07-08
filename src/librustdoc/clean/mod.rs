@@ -2374,10 +2374,10 @@ pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocCont
     let kind = match variant.ctor_kind() {
         Some(CtorKind::Const) => VariantKind::CLike,
         Some(CtorKind::Fn) => VariantKind::Tuple(
-            variant.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
+            variant.fields().iter().map(|field| clean_middle_field(field, cx)).collect(),
         ),
         None => VariantKind::Struct(VariantStruct {
-            fields: variant.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
+            fields: variant.fields().iter().map(|field| clean_middle_field(field, cx)).collect(),
         }),
     };
 
@@ -2479,7 +2479,7 @@ fn clean_variant_data<'tcx>(
             fields: fields.iter().map(|x| clean_field(x, cx)).collect(),
         }),
         hir::VariantData::Tuple(..) => {
-            VariantKind::Tuple(variant.fields().iter().map(|x| clean_field(x, cx)).collect())
+            VariantKind::Tuple(variant.fields()().iter().map(|x| clean_field(x, cx)).collect())
         }
         hir::VariantData::Unit(..) => VariantKind::CLike,
     };

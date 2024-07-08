@@ -937,7 +937,7 @@ fn field_of_struct<'tcx>(
         && let Some(dc) = lcx.tcx.try_destructure_mir_constant_for_user_output(result, ty)
         && let Some(dc_variant) = dc.variant
         && let Some(variant) = adt_def.variants().get(dc_variant)
-        && let Some(field_idx) = variant.fields.iter().position(|el| el.name == field.name)
+        && let Some(field_idx) = variant.fields().iter().position(|el| el.name == field.name)
         && let Some(&(val, ty)) = dc.fields.get(field_idx)
     {
         Some(mir::Const::Val(val, ty))

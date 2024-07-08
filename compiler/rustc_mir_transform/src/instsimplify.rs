@@ -217,7 +217,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                     && let Some(place) = operand.place()
                 {
                     let variant = adt_def.non_enum_variant();
-                    for (i, field) in variant.fields.iter_enumerated() {
+                    for (i, field) in variant.fields().iter_enumerated() {
                         let field_ty = field.ty(self.tcx, args);
                         if field_ty == *cast_ty {
                             let place = place

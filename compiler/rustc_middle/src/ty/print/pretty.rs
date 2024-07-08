@@ -1879,7 +1879,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             None => {
                                 p!(" {{ ");
                                 let mut first = true;
-                                for (field_def, field) in iter::zip(&variant_def.fields, fields) {
+                                for (field_def, field) in iter::zip(variant_def.fields(), fields) {
                                     if !first {
                                         p!(", ");
                                     }

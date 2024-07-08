@@ -93,7 +93,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     .variants()
                     .iter()
                     .filter(|variant| {
-                        variant.fields.len() == 1 && variant.ctor_kind() == Some(CtorKind::Fn)
+                        variant.fields().len() == 1 && variant.ctor_kind() == Some(CtorKind::Fn)
                     })
                     .filter_map(|variant| {
                         let sole_field = &variant.single_field();
@@ -255,7 +255,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
             if let Some((name, ty)) = expected_def
                 .non_enum_variant()
-                .fields
+                .fields()
                 .iter()
                 .filter(|field| field.vis.is_accessible_from(field.did, self.tcx))
                 .map(|field| (field.name, field.ty(self.tcx, expected_args)))

@@ -63,7 +63,7 @@ pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
         ty::Adt(def, _) => {
             let variant = ecx.read_discriminant(&op).ok()?;
             let down = ecx.project_downcast(&op, variant).ok()?;
-            (def.variants()[variant].fields.len(), Some(variant), down)
+            (def.variants()[variant].fields().len(), Some(variant), down)
         }
         ty::Tuple(args) => (args.len(), None, op),
         _ => bug!("cannot destructure mir constant {:?}", val),

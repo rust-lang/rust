@@ -427,7 +427,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 let zero_or_ptr_variant = |i| {
                     let i = VariantIdx::from_usize(i);
                     let fields =
-                        def.variant(i).fields.iter().map(|field| {
+                        def.variant(i).fields().into_iter().map(|field| {
                             SizeSkeleton::compute(field.ty(tcx, args), tcx, param_env)
                         });
                     let mut ptr = None;
@@ -749,7 +749,7 @@ where
                 let fields = match this.ty.kind() {
                     ty::Adt(def, _) if def.variants().is_empty() =>
                         bug!("for_variant called on zero-variant enum {}", this.ty),
-                    ty::Adt(def, _) => def.variant(variant_index).fields.len(),
+                    ty::Adt(def, _) => def.variant(variant_index).fields().len(),
                     _ => bug!("`ty_and_layout_for_variant` on unexpected type {}", this.ty),
                 };
                 tcx.mk_layout(LayoutS {
@@ -918,7 +918,7 @@ where
                 ty::Adt(def, args) => {
                     match this.variants {
                         Variants::Single { index } => {
-                            let field = &def.variant(index).fields[FieldIdx::from_usize(i)];
+                            let field = &def.variant(index).fields()[FieldIdx::from_usize(i)];
                             TyMaybeWithLayout::Ty(field.ty(tcx, args))
                         }
 

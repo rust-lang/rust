@@ -845,10 +845,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             },
         };
 
-        if let Some(field) = variant.fields.get(field) {
+        if let Some(field) = variant.fields().get(field) {
             Ok(self.cx.normalize(field.ty(tcx, args), location))
         } else {
-            Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
+            Err(FieldAccessError::OutOfRange { field_count: variant.fields().len() })
         }
     }
 }
@@ -1826,10 +1826,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let def = tcx.adt_def(adt_did);
                 let variant = &def.variant(variant_index);
                 let adj_field_index = active_field_index.unwrap_or(field_index);
-                if let Some(field) = variant.fields.get(adj_field_index) {
+                if let Some(field) = variant.fields().get(adj_field_index) {
                     Ok(self.normalize(field.ty(tcx, args), location))
                 } else {
-                    Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
+                    Err(FieldAccessError::OutOfRange { field_count: variant.fields().len() })
                 }
             }
             AggregateKind::Closure(_, args) => {

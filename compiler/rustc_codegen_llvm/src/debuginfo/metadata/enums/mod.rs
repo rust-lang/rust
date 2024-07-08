@@ -274,7 +274,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
                 .map(|field_index| {
                     let field_name = if variant_def.ctor_kind() != Some(CtorKind::Fn) {
                         // Fields have names
-                        let field = &variant_def.fields[FieldIdx::from_usize(field_index)];
+                        let field = &variant_def.fields()[FieldIdx::from_usize(field_index)];
                         Cow::from(field.name.as_str())
                     } else {
                         // Tuple-like

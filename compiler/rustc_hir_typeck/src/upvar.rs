@@ -1590,7 +1590,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ProjectionKind::Field(..)
                     ))
                 );
-                def.variants().get(FIRST_VARIANT).unwrap().fields.iter_enumerated().any(
+                def.variants().get(FIRST_VARIANT).unwrap().fields().iter_enumerated().any(
                     |(i, field)| {
                         let paths_using_field = captured_by_move_projs
                             .iter()

@@ -1042,7 +1042,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
         // Fields:
         |cx, owner| {
             variant_def
-                .fields
+                .fields()
                 .iter()
                 .enumerate()
                 .map(|(i, f)| {
@@ -1222,7 +1222,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
         // Fields:
         |cx, owner| {
             variant_def
-                .fields
+                .fields()
                 .iter()
                 .enumerate()
                 .map(|(i, f)| {

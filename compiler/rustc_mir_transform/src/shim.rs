@@ -949,7 +949,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
             Place::return_place(),
             Rvalue::Aggregate(
                 Box::new(kind),
-                (0..variant.fields.len())
+                (0..variant.fields().len())
                     .map(|idx| Operand::Move(Place::from(Local::new(idx + 1))))
                     .collect(),
             ),

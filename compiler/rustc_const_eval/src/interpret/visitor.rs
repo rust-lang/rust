@@ -197,7 +197,7 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                 // could be a problem for `ImmTy` (see layout_sanity_check):
                 // - variant.size == Size::ZERO: works fine because `ImmTy::offset` has a special case for
                 //   zero-sized layouts.
-                // - variant.fields.count() == 0: works fine because `ImmTy::offset` has a special case for
+                // - variant.fields().count() == 0: works fine because `ImmTy::offset` has a special case for
                 //   zero-field aggregates.
                 // - variant.abi.is_uninhabited(): triggers UB in `read_discriminant` so we never get here.
                 let inner = self.ecx().project_downcast(v, idx)?;

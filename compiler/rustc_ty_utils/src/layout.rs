@@ -397,7 +397,7 @@ fn layout_of_uncached<'tcx>(
                 return Err(error(cx, LayoutError::Unknown(ty)));
             }
 
-            let fields = &def.non_enum_variant().fields;
+            let fields = &def.non_enum_variant().fields();
 
             // Supported SIMD vectors are homogeneous ADTs with at least one field:
             //
@@ -418,7 +418,7 @@ fn layout_of_uncached<'tcx>(
 
             // Heterogeneous SIMD vectors are not supported:
             // (should be caught by typeck)
-            for fi in fields {
+            for fi in fields.iter() {
                 if fi.ty(tcx, args) != f0_ty {
                     tcx.dcx().delayed_bug(
                         "#[repr(simd)] was applied to an ADT with heterogeneous field type",
@@ -439,7 +439,7 @@ fn layout_of_uncached<'tcx>(
 
                 // SIMD vectors with multiple array fields are not supported:
                 // Can't be caught by typeck with a generic simd type.
-                if def.non_enum_variant().fields.len() != 1 {
+                if def.non_enum_variant().fields().len() != 1 {
                     tcx.dcx().emit_fatal(MultipleArrayFieldsSimdType { ty });
                 }
 
@@ -451,7 +451,7 @@ fn layout_of_uncached<'tcx>(
                 (*e_ty, *count, true)
             } else {
                 // First ADT field is not an array:
-                (f0_ty, def.non_enum_variant().fields.len() as _, false)
+                (f0_ty, def.non_enum_variant().fields().len() as _, false)
             };
 
             // SIMD vectors of zero length are not supported.
@@ -521,7 +521,7 @@ fn layout_of_uncached<'tcx>(
                 .variants()
                 .iter()
                 .map(|v| {
-                    v.fields
+                    v.fields()
                         .iter()
                         .map(|field| Ok(cx.layout_of(field.ty(tcx, args))?.layout))
                         .try_collect::<IndexVec<_, _>>()
@@ -565,7 +565,7 @@ fn layout_of_uncached<'tcx>(
 
             if def.is_struct() {
                 if let Some((_, fields_except_last)) =
-                    def.non_enum_variant().fields.raw.split_last()
+                    def.non_enum_variant().fields().raw.split_last()
                 {
                     for f in fields_except_last {
                         err_if_unsized(f, "only the last field of a struct can be unsized")?;
@@ -1098,7 +1098,7 @@ fn variant_info_for_adt<'tcx>(
             if !adt_def.variants().is_empty() && layout.fields != FieldsShape::Primitive {
                 debug!("print-type-size `{:#?}` variant {}", layout, adt_def.variant(index).name);
                 let variant_def = &adt_def.variant(index);
-                let fields: Vec<_> = variant_def.fields.iter().map(|f| f.name).collect();
+                let fields: Vec<_> = variant_def.fields().iter().map(|f| f.name).collect();
                 (vec![build_variant_info(Some(variant_def.name), &fields, layout)], None)
             } else {
                 (vec![], None)
@@ -1115,7 +1115,7 @@ fn variant_info_for_adt<'tcx>(
                 .variants()
                 .iter_enumerated()
                 .map(|(i, variant_def)| {
-                    let fields: Vec<_> = variant_def.fields.iter().map(|f| f.name).collect();
+                    let fields: Vec<_> = variant_def.fields().iter().map(|f| f.name).collect();
                     build_variant_info(Some(variant_def.name), &fields, layout.for_variant(cx, i))
                 })
                 .collect();

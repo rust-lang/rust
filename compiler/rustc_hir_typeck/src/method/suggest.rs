@@ -2248,7 +2248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Adt(def, args) if !def.is_enum() => {
                 let variant = &def.non_enum_variant();
                 tcx.find_field_index(item_name, variant).map(|index| {
-                    let field = &variant.fields[index];
+                    let field = &variant.fields()[index];
                     let field_ty = field.ty(tcx, args);
                     (field, field_ty)
                 })
@@ -2658,7 +2658,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .variants()
                     .iter()
                     .flat_map(|variant| {
-                        let [field] = &variant.fields.raw[..] else {
+                        let [field] = &variant.fields().raw[..] else {
                             return None;
                         };
                         let field_ty = field.ty(tcx, args);

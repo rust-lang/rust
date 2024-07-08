@@ -52,7 +52,7 @@ pub(crate) fn render_variant_pat(
 ) -> Option<CompletionItem> {
     let _p = tracing::info_span!("render_variant_pat").entered();
 
-    let fields = variant.fields(ctx.db());
+    let fields = variant.fields()(ctx.db());
     let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, variant)?;
     let enum_ty = variant.parent_enum(ctx.db()).ty(ctx.db());
 

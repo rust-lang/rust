@@ -389,7 +389,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn variant_fields(&self, def: VariantDef) -> Vec<FieldDef> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
-        def.internal(&mut *tables, tcx).fields.iter().map(|f| f.stable(&mut *tables)).collect()
+        def.internal(&mut *tables, tcx).fields().iter().map(|f| f.stable(&mut *tables)).collect()
     }
 
     fn eval_target_usize(&self, cnst: &MirConst) -> Result<u64, Error> {

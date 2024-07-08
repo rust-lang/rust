@@ -361,7 +361,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     if !including_tuple_field.0 && variant.ctor_kind() == Some(CtorKind::Fn) {
                         return None;
                     }
-                    Some(variant.fields[field].name.to_string())
+                    Some(variant.fields()[field].name.to_string())
                 }
                 ty::Tuple(_) => Some(field.index().to_string()),
                 ty::Ref(_, ty, _) | ty::RawPtr(ty, _) => {

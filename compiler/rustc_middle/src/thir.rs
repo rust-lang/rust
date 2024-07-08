@@ -1147,13 +1147,13 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                             if let PatKind::Wild = p.pattern.kind {
                                 continue;
                             }
-                            let name = variant.fields[p.field].name;
+                            let name = variant.fields()[p.field].name;
                             write!(f, "{}{}: {}", start_or_comma(), name, p.pattern)?;
                             printed += 1;
                         }
 
                         let is_union = self.ty.ty_adt_def().is_some_and(|adt| adt.is_union());
-                        if printed < variant.fields.len() && (!is_union || printed == 0) {
+                        if printed < variant.fields().len() && (!is_union || printed == 0) {
                             write!(f, "{}..", start_or_comma())?;
                         }
 
@@ -1162,7 +1162,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 }
 
                 let num_fields =
-                    variant_and_name.as_ref().map_or(subpatterns.len(), |(v, _)| v.fields.len());
+                    variant_and_name.as_ref().map_or(subpatterns.len(), |(v, _)| v.fields().len());
                 if num_fields != 0 || variant_and_name.is_none() {
                     write!(f, "(")?;
                     for i in 0..num_fields {

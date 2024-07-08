@@ -296,8 +296,8 @@ fn structurally_same_type_impl<'tcx>(
                     }
 
                     // Grab a flattened representation of all fields.
-                    let a_fields = a_def.variants().iter().flat_map(|v| v.fields.iter());
-                    let b_fields = b_def.variants().iter().flat_map(|v| v.fields.iter());
+                    let a_fields = a_def.variants().iter().flat_map(|v| v.fields().iter());
+                    let b_fields = b_def.variants().iter().flat_map(|v| v.fields().iter());
 
                     // Perform a structural comparison for each field.
                     a_fields.eq_by(

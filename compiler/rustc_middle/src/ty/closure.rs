@@ -113,7 +113,7 @@ impl<'tcx> CapturedPlace<'tcx> {
                         write!(
                             &mut symbol,
                             "__{}",
-                            def.variant(variant).fields[idx].name.as_str(),
+                            def.variant(variant).fields()[idx].name.as_str(),
                         )
                         .unwrap();
                     }
@@ -315,7 +315,7 @@ pub fn place_to_string_for_capture<'tcx>(tcx: TyCtxt<'tcx>, place: &HirPlace<'tc
                     curr_string = format!(
                         "{}.{}",
                         curr_string,
-                        def.variant(variant).fields[idx].name.as_str()
+                        def.variant(variant).fields()[idx].name.as_str()
                     );
                 }
                 ty::Tuple(_) => {

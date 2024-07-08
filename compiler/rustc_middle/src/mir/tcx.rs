@@ -42,7 +42,7 @@ impl<'tcx> PlaceTy<'tcx> {
                         adt_def.variant(variant_index)
                     }
                 };
-                let field_def = &variant_def.fields[f];
+                let field_def = &variant_def.fields()[f];
                 field_def.ty(tcx, args)
             }
             ty::Tuple(tys) => tys[f.index()],

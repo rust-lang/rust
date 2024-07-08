@@ -269,7 +269,9 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 match layout.variants {
                     Variants::Single { index } => {
                         // Inside a variant
-                        PathElem::Field(def.variant(index).fields[FieldIdx::from_usize(field)].name)
+                        PathElem::Field(
+                            def.variant(index).fields()[FieldIdx::from_usize(field)].name,
+                        )
                     }
                     Variants::Multiple { .. } => bug!("we handled variants above"),
                 }
@@ -277,7 +279,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
 
             // other ADTs
             ty::Adt(def, _) => {
-                PathElem::Field(def.non_enum_variant().fields[FieldIdx::from_usize(field)].name)
+                PathElem::Field(def.non_enum_variant().fields()[FieldIdx::from_usize(field)].name)
             }
 
             // arrays/slices

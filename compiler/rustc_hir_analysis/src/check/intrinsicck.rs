@@ -69,7 +69,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::FnPtr(_) => Some(asm_ty_isize),
             ty::RawPtr(ty, _) if self.is_thin_ptr_ty(ty) => Some(asm_ty_isize),
             ty::Adt(adt, args) if adt.repr().simd() => {
-                let fields = &adt.non_enum_variant().fields;
+                let fields = &adt.non_enum_variant().fields();
                 let elem_ty = fields[FieldIdx::ZERO].ty(self.tcx, args);
 
                 let (size, ty) = match elem_ty.kind() {
@@ -139,7 +139,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::Never if is_input => return None,
             _ if ty.references_error() => return None,
             ty::Adt(adt, args) if self.tcx.is_lang_item(adt.did(), LangItem::MaybeUninit) => {
-                let fields = &adt.non_enum_variant().fields;
+                let fields = &adt.non_enum_variant().fields();
                 let ty = fields[FieldIdx::from_u32(1)].ty(self.tcx, args);
                 // FIXME: Are we just trying to map to the `T` in `MaybeUninit<T>`?
                 // If so, just get it from the args.
@@ -150,7 +150,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     ty.is_manually_drop(),
                     "expected first field of `MaybeUninit` to be `ManuallyDrop`"
                 );
-                let fields = &ty.non_enum_variant().fields;
+                let fields = &ty.non_enum_variant().fields();
                 let ty = fields[FieldIdx::ZERO].ty(self.tcx, args);
                 self.get_asm_ty(ty)
             }

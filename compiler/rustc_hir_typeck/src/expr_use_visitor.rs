@@ -714,7 +714,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         match self.cx.try_structurally_resolve_type(with_expr.span, with_place.place.ty()).kind() {
             ty::Adt(adt, args) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
-                for (f_index, with_field) in adt.non_enum_variant().fields.iter_enumerated() {
+                for (f_index, with_field) in adt.non_enum_variant().fields().iter_enumerated() {
                     let is_mentioned = fields.iter().any(|f| {
                         self.cx.typeck_results().opt_field_index(f.hir_id) == Some(f_index)
                     });
@@ -1555,7 +1555,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     ) -> Result<usize, Cx::Error> {
         let ty = self.cx.typeck_results().node_type(pat_hir_id);
         match self.cx.try_structurally_resolve_type(span, ty).kind() {
-            ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields.len()),
+            ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields().len()),
             _ => {
                 self.cx
                     .tcx()

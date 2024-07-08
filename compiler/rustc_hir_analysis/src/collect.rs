@@ -867,7 +867,7 @@ fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
             .unwrap_or(wrapped_discr),
         );
 
-        for f in &variant.fields {
+        for f in variant.fields() {
             tcx.ensure().generics_of(f.did);
             tcx.ensure().type_of(f.did);
             tcx.ensure().predicates_of(f.did);
@@ -886,7 +886,7 @@ fn find_field(tcx: TyCtxt<'_>, (def_id, ident): (DefId, Ident)) -> Option<FieldI
         return None;
     }
 
-    adt.non_enum_variant().fields.iter_enumerated().find_map(|(idx, field)| {
+    adt.non_enum_variant().fields().iter_enumerated().find_map(|(idx, field)| {
         if field.is_unnamed() {
             let field_ty = tcx.type_of(field.did).instantiate_identity();
             let adt_def = field_ty.ty_adt_def().expect("expect Adt for unnamed field");
@@ -1091,7 +1091,11 @@ fn lower_variant(
             vis: tcx.visibility(f.def_id),
         })
         .collect();
-    let recovered = matches!(def, hir::VariantData::Struct { recovered: Recovered::Yes(_), .. });
+    let recovered = match def {
+        hir::VariantData::Struct { recovered: Recovered::Yes(guard), .. } => Some(guard.clone()),
+        _ => None,
+    };
+
     ty::VariantDef::new(
         ident.name,
         variant_did.map(LocalDefId::to_def_id),

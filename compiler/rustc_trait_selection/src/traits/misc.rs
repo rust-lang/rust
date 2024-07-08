@@ -134,7 +134,7 @@ pub fn all_fields_implement_trait<'tcx>(
 
     let mut infringing = Vec::new();
     for variant in adt.variants() {
-        for field in &variant.fields {
+        for field in variant.fields() {
             // Do this per-field to get better error messages.
             let infcx = tcx.infer_ctxt().build();
             let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);

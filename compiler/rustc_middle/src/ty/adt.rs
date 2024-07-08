@@ -429,7 +429,7 @@ impl<'tcx> AdtDef<'tcx> {
     /// by this ADT (nested unnamed fields are not expanded).
     #[inline]
     pub fn all_fields(self) -> impl Iterator<Item = &'tcx FieldDef> + Clone {
-        self.variants().iter().flat_map(|v| v.fields.iter())
+        self.variants().iter().flat_map(|v| v.fields().into_iter())
     }
 
     /// Whether the ADT lacks fields. Note that this includes uninhabited enums,
@@ -449,7 +449,7 @@ impl<'tcx> AdtDef<'tcx> {
         }) {
             return false;
         }
-        self.variants().iter().all(|v| v.fields.is_empty())
+        self.variants().iter().all(|v| v.fields().is_empty())
     }
 
     /// Return a `VariantDef` given a variant id.

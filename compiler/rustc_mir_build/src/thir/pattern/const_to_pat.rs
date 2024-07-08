@@ -290,7 +290,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     subpatterns: self.field_pats(
                         fields.iter().copied().zip(
                             adt_def.variants()[variant_index]
-                                .fields
+                                .fields()
                                 .iter()
                                 .map(|field| field.ty(self.tcx(), args)),
                         ),
@@ -307,7 +307,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     subpatterns: self.field_pats(
                         cv.unwrap_branch().iter().copied().zip(
                             def.non_enum_variant()
-                                .fields
+                                .fields()
                                 .iter()
                                 .map(|field| field.ty(self.tcx(), args)),
                         ),

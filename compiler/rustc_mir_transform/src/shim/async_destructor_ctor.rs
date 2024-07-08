@@ -147,7 +147,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
             ty::Tuple(elem_tys) => self.build_chain(None, elem_tys.iter()),
             ty::Adt(adt_def, args) if adt_def.is_struct() => {
-                let field_tys = adt_def.non_enum_variant().fields.iter().map(|f| f.ty(tcx, args));
+                let field_tys = adt_def.non_enum_variant().fields().iter().map(|f| f.ty(tcx, args));
                 self.build_chain(surface_drop_kind(), field_tys)
             }
             ty::Closure(_, args) => self.build_chain(None, args.as_closure().upvar_tys().iter()),
@@ -208,7 +208,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             let variant = adt_def.variant(variant_idx);
 
             let mut chain = None;
-            for (field_idx, field) in variant.fields.iter_enumerated() {
+            for (field_idx, field) in variant.fields().iter_enumerated() {
                 let field_ty = field.ty(tcx, args);
                 self.put_variant_field(variant.name, variant_idx, field_idx, field_ty);
                 let defer = self.combine_defer(field_ty);

@@ -6,12 +6,5 @@ LL |     A { a, b: usize }
    |     |
    |     while parsing this struct
 
-error[E0026]: variant `Foo::A` does not have fields named `a`, `b`
-  --> $DIR/recovered-struct-variant.rs:11:17
-   |
-LL |         Foo::A {a, b} => {}
-   |                 ^  ^ variant `Foo::A` does not have these fields
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0026`.

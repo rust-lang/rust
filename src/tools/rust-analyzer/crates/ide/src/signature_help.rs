@@ -452,7 +452,7 @@ fn signature_help_for_tuple_struct_pat(
             en.name(db).display(db),
             variant.name(db).display(db)
         );
-        variant.fields(db)
+        variant.fields()(db)
     } else {
         let adt = match path_res {
             PathResolution::SelfType(imp) => imp.self_ty(db).as_adt()?,
@@ -563,7 +563,7 @@ fn signature_help_for_record_(
     let db = sema.db;
     let path_res = sema.resolve_path(path)?;
     if let PathResolution::Def(ModuleDef::Variant(variant)) = path_res {
-        fields = variant.fields(db);
+        fields = variant.fields()(db);
         let en = variant.parent_enum(db);
 
         res.doc = en.docs(db);

@@ -1077,7 +1077,7 @@ fn check_type_defn<'tcx>(
 
         for variant in variants.iter() {
             // All field types must be well-formed.
-            for field in &variant.fields {
+            for field in variant.fields_checked()? {
                 let field_id = field.did.expect_local();
                 let hir::FieldDef { ty: hir_ty, .. } =
                     tcx.hir_node_by_def_id(field_id).expect_field();
@@ -1104,12 +1104,12 @@ fn check_type_defn<'tcx>(
                 }
             };
             // All fields (except for possibly the last) should be sized.
-            let all_sized = all_sized || variant.fields.is_empty() || needs_drop_copy();
+            let all_sized = all_sized || variant.fields().is_empty() || needs_drop_copy();
             let unsized_len = if all_sized { 0 } else { 1 };
             for (idx, field) in
-                variant.fields.raw[..variant.fields.len() - unsized_len].iter().enumerate()
+                variant.fields().raw[..variant.fields().len() - unsized_len].iter().enumerate()
             {
-                let last = idx == variant.fields.len() - 1;
+                let last = idx == variant.fields().len() - 1;
                 let field_id = field.did.expect_local();
                 let hir::FieldDef { ty: hir_ty, .. } =
                     tcx.hir_node_by_def_id(field_id).expect_field();

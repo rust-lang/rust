@@ -342,7 +342,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
-                let field_names = adt_def.variant(variant_index).fields.indices();
+                let field_names = adt_def.variant(variant_index).fields().indices();
 
                 let fields = if let Some(FruInfo { base, field_types }) = base {
                     let place_builder = unpack!(block = this.as_place_builder(block, *base));

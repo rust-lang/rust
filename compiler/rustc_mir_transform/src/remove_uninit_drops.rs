@@ -125,7 +125,7 @@ fn is_needs_drop_and_init<'tcx>(
                 };
 
                 variant
-                    .fields
+                    .fields()
                     .iter()
                     .enumerate()
                     .map(|(f, field)| (FieldIdx::from_usize(f), field.ty(tcx, args), mpi))
@@ -149,7 +149,7 @@ fn variant_needs_drop<'tcx>(
     args: GenericArgsRef<'tcx>,
     variant: &VariantDef,
 ) -> bool {
-    variant.fields.iter().any(|field| {
+    variant.fields().iter().any(|field| {
         let f_ty = field.ty(tcx, args);
         f_ty.needs_drop(tcx, param_env)
     })

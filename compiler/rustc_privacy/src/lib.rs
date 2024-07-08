@@ -992,7 +992,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                 // If the expression uses FRU we need to make sure all the unmentioned fields
                 // are checked for privacy (RFC 736). Rather than computing the set of
                 // unmentioned fields, just check them all.
-                for (vf_index, variant_field) in variant.fields.iter_enumerated() {
+                for (vf_index, variant_field) in variant.fields().iter_enumerated() {
                     let field = fields
                         .iter()
                         .find(|f| self.typeck_results().field_index(f.hir_id) == vf_index);
@@ -1006,7 +1006,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                 for field in fields {
                     let (hir_id, use_ctxt, span) = (field.hir_id, field.ident.span, field.span);
                     let index = self.typeck_results().field_index(field.hir_id);
-                    self.check_field(hir_id, use_ctxt, span, adt, &variant.fields[index], false);
+                    self.check_field(hir_id, use_ctxt, span, adt, &variant.fields()[index], false);
                 }
             }
         }
@@ -1022,7 +1022,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
             for field in fields {
                 let (hir_id, use_ctxt, span) = (field.hir_id, field.ident.span, field.span);
                 let index = self.typeck_results().field_index(field.hir_id);
-                self.check_field(hir_id, use_ctxt, span, adt, &variant.fields[index], false);
+                self.check_field(hir_id, use_ctxt, span, adt, &variant.fields()[index], false);
             }
         }
 

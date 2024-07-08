@@ -1092,7 +1092,7 @@ impl<'tcx> Ty<'tcx> {
             Adt(def, args) => {
                 assert!(def.repr().simd(), "`simd_size_and_type` called on non-SIMD type");
                 let variant = def.non_enum_variant();
-                let f0_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
+                let f0_ty = variant.fields()[FieldIdx::ZERO].ty(tcx, args);
 
                 match f0_ty.kind() {
                     // If the first field is an array, we assume it is the only field and its
@@ -1106,7 +1106,7 @@ impl<'tcx> Ty<'tcx> {
                     }
                     // Otherwise, the fields of this Adt are the SIMD components (and we assume they
                     // all have the same type).
-                    _ => (variant.fields.len() as u64, f0_ty),
+                    _ => (variant.fields().len() as u64, f0_ty),
                 }
             }
             _ => bug!("`simd_size_and_type` called on invalid type"),
@@ -1500,7 +1500,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Adt(adt_def, args) if adt_def.is_enum() || adt_def.is_struct() => self
                 .adt_async_destructor_ty(
                     tcx,
-                    adt_def.variants().iter().map(|v| v.fields.iter().map(|f| f.ty(tcx, args))),
+                    adt_def.variants().iter().map(|v| v.fields().iter().map(|f| f.ty(tcx, args))),
                 ),
             ty::Tuple(tys) => self.adt_async_destructor_ty(tcx, iter::once(tys)),
             ty::Closure(_, args) => {

@@ -1679,7 +1679,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let adt_kind = adt.adt_kind();
 
         let mut remaining_fields = variant
-            .fields
+            .fields()
             .iter_enumerated()
             .map(|(i, field)| (field.ident(tcx).normalize_to_macros_2_0(), (i, field)))
             .collect::<UnordMap<_, _>>();
@@ -1688,7 +1688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut error_happened = false;
 
-        if variant.fields.len() != remaining_fields.len() {
+        if variant.fields().len() != remaining_fields.len() {
             // Some field is defined more than once. Make sure we don't try to
             // instantiate this struct in static/const context.
             let guar =
@@ -1788,7 +1788,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // needs constrained to be compatible with the struct
                     // type we expect from the expectation value.
                     let fru_tys = variant
-                        .fields
+                        .fields()
                         .iter()
                         .map(|f| {
                             let fru_ty = self
@@ -1870,7 +1870,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
                 match adt_ty.kind() {
                     ty::Adt(adt, args) if adt.is_struct() => variant
-                        .fields
+                        .fields()
                         .iter()
                         .map(|f| self.normalize(expr.span, f.ty(self.tcx, args)))
                         .collect(),
@@ -1885,7 +1885,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if adt_kind != AdtKind::Union && !remaining_fields.is_empty() {
             debug!(?remaining_fields);
             let private_fields: Vec<&ty::FieldDef> = variant
-                .fields
+                .fields()
                 .iter()
                 .filter(|field| !field.vis.is_accessible_from(tcx.parent_module(expr.hir_id), tcx))
                 .collect();
@@ -1992,7 +1992,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), [range_start, range_end], _) =
             last_expr_field.expr.kind
             && let variant_field =
-                variant.fields.iter().find(|field| field.ident(self.tcx) == last_expr_field.ident)
+                variant.fields().iter().find(|field| field.ident(self.tcx) == last_expr_field.ident)
             && let range_def_id = self.tcx.lang_items().range_struct()
             && variant_field
                 .and_then(|field| field.ty(self.tcx, args).ty_adt_def())
@@ -2299,7 +2299,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         skip_fields: &[hir::ExprField<'_>],
     ) -> Vec<Symbol> {
         variant
-            .fields
+            .fields()
             .iter()
             .filter(|field| {
                 skip_fields.iter().all(|&skip| skip.ident.name != field.name)
@@ -2347,7 +2347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut index = None;
                     while let Some(idx) = self.tcx.find_field((adt_def.did(), ident)) {
                         let &mut first_idx = index.get_or_insert(idx);
-                        let field = &adt_def.non_enum_variant().fields[idx];
+                        let field = &adt_def.non_enum_variant().fields()[idx];
                         let field_ty = self.field_ty(expr.span, field, args);
                         if let Some(ty) = last_ty {
                             nested_fields.push((ty, idx));
@@ -2520,7 +2520,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_label(field_ident.span, "unknown field");
             return;
         }
-        if !def.non_enum_variant().fields.iter().any(|field| field.ident(self.tcx) == field_ident) {
+        if !def.non_enum_variant().fields().iter().any(|field| field.ident(self.tcx) == field_ident)
+        {
             err.span_label(field_ident.span, "unknown field");
             return;
         }
@@ -2572,7 +2573,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Adt(def, _) = output_ty.kind()
                 && !def.is_enum()
             {
-                def.non_enum_variant().fields.iter().any(|field| {
+                def.non_enum_variant().fields().iter().any(|field| {
                     field.ident(self.tcx) == ident
                         && field.vis.is_accessible_from(expr.hir_id.owner.def_id, self.tcx)
                 })
@@ -2682,7 +2683,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .iter()
                 .next()
                 .unwrap()
-                .fields
+                .fields()
                 .iter()
                 .any(|f| f.ident(self.tcx) == field)
         {
@@ -2874,7 +2875,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 match base_t.kind() {
                     ty::Adt(base_def, args) if !base_def.is_enum() => {
                         let tcx = self.tcx;
-                        let fields = &base_def.non_enum_variant().fields;
+                        let fields = &base_def.non_enum_variant().fields();
                         // Some struct, e.g. some that impl `Deref`, have all private fields
                         // because you're expected to deref them to access the _real_ fields.
                         // This, for example, will help us suggest accessing a field through a `Box<T>`.
@@ -3349,7 +3350,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.adjust_ident_and_get_scope(subfield, variant.def_id, block);
 
                     let Some((subindex, field)) = variant
-                        .fields
+                        .fields()
                         .iter_enumerated()
                         .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == subident)
                     else {
@@ -3390,7 +3391,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (ident, def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
 
-                    let fields = &container_def.non_enum_variant().fields;
+                    let fields = &container_def.non_enum_variant().fields();
                     if let Some((index, field)) = fields
                         .iter_enumerated()
                         .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == ident)

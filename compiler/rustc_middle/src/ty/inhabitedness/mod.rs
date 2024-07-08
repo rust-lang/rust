@@ -87,7 +87,7 @@ impl<'tcx> VariantDef {
         }
         InhabitedPredicate::all(
             tcx,
-            self.fields.iter().map(|field| {
+            self.fields().iter().map(|field| {
                 let pred = tcx.type_of(field.did).instantiate_identity().inhabited_predicate(tcx);
                 if adt.is_enum() {
                     return pred;

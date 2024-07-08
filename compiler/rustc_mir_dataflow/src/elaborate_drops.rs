@@ -268,7 +268,7 @@ where
         args: GenericArgsRef<'tcx>,
     ) -> Vec<(Place<'tcx>, Option<D::Path>)> {
         variant
-            .fields
+            .fields()
             .iter()
             .enumerate()
             .map(|(i, f)| {
@@ -422,9 +422,9 @@ where
     ) -> BasicBlock {
         // drop glue is sent straight to codegen
         // box cannot be directly dereferenced
-        let unique_ty = adt.non_enum_variant().fields[FieldIdx::ZERO].ty(self.tcx(), args);
+        let unique_ty = adt.non_enum_variant().fields()[FieldIdx::ZERO].ty(self.tcx(), args);
         let unique_variant = unique_ty.ty_adt_def().unwrap().non_enum_variant();
-        let nonnull_ty = unique_variant.fields[FieldIdx::ZERO].ty(self.tcx(), args);
+        let nonnull_ty = unique_variant.fields()[FieldIdx::ZERO].ty(self.tcx(), args);
         let ptr_ty = Ty::new_imm_ptr(self.tcx(), args[0].expect_ty());
 
         let unique_place = self.tcx().mk_place_field(self.place, FieldIdx::ZERO, unique_ty);
@@ -549,7 +549,7 @@ where
 
                 let param_env = self.elaborator.param_env();
                 let have_field_with_drop_glue = variant
-                    .fields
+                    .fields()
                     .iter()
                     .any(|field| field.ty(tcx, args).needs_drop(tcx, param_env));
                 if have_field_with_drop_glue {

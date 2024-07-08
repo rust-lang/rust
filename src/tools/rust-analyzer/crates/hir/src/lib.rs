@@ -4106,7 +4106,7 @@ impl Type {
                     adt_datum_bound
                         .variants
                         .into_iter()
-                        .flat_map(|variant| variant.fields.into_iter())
+                        .flat_map(|variant| variant.fields().into_iter())
                         .any(|ty| go(db, krate, &ty))
                         || substitution
                             .iter(Interner)

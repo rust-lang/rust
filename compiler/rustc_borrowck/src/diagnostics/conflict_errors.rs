@@ -1020,7 +1020,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             return;
         };
         let mut sugg = vec![];
-        for field in &variant.fields {
+        for field in variant.fields() {
             // In practice unless there are more than one field with the same type, we'll be
             // suggesting a single field at a type, because we don't aggregate multiple borrow
             // checker errors involving the functional record update sytnax into a single one.
@@ -1034,7 +1034,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         }
         let (span, sugg) = match fields {
             [.., last] => (
-                if final_field_count == variant.fields.len() {
+                if final_field_count == variant.fields().len() {
                     // We'll remove the `..base` as there aren't any fields left.
                     last.span.shrink_to_hi().with_hi(base.span.hi())
                 } else {
@@ -1045,7 +1045,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             // Account for no fields in suggestion span.
             [] => (
                 expr.span.with_lo(struct_qpath.span().hi()),
-                if final_field_count == variant.fields.len() {
+                if final_field_count == variant.fields().len() {
                     // We'll remove the `..base` as there aren't any fields left.
                     format!(" {{ {} }}", sugg.join(", "))
                 } else {
@@ -1185,7 +1185,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             && def.did().as_local().is_some()
             && def.variants().iter().all(|variant| {
                 variant
-                    .fields
+                    .fields()
                     .iter()
                     .all(|field| self.implements_clone(field.ty(self.infcx.tcx, args)))
             })

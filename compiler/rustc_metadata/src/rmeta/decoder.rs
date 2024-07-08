@@ -1133,7 +1133,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     .collect(),
                 adt_kind,
                 parent_did,
-                false,
+                None,
                 data.is_non_exhaustive,
                 // FIXME: unnamed fields in crate metadata is unimplemented yet.
                 false,

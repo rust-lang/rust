@@ -384,7 +384,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let identity_args = ty::GenericArgs::identity_for_item(self.tcx, def_id);
         let fields_referencing_param: Vec<_> = def
             .variant_with_id(variant_def_id)
-            .fields
+            .fields()
             .iter()
             .filter(|field| {
                 let field_ty = field.ty(self.tcx, identity_args);
@@ -880,7 +880,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let Some((field_index, field_type)) = is_iterator_singleton(
                 in_ty_adt
                     .variant_with_id(variant_def_id)
-                    .fields
+                    .fields()
                     .iter()
                     .map(|field| field.ty(self.tcx, *in_ty_adt_generic_args))
                     .enumerate()

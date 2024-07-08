@@ -58,7 +58,7 @@ fn process_variant(variant: &syn::Variant) -> TokenStream {
 /// internal field data.
 fn fields_in_variant(variant: &syn::Variant) -> TokenStream {
     // With thanks to https://stackoverflow.com/a/65182902
-    match &variant.fields {
+    match &variant.fields() {
         syn::Fields::Unnamed(_) => quote_spanned! { variant.span() => (..) },
         syn::Fields::Unit => quote_spanned! { variant.span() => },
         syn::Fields::Named(_) => quote_spanned! { variant.span() => {..} },

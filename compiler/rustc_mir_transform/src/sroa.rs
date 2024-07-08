@@ -78,7 +78,7 @@ fn escaping_locals<'tcx>(
             }
             // We already excluded unions and enums, so this ADT must have one variant
             let variant = def.variant(FIRST_VARIANT);
-            if variant.fields.len() > 1 {
+            if variant.fields().len() > 1 {
                 // If this has more than one field, it cannot be a wrapper that only provides a
                 // niche, so we do not want to automatically exclude it.
                 return false;

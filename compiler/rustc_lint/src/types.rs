@@ -1013,7 +1013,7 @@ pub fn transparent_newtype_field<'a, 'tcx>(
     variant: &'a ty::VariantDef,
 ) -> Option<&'a ty::FieldDef> {
     let param_env = tcx.param_env(variant.def_id);
-    variant.fields.iter().find(|field| {
+    variant.fields().iter().find(|field| {
         let field_ty = tcx.type_of(field.did).instantiate_identity();
         let is_1zst = tcx.layout_of(param_env.and(field_ty)).is_ok_and(|layout| layout.is_1zst());
         !is_1zst
@@ -1141,7 +1141,7 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
     debug!("is_repr_nullable_ptr(tcx, ty = {:?})", ty);
     if let ty::Adt(ty_def, args) = ty.kind() {
         let field_ty = match &ty_def.variants().raw[..] {
-            [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
+            [var_one, var_two] => match (&var_one.fields().raw[..], &var_two.fields().raw[..]) {
                 ([], [field]) | ([field], []) => field.ty(tcx, args),
                 ([field1], [field2]) => {
                     if !tcx.features().result_ffi_guarantees {
@@ -1263,8 +1263,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         };
 
         // We can't completely trust `repr(C)` markings, so make sure the fields are actually safe.
-        let mut all_phantom = !variant.fields.is_empty();
-        for field in &variant.fields {
+        let mut all_phantom = !variant.fields().is_empty();
+        for field in variant.fields() {
             all_phantom &= match self.check_field_type_for_ffi(cache, field, args) {
                 FfiSafe => false,
                 // `()` fields are FFI-safe!
@@ -1346,7 +1346,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
-                        if def.non_enum_variant().fields.is_empty() {
+                        if def.non_enum_variant().fields().is_empty() {
                             return FfiUnsafe {
                                 ty,
                                 reason: if def.is_struct() {

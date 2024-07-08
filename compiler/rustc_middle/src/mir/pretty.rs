@@ -1075,7 +1075,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                                 Some(CtorKind::Fn) => fmt_tuple(fmt, &name),
                                 None => {
                                     let mut struct_fmt = fmt.debug_struct(&name);
-                                    for (field, place) in iter::zip(&variant_def.fields, places) {
+                                    for (field, place) in iter::zip(variant_def.fields(), places) {
                                         struct_fmt.field(field.name.as_str(), place);
                                     }
                                     struct_fmt.finish()
@@ -1831,7 +1831,7 @@ fn pretty_print_const_value_tcx<'tcx>(
                             None => {
                                 fmt.write_str(" {{ ")?;
                                 let mut first = true;
-                                for (field_def, (ct, ty)) in iter::zip(&variant_def.fields, fields)
+                                for (field_def, (ct, ty)) in iter::zip(variant_def.fields(), fields)
                                 {
                                     if !first {
                                         fmt.write_str(", ")?;

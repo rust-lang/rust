@@ -345,12 +345,12 @@ fn write_variants(
             match variant.kind(f.db) {
                 StructKind::Tuple => {
                     let fields_str =
-                        if variant.fields(f.db).is_empty() { "()" } else { "( /* … */ )" };
+                        if variant.fields()(f.db).is_empty() { "()" } else { "( /* … */ )" };
                     f.write_str(fields_str)?;
                 }
                 StructKind::Record => {
                     let fields_str =
-                        if variant.fields(f.db).is_empty() { " {}" } else { " { /* … */ }" };
+                        if variant.fields()(f.db).is_empty() { " {}" } else { " { /* … */ }" };
                     f.write_str(fields_str)?;
                 }
                 StructKind::Unit => {}

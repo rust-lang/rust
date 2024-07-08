@@ -325,7 +325,7 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
     };
 
     // The last field of the structure has to exist and contain type/const parameters.
-    let Some((tail_field, prefix_fields)) = def.non_enum_variant().fields.raw.split_last() else {
+    let Some((tail_field, prefix_fields)) = def.non_enum_variant().fields().raw.split_last() else {
         return BitSet::new_empty(num_params);
     };
 

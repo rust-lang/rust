@@ -288,7 +288,7 @@ impl<'a> NormalizedPat<'a> {
                     front
                         .iter()
                         .map(|pat| Self::from_pat(cx, arena, pat))
-                        .chain(iter::repeat_with(|| Self::Wild).take(variant.fields.len() - pats.len()))
+                        .chain(iter::repeat_with(|| Self::Wild).take(variant.fields().len() - pats.len()))
                         .chain(back.iter().map(|pat| Self::from_pat(cx, arena, pat))),
                 );
                 Self::Tuple(var_id, pats)

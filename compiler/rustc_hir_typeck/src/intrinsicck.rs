@@ -20,15 +20,15 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         let one = VariantIdx::new(1);
         let zero = VariantIdx::ZERO;
 
-        if def.variant(zero).fields.is_empty() {
+        if def.variant(zero).fields().is_empty() {
             data_idx = one;
-        } else if def.variant(one).fields.is_empty() {
+        } else if def.variant(one).fields().is_empty() {
             data_idx = zero;
         } else {
             return ty;
         }
 
-        if def.variant(data_idx).fields.len() == 1 {
+        if def.variant(data_idx).fields().len() == 1 {
             return def.variant(data_idx).single_field().ty(tcx, args);
         }
     }

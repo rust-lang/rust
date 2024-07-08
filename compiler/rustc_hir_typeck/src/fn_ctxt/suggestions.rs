@@ -2157,7 +2157,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .variants()
                 .iter()
                 .filter(|variant| {
-                    variant.fields.len() == 1
+                    variant.fields().len() == 1
                 })
                 .filter_map(|variant| {
                     let sole_field = &variant.single_field();
