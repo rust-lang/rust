@@ -4,6 +4,7 @@
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
+#![feature(is_sorted)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
