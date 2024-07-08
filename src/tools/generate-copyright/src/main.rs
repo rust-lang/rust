@@ -125,13 +125,19 @@ fn render_deps<'a, 'b>(
     deps: impl Iterator<Item = &'a cargo_metadata::Dependency>,
     buffer: &'b mut Vec<u8>,
 ) -> Result<(), Error> {
+    writeln!(buffer, "| Package | License | URL | Authors |")?;
+    writeln!(buffer, "|---------|---------|-----|---------|")?;
     for dep in deps {
-        let authors_list = dep.authors.join(", ");
+        let authors_list = dep.authors.join(", ").replace("<", "\\<").replace(">", "\\>");
         let url = format!("https://crates.io/crates/{}/{}", dep.name, dep.version);
         writeln!(
             buffer,
-            "* [{} {}]({}) ({}), by {}",
-            dep.name, dep.version, url, dep.license, authors_list
+            "| {name} {version} | {license} | <{url}> | {authors} |",
+            name = dep.name,
+            version = dep.version,
+            license = dep.license,
+            url = url,
+            authors = authors_list
         )?;
     }
     Ok(())
