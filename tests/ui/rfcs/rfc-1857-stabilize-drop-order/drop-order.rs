@@ -195,7 +195,7 @@ fn test_drop_list() {
     let dropped_fields = Rc::new(RefCell::new(Vec::new()));
     let cloned = AssertUnwindSafe(dropped_fields.clone());
     panic::catch_unwind(|| {
-        vec![
+        let _ = vec![
             PushOnDrop::new(2, cloned.clone()),
             PushOnDrop::new(1, cloned.clone()),
             panic!("this panic is caught :D")

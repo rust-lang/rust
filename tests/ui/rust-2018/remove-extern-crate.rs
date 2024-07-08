@@ -28,7 +28,7 @@ fn main() {
     with_visibility::foo();
     remove_extern_crate::foo!();
     bar!();
-    alloc::vec![5];
+    let _ = alloc::vec![5];
 }
 
 mod another {

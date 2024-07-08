@@ -1010,8 +1010,12 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! format_args {
-        ($fmt:expr) => {{ /* compiler built-in */ }};
-        ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
+        ($fmt:expr) => {
+            $crate::hint::must_use({ /* compiler built-in */ })
+        };
+        ($fmt:expr, $($args:tt)*) => {
+            $crate::hint::must_use({ /* compiler built-in */ })
+        };
     }
 
     /// Same as [`format_args`], but can be used in some const contexts.
@@ -1081,8 +1085,12 @@ pub(crate) mod builtin {
     #[macro_export]
     #[rustc_diagnostic_item = "env_macro"] // useful for external lints
     macro_rules! env {
-        ($name:expr $(,)?) => {{ /* compiler built-in */ }};
-        ($name:expr, $error_msg:expr $(,)?) => {{ /* compiler built-in */ }};
+        ($name:expr $(,)?) => {
+            $crate::hint::must_use({ /* compiler built-in */ })
+        };
+        ($name:expr, $error_msg:expr $(,)?) => {
+            $crate::hint::must_use({ /* compiler built-in */ })
+        };
     }
 
     /// Optionally inspects an environment variable at compile time.
@@ -1112,7 +1120,9 @@ pub(crate) mod builtin {
     #[macro_export]
     #[rustc_diagnostic_item = "option_env_macro"] // useful for external lints
     macro_rules! option_env {
-        ($name:expr $(,)?) => {{ /* compiler built-in */ }};
+        ($name:expr $(,)?) => {
+            $crate::hint::must_use({ /* compiler built-in */ })
+        };
     }
 
     /// Concatenates identifiers into one identifier.
@@ -1174,7 +1184,9 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! concat_bytes {
-        ($($e:literal),+ $(,)?) => {{ /* compiler built-in */ }};
+        ($($e:literal),+ $(,)?) => {
+            $crate::hint::must_use({ /* compiler built-in */ })
+        };
     }
 
     /// Concatenates literals into a static string slice.
@@ -1196,7 +1208,9 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! concat {
-        ($($e:expr),* $(,)?) => {{ /* compiler built-in */ }};
+        ($($e:expr),* $(,)?) => {
+            $crate::hint::must_use({ /* compiler built-in */ })
+        };
     }
 
     /// Expands to the line number on which it was invoked.
@@ -1222,7 +1236,7 @@ pub(crate) mod builtin {
     #[macro_export]
     macro_rules! line {
         () => {
-            /* compiler built-in */
+            $crate::hint::must_use({ /* compiler built-in */ })
         };
     }
 
@@ -1261,7 +1275,7 @@ pub(crate) mod builtin {
     #[macro_export]
     macro_rules! column {
         () => {
-            /* compiler built-in */
+            $crate::hint::must_use(/* compiler built-in */)
         };
     }
 
@@ -1286,7 +1300,7 @@ pub(crate) mod builtin {
     #[macro_export]
     macro_rules! file {
         () => {
-            /* compiler built-in */
+            $crate::hint::must_use(/* compiler built-in */)
         };
     }
 
@@ -1310,7 +1324,7 @@ pub(crate) mod builtin {
     #[macro_export]
     macro_rules! stringify {
         ($($t:tt)*) => {
-            /* compiler built-in */
+            $crate::hint::must_use(/* compiler built-in */)
         };
     }
 
@@ -1351,7 +1365,9 @@ pub(crate) mod builtin {
     #[macro_export]
     #[cfg_attr(not(test), rustc_diagnostic_item = "include_str_macro")]
     macro_rules! include_str {
-        ($file:expr $(,)?) => {{ /* compiler built-in */ }};
+        ($file:expr $(,)?) => {
+            $crate::hint::must_use({ /* compiler built-in */ })
+        };
     }
 
     /// Includes a file as a reference to a byte array.
@@ -1391,7 +1407,9 @@ pub(crate) mod builtin {
     #[macro_export]
     #[cfg_attr(not(test), rustc_diagnostic_item = "include_bytes_macro")]
     macro_rules! include_bytes {
-        ($file:expr $(,)?) => {{ /* compiler built-in */ }};
+        ($file:expr $(,)?) => {
+            $crate::hint::must_use({ /* compiler built-in */ })
+        };
     }
 
     /// Expands to a string that represents the current module path.
@@ -1449,7 +1467,7 @@ pub(crate) mod builtin {
     #[macro_export]
     macro_rules! cfg {
         ($($cfg:tt)*) => {
-            /* compiler built-in */
+            $crate::hint::must_use(/* compiler built-in */)
         };
     }
 

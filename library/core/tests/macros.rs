@@ -39,7 +39,7 @@ fn assert_ne_trailing_comma() {
 #[rustfmt::skip]
 #[test]
 fn matches_leading_pipe() {
-    matches!(1, | 1 | 2 | 3);
+    let _ = matches!(1, | 1 | 2 | 3);
 }
 
 #[test]

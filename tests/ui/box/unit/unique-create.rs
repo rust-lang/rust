@@ -7,5 +7,5 @@ pub fn main() {
 }
 
 fn vec() {
-    vec![0];
+    let _ = vec![0];
 }
