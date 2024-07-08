@@ -1,4 +1,3 @@
-use std::fmt::Debug;
 use std::ops::Deref;
 
 use rustc_type_ir::fold::TypeFoldable;
@@ -98,14 +97,6 @@ pub trait SolverDelegate:
     );
 
     fn reset_opaque_types(&self);
-
-    fn trait_ref_is_knowable<E: Debug>(
-        &self,
-        trait_ref: ty::TraitRef<Self::Interner>,
-        lazily_normalize_ty: impl FnMut(
-            <Self::Interner as Interner>::Ty,
-        ) -> Result<<Self::Interner as Interner>::Ty, E>,
-    ) -> Result<bool, E>;
 
     fn fetch_eligible_assoc_item(
         &self,

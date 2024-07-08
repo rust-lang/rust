@@ -514,6 +514,8 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;
 
     fn sized_constraint(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
+
+    fn is_fundamental(self) -> bool;
 }
 
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
@@ -558,6 +560,8 @@ pub trait EvaluationCache<I: Interner> {
 }
 
 pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
+    fn is_local(self) -> bool;
+
     fn as_local(self) -> Option<I::LocalDefId>;
 }
 

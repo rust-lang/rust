@@ -1201,6 +1201,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
 
     let is_marker = tcx.has_attr(def_id, sym::marker);
     let rustc_coinductive = tcx.has_attr(def_id, sym::rustc_coinductive);
+    let is_fundamental = tcx.has_attr(def_id, sym::fundamental);
 
     // FIXME: We could probably do way better attribute validation here.
     let mut skip_array_during_method_dispatch = false;
@@ -1352,6 +1353,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         has_auto_impl: is_auto,
         is_marker,
         is_coinductive: rustc_coinductive || is_auto,
+        is_fundamental,
         skip_array_during_method_dispatch,
         skip_boxed_slice_during_method_dispatch,
         specialization_kind,
