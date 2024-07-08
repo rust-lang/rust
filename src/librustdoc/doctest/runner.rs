@@ -107,13 +107,16 @@ impl DocTestRunner {
 {output}
 
 mod __doctest_mod {{
-    pub static mut BINARY_PATH: Option<std::path::PathBuf> = None;
+    use std::sync::OnceLock;
+    use std::path::PathBuf;
+
+    pub static BINARY_PATH: OnceLock<PathBuf> = OnceLock::new();
     pub const RUN_OPTION: &str = \"*doctest-inner-test\";
     pub const BIN_OPTION: &str = \"*doctest-bin-path\";
 
     #[allow(unused)]
-    pub fn get_doctest_path() -> Option<&'static std::path::Path> {{
-        unsafe {{ self::BINARY_PATH.as_deref() }}
+    pub fn doctest_path() -> Option<&'static PathBuf> {{
+        self::BINARY_PATH.get()
     }}
 
     #[allow(unused)]
@@ -145,7 +148,9 @@ while let Some(arg) = args.next() {{
         let Some(binary) = args.next() else {{
             panic!(\"missing argument after `{{}}`\", __doctest_mod::BIN_OPTION);
         }};
-        unsafe {{ crate::__doctest_mod::BINARY_PATH = Some(binary.into()); }}
+        if crate::__doctest_mod::BINARY_PATH.set(binary.into()).is_err() {{
+            panic!(\"`{{}}` option was used more than once\", bin_marker.to_string_lossy());
+        }}
         return std::process::Termination::report(test::test_main(test_args, Vec::from(TESTS), None));
     }} else if arg == test_marker {{
         let Some(nb_test) = args.next() else {{
@@ -254,7 +259,7 @@ test::StaticTestFn(
         } else {
             format!(
                 "
-if let Some(bin_path) = crate::__doctest_mod::get_doctest_path() {{
+if let Some(bin_path) = crate::__doctest_mod::doctest_path() {{
     test::assert_test_result(crate::__doctest_mod::doctest_runner(bin_path, {id}))
 }} else {{
     test::assert_test_result(self::main())
