@@ -1713,23 +1713,12 @@ fn receiver_is_valid<'tcx>(
     let cause =
         ObligationCause::new(span, wfcx.body_def_id, traits::ObligationCauseCode::MethodReceiver);
 
-    // Special case `receiver == self_ty`, which doesn't necessarily require the `Receiver` lang item.
-    if let Ok(()) = wfcx.infcx.commit_if_ok(|_| {
-        let ocx = ObligationCtxt::new(wfcx.infcx);
-        ocx.eq(&cause, wfcx.param_env, self_ty, receiver_ty)?;
-        if ocx.select_all_or_error().is_empty() { Ok(()) } else { Err(NoSolution) }
-    }) {
-        return true;
-    }
-
     let mut autoderef = Autoderef::new(infcx, wfcx.param_env, wfcx.body_def_id, span, receiver_ty);
 
     // The `arbitrary_self_types` feature allows raw pointer receivers like `self: *const Self`.
     if arbitrary_self_types_enabled {
         autoderef = autoderef.include_raw_pointers();
     }
-
-    let receiver_trait_def_id = tcx.require_lang_item(LangItem::Receiver, Some(span));
 
     // Keep dereferencing `receiver_ty` until we get to `self_ty`.
     while let Some((potential_self_ty, _)) = autoderef.next() {
@@ -1752,6 +1741,8 @@ fn receiver_is_valid<'tcx>(
         // Without `feature(arbitrary_self_types)`, we require that each step in the
         // deref chain implement `receiver`.
         if !arbitrary_self_types_enabled {
+            let receiver_trait_def_id = tcx.require_lang_item(LangItem::Receiver, Some(span));
+
             if !receiver_is_implemented(
                 wfcx,
                 receiver_trait_def_id,
