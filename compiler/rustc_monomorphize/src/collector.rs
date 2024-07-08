@@ -755,7 +755,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         };
 
         match terminator.kind {
-            mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. } => {
+            mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. }
+            | mir::TerminatorKind::TailCall { ref func, ref args, ref fn_span } => {
                 let callee_ty = func.ty(self.body, tcx);
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Fn(callee_ty));
