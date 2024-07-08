@@ -48,15 +48,11 @@ impl_lint_pass!(LegacyNumericConstants => [LEGACY_NUMERIC_CONSTANTS]);
 
 impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        let Self { msrv } = self;
-
-        if !msrv.meets(NUMERIC_ASSOCIATED_CONSTANTS) || in_external_macro(cx.sess(), item.span) {
-            return;
-        }
-
         // Integer modules are "TBD" deprecated, and the contents are too,
         // so lint on the `use` statement directly.
         if let ItemKind::Use(path, kind @ (UseKind::Single | UseKind::Glob)) = item.kind
+            && self.msrv.meets(NUMERIC_ASSOCIATED_CONSTANTS)
+            && !in_external_macro(cx.sess(), item.span)
             && let Some(def_id) = path.res[0].opt_def_id()
         {
             let module = if is_integer_module(cx, def_id) {
@@ -103,12 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
-        let Self { msrv } = self;
-
-        if !msrv.meets(NUMERIC_ASSOCIATED_CONSTANTS) || in_external_macro(cx.sess(), expr.span) {
-            return;
-        }
-        let ExprKind::Path(qpath) = expr.kind else {
+        let ExprKind::Path(qpath) = &expr.kind else {
             return;
         };
 
@@ -129,10 +120,10 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             )
         // `<integer>::xxx_value` check
         } else if let QPath::TypeRelative(_, last_segment) = qpath
-            && let Some(def_id) = cx.qpath_res(&qpath, expr.hir_id).opt_def_id()
-            && is_integer_method(cx, def_id)
+            && let Some(def_id) = cx.qpath_res(qpath, expr.hir_id).opt_def_id()
             && let Some(par_expr) = get_parent_expr(cx, expr)
-            && let ExprKind::Call(_, _) = par_expr.kind
+            && let ExprKind::Call(_, []) = par_expr.kind
+            && is_integer_method(cx, def_id)
         {
             let name = last_segment.ident.name.as_str();
 
@@ -145,19 +136,20 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             return;
         };
 
-        if is_from_proc_macro(cx, expr) {
-            return;
+        if self.msrv.meets(NUMERIC_ASSOCIATED_CONSTANTS)
+            && !in_external_macro(cx.sess(), expr.span)
+            && !is_from_proc_macro(cx, expr)
+        {
+            span_lint_hir_and_then(cx, LEGACY_NUMERIC_CONSTANTS, expr.hir_id, span, msg, |diag| {
+                diag.span_suggestion_with_style(
+                    span,
+                    "use the associated constant instead",
+                    sugg,
+                    Applicability::MaybeIncorrect,
+                    SuggestionStyle::ShowAlways,
+                );
+            });
         }
-
-        span_lint_hir_and_then(cx, LEGACY_NUMERIC_CONSTANTS, expr.hir_id, span, msg, |diag| {
-            diag.span_suggestion_with_style(
-                span,
-                "use the associated constant instead",
-                sugg,
-                Applicability::MaybeIncorrect,
-                SuggestionStyle::ShowAlways,
-            );
-        });
     }
 
     extract_msrv_attr!(LateContext);
