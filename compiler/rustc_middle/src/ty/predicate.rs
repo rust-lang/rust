@@ -46,6 +46,10 @@ pub struct Predicate<'tcx>(
 );
 
 impl<'tcx> rustc_type_ir::inherent::Predicate<TyCtxt<'tcx>> for Predicate<'tcx> {
+    fn as_clause(self) -> Option<ty::Clause<'tcx>> {
+        self.as_clause()
+    }
+
     fn is_coinductive(self, interner: TyCtxt<'tcx>) -> bool {
         self.is_coinductive(interner)
     }
@@ -173,7 +177,11 @@ pub struct Clause<'tcx>(
     pub(super) Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
 );
 
-impl<'tcx> rustc_type_ir::inherent::Clause<TyCtxt<'tcx>> for Clause<'tcx> {}
+impl<'tcx> rustc_type_ir::inherent::Clause<TyCtxt<'tcx>> for Clause<'tcx> {
+    fn instantiate_supertrait(self, tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'tcx>) -> Self {
+        self.instantiate_supertrait(tcx, trait_ref)
+    }
+}
 
 impl<'tcx> rustc_type_ir::inherent::IntoKind for Clause<'tcx> {
     type Kind = ty::Binder<'tcx, ClauseKind<'tcx>>;

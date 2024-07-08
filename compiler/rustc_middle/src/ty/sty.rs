@@ -811,6 +811,14 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_var(tcx, vid)
     }
 
+    fn new_param(tcx: TyCtxt<'tcx>, param: ty::ParamTy) -> Self {
+        Ty::new_param(tcx, param.index, param.name)
+    }
+
+    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType) -> Self {
+        Ty::new_placeholder(tcx, placeholder)
+    }
+
     fn new_bound(interner: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundTy) -> Self {
         Ty::new_bound(interner, debruijn, var)
     }

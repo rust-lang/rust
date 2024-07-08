@@ -37,7 +37,7 @@ use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
 use rustc_data_structures::defer;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
@@ -347,12 +347,16 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn explicit_super_predicates_of(
         self,
         def_id: DefId,
-    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
+        ty::EarlyBinder::bind(self.explicit_super_predicates_of(def_id).instantiate_identity(self))
+    }
+
+    fn explicit_implied_predicates_of(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
         ty::EarlyBinder::bind(
-            self.explicit_super_predicates_of(def_id)
-                .instantiate_identity(self)
-                .predicates
-                .into_iter(),
+            self.explicit_implied_predicates_of(def_id).instantiate_identity(self),
         )
     }
 
@@ -532,10 +536,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.trait_def(trait_def_id).implement_via_object
     }
 
-    fn supertrait_def_ids(self, trait_def_id: DefId) -> impl IntoIterator<Item = DefId> {
-        self.supertrait_def_ids(trait_def_id)
-    }
-
     fn delay_bug(self, msg: impl ToString) -> ErrorGuaranteed {
         self.dcx().span_delayed_bug(DUMMY_SP, msg.to_string())
     }
@@ -572,6 +572,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         placeholder: Self::PlaceholderConst,
     ) -> Ty<'tcx> {
         placeholder.find_const_ty_from_env(param_env)
+    }
+
+    fn anonymize_bound_vars<T: TypeFoldable<TyCtxt<'tcx>>>(
+        self,
+        binder: ty::Binder<'tcx, T>,
+    ) -> ty::Binder<'tcx, T> {
+        self.anonymize_bound_vars(binder)
     }
 }
 
@@ -2492,25 +2499,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// to identify which traits may define a given associated type to help avoid cycle errors,
     /// and to make size estimates for vtable layout computation.
     pub fn supertrait_def_ids(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
-        let mut set = FxHashSet::default();
-        let mut stack = vec![trait_def_id];
-
-        set.insert(trait_def_id);
-
-        iter::from_fn(move || -> Option<DefId> {
-            let trait_did = stack.pop()?;
-            let generic_predicates = self.explicit_super_predicates_of(trait_did);
-
-            for (predicate, _) in generic_predicates.predicates {
-                if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder() {
-                    if set.insert(data.def_id()) {
-                        stack.push(data.def_id());
-                    }
-                }
-            }
-
-            Some(trait_did)
-        })
+        rustc_type_ir::elaborate::supertrait_def_ids(self, trait_def_id)
     }
 
     /// Given a closure signature, returns an equivalent fn signature. Detuples

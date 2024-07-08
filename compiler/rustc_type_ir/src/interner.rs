@@ -32,7 +32,7 @@ pub trait Interner:
 {
     type DefId: DefId<Self>;
     type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
-    type Span: Copy + Debug + Hash + Eq;
+    type Span: Copy + Debug + Hash + Eq + TypeFoldable<Self>;
 
     type GenericArgs: GenericArgs<Self>;
     type GenericArgsSlice: Copy + Debug + Hash + Eq + SliceLike<Item = Self::GenericArg>;
@@ -213,7 +213,12 @@ pub trait Interner:
     fn explicit_super_predicates_of(
         self,
         def_id: Self::DefId,
-    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
+
+    fn explicit_implied_predicates_of(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
 
     fn has_target_features(self, def_id: Self::DefId) -> bool;
 
@@ -250,9 +255,6 @@ pub trait Interner:
 
     fn trait_may_be_implemented_via_object(self, trait_def_id: Self::DefId) -> bool;
 
-    fn supertrait_def_ids(self, trait_def_id: Self::DefId)
-    -> impl IntoIterator<Item = Self::DefId>;
-
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;
 
     fn is_general_coroutine(self, coroutine_def_id: Self::DefId) -> bool;
@@ -270,6 +272,11 @@ pub trait Interner:
         param_env: Self::ParamEnv,
         placeholder: Self::PlaceholderConst,
     ) -> Self::Ty;
+
+    fn anonymize_bound_vars<T: TypeFoldable<Self>>(
+        self,
+        binder: ty::Binder<Self, T>,
+    ) -> ty::Binder<Self, T>;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`
