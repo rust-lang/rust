@@ -11,6 +11,7 @@ use crate::ast::*;
 use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
+use crate::visit::AssocCtxt;
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -109,11 +110,11 @@ pub trait MutVisitor: Sized {
         noop_flat_map_field_def(fd, self)
     }
 
-    fn flat_map_trait_item(&mut self, i: P<AssocItem>) -> SmallVec<[P<AssocItem>; 1]> {
-        noop_flat_map_item(i, self)
-    }
-
-    fn flat_map_impl_item(&mut self, i: P<AssocItem>) -> SmallVec<[P<AssocItem>; 1]> {
+    fn flat_map_assoc_item(
+        &mut self,
+        i: P<AssocItem>,
+        _ctxt: AssocCtxt,
+    ) -> SmallVec<[P<AssocItem>; 1]> {
         noop_flat_map_item(i, self)
     }
 
@@ -1127,13 +1128,13 @@ impl NoopVisitItemKind for ItemKind {
                 visit_polarity(polarity, vis);
                 visit_opt(of_trait, |trait_ref| vis.visit_trait_ref(trait_ref));
                 vis.visit_ty(self_ty);
-                items.flat_map_in_place(|item| vis.flat_map_impl_item(item));
+                items.flat_map_in_place(|item| vis.flat_map_assoc_item(item, AssocCtxt::Impl));
             }
             ItemKind::Trait(box Trait { safety, is_auto: _, generics, bounds, items }) => {
                 visit_safety(safety, vis);
                 vis.visit_generics(generics);
                 visit_bounds(bounds, vis);
-                items.flat_map_in_place(|item| vis.flat_map_trait_item(item));
+                items.flat_map_in_place(|item| vis.flat_map_assoc_item(item, AssocCtxt::Trait));
             }
             ItemKind::TraitAlias(generics, bounds) => {
                 vis.visit_generics(generics);

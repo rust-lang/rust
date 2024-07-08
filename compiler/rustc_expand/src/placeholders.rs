@@ -1,8 +1,8 @@
 use crate::expand::{AstFragment, AstFragmentKind};
-use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::Delimiter;
+use rustc_ast::{self as ast, visit::AssocCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::symbol::Ident;
 use rustc_span::DUMMY_SP;
@@ -271,16 +271,19 @@ impl MutVisitor for PlaceholderExpander {
         }
     }
 
-    fn flat_map_trait_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
+    fn flat_map_assoc_item(
+        &mut self,
+        item: P<ast::AssocItem>,
+        ctxt: AssocCtxt,
+    ) -> SmallVec<[P<ast::AssocItem>; 1]> {
         match item.kind {
-            ast::AssocItemKind::MacCall(_) => self.remove(item.id).make_trait_items(),
-            _ => noop_flat_map_item(item, self),
-        }
-    }
-
-    fn flat_map_impl_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        match item.kind {
-            ast::AssocItemKind::MacCall(_) => self.remove(item.id).make_impl_items(),
+            ast::AssocItemKind::MacCall(_) => {
+                let it = self.remove(item.id);
+                match ctxt {
+                    AssocCtxt::Trait => it.make_trait_items(),
+                    AssocCtxt::Impl => it.make_impl_items(),
+                }
+            }
             _ => noop_flat_map_item(item, self),
         }
     }

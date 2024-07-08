@@ -4,7 +4,7 @@ use core::ops::ControlFlow;
 use rustc_ast as ast;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::ptr::P;
-use rustc_ast::visit::Visitor;
+use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::NodeId;
 use rustc_ast::{mut_visit, visit};
 use rustc_ast::{Attribute, HasAttrs, HasTokens};
@@ -53,11 +53,8 @@ fn flat_map_annotatable(
 ) -> Option<Annotatable> {
     match annotatable {
         Annotatable::Item(item) => vis.flat_map_item(item).pop().map(Annotatable::Item),
-        Annotatable::TraitItem(item) => {
-            vis.flat_map_trait_item(item).pop().map(Annotatable::TraitItem)
-        }
-        Annotatable::ImplItem(item) => {
-            vis.flat_map_impl_item(item).pop().map(Annotatable::ImplItem)
+        Annotatable::AssocItem(item, ctxt) => {
+            Some(Annotatable::AssocItem(vis.flat_map_assoc_item(item, ctxt).pop()?, ctxt))
         }
         Annotatable::ForeignItem(item) => {
             vis.flat_map_foreign_item(item).pop().map(Annotatable::ForeignItem)
@@ -106,8 +103,7 @@ fn has_cfg_or_cfg_attr(annotatable: &Annotatable) -> bool {
 
     let res = match annotatable {
         Annotatable::Item(item) => CfgFinder.visit_item(item),
-        Annotatable::TraitItem(item) => CfgFinder.visit_assoc_item(item, visit::AssocCtxt::Trait),
-        Annotatable::ImplItem(item) => CfgFinder.visit_assoc_item(item, visit::AssocCtxt::Impl),
+        Annotatable::AssocItem(item, ctxt) => CfgFinder.visit_assoc_item(item, *ctxt),
         Annotatable::ForeignItem(item) => CfgFinder.visit_foreign_item(item),
         Annotatable::Stmt(stmt) => CfgFinder.visit_stmt(stmt),
         Annotatable::Expr(expr) => CfgFinder.visit_expr(expr),
@@ -150,14 +146,16 @@ impl CfgEval<'_> {
                 Annotatable::Item(_) => {
                     |parser| Ok(Annotatable::Item(parser.parse_item(ForceCollect::Yes)?.unwrap()))
                 }
-                Annotatable::TraitItem(_) => |parser| {
-                    Ok(Annotatable::TraitItem(
+                Annotatable::AssocItem(_, AssocCtxt::Trait) => |parser| {
+                    Ok(Annotatable::AssocItem(
                         parser.parse_trait_item(ForceCollect::Yes)?.unwrap().unwrap(),
+                        AssocCtxt::Trait,
                     ))
                 },
-                Annotatable::ImplItem(_) => |parser| {
-                    Ok(Annotatable::ImplItem(
+                Annotatable::AssocItem(_, AssocCtxt::Impl) => |parser| {
+                    Ok(Annotatable::AssocItem(
                         parser.parse_impl_item(ForceCollect::Yes)?.unwrap().unwrap(),
+                        AssocCtxt::Impl,
                     ))
                 },
                 Annotatable::ForeignItem(_) => |parser| {
@@ -244,11 +242,11 @@ impl MutVisitor for CfgEval<'_> {
         mut_visit::noop_flat_map_item(configure!(self, item), self)
     }
 
-    fn flat_map_impl_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        mut_visit::noop_flat_map_item(configure!(self, item), self)
-    }
-
-    fn flat_map_trait_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
+    fn flat_map_assoc_item(
+        &mut self,
+        item: P<ast::AssocItem>,
+        _ctxt: AssocCtxt,
+    ) -> SmallVec<[P<ast::AssocItem>; 1]> {
         mut_visit::noop_flat_map_item(configure!(self, item), self)
     }
 
