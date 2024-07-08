@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// type. Many asynchronous foundation crates provide such a `Mutex` type.
     /// The other solution is to ensure the mutex is unlocked before calling
     /// `await`, either by introducing a scope or an explicit call to
-    /// [`Drop::drop`].
+    /// [`Drop::drop`](https://doc.rust-lang.org/std/ops/trait.Drop.html).
     ///
     /// ### Known problems
     /// Will report false positive for explicitly dropped guards
