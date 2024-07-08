@@ -15,7 +15,6 @@ use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode, Pred
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
-use std::ops::ControlFlow;
 
 pub use self::infer_ctxt_ext::*;
 pub use self::overflow::*;
@@ -91,49 +90,6 @@ impl<'v> Visitor<'v> for FindExprBySpan<'v> {
     }
 }
 
-/// Look for type `param` in an ADT being used only through a reference to confirm that suggesting
-/// `param: ?Sized` would be a valid constraint.
-struct FindTypeParam {
-    param: rustc_span::Symbol,
-    invalid_spans: Vec<Span>,
-    nested: bool,
-}
-
-impl<'v> Visitor<'v> for FindTypeParam {
-    fn visit_where_predicate(&mut self, _: &'v hir::WherePredicate<'v>) {
-        // Skip where-clauses, to avoid suggesting indirection for type parameters found there.
-    }
-
-    fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
-        // We collect the spans of all uses of the "bare" type param, like in `field: T` or
-        // `field: (T, T)` where we could make `T: ?Sized` while skipping cases that are known to be
-        // valid like `field: &'a T` or `field: *mut T` and cases that *might* have further `Sized`
-        // obligations like `Box<T>` and `Vec<T>`, but we perform no extra analysis for those cases
-        // and suggest `T: ?Sized` regardless of their obligations. This is fine because the errors
-        // in that case should make what happened clear enough.
-        match ty.kind {
-            hir::TyKind::Ptr(_) | hir::TyKind::Ref(..) | hir::TyKind::TraitObject(..) => {}
-            hir::TyKind::Path(hir::QPath::Resolved(None, path))
-                if path.segments.len() == 1 && path.segments[0].ident.name == self.param =>
-            {
-                if !self.nested {
-                    debug!(?ty, "FindTypeParam::visit_ty");
-                    self.invalid_spans.push(ty.span);
-                }
-            }
-            hir::TyKind::Path(_) => {
-                let prev = self.nested;
-                self.nested = true;
-                hir::intravisit::walk_ty(self, ty);
-                self.nested = prev;
-            }
-            _ => {
-                hir::intravisit::walk_ty(self, ty);
-            }
-        }
-    }
-}
-
 /// Summarizes information
 #[derive(Clone)]
 pub enum ArgKind {
@@ -161,20 +117,6 @@ impl ArgKind {
                 tys.iter().map(|ty| ("_".to_owned(), ty.to_string())).collect::<Vec<_>>(),
             ),
             _ => ArgKind::Arg("_".to_owned(), t.to_string()),
-        }
-    }
-}
-
-struct HasNumericInferVisitor;
-
-impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for HasNumericInferVisitor {
-    type Result = ControlFlow<()>;
-
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-        if matches!(ty.kind(), ty::Infer(ty::FloatVar(_) | ty::IntVar(_))) {
-            ControlFlow::Break(())
-        } else {
-            ControlFlow::Continue(())
         }
     }
 }
