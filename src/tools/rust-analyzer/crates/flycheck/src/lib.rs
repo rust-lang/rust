@@ -426,6 +426,8 @@ impl FlycheckActor {
                     }
                 }
 
+                cmd.arg("--keep-going");
+
                 options.apply_on_command(&mut cmd);
                 (cmd, options.extra_args.clone())
             }
