@@ -1733,6 +1733,11 @@ details.toggle {
 	position: relative;
 }
 
+details.implementors-toggle {
+	/* This makes [-] on the same line as <summary>. */
+	contain: inline-size;
+}
+
 /* The hideme class is used on summary tags that contain a span with
 	placeholder text shown only when the toggle is closed. For instance,
 	"Expand description" or "Show methods". */
