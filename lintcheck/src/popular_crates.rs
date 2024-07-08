@@ -44,7 +44,7 @@ pub(crate) fn fetch(output: PathBuf, number: usize) -> Result<(), Box<dyn Error>
 
     let mut out = "[crates]\n".to_string();
     for Crate { name, max_version } in crates {
-        writeln!(out, "{name} = {{ name = '{name}', versions = ['{max_version}'] }}").unwrap();
+        writeln!(out, "{name} = {{ name = '{name}', version = '{max_version}' }}").unwrap();
     }
     fs::write(output, out)?;
 
