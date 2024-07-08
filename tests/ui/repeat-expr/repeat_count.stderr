@@ -6,8 +6,8 @@ LL |     let a = [0; n];
    |
 help: consider using `const` instead of `let`
    |
-LL |     const n = 1;
-   |     ~~~~~
+LL |     const n: /* Type */ = 1;
+   |     ~~~~~  ++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/repeat_count.rs:7:17
