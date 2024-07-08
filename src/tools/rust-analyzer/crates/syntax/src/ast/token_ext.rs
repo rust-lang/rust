@@ -1,9 +1,6 @@
 //! There are many AstNodes, but only a few tokens, so we hand-write them here.
 
-use std::{
-    borrow::Cow,
-    num::{ParseFloatError, ParseIntError},
-};
+use std::{borrow::Cow, num::ParseIntError};
 
 use rustc_lexer::unescape::{
     unescape_byte, unescape_char, unescape_mixed, unescape_unicode, EscapeError, MixedUnit, Mode,
@@ -393,9 +390,9 @@ impl ast::IntNumber {
         }
     }
 
-    pub fn float_value(&self) -> Option<f64> {
+    pub fn value_string(&self) -> String {
         let (_, text, _) = self.split_into_parts();
-        text.replace('_', "").parse::<f64>().ok()
+        text.replace('_', "")
     }
 }
 
@@ -432,14 +429,9 @@ impl ast::FloatNumber {
         }
     }
 
-    pub fn value(&self) -> Result<f64, ParseFloatError> {
+    pub fn value_string(&self) -> String {
         let (text, _) = self.split_into_parts();
-        text.replace('_', "").parse::<f64>()
-    }
-
-    pub fn value_f32(&self) -> Result<f32, ParseFloatError> {
-        let (text, _) = self.split_into_parts();
-        text.replace('_', "").parse::<f32>()
+        text.replace('_', "")
     }
 }
 
@@ -509,10 +501,13 @@ mod tests {
 
     fn check_float_value(lit: &str, expected: impl Into<Option<f64>> + Copy) {
         assert_eq!(
-            FloatNumber { syntax: make::tokens::literal(lit) }.value().ok(),
+            FloatNumber { syntax: make::tokens::literal(lit) }.value_string().parse::<f64>().ok(),
             expected.into()
         );
-        assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.float_value(), expected.into());
+        assert_eq!(
+            IntNumber { syntax: make::tokens::literal(lit) }.value_string().parse::<f64>().ok(),
+            expected.into()
+        );
     }
 
     fn check_int_value(lit: &str, expected: impl Into<Option<u128>>) {
