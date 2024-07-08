@@ -376,18 +376,19 @@ fn make_attr_token_stream(
         open_delim_sp: Option<(Delimiter, Span, Spacing)>,
         inner: Vec<AttrTokenTree>,
     }
-    let mut stack = vec![FrameData { open_delim_sp: None, inner: vec![] }];
+    // The stack always has at least one element. Storing it separately makes for shorter code.
+    let mut stack_top = FrameData { open_delim_sp: None, inner: vec![] };
+    let mut stack_rest = vec![];
     for (token, spacing) in iter {
         match token {
             FlatToken::Token(Token { kind: TokenKind::OpenDelim(delim), span }) => {
-                stack
-                    .push(FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] });
+                stack_rest.push(mem::replace(
+                    &mut stack_top,
+                    FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] },
+                ));
             }
             FlatToken::Token(Token { kind: TokenKind::CloseDelim(delim), span }) => {
-                let frame_data = stack
-                    .pop()
-                    .unwrap_or_else(|| panic!("Token stack was empty for token: {token:?}"));
-
+                let frame_data = mem::replace(&mut stack_top, stack_rest.pop().unwrap());
                 let (open_delim, open_sp, open_spacing) = frame_data.open_delim_sp.unwrap();
                 assert_eq!(
                     open_delim, delim,
@@ -397,28 +398,18 @@ fn make_attr_token_stream(
                 let dspacing = DelimSpacing::new(open_spacing, spacing);
                 let stream = AttrTokenStream::new(frame_data.inner);
                 let delimited = AttrTokenTree::Delimited(dspan, dspacing, delim, stream);
-                stack
-                    .last_mut()
-                    .unwrap_or_else(|| panic!("Bottom token frame is missing for token: {token:?}"))
-                    .inner
-                    .push(delimited);
+                stack_top.inner.push(delimited);
             }
-            FlatToken::Token(token) => stack
-                .last_mut()
-                .expect("Bottom token frame is missing!")
-                .inner
-                .push(AttrTokenTree::Token(token, spacing)),
-            FlatToken::AttrsTarget(target) => stack
-                .last_mut()
-                .expect("Bottom token frame is missing!")
-                .inner
-                .push(AttrTokenTree::AttrsTarget(target)),
+            FlatToken::Token(token) => stack_top.inner.push(AttrTokenTree::Token(token, spacing)),
+            FlatToken::AttrsTarget(target) => {
+                stack_top.inner.push(AttrTokenTree::AttrsTarget(target))
+            }
             FlatToken::Empty => {}
         }
     }
-    let mut final_buf = stack.pop().expect("Missing final buf!");
+
     if break_last_token {
-        let last_token = final_buf.inner.pop().unwrap();
+        let last_token = stack_top.inner.pop().unwrap();
         if let AttrTokenTree::Token(last_token, spacing) = last_token {
             let unglued_first = last_token.kind.break_two_token_op().unwrap().0;
 
@@ -426,14 +417,14 @@ fn make_attr_token_stream(
             let mut first_span = last_token.span.shrink_to_lo();
             first_span = first_span.with_hi(first_span.lo() + rustc_span::BytePos(1));
 
-            final_buf
+            stack_top
                 .inner
                 .push(AttrTokenTree::Token(Token::new(unglued_first, first_span), spacing));
         } else {
             panic!("Unexpected last token {last_token:?}")
         }
     }
-    AttrTokenStream::new(final_buf.inner)
+    AttrTokenStream::new(stack_top.inner)
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
