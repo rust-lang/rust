@@ -4060,6 +4060,34 @@ pub trait Iterator {
     {
         unreachable!("Always specialized");
     }
+
+
+    /// Checks if the Iterator contains the value.
+    /// 'contains' is short-circuiting; in other words, it will stop processing
+    /// as soon as the closure returns `true`.
+    ///
+    /// Performance:
+    /// This method checks the whole iterator, which takes O(n) time.
+    /// If the iterator is sorted, or a hash map please use the appropriate method.
+    ///
+    /// Example:
+    /// ```
+    /// #![feature(contains)]
+    /// assert!([1, 2, 3].iter().contain(1));
+    /// assert!(![1, 2, 3].iter().contain(4));
+    /// assert!([Some(2), None].iter().contain(None));
+    /// assert!([Some(2), None].iter().contain(Some(2)));
+    /// ```
+    #[unstable(feature="contains", reason = "new API", issue = "127494")]
+    fn contain(&mut self, item: Self::Item) -> bool
+    where Self::Item: Eq{
+        for element in self{
+            if element == item{
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 /// Compares two iterators element-wise using the given function.
