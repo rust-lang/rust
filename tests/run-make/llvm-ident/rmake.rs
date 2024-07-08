@@ -2,9 +2,9 @@
 //@ ignore-cross-compile
 
 use run_make_support::llvm::llvm_bin_dir;
-use run_make_support::{cmd, env_var, llvm_filecheck, read_dir, rustc, source_root};
-
-use std::ffi::OsStr;
+use run_make_support::{
+    cmd, env_var, has_extension, llvm_filecheck, rustc, shallow_find_files, source_root,
+};
 
 fn main() {
     // `-Ccodegen-units=16 -Copt-level=2` is used here to trigger thin LTO
@@ -22,20 +22,14 @@ fn main() {
 
     // `llvm-dis` is used here since `--emit=llvm-ir` does not emit LLVM IR
     // for temporary outputs.
-    let mut files = Vec::new();
-    read_dir(".", |path| {
-        if path.is_file() && path.extension().is_some_and(|ext| ext == OsStr::new("bc")) {
-            files.push(path.to_path_buf());
-        }
-    });
+    let files = shallow_find_files(".", |path| has_extension(path, "bc"));
     cmd(llvm_bin_dir().join("llvm-dis")).args(files).run();
 
     // Check LLVM IR files (including temporary outputs) have `!llvm.ident`
     // named metadata, reusing the related codegen test.
     let llvm_ident_path = source_root().join("tests/codegen/llvm-ident.rs");
-    read_dir(".", |path| {
-        if path.is_file() && path.extension().is_some_and(|ext| ext == OsStr::new("ll")) {
-            llvm_filecheck().input_file(path).arg(&llvm_ident_path).run();
-        }
-    });
+    let files = shallow_find_files(".", |path| has_extension(path, "ll"));
+    for file in files {
+        llvm_filecheck().input_file(file).arg(&llvm_ident_path).run();
+    }
 }
