@@ -38,27 +38,21 @@ struct TomlCrate {
 /// Represents an archive we download from crates.io, or a git repo, or a local repo/folder
 /// Once processed (downloaded/extracted/cloned/copied...), this will be translated into a `Crate`
 #[derive(Debug, Deserialize, Eq, Hash, PartialEq, Ord, PartialOrd)]
+pub struct CrateWithSource {
+    pub name: String,
+    pub source: CrateSource,
+    pub options: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub enum CrateSource {
-    CratesIo {
-        name: String,
-        version: String,
-        options: Option<Vec<String>>,
-    },
-    Git {
-        name: String,
-        url: String,
-        commit: String,
-        options: Option<Vec<String>>,
-    },
-    Path {
-        name: String,
-        path: PathBuf,
-        options: Option<Vec<String>>,
-    },
+    CratesIo { version: String },
+    Git { url: String, commit: String },
+    Path { path: PathBuf },
 }
 
 /// Read a `lintcheck_crates.toml` file
-pub fn read_crates(toml_path: &Path) -> (Vec<CrateSource>, RecursiveOptions) {
+pub fn read_crates(toml_path: &Path) -> (Vec<CrateWithSource>, RecursiveOptions) {
     let toml_content: String =
         fs::read_to_string(toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
     let crate_list: SourceList =
@@ -71,23 +65,29 @@ pub fn read_crates(toml_path: &Path) -> (Vec<CrateSource>, RecursiveOptions) {
     let mut crate_sources = Vec::new();
     for tk in tomlcrates {
         if let Some(ref path) = tk.path {
-            crate_sources.push(CrateSource::Path {
+            crate_sources.push(CrateWithSource {
                 name: tk.name.clone(),
-                path: PathBuf::from(path),
+                source: CrateSource::Path {
+                    path: PathBuf::from(path),
+                },
                 options: tk.options.clone(),
             });
         } else if let Some(ref version) = tk.version {
-            crate_sources.push(CrateSource::CratesIo {
+            crate_sources.push(CrateWithSource {
                 name: tk.name.clone(),
-                version: version.to_string(),
+                source: CrateSource::CratesIo {
+                    version: version.to_string(),
+                },
                 options: tk.options.clone(),
             });
         } else if tk.git_url.is_some() && tk.git_hash.is_some() {
             // otherwise, we should have a git source
-            crate_sources.push(CrateSource::Git {
+            crate_sources.push(CrateWithSource {
                 name: tk.name.clone(),
-                url: tk.git_url.clone().unwrap(),
-                commit: tk.git_hash.clone().unwrap(),
+                source: CrateSource::Git {
+                    url: tk.git_url.clone().unwrap(),
+                    commit: tk.git_hash.clone().unwrap(),
+                },
                 options: tk.options.clone(),
             });
         } else {
@@ -117,7 +117,7 @@ pub fn read_crates(toml_path: &Path) -> (Vec<CrateSource>, RecursiveOptions) {
     (crate_sources, crate_list.recursive)
 }
 
-impl CrateSource {
+impl CrateWithSource {
     /// Makes the sources available on the disk for clippy to check.
     /// Clones a git repo and checks out the specified commit or downloads a crate from crates.io or
     /// copies a local folder
@@ -139,8 +139,10 @@ impl CrateSource {
                 retries += 1;
             }
         }
-        match self {
-            CrateSource::CratesIo { name, version, options } => {
+        let name = &self.name;
+        let options = &self.options;
+        match &self.source {
+            CrateSource::CratesIo { version } => {
                 let extract_dir = PathBuf::from(LINTCHECK_SOURCES);
                 let krate_download_dir = PathBuf::from(LINTCHECK_DOWNLOADS);
 
@@ -173,12 +175,7 @@ impl CrateSource {
                     options: options.clone(),
                 }
             },
-            CrateSource::Git {
-                name,
-                url,
-                commit,
-                options,
-            } => {
+            CrateSource::Git { url, commit } => {
                 let repo_path = {
                     let mut repo_path = PathBuf::from(LINTCHECK_SOURCES);
                     // add a -git suffix in case we have the same crate from crates.io and a git repo
@@ -219,7 +216,7 @@ impl CrateSource {
                     options: options.clone(),
                 }
             },
-            CrateSource::Path { name, path, options } => {
+            CrateSource::Path { path } => {
                 fn is_cache_dir(entry: &DirEntry) -> bool {
                     fs::read(entry.path().join("CACHEDIR.TAG"))
                         .map(|x| x.starts_with(b"Signature: 8a477f597d28d172789f06886806bc55"))

@@ -38,7 +38,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{env, fs};
 
 use cargo_metadata::Message;
-use input::{read_crates, CrateSource};
+use input::read_crates;
 use output::{ClippyCheckOutput, ClippyWarning, RustcIce};
 use rayon::prelude::*;
 
@@ -292,13 +292,7 @@ fn lintcheck(config: LintcheckConfig) {
         .into_iter()
         .filter(|krate| {
             if let Some(only_one_crate) = &config.only {
-                let name = match krate {
-                    CrateSource::CratesIo { name, .. }
-                    | CrateSource::Git { name, .. }
-                    | CrateSource::Path { name, .. } => name,
-                };
-
-                name == only_one_crate
+                krate.name == *only_one_crate
             } else {
                 true
             }
