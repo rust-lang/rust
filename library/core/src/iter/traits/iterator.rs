@@ -2,6 +2,7 @@ use crate::array;
 use crate::cmp::{self, Ordering};
 use crate::num::NonZero;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
+use crate::borrow::Borrow;
 
 use super::super::try_process;
 use super::super::ByRefSized;
@@ -4071,7 +4072,7 @@ pub trait Iterator {
     /// If the iterator is sorted, or a hash map please use the appropriate method.
     ///
     /// Example:
-    /// ```
+    /// ```rust
     /// #![feature(contains)]
     /// assert!([1, 2, 3].iter().contain(1));
     /// assert!(![1, 2, 3].iter().contain(4));
@@ -4079,10 +4080,15 @@ pub trait Iterator {
     /// assert!([Some(2), None].iter().contain(Some(2)));
     /// ```
     #[unstable(feature="contains", reason = "new API", issue = "127494")]
-    fn contain(&mut self, item: Self::Item) -> bool
-    where Self::Item: Eq{
+    fn contain<Q>(&mut self, item: Q) -> bool
+    where
+        Self::Item: PartialEq,
+        Q: Borrow<Self::Item>,
+        Self: Sized
+    {
+        let borrowed_item: &Self::Item = item.borrow();
         for element in self{
-            if element == item{
+            if element == *borrowed_item{
                 return true;
             }
         }
