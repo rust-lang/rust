@@ -28,7 +28,8 @@ use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, FatalError,
+    codes::*, struct_span_code_err, Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed,
+    FatalError,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
@@ -101,6 +102,8 @@ pub enum RegionInferReason<'a> {
 /// This trait used to be called `AstConv`.
 pub trait HirTyLowerer<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx>;
+
+    fn dcx(&self) -> DiagCtxtHandle<'_>;
 
     /// Returns the [`LocalDefId`] of the overarching item whose constituents get lowered.
     fn item_def_id(&self) -> LocalDefId;
@@ -176,12 +179,6 @@ pub trait HirTyLowerer<'tcx> {
 
     /// The inference context of the lowering context if applicable.
     fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
-
-    /// Taint the context with errors.
-    ///
-    /// Invoke this when you encounter an error from some prior pass like name resolution.
-    /// This is used to help suppress derived errors typeck might otherwise report.
-    fn set_tainted_by_errors(&self, e: ErrorGuaranteed);
 
     /// Convenience method for coercing the lowering context into a trait object type.
     ///
@@ -323,7 +320,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::BoundConstness::NotConst,
         );
         if let Some(c) = item_segment.args().constraints.first() {
-            prohibit_assoc_item_constraint(self.tcx(), c, Some((def_id, item_segment, span)));
+            prohibit_assoc_item_constraint(self, c, Some((def_id, item_segment, span)));
         }
         args
     }
@@ -394,17 +391,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         let mut arg_count = check_generic_arg_count(
-            tcx,
+            self,
             def_id,
             segment,
             generics,
             GenericArgPosition::Type,
             self_ty.is_some(),
         );
-
-        if let Err(err) = &arg_count.correct {
-            self.set_tainted_by_errors(err.reported);
-        }
 
         // Skip processing if type has no generic parameters.
         // Traits always have `Self` as a generic parameter, which means they will not return early
@@ -562,11 +555,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             && generics.has_self
             && !tcx.is_const_trait(def_id)
         {
-            let reported = tcx.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
+            let reported = self.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
                 span,
                 modifier: constness.as_str(),
             });
-            self.set_tainted_by_errors(reported);
             arg_count.correct = Err(GenericArgCountMismatch { reported, invalid_args: vec![] });
         }
 
@@ -579,7 +571,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             incorrect_args: &arg_count.correct,
         };
         let args = lower_generic_args(
-            tcx,
+            self,
             def_id,
             parent_args,
             self_ty.is_some(),
@@ -609,7 +601,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::BoundConstness::NotConst,
         );
         if let Some(c) = item_segment.args().constraints.first() {
-            prohibit_assoc_item_constraint(self.tcx(), c, Some((item_def_id, item_segment, span)));
+            prohibit_assoc_item_constraint(self, c, Some((item_def_id, item_segment, span)));
         }
         args
     }
@@ -715,7 +707,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // would not be well-formed!
             if polarity != ty::PredicatePolarity::Positive {
                 assert!(
-                    self.tcx().dcx().has_errors().is_some(),
+                    self.dcx().has_errors().is_some(),
                     "negative trait bounds should not have assoc item constraints",
                 );
                 continue;
@@ -761,11 +753,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             constness,
         );
         if let Some(c) = trait_segment.args().constraints.first() {
-            prohibit_assoc_item_constraint(
-                self.tcx(),
-                c,
-                Some((trait_def_id, trait_segment, span)),
-            );
+            prohibit_assoc_item_constraint(self, c, Some((trait_def_id, trait_segment, span)));
         }
         ty::TraitRef::new_from_args(self.tcx(), trait_def_id, generic_args)
     }
@@ -877,7 +865,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span,
                 constraint,
             );
-            self.set_tainted_by_errors(reported);
             return Err(reported);
         };
         debug!(?bound);
@@ -887,7 +874,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             let assoc_kind_str = assoc_kind_str(assoc_kind);
             let ty_param_name = &ty_param_name.to_string();
-            let mut err = tcx.dcx().create_err(crate::errors::AmbiguousAssocItem {
+            let mut err = self.dcx().create_err(crate::errors::AmbiguousAssocItem {
                 span,
                 assoc_kind: assoc_kind_str,
                 assoc_name,
@@ -960,7 +947,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ));
             }
             let reported = err.emit();
-            self.set_tainted_by_errors(reported);
             if !where_bounds.is_empty() {
                 return Err(reported);
             }
@@ -1059,7 +1045,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // trait reference.
                 let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
                     // A cycle error occurred, most likely.
-                    tcx.dcx().span_bug(span, "expected cycle error");
+                    self.dcx().span_bug(span, "expected cycle error");
                 };
 
                 self.probe_single_bound_for_assoc_item(
@@ -1089,10 +1075,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let reported = if variant_resolution.is_some() {
                     // Variant in type position
                     let msg = format!("expected type, found variant `{assoc_ident}`");
-                    tcx.dcx().span_err(span, msg)
+                    self.dcx().span_err(span, msg)
                 } else if qself_ty.is_enum() {
                     let mut err = struct_span_code_err!(
-                        tcx.dcx(),
+                        self.dcx(),
                         assoc_ident.span,
                         E0599,
                         "no variant named `{}` found for enum `{}`",
@@ -1133,7 +1119,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 } else if let ty::Alias(ty::Opaque, alias_ty) = qself_ty.kind() {
                     // `<impl Trait as OtherTrait>::Assoc` makes no sense.
                     struct_span_code_err!(
-                        tcx.dcx(),
+                        self.dcx(),
                         tcx.def_span(alias_ty.def_id),
                         E0667,
                         "`impl Trait` is not allowed in path parameters"
@@ -1153,7 +1139,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         assoc_ident.name,
                     )
                 };
-                self.set_tainted_by_errors(reported);
                 return Err(reported);
             }
         };
@@ -1404,13 +1389,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         if !tcx.visibility(item_def_id).is_accessible_from(scope, tcx) {
-            let reported = tcx.dcx().emit_err(crate::errors::AssocItemIsPrivate {
+            self.dcx().emit_err(crate::errors::AssocItemIsPrivate {
                 span,
                 kind: tcx.def_descr(item_def_id),
                 name: ident,
                 defined_here_label: tcx.def_span(item_def_id),
             });
-            self.set_tainted_by_errors(reported);
         }
 
         tcx.check_stability(item_def_id, Some(block), span, None);
@@ -1564,7 +1548,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         for segment in segments {
             // Only emit the first error to avoid overloading the user with error messages.
             if let Some(c) = segment.args().constraints.first() {
-                return Err(prohibit_assoc_item_constraint(self.tcx(), c, None));
+                return Err(prohibit_assoc_item_constraint(self, c, None));
             }
         }
 
@@ -1824,7 +1808,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // `AlwaysApplicable` impl needs a `T: ?Sized` bound for
                 // this to compile if we were to normalize here.
                 if forbid_generic && ty.has_param() {
-                    let mut err = tcx.dcx().struct_span_err(
+                    let mut err = self.dcx().struct_span_err(
                         path.span,
                         "generic `Self` types are currently not permitted in anonymous constants",
                     );
@@ -1836,7 +1820,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         err.span_note(impl_.self_ty.span, "not a concrete type");
                     }
                     let reported = err.emit();
-                    self.set_tainted_by_errors(reported);
                     Ty::new_error(tcx, reported)
                 } else {
                     ty
@@ -1877,7 +1860,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .tcx()
                     .dcx()
                     .span_delayed_bug(path.span, "path with `Res::Err` but no error emitted");
-                self.set_tainted_by_errors(e);
                 Ty::new_error(self.tcx(), e)
             }
             Res::Def(..) => {
@@ -1888,7 +1870,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 Ty::new_error(
                     self.tcx(),
-                    self.tcx().dcx().span_delayed_bug(span, "incorrect resolution for `Self`"),
+                    self.dcx().span_delayed_bug(span, "incorrect resolution for `Self`"),
                 )
             }
             _ => span_bug!(span, "unexpected resolution: {:?}", path.res),
@@ -1961,7 +1943,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let sig_span = self.tcx().def_span(sig_id);
         let mut try_emit = |descr| {
             if emit {
-                self.tcx().dcx().emit_err(crate::errors::NotSupportedDelegation {
+                self.dcx().emit_err(crate::errors::NotSupportedDelegation {
                     span,
                     descr,
                     callee_span: sig_span,
@@ -2011,8 +1993,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Ty<'tcx> {
         if self.check_delegation_constraints(sig_id, span, idx == hir::InferDelegationKind::Output)
         {
-            let e = self.tcx().dcx().span_delayed_bug(span, "not supported delegation case");
-            self.set_tainted_by_errors(e);
+            let e = self.dcx().span_delayed_bug(span, "not supported delegation case");
             return Ty::new_error(self.tcx(), e);
         };
         let sig = self.tcx().fn_sig(sig_id);
@@ -2177,7 +2158,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let ty = self.lower_ty(ty);
                 let pat_ty = match pat.kind {
                     hir::PatKind::Wild => {
-                        let err = tcx.dcx().emit_err(WildPatTy { span: pat.span });
+                        let err = self.dcx().emit_err(WildPatTy { span: pat.span });
                         Ty::new_error(tcx, err)
                     }
                     hir::PatKind::Range(start, end, include_end) => {
@@ -2357,7 +2338,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         self.validate_late_bound_regions(late_bound_in_args, late_bound_in_ret, |br_name| {
             struct_span_code_err!(
-                tcx.dcx(),
+                self.dcx(),
                 decl.output.span(),
                 E0581,
                 "return type references {}, which is not constrained by the fn input types",
@@ -2408,11 +2389,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     #[instrument(level = "trace", skip(self, generate_err))]
-    fn validate_late_bound_regions(
-        &self,
+    fn validate_late_bound_regions<'cx>(
+        &'cx self,
         constrained_regions: FxHashSet<ty::BoundRegionKind>,
         referenced_regions: FxHashSet<ty::BoundRegionKind>,
-        generate_err: impl Fn(&str) -> Diag<'tcx>,
+        generate_err: impl Fn(&str) -> Diag<'cx>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
             let br_name = match *br {
@@ -2437,7 +2418,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 err.note("consider introducing a named lifetime parameter");
             }
 
-            self.set_tainted_by_errors(err.emit());
+            err.emit();
         }
     }
 
@@ -2478,7 +2459,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // error.
         let r = derived_region_bounds[0];
         if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
-            self.set_tainted_by_errors(tcx.dcx().emit_err(AmbiguousLifetimeBound { span }));
+            self.dcx().emit_err(AmbiguousLifetimeBound { span });
         }
         Some(r)
     }
