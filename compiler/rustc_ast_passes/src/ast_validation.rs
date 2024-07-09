@@ -38,27 +38,12 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 use thin_vec::thin_vec;
 
-use crate::errors;
+use crate::errors::{self, TildeConstReason};
 
 /// Is `self` allowed semantically as the first parameter in an `FnDecl`?
 enum SelfSemantic {
     Yes,
     No,
-}
-
-/// What is the context that prevents using `~const`?
-// FIXME(effects): Consider getting rid of this in favor of `errors::TildeConstReason`, they're
-// almost identical. This gets rid of an abstraction layer which might be considered bad.
-enum DisallowTildeConstContext<'a> {
-    TraitObject,
-    Fn(FnKind<'a>),
-    Trait(Span),
-    TraitImpl(Span),
-    Impl(Span),
-    TraitAssocTy(Span),
-    TraitImplAssocTy(Span),
-    InherentAssocTy(Span),
-    Item,
 }
 
 enum TraitOrTraitImpl {
@@ -92,7 +77,7 @@ struct AstValidator<'a> {
     /// e.g., `impl Iterator<Item = impl Debug>`.
     outer_impl_trait: Option<Span>,
 
-    disallow_tilde_const: Option<DisallowTildeConstContext<'a>>,
+    disallow_tilde_const: Option<TildeConstReason>,
 
     /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
     /// or `Foo::Bar<impl Trait>`
@@ -145,7 +130,7 @@ impl<'a> AstValidator<'a> {
 
     fn with_tilde_const(
         &mut self,
-        disallowed: Option<DisallowTildeConstContext<'a>>,
+        disallowed: Option<TildeConstReason>,
         f: impl FnOnce(&mut Self),
     ) {
         let old = mem::replace(&mut self.disallow_tilde_const, disallowed);
@@ -224,7 +209,7 @@ impl<'a> AstValidator<'a> {
                 }
             }
             TyKind::TraitObject(..) => self
-                .with_tilde_const(Some(DisallowTildeConstContext::TraitObject), |this| {
+                .with_tilde_const(Some(TildeConstReason::TraitObject), |this| {
                     visit::walk_ty(this, t)
                 }),
             TyKind::Path(qself, path) => {
@@ -980,7 +965,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     this.visit_vis(&item.vis);
                     this.visit_ident(item.ident);
                     let disallowed = matches!(constness, Const::No)
-                        .then(|| DisallowTildeConstContext::TraitImpl(item.span));
+                        .then(|| TildeConstReason::TraitImpl { span: item.span });
                     this.with_tilde_const(disallowed, |this| this.visit_generics(generics));
                     this.visit_trait_ref(t);
                     this.visit_ty(self_ty);
@@ -1035,7 +1020,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     this.visit_vis(&item.vis);
                     this.visit_ident(item.ident);
                     this.with_tilde_const(
-                        Some(DisallowTildeConstContext::Impl(item.span)),
+                        Some(TildeConstReason::Impl { span: item.span }),
                         |this| this.visit_generics(generics),
                     );
                     this.visit_ty(self_ty);
@@ -1154,7 +1139,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     this.visit_ident(item.ident);
                     let disallowed = is_const_trait
                         .is_none()
-                        .then(|| DisallowTildeConstContext::Trait(item.span));
+                        .then(|| TildeConstReason::Trait { span: item.span });
                     this.with_tilde_const(disallowed, |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
@@ -1399,40 +1384,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         self.dcx().emit_err(errors::ConstBoundTraitObject { span: trait_ref.span });
                     }
                     (_, BoundConstness::Maybe(span), BoundPolarity::Positive)
-                        if let Some(reason) = &self.disallow_tilde_const =>
+                        if let Some(reason) = self.disallow_tilde_const =>
                     {
-                        let reason = match reason {
-                            DisallowTildeConstContext::Fn(FnKind::Closure(..)) => {
-                                errors::TildeConstReason::Closure
-                            }
-                            DisallowTildeConstContext::Fn(FnKind::Fn(_, ident, ..)) => {
-                                errors::TildeConstReason::Function { ident: ident.span }
-                            }
-                            &DisallowTildeConstContext::Trait(span) => {
-                                errors::TildeConstReason::Trait { span }
-                            }
-                            &DisallowTildeConstContext::TraitImpl(span) => {
-                                errors::TildeConstReason::TraitImpl { span }
-                            }
-                            &DisallowTildeConstContext::Impl(span) => {
-                                // FIXME(effects): Consider providing a help message or even a structured
-                                // suggestion for moving such bounds to the assoc const fns if available.
-                                errors::TildeConstReason::Impl { span }
-                            }
-                            &DisallowTildeConstContext::TraitAssocTy(span) => {
-                                errors::TildeConstReason::TraitAssocTy { span }
-                            }
-                            &DisallowTildeConstContext::TraitImplAssocTy(span) => {
-                                errors::TildeConstReason::TraitImplAssocTy { span }
-                            }
-                            &DisallowTildeConstContext::InherentAssocTy(span) => {
-                                errors::TildeConstReason::InherentAssocTy { span }
-                            }
-                            DisallowTildeConstContext::TraitObject => {
-                                errors::TildeConstReason::TraitObject
-                            }
-                            DisallowTildeConstContext::Item => errors::TildeConstReason::Item,
-                        };
                         self.dcx().emit_err(errors::TildeConstDisallowed { span, reason });
                     }
                     (
@@ -1569,7 +1522,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .and_then(TraitOrTraitImpl::constness)
                         .is_some();
 
-        let disallowed = (!tilde_const_allowed).then(|| DisallowTildeConstContext::Fn(fk));
+        let disallowed = (!tilde_const_allowed).then(|| match fk {
+            FnKind::Fn(_, ident, _, _, _, _) => TildeConstReason::Function { ident: ident.span },
+            FnKind::Closure(_, _, _) => TildeConstReason::Closure,
+        });
         self.with_tilde_const(disallowed, |this| visit::walk_fn(this, fk));
     }
 
@@ -1664,12 +1620,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             AssocItemKind::Type(_) => {
                 let disallowed = (!parent_is_const).then(|| match self.outer_trait_or_trait_impl {
                     Some(TraitOrTraitImpl::Trait { .. }) => {
-                        DisallowTildeConstContext::TraitAssocTy(item.span)
+                        TildeConstReason::TraitAssocTy { span: item.span }
                     }
                     Some(TraitOrTraitImpl::TraitImpl { .. }) => {
-                        DisallowTildeConstContext::TraitImplAssocTy(item.span)
+                        TildeConstReason::TraitImplAssocTy { span: item.span }
                     }
-                    None => DisallowTildeConstContext::InherentAssocTy(item.span),
+                    None => TildeConstReason::InherentAssocTy { span: item.span },
                 });
                 self.with_tilde_const(disallowed, |this| {
                     this.with_in_trait_impl(None, |this| visit::walk_assoc_item(this, item, ctxt))
@@ -1852,7 +1808,7 @@ pub fn check_crate(
         outer_trait_or_trait_impl: None,
         has_proc_macro_decls: false,
         outer_impl_trait: None,
-        disallow_tilde_const: Some(DisallowTildeConstContext::Item),
+        disallow_tilde_const: Some(TildeConstReason::Item),
         is_impl_trait_banned: false,
         extern_mod_safety: None,
         lint_buffer: lints,

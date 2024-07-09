@@ -612,7 +612,7 @@ pub struct TildeConstDisallowed {
     pub reason: TildeConstReason,
 }
 
-#[derive(Subdiagnostic)]
+#[derive(Subdiagnostic, Copy, Clone)]
 pub enum TildeConstReason {
     #[note(ast_passes_closure)]
     Closure,
