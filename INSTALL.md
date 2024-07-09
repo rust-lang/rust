@@ -48,7 +48,7 @@ If building LLVM from source, you'll need additional tools:
   [LLVM's documentation](https://llvm.org/docs/GettingStarted.html#host-c-toolchain-both-compiler-and-standard-library)
 * `ninja`, or GNU `make` 3.81 or later (Ninja is recommended, especially on
   Windows)
-* `cmake` 3.13.4 or later
+* `cmake` version listed on [LLVM's documentation](https://llvm.org/docs/GettingStarted.html#software)
 * `libstdc++-static` may be required on some Linux distributions such as Fedora
   and Ubuntu
 
