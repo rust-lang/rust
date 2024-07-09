@@ -857,6 +857,31 @@ fn check_item<'tcx>(
             // global_asm! is always live.
             worklist.push((id.owner_id.def_id, ComesFromAllowExpect::No));
         }
+        DefKind::OpaqueTy => {
+            if let hir::ItemKind::OpaqueTy(ty) = tcx.hir().item(id).kind {
+                for bound in ty.bounds {
+                    if let hir::GenericBound::Trait(polytraitref, _) = bound
+                        && let Some(pathsegment) = polytraitref.trait_ref.path.segments.last()
+                        && let Some(args) = pathsegment.args
+                    {
+                        for constraint in args.constraints {
+                            if let Some(item) = tcx
+                                .associated_items(pathsegment.res.def_id())
+                                .filter_by_name_unhygienic(constraint.ident.name)
+                                .find(|i| {
+                                    i.kind == ty::AssocKind::Const
+                                        && i.ident(tcx).normalize_to_macros_2_0()
+                                            == constraint.ident
+                                })
+                                && let Some(local_def_id) = item.def_id.as_local()
+                            {
+                                worklist.push((local_def_id, ComesFromAllowExpect::No));
+                            }
+                        }
+                    }
+                }
+            }
+        }
         _ => {}
     }
 }
