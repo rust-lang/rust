@@ -58,7 +58,9 @@ pub(super) fn check(
         }
     }
 
-    let &[first_span, .., last_span] = spans.as_slice() else { return };
+    let &[first_span, .., last_span] = spans.as_slice() else {
+        return;
+    };
 
     if should_suggest_empty_doc
         && let Some(second_span) = spans.get(1)

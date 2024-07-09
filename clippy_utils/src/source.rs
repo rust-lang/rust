@@ -527,9 +527,10 @@ pub fn snippet_block_with_context<'a>(
     (reindent_multiline(snip, true, indent), from_macro)
 }
 
-/// Same as `snippet_with_applicability`, but first walks the span up to the given context. This
-/// will result in the macro call, rather than the expansion, if the span is from a child context.
-/// If the span is not from a child context, it will be used directly instead.
+/// Same as `snippet_with_applicability`, but first walks the span up to the given context.
+///
+/// This will result in the macro call, rather than the expansion, if the span is from a child
+/// context. If the span is not from a child context, it will be used directly instead.
 ///
 /// e.g. Given the expression `&vec![]`, getting a snippet from the span for `vec![]` as a HIR node
 /// would result in `box []`. If given the context of the address of expression, this function will
@@ -572,9 +573,10 @@ fn snippet_with_context_sess<'a>(
 }
 
 /// Walks the span up to the target context, thereby returning the macro call site if the span is
-/// inside a macro expansion, or the original span if it is not. Note this will return `None` in the
-/// case of the span being in a macro expansion, but the target context is from expanding a macro
-/// argument.
+/// inside a macro expansion, or the original span if it is not.
+///
+/// Note this will return `None` in the case of the span being in a macro expansion, but the target
+/// context is from expanding a macro argument.
 ///
 /// Given the following
 ///
