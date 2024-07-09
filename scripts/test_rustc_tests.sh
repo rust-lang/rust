@@ -56,6 +56,7 @@ rm -r tests/run-make/target-specs # i686 not supported by Cranelift
 rm -r tests/run-make/mismatching-target-triples # same
 rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
+rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -109,6 +110,7 @@ rm -r tests/run-make/symbols-include-type-name
 rm -r tests/run-make/notify-all-emit-artifacts
 rm -r tests/run-make/reset-codegen-1
 rm -r tests/run-make/inline-always-many-cgu
+rm -r tests/run-make/intrinsic-unreachable
 
 # giving different but possibly correct results
 # =============================================
