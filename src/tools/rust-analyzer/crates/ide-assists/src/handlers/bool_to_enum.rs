@@ -96,7 +96,7 @@ struct BoolNodeData {
 
 /// Attempts to find an appropriate node to apply the action to.
 fn find_bool_node(ctx: &AssistContext<'_>) -> Option<BoolNodeData> {
-    let name: ast::Name = ctx.find_node_at_offset()?;
+    let name = ctx.find_node_at_offset::<ast::Name>()?;
 
     if let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
         let def = ctx.sema.to_def(&ident_pat)?;
