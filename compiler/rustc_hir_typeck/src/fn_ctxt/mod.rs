@@ -5,7 +5,7 @@ mod checks;
 mod inspect_obligations;
 mod suggestions;
 
-use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
+use rustc_errors::DiagCtxtHandle;
 
 use crate::coercion::DynamicCoerceMany;
 use crate::fallback::DivergingFallbackBehavior;
@@ -217,6 +217,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         self.tcx
     }
 
+    fn dcx(&self) -> DiagCtxtHandle<'_> {
+        self.root_ctxt.dcx()
+    }
+
     fn item_def_id(&self) -> LocalDefId {
         self.body_id
     }
@@ -336,10 +340,6 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 
     fn infcx(&self) -> Option<&infer::InferCtxt<'tcx>> {
         Some(&self.infcx)
-    }
-
-    fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
-        self.infcx.set_tainted_by_errors(e)
     }
 
     fn lower_fn_sig(

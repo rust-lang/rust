@@ -60,7 +60,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let msg = "trait objects must include the `dyn` keyword";
             let label = "add `dyn` keyword before this trait";
             let mut diag =
-                rustc_errors::struct_span_code_err!(tcx.dcx(), self_ty.span, E0782, "{}", msg);
+                rustc_errors::struct_span_code_err!(self.dcx(), self_ty.span, E0782, "{}", msg);
             if self_ty.span.can_be_used_for_suggestions()
                 && !self.maybe_suggest_impl_trait(self_ty, &mut diag)
             {
