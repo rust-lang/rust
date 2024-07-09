@@ -1094,6 +1094,10 @@ struct Candidate<'tcx> {
     /// The earliest block that has only candidates >= this one as descendents. Used for false
     /// edges, see the doc for [`Builder::match_expr`].
     false_edge_start_block: Option<BasicBlock>,
+
+    #[allow(unused)]
+    /// The id to identify the candidate in coverage instrument.
+    coverage_id: coverage::CandidateCovId,
 }
 
 impl<'tcx> Candidate<'tcx> {
@@ -1122,6 +1126,7 @@ impl<'tcx> Candidate<'tcx> {
             otherwise_block: None,
             pre_binding_block: None,
             false_edge_start_block: None,
+            coverage_id: coverage::CandidateCovId::default(),
         }
     }
 
@@ -1151,6 +1156,31 @@ impl<'tcx> Candidate<'tcx> {
             move |c, _| c.subcandidates.iter_mut().rev(),
             |_| {},
         );
+    }
+
+    #[allow(unused)]
+    pub(crate) fn set_coverage_id(&mut self, coverage_id: coverage::CandidateCovId) {
+        self.coverage_id = coverage_id;
+        // Assign id for match pairs only if this candidate is the root.
+        if !coverage_id.subcandidate_id.is_root() {
+            return;
+        };
+        let mut latest_match_id = coverage::MatchPairId::START;
+        let mut next_match_id = || {
+            let id = latest_match_id;
+            latest_match_id = id.next_match_pair_id();
+            id
+        };
+        let mut match_pairs = self.match_pairs.iter_mut().collect::<Vec<_>>();
+        while let Some(match_pair) = match_pairs.pop() {
+            match_pair.coverage_id = next_match_id();
+            match_pairs.extend(match_pair.subpairs.iter_mut());
+            if let TestCase::Or { ref mut pats } = match_pair.test_case {
+                match_pairs.extend(
+                    pats.iter_mut().map(|flat_pat| flat_pat.match_pairs.iter_mut()).flatten(),
+                );
+            }
+        }
     }
 }
 
@@ -1276,6 +1306,9 @@ pub(crate) struct MatchPairTree<'tcx> {
     pattern_ty: Ty<'tcx>,
     /// Span field of the pattern this node was created from.
     pattern_span: Span,
+
+    /// Key to identify the match pair in coverage.
+    coverage_id: coverage::MatchPairId,
 }
 
 /// See [`Test`] for more.

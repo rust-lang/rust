@@ -362,3 +362,87 @@ impl CoverageIdsInfo {
         }
     }
 }
+/// Identify subcandidates in a candidate.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SubcandidateId(usize);
+
+impl SubcandidateId {
+    pub const ROOT: SubcandidateId = SubcandidateId(0);
+    pub fn is_root(&self) -> bool {
+        *self == Self::ROOT
+    }
+
+    pub fn next_subcandidate_id(&self) -> Self {
+        Self(self.0 + 1)
+    }
+}
+
+/// Identify MatchPair in a candidate.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct MatchPairId(usize);
+
+impl MatchPairId {
+    pub const INVALID: MatchPairId = MatchPairId(0);
+    pub const START: MatchPairId = MatchPairId(1);
+    pub fn next_match_pair_id(&self) -> Self {
+        Self(self.0 + 1)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct CandidateCovId {
+    pub decision_id: DecisionId,
+    pub subcandidate_id: SubcandidateId,
+}
+
+impl Default for CandidateCovId {
+    fn default() -> Self {
+        Self { decision_id: DecisionId::MAX, subcandidate_id: SubcandidateId(usize::MAX) }
+    }
+}
+
+impl CandidateCovId {
+    pub fn is_valid(&self) -> bool {
+        *self != Self::default()
+    }
+
+    pub fn new_match_info(
+        &mut self,
+        match_id: MatchPairId,
+        span: Span,
+        fully_matched: bool,
+    ) -> MatchCoverageInfo {
+        let key = MatchKey {
+            decision_id: self.decision_id,
+            match_id,
+            subcandidate_id: self.subcandidate_id,
+        };
+        MatchCoverageInfo { key, span, fully_matched }
+    }
+}
+
+/// Key for matched patterns.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct MatchKey {
+    pub decision_id: DecisionId,
+    pub match_id: MatchPairId,
+    pub subcandidate_id: SubcandidateId,
+}
+
+impl Default for MatchKey {
+    fn default() -> Self {
+        Self {
+            decision_id: DecisionId::MAX,
+            match_id: MatchPairId(0),
+            subcandidate_id: SubcandidateId(0),
+        }
+    }
+}
+
+/// Information about matched patterns.
+#[derive(Clone, Copy, Debug)]
+pub struct MatchCoverageInfo {
+    pub key: MatchKey,
+    pub span: Span,
+    pub fully_matched: bool,
+}
