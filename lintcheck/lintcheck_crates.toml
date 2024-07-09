@@ -1,6 +1,6 @@
 [crates]
 # some of these are from cargotest
-cargo = {name = "cargo", version = '0.64.0'}
+cargo = {name = "cargo", version = '0.64.0', online_link = 'https://docs.rs/cargo/{version}/src/{file}.html#{line}'}
 iron = {name = "iron", version = '0.6.1'}
 ripgrep = {name = "ripgrep", version = '12.1.1'}
 xsv = {name = "xsv", version = '0.13.0'}

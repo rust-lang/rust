@@ -53,6 +53,7 @@ struct Crate {
     // path to the extracted sources that clippy can check
     path: PathBuf,
     options: Option<Vec<String>>,
+    base_url: String,
 }
 
 impl Crate {
@@ -185,7 +186,7 @@ impl Crate {
         // get all clippy warnings and ICEs
         let mut entries: Vec<ClippyCheckOutput> = Message::parse_stream(stdout.as_bytes())
             .filter_map(|msg| match msg {
-                Ok(Message::CompilerMessage(message)) => ClippyWarning::new(message.message),
+                Ok(Message::CompilerMessage(message)) => ClippyWarning::new(message.message, &self.base_url),
                 _ => None,
             })
             .map(ClippyCheckOutput::ClippyWarning)
