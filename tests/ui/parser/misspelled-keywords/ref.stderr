@@ -6,8 +6,9 @@ LL |         Some(refe list) => println!("{list:?}"),
    |
 help: there is a keyword `ref` with a similar name
    |
-LL |         Some(ref list) => println!("{list:?}"),
-   |              ~~~
+LL -         Some(refe list) => println!("{list:?}"),
+LL +         Some(ref list) => println!("{list:?}"),
+   |
 
 error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 1 field
   --> $DIR/ref.rs:4:14

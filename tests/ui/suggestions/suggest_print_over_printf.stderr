@@ -6,8 +6,9 @@ LL |     printf("%d", x);
    |
 help: you may have meant to use the `print` macro
    |
-LL |     print!("%d", x);
-   |     ~~~~~~
+LL -     printf("%d", x);
+LL +     print!("%d", x);
+   |
 
 error: aborting due to 1 previous error
 

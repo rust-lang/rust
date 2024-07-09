@@ -95,8 +95,9 @@ LL |     extern "rust-call" fn call(self, args: ()) -> () {}
               found signature `extern "rust-call" fn(Foo, ()) -> ()`
 help: change the self-receiver type to match the trait
    |
-LL |     extern "rust-call" fn call(&self, args: ()) -> () {}
-   |                                ~~~~~
+LL -     extern "rust-call" fn call(self, args: ()) -> () {}
+LL +     extern "rust-call" fn call(&self, args: ()) -> () {}
+   |
 
 error[E0183]: manual implementations of `FnOnce` are experimental
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:18:6
@@ -165,8 +166,9 @@ LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
               found signature `extern "rust-call" fn(&Bar, ()) -> ()`
 help: change the self-receiver type to match the trait
    |
-LL |     extern "rust-call" fn call_mut(&mut self, args: ()) -> () {}
-   |                                    ~~~~~~~~~
+LL -     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
+LL +     extern "rust-call" fn call_mut(&mut self, args: ()) -> () {}
+   |
 
 error[E0046]: not all trait items implemented, missing: `Output`
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:35:1

@@ -11,8 +11,9 @@ LL |     fn infer(&self, a: A, b: B) {}
    |        ^^^^^              ----
 help: provide the argument
    |
-LL |     s.infer(0i32, /* b */);
-   |            ~~~~~~~~~~~~~~~
+LL -     s.infer(0i32);
+LL +     s.infer(0i32, /* b */);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/point-at-inference-4.rs:18:24
@@ -31,8 +32,9 @@ LL |     let t: S<u32, _> = s;
               found struct `S<i32, _>`
 help: change the type of the numeric literal from `i32` to `u32`
    |
-LL |     s.infer(0u32);
-   |              ~~~
+LL -     s.infer(0i32);
+LL +     s.infer(0u32);
+   |
 
 error: aborting due to 2 previous errors
 

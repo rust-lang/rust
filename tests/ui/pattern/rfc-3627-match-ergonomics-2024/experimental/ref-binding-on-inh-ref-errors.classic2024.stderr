@@ -7,8 +7,9 @@ LL |     let [&mut ref x] = &[&mut 0];
    = note: cannot match inherited `&` with `&mut` pattern
 help: replace this `&mut` pattern with `&`
    |
-LL |     let [&ref x] = &[&mut 0];
-   |          ~
+LL -     let [&mut ref x] = &[&mut 0];
+LL +     let [&ref x] = &[&mut 0];
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move`
   --> $DIR/ref-binding-on-inh-ref-errors.rs:67:10

@@ -181,8 +181,9 @@ LL |     let _res: i32 = ..6.take(2).sum();
    |
 help: you must specify a concrete type for this numeric value, like `i32`
    |
-LL |     let _res: i32 = ..6_i32.take(2).sum();
-   |                       ~~~~~
+LL -     let _res: i32 = ..6.take(2).sum();
+LL +     let _res: i32 = ..6_i32.take(2).sum();
+   |
 
 error: aborting due to 18 previous errors
 

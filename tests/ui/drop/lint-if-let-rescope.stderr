@@ -108,8 +108,9 @@ LL |     if let Some(1) = { if let Some(_value) = Droppy.get() { Some(1) } else 
    |                                                                     ^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
-LL |     if let Some(1) = { match Droppy.get() { Some(_value) => { Some(1) } _ => { None }} } {
-   |                        ~~~~~              +++++++++++++++++             ~~~~         +
+LL -     if let Some(1) = { if let Some(_value) = Droppy.get() { Some(1) } else { None } } {
+LL +     if let Some(1) = { match Droppy.get() { Some(_value) => { Some(1) } _ => { None }} } {
+   |
 
 error: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/lint-if-let-rescope.rs:72:12
@@ -128,8 +129,9 @@ LL |     if (if let Some(_value) = droppy().get() { true } else { false }) {
    |                                                     ^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
-LL |     if (match droppy().get() { Some(_value) => { true } _ => { false }}) {
-   |         ~~~~~                +++++++++++++++++          ~~~~          +
+LL -     if (if let Some(_value) = droppy().get() { true } else { false }) {
+LL +     if (match droppy().get() { Some(_value) => { true } _ => { false }}) {
+   |
 
 error: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/lint-if-let-rescope.rs:78:21
@@ -148,8 +150,9 @@ LL |     } else if (((if let Some(_value) = droppy().get() { true } else { false
    |                                                              ^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
-LL |     } else if (((match droppy().get() { Some(_value) => { true } _ => { false }}))) {
-   |                  ~~~~~                +++++++++++++++++          ~~~~          +
+LL -     } else if (((if let Some(_value) = droppy().get() { true } else { false }))) {
+LL +     } else if (((match droppy().get() { Some(_value) => { true } _ => { false }}))) {
+   |
 
 error: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/lint-if-let-rescope.rs:90:15
@@ -168,8 +171,9 @@ LL |     while (if let Some(_value) = droppy().get() { false } else { true }) {
    |                                                         ^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
-LL |     while (match droppy().get() { Some(_value) => { false } _ => { true }}) {
-   |            ~~~~~                +++++++++++++++++           ~~~~         +
+LL -     while (if let Some(_value) = droppy().get() { false } else { true }) {
+LL +     while (match droppy().get() { Some(_value) => { false } _ => { true }}) {
+   |
 
 error: aborting due to 7 previous errors
 

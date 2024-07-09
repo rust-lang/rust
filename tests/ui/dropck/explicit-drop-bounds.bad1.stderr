@@ -11,8 +11,9 @@ LL | struct DropMe<T: Copy>(T);
    |                  ^^^^ required by this bound in `DropMe`
 help: consider further restricting type parameter `T` with trait `Copy`
    |
-LL |     [T; 1]: Copy, T: std::marker::Copy // But `[T; 1]: Copy` does not imply `T: Copy`
-   |                 ~~~~~~~~~~~~~~~~~~~~~~
+LL -     [T; 1]: Copy, // But `[T; 1]: Copy` does not imply `T: Copy`
+LL +     [T; 1]: Copy, T: std::marker::Copy // But `[T; 1]: Copy` does not imply `T: Copy`
+   |
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/explicit-drop-bounds.rs:32:18
@@ -27,8 +28,9 @@ LL | struct DropMe<T: Copy>(T);
    |                  ^^^^ required by this bound in `DropMe`
 help: consider further restricting type parameter `T` with trait `Copy`
    |
-LL |     [T; 1]: Copy, T: std::marker::Copy // But `[T; 1]: Copy` does not imply `T: Copy`
-   |                 ~~~~~~~~~~~~~~~~~~~~~~
+LL -     [T; 1]: Copy, // But `[T; 1]: Copy` does not imply `T: Copy`
+LL +     [T; 1]: Copy, T: std::marker::Copy // But `[T; 1]: Copy` does not imply `T: Copy`
+   |
 
 error: aborting due to 2 previous errors
 

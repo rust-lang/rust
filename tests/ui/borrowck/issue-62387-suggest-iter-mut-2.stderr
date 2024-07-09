@@ -8,8 +8,9 @@ LL |             vec.iter().flat_map(|container| container.things()).cloned().co
    |
 help: you may want to use `iter_mut` here
    |
-LL |             vec.iter_mut().flat_map(|container| container.things()).cloned().collect::<Vec<PathBuf>>();
-   |                 ~~~~~~~~
+LL -             vec.iter().flat_map(|container| container.things()).cloned().collect::<Vec<PathBuf>>();
+LL +             vec.iter_mut().flat_map(|container| container.things()).cloned().collect::<Vec<PathBuf>>();
+   |
 
 error: aborting due to 1 previous error
 

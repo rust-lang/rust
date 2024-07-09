@@ -6,8 +6,9 @@ LL |         Some(ref box _i) => {},
    |
 help: swap them
    |
-LL |         Some(box ref _i) => {},
-   |              ~~~~~~~
+LL -         Some(ref box _i) => {},
+LL +         Some(box ref _i) => {},
+   |
 
 error: aborting due to 1 previous error
 

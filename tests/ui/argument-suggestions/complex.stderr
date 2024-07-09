@@ -11,8 +11,9 @@ LL | fn complex(_i: u32, _s: &str, _e: E, _f: F, _g: G, _x: X, _y: Y, _z: Z ) {}
    |    ^^^^^^^ -------            -----
 help: did you mean
    |
-LL |   complex(/* u32 */, &"", /* E */, F::X2, G{}, X {}, Y {}, Z {});
-   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -   complex(1.0, H {}, &"", G{}, F::X2, Z {}, X {}, Y {});
+LL +   complex(/* u32 */, &"", /* E */, F::X2, G{}, X {}, Y {}, Z {});
+   |
 
 error: aborting due to 1 previous error
 

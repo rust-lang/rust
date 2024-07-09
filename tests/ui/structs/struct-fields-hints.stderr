@@ -6,8 +6,9 @@ LL |         bar : 42,
    |
 help: a field with a similar name exists
    |
-LL |         car : 42,
-   |         ~~~
+LL -         bar : 42,
+LL +         car : 42,
+   |
 
 error: aborting due to 1 previous error
 

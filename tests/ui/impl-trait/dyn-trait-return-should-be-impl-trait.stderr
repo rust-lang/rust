@@ -41,8 +41,9 @@ LL | fn ban() -> dyn Trait { Struct }
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn ban() -> impl Trait { Struct }
-   |             ~~~~
+LL - fn ban() -> dyn Trait { Struct }
+LL + fn ban() -> impl Trait { Struct }
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL | fn ban() -> Box<dyn Trait> { Box::new(Struct) }
@@ -56,8 +57,9 @@ LL | fn bak() -> dyn Trait { unimplemented!() }
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn bak() -> impl Trait { unimplemented!() }
-   |             ~~~~
+LL - fn bak() -> dyn Trait { unimplemented!() }
+LL + fn bak() -> impl Trait { unimplemented!() }
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL | fn bak() -> Box<dyn Trait> { Box::new(unimplemented!()) }
@@ -71,8 +73,9 @@ LL | fn bal() -> dyn Trait {
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn bal() -> impl Trait {
-   |             ~~~~
+LL - fn bal() -> dyn Trait {
+LL + fn bal() -> impl Trait {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bal() -> Box<dyn Trait> {
@@ -90,8 +93,9 @@ LL | fn bax() -> dyn Trait {
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn bax() -> impl Trait {
-   |             ~~~~
+LL - fn bax() -> dyn Trait {
+LL + fn bax() -> impl Trait {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bax() -> Box<dyn Trait> {
@@ -109,8 +113,9 @@ LL | fn bat() -> dyn Trait {
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn bat() -> impl Trait {
-   |             ~~~~
+LL - fn bat() -> dyn Trait {
+LL + fn bat() -> impl Trait {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bat() -> Box<dyn Trait> {
@@ -128,8 +133,9 @@ LL | fn bay() -> dyn Trait {
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn bay() -> impl Trait {
-   |             ~~~~
+LL - fn bay() -> dyn Trait {
+LL + fn bay() -> impl Trait {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bay() -> Box<dyn Trait> {

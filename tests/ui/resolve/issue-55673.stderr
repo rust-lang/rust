@@ -6,8 +6,9 @@ LL |     T::Baa: std::fmt::Debug,
    |
 help: change the associated type name to use `Bar` from `Foo`
    |
-LL |     T::Bar: std::fmt::Debug,
-   |        ~~~
+LL -     T::Baa: std::fmt::Debug,
+LL +     T::Bar: std::fmt::Debug,
+   |
 
 error[E0220]: associated type `Baa` not found for `T`
   --> $DIR/issue-55673.rs:16:8
@@ -17,12 +18,14 @@ LL |     T::Baa: std::fmt::Debug,
    |
 help: consider further restricting type parameter `T` with trait `Foo`
    |
-LL |     T::Baa: std::fmt::Debug, T: Foo
-   |                            ~~~~~~~~
+LL -     T::Baa: std::fmt::Debug,
+LL +     T::Baa: std::fmt::Debug, T: Foo
+   |
 help: ...and changing the associated type name
    |
-LL |     T::Bar: std::fmt::Debug,
-   |        ~~~
+LL -     T::Baa: std::fmt::Debug,
+LL +     T::Bar: std::fmt::Debug,
+   |
 
 error: aborting due to 2 previous errors
 

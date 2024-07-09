@@ -19,8 +19,9 @@ LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
    |
 help: a type parameter with a similar name exists
    |
-LL | impl<T> DispatchFromDyn<Smaht<T, MISC>> for T {}
-   |                               ~
+LL - impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+LL + impl<T> DispatchFromDyn<Smaht<T, MISC>> for T {}
+   |
 help: you might be missing a type parameter
    |
 LL | impl<T, U> DispatchFromDyn<Smaht<U, MISC>> for T {}

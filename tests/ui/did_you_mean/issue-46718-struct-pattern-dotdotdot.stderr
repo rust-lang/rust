@@ -6,8 +6,9 @@ LL |             PersonalityInventory { expressivity: exp, ... } => exp
    |
 help: to omit remaining fields, use `..`
    |
-LL |             PersonalityInventory { expressivity: exp, .. } => exp
-   |                                                       ~~
+LL -             PersonalityInventory { expressivity: exp, ... } => exp
+LL +             PersonalityInventory { expressivity: exp, .. } => exp
+   |
 
 error: aborting due to 1 previous error
 

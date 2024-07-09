@@ -30,9 +30,11 @@ LL | #[must_use = "string"suffix]
    |
 help: the following are the possible correct uses
    |
-LL | #[must_use = "reason"]
+LL - #[must_use = "string"suffix]
+LL + #[must_use = "reason"]
    |
-LL | #[must_use]
+LL - #[must_use = "string"suffix]
+LL + #[must_use]
    |
 
 error: suffixes on string literals are invalid

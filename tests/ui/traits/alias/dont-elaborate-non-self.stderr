@@ -8,8 +8,9 @@ LL | fn f<Fut>(a: dyn F<Fut>) {}
    = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |
-LL | fn f<Fut>(a: impl F<Fut>) {}
-   |              ~~~~
+LL - fn f<Fut>(a: dyn F<Fut>) {}
+LL + fn f<Fut>(a: impl F<Fut>) {}
+   |
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn f<Fut>(a: &dyn F<Fut>) {}

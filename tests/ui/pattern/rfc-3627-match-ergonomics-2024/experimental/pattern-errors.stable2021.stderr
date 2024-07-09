@@ -10,8 +10,9 @@ LL |     if let Some(&mut Some(&x)) = &Some(&mut Some(0)) {
            found reference `&_`
 help: consider removing `&` from the pattern
    |
-LL |     if let Some(&mut Some(x)) = &Some(&mut Some(0)) {
-   |                           ~
+LL -     if let Some(&mut Some(&x)) = &Some(&mut Some(0)) {
+LL +     if let Some(&mut Some(x)) = &Some(&mut Some(0)) {
+   |
 
 error[E0308]: mismatched types
   --> $DIR/pattern-errors.rs:31:17

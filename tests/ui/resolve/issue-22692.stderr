@@ -6,8 +6,9 @@ LL |     let _ = String.new();
    |
 help: use the path separator to refer to an item
    |
-LL |     let _ = String::new();
-   |                   ~~
+LL -     let _ = String.new();
+LL +     let _ = String::new();
+   |
 
 error[E0423]: expected value, found struct `String`
   --> $DIR/issue-22692.rs:6:13
@@ -17,8 +18,9 @@ LL |     let _ = String.default;
    |
 help: use the path separator to refer to an item
    |
-LL |     let _ = String::default;
-   |                   ~~
+LL -     let _ = String.default;
+LL +     let _ = String::default;
+   |
 
 error[E0423]: expected value, found struct `Vec`
   --> $DIR/issue-22692.rs:10:13
@@ -28,8 +30,9 @@ LL |     let _ = Vec::<()>.with_capacity(1);
    |
 help: use the path separator to refer to an item
    |
-LL |     let _ = Vec::<()>::with_capacity(1);
-   |                      ~~
+LL -     let _ = Vec::<()>.with_capacity(1);
+LL +     let _ = Vec::<()>::with_capacity(1);
+   |
 
 error[E0423]: expected value, found struct `std::cell::Cell`
   --> $DIR/issue-22692.rs:17:9
@@ -43,8 +46,9 @@ LL |     Type!().get();
    = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
-LL |     <Type!()>::get();
-   |     ~~~~~~~~~~~
+LL -     Type!().get();
+LL +     <Type!()>::get();
+   |
 
 error[E0423]: expected value, found struct `std::cell::Cell`
   --> $DIR/issue-22692.rs:17:9
@@ -58,8 +62,9 @@ LL |     Type! {}.get;
    = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
-LL |     <Type! {}>::get;
-   |     ~~~~~~~~~~~~
+LL -     Type! {}.get;
+LL +     <Type! {}>::get;
+   |
 
 error[E0423]: expected value, found struct `Vec`
   --> $DIR/issue-22692.rs:26:9
@@ -73,8 +78,9 @@ LL |     let _ = create!(type method);
    = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
-LL |         Vec::new()
-   |            ~~
+LL -         Vec.new()
+LL +         Vec::new()
+   |
 
 error[E0423]: expected value, found struct `Vec`
   --> $DIR/issue-22692.rs:31:9
@@ -88,8 +94,9 @@ LL |     let _ = create!(type field);
    = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
-LL |         Vec::new
-   |            ~~
+LL -         Vec.new
+LL +         Vec::new
+   |
 
 error[E0423]: expected value, found struct `std::cell::Cell`
   --> $DIR/issue-22692.rs:17:9
@@ -103,8 +110,9 @@ LL |     let _ = create!(macro method);
    = note: this error originates in the macro `Type` which comes from the expansion of the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
-LL |         <Type!()>::new(0)
-   |         ~~~~~~~~~~~
+LL -         Type!().new(0)
+LL +         <Type!()>::new(0)
+   |
 
 error: aborting due to 8 previous errors
 

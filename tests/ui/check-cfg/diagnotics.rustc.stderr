@@ -19,8 +19,9 @@ LL | #[cfg(featur = "foo")]
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 help: there is a config with a similar name and value
    |
-LL | #[cfg(feature = "foo")]
-   |       ~~~~~~~
+LL - #[cfg(featur = "foo")]
+LL + #[cfg(feature = "foo")]
+   |
 
 warning: unexpected `cfg` condition name: `featur`
   --> $DIR/diagnotics.rs:17:7
@@ -33,8 +34,9 @@ LL | #[cfg(featur = "fo")]
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 help: there is a config with a similar name and different values
    |
-LL | #[cfg(feature = "foo")]
-   |       ~~~~~~~~~~~~~~~
+LL - #[cfg(featur = "fo")]
+LL + #[cfg(feature = "foo")]
+   |
 
 warning: unexpected `cfg` condition name: `no_value`
   --> $DIR/diagnotics.rs:24:7
@@ -55,8 +57,9 @@ LL | #[cfg(no_value = "foo")]
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 help: there is a config with a similar name and no value
    |
-LL | #[cfg(no_values)]
-   |       ~~~~~~~~~
+LL - #[cfg(no_value = "foo")]
+LL + #[cfg(no_values)]
+   |
 
 warning: unexpected `cfg` condition value: `bar`
   --> $DIR/diagnotics.rs:32:7

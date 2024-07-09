@@ -15,8 +15,9 @@ LL |     _func: F,
    |
 help: a trait with a similar name exists
    |
-LL |     _func: Fn,
-   |            ~~
+LL -     _func: F,
+LL +     _func: Fn,
+   |
 help: you might be missing a type parameter
    |
 LL | struct Map2<Segment2, F> {

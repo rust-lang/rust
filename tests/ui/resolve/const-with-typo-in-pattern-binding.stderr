@@ -28,8 +28,9 @@ LL |         _ => {}
    |
 help: you might have meant to pattern match against the value of similarly named constant `god` instead of introducing a new catch-all binding
    |
-LL |         god => {}
-   |         ~~~
+LL -         GOD => {}
+LL +         god => {}
+   |
 
 error: unreachable pattern
   --> $DIR/const-with-typo-in-pattern-binding.rs:30:9
@@ -42,8 +43,9 @@ LL |         _ => {}
    |
 help: you might have meant to pattern match against the value of similarly named constant `GOOD` instead of introducing a new catch-all binding
    |
-LL |         GOOD => {}
-   |         ~~~~
+LL -         GOOOD => {}
+LL +         GOOD => {}
+   |
 
 error: unreachable pattern
   --> $DIR/const-with-typo-in-pattern-binding.rs:36:9
@@ -71,8 +73,9 @@ LL |         _ => {}
    |
 help: you might have meant to pattern match against the value of constant `ARCH` instead of introducing a new catch-all binding
    |
-LL |         std::env::consts::ARCH => {}
-   |         ~~~~~~~~~~~~~~~~~~~~~~
+LL -         ARCH => {}
+LL +         std::env::consts::ARCH => {}
+   |
 
 error: aborting due to 5 previous errors
 

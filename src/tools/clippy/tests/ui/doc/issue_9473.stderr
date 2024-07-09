@@ -8,8 +8,9 @@ LL | /// Blah blah blah <code>[FooBar]&lt;[FooBar]&gt;</code>[FooBar].
    = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
 help: try
    |
-LL | /// Blah blah blah <code>[FooBar]&lt;[FooBar]&gt;</code>[`FooBar`].
-   |                                                          ~~~~~~~~
+LL - /// Blah blah blah <code>[FooBar]&lt;[FooBar]&gt;</code>[FooBar].
+LL + /// Blah blah blah <code>[FooBar]&lt;[FooBar]&gt;</code>[`FooBar`].
+   |
 
 error: aborting due to 1 previous error
 

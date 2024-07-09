@@ -7,8 +7,9 @@ LL |     let _ = rect::area();
    = help: you might be missing a crate named `rect`
 help: you may have meant to call an instance method
    |
-LL |     let _ = rect.area();
-   |                 ~
+LL -     let _ = rect::area();
+LL +     let _ = rect.area();
+   |
 
 error: aborting due to 1 previous error
 

@@ -14,8 +14,9 @@ LL | impl<X> Method<u32> for Thing<X> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: try using a fully qualified path to specify the expected types
    |
-LL |     <Thing<bool> as Method<T>>::method(thing, 42);
-   |     +++++++++++++++++++++++++++++++++++     ~
+LL -     thing.method(42);
+LL +     <Thing<bool> as Method<T>>::method(thing, 42);
+   |
 
 error: aborting due to 1 previous error
 

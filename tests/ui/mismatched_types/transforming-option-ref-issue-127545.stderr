@@ -34,8 +34,9 @@ note: method defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: use `Option::map_or` to deref inner value of `Option`
    |
-LL |     arg.map_or(&[], |v| v)
-   |         ~~~~~~    +++++++
+LL -     arg.unwrap_or(&[])
+LL +     arg.map_or(&[], |v| v)
+   |
 
 error[E0308]: mismatched types
   --> $DIR/transforming-option-ref-issue-127545.rs:13:19
@@ -58,8 +59,9 @@ note: method defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: use `Option::map_or` to deref inner value of `Option`
    |
-LL |     arg.map_or(v, |v| v)
-   |         ~~~~~~  +++++++
+LL -     arg.unwrap_or(v)
+LL +     arg.map_or(v, |v| v)
+   |
 
 error[E0308]: mismatched types
   --> $DIR/transforming-option-ref-issue-127545.rs:17:19
@@ -82,8 +84,9 @@ note: method defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
 help: use `Result::map_or` to deref inner value of `Result`
    |
-LL |     arg.map_or(&[], |v| v)
-   |         ~~~~~~    +++++++
+LL -     arg.unwrap_or(&[])
+LL +     arg.map_or(&[], |v| v)
+   |
 
 error: aborting due to 4 previous errors
 

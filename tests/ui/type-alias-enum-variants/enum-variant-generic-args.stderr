@@ -43,8 +43,9 @@ LL | impl<T> Enum<T> {
    | --------------- `Self` is on type `Enum` in this `impl`
 help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
    |
-LL |         Enum::<()>::TSVariant(());
-   |         ~~~~
+LL -         Self::<()>::TSVariant(());
+LL +         Enum::<()>::TSVariant(());
+   |
 
 error[E0308]: mismatched types
   --> $DIR/enum-variant-generic-args.rs:17:31
@@ -83,8 +84,9 @@ LL | impl<T> Enum<T> {
    | --------------- `Self` is on type `Enum` in this `impl`
 help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
    |
-LL |         Enum::<()>::TSVariant::<()>(());
-   |         ~~~~
+LL -         Self::<()>::TSVariant::<()>(());
+LL +         Enum::<()>::TSVariant::<()>(());
+   |
 
 error[E0109]: type arguments are not allowed on this type
   --> $DIR/enum-variant-generic-args.rs:20:33
@@ -151,8 +153,9 @@ LL | impl<T> Enum<T> {
    | --------------- `Self` is on type `Enum` in this `impl`
 help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
    |
-LL |         Enum::<()>::SVariant { v: () };
-   |         ~~~~
+LL -         Self::<()>::SVariant { v: () };
+LL +         Enum::<()>::SVariant { v: () };
+   |
 
 error[E0308]: mismatched types
   --> $DIR/enum-variant-generic-args.rs:31:35
@@ -184,8 +187,9 @@ LL | impl<T> Enum<T> {
    | --------------- `Self` is on type `Enum` in this `impl`
 help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
    |
-LL |         Enum::<()>::SVariant::<()> { v: () };
-   |         ~~~~
+LL -         Self::<()>::SVariant::<()> { v: () };
+LL +         Enum::<()>::SVariant::<()> { v: () };
+   |
 
 error[E0109]: type arguments are not allowed on this type
   --> $DIR/enum-variant-generic-args.rs:34:32
@@ -240,8 +244,9 @@ LL | impl<T> Enum<T> {
    | --------------- `Self` is on type `Enum` in this `impl`
 help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
    |
-LL |         Enum::<()>::UVariant;
-   |         ~~~~
+LL -         Self::<()>::UVariant;
+LL +         Enum::<()>::UVariant;
+   |
 
 error[E0109]: type arguments are not allowed on self type
   --> $DIR/enum-variant-generic-args.rs:45:16
@@ -261,8 +266,9 @@ LL | impl<T> Enum<T> {
    | --------------- `Self` is on type `Enum` in this `impl`
 help: the `Self` type doesn't accept type parameters, use the concrete type's name `Enum` instead if you want to specify its type parameters
    |
-LL |         Enum::<()>::UVariant::<()>;
-   |         ~~~~
+LL -         Self::<()>::UVariant::<()>;
+LL +         Enum::<()>::UVariant::<()>;
+   |
 
 error[E0109]: type arguments are not allowed on this type
   --> $DIR/enum-variant-generic-args.rs:45:32

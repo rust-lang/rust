@@ -11,8 +11,9 @@ LL |     &'static str
    |      +++++++
 help: instead, you are more likely to want to return an owned value
    |
-LL |     String
-   |     ~~~~~~
+LL -     &str
+LL +     String
+   |
 
 error[E0515]: cannot return value referencing local variable `rawLines`
   --> $DIR/issue-13497.rs:5:5
