@@ -14,14 +14,13 @@ use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 
-use super::{DoctestVisitor, ScrapedDoctest};
-use crate::clean::types::AttributesExt;
-use crate::clean::Attributes;
+use super::{DocTestVisitor, ScrapedDocTest};
+use crate::clean::{types::AttributesExt, Attributes};
 use crate::html::markdown::{self, ErrorCodes, LangString, MdRelLine};
 
 struct RustCollector {
     source_map: Lrc<SourceMap>,
-    tests: Vec<ScrapedDoctest>,
+    tests: Vec<ScrapedDocTest>,
     cur_path: Vec<String>,
     position: Span,
 }
@@ -48,10 +47,10 @@ impl RustCollector {
     }
 }
 
-impl DoctestVisitor for RustCollector {
+impl DocTestVisitor for RustCollector {
     fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine) {
         let line = self.get_base_line() + rel_line.offset();
-        self.tests.push(ScrapedDoctest::new(
+        self.tests.push(ScrapedDocTest::new(
             self.get_filename(),
             line,
             self.cur_path.clone(),
@@ -89,7 +88,7 @@ impl<'a, 'tcx> HirCollector<'a, 'tcx> {
         Self { sess, map, codes, enable_per_target_ignores, tcx, collector }
     }
 
-    pub fn collect_crate(mut self) -> Vec<ScrapedDoctest> {
+    pub fn collect_crate(mut self) -> Vec<ScrapedDocTest> {
         let tcx = self.tcx;
         self.visit_testable("".to_string(), CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID), |this| {
             tcx.hir().walk_toplevel_module(this)

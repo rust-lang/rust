@@ -737,7 +737,7 @@ impl MdRelLine {
     }
 }
 
-pub(crate) fn find_testable_code<T: doctest::DoctestVisitor>(
+pub(crate) fn find_testable_code<T: doctest::DocTestVisitor>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
@@ -747,7 +747,7 @@ pub(crate) fn find_testable_code<T: doctest::DoctestVisitor>(
     find_codes(doc, tests, error_codes, enable_per_target_ignores, extra_info, false)
 }
 
-pub(crate) fn find_codes<T: doctest::DoctestVisitor>(
+pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
