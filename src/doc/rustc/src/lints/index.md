@@ -41,7 +41,8 @@ the warning may become an error.
 
 The following is an example of what future-incompatible code looks like:
 
-```rust
+```bash
+$ cat main.rs
 #[repr(packed)]
 struct Packed {
     f1: u8,
@@ -52,11 +53,9 @@ fn main() {
     let packed = Packed { f1: 1, f2: 2 };
     let _ = &packed.f2; // This line triggers the warning
 }
-```
 
-This code would produce a warning like:
+$ rustc main.rs
 
-```text
 error[E0793]: reference to packed field is unaligned
  --> src/main.rs:9:13
   |
@@ -66,7 +65,6 @@ error[E0793]: reference to packed field is unaligned
   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
-
 ```
 
 For more information about the process and policy of future-incompatible
