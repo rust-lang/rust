@@ -2,7 +2,7 @@
 //@ edition: 2021
 //@ min-llvm-version: 18
 //@ compile-flags: -Zcoverage-options=mcdc
-//@ llvm-cov-flags: --show-mcdc
+//@ llvm-cov-flags: --show-branches=count --show-mcdc
 
 // This test ensures that boolean expressions that are not inside control flow
 // decisions are correctly instrumented.

@@ -2,7 +2,7 @@
 //@ edition: 2021
 //@ min-llvm-version: 18
 //@ compile-flags: -Zcoverage-options=mcdc
-//@ llvm-cov-flags: --show-mcdc
+//@ llvm-cov-flags: --show-branches=count --show-mcdc
 
 fn mcdc_check_neither(a: bool, b: bool) {
     if a && b {
