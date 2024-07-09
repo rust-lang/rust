@@ -14,7 +14,6 @@ use ide_db::{
     FileId, RootDatabase,
 };
 use itertools::Itertools;
-use span::FileRange;
 use syntax::{
     ast::{self, HasLoopBody, Label},
     match_ast, AstNode, AstToken,

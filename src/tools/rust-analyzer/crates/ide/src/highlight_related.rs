@@ -575,12 +575,20 @@ impl<'a> WalkExpandedExprCtx<'a> {
                     }
 
                     if let ast::Expr::MacroExpr(expr) = expr {
-                        if let Some(expanded) = expr
-                            .macro_call()
-                            .and_then(|call| self.sema.expand(&call))
-                            .and_then(ast::MacroStmts::cast)
+                        if let Some(expanded) =
+                            expr.macro_call().and_then(|call| self.sema.expand(&call))
                         {
-                            self.handle_expanded(expanded, cb);
+                            match_ast! {
+                                match expanded {
+                                    ast::MacroStmts(it) => {
+                                        self.handle_expanded(it, cb);
+                                    },
+                                    ast::Expr(it) => {
+                                        self.walk(&it, cb);
+                                    },
+                                    _ => {}
+                                }
+                            }
                         }
                     }
                 }
