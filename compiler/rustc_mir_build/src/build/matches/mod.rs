@@ -1088,6 +1088,9 @@ struct Candidate<'pat, 'tcx> {
     false_edge_start_block: Option<BasicBlock>,
     /// The `false_edge_start_block` of the next candidate.
     next_candidate_start_block: Option<BasicBlock>,
+
+    /// The id to identify the candidate in coverage instrument.
+    coverage_id: coverage::CandidateCovId,
 }
 
 impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
@@ -1114,6 +1117,7 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
             pre_binding_block: None,
             false_edge_start_block: None,
             next_candidate_start_block: None,
+            coverage_id: coverage::CandidateCovId::default(),
         }
     }
 
@@ -1132,6 +1136,30 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
             move |c, _| c.subcandidates.iter_mut(),
             |_| {},
         );
+    }
+
+    pub(crate) fn set_coverage_id(&mut self, coverage_id: coverage::CandidateCovId) {
+        self.coverage_id = coverage_id;
+        // Assign id for match pairs only if this candidate is the root.
+        if !coverage_id.subcandidate_id.is_root() {
+            return;
+        };
+        let mut latest_match_id = coverage::MatchPairId::START;
+        let mut next_match_id = || {
+            let id = latest_match_id;
+            latest_match_id = id.next_match_pair_id();
+            id
+        };
+        let mut match_pairs = self.match_pairs.iter_mut().collect::<Vec<_>>();
+        while let Some(match_pair) = match_pairs.pop() {
+            match_pair.coverage_id = next_match_id();
+            match_pairs.extend(match_pair.subpairs.iter_mut());
+            if let TestCase::Or { ref mut pats } = match_pair.test_case {
+                match_pairs.extend(
+                    pats.iter_mut().map(|flat_pat| flat_pat.match_pairs.iter_mut()).flatten(),
+                );
+            }
+        }
     }
 }
 
@@ -1211,6 +1239,9 @@ pub(crate) struct MatchPair<'pat, 'tcx> {
 
     /// The pattern this was created from.
     pattern: &'pat Pat<'tcx>,
+
+    /// Key to identify the match pair in coverage.
+    coverage_id: coverage::MatchPairId,
 }
 
 /// See [`Test`] for more.
