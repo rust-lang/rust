@@ -11,7 +11,7 @@ use crate::ast::*;
 use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
-use crate::visit::{AssocCtxt, BoundKind};
+use crate::visit::{AssocCtxt, BoundKind, FnCtxt};
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -36,7 +36,7 @@ impl<A: Array> ExpectOne<A> for SmallVec<A> {
 }
 
 pub trait NoopVisitItemKind {
-    fn noop_visit(&mut self, visitor: &mut impl MutVisitor);
+    fn noop_visit(&mut self, ctxt: Option<AssocCtxt>, visitor: &mut impl MutVisitor);
 }
 
 pub trait MutVisitor: Sized {
@@ -95,11 +95,11 @@ pub trait MutVisitor: Sized {
     }
 
     fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
-        noop_flat_map_item(ni, self)
+        noop_flat_map_item(ni, None, self)
     }
 
     fn flat_map_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
-        noop_flat_map_item(i, self)
+        noop_flat_map_item(i, None, self)
     }
 
     fn visit_fn_header(&mut self, header: &mut FnHeader) {
@@ -113,13 +113,17 @@ pub trait MutVisitor: Sized {
     fn flat_map_assoc_item(
         &mut self,
         i: P<AssocItem>,
-        _ctxt: AssocCtxt,
+        ctxt: AssocCtxt,
     ) -> SmallVec<[P<AssocItem>; 1]> {
-        noop_flat_map_item(i, self)
+        noop_flat_map_item(i, Some(ctxt), self)
     }
 
     fn visit_fn_decl(&mut self, d: &mut P<FnDecl>) {
         noop_visit_fn_decl(d, self);
+    }
+
+    fn visit_fn(&mut self, fk: FnKind<'_>) {
+        noop_visit_fn(fk, self)
     }
 
     fn visit_coroutine_kind(&mut self, a: &mut CoroutineKind) {
@@ -377,13 +381,6 @@ fn visit_thin_exprs<T: MutVisitor>(exprs: &mut ThinVec<P<Expr>>, vis: &mut T) {
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_bounds<T: MutVisitor>(bounds: &mut GenericBounds, ctxt: BoundKind, vis: &mut T) {
     visit_vec(bounds, |bound| vis.visit_param_bound(bound, ctxt));
-}
-
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-fn visit_fn_sig<T: MutVisitor>(FnSig { header, decl, span }: &mut FnSig, vis: &mut T) {
-    vis.visit_fn_header(header);
-    vis.visit_fn_decl(decl);
-    vis.visit_span(span);
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
@@ -880,6 +877,26 @@ fn noop_visit_coroutine_kind<T: MutVisitor>(coroutine_kind: &mut CoroutineKind, 
     }
 }
 
+fn noop_visit_fn<T: MutVisitor>(kind: FnKind<'_>, vis: &mut T) {
+    match kind {
+        FnKind::Fn(_ctxt, FnSig { header, decl, span }, generics, body) => {
+            // Identifier and visibility are visited as a part of the item.
+            vis.visit_fn_header(header);
+            vis.visit_generics(generics);
+            vis.visit_fn_decl(decl);
+            if let Some(body) = body {
+                vis.visit_block(body);
+            }
+            vis.visit_span(span);
+        }
+        FnKind::Closure(binder, decl, body) => {
+            vis.visit_closure_binder(binder);
+            vis.visit_fn_decl(decl);
+            vis.visit_expr(body);
+        }
+    }
+}
+
 fn noop_visit_fn_decl<T: MutVisitor>(decl: &mut P<FnDecl>, vis: &mut T) {
     let FnDecl { inputs, output } = decl.deref_mut();
     inputs.flat_map_in_place(|param| vis.flat_map_param(param));
@@ -1062,11 +1079,12 @@ pub fn noop_visit_block<T: MutVisitor>(block: &mut P<Block>, vis: &mut T) {
 }
 
 pub fn noop_visit_item_kind(kind: &mut impl NoopVisitItemKind, vis: &mut impl MutVisitor) {
-    kind.noop_visit(vis)
+    kind.noop_visit(None, vis)
 }
 
 impl NoopVisitItemKind for ItemKind {
-    fn noop_visit(&mut self, vis: &mut impl MutVisitor) {
+    fn noop_visit(&mut self, ctxt: Option<AssocCtxt>, vis: &mut impl MutVisitor) {
+        assert_eq!(ctxt, None);
         match self {
             ItemKind::ExternCrate(_orig_name) => {}
             ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
@@ -1079,9 +1097,7 @@ impl NoopVisitItemKind for ItemKind {
             }
             ItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
                 visit_defaultness(defaultness, vis);
-                vis.visit_generics(generics);
-                visit_fn_sig(sig, vis);
-                visit_opt(body, |body| vis.visit_block(body));
+                vis.visit_fn(FnKind::Fn(FnCtxt::Free, sig, generics, body));
             }
             ItemKind::Mod(safety, mod_kind) => {
                 visit_safety(safety, vis);
@@ -1180,16 +1196,15 @@ impl NoopVisitItemKind for ItemKind {
 }
 
 impl NoopVisitItemKind for AssocItemKind {
-    fn noop_visit(&mut self, visitor: &mut impl MutVisitor) {
+    fn noop_visit(&mut self, ctxt: Option<AssocCtxt>, visitor: &mut impl MutVisitor) {
+        let ctxt = ctxt.unwrap();
         match self {
             AssocItemKind::Const(item) => {
                 visit_const_item(item, visitor);
             }
             AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
                 visit_defaultness(defaultness, visitor);
-                visitor.visit_generics(generics);
-                visit_fn_sig(sig, visitor);
-                visit_opt(body, |body| visitor.visit_block(body));
+                visitor.visit_fn(FnKind::Fn(FnCtxt::Assoc(ctxt), sig, generics, body));
             }
             AssocItemKind::Type(box TyAlias {
                 defaultness,
@@ -1272,6 +1287,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
 // Mutates one item into possibly many items.
 pub fn noop_flat_map_item<K: NoopVisitItemKind>(
     mut item: P<Item<K>>,
+    ctxt: Option<AssocCtxt>,
     visitor: &mut impl MutVisitor,
 ) -> SmallVec<[P<Item<K>>; 1]> {
     let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
@@ -1279,14 +1295,15 @@ pub fn noop_flat_map_item<K: NoopVisitItemKind>(
     visit_attrs(attrs, visitor);
     visitor.visit_vis(vis);
     visitor.visit_ident(ident);
-    kind.noop_visit(visitor);
+    kind.noop_visit(ctxt, visitor);
     visit_lazy_tts(tokens, visitor);
     visitor.visit_span(span);
     smallvec![item]
 }
 
 impl NoopVisitItemKind for ForeignItemKind {
-    fn noop_visit(&mut self, visitor: &mut impl MutVisitor) {
+    fn noop_visit(&mut self, ctxt: Option<AssocCtxt>, visitor: &mut impl MutVisitor) {
+        assert_eq!(ctxt, None);
         match self {
             ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
                 visitor.visit_ty(ty);
@@ -1294,9 +1311,7 @@ impl NoopVisitItemKind for ForeignItemKind {
             }
             ForeignItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
                 visit_defaultness(defaultness, visitor);
-                visitor.visit_generics(generics);
-                visit_fn_sig(sig, visitor);
-                visit_opt(body, |body| visitor.visit_block(body));
+                visitor.visit_fn(FnKind::Fn(FnCtxt::Foreign, sig, generics, body));
             }
             ForeignItemKind::TyAlias(box TyAlias {
                 defaultness,
@@ -1506,12 +1521,10 @@ pub fn noop_visit_expr<T: MutVisitor>(
             fn_decl_span,
             fn_arg_span,
         }) => {
-            vis.visit_closure_binder(binder);
             visit_constness(constness, vis);
             coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
             vis.visit_capture_by(capture_clause);
-            vis.visit_fn_decl(fn_decl);
-            vis.visit_expr(body);
+            vis.visit_fn(FnKind::Closure(binder, fn_decl, body));
             vis.visit_span(fn_decl_span);
             vis.visit_span(fn_arg_span);
         }
@@ -1767,4 +1780,13 @@ impl<N: DummyAstNode, T: DummyAstNode> DummyAstNode for crate::ast_traits::AstNo
     fn dummy() -> Self {
         crate::ast_traits::AstNodeWrapper::new(N::dummy(), T::dummy())
     }
+}
+
+#[derive(Debug)]
+pub enum FnKind<'a> {
+    /// E.g., `fn foo()`, `fn foo(&self)`, or `extern "Abi" fn foo()`.
+    Fn(FnCtxt, &'a mut FnSig, &'a mut Generics, &'a mut Option<P<Block>>),
+
+    /// E.g., `|x, y| body`.
+    Closure(&'a mut ClosureBinder, &'a mut P<FnDecl>, &'a mut P<Expr>),
 }

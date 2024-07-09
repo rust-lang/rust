@@ -267,7 +267,7 @@ impl MutVisitor for PlaceholderExpander {
     fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         match item.kind {
             ast::ItemKind::MacCall(_) => self.remove(item.id).make_items(),
-            _ => noop_flat_map_item(item, self),
+            _ => noop_flat_map_item(item, None, self),
         }
     }
 
@@ -284,7 +284,7 @@ impl MutVisitor for PlaceholderExpander {
                     AssocCtxt::Impl => it.make_impl_items(),
                 }
             }
-            _ => noop_flat_map_item(item, self),
+            _ => noop_flat_map_item(item, Some(ctxt), self),
         }
     }
 
@@ -294,7 +294,7 @@ impl MutVisitor for PlaceholderExpander {
     ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
         match item.kind {
             ast::ForeignItemKind::MacCall(_) => self.remove(item.id).make_foreign_items(),
-            _ => noop_flat_map_item(item, self),
+            _ => noop_flat_map_item(item, None, self),
         }
     }
 

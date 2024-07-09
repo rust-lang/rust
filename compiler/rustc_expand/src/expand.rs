@@ -1149,7 +1149,7 @@ impl InvocationCollectorNode for P<ast::Item> {
         fragment.make_items()
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        noop_flat_map_item(self, visitor)
+        noop_flat_map_item(self, None, visitor)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ItemKind::MacCall(..))
@@ -1293,7 +1293,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitItemTag>
         fragment.make_trait_items()
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        noop_flat_map_item(self.wrapped, visitor)
+        noop_flat_map_item(self.wrapped, Some(AssocCtxt::Trait), visitor)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
@@ -1334,7 +1334,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, ImplItemTag> 
         fragment.make_impl_items()
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        noop_flat_map_item(self.wrapped, visitor)
+        noop_flat_map_item(self.wrapped, Some(AssocCtxt::Impl), visitor)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
@@ -1372,7 +1372,7 @@ impl InvocationCollectorNode for P<ast::ForeignItem> {
         fragment.make_foreign_items()
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        noop_flat_map_item(self, visitor)
+        noop_flat_map_item(self, None, visitor)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ForeignItemKind::MacCall(..))

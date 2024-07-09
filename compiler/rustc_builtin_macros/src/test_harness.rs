@@ -192,7 +192,7 @@ struct EntryPointCleaner<'a> {
 impl<'a> MutVisitor for EntryPointCleaner<'a> {
     fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         self.depth += 1;
-        let item = noop_flat_map_item(i, self).expect_one("noop did something");
+        let item = noop_flat_map_item(i, None, self).expect_one("noop did something");
         self.depth -= 1;
 
         // Remove any #[rustc_main] or #[start] from the AST so it doesn't

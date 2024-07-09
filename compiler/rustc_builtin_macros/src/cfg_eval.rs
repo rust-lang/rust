@@ -239,22 +239,22 @@ impl MutVisitor for CfgEval<'_> {
     }
 
     fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
-        mut_visit::noop_flat_map_item(configure!(self, item), self)
+        mut_visit::noop_flat_map_item(configure!(self, item), None, self)
     }
 
     fn flat_map_assoc_item(
         &mut self,
         item: P<ast::AssocItem>,
-        _ctxt: AssocCtxt,
+        ctxt: AssocCtxt,
     ) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        mut_visit::noop_flat_map_item(configure!(self, item), self)
+        mut_visit::noop_flat_map_item(configure!(self, item), Some(ctxt), self)
     }
 
     fn flat_map_foreign_item(
         &mut self,
         foreign_item: P<ast::ForeignItem>,
     ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
-        mut_visit::noop_flat_map_item(configure!(self, foreign_item), self)
+        mut_visit::noop_flat_map_item(configure!(self, foreign_item), None, self)
     }
 
     fn flat_map_arm(&mut self, arm: ast::Arm) -> SmallVec<[ast::Arm; 1]> {
