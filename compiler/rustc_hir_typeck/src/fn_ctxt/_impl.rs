@@ -1139,7 +1139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // parameter's value explicitly, so we have to do some error-
             // checking here.
             let arg_count =
-                check_generic_arg_count_for_call(tcx, def_id, generics, seg, IsMethodCall::No);
+                check_generic_arg_count_for_call(self, def_id, generics, seg, IsMethodCall::No);
 
             if let ExplicitLateBound::Yes = arg_count.explicit_late_bound {
                 explicit_late_bound = ExplicitLateBound::Yes;
@@ -1375,7 +1375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let args_raw = self_ctor_args.unwrap_or_else(|| {
             lower_generic_args(
-                tcx,
+                self,
                 def_id,
                 &[],
                 has_self,

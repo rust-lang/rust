@@ -354,7 +354,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let generics = self.tcx.generics_of(pick.item.def_id);
 
         let arg_count_correct = check_generic_arg_count_for_call(
-            self.tcx,
+            self.fcx,
             pick.item.def_id,
             generics,
             seg,
@@ -425,7 +425,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         }
 
         let args = lower_generic_args(
-            self.tcx,
+            self.fcx,
             pick.item.def_id,
             parent_args,
             false,
