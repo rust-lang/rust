@@ -40,7 +40,9 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
         fn is_call_like(bbd: &BasicBlockData<'_>) -> bool {
             use TerminatorKind::*;
             match bbd.terminator().kind {
-                Call { .. } | Drop { .. } | Assert { .. } | InlineAsm { .. } => true,
+                Call { .. } | TailCall { .. } | Drop { .. } | Assert { .. } | InlineAsm { .. } => {
+                    true
+                }
 
                 Goto { .. }
                 | SwitchInt { .. }
@@ -136,6 +138,9 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 if let UnwindAction::Cleanup(_) = unwind {
                     self.penalty += LANDINGPAD_PENALTY;
                 }
+            }
+            TerminatorKind::TailCall { .. } => {
+                self.penalty += CALL_PENALTY;
             }
             TerminatorKind::SwitchInt { discr, targets } => {
                 if discr.constant().is_some() {

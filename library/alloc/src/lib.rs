@@ -124,6 +124,7 @@
 #![feature(error_generic_member_access)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
+#![feature(extend_one_unchecked)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(hasher_prefixfree_extras)]
@@ -256,6 +257,7 @@ pub mod vec;
 #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
 pub mod __export {
     pub use core::format_args;
+    pub use core::hint::must_use;
 }
 
 #[cfg(test)]

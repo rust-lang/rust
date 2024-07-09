@@ -3,7 +3,7 @@ use crate::relate::Relate;
 use crate::solve::{Goal, NoSolution, SolverMode};
 use crate::{self as ty, Interner};
 
-pub trait InferCtxtLike {
+pub trait InferCtxtLike: Sized {
     type Interner: Interner;
     fn cx(&self) -> Self::Interner;
 
@@ -72,6 +72,11 @@ pub trait InferCtxtLike {
         lhs: T,
         rhs: T,
     ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>;
+
+    fn shallow_resolve(
+        &self,
+        ty: <Self::Interner as Interner>::Ty,
+    ) -> <Self::Interner as Interner>::Ty;
 
     fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where

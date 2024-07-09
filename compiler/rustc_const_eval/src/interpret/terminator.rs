@@ -4,9 +4,8 @@ use either::Either;
 use rustc_middle::ty::TyCtxt;
 use tracing::trace;
 
-use rustc_middle::span_bug;
 use rustc_middle::{
-    mir,
+    bug, mir, span_bug,
     ty::{
         self,
         layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout},
@@ -26,7 +25,10 @@ use super::{
     InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, Projectable, Provenance, Scalar,
     StackPopCleanup,
 };
-use crate::fluent_generated as fluent;
+use crate::{
+    fluent_generated as fluent,
+    interpret::{eval_context::StackPopInfo, ReturnAction},
+};
 
 /// An argment passed to a function.
 #[derive(Clone, Debug)]
@@ -45,6 +47,15 @@ impl<'tcx, Prov: Provenance> FnArg<'tcx, Prov> {
             FnArg::InPlace(mplace) => &mplace.layout,
         }
     }
+}
+
+struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
+    callee: FnVal<'tcx, M::ExtraFnVal>,
+    args: Vec<FnArg<'tcx, M::Provenance>>,
+    fn_sig: ty::FnSig<'tcx>,
+    fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
+    /// True if the function is marked as `#[track_caller]` ([`ty::InstanceKind::requires_caller_location`])
+    with_caller_location: bool,
 }
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
@@ -84,7 +95,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         use rustc_middle::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
-                self.pop_stack_frame(/* unwinding */ false)?
+                self.return_from_current_stack_frame(/* unwinding */ false)?
             }
 
             Goto { target } => self.go_to_block(target),
@@ -124,40 +135,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             } => {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
-                let func = self.eval_operand(func, None)?;
-                let args = self.eval_fn_call_arguments(args)?;
 
-                let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
-                let fn_sig =
-                    self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
-                let extra_args = &args[fn_sig.inputs().len()..];
-                let extra_args =
-                    self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout().ty));
-
-                let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
-                    ty::FnPtr(_sig) => {
-                        let fn_ptr = self.read_pointer(&func)?;
-                        let fn_val = self.get_ptr_fn(fn_ptr)?;
-                        (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
-                    }
-                    ty::FnDef(def_id, args) => {
-                        let instance = self.resolve(def_id, args)?;
-                        (
-                            FnVal::Instance(instance),
-                            self.fn_abi_of_instance(instance, extra_args)?,
-                            instance.def.requires_caller_location(*self.tcx),
-                        )
-                    }
-                    _ => span_bug!(
-                        terminator.source_info.span,
-                        "invalid callee of type {}",
-                        func.layout.ty
-                    ),
-                };
+                let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
+                    self.eval_callee_and_args(terminator, func, args)?;
 
                 let destination = self.force_allocation(&self.eval_place(destination)?)?;
                 self.eval_fn_call(
-                    fn_val,
+                    callee,
                     (fn_sig.abi, fn_abi),
                     &args,
                     with_caller_location,
@@ -169,6 +153,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // did a jump to another block.
                 if self.frame_idx() == old_stack && self.frame().loc == old_loc {
                     span_bug!(terminator.source_info.span, "evaluating this call made no progress");
+                }
+            }
+
+            TailCall { ref func, ref args, fn_span: _ } => {
+                let old_frame_idx = self.frame_idx();
+
+                let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
+                    self.eval_callee_and_args(terminator, func, args)?;
+
+                self.eval_fn_tail_call(callee, (fn_sig.abi, fn_abi), &args, with_caller_location)?;
+
+                if self.frame_idx() != old_frame_idx {
+                    span_bug!(
+                        terminator.source_info.span,
+                        "evaluating this tail call pushed a new stack frame"
+                    );
                 }
             }
 
@@ -209,7 +209,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 trace!("unwinding: resuming from cleanup");
                 // By definition, a Resume terminator means
                 // that we're unwinding
-                self.pop_stack_frame(/* unwinding */ true)?;
+                self.return_from_current_stack_frame(/* unwinding */ true)?;
                 return Ok(());
             }
 
@@ -512,6 +512,45 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             M::protect_in_place_function_argument(self, mplace)?;
         }
         Ok(())
+    }
+
+    /// Shared part of `Call` and `TailCall` implementation — finding and evaluating all the
+    /// necessary information about callee and arguments to make a call.
+    fn eval_callee_and_args(
+        &self,
+        terminator: &mir::Terminator<'tcx>,
+        func: &mir::Operand<'tcx>,
+        args: &[Spanned<mir::Operand<'tcx>>],
+    ) -> InterpResult<'tcx, EvaluatedCalleeAndArgs<'tcx, M>> {
+        let func = self.eval_operand(func, None)?;
+        let args = self.eval_fn_call_arguments(args)?;
+
+        let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
+        let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
+        let extra_args = &args[fn_sig.inputs().len()..];
+        let extra_args =
+            self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout().ty));
+
+        let (callee, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
+            ty::FnPtr(_sig) => {
+                let fn_ptr = self.read_pointer(&func)?;
+                let fn_val = self.get_ptr_fn(fn_ptr)?;
+                (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
+            }
+            ty::FnDef(def_id, args) => {
+                let instance = self.resolve(def_id, args)?;
+                (
+                    FnVal::Instance(instance),
+                    self.fn_abi_of_instance(instance, extra_args)?,
+                    instance.def.requires_caller_location(*self.tcx),
+                )
+            }
+            _ => {
+                span_bug!(terminator.source_info.span, "invalid callee of type {}", func.layout.ty)
+            }
+        };
+
+        Ok(EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location })
     }
 
     /// Call this function -- pushing the stack frame and initializing the arguments.
@@ -922,6 +961,49 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )
             }
         }
+    }
+
+    pub(crate) fn eval_fn_tail_call(
+        &mut self,
+        fn_val: FnVal<'tcx, M::ExtraFnVal>,
+        (caller_abi, caller_fn_abi): (Abi, &FnAbi<'tcx, Ty<'tcx>>),
+        args: &[FnArg<'tcx, M::Provenance>],
+        with_caller_location: bool,
+    ) -> InterpResult<'tcx> {
+        trace!("eval_fn_call: {:#?}", fn_val);
+
+        // This is the "canonical" implementation of tails calls,
+        // a pop of the current stack frame, followed by a normal call
+        // which pushes a new stack frame, with the return address from
+        // the popped stack frame.
+        //
+        // Note that we are using `pop_stack_frame` and not `return_from_current_stack_frame`,
+        // as the latter "executes" the goto to the return block, but we don't want to,
+        // only the tail called function should return to the current return block.
+        M::before_stack_pop(self, self.frame())?;
+
+        let StackPopInfo { return_action, return_to_block, return_place } =
+            self.pop_stack_frame(false)?;
+
+        assert_eq!(return_action, ReturnAction::Normal);
+
+        let StackPopCleanup::Goto { ret, unwind } = return_to_block else {
+            bug!("can't tailcall as root");
+        };
+
+        // FIXME(explicit_tail_calls):
+        //   we should check if both caller&callee can/n't unwind,
+        //   see <https://github.com/rust-lang/rust/pull/113128#issuecomment-1614979803>
+
+        self.eval_fn_call(
+            fn_val,
+            (caller_abi, caller_fn_abi),
+            args,
+            with_caller_location,
+            &return_place,
+            ret,
+            unwind,
+        )
     }
 
     fn check_fn_target_features(&self, instance: ty::Instance<'tcx>) -> InterpResult<'tcx, ()> {

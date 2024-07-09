@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `i32: Baz<Self>` is not satisfied
+error[E0277]: the trait bound `<Self as Foo>::Bar<()>: Eq<i32>` is not satisfied
   --> $DIR/assume-gat-normalization-for-nested-goals.rs:9:30
    |
 LL |     type Bar<T>: Baz<Self> = i32;

@@ -14,7 +14,7 @@
 //! ownership of the original.
 
 use crate::ast::{AttrStyle, StmtKind};
-use crate::ast_traits::{HasAttrs, HasSpan, HasTokens};
+use crate::ast_traits::{HasAttrs, HasTokens};
 use crate::token::{self, Delimiter, Nonterminal, Token, TokenKind};
 use crate::AttrVec;
 
@@ -170,8 +170,8 @@ pub enum AttrTokenTree {
     Delimited(DelimSpan, DelimSpacing, Delimiter, AttrTokenStream),
     /// Stores the attributes for an attribute target,
     /// along with the tokens for that attribute target.
-    /// See `AttributesData` for more information
-    Attributes(AttributesData),
+    /// See `AttrsTarget` for more information
+    AttrsTarget(AttrsTarget),
 }
 
 impl AttrTokenStream {
@@ -180,7 +180,7 @@ impl AttrTokenStream {
     }
 
     /// Converts this `AttrTokenStream` to a plain `Vec<TokenTree>`.
-    /// During conversion, `AttrTokenTree::Attributes` get 'flattened'
+    /// During conversion, `AttrTokenTree::AttrsTarget` get 'flattened'
     /// back to a `TokenStream` of the form `outer_attr attr_target`.
     /// If there are inner attributes, they are inserted into the proper
     /// place in the attribute target tokens.
@@ -199,13 +199,13 @@ impl AttrTokenStream {
                         TokenStream::new(stream.to_token_trees()),
                     ))
                 }
-                AttrTokenTree::Attributes(data) => {
-                    let idx = data
+                AttrTokenTree::AttrsTarget(target) => {
+                    let idx = target
                         .attrs
                         .partition_point(|attr| matches!(attr.style, crate::AttrStyle::Outer));
-                    let (outer_attrs, inner_attrs) = data.attrs.split_at(idx);
+                    let (outer_attrs, inner_attrs) = target.attrs.split_at(idx);
 
-                    let mut target_tokens = data.tokens.to_attr_token_stream().to_token_trees();
+                    let mut target_tokens = target.tokens.to_attr_token_stream().to_token_trees();
                     if !inner_attrs.is_empty() {
                         let mut found = false;
                         // Check the last two trees (to account for a trailing semi)
@@ -227,7 +227,7 @@ impl AttrTokenStream {
 
                                 let mut stream = TokenStream::default();
                                 for inner_attr in inner_attrs {
-                                    stream.push_stream(inner_attr.tokens());
+                                    stream.push_stream(inner_attr.get_tokens());
                                 }
                                 stream.push_stream(delim_tokens.clone());
                                 *tree = TokenTree::Delimited(*span, *spacing, *delim, stream);
@@ -242,7 +242,7 @@ impl AttrTokenStream {
                         );
                     }
                     for attr in outer_attrs {
-                        res.extend(attr.tokens().0.iter().cloned());
+                        res.extend(attr.get_tokens().0.iter().cloned());
                     }
                     res.extend(target_tokens);
                 }
@@ -262,7 +262,7 @@ impl AttrTokenStream {
 /// have an `attrs` field containing the `#[cfg(FALSE)]` attr,
 /// and a `tokens` field storing the (unparsed) tokens `struct Foo {}`
 #[derive(Clone, Debug, Encodable, Decodable)]
-pub struct AttributesData {
+pub struct AttrsTarget {
     /// Attributes, both outer and inner.
     /// These are stored in the original order that they were parsed in.
     pub attrs: AttrVec,
@@ -436,17 +436,17 @@ impl TokenStream {
         TokenStream::new(vec![TokenTree::token_alone(kind, span)])
     }
 
-    pub fn from_ast(node: &(impl HasAttrs + HasSpan + HasTokens + fmt::Debug)) -> TokenStream {
+    pub fn from_ast(node: &(impl HasAttrs + HasTokens + fmt::Debug)) -> TokenStream {
         let Some(tokens) = node.tokens() else {
-            panic!("missing tokens for node at {:?}: {:?}", node.span(), node);
+            panic!("missing tokens for node: {:?}", node);
         };
         let attrs = node.attrs();
         let attr_stream = if attrs.is_empty() {
             tokens.to_attr_token_stream()
         } else {
-            let attr_data =
-                AttributesData { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
-            AttrTokenStream::new(vec![AttrTokenTree::Attributes(attr_data)])
+            let target =
+                AttrsTarget { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
+            AttrTokenStream::new(vec![AttrTokenTree::AttrsTarget(target)])
         };
         TokenStream::new(attr_stream.to_token_trees())
     }
@@ -765,6 +765,7 @@ mod size_asserts {
     static_assert_size!(AttrTokenStream, 8);
     static_assert_size!(AttrTokenTree, 32);
     static_assert_size!(LazyAttrTokenStream, 8);
+    static_assert_size!(Option<LazyAttrTokenStream>, 8); // must be small, used in many AST nodes
     static_assert_size!(TokenStream, 8);
     static_assert_size!(TokenTree, 32);
     // tidy-alphabetical-end

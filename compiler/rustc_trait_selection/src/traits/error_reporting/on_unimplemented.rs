@@ -1,5 +1,10 @@
 use super::{ObligationCauseCode, PredicateObligation};
+use crate::errors::{
+    EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
+};
 use crate::infer::error_reporting::TypeErrCtxt;
+use crate::infer::InferCtxtExt;
+use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
 use rustc_ast::AttrArgs;
 use rustc_ast::AttrArgsEq;
 use rustc_ast::AttrKind;
@@ -20,12 +25,6 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use std::iter;
 use std::path::PathBuf;
-
-use crate::errors::{
-    EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
-};
-
-use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
 
 /// The symbols which are always allowed in a format string
 static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[

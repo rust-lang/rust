@@ -23,7 +23,7 @@ use std::collections::HashSet;
 
 use crate::builder::Kind;
 use crate::core::config::Target;
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::command;
 use crate::Build;
 
 pub struct Finder {
@@ -209,9 +209,7 @@ than building it.
 
     #[cfg(not(feature = "bootstrap-self-test"))]
     let stage0_supported_target_list: HashSet<String> = crate::utils::helpers::output(
-        &mut BootstrapCommand::new(&build.config.initial_rustc)
-            .args(["--print", "target-list"])
-            .command,
+        &mut command(&build.config.initial_rustc).args(["--print", "target-list"]).command,
     )
     .lines()
     .map(|s| s.to_string())
@@ -354,8 +352,7 @@ than building it.
             // There are three builds of cmake on windows: MSVC, MinGW, and
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
-            let out =
-                build.run(BootstrapCommand::new("cmake").capture_stdout().arg("--help")).stdout();
+            let out = command("cmake").capture_stdout().arg("--help").run(build).stdout();
             if !out.contains("Visual Studio") {
                 panic!(
                     "

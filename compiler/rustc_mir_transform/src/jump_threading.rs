@@ -596,6 +596,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::CoroutineDrop => bug!("{term:?} has no terminators"),
             // Disallowed during optimizations.

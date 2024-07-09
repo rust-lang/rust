@@ -1752,10 +1752,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             fcx.probe(|_| {
                 let ocx = ObligationCtxt::new(fcx);
                 ocx.register_obligations(
-                    fcx.tcx
-                        .item_super_predicates(rpit_def_id)
-                        .instantiate_identity_iter()
-                        .filter_map(|clause| {
+                    fcx.tcx.item_super_predicates(rpit_def_id).iter_identity().filter_map(
+                        |clause| {
                             let predicate = clause
                                 .kind()
                                 .map_bound(|clause| match clause {
@@ -1776,7 +1774,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                                 fcx.param_env,
                                 predicate,
                             ))
-                        }),
+                        },
+                    ),
                 );
                 ocx.select_where_possible().is_empty()
             })

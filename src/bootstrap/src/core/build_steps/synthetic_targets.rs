@@ -9,7 +9,7 @@
 
 use crate::core::builder::{Builder, ShouldRun, Step};
 use crate::core::config::TargetSelection;
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::command;
 use crate::Compiler;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -56,7 +56,7 @@ fn create_synthetic_target(
         return TargetSelection::create_synthetic(&name, path.to_str().unwrap());
     }
 
-    let mut cmd = BootstrapCommand::new(builder.rustc(compiler));
+    let mut cmd = command(builder.rustc(compiler));
     cmd.arg("--target").arg(base.rustc_target_arg());
     cmd.args(["-Zunstable-options", "--print", "target-spec-json"]);
 
@@ -64,7 +64,7 @@ fn create_synthetic_target(
     // we cannot use nightly features. So `RUSTC_BOOTSTRAP` is needed here.
     cmd.env("RUSTC_BOOTSTRAP", "1");
 
-    let output = builder.run(cmd.capture()).stdout();
+    let output = cmd.capture().run(builder).stdout();
     let mut spec: serde_json::Value = serde_json::from_slice(output.as_bytes()).unwrap();
     let spec_map = spec.as_object_mut().unwrap();
 

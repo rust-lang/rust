@@ -286,7 +286,7 @@ fn orphan_check<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_def_id: LocalDefId,
     mode: OrphanCheckMode,
-) -> Result<(), OrphanCheckErr<'tcx, FxIndexSet<DefId>>> {
+) -> Result<(), OrphanCheckErr<TyCtxt<'tcx>, FxIndexSet<DefId>>> {
     // We only accept this routine to be invoked on implementations
     // of a trait, not inherent implementations.
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -326,17 +326,16 @@ fn orphan_check<'tcx>(
             ty
         };
 
-        Ok(ty)
+        Ok::<_, !>(ty)
     };
 
-    let Ok(result) = traits::orphan_check_trait_ref::<!>(
+    let result = traits::orphan_check_trait_ref(
         &infcx,
         trait_ref,
         traits::InCrate::Local { mode },
         lazily_normalize_ty,
-    ) else {
-        unreachable!()
-    };
+    )
+    .into_ok();
 
     // (2)  Try to map the remaining inference vars back to generic params.
     result.map_err(|err| match err {
@@ -369,7 +368,7 @@ fn emit_orphan_check_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     impl_def_id: LocalDefId,
-    err: traits::OrphanCheckErr<'tcx, FxIndexSet<DefId>>,
+    err: traits::OrphanCheckErr<TyCtxt<'tcx>, FxIndexSet<DefId>>,
 ) -> ErrorGuaranteed {
     match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
@@ -482,7 +481,7 @@ fn emit_orphan_check_error<'tcx>(
 
 fn lint_uncovered_ty_params<'tcx>(
     tcx: TyCtxt<'tcx>,
-    UncoveredTyParams { uncovered, local_ty }: UncoveredTyParams<'tcx, FxIndexSet<DefId>>,
+    UncoveredTyParams { uncovered, local_ty }: UncoveredTyParams<TyCtxt<'tcx>, FxIndexSet<DefId>>,
     impl_def_id: LocalDefId,
 ) {
     let hir_id = tcx.local_def_id_to_hir_id(impl_def_id);

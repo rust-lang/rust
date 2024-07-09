@@ -1,3 +1,4 @@
+use crate::Build;
 use std::ffi::OsStr;
 use std::path::Path;
 use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
@@ -108,14 +109,17 @@ impl BootstrapCommand {
         self
     }
 
+    #[must_use]
     pub fn delay_failure(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::DelayFail, ..self }
     }
 
+    #[must_use]
     pub fn fail_fast(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::Exit, ..self }
     }
 
+    #[must_use]
     pub fn allow_failure(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::Ignore, ..self }
     }
@@ -126,21 +130,20 @@ impl BootstrapCommand {
     }
 
     /// Capture all output of the command, do not print it.
+    #[must_use]
     pub fn capture(self) -> Self {
         Self { stdout: OutputMode::Capture, stderr: OutputMode::Capture, ..self }
     }
 
     /// Capture stdout of the command, do not print it.
+    #[must_use]
     pub fn capture_stdout(self) -> Self {
         Self { stdout: OutputMode::Capture, ..self }
     }
-}
 
-/// This implementation exists to make it possible to pass both [BootstrapCommand] and
-/// `&mut BootstrapCommand` to `Build.run()`.
-impl AsMut<BootstrapCommand> for BootstrapCommand {
-    fn as_mut(&mut self) -> &mut BootstrapCommand {
-        self
+    /// Run the command, returning its output.
+    pub fn run(&mut self, builder: &Build) -> CommandOutput {
+        builder.run(self)
     }
 }
 
@@ -164,6 +167,13 @@ enum CommandStatus {
     DidNotStart,
 }
 
+/// Create a new BootstrapCommand. This is a helper function to make command creation
+/// shorter than `BootstrapCommand::new`.
+#[must_use]
+pub fn command<S: AsRef<OsStr>>(program: S) -> BootstrapCommand {
+    BootstrapCommand::new(program)
+}
+
 /// Represents the output of an executed process.
 #[allow(unused)]
 pub struct CommandOutput {
@@ -173,10 +183,12 @@ pub struct CommandOutput {
 }
 
 impl CommandOutput {
+    #[must_use]
     pub fn did_not_start() -> Self {
         Self { status: CommandStatus::DidNotStart, stdout: vec![], stderr: vec![] }
     }
 
+    #[must_use]
     pub fn is_success(&self) -> bool {
         match self.status {
             CommandStatus::Finished(status) => status.success(),
@@ -184,10 +196,12 @@ impl CommandOutput {
         }
     }
 
+    #[must_use]
     pub fn is_failure(&self) -> bool {
         !self.is_success()
     }
 
+    #[must_use]
     pub fn status(&self) -> Option<ExitStatus> {
         match self.status {
             CommandStatus::Finished(status) => Some(status),
@@ -195,14 +209,17 @@ impl CommandOutput {
         }
     }
 
+    #[must_use]
     pub fn stdout(&self) -> String {
         String::from_utf8(self.stdout.clone()).expect("Cannot parse process stdout as UTF-8")
     }
 
+    #[must_use]
     pub fn stdout_if_ok(&self) -> Option<String> {
         if self.is_success() { Some(self.stdout()) } else { None }
     }
 
+    #[must_use]
     pub fn stderr(&self) -> String {
         String::from_utf8(self.stderr.clone()).expect("Cannot parse process stderr as UTF-8")
     }

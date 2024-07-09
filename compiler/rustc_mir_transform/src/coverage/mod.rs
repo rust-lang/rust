@@ -8,6 +8,10 @@ mod spans;
 mod tests;
 mod unexpand;
 
+use rustc_hir as hir;
+use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::coverage::{
     CodeRegion, CoverageKind, DecisionInfo, FunctionCoverageInfo, Mapping, MappingKind,
 };
@@ -465,6 +469,9 @@ struct ExtractedHirInfo {
     /// Must have the same context and filename as the body span.
     fn_sig_span_extended: Option<Span>,
     body_span: Span,
+    /// "Holes" are regions within the body span that should not be included in
+    /// coverage spans for this function (e.g. closures and nested items).
+    hole_spans: Vec<Span>,
 }
 
 fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHirInfo {
@@ -480,7 +487,7 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
 
     let mut body_span = hir_body.value.span;
 
-    use rustc_hir::{Closure, Expr, ExprKind, Node};
+    use hir::{Closure, Expr, ExprKind, Node};
     // Unexpand a closure's body span back to the context of its declaration.
     // This helps with closure bodies that consist of just a single bang-macro,
     // and also with closure bodies produced by async desugaring.
@@ -507,11 +514,78 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
 
     let function_source_hash = hash_mir_source(tcx, hir_body);
 
-    ExtractedHirInfo { function_source_hash, is_async_fn, fn_sig_span_extended, body_span }
+    let hole_spans = extract_hole_spans_from_hir(tcx, body_span, hir_body);
+
+    ExtractedHirInfo {
+        function_source_hash,
+        is_async_fn,
+        fn_sig_span_extended,
+        body_span,
+        hole_spans,
+    }
 }
 
-fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx rustc_hir::Body<'tcx>) -> u64 {
+fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx hir::Body<'tcx>) -> u64 {
     // FIXME(cjgillot) Stop hashing HIR manually here.
     let owner = hir_body.id().hir_id.owner;
     tcx.hir_owner_nodes(owner).opt_hash_including_bodies.unwrap().to_smaller_hash().as_u64()
+}
+
+fn extract_hole_spans_from_hir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body_span: Span, // Usually `hir_body.value.span`, but not always
+    hir_body: &hir::Body<'tcx>,
+) -> Vec<Span> {
+    struct HolesVisitor<'hir, F> {
+        hir: Map<'hir>,
+        visit_hole_span: F,
+    }
+
+    impl<'hir, F: FnMut(Span)> Visitor<'hir> for HolesVisitor<'hir, F> {
+        /// - We need `NestedFilter::INTRA = true` so that `visit_item` will be called.
+        /// - Bodies of nested items don't actually get visited, because of the
+        ///   `visit_item` override.
+        /// - For nested bodies that are not part of an item, we do want to visit any
+        ///   items contained within them.
+        type NestedFilter = nested_filter::All;
+
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.hir
+        }
+
+        fn visit_item(&mut self, item: &'hir hir::Item<'hir>) {
+            (self.visit_hole_span)(item.span);
+            // Having visited this item, we don't care about its children,
+            // so don't call `walk_item`.
+        }
+
+        // We override `visit_expr` instead of the more specific expression
+        // visitors, so that we have direct access to the expression span.
+        fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
+            match expr.kind {
+                hir::ExprKind::Closure(_) | hir::ExprKind::ConstBlock(_) => {
+                    (self.visit_hole_span)(expr.span);
+                    // Having visited this expression, we don't care about its
+                    // children, so don't call `walk_expr`.
+                }
+
+                // For other expressions, recursively visit as normal.
+                _ => walk_expr(self, expr),
+            }
+        }
+    }
+
+    let mut hole_spans = vec![];
+    let mut visitor = HolesVisitor {
+        hir: tcx.hir(),
+        visit_hole_span: |hole_span| {
+            // Discard any holes that aren't directly visible within the body span.
+            if body_span.contains(hole_span) && body_span.eq_ctxt(hole_span) {
+                hole_spans.push(hole_span);
+            }
+        },
+    };
+
+    visitor.visit_body(hir_body);
+    hole_spans
 }

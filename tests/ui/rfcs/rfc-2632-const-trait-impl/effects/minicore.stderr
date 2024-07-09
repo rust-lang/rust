@@ -1,17 +1,13 @@
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/minicore.rs:8:30
-   |
-LL | #![feature(const_trait_impl, effects, const_mut_refs)]
-   |                              ^^^^^^^
-   |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
+error: the compiler unexpectedly panicked. this is a bug.
 
-error: requires `EffectsCompat` lang_item
-  --> $DIR/minicore.rs:455:9
-   |
-LL | impl<T: Clone> Clone for RefCell<T> {
-   |         ^^^^^
+query stack during panic:
+#0 [check_well_formed] checking that `<impl at $DIR/minicore.rs:459:1: 459:36>` is well-formed
+#1 [check_mod_type_wf] checking that types are well-formed in top-level module
+end of query stack
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: the compiler unexpectedly panicked. this is a bug.
 
+query stack during panic:
+#0 [check_well_formed] checking that `drop` is well-formed
+#1 [check_mod_type_wf] checking that types are well-formed in top-level module
+end of query stack

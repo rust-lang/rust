@@ -71,6 +71,7 @@ This API is completely unstable and subject to change.
 #![feature(rustdoc_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
+#![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 
 #[macro_use]
