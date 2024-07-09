@@ -129,8 +129,8 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         c.items.push(mk_main(&mut self.cx));
     }
 
-    fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
-        let mut item = i.into_inner();
+    fn flat_map_item(&mut self, mut i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
+        let item = &mut *i;
         if let Some(name) = get_test_name(&item) {
             debug!("this is a test item");
 
@@ -144,13 +144,13 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
             item.kind
         {
             let prev_tests = mem::take(&mut self.tests);
-            noop_visit_item_kind(&mut item.kind, self);
+            noop_visit_item_kind(&mut item.kind, item.span, item.id, self);
             self.add_test_cases(item.id, span, prev_tests);
         } else {
             // But in those cases, we emit a lint to warn the user of these missing tests.
             walk_item(&mut InnerItemLinter { sess: self.cx.ext_cx.sess }, &item);
         }
-        smallvec![P(item)]
+        smallvec![i]
     }
 }
 

@@ -36,7 +36,13 @@ impl<A: Array> ExpectOne<A> for SmallVec<A> {
 }
 
 pub trait NoopVisitItemKind {
-    fn noop_visit(&mut self, ctxt: Option<AssocCtxt>, visitor: &mut impl MutVisitor);
+    fn noop_visit(
+        &mut self,
+        ctxt: Option<AssocCtxt>,
+        span: Span,
+        id: NodeId,
+        visitor: &mut impl MutVisitor,
+    );
 }
 
 pub trait MutVisitor: Sized {
@@ -122,7 +128,8 @@ pub trait MutVisitor: Sized {
         noop_visit_fn_decl(d, self);
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'_>) {
+    /// `Span` and `NodeId` are mutated at the caller site.
+    fn visit_fn(&mut self, fk: FnKind<'_>, _: Span, _: NodeId) {
         noop_visit_fn(fk, self)
     }
 
@@ -1078,12 +1085,23 @@ pub fn noop_visit_block<T: MutVisitor>(block: &mut P<Block>, vis: &mut T) {
     vis.visit_span(span);
 }
 
-pub fn noop_visit_item_kind(kind: &mut impl NoopVisitItemKind, vis: &mut impl MutVisitor) {
-    kind.noop_visit(None, vis)
+pub fn noop_visit_item_kind(
+    kind: &mut impl NoopVisitItemKind,
+    span: Span,
+    id: NodeId,
+    vis: &mut impl MutVisitor,
+) {
+    kind.noop_visit(None, span, id, vis)
 }
 
 impl NoopVisitItemKind for ItemKind {
-    fn noop_visit(&mut self, ctxt: Option<AssocCtxt>, vis: &mut impl MutVisitor) {
+    fn noop_visit(
+        &mut self,
+        ctxt: Option<AssocCtxt>,
+        span: Span,
+        id: NodeId,
+        vis: &mut impl MutVisitor,
+    ) {
         assert_eq!(ctxt, None);
         match self {
             ItemKind::ExternCrate(_orig_name) => {}
@@ -1097,7 +1115,7 @@ impl NoopVisitItemKind for ItemKind {
             }
             ItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
                 visit_defaultness(defaultness, vis);
-                vis.visit_fn(FnKind::Fn(FnCtxt::Free, sig, generics, body));
+                vis.visit_fn(FnKind::Fn(FnCtxt::Free, sig, generics, body), span, id);
             }
             ItemKind::Mod(safety, mod_kind) => {
                 visit_safety(safety, vis);
@@ -1196,7 +1214,13 @@ impl NoopVisitItemKind for ItemKind {
 }
 
 impl NoopVisitItemKind for AssocItemKind {
-    fn noop_visit(&mut self, ctxt: Option<AssocCtxt>, visitor: &mut impl MutVisitor) {
+    fn noop_visit(
+        &mut self,
+        ctxt: Option<AssocCtxt>,
+        span: Span,
+        id: NodeId,
+        visitor: &mut impl MutVisitor,
+    ) {
         let ctxt = ctxt.unwrap();
         match self {
             AssocItemKind::Const(item) => {
@@ -1204,7 +1228,7 @@ impl NoopVisitItemKind for AssocItemKind {
             }
             AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
                 visit_defaultness(defaultness, visitor);
-                visitor.visit_fn(FnKind::Fn(FnCtxt::Assoc(ctxt), sig, generics, body));
+                visitor.visit_fn(FnKind::Fn(FnCtxt::Assoc(ctxt), sig, generics, body), span, id);
             }
             AssocItemKind::Type(box TyAlias {
                 defaultness,
@@ -1284,7 +1308,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
     vis.visit_span(inject_use_span);
 }
 
-// Mutates one item into possibly many items.
+/// Mutates one item, returning the item again.
 pub fn noop_flat_map_item<K: NoopVisitItemKind>(
     mut item: P<Item<K>>,
     ctxt: Option<AssocCtxt>,
@@ -1295,14 +1319,20 @@ pub fn noop_flat_map_item<K: NoopVisitItemKind>(
     visit_attrs(attrs, visitor);
     visitor.visit_vis(vis);
     visitor.visit_ident(ident);
-    kind.noop_visit(ctxt, visitor);
+    kind.noop_visit(ctxt, *span, *id, visitor);
     visit_lazy_tts(tokens, visitor);
     visitor.visit_span(span);
     smallvec![item]
 }
 
 impl NoopVisitItemKind for ForeignItemKind {
-    fn noop_visit(&mut self, ctxt: Option<AssocCtxt>, visitor: &mut impl MutVisitor) {
+    fn noop_visit(
+        &mut self,
+        ctxt: Option<AssocCtxt>,
+        span: Span,
+        id: NodeId,
+        visitor: &mut impl MutVisitor,
+    ) {
         assert_eq!(ctxt, None);
         match self {
             ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
@@ -1311,7 +1341,7 @@ impl NoopVisitItemKind for ForeignItemKind {
             }
             ForeignItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
                 visit_defaultness(defaultness, visitor);
-                visitor.visit_fn(FnKind::Fn(FnCtxt::Foreign, sig, generics, body));
+                visitor.visit_fn(FnKind::Fn(FnCtxt::Foreign, sig, generics, body), span, id);
             }
             ForeignItemKind::TyAlias(box TyAlias {
                 defaultness,
@@ -1524,7 +1554,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             visit_constness(constness, vis);
             coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
             vis.visit_capture_by(capture_clause);
-            vis.visit_fn(FnKind::Closure(binder, fn_decl, body));
+            vis.visit_fn(FnKind::Closure(binder, fn_decl, body), *span, *id);
             vis.visit_span(fn_decl_span);
             vis.visit_span(fn_arg_span);
         }
