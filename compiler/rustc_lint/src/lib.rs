@@ -60,6 +60,7 @@ mod late;
 mod let_underscore;
 mod levels;
 mod lints;
+mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
 mod methods;
 mod multiple_supertrait_upcastable;
@@ -97,6 +98,7 @@ use impl_trait_overcaptures::ImplTraitOvercaptures;
 use internal::*;
 use invalid_from_utf8::*;
 use let_underscore::*;
+use macro_expr_fragment_specifier_2024_migration::*;
 use map_unit_fn::*;
 use methods::*;
 use multiple_supertrait_upcastable::*;
@@ -170,6 +172,7 @@ early_lint_methods!(
             IncompleteInternalFeatures: IncompleteInternalFeatures,
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
+            Expr2024: Expr2024,
         ]
     ]
 );
