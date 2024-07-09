@@ -1,4 +1,3 @@
-Without spurious write
 Thread 1 executing: start
 Thread 2 executing: start
 Thread 2 executing: retag x (&mut, protect)
@@ -6,7 +5,7 @@ Thread 1 executing: retag x (&mut, protect)
 Thread 1 executing: [lazy] retag y (&mut, protect, IM)
 Thread 2 executing: [lazy] retag y (&mut, protect, IM)
 Thread 2 executing: spurious write x
-Thread 1 executing: spurious write x (skipped)
+Thread 1 executing: spurious write x (executed)
 Thread 1 executing: ret y
 Thread 2 executing: ret y
 Thread 2 executing: ret x
@@ -26,11 +25,11 @@ help: the accessed tag <TAG> was created here, in the initial state Reserved
    |
 LL |         fn inner(y: &mut Cell<u8>, b: IdxBarrier) -> *mut u8 {
    |                  ^
-help: the accessed tag <TAG> later transitioned to Disabled due to a protector release (acting as a foreign write access) on every location previously accessed by this tag
+help: the accessed tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x1]
   --> $DIR/reservedim_spurious_write.rs:LL:CC
    |
-LL |         }
-   |          ^
+LL |                 *x = 64;
+   |                 ^^^^^^^
    = help: this transition corresponds to a loss of read and write permissions
    = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
    = note: inside closure at $DIR/reservedim_spurious_write.rs:LL:CC

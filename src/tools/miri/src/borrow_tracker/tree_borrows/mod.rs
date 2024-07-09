@@ -145,7 +145,8 @@ impl<'tcx> NewPermission {
         // As demonstrated by `tests/fail/tree_borrows/reservedim_spurious_write.rs`,
         // interior mutability and protectors interact poorly.
         // To eliminate the case of Protected Reserved IM we override interior mutability
-        // in the case of a protected reference.
+        // in the case of a protected reference: protected references are always considered
+        // "freeze".
         let initial_state = match mutability {
             Mutability::Mut if ty_is_unpin =>
                 Permission::new_reserved(ty_is_freeze || is_protected),

@@ -2,6 +2,12 @@
 // and protectors, that makes spurious writes fail in the previous model of Tree Borrows.
 // As for all similar tests, we disable preemption so that the error message is deterministic.
 //@compile-flags: -Zmiri-tree-borrows -Zmiri-preemption-rate=0
+//
+// One revision without spurious read (default source code) and one with spurious read.
+// Both are expected to be UB. Both revisions are expected to have the *same* error
+// because we are aligning the behavior of `without` to that of `with` so that the
+// spurious write is effectively a noop in the long term.
+//@revisions: without with
 
 use std::cell::Cell;
 use std::sync::{Arc, Barrier};
@@ -9,7 +15,7 @@ use std::thread;
 
 // Here is the problematic interleaving:
 // - thread 1: retag and activate `x` (protected)
-// - thread 2: create but do not retag (lazy) `y` as Reserved with interior mutability
+// - thread 2: retag but do not initialize (lazy) `y` as Reserved with interior mutability
 // - thread 1: spurious write through `x` would go here
 // - thread 2: function exit (noop due to lazyness)
 // - thread 1: function exit (no permanent effect on `y` because it is now Reserved IM unprotected)
@@ -35,18 +41,6 @@ macro_rules! synchronized {
 }
 
 fn main() {
-    eprintln!("Without spurious write");
-    example(false);
-
-    eprintln!("\nIf this text is visible then the model forbids spurious writes.\n");
-
-    eprintln!("With spurious write");
-    example(true);
-
-    eprintln!("\nIf this text is visible then the model fails to detect a noalias violation.\n");
-}
-
-fn example(spurious: bool) {
     // For this example it is important that we have at least two bytes
     // because lazyness is involved.
     let mut data = [0u8; 2];
@@ -62,12 +56,12 @@ fn example(spurious: bool) {
         synchronized!(b, "start");
         let ptr = ptr;
         synchronized!(b, "retag x (&mut, protect)");
-        fn inner(x: &mut u8, b: IdxBarrier, spurious: bool) {
+        fn inner(x: &mut u8, b: IdxBarrier) {
             *x = 42; // activate immediately
             synchronized!(b, "[lazy] retag y (&mut, protect, IM)");
             // A spurious write should be valid here because `x` is
             // `Active` and protected.
-            if spurious {
+            if cfg!(with) {
                 synchronized!(b, "spurious write x (executed)");
                 *x = 64;
             } else {
@@ -76,7 +70,7 @@ fn example(spurious: bool) {
             synchronized!(b, "ret y");
             synchronized!(b, "ret x");
         }
-        inner(unsafe { &mut *ptr.0 }, b.clone(), spurious);
+        inner(unsafe { &mut *ptr.0 }, b.clone());
         synchronized!(b, "write y");
         synchronized!(b, "end");
     });
