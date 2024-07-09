@@ -6,6 +6,7 @@
 #![feature(if_let_guard)]
 #![feature(is_sorted)]
 #![feature(iter_intersperse)]
+#![feature(iter_partition_in_place)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustc_private)]
