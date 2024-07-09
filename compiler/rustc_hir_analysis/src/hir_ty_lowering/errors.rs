@@ -4,7 +4,6 @@ use crate::errors::{
 };
 use crate::fluent_generated as fluent;
 use crate::hir_ty_lowering::HirTyLowerer;
-use crate::traits::error_reporting::report_object_safety_error;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
@@ -27,6 +26,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::BytePos;
 use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_trait_selection::error_reporting::traits::report_object_safety_error;
 use rustc_trait_selection::traits::FulfillmentError;
 use rustc_trait_selection::traits::{
     object_safety_violations_for_assoc_item, TraitAliasExpansionInfo,

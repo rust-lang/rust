@@ -18,8 +18,8 @@ use rustc_middle::ty::TypeSuperFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt;
 use rustc_trait_selection::solve;
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 
 use std::mem;
 

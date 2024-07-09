@@ -1,10 +1,10 @@
 use super::{ObligationCauseCode, PredicateObligation};
+use crate::error_reporting::traits::type_err_ctxt_ext::InferCtxtPrivExt;
 use crate::errors::{
     EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
 };
 use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::InferCtxtExt;
-use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
 use rustc_ast::AttrArgs;
 use rustc_ast::AttrArgsEq;
 use rustc_ast::AttrKind;

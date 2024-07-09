@@ -96,10 +96,10 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits::error_reporting::suggestions::{
+use rustc_trait_selection::error_reporting::traits::suggestions::{
     ReturnsVisitor, TypeErrCtxtExt as _,
 };
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::errors;
