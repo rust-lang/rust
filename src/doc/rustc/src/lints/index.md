@@ -41,30 +41,36 @@ the warning may become an error.
 
 The following is an example of what future-incompatible code looks like:
 
-```bash
-$ cat main.rs
-#[repr(packed)]
-struct Packed {
-    f1: u8,
-    f2: u16,
+```rust,compile_fail
+#![allow(unused)]
+enum E {
+    A,
+}
+impl Drop for E {
+    fn drop(&mut self) {
+        println!("Drop");
+    }
 }
 
+#[allow(cenum_impl_drop_cast)]
 fn main() {
-    let packed = Packed { f1: 1, f2: 2 };
-    let _ = &packed.f2; // This line triggers the warning
+    let e = E::A;
+    let i = e as u32;
 }
+```
 
-$ rustc main.rs
+This will produce the following warning:
 
-error[E0793]: reference to packed field is unaligned
- --> src/main.rs:9:13
-  |
-9 |     let _ = &packed.f2; // This line triggers the warning
-  |             ^^^^^^^^^^
-  |
-  = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
-  = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-  = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+```text
+> warning: cannot cast enum `E` into integer `u32` because it implements `Drop`
+>   --> src/main.rs:14:13
+>    |
+> 14 |     let i = e as u32;
+>    |             ^^^^^^^^
+>    |
+>    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+>    = note: for more information, see issue #73333 <https://github.com/rust-lang/rust/issues/73333>
+> 
 ```
 
 For more information about the process and policy of future-incompatible
