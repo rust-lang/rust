@@ -456,6 +456,10 @@ impl RunnableDocTest {
     }
 }
 
+/// Execute a `RunnableDoctest`.
+///
+/// This is the function that calculates the compiler command line, invokes the compiler, then
+/// invokes the test or tests in a separate executable (if applicable).
 fn run_test(
     doctest: RunnableDocTest,
     rustdoc_options: &RustdocOptions,
@@ -705,6 +709,15 @@ impl IndividualTestOptions {
 }
 
 /// A doctest scraped from the code, ready to be turned into a runnable test.
+///
+/// The pipeline goes: [`clean`] AST -> `ScrapedDoctest` -> [`RunnableDoctest`].
+/// [`run_merged_tests`] converts a bunch of scraped doctests to a single runnable doctest,
+/// while [`generate_unique_doctest`] does the standalones.
+///
+/// [`clean`]: crate::clean
+/// [`RunnableDoctest`]: crate::doctest::RunnableDoctest
+/// [`run_merged_tests`]: crate::doctest::runner::DocTestRunner::run_merged_tests
+/// [`generate_unique_doctest`]: crate::doctest::make::DocTestBuilder::generate_unique_doctest
 pub(crate) struct ScrapedDocTest {
     filename: FileName,
     line: usize,
