@@ -207,6 +207,10 @@ pub trait MutVisitor: Sized {
         noop_visit_path(p, self);
     }
 
+    fn visit_path_segment(&mut self, p: &mut PathSegment) {
+        noop_visit_path_segment(p, self)
+    }
+
     fn visit_qself(&mut self, qs: &mut Option<P<QSelf>>) {
         noop_visit_qself(qs, self);
     }
@@ -554,11 +558,16 @@ fn noop_visit_ident<T: MutVisitor>(Ident { name: _, span }: &mut Ident, vis: &mu
     vis.visit_span(span);
 }
 
+fn noop_visit_path_segment<T: MutVisitor>(segment: &mut PathSegment, vis: &mut T) {
+    let PathSegment { ident, id, args } = segment;
+    vis.visit_id(id);
+    vis.visit_ident(ident);
+    visit_opt(args, |args| vis.visit_generic_args(args));
+}
+
 fn noop_visit_path<T: MutVisitor>(Path { segments, span, tokens }: &mut Path, vis: &mut T) {
-    for PathSegment { ident, id, args } in segments {
-        vis.visit_id(id);
-        vis.visit_ident(ident);
-        visit_opt(args, |args| vis.visit_generic_args(args));
+    for segment in segments {
+        vis.visit_path_segment(segment);
     }
     visit_lazy_tts(tokens, vis);
     vis.visit_span(span);
