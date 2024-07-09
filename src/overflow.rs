@@ -427,7 +427,7 @@ impl<'a> Context<'a> {
                         if closures::args_have_many_closure(&self.items) {
                             None
                         } else {
-                            closures::rewrite_last_closure(self.context, expr, shape)
+                            closures::rewrite_last_closure(self.context, expr, shape).ok()
                         }
                     }
 

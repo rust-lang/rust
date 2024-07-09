@@ -230,7 +230,8 @@ pub(crate) fn format_expr(
             expr.span,
             context,
             shape,
-        ),
+        )
+        .ok(),
         ast::ExprKind::Try(..)
         | ast::ExprKind::Field(..)
         | ast::ExprKind::MethodCall(..)
