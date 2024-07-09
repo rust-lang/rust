@@ -397,6 +397,13 @@ const LOONGARCH_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     // tidy-alphabetical-end
 ];
 
+const IBMZ_ALLOWED_FEATURES: &[(&str, Stability)] = &[
+    // tidy-alphabetical-start
+    ("backchain", Unstable(sym::s390x_target_feature)),
+    ("vector", Unstable(sym::s390x_target_feature)),
+    // tidy-alphabetical-end
+];
+
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -414,6 +421,7 @@ pub fn all_known_features() -> impl Iterator<Item = (&'static str, Stability)> {
         .chain(BPF_ALLOWED_FEATURES.iter())
         .chain(CSKY_ALLOWED_FEATURES)
         .chain(LOONGARCH_ALLOWED_FEATURES)
+        .chain(IBMZ_ALLOWED_FEATURES)
         .cloned()
 }
 
@@ -431,6 +439,7 @@ impl super::spec::Target {
             "bpf" => BPF_ALLOWED_FEATURES,
             "csky" => CSKY_ALLOWED_FEATURES,
             "loongarch64" => LOONGARCH_ALLOWED_FEATURES,
+            "s390x" => IBMZ_ALLOWED_FEATURES,
             _ => &[],
         }
     }
