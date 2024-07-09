@@ -10,5 +10,4 @@ impl<'a, T: 'a> Test for &[T] where &'a T: Test {}
 fn main() {
     struct Local {}
     impl Test for &Local {}
-    //~^ WARN non-local `impl` definition
 }

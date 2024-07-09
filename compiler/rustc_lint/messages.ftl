@@ -592,7 +592,6 @@ lint_non_local_definitions_cargo_update = the {$macro_kind} `{$macro_name}` may 
 lint_non_local_definitions_deprecation = this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 lint_non_local_definitions_impl = non-local `impl` definition, `impl` blocks should be written at the same level as their item
-    .remove_help = remove `{$may_remove_part}` to make the `impl` local
     .without_trait = methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
     .with_trait = an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
     .bounds = `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
@@ -616,8 +615,6 @@ lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, `#
     .help_doctest =
         remove the `#[macro_export]` or make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`
     .non_local = a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
-
-lint_non_local_definitions_may_move = may need to be moved as well
 
 lint_non_local_definitions_of_trait_not_local = `{$of_trait_str}` is not local
 

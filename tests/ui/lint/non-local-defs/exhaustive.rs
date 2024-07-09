@@ -55,18 +55,13 @@ fn main() {
 
     struct InsideMain;
 
+    impl Trait for &InsideMain {}
     impl Trait for *mut InsideMain {}
-    //~^ WARN non-local `impl` definition
     impl Trait for *mut [InsideMain] {}
-    //~^ WARN non-local `impl` definition
     impl Trait for [InsideMain; 8] {}
-    //~^ WARN non-local `impl` definition
     impl Trait for (InsideMain,) {}
-    //~^ WARN non-local `impl` definition
     impl Trait for fn(InsideMain) -> () {}
-    //~^ WARN non-local `impl` definition
     impl Trait for fn() -> InsideMain {}
-    //~^ WARN non-local `impl` definition
 
     fn inside_inside() {
         impl Display for InsideMain {
