@@ -209,7 +209,8 @@ impl Step for GenerateCopyright {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let license_metadata = builder.ensure(CollectLicenseMetadata);
+        // let license_metadata = builder.ensure(CollectLicenseMetadata);
+        let license_metadata = builder.out.join("license-metadata.json");
 
         // Temporary location, it will be moved to the proper one once it's accurate.
         let dest = builder.out.join("COPYRIGHT.md");

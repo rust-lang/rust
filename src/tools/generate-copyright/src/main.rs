@@ -1,9 +1,10 @@
 use anyhow::Error;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 mod cargo_metadata;
+mod licenses;
 
 /// The entry point to the binary.
 ///
@@ -31,61 +32,100 @@ fn main() -> Result<(), Error> {
         collected_cargo_metadata.insert(dep);
     }
 
+    let mut license_set = BTreeSet::new();
+
     let mut buffer = Vec::new();
 
-    writeln!(buffer, "# In-tree files")?;
+    writeln!(buffer, "# COPYRIGHT for Rust")?;
+    writeln!(buffer)?;
+    writeln!(
+        buffer,
+        "This file describes the copyright and licensing information for the source code within The Rust Project git tree, and the third-party dependencies used when building the Rust toolchain (including the Rust Standard Library)"
+    )?;
+    writeln!(buffer)?;
+    writeln!(buffer, "## Table of Contents")?;
+    writeln!(buffer)?;
+    writeln!(buffer, "* [In-tree files](#in-tree-files)")?;
+    writeln!(buffer, "* [Out-of-tree files](#out-of-tree-files)")?;
+    writeln!(buffer, "* [License Texts](#license-texts)")?;
+    writeln!(buffer)?;
+
+    writeln!(buffer, "## In-tree files")?;
     writeln!(buffer)?;
     writeln!(
         buffer,
         "The following licenses cover the in-tree source files that were used in this release:"
     )?;
     writeln!(buffer)?;
-    render_tree_recursive(&collected_tree_metadata.files, &mut buffer, 0)?;
+    render_tree_recursive(&collected_tree_metadata.files, &mut buffer, 0, &mut license_set)?;
 
     writeln!(buffer)?;
 
-    writeln!(buffer, "# Out-of-tree files")?;
+    writeln!(buffer, "## Out-of-tree files")?;
     writeln!(buffer)?;
     writeln!(
         buffer,
         "The following licenses cover the out-of-tree crates that were used in this release:"
     )?;
     writeln!(buffer)?;
-    render_deps(collected_cargo_metadata.iter(), &mut buffer)?;
+    render_deps(collected_cargo_metadata.iter(), &mut buffer, &mut license_set)?;
+
+    // Now we've rendered the tree, we can fetch all the license texts we've just referred to
+    let license_map = download_licenses(license_set)?;
+
+    writeln!(buffer)?;
+    writeln!(buffer, "## License Texts")?;
+    writeln!(buffer)?;
+    writeln!(buffer, "The following texts relate to the license identifiers used above:")?;
+    writeln!(buffer)?;
+    render_license_texts(&license_map, &mut buffer)?;
 
     std::fs::write(&dest, &buffer)?;
 
     Ok(())
 }
 
-/// Recursively draw the tree of files/folders we found on disk and their licences, as
+/// Recursively draw the tree of files/folders we found on disk and their licenses, as
 /// markdown, into the given Vec.
 fn render_tree_recursive(
     node: &Node,
     buffer: &mut Vec<u8>,
     depth: usize,
+    license_set: &mut BTreeSet<String>,
 ) -> Result<(), Error> {
     let prefix = std::iter::repeat("> ").take(depth + 1).collect::<String>();
 
     match node {
         Node::Root { children } => {
             for child in children {
-                render_tree_recursive(child, buffer, depth)?;
+                render_tree_recursive(child, buffer, depth, license_set)?;
             }
         }
         Node::Directory { name, children, license } => {
-            render_tree_license(&prefix, std::iter::once(name), license.iter(), buffer)?;
+            render_tree_license(
+                &prefix,
+                std::iter::once(name),
+                license.iter(),
+                buffer,
+                license_set,
+            )?;
             if !children.is_empty() {
                 writeln!(buffer, "{prefix}")?;
                 writeln!(buffer, "{prefix}*Exceptions:*")?;
                 for child in children {
                     writeln!(buffer, "{prefix}")?;
-                    render_tree_recursive(child, buffer, depth + 1)?;
+                    render_tree_recursive(child, buffer, depth + 1, license_set)?;
                 }
             }
         }
         Node::CondensedDirectory { name, licenses } => {
-            render_tree_license(&prefix, std::iter::once(name), licenses.iter(), buffer)?;
+            render_tree_license(
+                &prefix,
+                std::iter::once(name),
+                licenses.iter(),
+                buffer,
+                license_set,
+            )?;
         }
         Node::Group { files, directories, license } => {
             render_tree_license(
@@ -93,10 +133,17 @@ fn render_tree_recursive(
                 directories.iter().chain(files.iter()),
                 std::iter::once(license),
                 buffer,
+                license_set,
             )?;
         }
         Node::File { name, license } => {
-            render_tree_license(&prefix, std::iter::once(name), std::iter::once(license), buffer)?;
+            render_tree_license(
+                &prefix,
+                std::iter::once(name),
+                std::iter::once(license),
+                buffer,
+                license_set,
+            )?;
         }
     }
 
@@ -109,11 +156,13 @@ fn render_tree_license<'a>(
     names: impl Iterator<Item = &'a String>,
     licenses: impl Iterator<Item = &'a License>,
     buffer: &mut Vec<u8>,
+    license_set: &mut BTreeSet<String>,
 ) -> Result<(), Error> {
     let mut spdxs = BTreeSet::new();
     let mut copyrights = BTreeSet::new();
     for license in licenses {
         spdxs.insert(&license.spdx);
+        license_set.insert(license.spdx.clone());
         for copyright in &license.copyright {
             copyrights.insert(copyright);
         }
@@ -137,6 +186,7 @@ fn render_tree_license<'a>(
 fn render_deps<'a, 'b>(
     deps: impl Iterator<Item = &'a cargo_metadata::Dependency>,
     buffer: &'b mut Vec<u8>,
+    license_set: &mut BTreeSet<String>,
 ) -> Result<(), Error> {
     writeln!(buffer, "| Package | License | URL | Authors |")?;
     writeln!(buffer, "|---------|---------|-----|---------|")?;
@@ -152,6 +202,48 @@ fn render_deps<'a, 'b>(
             url = url,
             authors = authors_list
         )?;
+        license_set.insert(dep.license.clone());
+    }
+    Ok(())
+}
+
+/// Download licenses from SPDX Github
+fn download_licenses(license_set: BTreeSet<String>) -> Result<BTreeMap<String, String>, Error> {
+    let mut license_map = BTreeMap::new();
+    for license_string in license_set {
+        let mut licenses = Vec::new();
+        for word in license_string.split([' ', '/', '(', ')']) {
+            let trimmed = word.trim_end_matches('+').trim();
+            if !["OR", "AND", "WITH", "NONE", ""].contains(&trimmed) {
+                licenses.push(trimmed);
+            }
+        }
+        for license in licenses {
+            if !license_map.contains_key(license) {
+                let text = licenses::get(license)?;
+                license_map.insert(license.to_owned(), text.to_owned());
+            }
+        }
+    }
+    Ok(license_map)
+}
+
+/// Render license texts, with a heading
+fn render_license_texts(
+    license_map: &BTreeMap<String, String>,
+    buffer: &mut Vec<u8>,
+) -> Result<(), Error> {
+    for (name, text) in license_map.iter() {
+        writeln!(buffer, "### {}", name)?;
+        writeln!(buffer)?;
+        writeln!(buffer, "<details><summary>Show Text</summary>")?;
+        writeln!(buffer)?;
+        writeln!(buffer, "```")?;
+        writeln!(buffer, "{}", text)?;
+        writeln!(buffer, "```")?;
+        writeln!(buffer)?;
+        writeln!(buffer, "</details>")?;
+        writeln!(buffer)?;
     }
     Ok(())
 }
