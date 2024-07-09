@@ -1,8 +1,8 @@
-use crate::structured_errors::StructuredDiag;
-use rustc_errors::{codes::*, pluralize, Applicability, Diag, MultiSpan};
+use rustc_errors::{
+    codes::*, pluralize, Applicability, Diag, Diagnostic, EmissionGuarantee, MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
-use rustc_session::Session;
 use rustc_span::def_id::DefId;
 use std::iter;
 
@@ -541,14 +541,8 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn start_diagnostics(&self) -> Diag<'tcx> {
-        let span = self.path_segment.ident.span;
-        let msg = self.create_error_message();
-        self.tcx.dcx().struct_span_err(span, msg).with_code(self.code())
-    }
-
     /// Builds the `expected 1 type argument / supplied 2 type arguments` message.
-    fn notify(&self, err: &mut Diag<'_>) {
+    fn notify(&self, err: &mut Diag<'_, impl EmissionGuarantee>) {
         let (quantifier, bound) = self.get_quantifier_and_bound();
         let provided_args = self.num_provided_args();
 
@@ -600,7 +594,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest(&self, err: &mut Diag<'_>) {
+    fn suggest(&self, err: &mut Diag<'_, impl EmissionGuarantee>) {
         debug!(
             "suggest(self.provided {:?}, self.gen_args.span(): {:?})",
             self.num_provided_args(),
@@ -628,7 +622,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// ```text
     /// type Map = HashMap<String>;
     /// ```
-    fn suggest_adding_args(&self, err: &mut Diag<'_>) {
+    fn suggest_adding_args(&self, err: &mut Diag<'_, impl EmissionGuarantee>) {
         if self.gen_args.parenthesized != hir::GenericArgsParentheses::No {
             return;
         }
@@ -647,7 +641,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest_adding_lifetime_args(&self, err: &mut Diag<'_>) {
+    fn suggest_adding_lifetime_args(&self, err: &mut Diag<'_, impl EmissionGuarantee>) {
         debug!("suggest_adding_lifetime_args(path_segment: {:?})", self.path_segment);
         let num_missing_args = self.num_missing_lifetime_args();
         let num_params_to_take = num_missing_args;
@@ -701,7 +695,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest_adding_type_and_const_args(&self, err: &mut Diag<'_>) {
+    fn suggest_adding_type_and_const_args(&self, err: &mut Diag<'_, impl EmissionGuarantee>) {
         let num_missing_args = self.num_missing_type_or_const_args();
         let msg = format!("add missing {} argument{}", self.kind(), pluralize!(num_missing_args));
 
@@ -761,7 +755,10 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// ```compile_fail
     /// Into::into::<Option<_>>(42) // suggests considering `Into::<Option<_>>::into(42)`
     /// ```
-    fn suggest_moving_args_from_assoc_fn_to_trait(&self, err: &mut Diag<'_>) {
+    fn suggest_moving_args_from_assoc_fn_to_trait(
+        &self,
+        err: &mut Diag<'_, impl EmissionGuarantee>,
+    ) {
         let trait_ = match self.tcx.trait_of_item(self.def_id) {
             Some(def_id) => def_id,
             None => return,
@@ -817,7 +814,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
     fn suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(
         &self,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, impl EmissionGuarantee>,
         qpath: &'tcx hir::QPath<'tcx>,
         msg: String,
         num_assoc_fn_excess_args: usize,
@@ -850,7 +847,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
     fn suggest_moving_args_from_assoc_fn_to_trait_for_method_call(
         &self,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, impl EmissionGuarantee>,
         trait_def_id: DefId,
         expr: &'tcx hir::Expr<'tcx>,
         msg: String,
@@ -904,7 +901,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// ```text
     /// type Map = HashMap<String, String, String, String>;
     /// ```
-    fn suggest_removing_args_or_generics(&self, err: &mut Diag<'_>) {
+    fn suggest_removing_args_or_generics(&self, err: &mut Diag<'_, impl EmissionGuarantee>) {
         let num_provided_lt_args = self.num_provided_lifetime_args();
         let num_provided_type_const_args = self.num_provided_type_or_const_args();
         let unbound_types = self.get_unbound_associated_types();
@@ -922,7 +919,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let provided_args_matches_unbound_traits =
             unbound_types.len() == num_redundant_type_or_const_args;
 
-        let remove_lifetime_args = |err: &mut Diag<'_>| {
+        let remove_lifetime_args = |err: &mut Diag<'_, _>| {
             let mut lt_arg_spans = Vec::new();
             let mut found_redundant = false;
             for arg in self.gen_args.args {
@@ -963,7 +960,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             );
         };
 
-        let remove_type_or_const_args = |err: &mut Diag<'_>| {
+        let remove_type_or_const_args = |err: &mut Diag<'_, _>| {
             let mut gen_arg_spans = Vec::new();
             let mut found_redundant = false;
             for arg in self.gen_args.args {
@@ -1060,7 +1057,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     }
 
     /// Builds the `type defined here` message.
-    fn show_definition(&self, err: &mut Diag<'_>) {
+    fn show_definition(&self, err: &mut Diag<'_, impl EmissionGuarantee>) {
         let mut spans: MultiSpan = if let Some(def_span) = self.tcx.def_ident_span(self.def_id) {
             if self.tcx.sess.source_map().is_span_accessible(def_span) {
                 def_span.into()
@@ -1111,7 +1108,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     }
 
     /// Add note if `impl Trait` is explicitly specified.
-    fn note_synth_provided(&self, err: &mut Diag<'_>) {
+    fn note_synth_provided(&self, err: &mut Diag<'_, impl EmissionGuarantee>) {
         if !self.is_synth_provided() {
             return;
         }
@@ -1120,17 +1117,16 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     }
 }
 
-impl<'tcx> StructuredDiag<'tcx> for WrongNumberOfGenericArgs<'_, 'tcx> {
-    fn session(&self) -> &Session {
-        self.tcx.sess
-    }
-
-    fn code(&self) -> ErrCode {
-        E0107
-    }
-
-    fn diagnostic_common(&self) -> Diag<'tcx> {
-        let mut err = self.start_diagnostics();
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for WrongNumberOfGenericArgs<'_, '_> {
+    fn into_diag(
+        self,
+        dcx: rustc_errors::DiagCtxtHandle<'a>,
+        level: rustc_errors::Level,
+    ) -> Diag<'a, G> {
+        let msg = self.create_error_message();
+        let mut err = Diag::new(dcx, level, msg);
+        err.code(E0107);
+        err.span(self.path_segment.ident.span);
 
         self.notify(&mut err);
         self.suggest(&mut err);

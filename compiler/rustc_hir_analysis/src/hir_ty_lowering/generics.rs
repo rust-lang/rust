@@ -1,9 +1,9 @@
 use super::IsMethodCall;
+use crate::errors::wrong_number_of_generic_args::{GenericArgsInfo, WrongNumberOfGenericArgs};
 use crate::hir_ty_lowering::{
     errors::prohibit_assoc_item_constraint, ExplicitLateBound, GenericArgCountMismatch,
     GenericArgCountResult, GenericArgPosition, GenericArgsLowerer,
 };
-use crate::structured_errors::{GenericArgsInfo, StructuredDiag, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{
     codes::*, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
@@ -486,7 +486,7 @@ pub(crate) fn check_generic_arg_count(
             GenericArgsInfo::MissingLifetimes { num_missing_args }
         };
 
-        let reported = WrongNumberOfGenericArgs::new(
+        let reported = tcx.dcx().emit_err(WrongNumberOfGenericArgs::new(
             tcx,
             gen_args_info,
             seg,
@@ -494,9 +494,7 @@ pub(crate) fn check_generic_arg_count(
             has_self as usize,
             gen_args,
             def_id,
-        )
-        .diagnostic()
-        .emit();
+        ));
 
         Err(reported)
     };
@@ -573,17 +571,17 @@ pub(crate) fn check_generic_arg_count(
         debug!(?gen_args_info);
 
         let reported = gen_args.has_err().unwrap_or_else(|| {
-            WrongNumberOfGenericArgs::new(
-                tcx,
-                gen_args_info,
-                seg,
-                gen_params,
-                params_offset,
-                gen_args,
-                def_id,
-            )
-            .diagnostic()
-            .emit_unless(all_params_are_binded)
+            tcx.dcx()
+                .create_err(WrongNumberOfGenericArgs::new(
+                    tcx,
+                    gen_args_info,
+                    seg,
+                    gen_params,
+                    params_offset,
+                    gen_args,
+                    def_id,
+                ))
+                .emit_unless(all_params_are_binded)
         });
 
         Err(reported)
