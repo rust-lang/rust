@@ -39,6 +39,7 @@ pub trait NoopVisitItemKind {
     fn noop_visit(
         &mut self,
         ctxt: Option<AssocCtxt>,
+        ident: Ident,
         span: Span,
         id: NodeId,
         visitor: &mut impl MutVisitor,
@@ -895,7 +896,7 @@ fn noop_visit_coroutine_kind<T: MutVisitor>(coroutine_kind: &mut CoroutineKind, 
 
 fn noop_visit_fn<T: MutVisitor>(kind: FnKind<'_>, vis: &mut T) {
     match kind {
-        FnKind::Fn(_ctxt, FnSig { header, decl, span }, generics, body) => {
+        FnKind::Fn(_ctxt, _ident, FnSig { header, decl, span }, generics, body) => {
             // Identifier and visibility are visited as a part of the item.
             vis.visit_fn_header(header);
             vis.visit_generics(generics);
@@ -1096,17 +1097,19 @@ pub fn noop_visit_block<T: MutVisitor>(block: &mut P<Block>, vis: &mut T) {
 
 pub fn noop_visit_item_kind(
     kind: &mut impl NoopVisitItemKind,
+    ident: Ident,
     span: Span,
     id: NodeId,
     vis: &mut impl MutVisitor,
 ) {
-    kind.noop_visit(None, span, id, vis)
+    kind.noop_visit(None, ident, span, id, vis)
 }
 
 impl NoopVisitItemKind for ItemKind {
     fn noop_visit(
         &mut self,
         ctxt: Option<AssocCtxt>,
+        ident: Ident,
         span: Span,
         id: NodeId,
         vis: &mut impl MutVisitor,
@@ -1124,7 +1127,7 @@ impl NoopVisitItemKind for ItemKind {
             }
             ItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
                 visit_defaultness(defaultness, vis);
-                vis.visit_fn(FnKind::Fn(FnCtxt::Free, sig, generics, body), span, id);
+                vis.visit_fn(FnKind::Fn(FnCtxt::Free, ident, sig, generics, body), span, id);
             }
             ItemKind::Mod(safety, mod_kind) => {
                 visit_safety(safety, vis);
@@ -1226,6 +1229,7 @@ impl NoopVisitItemKind for AssocItemKind {
     fn noop_visit(
         &mut self,
         ctxt: Option<AssocCtxt>,
+        ident: Ident,
         span: Span,
         id: NodeId,
         visitor: &mut impl MutVisitor,
@@ -1237,7 +1241,11 @@ impl NoopVisitItemKind for AssocItemKind {
             }
             AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
                 visit_defaultness(defaultness, visitor);
-                visitor.visit_fn(FnKind::Fn(FnCtxt::Assoc(ctxt), sig, generics, body), span, id);
+                visitor.visit_fn(
+                    FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, generics, body),
+                    span,
+                    id,
+                );
             }
             AssocItemKind::Type(box TyAlias {
                 defaultness,
@@ -1328,7 +1336,7 @@ pub fn noop_flat_map_item<K: NoopVisitItemKind>(
     visit_attrs(attrs, visitor);
     visitor.visit_vis(vis);
     visitor.visit_ident(ident);
-    kind.noop_visit(ctxt, *span, *id, visitor);
+    kind.noop_visit(ctxt, *ident, *span, *id, visitor);
     visit_lazy_tts(tokens, visitor);
     visitor.visit_span(span);
     smallvec![item]
@@ -1338,6 +1346,7 @@ impl NoopVisitItemKind for ForeignItemKind {
     fn noop_visit(
         &mut self,
         ctxt: Option<AssocCtxt>,
+        ident: Ident,
         span: Span,
         id: NodeId,
         visitor: &mut impl MutVisitor,
@@ -1350,7 +1359,7 @@ impl NoopVisitItemKind for ForeignItemKind {
             }
             ForeignItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
                 visit_defaultness(defaultness, visitor);
-                visitor.visit_fn(FnKind::Fn(FnCtxt::Foreign, sig, generics, body), span, id);
+                visitor.visit_fn(FnKind::Fn(FnCtxt::Foreign, ident, sig, generics, body), span, id);
             }
             ForeignItemKind::TyAlias(box TyAlias {
                 defaultness,
@@ -1824,7 +1833,7 @@ impl<N: DummyAstNode, T: DummyAstNode> DummyAstNode for crate::ast_traits::AstNo
 #[derive(Debug)]
 pub enum FnKind<'a> {
     /// E.g., `fn foo()`, `fn foo(&self)`, or `extern "Abi" fn foo()`.
-    Fn(FnCtxt, &'a mut FnSig, &'a mut Generics, &'a mut Option<P<Block>>),
+    Fn(FnCtxt, Ident, &'a mut FnSig, &'a mut Generics, &'a mut Option<P<Block>>),
 
     /// E.g., `|x, y| body`.
     Closure(&'a mut ClosureBinder, &'a mut P<FnDecl>, &'a mut P<Expr>),
