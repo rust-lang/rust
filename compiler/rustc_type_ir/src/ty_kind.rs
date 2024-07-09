@@ -1,3 +1,5 @@
+#![allow(clippy::derived_hash_with_manual_eq)]
+
 use derive_where::derive_where;
 
 #[cfg(feature = "nightly")]
@@ -293,6 +295,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
     }
 }
 
+// FIXME(GrigorenkoPV): consider not implementing PartialEq manually
 // This is manually implemented because a derive would require `I: PartialEq`
 impl<I: Interner> PartialEq for TyKind<I> {
     #[inline]

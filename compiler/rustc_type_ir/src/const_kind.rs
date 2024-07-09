@@ -1,3 +1,5 @@
+#![allow(clippy::derived_hash_with_manual_eq)]
+
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -43,6 +45,7 @@ pub enum ConstKind<I: Interner> {
     Expr(I::ExprConst),
 }
 
+// FIXME(GrigorenkoPV): consider not implementing PartialEq manually
 impl<I: Interner> PartialEq for ConstKind<I> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {

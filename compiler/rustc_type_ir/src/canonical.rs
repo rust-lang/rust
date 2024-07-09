@@ -1,3 +1,5 @@
+#![allow(clippy::derived_hash_with_manual_eq)]
+
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
@@ -167,6 +169,7 @@ pub enum CanonicalVarKind<I: Interner> {
     PlaceholderConst(I::PlaceholderConst),
 }
 
+// FIXME(GrigorenkoPV): consider not implementing PartialEq manually
 impl<I: Interner> PartialEq for CanonicalVarKind<I> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {

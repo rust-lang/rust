@@ -1,3 +1,5 @@
+#![allow(clippy::derived_hash_with_manual_eq)]
+
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -193,6 +195,7 @@ const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
     }
 }
 
+// FIXME(GrigorenkoPV): consider not implementing PartialEq manually
 // This is manually implemented because a derive would require `I: PartialEq`
 impl<I: Interner> PartialEq for RegionKind<I> {
     #[inline]
