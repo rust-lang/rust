@@ -2548,6 +2548,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "ban_nonexisting_field: field={:?}, base={:?}, expr={:?}, base_ty={:?}",
             ident, base, expr, base_ty
         );
+
+        for (ty, _) in self.autoderef(expr.span, base_ty) {
+            if let ty::Adt(def, _) = ty.kind()
+                && !def.is_enum()
+            {
+                let variant = def.non_enum_variant();
+                if let Err(reported) = variant.fields_checked() {
+                    return reported;
+                }
+            }
+        }
+
         let mut err = self.no_such_field_err(ident, base_ty, base.hir_id);
 
         match *base_ty.peel_refs().kind() {
