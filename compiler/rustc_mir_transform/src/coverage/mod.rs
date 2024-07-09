@@ -132,7 +132,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,
         num_counters: coverage_counters.num_counters(),
-        mcdc_bitmap_bytes: extracted_mappings.mcdc_bitmap_bytes,
+        mcdc_bitmap_bits: extracted_mappings.mcdc_bitmap_bits,
         expressions: coverage_counters.into_expressions(),
         mappings,
         mcdc_num_condition_bitmaps,
@@ -174,7 +174,7 @@ fn create_mappings<'tcx>(
     let ExtractedMappings {
         code_mappings,
         branch_pairs,
-        mcdc_bitmap_bytes: _,
+        mcdc_bitmap_bits: _,
         mcdc_degraded_branches,
         mcdc_mappings,
     } = extracted_mappings;
@@ -228,7 +228,14 @@ fn create_mappings<'tcx>(
 
     // MCDC branch mappings are appended with their decisions in case decisions were ignored.
     mappings.extend(mcdc_degraded_branches.iter().filter_map(
-        |&mappings::MCDCBranch { span, ref true_bcbs, ref false_bcbs, condition_info: _ }| {
+        |&mappings::MCDCBranch {
+             span,
+             ref true_bcbs,
+             ref false_bcbs,
+             condition_info: _,
+             true_index: _,
+             false_index: _,
+         }| {
             let code_region = region_for_span(span)?;
             let true_term = term_for_bcbs(true_bcbs);
             let false_term = term_for_bcbs(false_bcbs);
@@ -246,6 +253,8 @@ fn create_mappings<'tcx>(
                      ref true_bcbs,
                      ref false_bcbs,
                      condition_info,
+                     true_index: _,
+                     false_index: _,
                  }| {
                     let code_region = region_for_span(span)?;
                     let true_term = term_for_bcbs(true_bcbs);
@@ -265,8 +274,9 @@ fn create_mappings<'tcx>(
         if conditions.len() == num_conditions as usize
             && let Some(code_region) = region_for_span(decision.span)
         {
+            // LLVM requires end index for counter mapping regions.
             let kind = MappingKind::MCDCDecision(DecisionInfo {
-                bitmap_idx: decision.bitmap_idx,
+                bitmap_idx: (decision.bitmap_idx + decision.num_test_vectors) as u32,
                 num_conditions,
             });
             mappings.extend(
@@ -356,28 +366,34 @@ fn inject_mcdc_statements<'tcx>(
             inject_statement(
                 mir_body,
                 CoverageKind::TestVectorBitmapUpdate {
-                    bitmap_idx: decision.bitmap_idx,
+                    bitmap_idx: decision.bitmap_idx as u32,
                     decision_depth: decision.decision_depth,
                 },
                 end_bb,
             );
         }
 
-        for &mappings::MCDCBranch { span: _, ref true_bcbs, false_bcbs: _, condition_info } in
-            conditions
+        for mappings::MCDCBranch {
+            span: _,
+            true_bcbs,
+            false_bcbs,
+            condition_info: _,
+            true_index,
+            false_index,
+        } in conditions
         {
-            let id = condition_info.condition_id;
-            for &bcb in true_bcbs {
-                let bb = basic_coverage_blocks[bcb].leader_bb();
-                inject_statement(
-                    mir_body,
-                    CoverageKind::CondBitmapUpdate {
-                        id,
-                        value: true,
-                        decision_depth: decision.decision_depth,
-                    },
-                    bb,
-                );
+            for (&index, bcbs) in [(false_index, false_bcbs), (true_index, true_bcbs)] {
+                for &bcb in bcbs {
+                    let bb = basic_coverage_blocks[bcb].leader_bb();
+                    inject_statement(
+                        mir_body,
+                        CoverageKind::CondBitmapUpdate {
+                            index: index as u32,
+                            decision_depth: decision.decision_depth,
+                        },
+                        bb,
+                    );
+                }
             }
         }
     }
