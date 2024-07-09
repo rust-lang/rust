@@ -375,7 +375,7 @@ impl CounterMappingRegion {
 
     // This function might be used in the future; the LLVM API is still evolving, as is coverage
     // support.
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub(crate) fn expansion_region(
         file_id: u32,
         expanded_file_id: u32,
@@ -400,7 +400,7 @@ impl CounterMappingRegion {
 
     // This function might be used in the future; the LLVM API is still evolving, as is coverage
     // support.
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub(crate) fn skipped_region(
         file_id: u32,
         start_line: u32,
@@ -424,7 +424,7 @@ impl CounterMappingRegion {
 
     // This function might be used in the future; the LLVM API is still evolving, as is coverage
     // support.
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub(crate) fn gap_region(
         counter: Counter,
         file_id: u32,

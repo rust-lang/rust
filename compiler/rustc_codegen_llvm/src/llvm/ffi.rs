@@ -22,7 +22,6 @@ pub const False: Bool = 0 as Bool;
 
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-#[allow(dead_code)] // Variants constructed by C++.
 pub enum LLVMRustResult {
     Success,
     Failure,
@@ -147,10 +146,10 @@ pub enum UnnamedAddr {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum DLLStorageClass {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     Default = 0,
     DllImport = 1, // Function to be imported from DLL.
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     DllExport = 2, // Function to be accessible from DLL.
 }
 
@@ -385,7 +384,7 @@ impl AtomicRmwBinOp {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum AtomicOrdering {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     NotAtomic = 0,
     Unordered = 1,
     Monotonic = 2,
@@ -539,7 +538,7 @@ pub enum CodeModel {
 /// LLVMRustDiagnosticKind
 #[derive(Copy, Clone)]
 #[repr(C)]
-#[allow(dead_code)] // Variants constructed by C++.
+#[expect(dead_code)] // Variants constructed by C++.
 pub enum DiagnosticKind {
     Other,
     InlineAsm,
@@ -562,7 +561,6 @@ pub enum DiagnosticKind {
 /// LLVMRustDiagnosticLevel
 #[derive(Copy, Clone)]
 #[repr(C)]
-#[allow(dead_code)] // Variants constructed by C++.
 pub enum DiagnosticLevel {
     Error,
     Warning,
