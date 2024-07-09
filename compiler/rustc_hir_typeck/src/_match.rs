@@ -87,7 +87,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.return_position_impl_trait_from_match_expectation(orig_expected);
 
             let (arm_block_id, arm_span) = if let hir::ExprKind::Block(blk, _) = arm.body.kind {
-                (Some(blk.hir_id), self.find_block_span(blk))
+                (Some(blk.hir_id), self.err_ctxt().find_block_span(blk))
             } else {
                 (None, arm.body.span)
             };
@@ -477,7 +477,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 *outer_span = outer_span.with_hi(cond_span.hi())
             }
 
-            (self.find_block_span(block), block.hir_id)
+            (self.err_ctxt().find_block_span(block), block.hir_id)
         } else {
             (else_expr.span, else_expr.hir_id)
         };

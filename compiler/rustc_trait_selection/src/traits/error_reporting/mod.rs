@@ -1,7 +1,6 @@
 // ignore-tidy-filelength :(
 
 pub mod ambiguity;
-mod infer_ctxt_ext;
 pub mod on_unimplemented;
 pub mod suggestions;
 mod type_err_ctxt_ext;
@@ -14,7 +13,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 use std::ops::ControlFlow;
 
-pub use self::infer_ctxt_ext::*;
 pub use self::type_err_ctxt_ext::*;
 
 // When outputting impl candidates, prefer showing those that are more similar.

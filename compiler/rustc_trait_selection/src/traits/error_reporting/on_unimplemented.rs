@@ -4,7 +4,7 @@ use crate::errors::{
 };
 use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::InferCtxtExt;
-use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
+use crate::traits::error_reporting::type_err_ctxt_ext::TypeErrCtxtPrivExt;
 use rustc_ast::AttrArgs;
 use rustc_ast::AttrArgsEq;
 use rustc_ast::AttrKind;

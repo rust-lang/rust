@@ -1665,8 +1665,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             found,
                             coercion_error,
                         );
-                        let then_span = fcx.find_block_span_from_hir_id(then_id);
-                        let else_span = fcx.find_block_span_from_hir_id(else_id);
+                        let then_span = fcx.err_ctxt().find_block_span_from_hir_id(then_id);
+                        let else_span = fcx.err_ctxt().find_block_span_from_hir_id(else_id);
                         // don't suggest wrapping either blocks in `if .. {} else {}`
                         let is_empty_arm = |id| {
                             let hir::Node::Block(blk) = fcx.tcx.hir_node(id) else {

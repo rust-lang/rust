@@ -398,7 +398,7 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
     err
 }
 
-impl<'tcx> InferCtxt<'tcx> {
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let (def_id, args) = match *ty.kind() {
             ty::Alias(_, ty::AliasTy { def_id, args, .. })
@@ -2367,7 +2367,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             trait_item_def_id,
         }) = origin
         {
-            return self.infcx.report_extra_impl_obligation(
+            return self.report_extra_impl_obligation(
                 span,
                 impl_item_def_id,
                 trait_item_def_id,
@@ -2792,7 +2792,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameTypeModuloInfer<'_, 'tcx> {
     }
 }
 
-impl<'tcx> InferCtxt<'tcx> {
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn report_inference_failure(&self, var_origin: RegionVariableOrigin) -> Diag<'_> {
         let br_string = |br: ty::BoundRegionKind| {
             let mut s = match br {
@@ -3031,7 +3031,7 @@ impl TyCategory {
     }
 }
 
-impl<'tcx> InferCtxt<'tcx> {
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// Given a [`hir::Block`], get the span of its last expression or
     /// statement, peeling off any inner blocks.
     pub fn find_block_span(&self, block: &'tcx hir::Block<'tcx>) -> Span {
