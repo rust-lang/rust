@@ -19,7 +19,7 @@ impl Bar {}
 /// Nunc turpis nunc, lacinia
 /// a dolor in, pellentesque aliquet enim. Cras nec maximus sem. Mauris arcu libero,
 /// gravida non lacinia at, rhoncus eu lacus.
-enum Enum {
+pub enum Enum {
     A,
 }
 
@@ -27,7 +27,7 @@ enum Enum {
 /// ipsum dolor sit amet, consectetur adipiscing elit. Nunc turpis nunc, lacinia
 /// a dolor in, pellentesque aliquet enim. Cras nec maximus sem. Mauris arcu libero,
 /// gravida non lacinia at, rhoncus eu lacus.
-union Union {
+pub union Union {
     a: u8,
     b: u8,
 }
@@ -37,10 +37,16 @@ union Union {
 /// Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc turpis nunc, lacinia
 /// a dolor in, pellentesque aliquet enim. Cras nec maximus sem. Mauris arcu libero,
 /// gravida non lacinia at, rhoncus eu lacus.
-union Union2 {
+pub union Union2 {
     a: u8,
     b: u8,
 }
+
+// Should not warn! (not public)
+/// Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc turpis nunc, lacinia
+/// a dolor in, pellentesque aliquet enim. Cras nec maximus sem. Mauris arcu libero,
+/// gravida non lacinia at, rhoncus eu lacus.
+fn f() {}
 
 fn main() {
     // test code goes here

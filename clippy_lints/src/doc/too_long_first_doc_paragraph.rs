@@ -1,6 +1,6 @@
 use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
-use rustc_hir::ItemKind;
+use rustc_hir::{Item, ItemKind};
 use rustc_lint::LateContext;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
@@ -10,13 +10,17 @@ use super::TOO_LONG_FIRST_DOC_PARAGRAPH;
 
 pub(super) fn check(
     cx: &LateContext<'_>,
+    item: &Item<'_>,
     attrs: &[Attribute],
-    item_kind: ItemKind<'_>,
     mut first_paragraph_len: usize,
+    check_private_items: bool,
 ) {
-    if first_paragraph_len <= 100
+    if !check_private_items && !cx.effective_visibilities.is_exported(item.owner_id.def_id) {
+        return;
+    }
+    if first_paragraph_len <= 200
         || !matches!(
-            item_kind,
+            item.kind,
             ItemKind::Static(..)
                 | ItemKind::Const(..)
                 | ItemKind::Fn(..)
@@ -32,6 +36,7 @@ pub(super) fn check(
     {
         return;
     }
+
     let mut spans = Vec::new();
     let mut should_suggest_empty_doc = false;
 
@@ -42,7 +47,7 @@ pub(super) fn check(
             let doc = doc.trim();
             if spans.len() == 1 {
                 // We make this suggestion only if the first doc line ends with a punctuation
-                // because if might just need to add an empty line with `///`.
+                // because it might just need to add an empty line with `///`.
                 should_suggest_empty_doc = doc.ends_with('.') || doc.ends_with('!') || doc.ends_with('?');
             }
             let len = doc.chars().count();
@@ -68,7 +73,7 @@ pub(super) fn check(
             |diag| {
                 diag.span_suggestion(
                     new_span,
-                    "add",
+                    "add an empty line",
                     format!("{snippet}///\n"),
                     Applicability::MachineApplicable,
                 );

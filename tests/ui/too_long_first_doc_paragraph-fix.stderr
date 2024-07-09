@@ -4,7 +4,8 @@ error: first doc comment paragraph is too long
 LL | / /// A very short summary.
 LL | | /// A much longer explanation that goes into a lot more detail about
 LL | | /// how the thing works, possibly with doclinks and so one,
-LL | | /// and probably spanning a many rows.
+LL | | /// and probably spanning a many rows. Blablabla, it needs to be over
+LL | | /// 200 characters so I needed to write something longeeeeeeer.
    | |_
    |
    = note: `-D clippy::too-long-first-doc-paragraph` implied by `-D warnings`

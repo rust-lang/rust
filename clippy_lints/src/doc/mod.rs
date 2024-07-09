@@ -493,7 +493,13 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
 
         match cx.tcx.hir_node(cx.last_node_with_lint_attrs) {
             Node::Item(item) => {
-                too_long_first_doc_paragraph::check(cx, attrs, item.kind, headers.first_paragraph_len);
+                too_long_first_doc_paragraph::check(
+                    cx,
+                    item,
+                    attrs,
+                    headers.first_paragraph_len,
+                    self.check_private_items,
+                );
                 match item.kind {
                     ItemKind::Fn(sig, _, body_id) => {
                         if !(is_entrypoint_fn(cx, item.owner_id.to_def_id())
@@ -627,9 +633,8 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         acc
     });
     doc.pop();
-    let doc = doc.trim();
 
-    if doc.is_empty() {
+    if doc.trim().is_empty() {
         if let Some(span) = span_of_fragments(&fragments) {
             span_lint_and_help(
                 cx,
@@ -653,7 +658,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         cx,
         valid_idents,
         parser.into_offset_iter(),
-        doc,
+        &doc,
         Fragments {
             fragments: &fragments,
             doc: &doc,
