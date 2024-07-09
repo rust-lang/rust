@@ -1,8 +1,8 @@
 //! Error Reporting for `impl` items that do not match the obligations from their `trait`.
 
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::errors::{ConsiderBorrowingParamHelp, RelationshipHelp, TraitImplDiff};
-use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use crate::infer::lexical_region_resolve::RegionResolutionError;
+use crate::infer::RegionResolutionError;
 use crate::infer::{Subtype, ValuePairs};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;

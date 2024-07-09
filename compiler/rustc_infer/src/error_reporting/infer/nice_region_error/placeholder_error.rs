@@ -1,9 +1,9 @@
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::errors::{
     ActualImplExpectedKind, ActualImplExpectedLifetimeKind, ActualImplExplNotes,
     TraitPlaceholderMismatch, TyOrSig,
 };
-use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use crate::infer::lexical_region_resolve::RegionResolutionError;
+use crate::infer::RegionResolutionError;
 use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};

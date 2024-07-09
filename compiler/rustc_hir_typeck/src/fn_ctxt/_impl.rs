@@ -19,7 +19,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
     GenericPathSegment, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
-use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
+use rustc_infer::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
 use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
@@ -1519,7 +1519,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             let e = self.tainted_by_errors().unwrap_or_else(|| {
                 self.err_ctxt()
-                    .emit_inference_failure_err(self.body_id, sp, ty.into(), E0282, true)
+                    .emit_inference_failure_err(
+                        self.body_id,
+                        sp,
+                        ty.into(),
+                        TypeAnnotationNeeded::E0282,
+                        true,
+                    )
                     .emit()
             });
             let err = Ty::new_error(self.tcx, e);

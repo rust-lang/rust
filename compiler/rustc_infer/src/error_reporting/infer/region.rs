@@ -18,12 +18,12 @@ use rustc_type_ir::Upcast as _;
 
 use super::nice_region_error::find_anon_type;
 use super::{nice_region_error, ObligationCauseAsDiagArg};
+use crate::error_reporting::infer::{ObligationCauseExt as _, TypeErrCtxt};
 use crate::errors::{
     self, note_and_explain, FulfillReqLifetime, LfBoundNotSatisfied, OutlivesBound,
     OutlivesContent, RefLongerThanData, RegionOriginNote, WhereClauseSuggestions,
 };
 use crate::fluent_generated as fluent;
-use crate::infer::error_reporting::{ObligationCauseExt as _, TypeErrCtxt};
 use crate::infer::region_constraints::GenericKind;
 use crate::infer::{self, InferCtxt, RegionResolutionError, RegionVariableOrigin, SubregionOrigin};
 

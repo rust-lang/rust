@@ -1,6 +1,6 @@
-use crate::infer::error_reporting::TypeErrCtxt;
-use crate::infer::lexical_region_resolve::RegionResolutionError;
-use crate::infer::lexical_region_resolve::RegionResolutionError::*;
+use crate::error_reporting::infer::TypeErrCtxt;
+use crate::infer::RegionResolutionError;
+use crate::infer::RegionResolutionError::*;
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt};

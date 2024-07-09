@@ -11,7 +11,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem};
-use rustc_infer::infer::error_reporting::TypeErrCtxt;
+use rustc_infer::error_reporting::infer::TypeErrCtxt;
 use rustc_infer::traits::{
     Obligation, ObligationCause, ObligationCauseCode, PredicateObligation, SelectionError,
 };

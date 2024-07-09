@@ -82,7 +82,7 @@ use rustc_errors::{pluralize, struct_span_code_err, Diag};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::BitSet;
-use rustc_infer::infer::error_reporting::ObligationCauseExt as _;
+use rustc_infer::error_reporting::infer::ObligationCauseExt as _;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
