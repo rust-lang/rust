@@ -12,10 +12,9 @@ use rustc_span::Span;
 use crate::build::Builder;
 use crate::errors::MCDCExceedsConditionLimit;
 
-/// The MCDC bitmap scales exponentially (2^n) based on the number of conditions seen,
-/// So llvm sets a maximum value prevents the bitmap footprint from growing too large without the user's knowledge.
-/// This limit may be relaxed if the [upstream change](https://github.com/llvm/llvm-project/pull/82448) is merged.
-const MAX_CONDITIONS_IN_DECISION: usize = 6;
+/// LLVM uses `i16` to represent condition id. Hence `i16::MAX` is the hard limit for number of
+/// conditions in a decision.
+const MAX_CONDITIONS_IN_DECISION: usize = i16::MAX as usize;
 
 #[derive(Default)]
 struct MCDCDecisionCtx {
