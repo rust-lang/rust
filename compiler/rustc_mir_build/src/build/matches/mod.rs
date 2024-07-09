@@ -24,6 +24,7 @@ use tracing::{debug, instrument};
 use util::visit_bindings;
 
 // helper functions, broken out by category:
+mod match_pair;
 mod simplify;
 mod test;
 mod util;
