@@ -59,7 +59,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{BytePos, DesugaringKind, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::traits::suggestions::TypeErrCtxtExt;
-use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt as _;
+use rustc_trait_selection::error_reporting::traits::TypeErrCtxtSelectionErrExt as _;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
