@@ -7,11 +7,12 @@ trait Foo {
 
 impl Foo for isize {
     type A = usize;
-    fn bar() -> isize { 42 }
+    fn bar() -> isize {
+        42
+    }
 }
 
 pub fn main() {
     let x: isize = Foo::<A = usize>::bar();
     //~^ ERROR associated item constraints are not allowed here
-    //~| ERROR cannot call
 }
