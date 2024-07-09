@@ -461,7 +461,17 @@ fn add_enum_def(
     usages: &UsageSearchResult,
     target_node: SyntaxNode,
     target_module: &hir::Module,
-) {
+) -> Option<()> {
+    if ctx
+        .find_node_at_offset::<ast::SourceFile>()?
+        .syntax()
+        .children()
+        .filter_map(|node| ast::Enum::cast(node).and_then(|e| ctx.sema.to_def(&e)))
+        .any(|def| def.name(ctx.db()).as_str() == Some("Bool"))
+    {
+        return None;
+    }
+
     let make_enum_pub = usages
         .iter()
         .flat_map(|(_, refs)| refs)
@@ -480,6 +490,8 @@ fn add_enum_def(
         insert_before.text_range().start(),
         format!("{}\n\n{indent}", enum_def.syntax().text()),
     );
+
+    Some(())
 }
 
 /// Finds where to put the new enum definition.
@@ -547,6 +559,33 @@ enum Bool { True, False }
 fn function(foo: Bool, bar: bool) {
     if foo == Bool::True {
         println!("foo");
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn no_duplicate_enums() {
+        check_assist(
+            bool_to_enum,
+            r#"
+#[derive(PartialEq, Eq)]
+enum Bool { True, False }
+
+fn function(foo: bool, $0bar: bool) {
+    if bar {
+        println!("bar");
+    }
+}
+"#,
+            r#"
+#[derive(PartialEq, Eq)]
+enum Bool { True, False }
+
+fn function(foo: bool, bar: Bool) {
+    if bar == Bool::True {
+        println!("bar");
     }
 }
 "#,
