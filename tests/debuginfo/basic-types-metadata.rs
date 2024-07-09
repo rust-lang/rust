@@ -29,6 +29,8 @@
 // gdb-check:type = u32
 // gdb-command:whatis u64
 // gdb-check:type = u64
+// gdb-command:whatis f16
+// gdb-check:type = f16
 // gdb-command:whatis f32
 // gdb-check:type = f32
 // gdb-command:whatis f64
@@ -66,6 +68,7 @@
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
+#![feature(f16)]
 
 fn main() {
     let unit: () = ();
@@ -81,6 +84,7 @@ fn main() {
     let u16: u16 = 16;
     let u32: u32 = 32;
     let u64: u64 = 64;
+    let f16: f16 = 1.5;
     let f32: f32 = 2.5;
     let f64: f64 = 3.5;
     let fnptr : fn() = _zzz;
