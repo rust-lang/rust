@@ -89,6 +89,14 @@ pub(crate) struct FnItemRef {
     pub ident: String,
 }
 
+#[derive(Diagnostic)]
+#[diag(mir_transform_exceeds_mcdc_test_vector_limit)]
+pub(crate) struct MCDCExceedsTestVectorLimit {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) max_num_test_vectors: usize,
+}
+
 pub(crate) struct MustNotSupend<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub yield_sp: Span,

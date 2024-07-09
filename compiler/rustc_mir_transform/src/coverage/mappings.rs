@@ -15,6 +15,7 @@ use crate::coverage::ExtractedHirInfo;
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
 use crate::coverage::spans::extract_refined_covspans;
 use crate::coverage::unexpand::unexpand_into_body_span;
+use crate::errors::MCDCExceedsTestVectorLimit;
 
 /// Associates an ordinary executable code span with its corresponding BCB.
 #[derive(Debug)]
@@ -108,6 +109,7 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
 
     extract_mcdc_mappings(
         mir_body,
+        tcx,
         hir_info.body_span,
         basic_coverage_blocks,
         &mut mcdc_bitmap_bits,
@@ -239,6 +241,7 @@ pub(super) fn extract_branch_pairs(
 
 pub(super) fn extract_mcdc_mappings(
     mir_body: &mir::Body<'_>,
+    tcx: TyCtxt<'_>,
     body_span: Span,
     basic_coverage_blocks: &CoverageGraph,
     mcdc_bitmap_bits: &mut usize,
@@ -312,7 +315,10 @@ pub(super) fn extract_mcdc_mappings(
         }
         let num_test_vectors = calc_test_vectors_index(&mut branch_mappings);
         let Some(bitmap_idx) = get_bitmap_idx(num_test_vectors) else {
-            // TODO warn about bitmap
+            tcx.dcx().emit_warn(MCDCExceedsTestVectorLimit {
+                span: decision_span,
+                max_num_test_vectors: MCDC_MAX_BITMAP_SIZE,
+            });
             mcdc_degraded_branches.extend(branch_mappings);
             return None;
         };
