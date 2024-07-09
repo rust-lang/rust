@@ -77,7 +77,7 @@ impl TryFrom<OwnedFd> for PipeReader {
     fn try_from(owned_fd: OwnedFd) -> Result<Self, Self::Error> {
         convert_to_pipe(owned_fd)
             .and_then(|pipe| {
-                if pipe.as_file_desc().get_access_mode()?.readable {
+                if pipe.as_file_desc().get_access_mode()?.is_readable() {
                     Ok(pipe)
                 } else {
                     Err(io::Error::new(
@@ -97,7 +97,7 @@ impl TryFrom<OwnedFd> for PipeWriter {
     fn try_from(owned_fd: OwnedFd) -> Result<Self, Self::Error> {
         convert_to_pipe(owned_fd)
             .and_then(|pipe| {
-                if pipe.as_file_desc().get_access_mode()?.writable {
+                if pipe.as_file_desc().get_access_mode()?.is_writable() {
                     Ok(pipe)
                 } else {
                     Err(io::Error::new(

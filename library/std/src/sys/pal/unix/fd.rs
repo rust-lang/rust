@@ -26,9 +26,22 @@ use libc::off64_t;
 )))]
 use libc::off_t as off64_t;
 
-pub struct AccessMode {
-    pub readable: bool,
-    pub writable: bool,
+#[derive(Copy, Clone)]
+pub enum AccessMode {
+    ReadOnly,
+    WriteOnly,
+    ReadWrite,
+    None,
+}
+
+impl AccessMode {
+    pub fn is_readable(self) -> bool {
+        matches!(self, AccessMode::ReadOnly | AccessMode::ReadWrite)
+    }
+
+    pub fn is_writable(self) -> bool {
+        matches!(self, AccessMode::WriteOnly | AccessMode::ReadWrite)
+    }
 }
 
 #[derive(Debug)]
@@ -529,9 +542,12 @@ impl FileDesc {
 
     pub fn get_access_mode(&self) -> io::Result<AccessMode> {
         let access_mode = self.get_flags()? & libc::O_ACCMODE;
-        Ok(AccessMode {
-            readable: access_mode == libc::O_RDWR || access_mode == libc::O_RDONLY,
-            writable: access_mode == libc::O_RDWR || access_mode == libc::O_WRONLY,
+        Ok(match access_mode {
+            libc::O_RDWR => AccessMode::ReadWrite,
+            libc::O_RDONLY => AccessMode::ReadOnly,
+            libc::O_WRONLY => AccessMode::WriteOnly,
+
+            _ => AccessMode::None,
         })
     }
 
