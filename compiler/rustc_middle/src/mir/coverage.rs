@@ -50,7 +50,6 @@ rustc_index::newtype_index! {
     #[debug_format = "ExpressionId({})"]
     pub struct ExpressionId {}
 }
-
 rustc_index::newtype_index! {
     /// ID of a mcdc condition. Used by llvm to check mcdc coverage.
     ///
@@ -331,4 +330,10 @@ pub struct MCDCDecisionSpan {
     pub num_conditions: usize,
     pub end_markers: Vec<BlockMarkerId>,
     pub decision_depth: u16,
+}
+
+impl MCDCDecisionSpan {
+    pub fn new(span: Span) -> Self {
+        Self { span, num_conditions: 0, end_markers: Vec::new(), decision_depth: 0 }
+    }
 }

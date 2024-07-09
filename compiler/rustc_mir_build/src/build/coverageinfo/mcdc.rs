@@ -1,11 +1,14 @@
+use std::cell::Cell;
 use std::collections::VecDeque;
+use std::rc::Rc;
 
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::{
     BlockMarkerId, ConditionId, ConditionInfo, MCDCBranchSpan, MCDCDecisionSpan,
 };
-use rustc_middle::mir::{BasicBlock, SourceInfo};
-use rustc_middle::thir::LogicalOp;
+use rustc_middle::mir::BasicBlock;
+use rustc_middle::thir::{ExprKind, LogicalOp};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
@@ -21,34 +24,25 @@ const MAX_CONDITIONS_IN_DECISION: usize = 6;
 /// consuming excessive memory.
 const MAX_DECISION_DEPTH: u16 = 0x3FFF;
 
-#[derive(Default)]
-struct MCDCDecisionCtx {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct DecisionId(usize);
+
+#[derive(Debug)]
+struct BooleanDecisionCtx {
+    id: DecisionId,
+    decision_info: MCDCDecisionSpan,
     /// To construct condition evaluation tree.
     decision_stack: VecDeque<ConditionInfo>,
-    processing_decision: Option<MCDCDecisionSpan>,
+    conditions: Vec<MCDCBranchSpan>,
 }
 
-struct MCDCState {
-    decision_ctx_stack: Vec<MCDCDecisionCtx>,
-}
-
-impl MCDCState {
-    fn new() -> Self {
-        Self { decision_ctx_stack: vec![MCDCDecisionCtx::default()] }
-    }
-
-    /// Decision depth is given as a u16 to reduce the size of the `CoverageKind`,
-    /// as it is very unlikely that the depth ever reaches 2^16.
-    #[inline]
-    fn decision_depth(&self) -> u16 {
-        match u16::try_from(self.decision_ctx_stack.len())
-            .expect(
-                "decision depth did not fit in u16, this is likely to be an instrumentation error",
-            )
-            .checked_sub(1)
-        {
-            Some(d) => d,
-            None => bug!("Unexpected empty decision stack"),
+impl BooleanDecisionCtx {
+    fn new(id: DecisionId) -> Self {
+        Self {
+            id,
+            decision_info: MCDCDecisionSpan::new(Span::default()),
+            decision_stack: VecDeque::new(),
+            conditions: vec![],
         }
     }
 
@@ -92,34 +86,17 @@ impl MCDCState {
     // As the compiler tracks expression in pre-order, we can ensure that condition info of parents are always properly assigned when their children are visited.
     // - If the op is AND, the "false_next" of LHS and RHS should be the parent's "false_next". While "true_next" of the LHS is the RHS, the "true next" of RHS is the parent's "true_next".
     // - If the op is OR, the "true_next" of LHS and RHS should be the parent's "true_next". While "false_next" of the LHS is the RHS, the "false next" of RHS is the parent's "false_next".
-    fn record_conditions(&mut self, op: LogicalOp, span: Span) {
-        let decision_depth = self.decision_depth();
-        let Some(decision_ctx) = self.decision_ctx_stack.last_mut() else {
-            bug!("Unexpected empty decision_ctx_stack")
-        };
-        let decision = match decision_ctx.processing_decision.as_mut() {
-            Some(decision) => {
-                decision.span = decision.span.to(span);
-                decision
-            }
-            None => decision_ctx.processing_decision.insert(MCDCDecisionSpan {
-                span,
-                num_conditions: 0,
-                end_markers: vec![],
-                decision_depth,
-            }),
-        };
-
-        let parent_condition = decision_ctx.decision_stack.pop_back().unwrap_or_default();
+    fn record_conditions(&mut self, op: LogicalOp) {
+        let parent_condition = self.decision_stack.pop_back().unwrap_or_default();
         let lhs_id = if parent_condition.condition_id == ConditionId::NONE {
-            decision.num_conditions += 1;
-            ConditionId::from(decision.num_conditions)
+            self.decision_info.num_conditions += 1;
+            ConditionId::from(self.decision_info.num_conditions)
         } else {
             parent_condition.condition_id
         };
 
-        decision.num_conditions += 1;
-        let rhs_condition_id = ConditionId::from(decision.num_conditions);
+        self.decision_info.num_conditions += 1;
+        let rhs_condition_id = ConditionId::from(self.decision_info.num_conditions);
 
         let (lhs, rhs) = match op {
             LogicalOp::And => {
@@ -150,112 +127,342 @@ impl MCDCState {
             }
         };
         // We visit expressions tree in pre-order, so place the left-hand side on the top.
-        decision_ctx.decision_stack.push_back(rhs);
-        decision_ctx.decision_stack.push_back(lhs);
+        self.decision_stack.push_back(rhs);
+        self.decision_stack.push_back(lhs);
     }
 
-    fn take_condition(
+    fn finish_two_way_branch(
         &mut self,
+        span: Span,
         true_marker: BlockMarkerId,
         false_marker: BlockMarkerId,
-    ) -> (Option<ConditionInfo>, Option<MCDCDecisionSpan>) {
-        let Some(decision_ctx) = self.decision_ctx_stack.last_mut() else {
-            bug!("Unexpected empty decision_ctx_stack")
-        };
-        let Some(condition_info) = decision_ctx.decision_stack.pop_back() else {
-            return (None, None);
-        };
-        let Some(decision) = decision_ctx.processing_decision.as_mut() else {
-            bug!("Processing decision should have been created before any conditions are taken");
-        };
+    ) {
+        let condition_info = self.decision_stack.pop_back().unwrap_or_default();
         if condition_info.true_next_id == ConditionId::NONE {
-            decision.end_markers.push(true_marker);
+            self.decision_info.end_markers.push(true_marker);
         }
         if condition_info.false_next_id == ConditionId::NONE {
-            decision.end_markers.push(false_marker);
+            self.decision_info.end_markers.push(false_marker);
         }
 
-        if decision_ctx.decision_stack.is_empty() {
-            (Some(condition_info), decision_ctx.processing_decision.take())
-        } else {
-            (Some(condition_info), None)
+        self.conditions.push(MCDCBranchSpan {
+            span,
+            condition_info: Some(condition_info),
+            true_marker,
+            false_marker,
+            decision_depth: 0,
+        });
+        // In case this decision had only one condition
+        self.decision_info.num_conditions = self.decision_info.num_conditions.max(1);
+    }
+
+    fn is_finished(&self) -> bool {
+        self.decision_stack.is_empty()
+    }
+
+    fn into_done(self) -> (DecisionId, MCDCDecisionSpan, Vec<MCDCBranchSpan>) {
+        (self.id, self.decision_info, self.conditions)
+    }
+}
+
+#[derive(Debug)]
+enum DecisionCtx {
+    Boolean(BooleanDecisionCtx),
+    #[allow(unused)]
+    Matching,
+}
+
+impl DecisionCtx {
+    fn new_boolean(id: DecisionId) -> Self {
+        Self::Boolean(BooleanDecisionCtx::new(id))
+    }
+}
+
+pub(crate) struct MCDCStateGuard {
+    state_stashed_ref: Option<Rc<Cell<bool>>>,
+}
+
+impl Drop for MCDCStateGuard {
+    fn drop(&mut self) {
+        if let Some(stashed) = self.state_stashed_ref.take() {
+            stashed.set(false);
         }
+    }
+}
+
+/// `MCDCState` represents a layer to hold decisions. Decisions produced
+/// by same state are nested in same decision.
+#[derive(Debug)]
+struct MCDCState {
+    current_ctx: Option<DecisionCtx>,
+    nested_decision_records: Vec<DecisionId>,
+    // `Stashed` means we are processing a decision nested in decision of this state.
+    stashed: Rc<Cell<bool>>,
+}
+
+impl MCDCState {
+    fn new() -> Self {
+        Self {
+            current_ctx: None,
+            nested_decision_records: vec![],
+            stashed: Rc::new(Cell::new(false)),
+        }
+    }
+
+    fn is_stashed(&self) -> bool {
+        self.stashed.get()
+    }
+
+    fn take_ctx(&mut self) -> Option<(DecisionCtx, Vec<DecisionId>)> {
+        let ctx = self.current_ctx.take()?;
+        let nested_decisions_id = std::mem::take(&mut self.nested_decision_records);
+        Some((ctx, nested_decisions_id))
+    }
+
+    // Return `true` if there is no decision being processed currently.
+    fn is_empty(&self) -> bool {
+        self.current_ctx.is_none()
+    }
+
+    fn record_nested_decision(&mut self, id: DecisionId) {
+        self.nested_decision_records.push(id);
+    }
+
+    fn inherit_nested_decisions(&mut self, nested_decisions_id: Vec<DecisionId>) {
+        self.nested_decision_records.extend(nested_decisions_id);
+    }
+
+    fn take_current_nested_decisions(&mut self) -> Vec<DecisionId> {
+        std::mem::take(&mut self.nested_decision_records)
+    }
+}
+
+#[derive(Debug)]
+struct MCDCTargetInfo {
+    decision: MCDCDecisionSpan,
+    conditions: Vec<MCDCBranchSpan>,
+    nested_decisions_id: Vec<DecisionId>,
+}
+
+impl MCDCTargetInfo {
+    fn set_depth(&mut self, depth: u16) {
+        self.decision.decision_depth = depth;
+        self.conditions.iter_mut().for_each(|branch| branch.decision_depth = depth);
+    }
+}
+
+#[derive(Default)]
+struct DecisionIdGen(usize);
+impl DecisionIdGen {
+    fn next_decision_id(&mut self) -> DecisionId {
+        let id = DecisionId(self.0);
+        self.0 += 1;
+        id
     }
 }
 
 pub(crate) struct MCDCInfoBuilder {
-    branch_spans: Vec<MCDCBranchSpan>,
-    decision_spans: Vec<MCDCDecisionSpan>,
-    state: MCDCState,
+    normal_branch_spans: Vec<MCDCBranchSpan>,
+    mcdc_targets: FxIndexMap<DecisionId, MCDCTargetInfo>,
+    state_stack: Vec<MCDCState>,
+    decision_id_gen: DecisionIdGen,
 }
 
 impl MCDCInfoBuilder {
     pub(crate) fn new() -> Self {
-        Self { branch_spans: vec![], decision_spans: vec![], state: MCDCState::new() }
+        Self {
+            normal_branch_spans: vec![],
+            mcdc_targets: FxIndexMap::default(),
+            state_stack: vec![],
+            decision_id_gen: DecisionIdGen::default(),
+        }
+    }
+
+    fn has_processing_decision(&self) -> bool {
+        // Check from top to get working states a bit quicker.
+        !self.state_stack.iter().rev().all(|state| state.is_empty() && !state.is_stashed())
+    }
+
+    fn current_state_mut(&mut self) -> &mut MCDCState {
+        let current_idx = self.state_stack.len() - 1;
+        &mut self.state_stack[current_idx]
+    }
+
+    fn ensure_active_state(&mut self) {
+        let mut active_state_idx = None;
+        // Down to the first non-stashed state or non-empty state, which can be ensured to be
+        // processed currently.
+        for (idx, state) in self.state_stack.iter().enumerate().rev() {
+            if state.is_stashed() {
+                active_state_idx = Some(idx + 1);
+                break;
+            } else if !state.is_empty() {
+                active_state_idx = Some(idx);
+                break;
+            }
+        }
+        match active_state_idx {
+            // There are some states were created for nested decisions but now
+            // since the lower state has been unstashed they should be removed.
+            Some(idx) if idx + 1 < self.state_stack.len() => {
+                let expected_len = idx + 1;
+                let nested_decisions_id = self
+                    .state_stack
+                    .iter_mut()
+                    .skip(expected_len)
+                    .map(|state| state.take_current_nested_decisions().into_iter())
+                    .flatten()
+                    .collect();
+                self.state_stack.truncate(expected_len);
+                self.state_stack[idx].inherit_nested_decisions(nested_decisions_id);
+            }
+            // The top state is just wanted.
+            Some(idx) if idx + 1 == self.state_stack.len() => {}
+            // Otherwise no available state yet, create a new one.
+            _ => self.state_stack.push(MCDCState::new()),
+        }
+    }
+
+    fn ensure_boolean_decision(&mut self, condition_span: Span) -> &mut BooleanDecisionCtx {
+        self.ensure_active_state();
+        let state = self.state_stack.last_mut().expect("ensured just now");
+        let DecisionCtx::Boolean(ctx) = state.current_ctx.get_or_insert_with(|| {
+            DecisionCtx::new_boolean(self.decision_id_gen.next_decision_id())
+        }) else {
+            unreachable!("ensured above");
+        };
+
+        if ctx.decision_info.span == Span::default() {
+            ctx.decision_info.span = condition_span;
+        } else {
+            ctx.decision_info.span = ctx.decision_info.span.to(condition_span);
+        }
+        ctx
+    }
+
+    fn append_normal_branches(&mut self, mut branches: Vec<MCDCBranchSpan>) {
+        branches.iter_mut().for_each(|branch| branch.condition_info = None);
+        self.normal_branch_spans.extend(branches);
+    }
+
+    fn append_mcdc_info(&mut self, tcx: TyCtxt<'_>, id: DecisionId, info: MCDCTargetInfo) -> bool {
+        let num_conditions = info.conditions.len();
+        match num_conditions {
+            0 => {
+                unreachable!("Decision with no condition is not expected");
+            }
+            // Ignore decisions with only one condition given that mcdc for them is completely equivalent to branch coverage.
+            2..=MAX_CONDITIONS_IN_DECISION => {
+                self.mcdc_targets.insert(id, info);
+                true
+            }
+            _ => {
+                self.append_normal_branches(info.conditions);
+                self.current_state_mut().inherit_nested_decisions(info.nested_decisions_id);
+                if num_conditions > MAX_CONDITIONS_IN_DECISION {
+                    tcx.dcx().emit_warn(MCDCExceedsConditionLimit {
+                        span: info.decision.span,
+                        num_conditions,
+                        max_conditions: MAX_CONDITIONS_IN_DECISION,
+                    });
+                }
+                false
+            }
+        }
+    }
+
+    fn normalize_depth_from(&mut self, tcx: TyCtxt<'_>, id: DecisionId) {
+        let Some(entry_decision) = self.mcdc_targets.get_mut(&id) else {
+            bug!("unknown mcdc decision");
+        };
+        let mut next_nested_records = entry_decision.nested_decisions_id.clone();
+        let mut depth = 0;
+        while !next_nested_records.is_empty() {
+            depth += 1;
+            for id in std::mem::take(&mut next_nested_records) {
+                let Some(nested_target) = self.mcdc_targets.get_mut(&id) else {
+                    continue;
+                };
+                nested_target.set_depth(depth);
+                next_nested_records.extend(nested_target.nested_decisions_id.iter().copied());
+                if depth > MAX_DECISION_DEPTH {
+                    tcx.dcx().emit_warn(MCDCExceedsDecisionDepth {
+                        span: nested_target.decision.span,
+                        max_decision_depth: MAX_DECISION_DEPTH.into(),
+                    });
+                    let branches = std::mem::take(&mut nested_target.conditions);
+                    self.append_normal_branches(branches);
+                    self.mcdc_targets.swap_remove(&id);
+                }
+            }
+        }
+    }
+
+    // If `entry_decision_id` is some, there must be at least one mcdc decision being produced.
+    fn on_ctx_finished(&mut self, tcx: TyCtxt<'_>, entry_decision_id: Option<DecisionId>) {
+        match (self.has_processing_decision(), entry_decision_id) {
+            // Can not be nested in other decisions, depth is accumulated starting from this decision.
+            (false, Some(id)) => self.normalize_depth_from(tcx, id),
+            // May be nested in other decisions, record it.
+            (true, Some(id)) => self.current_state_mut().record_nested_decision(id),
+            // No decision is produced this time and no other parent decision to be processing.
+            // All "nested decisions" now get zero depth and then calculate depth of their children.
+            (false, None) => {
+                for root_decision in self.current_state_mut().take_current_nested_decisions() {
+                    self.normalize_depth_from(tcx, root_decision);
+                }
+            }
+            (true, None) => {}
+        }
     }
 
     pub(crate) fn visit_evaluated_condition(
         &mut self,
         tcx: TyCtxt<'_>,
-        source_info: SourceInfo,
+        span: Span,
         true_block: BasicBlock,
         false_block: BasicBlock,
-        mut inject_block_marker: impl FnMut(SourceInfo, BasicBlock) -> BlockMarkerId,
+        mut inject_block_marker: impl FnMut(BasicBlock) -> BlockMarkerId,
     ) {
-        let true_marker = inject_block_marker(source_info, true_block);
-        let false_marker = inject_block_marker(source_info, false_block);
+        let true_marker = inject_block_marker(true_block);
+        let false_marker = inject_block_marker(false_block);
+        let decision = self.ensure_boolean_decision(span);
+        decision.finish_two_way_branch(span, true_marker, false_marker);
 
-        let decision_depth = self.state.decision_depth();
-        let (mut condition_info, decision_result) =
-            self.state.take_condition(true_marker, false_marker);
-        // take_condition() returns Some for decision_result when the decision stack
-        // is empty, i.e. when all the conditions of the decision were instrumented,
-        // and the decision is "complete".
-        if let Some(decision) = decision_result {
-            match (decision.num_conditions, decision_depth) {
-                (0, _) => {
-                    unreachable!("Decision with no condition is not expected");
-                }
-                (1..=MAX_CONDITIONS_IN_DECISION, 0..=MAX_DECISION_DEPTH) => {
-                    self.decision_spans.push(decision);
-                }
-                (_, _) => {
-                    // Do not generate mcdc mappings and statements for decisions with too many conditions.
-                    // Therefore, first erase the condition info of the (N-1) previous branch spans.
-                    let rebase_idx = self.branch_spans.len() - (decision.num_conditions - 1);
-                    for branch in &mut self.branch_spans[rebase_idx..] {
-                        branch.condition_info = None;
-                    }
-
-                    // Then, erase this last branch span's info too, for a total of N.
-                    condition_info = None;
-                    if decision.num_conditions > MAX_CONDITIONS_IN_DECISION {
-                        tcx.dcx().emit_warn(MCDCExceedsConditionLimit {
-                            span: decision.span,
-                            num_conditions: decision.num_conditions,
-                            max_conditions: MAX_CONDITIONS_IN_DECISION,
-                        });
-                    }
-                    if decision_depth > MAX_DECISION_DEPTH {
-                        tcx.dcx().emit_warn(MCDCExceedsDecisionDepth {
-                            span: decision.span,
-                            max_decision_depth: MAX_DECISION_DEPTH.into(),
-                        });
-                    }
-                }
-            }
+        if !decision.is_finished() {
+            return;
         }
-        self.branch_spans.push(MCDCBranchSpan {
-            span: source_info.span,
-            condition_info,
-            true_marker,
-            false_marker,
-            decision_depth,
-        });
+
+        let Some((DecisionCtx::Boolean(ctx), nested_decisions_id)) =
+            self.current_state_mut().take_ctx()
+        else {
+            unreachable!("ensured boolean ctx above");
+        };
+
+        let (id, decision, conditions) = ctx.into_done();
+        let info = MCDCTargetInfo { decision, conditions, nested_decisions_id };
+        let entry_decision_id = self.append_mcdc_info(tcx, id, info).then_some(id);
+        self.on_ctx_finished(tcx, entry_decision_id);
     }
 
-    pub(crate) fn into_done(self) -> (Vec<MCDCDecisionSpan>, Vec<MCDCBranchSpan>) {
-        (self.decision_spans, self.branch_spans)
+    pub(crate) fn into_done(
+        self,
+    ) -> (Vec<MCDCBranchSpan>, Vec<(MCDCDecisionSpan, Vec<MCDCBranchSpan>)>) {
+        let MCDCInfoBuilder {
+            normal_branch_spans,
+            mcdc_targets,
+            state_stack: _,
+            decision_id_gen: _,
+        } = self;
+
+        let mcdc_spans = mcdc_targets
+            .into_values()
+            .map(|MCDCTargetInfo { decision, conditions, nested_decisions_id: _ }| {
+                (decision, conditions)
+            })
+            .collect();
+
+        (normal_branch_spans, mcdc_spans)
     }
 }
 
@@ -264,25 +471,34 @@ impl Builder<'_, '_> {
         if let Some(coverage_info) = self.coverage_info.as_mut()
             && let Some(mcdc_info) = coverage_info.mcdc_info.as_mut()
         {
-            mcdc_info.state.record_conditions(logical_op, span);
+            let decision = mcdc_info.ensure_boolean_decision(span);
+            decision.record_conditions(logical_op);
         }
     }
 
-    pub(crate) fn mcdc_increment_depth_if_enabled(&mut self) {
-        if let Some(coverage_info) = self.coverage_info.as_mut()
-            && let Some(mcdc_info) = coverage_info.mcdc_info.as_mut()
+    pub(crate) fn mcdc_prepare_ctx_for(&mut self, expr_kind: &ExprKind<'_>) -> MCDCStateGuard {
+        if let Some(branch_info) = self.coverage_info.as_mut()
+            && let Some(mcdc_info) = branch_info.mcdc_info.as_mut()
         {
-            mcdc_info.state.decision_ctx_stack.push(MCDCDecisionCtx::default());
-        };
-    }
-
-    pub(crate) fn mcdc_decrement_depth_if_enabled(&mut self) {
-        if let Some(coverage_info) = self.coverage_info.as_mut()
-            && let Some(mcdc_info) = coverage_info.mcdc_info.as_mut()
-        {
-            if mcdc_info.state.decision_ctx_stack.pop().is_none() {
-                bug!("Unexpected empty decision stack");
+            match expr_kind {
+                ExprKind::Unary { .. } | ExprKind::Scope { .. } => {}
+                ExprKind::LogicalOp { .. } => {
+                    // By here a decision is going to be produced
+                    mcdc_info.ensure_active_state();
+                }
+                _ => {
+                    // Non-logical expressions leads to nested decisions only when a decision is being processed.
+                    // In such cases just mark the state `stashed`. If a nested decision following, a new active state will be
+                    // created at the previous arm. The current top state will be unstashed when the guard is dropped.
+                    if mcdc_info.has_processing_decision() {
+                        let stashed = &mcdc_info.current_state_mut().stashed;
+                        if !stashed.replace(true) {
+                            return MCDCStateGuard { state_stashed_ref: Some(stashed.clone()) };
+                        }
+                    }
+                }
             }
         };
+        MCDCStateGuard { state_stashed_ref: None }
     }
 }
