@@ -2479,7 +2479,7 @@ fn clean_variant_data<'tcx>(
             fields: fields.iter().map(|x| clean_field(x, cx)).collect(),
         }),
         hir::VariantData::Tuple(..) => {
-            VariantKind::Tuple(variant.fields()().iter().map(|x| clean_field(x, cx)).collect())
+            VariantKind::Tuple(variant.fields().iter().map(|x| clean_field(x, cx)).collect())
         }
         hir::VariantData::Unit(..) => VariantKind::CLike,
     };
