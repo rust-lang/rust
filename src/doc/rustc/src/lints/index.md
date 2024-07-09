@@ -57,16 +57,16 @@ fn main() {
 This code would produce a warning like:
 
 ```text
-warning: reference to packed field is unaligned
- --> src/main.rs:8:13
+error[E0793]: reference to packed field is unaligned
+ --> src/main.rs:9:13
   |
-8 |     let _ = &packed.f2;
+9 |     let _ = &packed.f2; // This line triggers the warning
   |             ^^^^^^^^^^
   |
-  = note: `#[warn(unaligned_references)]` on by default
-  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-  = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-  = help: copy the field contents to a local variable, or use `core::ptr::addr_of!` to create a reference that is guaranteed to be aligned
+  = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+  = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+  = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
 ```
 
 For more information about the process and policy of future-incompatible
