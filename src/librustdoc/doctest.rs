@@ -447,6 +447,7 @@ struct RunnableDocTest {
     line: usize,
     edition: Edition,
     no_run: bool,
+    is_multiple_tests: bool,
 }
 
 impl RunnableDocTest {
@@ -459,7 +460,6 @@ fn run_test(
     doctest: RunnableDocTest,
     rustdoc_options: &RustdocOptions,
     supports_color: bool,
-    is_multiple_tests: bool,
     report_unused_externs: impl Fn(UnusedExterns),
 ) -> Result<(), TestFailure> {
     let langstr = &doctest.langstr;
@@ -480,7 +480,7 @@ fn run_test(
     }
 
     compiler.arg("--edition").arg(&doctest.edition.to_string());
-    if !is_multiple_tests {
+    if !doctest.is_multiple_tests {
         // Setting these environment variables is unneeded if this is a merged doctest.
         compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &doctest.test_opts.path);
         compiler.env(
@@ -532,7 +532,7 @@ fn run_test(
 
     // If this is a merged doctest, we need to write it into a file instead of using stdin
     // because if the size of the merged doctests is too big, it'll simply break stdin.
-    if is_multiple_tests {
+    if doctest.is_multiple_tests {
         // It makes the compilation failure much faster if it is for a combined doctest.
         compiler.arg("--error-format=short");
         let input_file = doctest.path_for_merged_doctest();
@@ -556,7 +556,7 @@ fn run_test(
     debug!("compiler invocation for doctest: {compiler:?}");
 
     let mut child = compiler.spawn().expect("Failed to spawn rustc process");
-    let output = if is_multiple_tests {
+    let output = if doctest.is_multiple_tests {
         let status = child.wait().expect("Failed to wait");
         process::Output { status, stdout: Vec::new(), stderr: Vec::new() }
     } else {
@@ -634,7 +634,7 @@ fn run_test(
         cmd.arg(&output_file);
     } else {
         cmd = Command::new(&output_file);
-        if is_multiple_tests {
+        if doctest.is_multiple_tests {
             cmd.arg("*doctest-bin-path");
             cmd.arg(&output_file);
         }
@@ -643,7 +643,7 @@ fn run_test(
         cmd.current_dir(run_directory);
     }
 
-    let result = if is_multiple_tests || rustdoc_options.nocapture {
+    let result = if doctest.is_multiple_tests || rustdoc_options.nocapture {
         cmd.status().map(|status| process::Output {
             status,
             stdout: Vec::new(),
@@ -921,14 +921,10 @@ fn doctest_run_fn(
         line: scraped_test.line,
         edition: scraped_test.edition(&rustdoc_options),
         no_run: scraped_test.no_run(&rustdoc_options),
+        is_multiple_tests: false,
     };
-    let res = run_test(
-        runnable_test,
-        &rustdoc_options,
-        doctest.supports_color,
-        false,
-        report_unused_externs,
-    );
+    let res =
+        run_test(runnable_test, &rustdoc_options, doctest.supports_color, report_unused_externs);
 
     if let Err(err) = res {
         match err {
