@@ -6,8 +6,9 @@ LL | impl<T: Iterator> Struct<T> where <T as std:: iter::Iterator>::Item:: std::
    |
 help: use single colon
    |
-LL | impl<T: Iterator> Struct<T> where <T as std:: iter::Iterator>::Item: std::fmt::Display {
-   |                                                                    ~
+LL - impl<T: Iterator> Struct<T> where <T as std:: iter::Iterator>::Item:: std::fmt::Display {
+LL + impl<T: Iterator> Struct<T> where <T as std:: iter::Iterator>::Item: std::fmt::Display {
+   |
 
 error: aborting due to 1 previous error
 

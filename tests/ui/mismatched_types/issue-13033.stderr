@@ -13,8 +13,9 @@ LL |     fn bar(&mut self, other: &mut dyn Foo);
               found signature `fn(&mut Baz, &dyn Foo)`
 help: change the parameter type to match the trait
    |
-LL |     fn bar(&mut self, other: &mut dyn Foo) {}
-   |                              ~~~~~~~~~~~~
+LL -     fn bar(&mut self, other: &dyn Foo) {}
+LL +     fn bar(&mut self, other: &mut dyn Foo) {}
+   |
 
 error: aborting due to 1 previous error
 

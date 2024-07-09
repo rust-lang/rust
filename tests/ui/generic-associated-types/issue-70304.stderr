@@ -13,8 +13,9 @@ LL | fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'_>> {
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
    |
-LL | fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'static>> {
-   |                                                             ~~~~~~~
+LL - fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'_>> {
+LL + fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'static>> {
+   |
 
 error: missing required bound on `Cursor`
   --> $DIR/issue-70304.rs:2:5

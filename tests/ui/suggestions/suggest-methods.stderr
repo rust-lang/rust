@@ -21,8 +21,9 @@ LL |     let _ = s.is_emtpy();
    |
 help: there is a method `is_empty` with a similar name
    |
-LL |     let _ = s.is_empty();
-   |               ~~~~~~~~
+LL -     let _ = s.is_emtpy();
+LL +     let _ = s.is_empty();
+   |
 
 error[E0599]: no method named `count_eos` found for type `u32` in the current scope
   --> $DIR/suggest-methods.rs:27:19
@@ -32,8 +33,9 @@ LL |     let _ = 63u32.count_eos();
    |
 help: there is a method `count_zeros` with a similar name
    |
-LL |     let _ = 63u32.count_zeros();
-   |                   ~~~~~~~~~~~
+LL -     let _ = 63u32.count_eos();
+LL +     let _ = 63u32.count_zeros();
+   |
 
 error[E0599]: no method named `count_o` found for type `u32` in the current scope
   --> $DIR/suggest-methods.rs:30:19
@@ -43,8 +45,9 @@ LL |     let _ = 63u32.count_o();
    |
 help: there is a method `count_ones` with a similar name
    |
-LL |     let _ = 63u32.count_ones();
-   |                   ~~~~~~~~~~
+LL -     let _ = 63u32.count_o();
+LL +     let _ = 63u32.count_ones();
+   |
 
 error: aborting due to 4 previous errors
 

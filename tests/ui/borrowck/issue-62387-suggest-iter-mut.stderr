@@ -8,8 +8,9 @@ LL |     v.iter().for_each(|a| a.double());
    |
 help: you may want to use `iter_mut` here
    |
-LL |     v.iter_mut().for_each(|a| a.double());
-   |       ~~~~~~~~
+LL -     v.iter().for_each(|a| a.double());
+LL +     v.iter_mut().for_each(|a| a.double());
+   |
 
 error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
   --> $DIR/issue-62387-suggest-iter-mut.rs:25:39
@@ -21,8 +22,9 @@ LL |     v.iter().rev().rev().for_each(|a| a.double());
    |
 help: you may want to use `iter_mut` here
    |
-LL |     v.iter_mut().rev().rev().for_each(|a| a.double());
-   |       ~~~~~~~~
+LL -     v.iter().rev().rev().for_each(|a| a.double());
+LL +     v.iter_mut().rev().rev().for_each(|a| a.double());
+   |
 
 error: aborting due to 2 previous errors
 

@@ -34,8 +34,9 @@ LL |         (A, B) | (ref B, c) | (c, A) => ()
    |
 help: if you meant to match on unit variant `E::A`, use the full path in the pattern
    |
-LL |         (E::A, B) | (ref B, c) | (c, A) => ()
-   |          ~~~~
+LL -         (A, B) | (ref B, c) | (c, A) => ()
+LL +         (E::A, B) | (ref B, c) | (c, A) => ()
+   |
 
 error[E0408]: variable `B` is not bound in all patterns
   --> $DIR/resolve-inconsistent-names.rs:19:31
@@ -64,8 +65,9 @@ LL |         (CONST1, _) | (_, Const2) => ()
    |
 help: if you meant to match on constant `m::Const2`, use the full path in the pattern
    |
-LL |         (CONST1, _) | (_, m::Const2) => ()
-   |                           ~~~~~~~~~
+LL -         (CONST1, _) | (_, Const2) => ()
+LL +         (CONST1, _) | (_, m::Const2) => ()
+   |
 
 error[E0408]: variable `CONST1` is not bound in all patterns
   --> $DIR/resolve-inconsistent-names.rs:31:23

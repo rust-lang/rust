@@ -10,8 +10,9 @@ note: `HashMap::<K, V, S>::into_values` takes ownership of the receiver `self`, 
   --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
 help: you could `clone` the value and consume it, if the `Hash128_1: Clone` trait bound could be satisfied
    |
-LL |     let mut copy: Vec<U> = <HashMap<T, U, Hash128_1> as Clone>::clone(&map).into_values().collect();
-   |                            ++++++++++++++++++++++++++++++++++++++++++++   ~
+LL -     let mut copy: Vec<U> = map.clone().into_values().collect();
+LL +     let mut copy: Vec<U> = <HashMap<T, U, Hash128_1> as Clone>::clone(&map).into_values().collect();
+   |
 help: consider annotating `Hash128_1` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

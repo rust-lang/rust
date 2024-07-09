@@ -521,8 +521,9 @@ LL |     for t in file_types.to_vec() {
    |
 help: use
    |
-LL |     for t in file_types {
-   |              ~~~~~~~~~~
+LL -     for t in file_types.to_vec() {
+LL +     for t in file_types {
+   |
 help: remove any references to the binding
    |
 LL -         let path = match get_file_path(&t) {

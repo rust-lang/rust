@@ -17,8 +17,9 @@ LL |         self.0.iter_mut()
    |
 help: consider changing this to be a mutable reference
    |
-LL |     fn a(&mut self) -> impl Iterator {
-   |          ~~~~~~~~~
+LL -     fn a(&self) -> impl Iterator {
+LL +     fn a(&mut self) -> impl Iterator {
+   |
 
 error[E0700]: hidden type for `impl Iterator` captures lifetime that does not appear in bounds
   --> $DIR/issue-109141.rs:6:9

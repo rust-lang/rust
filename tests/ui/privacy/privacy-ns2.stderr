@@ -20,8 +20,9 @@ LL |     Bar();
    |
 help: a unit struct with a similar name exists
    |
-LL |     Baz();
-   |     ~~~
+LL -     Bar();
+LL +     Baz();
+   |
 help: consider importing this function instead
    |
 LL + use foo2::Bar;
@@ -35,8 +36,9 @@ LL |     let _x : Bar();
    |
 help: use `=` if you meant to assign
    |
-LL |     let _x = Bar();
-   |            ~
+LL -     let _x : Bar();
+LL +     let _x = Bar();
+   |
 help: consider importing this trait instead
    |
 LL + use foo1::Bar;

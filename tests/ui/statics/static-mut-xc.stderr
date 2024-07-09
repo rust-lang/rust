@@ -10,8 +10,9 @@ LL |     static_bound(&static_mut_xc::a);
    = note: `#[warn(static_mut_refs)]` on by default
 help: use `addr_of!` instead to create a raw pointer
    |
-LL |     static_bound(addr_of!(static_mut_xc::a));
-   |                  ~~~~~~~~~                +
+LL -     static_bound(&static_mut_xc::a);
+LL +     static_bound(addr_of!(static_mut_xc::a));
+   |
 
 warning: creating a mutable reference to mutable static is discouraged
   --> $DIR/static-mut-xc.rs:30:22
@@ -24,8 +25,9 @@ LL |     static_bound_set(&mut static_mut_xc::a);
    = note: this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
 help: use `addr_of_mut!` instead to create a raw pointer
    |
-LL |     static_bound_set(addr_of_mut!(static_mut_xc::a));
-   |                      ~~~~~~~~~~~~~                +
+LL -     static_bound_set(&mut static_mut_xc::a);
+LL +     static_bound_set(addr_of_mut!(static_mut_xc::a));
+   |
 
 warning: 2 warnings emitted
 

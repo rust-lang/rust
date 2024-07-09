@@ -153,8 +153,9 @@ LL |     take_while(|c| ('A'..='Z').contains(&c));
    |
 help: try
    |
-LL |     take_while(|c: char| c.is_ascii_uppercase());
-   |                 ~~~~~~~  ~~~~~~~~~~~~~~~~~~~~~~
+LL -     take_while(|c| ('A'..='Z').contains(&c));
+LL +     take_while(|c: char| c.is_ascii_uppercase());
+   |
 
 error: manual check for common ascii range
   --> tests/ui/manual_is_ascii_check.rs:82:20
@@ -164,8 +165,9 @@ LL |     take_while(|c| (b'A'..=b'Z').contains(&c));
    |
 help: try
    |
-LL |     take_while(|c: u8| c.is_ascii_uppercase());
-   |                 ~~~~~  ~~~~~~~~~~~~~~~~~~~~~~
+LL -     take_while(|c| (b'A'..=b'Z').contains(&c));
+LL +     take_while(|c: u8| c.is_ascii_uppercase());
+   |
 
 error: manual check for common ascii range
   --> tests/ui/manual_is_ascii_check.rs:83:26

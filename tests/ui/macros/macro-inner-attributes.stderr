@@ -6,8 +6,9 @@ LL |     a::bar();
    |
 help: there is a crate or module with a similar name
    |
-LL |     b::bar();
-   |     ~
+LL -     a::bar();
+LL +     b::bar();
+   |
 
 error: aborting due to 1 previous error
 

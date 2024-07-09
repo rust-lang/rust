@@ -8,8 +8,9 @@ LL |     B = SomeEnum::A,
    |
 help: there is a variant with a similar name
    |
-LL |     B = SomeEnum::B,
-   |                   ~
+LL -     B = SomeEnum::A,
+LL +     B = SomeEnum::B,
+   |
 
 error: aborting due to 1 previous error
 

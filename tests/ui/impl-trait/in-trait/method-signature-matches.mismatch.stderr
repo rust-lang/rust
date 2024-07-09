@@ -13,8 +13,9 @@ LL |     fn owo(x: ()) -> impl Sized;
               found signature `fn(u8)`
 help: change the parameter type to match the trait
    |
-LL |     fn owo(_: ()) {}
-   |               ~~
+LL -     fn owo(_: u8) {}
+LL +     fn owo(_: ()) {}
+   |
 
 error: aborting due to 1 previous error
 

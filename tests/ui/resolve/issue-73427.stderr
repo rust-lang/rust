@@ -17,14 +17,17 @@ LL | | }
    | |_^
 help: you might have meant to use one of the following enum variants
    |
-LL |     (A::Tuple()).foo();
-   |     ~~~~~~~~~~~~
-LL |     A::Unit.foo();
-   |     ~~~~~~~
+LL -     A.foo();
+LL +     (A::Tuple()).foo();
+   |
+LL -     A.foo();
+LL +     A::Unit.foo();
+   |
 help: alternatively, the following enum variant is available
    |
-LL |     (A::TupleWithFields(/* fields */)).foo();
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     A.foo();
+LL +     (A::TupleWithFields(/* fields */)).foo();
+   |
 
 error[E0423]: expected value, found enum `B`
   --> $DIR/issue-73427.rs:35:5
@@ -58,12 +61,14 @@ LL | | }
    | |_^
 help: you might have meant to use the following enum variant
    |
-LL |     C::Unit.foo();
-   |     ~~~~~~~
+LL -     C.foo();
+LL +     C::Unit.foo();
+   |
 help: alternatively, the following enum variant is available
    |
-LL |     (C::TupleWithFields(/* fields */)).foo();
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     C.foo();
+LL +     (C::TupleWithFields(/* fields */)).foo();
+   |
 
 error[E0423]: expected value, found enum `D`
   --> $DIR/issue-73427.rs:39:5
@@ -81,12 +86,14 @@ LL | | }
    | |_^
 help: you might have meant to use the following enum variant
    |
-LL |     D::Unit.foo();
-   |     ~~~~~~~
+LL -     D.foo();
+LL +     D::Unit.foo();
+   |
 help: alternatively, the following enum variant is available
    |
-LL |     (D::TupleWithFields(/* fields */)).foo();
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     D.foo();
+LL +     (D::TupleWithFields(/* fields */)).foo();
+   |
 
 error[E0423]: expected value, found enum `E`
   --> $DIR/issue-73427.rs:41:5
@@ -103,8 +110,9 @@ LL | | }
    | |_^
 help: the following enum variant is available
    |
-LL |     (E::TupleWithFields(/* fields */)).foo();
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     E.foo();
+LL +     (E::TupleWithFields(/* fields */)).foo();
+   |
 help: consider importing one of these constants instead
    |
 LL + use std::f128::consts::E;
@@ -136,10 +144,12 @@ LL | | }
    | |_^
 help: try to match against one of the enum's variants
    |
-LL |     if let A::Tuple(3) = x { }
-   |            ~~~~~~~~
-LL |     if let A::TupleWithFields(3) = x { }
-   |            ~~~~~~~~~~~~~~~~~~
+LL -     if let A(3) = x { }
+LL +     if let A::Tuple(3) = x { }
+   |
+LL -     if let A(3) = x { }
+LL +     if let A::TupleWithFields(3) = x { }
+   |
 
 error[E0423]: expected function, tuple struct or tuple variant, found enum `A`
   --> $DIR/issue-73427.rs:46:13
@@ -161,10 +171,12 @@ LL | | }
    | |_^
 help: try to construct one of the enum's variants
    |
-LL |     let x = A::Tuple(3);
-   |             ~~~~~~~~
-LL |     let x = A::TupleWithFields(3);
-   |             ~~~~~~~~~~~~~~~~~~
+LL -     let x = A(3);
+LL +     let x = A::Tuple(3);
+   |
+LL -     let x = A(3);
+LL +     let x = A::TupleWithFields(3);
+   |
 
 error: aborting due to 7 previous errors
 

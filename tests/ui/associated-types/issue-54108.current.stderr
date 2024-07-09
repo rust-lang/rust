@@ -12,8 +12,9 @@ LL |     type Size: Add<Output = Self::Size>;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Encoder::Size`
 help: consider further restricting the associated type
    |
-LL |     T: SubEncoder, <T as SubEncoder>::ActualSize: Add
-   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     T: SubEncoder,
+LL +     T: SubEncoder, <T as SubEncoder>::ActualSize: Add
+   |
 
 error: aborting due to 1 previous error
 

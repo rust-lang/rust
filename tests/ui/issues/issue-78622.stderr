@@ -6,8 +6,9 @@ LL |     S::A::<f> {}
    |
 help: if there were a trait named `Example` with associated type `A` implemented for `S`, you could use the fully-qualified path
    |
-LL |     <S as Example>::A::<f> {}
-   |     ~~~~~~~~~~~~~~~~~
+LL -     S::A::<f> {}
+LL +     <S as Example>::A::<f> {}
+   |
 
 error: aborting due to 1 previous error
 

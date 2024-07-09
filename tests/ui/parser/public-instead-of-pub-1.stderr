@@ -6,8 +6,9 @@ LL | public enum Test {
    |
 help: write `pub` instead of `public` to make the item public
    |
-LL | pub enum Test {
-   | ~~~
+LL - public enum Test {
+LL + pub enum Test {
+   |
 
 error: aborting due to 1 previous error
 

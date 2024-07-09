@@ -11,8 +11,9 @@ LL | #![deny(rustdoc::broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to link to the associated constant, prefix with `const@`
    |
-LL | //! [const@u8::MIN]
-   |      ~~~~~~
+LL - //! [static@u8::MIN]
+LL + //! [const@u8::MIN]
+   |
 
 error: aborting due to 1 previous error
 

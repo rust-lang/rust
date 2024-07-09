@@ -15,8 +15,9 @@ note: ...and refers to the module `mem` which is defined here
    = note: you could import this directly
 help: import `mem` through the re-export
    |
-LL |     use std::mem;
-   |         ~~~~~~~~
+LL -     use foo::mem;
+LL +     use std::mem;
+   |
 
 error: aborting due to 1 previous error
 

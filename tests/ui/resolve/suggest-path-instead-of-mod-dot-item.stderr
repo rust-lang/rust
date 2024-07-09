@@ -27,12 +27,14 @@ LL |     a::b.J
    |
 help: use the path separator to refer to an item
    |
-LL |     a::b::J
-   |         ~~
+LL -     a::b.J
+LL +     a::b::J
+   |
 help: a constant with a similar name exists
    |
-LL |     a::I.J
-   |        ~
+LL -     a::b.J
+LL +     a::I.J
+   |
 
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:42:5
@@ -62,12 +64,14 @@ LL |     a::b.f()
    |
 help: use the path separator to refer to an item
    |
-LL |     a::b::f()
-   |         ~~
+LL -     a::b.f()
+LL +     a::b::f()
+   |
 help: a constant with a similar name exists
    |
-LL |     a::I.f()
-   |        ~
+LL -     a::b.f()
+LL +     a::I.f()
+   |
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:59:5

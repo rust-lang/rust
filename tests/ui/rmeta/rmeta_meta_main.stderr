@@ -6,8 +6,9 @@ LL |     let _ = Foo { field2: 42 };
    |
 help: a field with a similar name exists
    |
-LL |     let _ = Foo { field: 42 };
-   |                   ~~~~~
+LL -     let _ = Foo { field2: 42 };
+LL +     let _ = Foo { field: 42 };
+   |
 
 error: aborting due to 1 previous error
 

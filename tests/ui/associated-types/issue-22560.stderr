@@ -25,8 +25,9 @@ LL | type Test = dyn Add + Sub;
    |
 help: specify the associated types
    |
-LL | type Test = dyn Add<Output = Type> + Sub<Output = Type>;
-   |                 ~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~
+LL - type Test = dyn Add + Sub;
+LL + type Test = dyn Add<Output = Type> + Sub<Output = Type>;
+   |
 
 error[E0393]: the type parameter `Rhs` must be explicitly specified
   --> $DIR/issue-22560.rs:9:17

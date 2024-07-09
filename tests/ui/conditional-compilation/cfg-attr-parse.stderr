@@ -7,8 +7,9 @@ LL | #[cfg_attr()]
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: missing condition and attribute
    |
-LL | #[cfg_attr(condition, attribute, other_attribute, ...)]
-   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - #[cfg_attr()]
+LL + #[cfg_attr(condition, attribute, other_attribute, ...)]
+   |
 
 error: expected `,`, found end of `cfg_attr` input
   --> $DIR/cfg-attr-parse.rs:8:17
@@ -54,8 +55,9 @@ LL | #[cfg_attr[all(),,]]
    |
 help: the delimiters should be `(` and `)`
    |
-LL | #[cfg_attr(all(),,)]
-   |           ~       ~
+LL - #[cfg_attr[all(),,]]
+LL + #[cfg_attr(all(),,)]
+   |
 
 error: expected identifier, found `,`
   --> $DIR/cfg-attr-parse.rs:44:18
@@ -74,8 +76,9 @@ LL | #[cfg_attr{all(),,}]
    |
 help: the delimiters should be `(` and `)`
    |
-LL | #[cfg_attr(all(),,)]
-   |           ~       ~
+LL - #[cfg_attr{all(),,}]
+LL + #[cfg_attr(all(),,)]
+   |
 
 error: expected identifier, found `,`
   --> $DIR/cfg-attr-parse.rs:50:18

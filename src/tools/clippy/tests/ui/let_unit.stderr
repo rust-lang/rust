@@ -59,16 +59,19 @@ LL |         let res = returns_unit();
    |
 help: omit the `let` binding
    |
-LL |         returns_unit();
+LL -         let res = returns_unit();
+LL +         returns_unit();
    |
 help: variable `res` of type `()` can be replaced with explicit `()`
    |
-LL |         returns_result(()).unwrap();
-   |                        ~~
+LL -         returns_result(res).unwrap();
+LL +         returns_result(()).unwrap();
+   |
 help: variable `res` of type `()` can be replaced with explicit `()`
    |
-LL |         returns_result(()).unwrap();
-   |                        ~~
+LL -         returns_result(res).unwrap();
+LL +         returns_result(()).unwrap();
+   |
 
 error: aborting due to 4 previous errors
 

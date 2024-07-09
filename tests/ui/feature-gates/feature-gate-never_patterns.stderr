@@ -10,7 +10,8 @@ LL |         (Some(_),)
    |         +        +
 help: ...or a vertical bar to match on multiple alternatives
    |
-LL |         Some(_) |
+LL -         Some(_),
+LL +         Some(_) |
    |
 
 error[E0658]: `!` patterns are experimental

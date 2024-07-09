@@ -15,8 +15,8 @@ LL | struct Evaluatable<const N: Foo>;
    |
 help: add `#[derive(ConstParamTy)]` to the struct
    |
+LL - struct Foo(u8);
 LL + #[derive(ConstParamTy)]
-LL | struct Foo(u8);
    |
 
 error[E0284]: type annotations needed: cannot normalize `foo<N>::{constant#0}`
@@ -33,8 +33,8 @@ LL | fn foo<const N: Foo>(a: Evaluatable<{ N + N }>) {
    |
 help: add `#[derive(ConstParamTy)]` to the struct
    |
+LL - struct Foo(u8);
 LL + #[derive(ConstParamTy)]
-LL | struct Foo(u8);
    |
 
 error[E0741]: `Foo` must implement `ConstParamTy` to be used as the type of a const generic parameter
@@ -45,8 +45,8 @@ LL | fn bar<const N: Foo>() {}
    |
 help: add `#[derive(ConstParamTy)]` to the struct
    |
+LL - struct Foo(u8);
 LL + #[derive(ConstParamTy)]
-LL | struct Foo(u8);
    |
 
 error[E0284]: type annotations needed: cannot normalize `foo2<N>::{constant#0}`

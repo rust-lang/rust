@@ -6,8 +6,9 @@ LL |     let a = [0; n];
    |
 help: consider using `const` instead of `let`
    |
-LL |     const n: /* Type */ = 1;
-   |     ~~~~~  ++++++++++++
+LL -     let n = 1;
+LL +     const n: /* Type */ = 1;
+   |
 
 error[E0308]: mismatched types
   --> $DIR/repeat_count.rs:7:17
@@ -63,8 +64,9 @@ LL |     let f = [0; 4u8];
    |
 help: change the type of the numeric literal from `u8` to `usize`
    |
-LL |     let f = [0; 4usize];
-   |                  ~~~~~
+LL -     let f = [0; 4u8];
+LL +     let f = [0; 4usize];
+   |
 
 error: aborting due to 9 previous errors
 

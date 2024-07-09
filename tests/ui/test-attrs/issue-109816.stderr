@@ -9,7 +9,8 @@ LL |     struct A5(u32, u8);
    |
 help: replace with conditional compilation to make the item only exist when tests are being run
    |
-LL |     #[cfg(test)]
+LL -     #[test]
+LL +     #[cfg(test)]
    |
 
 error: aborting due to 1 previous error

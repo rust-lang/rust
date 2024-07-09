@@ -6,8 +6,9 @@ LL |     Test::Drill(field: 42);
    |
 help: if `Test::Drill` is a struct, use braces as delimiters
    |
-LL |     Test::Drill { field: 42 };
-   |                 ~           ~
+LL -     Test::Drill(field: 42);
+LL +     Test::Drill { field: 42 };
+   |
 help: if `Test::Drill` is a function, use the arguments directly
    |
 LL -     Test::Drill(field: 42);

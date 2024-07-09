@@ -10,8 +10,9 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
    = note: the trait cannot be made into an object because it uses `Self` as a type parameter
 help: consider using an opaque type instead
    |
-LL | fn foo(a: &impl ConstParamTy_) {}
-   |            ~~~~
+LL - fn foo(a: &dyn ConstParamTy_) {}
+LL + fn foo(a: &impl ConstParamTy_) {}
+   |
 
 error[E0038]: the trait `UnsizedConstParamTy` cannot be made into an object
   --> $DIR/const_param_ty_object_safety.rs:9:12
@@ -25,8 +26,9 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
    = note: the trait cannot be made into an object because it uses `Self` as a type parameter
 help: consider using an opaque type instead
    |
-LL | fn bar(a: &impl UnsizedConstParamTy) {}
-   |            ~~~~
+LL - fn bar(a: &dyn UnsizedConstParamTy) {}
+LL + fn bar(a: &impl UnsizedConstParamTy) {}
+   |
 
 error: aborting due to 2 previous errors
 

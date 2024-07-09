@@ -14,8 +14,9 @@ LL |         self.g();
    |
 help: there is a method `f` with a similar name
    |
-LL |         self.f();
-   |              ~
+LL -         self.g();
+LL +         self.f();
+   |
 
 error: aborting due to 2 previous errors
 

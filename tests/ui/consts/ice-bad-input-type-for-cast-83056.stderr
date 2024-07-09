@@ -8,8 +8,9 @@ LL | fn f() -> T {}
    |
 help: a struct with a similar name exists
    |
-LL | fn f() -> S {}
-   |           ~
+LL - fn f() -> T {}
+LL + fn f() -> S {}
+   |
 help: you might be missing a type parameter
    |
 LL | fn f<T>() -> T {}

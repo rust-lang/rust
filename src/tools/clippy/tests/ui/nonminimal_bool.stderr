@@ -51,10 +51,12 @@ LL |     let _ = a == b && c == 5 && a == b;
    |
 help: try
    |
-LL |     let _ = !(a != b || c != 5);
-   |             ~~~~~~~~~~~~~~~~~~~
-LL |     let _ = a == b && c == 5;
-   |             ~~~~~~~~~~~~~~~~
+LL -     let _ = a == b && c == 5 && a == b;
+LL +     let _ = !(a != b || c != 5);
+   |
+LL -     let _ = a == b && c == 5 && a == b;
+LL +     let _ = a == b && c == 5;
+   |
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:44:13
@@ -64,10 +66,12 @@ LL |     let _ = a == b || c == 5 || a == b;
    |
 help: try
    |
-LL |     let _ = !(a != b && c != 5);
-   |             ~~~~~~~~~~~~~~~~~~~
-LL |     let _ = a == b || c == 5;
-   |             ~~~~~~~~~~~~~~~~
+LL -     let _ = a == b || c == 5 || a == b;
+LL +     let _ = !(a != b && c != 5);
+   |
+LL -     let _ = a == b || c == 5 || a == b;
+LL +     let _ = a == b || c == 5;
+   |
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:46:13
@@ -77,10 +81,12 @@ LL |     let _ = a == b && c == 5 && b == a;
    |
 help: try
    |
-LL |     let _ = !(a != b || c != 5);
-   |             ~~~~~~~~~~~~~~~~~~~
-LL |     let _ = a == b && c == 5;
-   |             ~~~~~~~~~~~~~~~~
+LL -     let _ = a == b && c == 5 && b == a;
+LL +     let _ = !(a != b || c != 5);
+   |
+LL -     let _ = a == b && c == 5 && b == a;
+LL +     let _ = a == b && c == 5;
+   |
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:48:13
@@ -90,10 +96,12 @@ LL |     let _ = a != b || !(a != b || c == d);
    |
 help: try
    |
-LL |     let _ = !(a == b && c == d);
-   |             ~~~~~~~~~~~~~~~~~~~
-LL |     let _ = a != b || c != d;
-   |             ~~~~~~~~~~~~~~~~
+LL -     let _ = a != b || !(a != b || c == d);
+LL +     let _ = !(a == b && c == d);
+   |
+LL -     let _ = a != b || !(a != b || c == d);
+LL +     let _ = a != b || c != d;
+   |
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:50:13
@@ -103,10 +111,12 @@ LL |     let _ = a != b && !(a != b && c == d);
    |
 help: try
    |
-LL |     let _ = !(a == b || c == d);
-   |             ~~~~~~~~~~~~~~~~~~~
-LL |     let _ = a != b && c != d;
-   |             ~~~~~~~~~~~~~~~~
+LL -     let _ = a != b && !(a != b && c == d);
+LL +     let _ = !(a == b || c == d);
+   |
+LL -     let _ = a != b && !(a != b && c == d);
+LL +     let _ = a != b && c != d;
+   |
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:81:8

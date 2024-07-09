@@ -6,8 +6,9 @@ LL |     let b = Bar::(isize, usize)::new(); // OK too (for the parser)
    |
 help: use angle brackets instead
    |
-LL |     let b = Bar::<isize, usize>::new(); // OK too (for the parser)
-   |                  ~            ~
+LL -     let b = Bar::(isize, usize)::new(); // OK too (for the parser)
+LL +     let b = Bar::<isize, usize>::new(); // OK too (for the parser)
+   |
 
 error: aborting due to 1 previous error
 

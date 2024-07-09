@@ -11,8 +11,9 @@ LL |     let _spade = '♠️';
    |                   ^
 help: if you meant to write a string literal, use double quotes
    |
-LL |     let _spade = "♠️";
-   |                  ~ ~
+LL -     let _spade = '♠️';
+LL +     let _spade = "♠️";
+   |
 
 error: character literal may only contain one codepoint
   --> $DIR/unicode-character-literal.rs:12:14
@@ -27,8 +28,9 @@ LL |     let _s = 'ṩ̂̊';
    |               ^
 help: if you meant to write a string literal, use double quotes
    |
-LL |     let _s = "ṩ̂̊";
-   |              ~ ~
+LL -     let _s = 'ṩ̂̊';
+LL +     let _s = "ṩ̂̊";
+   |
 
 error: character literal may only contain one codepoint
   --> $DIR/unicode-character-literal.rs:17:14
@@ -43,8 +45,9 @@ LL |     let _a = 'Å';
    |               ^
 help: consider using the normalized form `\u{c5}` of this character
    |
-LL |     let _a = 'Å';
-   |               ~
+LL -     let _a = 'Å';
+LL +     let _a = 'Å';
+   |
 
 error: aborting due to 3 previous errors
 

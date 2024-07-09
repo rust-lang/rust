@@ -37,8 +37,9 @@ LL | |     }
    | |_____^
 help: you might have meant to use the following enum variant
    |
-LL |     B::B1;
-   |     ~~~~~
+LL -     B;
+LL +     B::B1;
+   |
 
 error[E0425]: cannot find value `C` in this scope
   --> $DIR/glob-resolve1.rs:29:5

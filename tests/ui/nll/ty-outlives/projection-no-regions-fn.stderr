@@ -9,8 +9,9 @@ LL |     Box::new(x.next())
    |
 help: consider adding an explicit lifetime bound
    |
-LL |     T: Iterator, <T as Iterator>::Item: 'a
-   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     T: Iterator,
+LL +     T: Iterator, <T as Iterator>::Item: 'a
+   |
 
 error[E0309]: the associated type `<T as Iterator>::Item` may not live long enough
   --> $DIR/projection-no-regions-fn.rs:28:5
@@ -23,8 +24,9 @@ LL |     Box::new(x.next())
    |
 help: consider adding an explicit lifetime bound
    |
-LL |     T: 'b + Iterator, <T as Iterator>::Item: 'a
-   |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     T: 'b + Iterator,
+LL +     T: 'b + Iterator, <T as Iterator>::Item: 'a
+   |
 
 error: aborting due to 2 previous errors
 

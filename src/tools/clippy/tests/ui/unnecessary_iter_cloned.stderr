@@ -8,8 +8,9 @@ LL |     for (t, path) in files.iter().copied() {
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_to_owned)]`
 help: use
    |
-LL |     for (t, path) in files {
-   |                      ~~~~~
+LL -     for (t, path) in files.iter().copied() {
+LL +     for (t, path) in files {
+   |
 help: remove any references to the binding
    |
 LL -         let other = match get_file_path(&t) {
@@ -24,8 +25,9 @@ LL |     for (t, path) in files.iter().copied() {
    |
 help: use
    |
-LL |     for (t, path) in files.iter() {
-   |                      ~~~~~~~~~~~~
+LL -     for (t, path) in files.iter().copied() {
+LL +     for (t, path) in files.iter() {
+   |
 help: remove any references to the binding
    |
 LL -         let other = match get_file_path(&t) {
@@ -46,8 +48,9 @@ LL |         for c in v.iter().cloned() {
    |
 help: use
    |
-LL |         for c in v.iter() {
-   |                  ~~~~~~~~
+LL -         for c in v.iter().cloned() {
+LL +         for c in v.iter() {
+   |
 help: remove any references to the binding
    |
 LL -             let ref_c = &c;
@@ -62,8 +65,9 @@ LL |         for (i, c) in v.iter().cloned() {
    |
 help: use
    |
-LL |         for (i, c) in v.iter() {
-   |                       ~~~~~~~~
+LL -         for (i, c) in v.iter().cloned() {
+LL +         for (i, c) in v.iter() {
+   |
 help: remove any references to the binding
    |
 LL ~             let ref_c = c;

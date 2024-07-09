@@ -6,8 +6,9 @@ LL | fn x˂-
    |
 help: Unicode character '˂' (Modifier Letter Left Arrowhead) looks like '<' (Less-Than Sign), but it is not
    |
-LL | fn x<-
-   |     ~
+LL - fn x˂-
+LL + fn x<-
+   |
 
 error: expected one of `#`, `>`, `const`, identifier, or lifetime, found `-`
   --> $DIR/issue-81800.rs:1:6

@@ -11,12 +11,14 @@ LL | #![deny(let_underscore_drop)]
    |         ^^^^^^^^^^^^^^^^^^^
 help: consider binding to an unused variable to avoid immediately dropping the value
    |
-LL |     let _unused = foo();
-   |         ~~~~~~~
+LL -     let _ = foo();
+LL +     let _unused = foo();
+   |
 help: consider immediately dropping the value
    |
-LL |     drop(foo());
-   |     ~~~~~     +
+LL -     let _ = foo();
+LL +     drop(foo());
+   |
 
 error: aborting due to 1 previous error
 

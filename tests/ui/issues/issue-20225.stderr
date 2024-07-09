@@ -10,8 +10,9 @@ LL |   extern "rust-call" fn call(&self, (_,): (T,)) {}
               found signature `extern "rust-call" fn(&Foo, (_,))`
 help: change the parameter type to match the trait
    |
-LL |   extern "rust-call" fn call(&self, (_,): (&'a T,)) {}
-   |                                           ~~~~~~~~
+LL -   extern "rust-call" fn call(&self, (_,): (T,)) {}
+LL +   extern "rust-call" fn call(&self, (_,): (&'a T,)) {}
+   |
 
 error[E0053]: method `call_mut` has an incompatible type for trait
   --> $DIR/issue-20225.rs:11:51
@@ -25,8 +26,9 @@ LL |   extern "rust-call" fn call_mut(&mut self, (_,): (T,)) {}
               found signature `extern "rust-call" fn(&mut Foo, (_,))`
 help: change the parameter type to match the trait
    |
-LL |   extern "rust-call" fn call_mut(&mut self, (_,): (&'a T,)) {}
-   |                                                   ~~~~~~~~
+LL -   extern "rust-call" fn call_mut(&mut self, (_,): (T,)) {}
+LL +   extern "rust-call" fn call_mut(&mut self, (_,): (&'a T,)) {}
+   |
 
 error[E0053]: method `call_once` has an incompatible type for trait
   --> $DIR/issue-20225.rs:18:47
@@ -41,8 +43,9 @@ LL |   extern "rust-call" fn call_once(self, (_,): (T,)) {}
               found signature `extern "rust-call" fn(Foo, (_,))`
 help: change the parameter type to match the trait
    |
-LL |   extern "rust-call" fn call_once(self, (_,): (&'a T,)) {}
-   |                                               ~~~~~~~~
+LL -   extern "rust-call" fn call_once(self, (_,): (T,)) {}
+LL +   extern "rust-call" fn call_once(self, (_,): (&'a T,)) {}
+   |
 
 error: aborting due to 3 previous errors
 

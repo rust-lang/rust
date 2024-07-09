@@ -9,8 +9,9 @@ LL |     let _b = A { y: Arc::new(3), ..a };
    |
 help: clone the value from the field instead of using the functional record update syntax
    |
-LL |     let _b = A { y: Arc::new(3), x: a.x.clone() };
-   |                                ~~~~~~~~~~~~~~~~
+LL -     let _b = A { y: Arc::new(3), ..a };
+LL +     let _b = A { y: Arc::new(3), x: a.x.clone() };
+   |
 
 error: aborting due to 1 previous error
 

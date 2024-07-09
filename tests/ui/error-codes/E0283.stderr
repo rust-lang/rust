@@ -30,8 +30,9 @@ LL | impl Into<u32> for Impl {
              where U: From<T>;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     let bar = <Impl as Into<T>>::into(foo_impl) * 1u32;
-   |               ++++++++++++++++++++++++        ~
+LL -     let bar = foo_impl.into() * 1u32;
+LL +     let bar = <Impl as Into<T>>::into(foo_impl) * 1u32;
+   |
 
 error: aborting due to 2 previous errors
 

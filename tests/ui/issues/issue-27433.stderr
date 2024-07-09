@@ -6,8 +6,9 @@ LL |     const FOO : u32 = foo;
    |
 help: consider using `let` instead of `const`
    |
-LL |     let FOO : u32 = foo;
-   |     ~~~
+LL -     const FOO : u32 = foo;
+LL +     let FOO : u32 = foo;
+   |
 
 error: aborting due to 1 previous error
 

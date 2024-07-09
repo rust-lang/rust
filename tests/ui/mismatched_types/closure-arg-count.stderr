@@ -8,8 +8,9 @@ LL |     [1, 2, 3].sort_by(|| panic!());
    |
 help: consider changing the closure to take and ignore the expected arguments
    |
-LL |     [1, 2, 3].sort_by(|_, _| panic!());
-   |                       ~~~~~~
+LL -     [1, 2, 3].sort_by(|| panic!());
+LL +     [1, 2, 3].sort_by(|_, _| panic!());
+   |
 
 error[E0593]: closure is expected to take 2 arguments, but it takes 1 argument
   --> $DIR/closure-arg-count.rs:7:15
@@ -29,8 +30,9 @@ LL |     [1, 2, 3].sort_by(|(tuple, tuple2)| panic!());
    |
 help: change the closure to take multiple arguments instead of a single tuple
    |
-LL |     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
-   |                       ~~~~~~~~~~~~~~~
+LL -     [1, 2, 3].sort_by(|(tuple, tuple2)| panic!());
+LL +     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
+   |
 
 error[E0593]: closure is expected to take 2 distinct arguments, but it takes a single 2-tuple as argument
   --> $DIR/closure-arg-count.rs:11:15
@@ -42,8 +44,9 @@ LL |     [1, 2, 3].sort_by(|(tuple, tuple2): (usize, _)| panic!());
    |
 help: change the closure to take multiple arguments instead of a single tuple
    |
-LL |     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
-   |                       ~~~~~~~~~~~~~~~
+LL -     [1, 2, 3].sort_by(|(tuple, tuple2): (usize, _)| panic!());
+LL +     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
+   |
 
 error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:13:5
@@ -61,8 +64,9 @@ LL | fn f<F: Fn<(usize,)>>(_: F) {}
    |         ^^^^^^^^^^^^ required by this bound in `f`
 help: consider changing the closure to take and ignore the expected argument
    |
-LL |     f(|_| panic!());
-   |       ~~~
+LL -     f(|| panic!());
+LL +     f(|_| panic!());
+   |
 
 error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:15:5
@@ -80,8 +84,9 @@ LL | fn f<F: Fn<(usize,)>>(_: F) {}
    |         ^^^^^^^^^^^^ required by this bound in `f`
 help: consider changing the closure to take and ignore the expected argument
    |
-LL |     f(  move    |_| panic!());
-   |                 ~~~
+LL -     f(  move    || panic!());
+LL +     f(  move    |_| panic!());
+   |
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
   --> $DIR/closure-arg-count.rs:18:53
@@ -93,8 +98,9 @@ LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x| i);
    |
 help: change the closure to accept a tuple instead of individual arguments
    |
-LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
-   |                                                         ~~~~~~~~
+LL -     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x| i);
+LL +     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
+   |
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
   --> $DIR/closure-arg-count.rs:20:53
@@ -106,8 +112,9 @@ LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i: usize, x| i);
    |
 help: change the closure to accept a tuple instead of individual arguments
    |
-LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
-   |                                                         ~~~~~~~~
+LL -     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i: usize, x| i);
+LL +     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
+   |
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 3 distinct arguments
   --> $DIR/closure-arg-count.rs:22:53

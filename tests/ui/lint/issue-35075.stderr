@@ -6,8 +6,9 @@ LL |     inner: Foo<T>
    |
 help: there is an enum variant `Baz::Foo`; try using the variant's enum
    |
-LL |     inner: Baz
-   |            ~~~
+LL -     inner: Foo<T>
+LL +     inner: Baz
+   |
 
 error[E0412]: cannot find type `Foo` in this scope
   --> $DIR/issue-35075.rs:6:9
@@ -17,8 +18,9 @@ LL |     Foo(Foo<T>)
    |
 help: there is an enum variant `Baz::Foo`; try using the variant's enum
    |
-LL |     Foo(Baz)
-   |         ~~~
+LL -     Foo(Foo<T>)
+LL +     Foo(Baz)
+   |
 
 error: aborting due to 2 previous errors
 
