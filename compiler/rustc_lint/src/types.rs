@@ -563,7 +563,8 @@ fn lint_literal<'tcx>(
         ty::Float(t) => {
             let is_infinite = match lit.node {
                 ast::LitKind::Float(v, _) => match t {
-                    // FIXME(f16_f128): add this check once we have library support
+                    // FIXME(f16_f128): add this check once `is_infinite` is reliable (ABI
+                    // issues resolved).
                     ty::FloatTy::F16 => Ok(false),
                     ty::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
                     ty::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
