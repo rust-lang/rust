@@ -1,6 +1,4 @@
-use std::collections::BTreeSet;
-
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
@@ -51,7 +49,8 @@ pub(super) struct MCDCBranch {
 #[derive(Debug)]
 pub(super) struct MCDCDecision {
     pub(super) span: Span,
-    pub(super) end_bcbs: BTreeSet<BasicCoverageBlock>,
+    pub(super) update_end_bcbs: FxIndexSet<BasicCoverageBlock>,
+    pub(super) discard_end_bcbs: FxIndexSet<BasicCoverageBlock>,
     pub(super) bitmap_idx: usize,
     pub(super) num_test_vectors: usize,
     pub(super) decision_depth: u16,
@@ -306,11 +305,16 @@ pub(super) fn extract_mcdc_mappings(
         }
         let decision_span = unexpand_into_body_span(decision.span, body_span)?;
 
-        let end_bcbs = decision
-            .end_markers
+        let update_end_bcbs = decision
+            .update_end_markers
             .iter()
-            .map(|&marker| bcb_from_marker(marker))
-            .collect::<Option<_>>()?;
+            .filter_map(|&marker| bcb_from_marker(marker))
+            .collect();
+        let discard_end_bcbs = decision
+            .discard_end_markers
+            .iter()
+            .filter_map(|&marker| bcb_from_marker(marker))
+            .collect();
 
         let mut branch_mappings: Vec<_> =
             branches.into_iter().filter_map(extract_condition_mapping).collect();
@@ -342,7 +346,8 @@ pub(super) fn extract_mcdc_mappings(
         Some((
             MCDCDecision {
                 span,
-                end_bcbs,
+                update_end_bcbs,
+                discard_end_bcbs,
                 bitmap_idx,
                 num_test_vectors,
                 decision_depth: decision.decision_depth,
@@ -400,7 +405,10 @@ fn calc_test_vectors_index(conditions: &mut Vec<MCDCBranch>) -> usize {
             }
         }
     }
-    assert!(next_conditions.is_empty(), "the decision tree has untouched nodes");
+    assert!(
+        next_conditions.is_empty(),
+        "the decision tree has untouched nodes, next_conditions: {next_conditions:?}"
+    );
     let mut cur_idx = 0;
     // LLVM hopes the end nodes are sorted in descending order by `num_paths` so that it can
     // optimize bitmap size for decisions in tree form such as `a && b && c && d && ...`.

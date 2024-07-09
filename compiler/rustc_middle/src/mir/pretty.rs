@@ -584,12 +584,20 @@ fn write_coverage_info_hi(
         did_print = true;
     }
 
-    for (coverage::MCDCDecisionSpan { span, end_markers, decision_depth }, conditions) in mcdc_spans
+    for (
+        coverage::MCDCDecisionSpan {
+            span,
+            update_end_markers: end_markers,
+            discard_end_markers: discard_markers,
+            decision_depth,
+        },
+        conditions,
+    ) in mcdc_spans
     {
         let num_conditions = conditions.len();
         writeln!(
             w,
-            "{INDENT}coverage mcdc decision {{ num_conditions: {num_conditions:?}, end: {end_markers:?}, depth: {decision_depth:?} }} => {span:?}"
+            "{INDENT}coverage mcdc decision {{ num_conditions: {num_conditions:?}, end: {end_markers:?}, discard_markers: {discard_markers:?} depth: {decision_depth:?} }} => {span:?}"
         )?;
         for coverage::MCDCBranchSpan { span, condition_info, true_markers, false_markers } in
             conditions

@@ -277,7 +277,7 @@ fn inject_mcdc_statements<'tcx>(
 ) {
     for (decision, conditions) in &extracted_mappings.mcdc_mappings {
         // Inject test vector update first because `inject_statement` always insert new statement at head.
-        for &end in &decision.end_bcbs {
+        for &end in &decision.update_end_bcbs {
             let end_bb = graph[end].leader_bb();
             inject_statement(
                 mir_body,
@@ -286,6 +286,15 @@ fn inject_mcdc_statements<'tcx>(
                     decision_depth: decision.decision_depth,
                 },
                 end_bb,
+            );
+        }
+
+        for &discard in &decision.discard_end_bcbs {
+            let discard_bb = graph[discard].leader_bb();
+            inject_statement(
+                mir_body,
+                CoverageKind::CondBitmapReset { decision_depth: decision.decision_depth },
+                discard_bb,
             );
         }
 

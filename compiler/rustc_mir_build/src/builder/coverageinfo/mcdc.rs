@@ -148,10 +148,10 @@ impl BooleanDecisionCtx {
             false_next_id: None,
         });
         if condition_info.true_next_id.is_none() {
-            self.decision_info.end_markers.push(true_marker);
+            self.decision_info.update_end_markers.push(true_marker);
         }
         if condition_info.false_next_id.is_none() {
-            self.decision_info.end_markers.push(false_marker);
+            self.decision_info.update_end_markers.push(false_marker);
         }
 
         self.conditions.push(MCDCBranchSpan {

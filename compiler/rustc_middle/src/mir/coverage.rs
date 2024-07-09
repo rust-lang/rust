@@ -307,13 +307,21 @@ pub struct DecisionInfo {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable)]
 pub struct MCDCDecisionSpan {
     pub span: Span,
-    pub end_markers: Vec<BlockMarkerId>,
+    // Blocks where update test vectors of the decision.
+    pub update_end_markers: Vec<BlockMarkerId>,
+    // Block where discard written condition bitmap of the decision.
+    pub discard_end_markers: Vec<BlockMarkerId>,
     pub decision_depth: u16,
 }
 
 impl MCDCDecisionSpan {
     pub fn new(span: Span) -> Self {
-        Self { span, end_markers: Vec::new(), decision_depth: 0 }
+        Self {
+            span,
+            update_end_markers: Vec::new(),
+            discard_end_markers: Vec::new(),
+            decision_depth: 0,
+        }
     }
 }
 
