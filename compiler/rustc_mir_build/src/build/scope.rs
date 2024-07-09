@@ -745,6 +745,91 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
     }
 
+    /// Sets up the drops for explict tail calls.
+    ///
+    /// Unlike other kinds of early exits, tail calls do not go through the drop tree.
+    /// Instead, all scheduled drops are immediately added to the CFG.
+    pub(crate) fn break_for_tail_call(
+        &mut self,
+        mut block: BasicBlock,
+        args: &[Spanned<Operand<'tcx>>],
+        source_info: SourceInfo,
+    ) -> BlockAnd<()> {
+        let arg_drops: Vec<_> = args
+            .iter()
+            .rev()
+            .filter_map(|arg| match &arg.node {
+                Operand::Copy(_) => bug!("copy op in tail call args"),
+                Operand::Move(place) => {
+                    let local =
+                        place.as_local().unwrap_or_else(|| bug!("projection in tail call args"));
+
+                    Some(DropData { source_info, local, kind: DropKind::Value })
+                }
+                Operand::Constant(_) => None,
+            })
+            .collect();
+
+        let mut unwind_to = self.diverge_cleanup_target(
+            self.scopes.scopes.iter().rev().nth(1).unwrap().region_scope,
+            DUMMY_SP,
+        );
+        let unwind_drops = &mut self.scopes.unwind_drops;
+
+        // the innermost scope contains only the destructors for the tail call arguments
+        // we only want to drop these in case of a panic, so we skip it
+        for scope in self.scopes.scopes[1..].iter().rev().skip(1) {
+            // FIXME(explicit_tail_calls) code duplication with `build_scope_drops`
+            for drop_data in scope.drops.iter().rev() {
+                let source_info = drop_data.source_info;
+                let local = drop_data.local;
+
+                match drop_data.kind {
+                    DropKind::Value => {
+                        // `unwind_to` should drop the value that we're about to
+                        // schedule. If dropping this value panics, then we continue
+                        // with the *next* value on the unwind path.
+                        debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
+                        debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
+                        unwind_to = unwind_drops.drops[unwind_to].next;
+
+                        let mut unwind_entry_point = unwind_to;
+
+                        // the tail call arguments must be dropped if any of these drops panic
+                        for drop in arg_drops.iter().copied() {
+                            unwind_entry_point = unwind_drops.add_drop(drop, unwind_entry_point);
+                        }
+
+                        unwind_drops.add_entry_point(block, unwind_entry_point);
+
+                        let next = self.cfg.start_new_block();
+                        self.cfg.terminate(
+                            block,
+                            source_info,
+                            TerminatorKind::Drop {
+                                place: local.into(),
+                                target: next,
+                                unwind: UnwindAction::Continue,
+                                replace: false,
+                            },
+                        );
+                        block = next;
+                    }
+                    DropKind::Storage => {
+                        // Only temps and vars need their storage dead.
+                        assert!(local.index() > self.arg_count);
+                        self.cfg.push(
+                            block,
+                            Statement { source_info, kind: StatementKind::StorageDead(local) },
+                        );
+                    }
+                }
+            }
+        }
+
+        block.unit()
+    }
+
     fn leave_top_scope(&mut self, block: BasicBlock) -> BasicBlock {
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
@@ -1523,6 +1608,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. }
             | TerminatorKind::CoroutineDrop

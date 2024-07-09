@@ -20,6 +20,7 @@ pub mod visit;
 #[cfg(feature = "nightly")]
 pub mod codec;
 pub mod data_structures;
+pub mod elaborate;
 pub mod error;
 pub mod fast_reject;
 pub mod fold;

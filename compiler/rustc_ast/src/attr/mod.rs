@@ -202,7 +202,8 @@ impl Attribute {
         }
     }
 
-    pub fn tokens(&self) -> TokenStream {
+    // Named `get_tokens` to distinguish it from the `<Attribute as HasTokens>::tokens` method.
+    pub fn get_tokens(&self) -> TokenStream {
         match &self.kind {
             AttrKind::Normal(normal) => TokenStream::new(
                 normal

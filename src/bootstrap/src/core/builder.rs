@@ -8,6 +8,7 @@ use std::fs;
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use std::time::{Duration, Instant};
 
 use crate::core::build_steps::tool::{self, SourceType};
@@ -23,12 +24,10 @@ use crate::utils::helpers::{check_cfg_arg, libdir, linker_flags, t, LldThreads};
 use crate::EXTRA_CHECK_CFGS;
 use crate::{Build, CLang, Crate, DocTests, GitRepo, Mode};
 
-use crate::utils::exec::BootstrapCommand;
+use crate::utils::exec::{command, BootstrapCommand};
 pub use crate::Compiler;
 
 use clap::ValueEnum;
-// FIXME: replace with std::lazy after it gets stabilized and reaches beta
-use once_cell::sync::Lazy;
 
 #[cfg(test)]
 mod tests;
@@ -498,7 +497,7 @@ impl StepDescription {
 
 enum ReallyDefault<'a> {
     Bool(bool),
-    Lazy(Lazy<bool, Box<dyn Fn() -> bool + 'a>>),
+    Lazy(LazyLock<bool, Box<dyn Fn() -> bool + 'a>>),
 }
 
 pub struct ShouldRun<'a> {
@@ -529,7 +528,7 @@ impl<'a> ShouldRun<'a> {
     }
 
     pub fn lazy_default_condition(mut self, lazy_cond: Box<dyn Fn() -> bool + 'a>) -> Self {
-        self.is_really_default = ReallyDefault::Lazy(Lazy::new(lazy_cond));
+        self.is_really_default = ReallyDefault::Lazy(LazyLock::new(lazy_cond));
         self
     }
 
@@ -1254,7 +1253,7 @@ impl<'a> Builder<'a> {
         if run_compiler.stage == 0 {
             // `ensure(Clippy { stage: 0 })` *builds* clippy with stage0, it doesn't use the beta clippy.
             let cargo_clippy = self.build.config.download_clippy();
-            let mut cmd = BootstrapCommand::new(cargo_clippy);
+            let mut cmd = command(cargo_clippy);
             cmd.env("CARGO", &self.initial_cargo);
             return cmd;
         }
@@ -1273,7 +1272,7 @@ impl<'a> Builder<'a> {
         let mut dylib_path = helpers::dylib_path();
         dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
 
-        let mut cmd = BootstrapCommand::new(cargo_clippy);
+        let mut cmd = command(cargo_clippy);
         cmd.env(helpers::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
         cmd.env("CARGO", &self.initial_cargo);
         cmd
@@ -1295,7 +1294,7 @@ impl<'a> Builder<'a> {
             extra_features: Vec::new(),
         });
         // Invoke cargo-miri, make sure it can find miri and cargo.
-        let mut cmd = BootstrapCommand::new(cargo_miri);
+        let mut cmd = command(cargo_miri);
         cmd.env("MIRI", &miri);
         cmd.env("CARGO", &self.initial_cargo);
         // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`,
@@ -1311,7 +1310,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn rustdoc_cmd(&self, compiler: Compiler) -> BootstrapCommand {
-        let mut cmd = BootstrapCommand::new(self.bootstrap_out.join("rustdoc"));
+        let mut cmd = command(self.bootstrap_out.join("rustdoc"));
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
             .env("RUSTC_SYSROOT", self.sysroot(compiler))
             // Note that this is *not* the sysroot_libdir because rustdoc must be linked
@@ -1365,7 +1364,7 @@ impl<'a> Builder<'a> {
             cargo = self.cargo_miri_cmd(compiler);
             cargo.arg("miri").arg(subcmd);
         } else {
-            cargo = BootstrapCommand::new(&self.initial_cargo);
+            cargo = command(&self.initial_cargo);
             cargo.arg(cmd);
         }
 
@@ -1918,9 +1917,8 @@ impl<'a> Builder<'a> {
         // platform-specific environment variable as a workaround.
         if mode == Mode::ToolRustc || mode == Mode::Codegen {
             if let Some(llvm_config) = self.llvm_config(target) {
-                let llvm_libdir = self
-                    .run(BootstrapCommand::new(llvm_config).capture_stdout().arg("--libdir"))
-                    .stdout();
+                let llvm_libdir =
+                    command(llvm_config).capture_stdout().arg("--libdir").run(self).stdout();
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cargo);
             }
         }
@@ -2527,7 +2525,7 @@ impl Cargo {
 
         if let Some(target_linker) = builder.linker(target) {
             let target = crate::envify(&target.triple);
-            self.command.env(&format!("CARGO_TARGET_{target}_LINKER"), target_linker);
+            self.command.env(format!("CARGO_TARGET_{target}_LINKER"), target_linker);
         }
         // We want to set -Clinker using Cargo, therefore we only call `linker_flags` and not
         // `linker_args` here.

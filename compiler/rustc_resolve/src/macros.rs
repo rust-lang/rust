@@ -297,11 +297,12 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             .invocation_parents
             .get(&invoc_id)
             .or_else(|| self.invocation_parents.get(&eager_expansion_root))
-            .map(|&(mod_def_id, _)| mod_def_id)
-            .filter(|&mod_def_id| {
-                invoc.fragment_kind == AstFragmentKind::Expr
+            .filter(|&&(mod_def_id, _, in_attr)| {
+                in_attr
+                    && invoc.fragment_kind == AstFragmentKind::Expr
                     && self.tcx.def_kind(mod_def_id) == DefKind::Mod
-            });
+            })
+            .map(|&(mod_def_id, ..)| mod_def_id);
         let (ext, res) = self.smart_resolve_macro_path(
             path,
             kind,

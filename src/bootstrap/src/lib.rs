@@ -41,7 +41,7 @@ use crate::core::builder::Kind;
 use crate::core::config::{flags, LldMode};
 use crate::core::config::{DryRun, Target};
 use crate::core::config::{LlvmLibunwind, TargetSelection};
-use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput};
+use crate::utils::exec::{command, BehaviorOnFailure, BootstrapCommand, CommandOutput};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
 
 mod core;
@@ -510,9 +510,10 @@ impl Build {
         }
 
         println!("Updating submodule {}", relative_path.display());
-        self.run(
-            helpers::git(Some(&self.src)).args(["submodule", "-q", "sync"]).arg(relative_path),
-        );
+        helpers::git(Some(&self.src))
+            .args(["submodule", "-q", "sync"])
+            .arg(relative_path)
+            .run(self);
 
         // Try passing `--progress` to start, then run git again without if that fails.
         let update = |progress: bool| {
@@ -548,23 +549,25 @@ impl Build {
         };
         // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
         if !update(true).command.status().map_or(false, |status| status.success()) {
-            self.run(update(false));
+            update(false).run(self);
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
-        let has_local_modifications = self
-            .run(submodule_git().allow_failure().args(["diff-index", "--quiet", "HEAD"]))
+        let has_local_modifications = submodule_git()
+            .allow_failure()
+            .args(["diff-index", "--quiet", "HEAD"])
+            .run(self)
             .is_failure();
         if has_local_modifications {
-            self.run(submodule_git().args(["stash", "push"]));
+            submodule_git().args(["stash", "push"]).run(self);
         }
 
-        self.run(submodule_git().args(["reset", "-q", "--hard"]));
-        self.run(submodule_git().args(["clean", "-qdfx"]));
+        submodule_git().args(["reset", "-q", "--hard"]).run(self);
+        submodule_git().args(["clean", "-qdfx"]).run(self);
 
         if has_local_modifications {
-            self.run(submodule_git().args(["stash", "pop"]));
+            submodule_git().args(["stash", "pop"]).run(self);
         }
     }
 
@@ -575,14 +578,12 @@ impl Build {
         if !self.config.submodules(self.rust_info()) {
             return;
         }
-        let output = self
-            .run(
-                helpers::git(Some(&self.src))
-                    .capture()
-                    .args(["config", "--file"])
-                    .arg(self.config.src.join(".gitmodules"))
-                    .args(["--get-regexp", "path"]),
-            )
+        let output = helpers::git(Some(&self.src))
+            .capture()
+            .args(["config", "--file"])
+            .arg(self.config.src.join(".gitmodules"))
+            .args(["--get-regexp", "path"])
+            .run(self)
             .stdout();
         for line in output.lines() {
             // Look for `submodule.$name.path = $path`
@@ -860,16 +861,14 @@ impl Build {
         if let Some(s) = target_config.and_then(|c| c.llvm_filecheck.as_ref()) {
             s.to_path_buf()
         } else if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            let llvm_bindir =
-                self.run(BootstrapCommand::new(s).capture_stdout().arg("--bindir")).stdout();
+            let llvm_bindir = command(s).capture_stdout().arg("--bindir").run(self).stdout();
             let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", target));
             if filecheck.exists() {
                 filecheck
             } else {
                 // On Fedora the system LLVM installs FileCheck in the
                 // llvm subdirectory of the libdir.
-                let llvm_libdir =
-                    self.run(BootstrapCommand::new(s).capture_stdout().arg("--libdir")).stdout();
+                let llvm_libdir = command(s).capture_stdout().arg("--libdir").run(self).stdout();
                 let lib_filecheck =
                     Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", target));
                 if lib_filecheck.exists() {
@@ -935,8 +934,7 @@ impl Build {
 
     /// Execute a command and return its output.
     /// This method should be used for all command executions in bootstrap.
-    fn run<C: AsMut<BootstrapCommand>>(&self, mut command: C) -> CommandOutput {
-        let command = command.as_mut();
+    fn run(&self, command: &mut BootstrapCommand) -> CommandOutput {
         if self.config.dry_run() && !command.run_always {
             return CommandOutput::default();
         }
@@ -1496,18 +1494,17 @@ impl Build {
             // Figure out how many merge commits happened since we branched off master.
             // That's our beta number!
             // (Note that we use a `..` range, not the `...` symmetric difference.)
-            self.run(
-                helpers::git(Some(&self.src))
-                    .capture()
-                    .arg("rev-list")
-                    .arg("--count")
-                    .arg("--merges")
-                    .arg(format!(
-                        "refs/remotes/origin/{}..HEAD",
-                        self.config.stage0_metadata.config.nightly_branch
-                    )),
-            )
-            .stdout()
+            helpers::git(Some(&self.src))
+                .capture()
+                .arg("rev-list")
+                .arg("--count")
+                .arg("--merges")
+                .arg(format!(
+                    "refs/remotes/origin/{}..HEAD",
+                    self.config.stage0_metadata.config.nightly_branch
+                ))
+                .run(self)
+                .stdout()
         });
         let n = count.trim().parse().unwrap();
         self.prerelease_version.set(Some(n));

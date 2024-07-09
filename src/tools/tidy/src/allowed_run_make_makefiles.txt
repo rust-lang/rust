@@ -23,8 +23,6 @@ run-make/dep-info-spaces/Makefile
 run-make/dep-info/Makefile
 run-make/dump-ice-to-disk/Makefile
 run-make/dump-mono-stats/Makefile
-run-make/emit-path-unhashed/Makefile
-run-make/emit-shared-files/Makefile
 run-make/emit-to-stdout/Makefile
 run-make/env-dep-info/Makefile
 run-make/export-executable-symbols/Makefile
@@ -49,7 +47,6 @@ run-make/foreign-rust-exceptions/Makefile
 run-make/incr-add-rust-src-component/Makefile
 run-make/incr-foreign-head-span/Makefile
 run-make/interdependent-c-libraries/Makefile
-run-make/intrinsic-unreachable/Makefile
 run-make/issue-107094/Makefile
 run-make/issue-109934-lto-debuginfo/Makefile
 run-make/issue-14698/Makefile
@@ -62,7 +59,6 @@ run-make/issue-28595/Makefile
 run-make/issue-33329/Makefile
 run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
-run-make/issue-37839/Makefile
 run-make/issue-47551/Makefile
 run-make/issue-69368/Makefile
 run-make/issue-83045/Makefile
@@ -101,9 +97,6 @@ run-make/no-builtins-attribute/Makefile
 run-make/no-duplicate-libs/Makefile
 run-make/obey-crate-type-flag/Makefile
 run-make/panic-abort-eh_frame/Makefile
-run-make/pass-linker-flags-flavor/Makefile
-run-make/pass-linker-flags-from-dep/Makefile
-run-make/pass-linker-flags/Makefile
 run-make/pass-non-c-like-enum-to-c/Makefile
 run-make/pdb-buildinfo-cl-cmd/Makefile
 run-make/pgo-gen-lto/Makefile
@@ -132,9 +125,6 @@ run-make/rustc-macro-dep-files/Makefile
 run-make/sanitizer-cdylib-link/Makefile
 run-make/sanitizer-dylib-link/Makefile
 run-make/sanitizer-staticlib-link/Makefile
-run-make/sepcomp-cci-copies/Makefile
-run-make/sepcomp-inlining/Makefile
-run-make/sepcomp-separate/Makefile
 run-make/share-generics-dylib/Makefile
 run-make/silly-file-names/Makefile
 run-make/simd-ffi/Makefile
@@ -149,14 +139,9 @@ run-make/symbol-mangling-hashed/Makefile
 run-make/symbol-visibility/Makefile
 run-make/symbols-include-type-name/Makefile
 run-make/sysroot-crates-are-unstable/Makefile
-run-make/target-cpu-native/Makefile
-run-make/target-specs/Makefile
-run-make/target-without-atomic-cas/Makefile
 run-make/test-benches/Makefile
 run-make/thumb-none-cortex-m/Makefile
 run-make/thumb-none-qemu/Makefile
-run-make/track-path-dep-info/Makefile
-run-make/track-pgo-dep-info/Makefile
 run-make/translation/Makefile
 run-make/type-mismatch-same-crate-name/Makefile
 run-make/unstable-flag-required/Makefile

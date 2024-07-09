@@ -673,7 +673,7 @@ impl hash::Hash for TypeId {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        f.debug_tuple("TypeId").field(&self.as_u128()).finish()
+        write!(f, "TypeId({:#034x})", self.as_u128())
     }
 }
 

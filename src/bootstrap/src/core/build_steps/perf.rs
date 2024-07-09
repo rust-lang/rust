@@ -31,5 +31,5 @@ Consider setting `rust.debuginfo-level = 1` in `config.toml`."#);
         .env("PERF_COLLECTOR", collector)
         .env("PERF_RESULT_DIR", profile_results_dir)
         .args(args);
-    builder.run(&mut cmd);
+    cmd.run(builder);
 }

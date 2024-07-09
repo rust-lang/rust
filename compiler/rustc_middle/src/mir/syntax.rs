@@ -744,6 +744,36 @@ pub enum TerminatorKind<'tcx> {
         fn_span: Span,
     },
 
+    /// Tail call.
+    ///
+    /// Roughly speaking this is a chimera of [`Call`] and [`Return`], with some caveats.
+    /// Semantically tail calls consists of two actions:
+    /// - pop of the current stack frame
+    /// - a call to the `func`, with the return address of the **current** caller
+    ///   - so that a `return` inside `func` returns to the caller of the caller
+    ///     of the function that is currently being executed
+    ///
+    /// Note that in difference with [`Call`] this is missing
+    /// - `destination` (because it's always the return place)
+    /// - `target` (because it's always taken from the current stack frame)
+    /// - `unwind` (because it's always taken from the current stack frame)
+    ///
+    /// [`Call`]: TerminatorKind::Call
+    /// [`Return`]: TerminatorKind::Return
+    TailCall {
+        /// The function that’s being called.
+        func: Operand<'tcx>,
+        /// Arguments the function is called with.
+        /// These are owned by the callee, which is free to modify them.
+        /// This allows the memory occupied by "by-value" arguments to be
+        /// reused across function calls without duplicating the contents.
+        args: Box<[Spanned<Operand<'tcx>>]>,
+        // FIXME(explicit_tail_calls): should we have the span for `become`? is this span accurate? do we need it?
+        /// This `Span` is the span of the function, without the dot and receiver
+        /// (e.g. `foo(a, b)` in `x.foo(a, b)`
+        fn_span: Span,
+    },
+
     /// Evaluates the operand, which must have type `bool`. If it is not equal to `expected`,
     /// initiates a panic. Initiating a panic corresponds to a `Call` terminator with some
     /// unspecified constant as the function to call, all the operands stored in the `AssertMessage`
@@ -870,6 +900,7 @@ impl TerminatorKind<'_> {
             TerminatorKind::Unreachable => "Unreachable",
             TerminatorKind::Drop { .. } => "Drop",
             TerminatorKind::Call { .. } => "Call",
+            TerminatorKind::TailCall { .. } => "TailCall",
             TerminatorKind::Assert { .. } => "Assert",
             TerminatorKind::Yield { .. } => "Yield",
             TerminatorKind::CoroutineDrop => "CoroutineDrop",

@@ -1,6 +1,11 @@
+//@ revisions: stock effects
 #![feature(intrinsics)]
 #![feature(rustc_attrs)]
-// FIXME(effects) do this with revisions #![feature(effects)]
+// as effects insert a const generic param to const intrinsics,
+// check here that it doesn't report a const param mismatch either
+// enabling or disabling effects.
+#![cfg_attr(effects, feature(effects))]
+#![allow(incomplete_features)]
 
 extern "rust-intrinsic" {
     fn size_of<T>() -> usize; //~ ERROR intrinsic safety mismatch

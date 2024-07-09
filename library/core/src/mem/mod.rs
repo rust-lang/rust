@@ -1266,6 +1266,20 @@ impl<T> SizedTypeProperties for T {}
 /// // ^^^ error[E0616]: field `private` of struct `Struct` is private
 /// ```
 ///
+/// Only [`Sized`] fields are supported, but the container may be unsized:
+/// ```
+/// # use core::mem;
+/// #[repr(C)]
+/// pub struct Struct {
+///     a: u8,
+///     b: [u8],
+/// }
+///
+/// assert_eq!(mem::offset_of!(Struct, a), 0); // OK
+/// // assert_eq!(mem::offset_of!(Struct, b), 1);
+/// // ^^^ error[E0277]: doesn't have a size known at compile-time
+/// ```
+///
 /// Note that type layout is, in general, [subject to change and
 /// platform-specific](https://doc.rust-lang.org/reference/type-layout.html). If
 /// layout stability is required, consider using an [explicit `repr` attribute].

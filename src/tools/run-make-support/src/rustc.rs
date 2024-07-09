@@ -10,6 +10,12 @@ pub fn rustc() -> Rustc {
     Rustc::new()
 }
 
+/// Construct a plain `rustc` invocation with no flags set.
+#[track_caller]
+pub fn bare_rustc() -> Rustc {
+    Rustc::bare()
+}
+
 /// Construct a new `rustc` aux-build invocation.
 #[track_caller]
 pub fn aux_build() -> Rustc {
@@ -30,7 +36,6 @@ fn setup_common() -> Command {
     let rustc = env_var("RUSTC");
     let mut cmd = Command::new(rustc);
     set_host_rpath(&mut cmd);
-    cmd.arg("-L").arg(cwd());
     cmd
 }
 
@@ -40,6 +45,14 @@ impl Rustc {
     /// Construct a new `rustc` invocation.
     #[track_caller]
     pub fn new() -> Self {
+        let mut cmd = setup_common();
+        cmd.arg("-L").arg(cwd());
+        Self { cmd }
+    }
+
+    /// Construct a bare `rustc` invocation with no flags set.
+    #[track_caller]
+    pub fn bare() -> Self {
         let cmd = setup_common();
         Self { cmd }
     }

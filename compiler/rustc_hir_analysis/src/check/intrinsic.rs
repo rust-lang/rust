@@ -26,15 +26,12 @@ fn equate_intrinsic_type<'tcx>(
     n_cts: usize,
     sig: ty::PolyFnSig<'tcx>,
 ) {
-    let (own_counts, span) = match tcx.hir_node_by_def_id(def_id) {
+    let (generics, span) = match tcx.hir_node_by_def_id(def_id) {
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
         | hir::Node::ForeignItem(hir::ForeignItem {
             kind: hir::ForeignItemKind::Fn(.., generics, _),
             ..
-        }) => {
-            let own_counts = tcx.generics_of(def_id).own_counts();
-            (own_counts, generics.span)
-        }
+        }) => (tcx.generics_of(def_id), generics.span),
         _ => {
             struct_span_code_err!(tcx.dcx(), span, E0622, "intrinsic must be a function")
                 .with_span_label(span, "expected a function")
@@ -42,6 +39,7 @@ fn equate_intrinsic_type<'tcx>(
             return;
         }
     };
+    let own_counts = generics.own_counts();
 
     let gen_count_ok = |found: usize, expected: usize, descr: &str| -> bool {
         if found != expected {
@@ -57,9 +55,17 @@ fn equate_intrinsic_type<'tcx>(
         }
     };
 
+    // the host effect param should be invisible as it shouldn't matter
+    // whether effects is enabled for the intrinsic provider crate.
+    let consts_count = if generics.host_effect_index.is_some() {
+        own_counts.consts - 1
+    } else {
+        own_counts.consts
+    };
+
     if gen_count_ok(own_counts.lifetimes, n_lts, "lifetime")
         && gen_count_ok(own_counts.types, n_tps, "type")
-        && gen_count_ok(own_counts.consts, n_cts, "const")
+        && gen_count_ok(consts_count, n_cts, "const")
     {
         let _ = check_function_signature(
             tcx,

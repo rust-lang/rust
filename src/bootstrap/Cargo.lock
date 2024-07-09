@@ -54,7 +54,6 @@ dependencies = [
  "junction",
  "libc",
  "object",
- "once_cell",
  "opener",
  "pretty_assertions",
  "semver",

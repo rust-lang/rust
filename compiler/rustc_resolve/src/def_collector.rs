@@ -8,6 +8,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
+use std::mem;
 use tracing::debug;
 
 pub(crate) fn collect_definitions(
@@ -15,8 +16,9 @@ pub(crate) fn collect_definitions(
     fragment: &AstFragment,
     expansion: LocalExpnId,
 ) {
-    let (parent_def, impl_trait_context) = resolver.invocation_parents[&expansion];
-    fragment.visit_with(&mut DefCollector { resolver, parent_def, expansion, impl_trait_context });
+    let (parent_def, impl_trait_context, in_attr) = resolver.invocation_parents[&expansion];
+    let mut visitor = DefCollector { resolver, parent_def, expansion, impl_trait_context, in_attr };
+    fragment.visit_with(&mut visitor);
 }
 
 /// Creates `DefId`s for nodes in the AST.
@@ -24,6 +26,7 @@ struct DefCollector<'a, 'b, 'tcx> {
     resolver: &'a mut Resolver<'b, 'tcx>,
     parent_def: LocalDefId,
     impl_trait_context: ImplTraitContext,
+    in_attr: bool,
     expansion: LocalExpnId,
 }
 
@@ -53,7 +56,7 @@ impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {
-        let orig_parent_def = std::mem::replace(&mut self.parent_def, parent_def);
+        let orig_parent_def = mem::replace(&mut self.parent_def, parent_def);
         f(self);
         self.parent_def = orig_parent_def;
     }
@@ -63,7 +66,7 @@ impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
         impl_trait_context: ImplTraitContext,
         f: F,
     ) {
-        let orig_itc = std::mem::replace(&mut self.impl_trait_context, impl_trait_context);
+        let orig_itc = mem::replace(&mut self.impl_trait_context, impl_trait_context);
         f(self);
         self.impl_trait_context = orig_itc;
     }
@@ -105,8 +108,10 @@ impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
 
     fn visit_macro_invoc(&mut self, id: NodeId) {
         let id = id.placeholder_to_expn_id();
-        let old_parent =
-            self.resolver.invocation_parents.insert(id, (self.parent_def, self.impl_trait_context));
+        let old_parent = self
+            .resolver
+            .invocation_parents
+            .insert(id, (self.parent_def, self.impl_trait_context, self.in_attr));
         assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
     }
 }
@@ -412,5 +417,11 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
         } else {
             visit::walk_crate(self, krate)
         }
+    }
+
+    fn visit_attribute(&mut self, attr: &'a Attribute) -> Self::Result {
+        let orig_in_attr = mem::replace(&mut self.in_attr, true);
+        visit::walk_attribute(self, attr);
+        self.in_attr = orig_in_attr;
     }
 }

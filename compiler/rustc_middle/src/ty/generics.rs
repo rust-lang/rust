@@ -394,7 +394,7 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 
     pub fn instantiate_own_identity(&self) -> impl Iterator<Item = (Clause<'tcx>, Span)> {
-        EarlyBinder::bind(self.predicates).instantiate_identity_iter_copied()
+        EarlyBinder::bind(self.predicates).iter_identity_copied()
     }
 
     #[instrument(level = "debug", skip(self, tcx))]

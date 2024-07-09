@@ -1073,7 +1073,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // mismatched, then we have a totally different error to report.
             if self.enter_forall(found_args, |found_args| {
                 self.enter_forall(expected_args, |expected_args| {
-                    !self.can_sub(obligation.param_env, expected_args, found_args)
+                    !self.can_eq(obligation.param_env, expected_args, found_args)
                 })
             }) {
                 return None;

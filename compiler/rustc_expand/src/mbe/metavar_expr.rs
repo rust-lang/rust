@@ -1,4 +1,4 @@
-use rustc_ast::token::{self, Delimiter, IdentIsRaw};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, Token, TokenKind};
 use rustc_ast::tokenstream::{RefTokenTreeCursor, TokenStream, TokenTree};
 use rustc_ast::{LitIntType, LitKind};
 use rustc_ast_pretty::pprust;
@@ -6,9 +6,10 @@ use rustc_errors::{Applicability, PResult};
 use rustc_macros::{Decodable, Encodable};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Ident;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 pub(crate) const RAW_IDENT_ERR: &str = "`${concat(..)}` currently does not support raw identifiers";
+pub(crate) const UNSUPPORTED_CONCAT_ELEM_ERR: &str = "expected identifier or string literal";
 
 /// A meta-variable expression, for expansions based on properties of meta-variables.
 #[derive(Debug, PartialEq, Encodable, Decodable)]
@@ -51,11 +52,26 @@ impl MetaVarExpr {
                 let mut result = Vec::new();
                 loop {
                     let is_var = try_eat_dollar(&mut iter);
-                    let element_ident = parse_ident(&mut iter, psess, outer_span)?;
+                    let token = parse_token(&mut iter, psess, outer_span)?;
                     let element = if is_var {
-                        MetaVarExprConcatElem::Var(element_ident)
+                        MetaVarExprConcatElem::Var(parse_ident_from_token(psess, token)?)
+                    } else if let TokenKind::Literal(Lit {
+                        kind: token::LitKind::Str,
+                        symbol,
+                        suffix: None,
+                    }) = token.kind
+                    {
+                        MetaVarExprConcatElem::Literal(symbol)
                     } else {
-                        MetaVarExprConcatElem::Ident(element_ident)
+                        match parse_ident_from_token(psess, token) {
+                            Err(err) => {
+                                err.cancel();
+                                return Err(psess
+                                    .dcx()
+                                    .struct_span_err(token.span, UNSUPPORTED_CONCAT_ELEM_ERR));
+                            }
+                            Ok(elem) => MetaVarExprConcatElem::Ident(elem),
+                        }
                     };
                     result.push(element);
                     if iter.look_ahead(0).is_none() {
@@ -105,11 +121,13 @@ impl MetaVarExpr {
 
 #[derive(Debug, Decodable, Encodable, PartialEq)]
 pub(crate) enum MetaVarExprConcatElem {
-    /// There is NO preceding dollar sign, which means that this identifier should be interpreted
-    /// as a literal.
+    /// Identifier WITHOUT a preceding dollar sign, which means that this identifier should be
+    /// interpreted as a literal.
     Ident(Ident),
-    /// There is a preceding dollar sign, which means that this identifier should be expanded
-    /// and interpreted as a variable.
+    /// For example, a number or a string.
+    Literal(Symbol),
+    /// Identifier WITH a preceding dollar sign, which means that this identifier should be
+    /// expanded and interpreted as a variable.
     Var(Ident),
 }
 
@@ -158,7 +176,7 @@ fn parse_depth<'psess>(
     span: Span,
 ) -> PResult<'psess, usize> {
     let Some(tt) = iter.next() else { return Ok(0) };
-    let TokenTree::Token(token::Token { kind: token::TokenKind::Literal(lit), .. }, _) = tt else {
+    let TokenTree::Token(Token { kind: TokenKind::Literal(lit), .. }, _) = tt else {
         return Err(psess
             .dcx()
             .struct_span_err(span, "meta-variable expression depth must be a literal"));
@@ -180,12 +198,14 @@ fn parse_ident<'psess>(
     psess: &'psess ParseSess,
     fallback_span: Span,
 ) -> PResult<'psess, Ident> {
-    let Some(tt) = iter.next() else {
-        return Err(psess.dcx().struct_span_err(fallback_span, "expected identifier"));
-    };
-    let TokenTree::Token(token, _) = tt else {
-        return Err(psess.dcx().struct_span_err(tt.span(), "expected identifier"));
-    };
+    let token = parse_token(iter, psess, fallback_span)?;
+    parse_ident_from_token(psess, token)
+}
+
+fn parse_ident_from_token<'psess>(
+    psess: &'psess ParseSess,
+    token: &Token,
+) -> PResult<'psess, Ident> {
     if let Some((elem, is_raw)) = token.ident() {
         if let IdentIsRaw::Yes = is_raw {
             return Err(psess.dcx().struct_span_err(elem.span, RAW_IDENT_ERR));
@@ -205,10 +225,24 @@ fn parse_ident<'psess>(
     Err(err)
 }
 
+fn parse_token<'psess, 't>(
+    iter: &mut RefTokenTreeCursor<'t>,
+    psess: &'psess ParseSess,
+    fallback_span: Span,
+) -> PResult<'psess, &'t Token> {
+    let Some(tt) = iter.next() else {
+        return Err(psess.dcx().struct_span_err(fallback_span, UNSUPPORTED_CONCAT_ELEM_ERR));
+    };
+    let TokenTree::Token(token, _) = tt else {
+        return Err(psess.dcx().struct_span_err(tt.span(), UNSUPPORTED_CONCAT_ELEM_ERR));
+    };
+    Ok(token)
+}
+
 /// Tries to move the iterator forward returning `true` if there is a comma. If not, then the
 /// iterator is not modified and the result is `false`.
 fn try_eat_comma(iter: &mut RefTokenTreeCursor<'_>) -> bool {
-    if let Some(TokenTree::Token(token::Token { kind: token::Comma, .. }, _)) = iter.look_ahead(0) {
+    if let Some(TokenTree::Token(Token { kind: token::Comma, .. }, _)) = iter.look_ahead(0) {
         let _ = iter.next();
         return true;
     }
@@ -218,8 +252,7 @@ fn try_eat_comma(iter: &mut RefTokenTreeCursor<'_>) -> bool {
 /// Tries to move the iterator forward returning `true` if there is a dollar sign. If not, then the
 /// iterator is not modified and the result is `false`.
 fn try_eat_dollar(iter: &mut RefTokenTreeCursor<'_>) -> bool {
-    if let Some(TokenTree::Token(token::Token { kind: token::Dollar, .. }, _)) = iter.look_ahead(0)
-    {
+    if let Some(TokenTree::Token(Token { kind: token::Dollar, .. }, _)) = iter.look_ahead(0) {
         let _ = iter.next();
         return true;
     }
@@ -232,8 +265,7 @@ fn eat_dollar<'psess>(
     psess: &'psess ParseSess,
     span: Span,
 ) -> PResult<'psess, ()> {
-    if let Some(TokenTree::Token(token::Token { kind: token::Dollar, .. }, _)) = iter.look_ahead(0)
-    {
+    if let Some(TokenTree::Token(Token { kind: token::Dollar, .. }, _)) = iter.look_ahead(0) {
         let _ = iter.next();
         return Ok(());
     }

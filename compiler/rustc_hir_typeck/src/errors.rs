@@ -4,8 +4,8 @@ use std::borrow::Cow;
 
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagArgValue, EmissionGuarantee, IntoDiagArg, MultiSpan,
-    SubdiagMessageOp, Subdiagnostic,
+    codes::*, Applicability, Diag, DiagArgValue, DiagSymbolList, EmissionGuarantee, IntoDiagArg,
+    MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
@@ -251,6 +251,13 @@ pub struct LossyProvenanceInt2Ptr<'tcx> {
     pub cast_ty: Ty<'tcx>,
     #[subdiagnostic]
     pub sugg: LossyProvenanceInt2PtrSuggestion,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_ptr_cast_add_auto_to_object)]
+pub struct PtrCastAddAutoToObject {
+    pub traits_len: usize,
+    pub traits: DiagSymbolList<String>,
 }
 
 #[derive(Subdiagnostic)]
