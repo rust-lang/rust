@@ -201,7 +201,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // Increment the decision depth, in case we encounter boolean expressions
                 // further down.
-                this.mcdc_increment_depth_if_enabled();
                 let place = unpack!(
                     block = this.as_temp(
                         block,
@@ -213,7 +212,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         mutability
                     )
                 );
-                this.mcdc_decrement_depth_if_enabled();
 
                 let operand = Operand::Move(Place::from(place));
 

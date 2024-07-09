@@ -207,7 +207,13 @@ impl CoverageCounters {
         self.node_counters[bcb]
     }
 
-    /// Returns an iterator over all the nodes in the coverage graph that
+    pub(super) fn term_for_sum_of_bcbs(&mut self, bcbs: &[BasicCoverageBlock]) -> Option<CovTerm> {
+        let counters =
+            bcbs.iter().copied().filter_map(|bcb| self.node_counters[bcb]).collect::<Vec<_>>();
+        self.make_sum(&counters)
+    }
+
+    /// Returns an iterator over all the nodes/edges in the coverage graph that
     /// should have a counter-increment statement injected into MIR, along with
     /// each site's corresponding counter ID.
     pub(super) fn counter_increment_sites(

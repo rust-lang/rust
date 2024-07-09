@@ -38,8 +38,8 @@ pub(super) struct BranchPair {
 #[derive(Debug)]
 pub(super) struct MCDCBranch {
     pub(super) span: Span,
-    pub(super) true_bcb: BasicCoverageBlock,
-    pub(super) false_bcb: BasicCoverageBlock,
+    pub(super) true_bcbs: Vec<BasicCoverageBlock>,
+    pub(super) false_bcbs: Vec<BasicCoverageBlock>,
     pub(super) condition_info: ConditionInfo,
     // Offset added to test vector idx if this branch is evaluated to true.
     pub(super) true_index: usize,
@@ -152,12 +152,11 @@ impl ExtractedMappings {
             insert(true_bcb);
             insert(false_bcb);
         }
-        for &MCDCBranch { true_bcb, false_bcb, .. } in mcdc_degraded_branches
+        for MCDCBranch { true_bcbs, false_bcbs, .. } in mcdc_degraded_branches
             .iter()
             .chain(mcdc_mappings.iter().map(|(_, branches)| branches.into_iter()).flatten())
         {
-            insert(true_bcb);
-            insert(false_bcb);
+            true_bcbs.into_iter().chain(false_bcbs.into_iter()).copied().for_each(&mut insert);
         }
 
         // MC/DC decisions refer to BCBs, but don't require those BCBs to have counters.
@@ -253,35 +252,22 @@ pub(super) fn extract_mcdc_mappings(
 
     let bcb_from_marker = |marker: BlockMarkerId| graph.bcb_from_bb(block_markers[marker]?);
 
-    let check_branch_bcb =
-        |raw_span: Span, true_marker: BlockMarkerId, false_marker: BlockMarkerId| {
-            // For now, ignore any branch span that was introduced by
-            // expansion. This makes things like assert macros less noisy.
-            if !raw_span.ctxt().outer_expn_data().is_root() {
-                return None;
-            }
-            let span = unexpand_into_body_span(raw_span, body_span)?;
+    let check_branch_bcb = |raw_span: Span,
+                            true_markers: &[BlockMarkerId],
+                            false_markers: &[BlockMarkerId]| {
+        // For now, ignore any branch span that was introduced by
+        // expansion. This makes things like assert macros less noisy.
+        if !raw_span.ctxt().outer_expn_data().is_root() {
+            return None;
+        }
+        let span = unexpand_into_body_span(raw_span, body_span)?;
 
-            let true_bcb = bcb_from_marker(true_marker)?;
-            let false_bcb = bcb_from_marker(false_marker)?;
-            Some((span, true_bcb, false_bcb))
-        };
+        let true_bcbs =
+            true_markers.into_iter().copied().map(&bcb_from_marker).collect::<Option<Vec<_>>>()?;
+        let false_bcbs =
+            false_markers.into_iter().copied().map(&bcb_from_marker).collect::<Option<Vec<_>>>()?;
 
-    let to_mcdc_branch = |&mir::coverage::MCDCBranchSpan {
-                              span: raw_span,
-                              condition_info,
-                              true_marker,
-                              false_marker,
-                          }| {
-        let (span, true_bcb, false_bcb) = check_branch_bcb(raw_span, true_marker, false_marker)?;
-        Some(MCDCBranch {
-            span,
-            true_bcb,
-            false_bcb,
-            condition_info,
-            true_index: usize::MAX,
-            false_index: usize::MAX,
-        })
+        Some((span, true_bcbs, false_bcbs))
     };
 
     let mut get_bitmap_idx = |num_test_vectors: usize| -> Option<usize> {
@@ -292,8 +278,27 @@ pub(super) fn extract_mcdc_mappings(
             bitmap_idx
         })
     };
+
+    let extract_condition_mapping = |&mir::coverage::MCDCBranchSpan {
+                                         span: raw_span,
+                                         condition_info,
+                                         ref true_markers,
+                                         ref false_markers,
+                                     }| {
+        let (span, true_bcbs, false_bcbs) =
+            check_branch_bcb(raw_span, true_markers, false_markers)?;
+        Some(MCDCBranch {
+            span,
+            true_bcbs,
+            false_bcbs,
+            condition_info,
+            true_index: usize::MAX,
+            false_index: usize::MAX,
+        })
+    };
+
     mcdc_degraded_branches
-        .extend(coverage_info_hi.mcdc_degraded_branch_spans.iter().filter_map(to_mcdc_branch));
+        .extend(coverage_info_hi.mcdc_degraded_spans.iter().filter_map(extract_condition_mapping));
 
     mcdc_mappings.extend(coverage_info_hi.mcdc_spans.iter().filter_map(|(decision, branches)| {
         if branches.len() == 0 {
@@ -306,7 +311,9 @@ pub(super) fn extract_mcdc_mappings(
             .iter()
             .map(|&marker| bcb_from_marker(marker))
             .collect::<Option<_>>()?;
-        let mut branch_mappings: Vec<_> = branches.into_iter().filter_map(to_mcdc_branch).collect();
+
+        let mut branch_mappings: Vec<_> =
+            branches.into_iter().filter_map(extract_condition_mapping).collect();
         if branch_mappings.len() != branches.len() {
             mcdc_degraded_branches.extend(branch_mappings);
             return None;
