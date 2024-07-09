@@ -62,7 +62,6 @@ run-make/issue-36710/Makefile
 run-make/issue-47551/Makefile
 run-make/issue-69368/Makefile
 run-make/issue-83045/Makefile
-run-make/issue-83112-incr-test-moved-file/Makefile
 run-make/issue-84395-lto-embed-bitcode/Makefile
 run-make/issue-85019-moved-src-dir/Makefile
 run-make/issue-85401-static-mir/Makefile
