@@ -337,6 +337,7 @@ bootstrap_tool!(
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
     RustcPerfWrapper, "src/tools/rustc-perf-wrapper", "rustc-perf-wrapper";
+    WasmComponentLd, "src/tools/wasm-component-ld", "wasm-component-ld";
 );
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -693,34 +694,6 @@ impl Step for LldWrapper {
             tool: "lld-wrapper",
             mode: Mode::ToolStd,
             path: "src/tools/lld-wrapper",
-            source_type: SourceType::InTree,
-            extra_features: Vec::new(),
-            allow_features: "",
-            cargo_args: Vec::new(),
-        })
-    }
-}
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct WasmComponentLd {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
-}
-
-impl Step for WasmComponentLd {
-    type Output = PathBuf;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.target,
-            tool: "wasm-component-ld",
-            mode: Mode::ToolStd,
-            path: "src/tools/wasm-component-ld",
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
