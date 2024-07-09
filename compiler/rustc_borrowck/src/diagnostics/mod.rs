@@ -29,6 +29,7 @@ use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{
     type_known_to_meet_bound_modulo_regions, FulfillmentErrorCode,
 };
@@ -1255,11 +1256,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                             } else {
                                 vec![(move_span.shrink_to_hi(), ".clone()".to_string())]
                             };
-                            if let Some(errors) = self.infcx.type_implements_trait_shallow(
-                                clone_trait,
-                                ty,
-                                self.param_env,
-                            ) && !has_sugg
+                            if let Some(errors) = self
+                                .infcx
+                                .err_ctxt()
+                                .type_implements_trait_shallow(clone_trait, ty, self.param_env)
+                                && !has_sugg
                             {
                                 let msg = match &errors[..] {
                                     [] => "you can `clone` the value and consume it, but this \

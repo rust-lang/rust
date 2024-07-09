@@ -16,9 +16,9 @@ use rustc_middle::{
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, BytePos, DesugaringKind, Span};
 use rustc_target::abi::FieldIdx;
-use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 
 use crate::diagnostics::BorrowedContentSource;
 use crate::util::FindAssignments;
@@ -1233,6 +1233,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     {
                         match self
                             .infcx
+                            .err_ctxt()
                             .type_implements_trait_shallow(
                                 clone_trait,
                                 ty.peel_refs(),

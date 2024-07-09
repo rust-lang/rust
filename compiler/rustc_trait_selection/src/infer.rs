@@ -1,6 +1,6 @@
 use crate::infer::at::ToTrace;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::{self, Obligation, ObligationCause, ObligationCtxt, SelectionContext};
+use crate::traits::{self, ObligationCause, ObligationCtxt};
 
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -75,41 +75,6 @@ impl<'tcx> InferCtxt<'tcx> {
             predicate: trait_ref.upcast(self.tcx),
         };
         self.evaluate_obligation(&obligation).unwrap_or(traits::EvaluationResult::EvaluatedToErr)
-    }
-
-    /// Returns `Some` if a type implements a trait shallowly, without side-effects,
-    /// along with any errors that would have been reported upon further obligation
-    /// processing.
-    ///
-    /// - If this returns `Some([])`, then the trait holds modulo regions.
-    /// - If this returns `Some([errors..])`, then the trait has an impl for
-    /// the self type, but some nested obligations do not hold.
-    /// - If this returns `None`, no implementation that applies could be found.
-    ///
-    /// FIXME(-Znext-solver): Due to the recursive nature of the new solver,
-    /// this will probably only ever return `Some([])` or `None`.
-    fn type_implements_trait_shallow(
-        &self,
-        trait_def_id: DefId,
-        ty: Ty<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Option<Vec<traits::FulfillmentError<'tcx>>> {
-        self.probe(|_snapshot| {
-            let mut selcx = SelectionContext::new(self);
-            match selcx.select(&Obligation::new(
-                self.tcx,
-                ObligationCause::dummy(),
-                param_env,
-                ty::TraitRef::new(self.tcx, trait_def_id, [ty]),
-            )) {
-                Ok(Some(selection)) => {
-                    let ocx = ObligationCtxt::new_with_diagnostics(self);
-                    ocx.register_obligations(selection.nested_obligations());
-                    Some(ocx.select_all_or_error())
-                }
-                Ok(None) | Err(_) => None,
-            }
-        })
     }
 }
 

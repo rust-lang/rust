@@ -116,8 +116,12 @@ fn check_needless_must_use(
     } else if attr.value_str().is_none() && is_must_use_ty(cx, return_ty(cx, item_id)) {
         // Ignore async functions unless Future::Output type is a must_use type
         if sig.header.is_async() {
-            let infcx = cx.tcx.infer_ctxt().build();
-            if let Some(future_ty) = infcx.get_impl_future_output_ty(return_ty(cx, item_id))
+            if let Some(future_ty) = cx
+                .tcx
+                .infer_ctxt()
+                .build()
+                .err_ctxt()
+                .get_impl_future_output_ty(return_ty(cx, item_id))
                 && !is_must_use_ty(cx, future_ty)
             {
                 return;

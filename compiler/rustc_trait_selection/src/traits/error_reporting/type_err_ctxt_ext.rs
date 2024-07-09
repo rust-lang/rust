@@ -11,12 +11,12 @@ use crate::infer::{self, InferCtxt};
 use crate::traits::error_reporting::{ambiguity, ambiguity::CandidateSource::*};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
-use crate::traits::NormalizeExt;
 use crate::traits::{
     elaborate, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
     ObligationCause, ObligationCauseCode, ObligationCtxt, Overflow, PredicateObligation,
     SelectionError, SignatureMismatch, TraitNotObjectSafe,
 };
+use crate::traits::{NormalizeExt, SelectionContext};
 use core::ops::ControlFlow;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
@@ -1627,6 +1627,84 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         err
+    }
+
+    /// Returns `Some` if a type implements a trait shallowly, without side-effects,
+    /// along with any errors that would have been reported upon further obligation
+    /// processing.
+    ///
+    /// - If this returns `Some([])`, then the trait holds modulo regions.
+    /// - If this returns `Some([errors..])`, then the trait has an impl for
+    /// the self type, but some nested obligations do not hold.
+    /// - If this returns `None`, no implementation that applies could be found.
+    ///
+    /// FIXME(-Znext-solver): Due to the recursive nature of the new solver,
+    /// this will probably only ever return `Some([])` or `None`.
+    fn type_implements_trait_shallow(
+        &self,
+        trait_def_id: DefId,
+        ty: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Option<Vec<FulfillmentError<'tcx>>> {
+        self.probe(|_snapshot| {
+            let mut selcx = SelectionContext::new(self);
+            match selcx.select(&Obligation::new(
+                self.tcx,
+                ObligationCause::dummy(),
+                param_env,
+                ty::TraitRef::new(self.tcx, trait_def_id, [ty]),
+            )) {
+                Ok(Some(selection)) => {
+                    let ocx = ObligationCtxt::new_with_diagnostics(self);
+                    ocx.register_obligations(selection.nested_obligations());
+                    Some(ocx.select_all_or_error())
+                }
+                Ok(None) | Err(_) => None,
+            }
+        })
+    }
+
+    /// Checks if the type implements one of `Fn`, `FnMut`, or `FnOnce`
+    /// in that order, and returns the generic type corresponding to the
+    /// argument of that trait (corresponding to the closure arguments).
+    fn type_implements_fn_trait(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: ty::Binder<'tcx, Ty<'tcx>>,
+        polarity: ty::PredicatePolarity,
+    ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()> {
+        self.commit_if_ok(|_| {
+            for trait_def_id in [
+                self.tcx.lang_items().fn_trait(),
+                self.tcx.lang_items().fn_mut_trait(),
+                self.tcx.lang_items().fn_once_trait(),
+            ] {
+                let Some(trait_def_id) = trait_def_id else { continue };
+                // Make a fresh inference variable so we can determine what the generic parameters
+                // of the trait are.
+                let var = self.next_ty_var(DUMMY_SP);
+                // FIXME(effects)
+                let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, [ty.skip_binder(), var]);
+                let obligation = Obligation::new(
+                    self.tcx,
+                    ObligationCause::dummy(),
+                    param_env,
+                    ty.rebind(ty::TraitPredicate { trait_ref, polarity }),
+                );
+                let ocx = ObligationCtxt::new(self);
+                ocx.register_obligation(obligation);
+                if ocx.select_all_or_error().is_empty() {
+                    return Ok((
+                        self.tcx
+                            .fn_trait_kind_from_def_id(trait_def_id)
+                            .expect("expected to map DefId to ClosureKind"),
+                        ty.rebind(self.resolve_vars_if_possible(var)),
+                    ));
+                }
+            }
+
+            Err(())
+        })
     }
 }
 
@@ -3881,48 +3959,5 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 )
             }
         }
-    }
-
-    /// Checks if the type implements one of `Fn`, `FnMut`, or `FnOnce`
-    /// in that order, and returns the generic type corresponding to the
-    /// argument of that trait (corresponding to the closure arguments).
-    fn type_implements_fn_trait(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        ty: ty::Binder<'tcx, Ty<'tcx>>,
-        polarity: ty::PredicatePolarity,
-    ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()> {
-        self.commit_if_ok(|_| {
-            for trait_def_id in [
-                self.tcx.lang_items().fn_trait(),
-                self.tcx.lang_items().fn_mut_trait(),
-                self.tcx.lang_items().fn_once_trait(),
-            ] {
-                let Some(trait_def_id) = trait_def_id else { continue };
-                // Make a fresh inference variable so we can determine what the generic parameters
-                // of the trait are.
-                let var = self.next_ty_var(DUMMY_SP);
-                // FIXME(effects)
-                let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, [ty.skip_binder(), var]);
-                let obligation = Obligation::new(
-                    self.tcx,
-                    ObligationCause::dummy(),
-                    param_env,
-                    ty.rebind(ty::TraitPredicate { trait_ref, polarity }),
-                );
-                let ocx = ObligationCtxt::new(self);
-                ocx.register_obligation(obligation);
-                if ocx.select_all_or_error().is_empty() {
-                    return Ok((
-                        self.tcx
-                            .fn_trait_kind_from_def_id(trait_def_id)
-                            .expect("expected to map DefId to ClosureKind"),
-                        ty.rebind(self.resolve_vars_if_possible(var)),
-                    ));
-                }
-            }
-
-            Err(())
-        })
     }
 }

@@ -36,7 +36,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
-use rustc_trait_selection::traits::error_reporting::FindExprBySpan;
+use rustc_trait_selection::traits::error_reporting::{FindExprBySpan, TypeErrCtxtExt as _};
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use std::iter;
 use std::ops::ControlFlow;
@@ -1860,7 +1860,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 && let ty::Ref(_, inner, _) = rcvr_ty.kind()
                 && let inner = inner.peel_refs()
                 && (Holds { ty: inner }).visit_ty(local_ty).is_break()
-                && let None = self.infcx.type_implements_trait_shallow(clone, inner, self.param_env)
+                && let None = self.infcx.err_ctxt().type_implements_trait_shallow(
+                    clone,
+                    inner,
+                    self.param_env,
+                )
             {
                 err.span_label(
                     span,

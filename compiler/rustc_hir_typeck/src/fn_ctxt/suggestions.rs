@@ -36,6 +36,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::error_reporting::DefIdOrName;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -1717,9 +1718,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None,
                 );
             } else {
-                if let Some(errors) =
-                    self.type_implements_trait_shallow(clone_trait_did, expected_ty, self.param_env)
-                {
+                if let Some(errors) = self.err_ctxt().type_implements_trait_shallow(
+                    clone_trait_did,
+                    expected_ty,
+                    self.param_env,
+                ) {
                     match &errors[..] {
                         [] => {}
                         [error] => {
