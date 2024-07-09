@@ -175,21 +175,16 @@ impl CoverageInfoBuilder {
         let branch_spans =
             branch_info.map(|branch_info| branch_info.branch_spans).unwrap_or_default();
 
-        let (mut mcdc_branch_spans, mcdc_spans) =
+        let (mcdc_degraded_spans, mcdc_spans) =
             mcdc_info.map(MCDCInfoBuilder::into_done).unwrap_or_default();
-        let mut mcdc_decision_spans = Vec::with_capacity(mcdc_spans.len());
-        for (decision, conditions) in mcdc_spans {
-            mcdc_branch_spans.extend(conditions);
-            mcdc_decision_spans.push(decision);
-        }
 
         // For simplicity, always return an info struct (without Option), even
         // if there's nothing interesting in it.
         Box::new(CoverageInfoHi {
             num_block_markers,
             branch_spans,
-            mcdc_branch_spans,
-            mcdc_decision_spans,
+            mcdc_degraded_spans,
+            mcdc_spans,
         })
     }
 }

@@ -34,6 +34,7 @@ struct BooleanDecisionCtx {
     /// To construct condition evaluation tree.
     decision_stack: VecDeque<ConditionInfo>,
     conditions: Vec<MCDCBranchSpan>,
+    condition_id_counter: usize,
 }
 
 impl BooleanDecisionCtx {
@@ -43,7 +44,13 @@ impl BooleanDecisionCtx {
             decision_info: MCDCDecisionSpan::new(Span::default()),
             decision_stack: VecDeque::new(),
             conditions: vec![],
+            condition_id_counter: 0,
         }
+    }
+
+    fn next_condition_id(&mut self) -> ConditionId {
+        self.condition_id_counter += 1;
+        ConditionId::from_usize(self.condition_id_counter)
     }
 
     // At first we assign ConditionIds for each sub expression.
@@ -89,14 +96,12 @@ impl BooleanDecisionCtx {
     fn record_conditions(&mut self, op: LogicalOp) {
         let parent_condition = self.decision_stack.pop_back().unwrap_or_default();
         let lhs_id = if parent_condition.condition_id == ConditionId::NONE {
-            self.decision_info.num_conditions += 1;
-            ConditionId::from(self.decision_info.num_conditions)
+            ConditionId::from(self.next_condition_id())
         } else {
             parent_condition.condition_id
         };
 
-        self.decision_info.num_conditions += 1;
-        let rhs_condition_id = ConditionId::from(self.decision_info.num_conditions);
+        let rhs_condition_id = self.next_condition_id();
 
         let (lhs, rhs) = match op {
             LogicalOp::And => {
@@ -147,13 +152,10 @@ impl BooleanDecisionCtx {
 
         self.conditions.push(MCDCBranchSpan {
             span,
-            condition_info: Some(condition_info),
-            true_marker,
-            false_marker,
-            decision_depth: 0,
+            condition_info,
+            true_markers: vec![true_marker],
+            false_markers: vec![false_marker],
         });
-        // In case this decision had only one condition
-        self.decision_info.num_conditions = self.decision_info.num_conditions.max(1);
     }
 
     fn is_finished(&self) -> bool {
@@ -247,7 +249,6 @@ struct MCDCTargetInfo {
 impl MCDCTargetInfo {
     fn set_depth(&mut self, depth: u16) {
         self.decision.decision_depth = depth;
-        self.conditions.iter_mut().for_each(|branch| branch.decision_depth = depth);
     }
 }
 
@@ -341,7 +342,9 @@ impl MCDCInfoBuilder {
     }
 
     fn append_normal_branches(&mut self, mut branches: Vec<MCDCBranchSpan>) {
-        branches.iter_mut().for_each(|branch| branch.condition_info = None);
+        branches
+            .iter_mut()
+            .for_each(|branch| branch.condition_info.condition_id = ConditionId::NONE);
         self.normal_branch_spans.extend(branches);
     }
 
