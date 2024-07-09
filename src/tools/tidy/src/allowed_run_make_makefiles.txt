@@ -59,7 +59,6 @@ run-make/issue-28595/Makefile
 run-make/issue-33329/Makefile
 run-make/issue-35164/Makefile
 run-make/issue-36710/Makefile
-run-make/issue-37839/Makefile
 run-make/issue-47551/Makefile
 run-make/issue-69368/Makefile
 run-make/issue-83045/Makefile
@@ -143,8 +142,6 @@ run-make/sysroot-crates-are-unstable/Makefile
 run-make/test-benches/Makefile
 run-make/thumb-none-cortex-m/Makefile
 run-make/thumb-none-qemu/Makefile
-run-make/track-path-dep-info/Makefile
-run-make/track-pgo-dep-info/Makefile
 run-make/translation/Makefile
 run-make/type-mismatch-same-crate-name/Makefile
 run-make/unstable-flag-required/Makefile
