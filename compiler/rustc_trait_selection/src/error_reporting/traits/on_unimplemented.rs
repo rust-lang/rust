@@ -1,5 +1,5 @@
 use super::{ObligationCauseCode, PredicateObligation};
-use crate::error_reporting::traits::type_err_ctxt_ext::InferCtxtPrivExt;
+use crate::error_reporting::traits::fulfillment_errors::InferCtxtPrivExt;
 use crate::errors::{
     EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
 };

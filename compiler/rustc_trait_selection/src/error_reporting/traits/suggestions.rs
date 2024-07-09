@@ -44,7 +44,7 @@ use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
 
-use crate::error_reporting::traits::type_err_ctxt_ext::InferCtxtPrivExt;
+use crate::error_reporting::traits::fulfillment_errors::InferCtxtPrivExt;
 use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_middle::ty::print::{
@@ -4623,6 +4623,132 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             );
         }
     }
+
+    #[instrument(level = "debug", skip_all)]
+    fn suggest_unsized_bound_if_applicable(
+        &self,
+        err: &mut Diag<'_>,
+        obligation: &PredicateObligation<'tcx>,
+    ) {
+        let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
+            obligation.predicate.kind().skip_binder()
+        else {
+            return;
+        };
+        let (ObligationCauseCode::WhereClause(item_def_id, span)
+        | ObligationCauseCode::WhereClauseInExpr(item_def_id, span, ..)) =
+            *obligation.cause.code().peel_derives()
+        else {
+            return;
+        };
+        if span.is_dummy() {
+            return;
+        }
+        debug!(?pred, ?item_def_id, ?span);
+
+        let (Some(node), true) = (
+            self.tcx.hir().get_if_local(item_def_id),
+            self.tcx.is_lang_item(pred.def_id(), LangItem::Sized),
+        ) else {
+            return;
+        };
+
+        let Some(generics) = node.generics() else {
+            return;
+        };
+        let sized_trait = self.tcx.lang_items().sized_trait();
+        debug!(?generics.params);
+        debug!(?generics.predicates);
+        let Some(param) = generics.params.iter().find(|param| param.span == span) else {
+            return;
+        };
+        // Check that none of the explicit trait bounds is `Sized`. Assume that an explicit
+        // `Sized` bound is there intentionally and we don't need to suggest relaxing it.
+        let explicitly_sized = generics
+            .bounds_for_param(param.def_id)
+            .flat_map(|bp| bp.bounds)
+            .any(|bound| bound.trait_ref().and_then(|tr| tr.trait_def_id()) == sized_trait);
+        if explicitly_sized {
+            return;
+        }
+        debug!(?param);
+        match node {
+            hir::Node::Item(
+                item @ hir::Item {
+                    // Only suggest indirection for uses of type parameters in ADTs.
+                    kind:
+                        hir::ItemKind::Enum(..) | hir::ItemKind::Struct(..) | hir::ItemKind::Union(..),
+                    ..
+                },
+            ) => {
+                if self.suggest_indirection_for_unsized(err, item, param) {
+                    return;
+                }
+            }
+            _ => {}
+        };
+
+        // Didn't add an indirection suggestion, so add a general suggestion to relax `Sized`.
+        let (span, separator, open_paren_sp) =
+            if let Some((s, open_paren_sp)) = generics.bounds_span_for_suggestions(param.def_id) {
+                (s, " +", open_paren_sp)
+            } else {
+                (param.name.ident().span.shrink_to_hi(), ":", None)
+            };
+
+        let mut suggs = vec![];
+        let suggestion = format!("{separator} ?Sized");
+
+        if let Some(open_paren_sp) = open_paren_sp {
+            suggs.push((open_paren_sp, "(".to_string()));
+            suggs.push((span, format!("){suggestion}")));
+        } else {
+            suggs.push((span, suggestion));
+        }
+
+        err.multipart_suggestion_verbose(
+            "consider relaxing the implicit `Sized` restriction",
+            suggs,
+            Applicability::MachineApplicable,
+        );
+    }
+
+    fn suggest_indirection_for_unsized(
+        &self,
+        err: &mut Diag<'_>,
+        item: &hir::Item<'tcx>,
+        param: &hir::GenericParam<'tcx>,
+    ) -> bool {
+        // Suggesting `T: ?Sized` is only valid in an ADT if `T` is only used in a
+        // borrow. `struct S<'a, T: ?Sized>(&'a T);` is valid, `struct S<T: ?Sized>(T);`
+        // is not. Look for invalid "bare" parameter uses, and suggest using indirection.
+        let mut visitor =
+            FindTypeParam { param: param.name.ident().name, invalid_spans: vec![], nested: false };
+        visitor.visit_item(item);
+        if visitor.invalid_spans.is_empty() {
+            return false;
+        }
+        let mut multispan: MultiSpan = param.span.into();
+        multispan.push_span_label(
+            param.span,
+            format!("this could be changed to `{}: ?Sized`...", param.name.ident()),
+        );
+        for sp in visitor.invalid_spans {
+            multispan.push_span_label(
+                sp,
+                format!("...if indirection were used here: `Box<{}>`", param.name.ident()),
+            );
+        }
+        err.span_help(
+            multispan,
+            format!(
+                "you could relax the implicit `Sized` bound on `{T}` if it were \
+                used through indirection like `&{T}` or `Box<{T}>`",
+                T = param.name.ident(),
+            ),
+        );
+        true
+    }
 }
 
 /// Add a hint to add a missing borrow or remove an unnecessary one.
@@ -5125,4 +5251,47 @@ fn get_deref_type_and_refs(mut ty: Ty<'_>) -> (Ty<'_>, Vec<hir::Mutability>) {
     }
 
     (ty, refs)
+}
+
+/// Look for type `param` in an ADT being used only through a reference to confirm that suggesting
+/// `param: ?Sized` would be a valid constraint.
+struct FindTypeParam {
+    param: rustc_span::Symbol,
+    invalid_spans: Vec<Span>,
+    nested: bool,
+}
+
+impl<'v> Visitor<'v> for FindTypeParam {
+    fn visit_where_predicate(&mut self, _: &'v hir::WherePredicate<'v>) {
+        // Skip where-clauses, to avoid suggesting indirection for type parameters found there.
+    }
+
+    fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
+        // We collect the spans of all uses of the "bare" type param, like in `field: T` or
+        // `field: (T, T)` where we could make `T: ?Sized` while skipping cases that are known to be
+        // valid like `field: &'a T` or `field: *mut T` and cases that *might* have further `Sized`
+        // obligations like `Box<T>` and `Vec<T>`, but we perform no extra analysis for those cases
+        // and suggest `T: ?Sized` regardless of their obligations. This is fine because the errors
+        // in that case should make what happened clear enough.
+        match ty.kind {
+            hir::TyKind::Ptr(_) | hir::TyKind::Ref(..) | hir::TyKind::TraitObject(..) => {}
+            hir::TyKind::Path(hir::QPath::Resolved(None, path))
+                if path.segments.len() == 1 && path.segments[0].ident.name == self.param =>
+            {
+                if !self.nested {
+                    debug!(?ty, "FindTypeParam::visit_ty");
+                    self.invalid_spans.push(ty.span);
+                }
+            }
+            hir::TyKind::Path(_) => {
+                let prev = self.nested;
+                self.nested = true;
+                hir::intravisit::walk_ty(self, ty);
+                self.nested = prev;
+            }
+            _ => {
+                hir::intravisit::walk_ty(self, ty);
+            }
+        }
+    }
 }

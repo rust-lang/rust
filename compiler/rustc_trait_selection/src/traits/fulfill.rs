@@ -1,4 +1,4 @@
-use crate::error_reporting::traits::TypeErrCtxtExt;
+use crate::error_reporting::traits::TypeErrCtxtOverflowExt;
 use crate::infer::{InferCtxt, TyOrConstInferVar};
 use crate::traits::normalize::normalize_with_depth_to;
 use rustc_data_structures::captures::Captures;
