@@ -81,6 +81,8 @@ pub enum BuiltinUnsafe {
     AllowInternalUnsafe,
     #[diag(lint_builtin_unsafe_block)]
     UnsafeBlock,
+    #[diag(lint_builtin_unsafe_extern_block)]
+    UnsafeExternBlock,
     #[diag(lint_builtin_unsafe_trait)]
     UnsafeTrait,
     #[diag(lint_builtin_unsafe_impl)]
