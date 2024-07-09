@@ -23,6 +23,21 @@ impl<I> Cloned<I> {
     pub(in crate::iter) fn new(it: I) -> Cloned<I> {
         Cloned { it }
     }
+    /// Gets a reference to the underlying iterator.
+    #[unstable(feature = "cloned_inner", issue = "none")]
+    pub fn get_ref(&self) -> &I {
+        &self.it
+    }
+    /// Gets a mutable reference to the underlying iterator.
+    #[unstable(feature = "cloned_inner", issue = "none")]
+    pub fn get_mut(&mut self) -> &mut I {
+        &mut self.it
+    }
+    /// Unwraps this `Cloned<I>`, returning the underlying iterator.
+    #[unstable(feature = "cloned_inner", issue = "none")]
+    pub fn into_inner(self) -> I {
+        self.it
+    }
 }
 
 fn clone_try_fold<T: Clone, Acc, R>(mut f: impl FnMut(Acc, T) -> R) -> impl FnMut(Acc, &T) -> R {
