@@ -21,6 +21,7 @@ use crate::lists::{
 };
 use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
+use crate::sort::version_sort;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{is_same_visibility, mk_sp, rewrite_ident};
@@ -923,7 +924,7 @@ impl Ord for UseSegment {
             | (Crate(ref a), Crate(ref b)) => match (a, b) {
                 (Some(sa), Some(sb)) => {
                     if self.style_edition >= StyleEdition::Edition2024 {
-                        sa.trim_start_matches("r#").cmp(sb.trim_start_matches("r#"))
+                        version_sort(sa.trim_start_matches("r#"), sb.trim_start_matches("r#"))
                     } else {
                         a.cmp(b)
                     }
@@ -937,20 +938,26 @@ impl Ord for UseSegment {
                 } else {
                     (pia.as_str(), pib.as_str())
                 };
-                // snake_case < CamelCase < UPPER_SNAKE_CASE
-                if ia.starts_with(char::is_uppercase) && ib.starts_with(char::is_lowercase) {
-                    return Ordering::Greater;
-                }
-                if ia.starts_with(char::is_lowercase) && ib.starts_with(char::is_uppercase) {
-                    return Ordering::Less;
-                }
-                if is_upper_snake_case(ia) && !is_upper_snake_case(ib) {
-                    return Ordering::Greater;
-                }
-                if !is_upper_snake_case(ia) && is_upper_snake_case(ib) {
-                    return Ordering::Less;
-                }
-                let ident_ord = ia.cmp(ib);
+
+                let ident_ord = if self.style_edition >= StyleEdition::Edition2024 {
+                    version_sort(ia, ib)
+                } else {
+                    // snake_case < CamelCase < UPPER_SNAKE_CASE
+                    if ia.starts_with(char::is_uppercase) && ib.starts_with(char::is_lowercase) {
+                        return Ordering::Greater;
+                    }
+                    if ia.starts_with(char::is_lowercase) && ib.starts_with(char::is_uppercase) {
+                        return Ordering::Less;
+                    }
+                    if is_upper_snake_case(ia) && !is_upper_snake_case(ib) {
+                        return Ordering::Greater;
+                    }
+                    if !is_upper_snake_case(ia) && is_upper_snake_case(ib) {
+                        return Ordering::Less;
+                    }
+                    ia.cmp(ib)
+                };
+
                 if ident_ord != Ordering::Equal {
                     return ident_ord;
                 }
@@ -959,8 +966,7 @@ impl Ord for UseSegment {
                     (Some(_), None) => Ordering::Greater,
                     (Some(aas), Some(abs)) => {
                         if self.style_edition >= StyleEdition::Edition2024 {
-                            aas.trim_start_matches("r#")
-                                .cmp(abs.trim_start_matches("r#"))
+                            version_sort(aas.trim_start_matches("r#"), abs.trim_start_matches("r#"))
                         } else {
                             aas.cmp(abs)
                         }
