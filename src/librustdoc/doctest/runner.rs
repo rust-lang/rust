@@ -4,8 +4,8 @@ use rustc_span::edition::Edition;
 use std::fmt::Write;
 
 use crate::doctest::{
-    run_test, DocTestBuilder, GlobalTestOptions, IndividualTestOptions, RunnableDoctest,
-    RustdocOptions, ScrapedDoctest, TestFailure, UnusedExterns,
+    run_test, DocTestBuilder, GlobalTestOptions, IndividualTestOptions, RunnableDocTest,
+    RustdocOptions, ScrapedDocTest, TestFailure, UnusedExterns,
 };
 use crate::html::markdown::{Ignore, LangString};
 
@@ -32,7 +32,7 @@ impl DocTestRunner {
     pub(crate) fn add_test(
         &mut self,
         doctest: &DocTestBuilder,
-        scraped_test: &ScrapedDoctest,
+        scraped_test: &ScrapedDocTest,
         target_str: &str,
     ) {
         let ignore = match scraped_test.langstr.ignore {
@@ -175,7 +175,7 @@ std::process::Termination::report(test::test_main(test_args, Vec::from(TESTS), N
             ids = self.ids,
         )
         .expect("failed to generate test code");
-        let runnable_test = RunnableDoctest {
+        let runnable_test = RunnableDocTest {
             full_test_code: code,
             full_test_line_offset: 0,
             test_opts: test_options,
@@ -199,7 +199,7 @@ std::process::Termination::report(test::test_main(test_args, Vec::from(TESTS), N
 /// Push new doctest content into `output`. Returns the test ID for this doctest.
 fn generate_mergeable_doctest(
     doctest: &DocTestBuilder,
-    scraped_test: &ScrapedDoctest,
+    scraped_test: &ScrapedDocTest,
     ignore: bool,
     id: usize,
     output: &mut String,

@@ -163,7 +163,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<()
     let args_path = temp_dir.path().join("rustdoc-cfgs");
     crate::wrap_return(dcx, generate_args_file(&args_path, &options))?;
 
-    let CreateRunnableDoctests {
+    let CreateRunnableDocTests {
         standalone_tests,
         mergeable_tests,
         rustdoc_options,
@@ -179,7 +179,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<()
                 let opts = scrape_test_config(crate_name, crate_attrs, args_path);
                 let enable_per_target_ignores = options.enable_per_target_ignores;
 
-                let mut collector = CreateRunnableDoctests::new(options, opts);
+                let mut collector = CreateRunnableDocTests::new(options, opts);
                 let hir_collector = HirCollector::new(
                     &compiler.sess,
                     tcx.hir(),
@@ -250,7 +250,7 @@ pub(crate) fn run_tests(
     rustdoc_options: &Arc<RustdocOptions>,
     unused_extern_reports: &Arc<Mutex<Vec<UnusedExterns>>>,
     mut standalone_tests: Vec<test::TestDescAndFn>,
-    mergeable_tests: FxHashMap<Edition, Vec<(DocTestBuilder, ScrapedDoctest)>>,
+    mergeable_tests: FxHashMap<Edition, Vec<(DocTestBuilder, ScrapedDocTest)>>,
 ) {
     let mut test_args = Vec::with_capacity(rustdoc_options.test_args.len() + 1);
     test_args.insert(0, "rustdoctest".to_string());
@@ -432,8 +432,13 @@ fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Com
     command
 }
 
-/// This struct contains information needed for running a doctest.
-struct RunnableDoctest {
+/// Information needed for running a bundle of doctests.
+///
+/// This data structure contains the "full" test code, including the wrappers
+/// (if multiple doctests are merged), `main` function,
+/// and everything needed to calculate the compiler's command-line arguments.
+/// The `# ` prefix on boring lines has also been stripped.
+struct RunnableDocTest {
     full_test_code: String,
     full_test_line_offset: usize,
     test_opts: IndividualTestOptions,
@@ -444,14 +449,14 @@ struct RunnableDoctest {
     no_run: bool,
 }
 
-impl RunnableDoctest {
+impl RunnableDocTest {
     fn path_for_merged_doctest(&self) -> PathBuf {
         self.test_opts.outdir.path().join(&format!("doctest_{}.rs", self.edition))
     }
 }
 
 fn run_test(
-    doctest: RunnableDoctest,
+    doctest: RunnableDocTest,
     rustdoc_options: &RustdocOptions,
     supports_color: bool,
     is_multiple_tests: bool,
@@ -700,7 +705,7 @@ impl IndividualTestOptions {
 }
 
 /// A doctest scraped from the code, ready to be turned into a runnable test.
-pub(crate) struct ScrapedDoctest {
+pub(crate) struct ScrapedDocTest {
     filename: FileName,
     line: usize,
     langstr: LangString,
@@ -708,7 +713,7 @@ pub(crate) struct ScrapedDoctest {
     name: String,
 }
 
-impl ScrapedDoctest {
+impl ScrapedDocTest {
     fn new(
         filename: FileName,
         line: usize,
@@ -748,14 +753,14 @@ impl ScrapedDoctest {
     }
 }
 
-pub(crate) trait DoctestVisitor {
+pub(crate) trait DocTestVisitor {
     fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine);
     fn visit_header(&mut self, _name: &str, _level: u32) {}
 }
 
-struct CreateRunnableDoctests {
+struct CreateRunnableDocTests {
     standalone_tests: Vec<test::TestDescAndFn>,
-    mergeable_tests: FxHashMap<Edition, Vec<(DocTestBuilder, ScrapedDoctest)>>,
+    mergeable_tests: FxHashMap<Edition, Vec<(DocTestBuilder, ScrapedDocTest)>>,
 
     rustdoc_options: Arc<RustdocOptions>,
     opts: GlobalTestOptions,
@@ -765,10 +770,10 @@ struct CreateRunnableDoctests {
     can_merge_doctests: bool,
 }
 
-impl CreateRunnableDoctests {
-    fn new(rustdoc_options: RustdocOptions, opts: GlobalTestOptions) -> CreateRunnableDoctests {
+impl CreateRunnableDocTests {
+    fn new(rustdoc_options: RustdocOptions, opts: GlobalTestOptions) -> CreateRunnableDocTests {
         let can_merge_doctests = rustdoc_options.edition >= Edition::Edition2024;
-        CreateRunnableDoctests {
+        CreateRunnableDocTests {
             standalone_tests: Vec::new(),
             mergeable_tests: FxHashMap::default(),
             rustdoc_options: Arc::new(rustdoc_options),
@@ -780,7 +785,7 @@ impl CreateRunnableDoctests {
         }
     }
 
-    fn add_test(&mut self, scraped_test: ScrapedDoctest) {
+    fn add_test(&mut self, scraped_test: ScrapedDocTest) {
         // For example `module/file.rs` would become `module_file_rs`
         let file = scraped_test
             .filename
@@ -829,7 +834,7 @@ impl CreateRunnableDoctests {
     fn generate_test_desc_and_fn(
         &mut self,
         test: DocTestBuilder,
-        scraped_test: ScrapedDoctest,
+        scraped_test: ScrapedDocTest,
     ) -> test::TestDescAndFn {
         if !scraped_test.langstr.compile_fail {
             self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
@@ -847,7 +852,7 @@ impl CreateRunnableDoctests {
 
 fn generate_test_desc_and_fn(
     test: DocTestBuilder,
-    scraped_test: ScrapedDoctest,
+    scraped_test: ScrapedDocTest,
     opts: GlobalTestOptions,
     rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
@@ -894,7 +899,7 @@ fn doctest_run_fn(
     test_opts: IndividualTestOptions,
     global_opts: GlobalTestOptions,
     doctest: DocTestBuilder,
-    scraped_test: ScrapedDoctest,
+    scraped_test: ScrapedDocTest,
     rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
 ) -> Result<(), String> {
@@ -907,7 +912,7 @@ fn doctest_run_fn(
         &global_opts,
         Some(&global_opts.crate_name),
     );
-    let runnable_test = RunnableDoctest {
+    let runnable_test = RunnableDocTest {
         full_test_code,
         full_test_line_offset,
         test_opts,
@@ -980,7 +985,7 @@ fn doctest_run_fn(
 }
 
 #[cfg(test)] // used in tests
-impl DoctestVisitor for Vec<usize> {
+impl DocTestVisitor for Vec<usize> {
     fn visit_test(&mut self, _test: String, _config: LangString, rel_line: MdRelLine) {
         self.push(1 + rel_line.offset());
     }
