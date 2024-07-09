@@ -36,9 +36,9 @@ pub struct TlsData<'tcx> {
     /// pthreads-style thread-local storage.
     keys: BTreeMap<TlsKey, TlsEntry<'tcx>>,
 
-    /// A single per thread destructor of the thread local storage (that's how
-    /// things work on macOS) with a data argument.
-    macos_thread_dtors: BTreeMap<ThreadId, (ty::Instance<'tcx>, Scalar)>,
+    /// On macOS, each thread holds a list of destructor functions with their
+    /// respective data arguments.
+    macos_thread_dtors: BTreeMap<ThreadId, Vec<(ty::Instance<'tcx>, Scalar)>>,
 }
 
 impl<'tcx> Default for TlsData<'tcx> {
@@ -119,26 +119,15 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    /// Set the thread wide destructor of the thread local storage for the given
-    /// thread. This function is used to implement `_tlv_atexit` shim on MacOS.
-    ///
-    /// Thread wide dtors are available only on MacOS. There is one destructor
-    /// per thread as can be guessed from the following comment in the
-    /// [`_tlv_atexit`
-    /// implementation](https://github.com/opensource-apple/dyld/blob/195030646877261f0c8c7ad8b001f52d6a26f514/src/threadLocalVariables.c#L389):
-    ///
-    /// NOTE: this does not need locks because it only operates on current thread data
-    pub fn set_macos_thread_dtor(
+    /// Add a thread local storage destructor for the given thread. This function
+    /// is used to implement the `_tlv_atexit` shim on MacOS.
+    pub fn add_macos_thread_dtor(
         &mut self,
         thread: ThreadId,
         dtor: ty::Instance<'tcx>,
         data: Scalar,
     ) -> InterpResult<'tcx> {
-        if self.macos_thread_dtors.insert(thread, (dtor, data)).is_some() {
-            throw_unsup_format!(
-                "setting more than one thread local storage destructor for the same thread is not supported"
-            );
-        }
+        self.macos_thread_dtors.entry(thread).or_default().push((dtor, data));
         Ok(())
     }
 
@@ -202,6 +191,10 @@ impl<'tcx> TlsData<'tcx> {
         for TlsEntry { data, .. } in self.keys.values_mut() {
             data.remove(&thread_id);
         }
+
+        if let Some(dtors) = self.macos_thread_dtors.remove(&thread_id) {
+            assert!(dtors.is_empty(), "the destructors should have already been run");
+        }
     }
 }
 
@@ -212,7 +205,7 @@ impl VisitProvenance for TlsData<'_> {
         for scalar in keys.values().flat_map(|v| v.data.values()) {
             scalar.visit_provenance(visit);
         }
-        for (_, scalar) in macos_thread_dtors.values() {
+        for (_, scalar) in macos_thread_dtors.values().flatten() {
             scalar.visit_provenance(visit);
         }
     }
@@ -225,6 +218,7 @@ pub struct TlsDtorsState<'tcx>(TlsDtorsStatePriv<'tcx>);
 enum TlsDtorsStatePriv<'tcx> {
     #[default]
     Init,
+    MacOsDtors,
     PthreadDtors(RunningDtorState),
     /// For Windows Dtors, we store the list of functions that we still have to call.
     /// These are functions from the magic `.CRT$XLB` linker section.
@@ -243,11 +237,10 @@ impl<'tcx> TlsDtorsState<'tcx> {
                 Init => {
                     match this.tcx.sess.target.os.as_ref() {
                         "macos" => {
-                            // The macOS thread wide destructor runs "before any TLS slots get
-                            // freed", so do that first.
-                            this.schedule_macos_tls_dtor()?;
-                            // When that destructor is done, go on with the pthread dtors.
-                            break 'new_state PthreadDtors(Default::default());
+                            // macOS has a _tlv_atexit function that allows
+                            // registering destructors without associated keys.
+                            // These are run first.
+                            break 'new_state MacOsDtors;
                         }
                         _ if this.target_os_is_unix() => {
                             // All other Unixes directly jump to running the pthread dtors.
@@ -264,6 +257,14 @@ impl<'tcx> TlsDtorsState<'tcx> {
                             // FIXME: should we do something on wasi?
                             break 'new_state Done;
                         }
+                    }
+                }
+                MacOsDtors => {
+                    match this.schedule_macos_tls_dtor()? {
+                        Poll::Pending => return Ok(Poll::Pending),
+                        // After all macOS destructors are run, the system switches
+                        // to destroying the pthread destructors.
+                        Poll::Ready(()) => break 'new_state PthreadDtors(Default::default()),
                     }
                 }
                 PthreadDtors(state) => {
@@ -328,12 +329,15 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(())
     }
 
-    /// Schedule the MacOS thread destructor of the thread local storage to be
-    /// executed.
-    fn schedule_macos_tls_dtor(&mut self) -> InterpResult<'tcx> {
+    /// Schedule the macOS thread local storage destructors to be executed.
+    fn schedule_macos_tls_dtor(&mut self) -> InterpResult<'tcx, Poll<()>> {
         let this = self.eval_context_mut();
         let thread_id = this.active_thread();
-        if let Some((instance, data)) = this.machine.tls.macos_thread_dtors.remove(&thread_id) {
+        // macOS keeps track of TLS destructors in a stack. If a destructor
+        // registers another destructor, it will be run next.
+        // See https://github.com/apple-oss-distributions/dyld/blob/d552c40cd1de105f0ec95008e0e0c0972de43456/dyld/DyldRuntimeState.cpp#L2277
+        let dtor = this.machine.tls.macos_thread_dtors.get_mut(&thread_id).and_then(Vec::pop);
+        if let Some((instance, data)) = dtor {
             trace!("Running macos dtor {:?} on {:?} at {:?}", instance, data, thread_id);
 
             this.call_function(
@@ -343,8 +347,11 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 None,
                 StackPopCleanup::Root { cleanup: true },
             )?;
+
+            return Ok(Poll::Pending);
         }
-        Ok(())
+
+        Ok(Poll::Ready(()))
     }
 
     /// Schedule a pthread TLS destructor. Returns `true` if found
