@@ -21,7 +21,7 @@ use rustc_middle::ty::{self, GenericParamDefKind, Ty, TypeVisitableExt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, NormalizeExt};
 
@@ -359,7 +359,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // FIXME(effects) find a better way to do this
         // Operators don't have generic methods, but making them `#[const_trait]` gives them
         // `const host: bool`.
-        let args = if self.tcx.has_attr(trait_def_id, sym::const_trait) {
+        let args = if self.tcx.is_const_trait(trait_def_id) {
             self.tcx.mk_args_from_iter(
                 args.iter()
                     .chain([self.tcx.expected_host_effect_param_for_body(self.body_id).into()]),

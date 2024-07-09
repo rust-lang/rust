@@ -47,7 +47,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
@@ -560,7 +560,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
         if let ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst = constness
             && generics.has_self
-            && !tcx.has_attr(def_id, sym::const_trait)
+            && !tcx.is_const_trait(def_id)
         {
             let reported = tcx.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
                 span,
@@ -1848,19 +1848,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     path.segments[..path.segments.len() - 2].iter(),
                     GenericsArgsErrExtend::None,
                 );
-                // HACK: until we support `<Type as ~const Trait>`, assume all of them are.
-                let constness = if tcx.has_attr(tcx.parent(def_id), sym::const_trait) {
-                    ty::BoundConstness::ConstIfConst
-                } else {
-                    ty::BoundConstness::NotConst
-                };
                 self.lower_qpath(
                     span,
                     opt_self_ty,
                     def_id,
                     &path.segments[path.segments.len() - 2],
                     path.segments.last().unwrap(),
-                    constness,
+                    ty::BoundConstness::NotConst,
                 )
             }
             Res::PrimTy(prim_ty) => {

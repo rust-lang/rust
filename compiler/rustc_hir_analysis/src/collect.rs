@@ -1194,6 +1194,11 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
+    let constness = if tcx.has_attr(def_id, sym::const_trait) {
+        hir::Constness::Const
+    } else {
+        hir::Constness::NotConst
+    };
     let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
     if paren_sugar && !tcx.features().unboxed_closures {
         tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
@@ -1349,6 +1354,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     ty::TraitDef {
         def_id: def_id.to_def_id(),
         safety,
+        constness,
         paren_sugar,
         has_auto_impl: is_auto,
         is_marker,
@@ -1682,7 +1688,7 @@ fn check_impl_constness(
     }
 
     let trait_def_id = hir_trait_ref.trait_def_id()?;
-    if tcx.has_attr(trait_def_id, sym::const_trait) {
+    if tcx.is_const_trait(trait_def_id) {
         return None;
     }
 

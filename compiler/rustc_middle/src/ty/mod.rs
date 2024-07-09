@@ -1968,8 +1968,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    pub fn is_const_trait(self, def_id: DefId) -> bool {
+        self.trait_def(def_id).constness == hir::Constness::Const
+    }
+
+    #[inline]
     pub fn is_const_default_method(self, def_id: DefId) -> bool {
-        matches!(self.trait_of_item(def_id), Some(trait_id) if self.has_attr(trait_id, sym::const_trait))
+        matches!(self.trait_of_item(def_id), Some(trait_id) if self.is_const_trait(trait_id))
     }
 
     pub fn impl_method_has_trait_impl_trait_tys(self, def_id: DefId) -> bool {
