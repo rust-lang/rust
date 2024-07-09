@@ -606,6 +606,11 @@ declare_clippy_lint! {
     /// For the scenario where you can define a meaningful absolute error margin, consider using:
     ///
     /// ```no_run
+    /// let a: f64 = 1000.1;
+    /// let b: f64 = 0.2;
+    /// let x = a + b;
+    /// let y = 1000.3; // Expected value.
+    ///
     /// const ALLOWED_ERROR_VEHICLE_LENGTH_CM: f64 = 0.1;
     /// let within_tolerance = (x - y).abs() < ALLOWED_ERROR_VEHICLE_LENGTH_CM;
     /// println!("{within_tolerance}"); // true
@@ -647,7 +652,7 @@ declare_clippy_lint! {
     /// // Actual value: 1000.3000000000001
     /// println!("{x}");
     ///
-    /// let are_equal = x == y;
+    /// let are_equal = x == Y;
     /// println!("{are_equal}"); // false
     /// ```
     ///
@@ -664,6 +669,11 @@ declare_clippy_lint! {
     /// For the scenario where you can define a meaningful absolute error margin, consider using:
     ///
     /// ```no_run
+    /// let a: f64 = 1000.1;
+    /// let b: f64 = 0.2;
+    /// let x = a + b;
+    /// const Y: f64 = 1000.3; // Expected value.
+    ///
     /// const ALLOWED_ERROR_VEHICLE_LENGTH_CM: f64 = 0.1;
     /// let within_tolerance = (x - Y).abs() < ALLOWED_ERROR_VEHICLE_LENGTH_CM;
     /// println!("{within_tolerance}"); // true
