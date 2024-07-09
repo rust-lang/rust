@@ -37,12 +37,12 @@ error: character literal may only contain one codepoint
   --> $DIR/bad-char-literals.rs:18:5
    |
 LL |     '-␀-';
-   |     ^^^^
+   |     ^^^^^
    |
 help: if you meant to write a string literal, use double quotes
    |
 LL |     "-␀-";
-   |     ~  ~
+   |     ~   ~
 
 error: character constant must be escaped: `\t`
   --> $DIR/bad-char-literals.rs:21:6

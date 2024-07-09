@@ -8,7 +8,7 @@
 //! The output types are defined in `rustc_session::config::ErrorOutputType`.
 
 use rustc_span::source_map::SourceMap;
-use rustc_span::{FileLines, FileName, SourceFile, Span};
+use rustc_span::{char_width, FileLines, FileName, SourceFile, Span};
 
 use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
@@ -2612,21 +2612,6 @@ fn normalize_whitespace(str: &str) -> String {
         s = s.replace(*c, replacement);
     }
     s
-}
-
-fn char_width(ch: char) -> usize {
-    // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char` is. For now,
-    // just accept that sometimes the code line will be longer than desired.
-    match ch {
-        '\t' => 4,
-        '\u{0000}' | '\u{0001}' | '\u{0002}' | '\u{0003}' | '\u{0004}' | '\u{0005}'
-        | '\u{0006}' | '\u{0007}' | '\u{0008}' | '\u{000B}' | '\u{000C}' | '\u{000D}'
-        | '\u{000E}' | '\u{000F}' | '\u{0010}' | '\u{0011}' | '\u{0012}' | '\u{0013}'
-        | '\u{0014}' | '\u{0015}' | '\u{0016}' | '\u{0017}' | '\u{0018}' | '\u{0019}'
-        | '\u{001A}' | '\u{001B}' | '\u{001C}' | '\u{001D}' | '\u{001E}' | '\u{001F}'
-        | '\u{007F}' => 1,
-        _ => unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1),
-    }
 }
 
 fn draw_col_separator(buffer: &mut StyledBuffer, line: usize, col: usize) {

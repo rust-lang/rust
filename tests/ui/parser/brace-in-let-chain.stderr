@@ -31,7 +31,7 @@ LL |             && let () = ()
 LL |     }
    |     - ...as it matches this but it has different indentation
 LL | }
-   |                                                      ^
+   |                                                     ^
 
 error: found a `{` in the middle of a let-chain
   --> $DIR/brace-in-let-chain.rs:14:24

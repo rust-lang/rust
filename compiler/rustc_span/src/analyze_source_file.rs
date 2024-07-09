@@ -1,5 +1,4 @@
 use super::*;
-use unicode_width::UnicodeWidthChar;
 
 #[cfg(test)]
 mod tests;
@@ -9,15 +8,12 @@ mod tests;
 ///
 /// This function will use an SSE2 enhanced implementation if hardware support
 /// is detected at runtime.
-pub fn analyze_source_file(
-    src: &str,
-) -> (Vec<RelativeBytePos>, Vec<MultiByteChar>, Vec<NonNarrowChar>) {
+pub fn analyze_source_file(src: &str) -> (Vec<RelativeBytePos>, Vec<MultiByteChar>) {
     let mut lines = vec![RelativeBytePos::from_u32(0)];
     let mut multi_byte_chars = vec![];
-    let mut non_narrow_chars = vec![];
 
     // Calls the right implementation, depending on hardware support available.
-    analyze_source_file_dispatch(src, &mut lines, &mut multi_byte_chars, &mut non_narrow_chars);
+    analyze_source_file_dispatch(src, &mut lines, &mut multi_byte_chars);
 
     // The code above optimistically registers a new line *after* each \n
     // it encounters. If that point is already outside the source_file, remove
@@ -30,7 +26,7 @@ pub fn analyze_source_file(
         }
     }
 
-    (lines, multi_byte_chars, non_narrow_chars)
+    (lines, multi_byte_chars)
 }
 
 cfg_match! {
@@ -39,11 +35,10 @@ cfg_match! {
             src: &str,
             lines: &mut Vec<RelativeBytePos>,
             multi_byte_chars: &mut Vec<MultiByteChar>,
-            non_narrow_chars: &mut Vec<NonNarrowChar>,
         ) {
             if is_x86_feature_detected!("sse2") {
                 unsafe {
-                    analyze_source_file_sse2(src, lines, multi_byte_chars, non_narrow_chars);
+                    analyze_source_file_sse2(src, lines, multi_byte_chars);
                 }
             } else {
                 analyze_source_file_generic(
@@ -52,7 +47,6 @@ cfg_match! {
                     RelativeBytePos::from_u32(0),
                     lines,
                     multi_byte_chars,
-                    non_narrow_chars,
                 );
             }
         }
@@ -66,7 +60,6 @@ cfg_match! {
             src: &str,
             lines: &mut Vec<RelativeBytePos>,
             multi_byte_chars: &mut Vec<MultiByteChar>,
-            non_narrow_chars: &mut Vec<NonNarrowChar>,
         ) {
             #[cfg(target_arch = "x86")]
             use std::arch::x86::*;
@@ -159,7 +152,6 @@ cfg_match! {
                     RelativeBytePos::from_usize(scan_start),
                     lines,
                     multi_byte_chars,
-                    non_narrow_chars,
                 );
             }
 
@@ -172,7 +164,6 @@ cfg_match! {
                     RelativeBytePos::from_usize(tail_start),
                     lines,
                     multi_byte_chars,
-                    non_narrow_chars,
                 );
             }
         }
@@ -183,7 +174,6 @@ cfg_match! {
             src: &str,
             lines: &mut Vec<RelativeBytePos>,
             multi_byte_chars: &mut Vec<MultiByteChar>,
-            non_narrow_chars: &mut Vec<NonNarrowChar>,
         ) {
             analyze_source_file_generic(
                 src,
@@ -191,7 +181,6 @@ cfg_match! {
                 RelativeBytePos::from_u32(0),
                 lines,
                 multi_byte_chars,
-                non_narrow_chars,
             );
         }
     }
@@ -205,7 +194,6 @@ fn analyze_source_file_generic(
     output_offset: RelativeBytePos,
     lines: &mut Vec<RelativeBytePos>,
     multi_byte_chars: &mut Vec<MultiByteChar>,
-    non_narrow_chars: &mut Vec<NonNarrowChar>,
 ) -> usize {
     assert!(src.len() >= scan_len);
     let mut i = 0;
@@ -227,16 +215,8 @@ fn analyze_source_file_generic(
 
             let pos = RelativeBytePos::from_usize(i) + output_offset;
 
-            match byte {
-                b'\n' => {
-                    lines.push(pos + RelativeBytePos(1));
-                }
-                b'\t' => {
-                    non_narrow_chars.push(NonNarrowChar::Tab(pos));
-                }
-                _ => {
-                    non_narrow_chars.push(NonNarrowChar::ZeroWidth(pos));
-                }
+            if let b'\n' = byte {
+                lines.push(pos + RelativeBytePos(1));
             }
         } else if byte >= 127 {
             // The slow path:
@@ -251,14 +231,6 @@ fn analyze_source_file_generic(
                 assert!((2..=4).contains(&char_len));
                 let mbc = MultiByteChar { pos, bytes: char_len as u8 };
                 multi_byte_chars.push(mbc);
-            }
-
-            // Assume control characters are zero width.
-            // FIXME: How can we decide between `width` and `width_cjk`?
-            let char_width = UnicodeWidthChar::width(c).unwrap_or(0);
-
-            if char_width != 1 {
-                non_narrow_chars.push(NonNarrowChar::new(pos, char_width));
             }
         }
 

@@ -23,8 +23,8 @@ warning: whitespace symbol '\u{c}' is not skipped
 LL |       let s = b"a\
    |  ________________^
 LL | |     ␌b";
-   | |    ^- whitespace symbol '\u{c}' is not skipped
-   | |____|
+   | |     ^ whitespace symbol '\u{c}' is not skipped
+   | |_____|
    |
 
 warning: 3 warnings emitted
