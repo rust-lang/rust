@@ -16,7 +16,7 @@ use crate::{inherent::*, Upcast as _};
 pub struct Elaborator<I: Interner, O> {
     cx: I,
     stack: Vec<O>,
-    visited: HashSet<ty::Binder<I, ty::PredicateKind<I>>>,
+    visited: HashSet<I::Predicate>,
     mode: Filter,
 }
 
@@ -53,6 +53,12 @@ pub fn elaborate<I: Interner, O: Elaboratable<I>>(
     elaborator
 }
 
+fn anonymize_predicate<I: Interner>(cx: I, pred: I::Predicate) -> I::Predicate {
+    let pred_kind = pred.kind();
+    let anonymized_pred_kind = cx.anonymize_bound_vars(pred_kind);
+    if pred_kind == anonymized_pred_kind { pred } else { anonymized_pred_kind.upcast(cx) }
+}
+
 impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
     fn extend_deduped(&mut self, obligations: impl IntoIterator<Item = O>) {
         // Only keep those bounds that we haven't already seen.
@@ -60,9 +66,9 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
         // cases. One common case is when people define
         // `trait Sized: Sized { }` rather than `trait Sized { }`.
         self.stack.extend(
-            obligations.into_iter().filter(|o| {
-                self.visited.insert(self.cx.anonymize_bound_vars(o.predicate().kind()))
-            }),
+            obligations
+                .into_iter()
+                .filter(|o| self.visited.insert(anonymize_predicate(self.cx, o.predicate()))),
         );
     }
 
