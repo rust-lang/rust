@@ -139,18 +139,11 @@ impl<I: Interner> SearchGraph<I> {
         self.mode
     }
 
-    /// Pops the highest goal from the stack, lazily updating the
-    /// the next goal in the stack.
-    ///
-    /// Directly popping from the stack instead of using this method
-    /// would cause us to not track overflow and recursion depth correctly.
-    fn pop_stack(&mut self) -> StackEntry<I> {
-        let elem = self.stack.pop().unwrap();
-        if let Some(last) = self.stack.raw.last_mut() {
-            last.reached_depth = last.reached_depth.max(elem.reached_depth);
-            last.encountered_overflow |= elem.encountered_overflow;
+    fn update_parent_goal(&mut self, reached_depth: StackDepth, encountered_overflow: bool) {
+        if let Some(parent) = self.stack.raw.last_mut() {
+            parent.reached_depth = parent.reached_depth.max(reached_depth);
+            parent.encountered_overflow |= encountered_overflow;
         }
-        elem
     }
 
     pub(super) fn is_empty(&self) -> bool {
@@ -364,13 +357,15 @@ impl<I: Interner> SearchGraph<I> {
             }
 
             debug!("canonical cycle overflow");
-            let current_entry = self.pop_stack();
+            let current_entry = self.stack.pop().unwrap();
             debug_assert!(current_entry.has_been_used.is_empty());
             let result = Self::response_no_constraints(cx, input, Certainty::overflow(false));
             (current_entry, result)
         });
 
         let proof_tree = inspect.finalize_canonical_goal_evaluation(cx);
+
+        self.update_parent_goal(final_entry.reached_depth, final_entry.encountered_overflow);
 
         // We're now done with this goal. In case this goal is involved in a larger cycle
         // do not remove it from the provisional cache and update its provisional result.
@@ -441,14 +436,9 @@ impl<I: Interner> SearchGraph<I> {
             }
         }
 
-        // Update the reached depth of the current goal to make sure
-        // its state is the same regardless of whether we've used the
-        // global cache or not.
+        // Adjust the parent goal as if we actually computed this goal.
         let reached_depth = self.stack.next_index().plus(additional_depth);
-        if let Some(last) = self.stack.raw.last_mut() {
-            last.reached_depth = last.reached_depth.max(reached_depth);
-            last.encountered_overflow |= encountered_overflow;
-        }
+        self.update_parent_goal(reached_depth, encountered_overflow);
 
         Some(result)
     }
@@ -477,7 +467,7 @@ impl<I: Interner> SearchGraph<I> {
         F: FnMut(&mut Self, &mut ProofTreeBuilder<D>) -> QueryResult<I>,
     {
         let result = prove_goal(self, inspect);
-        let stack_entry = self.pop_stack();
+        let stack_entry = self.stack.pop().unwrap();
         debug_assert_eq!(stack_entry.input, input);
 
         // If the current goal is not the root of a cycle, we are done.
