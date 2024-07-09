@@ -22,6 +22,11 @@ enum PermissionPriv {
     /// - foreign-read then child-write is UB due to `conflicted`,
     /// - child-write then foreign-read is UB since child-write will activate and then
     ///   foreign-read disables a protected `Active`, which is UB.
+    ///
+    /// Note: since the discovery of `tests/fail/tree_borrows/reservedim_spurious_write.rs`,
+    /// `ty_is_freeze` does not strictly mean that the type has no interior mutability,
+    /// it could be an interior mutable type that lost its interior mutability privileges
+    /// when retagged with a protector.
     Reserved { ty_is_freeze: bool, conflicted: bool },
     /// represents: a unique pointer;
     /// allows: child reads, child writes;

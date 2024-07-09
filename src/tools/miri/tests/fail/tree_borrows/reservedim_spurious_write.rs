@@ -100,7 +100,7 @@ fn example(spurious: bool) {
         let y = inner(unsafe { &mut *(ptr.0 as *mut Cell<u8>).wrapping_add(1) }, b.clone());
         synchronized!(b, "ret x");
         synchronized!(b, "write y");
-        unsafe { *y.wrapping_sub(1) = 13 }
+        unsafe { *y.wrapping_sub(1) = 13 } //~ERROR: /write access through .* is forbidden/
         synchronized!(b, "end");
     });
 
