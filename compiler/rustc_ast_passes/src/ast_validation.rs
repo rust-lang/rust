@@ -61,12 +61,12 @@ enum DisallowTildeConstContext<'a> {
     Item,
 }
 
-enum TraitOrTraitImpl<'a> {
+enum TraitOrTraitImpl {
     Trait { span: Span, constness: Option<Span> },
-    TraitImpl { constness: Const, polarity: ImplPolarity, trait_ref: &'a TraitRef },
+    TraitImpl { constness: Const, polarity: ImplPolarity, trait_ref: Span },
 }
 
-impl<'a> TraitOrTraitImpl<'a> {
+impl TraitOrTraitImpl {
     fn constness(&self) -> Option<Span> {
         match self {
             Self::Trait { constness: Some(span), .. }
@@ -83,7 +83,7 @@ struct AstValidator<'a> {
     /// The span of the `extern` in an `extern { ... }` block, if any.
     extern_mod: Option<Span>,
 
-    outer_trait_or_trait_impl: Option<TraitOrTraitImpl<'a>>,
+    outer_trait_or_trait_impl: Option<TraitOrTraitImpl>,
 
     has_proc_macro_decls: bool,
 
@@ -115,7 +115,7 @@ impl<'a> AstValidator<'a> {
             trait_.map(|(constness, polarity, trait_ref)| TraitOrTraitImpl::TraitImpl {
                 constness,
                 polarity,
-                trait_ref,
+                trait_ref: trait_ref.path.span,
             }),
         );
         f(self);
@@ -354,7 +354,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_trait_fn_not_const(&self, constness: Const, parent: &TraitOrTraitImpl<'a>) {
+    fn check_trait_fn_not_const(&self, constness: Const, parent: &TraitOrTraitImpl) {
         let Const::Yes(span) = constness else {
             return;
         };
@@ -367,7 +367,7 @@ impl<'a> AstValidator<'a> {
                 ..
             } = parent
         {
-            Some(trait_ref.path.span.shrink_to_lo())
+            Some(trait_ref.shrink_to_lo())
         } else {
             None
         };
