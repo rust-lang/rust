@@ -371,9 +371,14 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     // Handle special calls like intrinsics and empty drop glue.
     let instance = if let ty::FnDef(def_id, fn_args) = *func.layout().ty.kind() {
-        let instance =
-            ty::Instance::expect_resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, fn_args)
-                .polymorphize(fx.tcx);
+        let instance = ty::Instance::expect_resolve(
+            fx.tcx,
+            ty::ParamEnv::reveal_all(),
+            def_id,
+            fn_args,
+            source_info.span,
+        )
+        .polymorphize(fx.tcx);
 
         if is_call_from_compiler_builtins_to_upstream_monomorphization(fx.tcx, instance) {
             if target.is_some() {
