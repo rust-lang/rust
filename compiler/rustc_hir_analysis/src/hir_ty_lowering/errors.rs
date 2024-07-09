@@ -1257,14 +1257,12 @@ pub fn prohibit_assoc_item_constraint(
             };
 
             // Now emit the suggestion
-            if let Ok(suggestion) = tcx.sess.source_map().span_to_snippet(removal_span) {
-                e.span_suggestion_verbose(
-                    removal_span,
-                    format!("consider removing this associated item {}", constraint.kind.descr()),
-                    suggestion,
-                    Applicability::MaybeIncorrect,
-                );
-            }
+            e.span_suggestion_verbose(
+                removal_span,
+                format!("consider removing this associated item {}", constraint.kind.descr()),
+                "",
+                Applicability::MaybeIncorrect,
+            );
         };
 
         // Suggest replacing the associated item binding with a generic argument.
