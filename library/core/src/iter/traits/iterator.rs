@@ -4071,59 +4071,57 @@ pub trait Iterator {
     /// If the iterator is sorted, or a hash map please use the appropriate method.
     ///
     /// Example:
-    /// ```rust
+    /// ```
     /// #![feature(contains)]
-    /// assert!([1, 2, 3].iter().contain(1));
-    /// assert!(![1, 2, 3].iter().contain(4));
-    /// assert!([Some(2), None].iter().contain(None));
-    /// assert!([Some(2), None].iter().contain(Some(2)));
+    /// assert!([1, 2, 3].iter().contain(&1));
+    /// assert!(![1, 2, 3].iter().contain(&4));
+    /// assert!([Some(2), None].iter().contain(&None));
+    /// assert!([Some(2), None].iter().contain(&Some(2)));
     /// ```
     ///
     /// Tests:
     /// Happy path 1 - the item is in the iterator
-    /// ```rust
-    /// let mut iter = [1, 2, 3].iter();
-    /// assert!(iter.contain(1));
+    /// ```
+    /// #![feature(contains)]
+    /// assert!([1, 2, 3].iter().contain(&1));
     /// ```
     /// Happy path 2 - the item is not in the iterator
-    /// ```rust
-    /// let mut iter = [1, 2, 3].iter();
-    /// assert!(!iter.contain(20));
+    /// ```
+    /// #![feature(contains)]
+    /// assert!(![1, 2, 3].iter().contain(&4));
     /// ```
     /// Edge case 1 - handling None values
-    /// ```rust
+    /// ```
+    /// #![feature(contains)]
     /// let mut iter = [Some(2), None].iter();
-    /// assert!(iter.contain(None));
-    /// assert!(iter.contain(Some(2)));
+    /// assert!([Some(2), None].iter().contain(&None));
+    /// assert!([Some(2), None].iter().contain(&Some(2)));
     /// ```
     /// Edge case 2 - handling empty iterator
-    /// ```rust
+    /// ```
+    /// #![feature(contains)]
     /// let mut iter: Vec<i32> = vec![];
-    /// assert!(!iter.iter().contain(1));
+    /// assert!(!vec![].iter().contain(&1));
     /// ```
     /// Edge case 3 - handling iterator with duplicates
-    /// ```rust
+    /// ```
+    /// #![feature(contains)]
     /// let mut iter = [1, 2, 2, 3].iter();
-    /// assert!(iter.contain(2));
+    /// assert!(iter.contain(&2));
     /// ```
-    /// Edge case 4 - handling iterator with different types
-    /// ```rust
-    /// let mut iter = [1, 2, "3"].iter();
-    /// assert!(iter.contain("3"));
+    /// Edge case 4 - handling iterator with custom struct
     /// ```
-    /// Edge case 5 - handling iterator with custom struct
-    /// ```rust
+    /// #![feature(contains)]
+    /// #[derive(PartialEq)]
     /// struct Item {
     ///     value: i32,
     /// }
-    /// let items = [Item { value: 1 }, Item { value: 2 }];
-    /// let mut iter = items.iter();
-    /// assert!(iter.contain(Item { value: 2 }));
+    /// assert!([Item { value: 1 }, Item { value: 2 }].iter().contain(&Item { value: 2 }));
     /// ```
-    /// Edge case 6 - handling iterator with large number of elements
-    /// ```rust
-    /// let mut iter = (1..=1000).iter();
-    /// assert!(iter.contain(500));
+    /// Edge case 5 - handling iterator with large number of elements
+    /// ```
+    /// #![feature(contains)]
+    /// assert!((1..1000).contain(&500));
     /// ```
     #[unstable(feature = "contains", reason = "new API", issue = "127494")]
     fn contain<Q>(&mut self, item: Q) -> bool
