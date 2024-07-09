@@ -22,7 +22,7 @@ warning: whitespace symbol '\u{c}' is not skipped
    |
 LL |       let s = b"a\
    |  ________________^
-LL | |     b";
+LL | |     ␌b";
    | |    ^- whitespace symbol '\u{c}' is not skipped
    | |____|
    |
