@@ -236,7 +236,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             Ty::new_misc_error(tcx).into()
                         } else if arg.walk().any(|arg| arg == dummy_self.into()) {
                             references_self = true;
-                            let guar = tcx.dcx().span_delayed_bug(
+                            let guar = self.dcx().span_delayed_bug(
                                 span,
                                 "trait object trait bounds reference `Self`",
                             );
@@ -262,8 +262,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 if references_self {
                     let def_id = i.bottom().0.def_id();
-                    let reported = struct_span_code_err!(
-                        tcx.dcx(),
+                    struct_span_code_err!(
+                        self.dcx(),
                         i.bottom().1,
                         E0038,
                         "the {} `{}` cannot be made into an object",
@@ -275,7 +275,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             .error_msg(),
                     )
                     .emit();
-                    self.set_tainted_by_errors(reported);
                 }
 
                 ty::ExistentialTraitRef { def_id: trait_ref.def_id, args }
