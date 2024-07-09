@@ -140,6 +140,11 @@ pub enum CoverageKind {
     /// This is eventually lowered to instruments updating mcdc temp variables.
     CondBitmapUpdate { index: u32, decision_depth: u16 },
 
+    /// Marks the point in MIR control flow where a condition bitmap is reset.
+    ///
+    /// This is eventually lowered to instruments set the mcdc temp variable to zero.
+    CondBitmapReset { decision_depth: u16 },
+
     /// Marks the point in MIR control flow represented by a evaluated decision.
     ///
     /// This is eventually lowered to `llvm.instrprof.mcdc.tvbitmap.update` in LLVM IR.
@@ -156,6 +161,9 @@ impl Debug for CoverageKind {
             ExpressionUsed { id } => write!(fmt, "ExpressionUsed({:?})", id.index()),
             CondBitmapUpdate { index, decision_depth } => {
                 write!(fmt, "CondBitmapUpdate(index={:?}, depth={:?})", index, decision_depth)
+            }
+            CondBitmapReset { decision_depth } => {
+                write!(fmt, "CondBitmapReset(depth={:?})", decision_depth)
             }
             TestVectorBitmapUpdate { bitmap_idx, decision_depth } => {
                 write!(fmt, "TestVectorUpdate({:?}, depth={:?})", bitmap_idx, decision_depth)
