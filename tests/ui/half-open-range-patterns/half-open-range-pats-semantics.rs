@@ -45,9 +45,8 @@ fn range_to_inclusive() {
     // FIXME(f16_f128): remove gate when ABI issues are resolved
     #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
     {
-        // FIXME(f16_f128): enable infinity tests when constants are available
-        // assert!(yes!(f16::NEG_INFINITY, ..=f16::NEG_INFINITY));
-        // assert!(yes!(f16::NEG_INFINITY, ..=1.0f16));
+        assert!(yes!(f16::NEG_INFINITY, ..=f16::NEG_INFINITY));
+        assert!(yes!(f16::NEG_INFINITY, ..=1.0f16));
         assert!(yes!(1.5f16, ..=1.5f16));
         assert!(!yes!(1.6f16, ..=-1.5f16));
     }
@@ -68,9 +67,8 @@ fn range_to_inclusive() {
     // FIXME(f16_f128): remove gate when ABI issues are resolved
     #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
     {
-        // FIXME(f16_f128): enable infinity tests when constants are available
-        // assert!(yes!(f128::NEG_INFINITY, ..=f128::NEG_INFINITY));
-        // assert!(yes!(f128::NEG_INFINITY, ..=1.0f128));
+        assert!(yes!(f128::NEG_INFINITY, ..=f128::NEG_INFINITY));
+        assert!(yes!(f128::NEG_INFINITY, ..=1.0f128));
         assert!(yes!(1.5f128, ..=1.5f128));
         assert!(!yes!(1.6f128, ..=-1.5f128));
     }
@@ -111,8 +109,7 @@ fn range_to() {
     // FIXME(f16_f128): remove gate when ABI issues are resolved
     #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
     {
-        // FIXME(f16_f128): enable infinity tests when constants are available
-        // assert!(yes!(f16::NEG_INFINITY, ..1.0f16));
+        assert!(yes!(f16::NEG_INFINITY, ..1.0f16));
         assert!(!yes!(1.5f16, ..1.5f16));
         const E16: f16 = 1.5f16 + f16::EPSILON;
         assert!(yes!(1.5f16, ..E16));
@@ -137,8 +134,7 @@ fn range_to() {
     // FIXME(f16_f128): remove gate when ABI issues are resolved
     #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
     {
-        // FIXME(f16_f128): enable infinity tests when constants are available
-        // assert!(yes!(f128::NEG_INFINITY, ..1.0f128));
+        assert!(yes!(f128::NEG_INFINITY, ..1.0f128));
         assert!(!yes!(1.5f128, ..1.5f128));
         const E128: f128 = 1.5f128 + f128::EPSILON;
         assert!(yes!(1.5f128, ..E128));
@@ -181,15 +177,14 @@ fn range_from() {
     // FIXME(f16_f128): remove gate when ABI issues are resolved
     #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
     {
-        // FIXME(f16_f128): enable infinity tests when constants are available
-        // assert!(yes!(f16::NEG_INFINITY, f16::NEG_INFINITY..));
-        // assert!(yes!(f16::INFINITY, f16::NEG_INFINITY..));
-        // assert!(!yes!(f16::NEG_INFINITY, 1.0f16..));
-        // assert!(yes!(f16::INFINITY, 1.0f16..));
+        assert!(yes!(f16::NEG_INFINITY, f16::NEG_INFINITY..));
+        assert!(yes!(f16::INFINITY, f16::NEG_INFINITY..));
+        assert!(!yes!(f16::NEG_INFINITY, 1.0f16..));
+        assert!(yes!(f16::INFINITY, 1.0f16..));
         assert!(!yes!(1.0f16 - f16::EPSILON, 1.0f16..));
         assert!(yes!(1.0f16, 1.0f16..));
-        // assert!(yes!(f16::INFINITY, 1.0f16..));
-        // assert!(yes!(f16::INFINITY, f16::INFINITY..));
+        assert!(yes!(f16::INFINITY, 1.0f16..));
+        assert!(yes!(f16::INFINITY, f16::INFINITY..));
     }
 
     // f32; `X..`
@@ -216,15 +211,14 @@ fn range_from() {
     // FIXME(f16_f128): remove gate when ABI issues are resolved
     #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
     {
-        // FIXME(f16_f128): enable infinity tests when constants are available
-        // assert!(yes!(f128::NEG_INFINITY, f128::NEG_INFINITY..));
-        // assert!(yes!(f128::INFINITY, f128::NEG_INFINITY..));
-        // assert!(!yes!(f128::NEG_INFINITY, 1.0f128..));
-        // assert!(yes!(f128::INFINITY, 1.0f128..));
+        assert!(yes!(f128::NEG_INFINITY, f128::NEG_INFINITY..));
+        assert!(yes!(f128::INFINITY, f128::NEG_INFINITY..));
+        assert!(!yes!(f128::NEG_INFINITY, 1.0f128..));
+        assert!(yes!(f128::INFINITY, 1.0f128..));
         assert!(!yes!(1.0f128 - f128::EPSILON, 1.0f128..));
         assert!(yes!(1.0f128, 1.0f128..));
-        // assert!(yes!(f128::INFINITY, 1.0f128..));
-        // assert!(yes!(f128::INFINITY, f128::INFINITY..));
+        assert!(yes!(f128::INFINITY, 1.0f128..));
+        assert!(yes!(f128::INFINITY, f128::INFINITY..));
     }
 }
 
