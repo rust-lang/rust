@@ -184,14 +184,10 @@ std::process::Termination::report(test::test_main(test_args, Vec::from(TESTS), N
             line: 0,
             edition,
             no_run: false,
+            is_multiple_tests: true,
         };
-        let ret = run_test(
-            runnable_test,
-            rustdoc_options,
-            self.supports_color,
-            true,
-            |_: UnusedExterns| {},
-        );
+        let ret =
+            run_test(runnable_test, rustdoc_options, self.supports_color, |_: UnusedExterns| {});
         if let Err(TestFailure::CompileError) = ret { Err(()) } else { Ok(ret.is_ok()) }
     }
 }
