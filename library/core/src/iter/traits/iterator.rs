@@ -1,8 +1,8 @@
 use crate::array;
+use crate::borrow::Borrow;
 use crate::cmp::{self, Ordering};
 use crate::num::NonZero;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
-use crate::borrow::Borrow;
 
 use super::super::try_process;
 use super::super::ByRefSized;
@@ -4062,7 +4062,6 @@ pub trait Iterator {
         unreachable!("Always specialized");
     }
 
-
     /// Checks if the Iterator contains the value.
     /// 'contains' is short-circuiting; in other words, it will stop processing
     /// as soon as the closure returns `true`.
@@ -4126,16 +4125,16 @@ pub trait Iterator {
     /// let mut iter = (1..=1000).iter();
     /// assert!(iter.contain(500));
     /// ```
-    #[unstable(feature="contains", reason = "new API", issue = "127494")]
+    #[unstable(feature = "contains", reason = "new API", issue = "127494")]
     fn contain<Q>(&mut self, item: Q) -> bool
     where
         Self::Item: PartialEq,
         Q: Borrow<Self::Item>,
-        Self: Sized
+        Self: Sized,
     {
         let borrowed_item: &Self::Item = item.borrow();
-        for element in self{
-            if element == *borrowed_item{
+        for element in self {
+            if element == *borrowed_item {
                 return true;
             }
         }
