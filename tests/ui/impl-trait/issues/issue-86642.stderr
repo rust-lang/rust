@@ -6,6 +6,37 @@ LL | static x: impl Fn(&str) -> Result<&str, ()> = move |source| {
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
-error: aborting due to 1 previous error
+error[E0391]: cycle detected when computing type of `x`
+  --> $DIR/issue-86642.rs:1:1
+   |
+LL | static x: impl Fn(&str) -> Result<&str, ()> = move |source| {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires type-checking `x`...
+  --> $DIR/issue-86642.rs:1:1
+   |
+LL | static x: impl Fn(&str) -> Result<&str, ()> = move |source| {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing the opaque types defined by `x`...
+  --> $DIR/issue-86642.rs:1:1
+   |
+LL | static x: impl Fn(&str) -> Result<&str, ()> = move |source| {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `x`, completing the cycle
+note: cycle used when checking that `x` is well-formed
+  --> $DIR/issue-86642.rs:1:1
+   |
+LL | static x: impl Fn(&str) -> Result<&str, ()> = move |source| {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-For more information about this error, try `rustc --explain E0562`.
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
+  --> $DIR/issue-86642.rs:1:11
+   |
+LL | static x: impl Fn(&str) -> Result<&str, ()> = move |source| {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not allowed in type signatures
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0121, E0391, E0562.
+For more information about an error, try `rustc --explain E0121`.

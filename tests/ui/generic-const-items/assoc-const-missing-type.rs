@@ -13,6 +13,7 @@ impl Trait for () {
     //~^ ERROR missing type for `const` item
     //~| ERROR mismatched types
     //~| ERROR mismatched types
+    //~| ERROR implemented const `K` has an incompatible type for trait
     const Q = "";
     //~^ ERROR missing type for `const` item
     //~| ERROR lifetime parameters or bounds on const `Q` do not match the trait declaration

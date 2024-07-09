@@ -583,7 +583,10 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:209:14
    |
 LL |     const D: _ = 42;
-   |              ^ not allowed in type signatures
+   |              ^
+   |              |
+   |              not allowed in type signatures
+   |              help: replace with the correct type: `i32`
 
 error[E0046]: not all trait items implemented, missing: `F`
   --> $DIR/typeck_type_placeholder_item.rs:200:1
