@@ -502,3 +502,73 @@ fn test_double_ended_range() {
         panic!("unreachable");
     }
 }
+
+macro_rules! nz {
+    (NonZero<$type:ident>($val:literal)) => {
+        ::core::num::NonZero::<$type>::new($val).unwrap()
+    };
+}
+
+macro_rules! nonzero_array {
+    (NonZero<$type:ident>[$($val:literal),*]) => {
+        [$(nz!(NonZero<$type>($val))),*]
+    }
+}
+
+macro_rules! nonzero_range {
+    (NonZero<$type:ident>($($left:literal)?..$($right:literal)?)) => {
+        nz!(NonZero<$type>($($left)?))..nz!(NonZero<$type>($($right)?))
+    };
+    (NonZero<$type:ident>($($left:literal)?..=$right:literal)) => {
+        nz!(NonZero<$type>($($left)?))..=nz!(NonZero<$type>($right))
+    };
+}
+
+#[test]
+fn test_nonzero_range() {
+    assert_eq!(
+        nonzero_range!(NonZero<usize>(1..=21)).step_by(5).collect::<Vec<_>>(),
+        nonzero_array!(NonZero<usize>[1, 6, 11, 16, 21])
+    );
+    assert_eq!(
+        nonzero_range!(NonZero<usize>(1..=20)).step_by(5).collect::<Vec<_>>(),
+        nonzero_array!(NonZero<usize>[1, 6, 11, 16])
+    );
+    assert_eq!(
+        nonzero_range!(NonZero<usize>(1..20)).step_by(5).collect::<Vec<_>>(),
+        nonzero_array!(NonZero<usize>[1, 6, 11, 16])
+    );
+    assert_eq!(
+        nonzero_range!(NonZero<usize>(1..21)).rev().step_by(5).collect::<Vec<_>>(),
+        nonzero_array!(NonZero<usize>[20, 15, 10, 5])
+    );
+    assert_eq!(
+        nonzero_range!(NonZero<usize>(1..21)).rev().step_by(6).collect::<Vec<_>>(),
+        nonzero_array!(NonZero<usize>[20, 14, 8, 2])
+    );
+    assert_eq!(
+        nonzero_range!(NonZero<u8>(200..255)).step_by(50).collect::<Vec<_>>(),
+        nonzero_array!(NonZero<u8>[200, 250])
+    );
+    assert_eq!(
+        nonzero_range!(NonZero<usize>(200..5)).step_by(1).collect::<Vec<_>>(),
+        nonzero_array!(NonZero<usize>[])
+    );
+    assert_eq!(
+        nonzero_range!(NonZero<usize>(200..200)).step_by(1).collect::<Vec<_>>(),
+        nonzero_array!(NonZero<usize>[])
+    );
+
+    assert_eq!(nonzero_range!(NonZero<u32>(10..20)).step_by(1).size_hint(), (10, Some(10)));
+    assert_eq!(nonzero_range!(NonZero<u32>(10..20)).step_by(5).size_hint(), (2, Some(2)));
+    assert_eq!(nonzero_range!(NonZero<u32>(1..21)).rev().step_by(5).size_hint(), (4, Some(4)));
+    assert_eq!(nonzero_range!(NonZero<u32>(1..21)).rev().step_by(6).size_hint(), (4, Some(4)));
+    assert_eq!(nonzero_range!(NonZero<u32>(20..1)).step_by(1).size_hint(), (0, Some(0)));
+    assert_eq!(nonzero_range!(NonZero<u32>(20..20)).step_by(1).size_hint(), (0, Some(0)));
+
+    // limits
+    assert_eq!(
+        nonzero_range!(NonZero<usize>(1..0xFFFFFFFFFFFFFFFF)).step_by(1).size_hint(),
+        (usize::MAX - 1, Some(usize::MAX - 1))
+    );
+}
