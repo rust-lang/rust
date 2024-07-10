@@ -1,9 +1,5 @@
 parse_add_paren = try adding parentheses
 
-parse_ambiguous_missing_keyword_for_item_definition = missing `fn` or `struct` for function or struct definition
-    .suggestion = if you meant to call a macro, try
-    .help = if you meant to call a macro, remove the `pub` and add a trailing `!` after the identifier
-
 parse_ambiguous_range_pattern = the range pattern here has ambiguous interpretation
     .suggestion = add parentheses to clarify the precedence
 
@@ -528,14 +524,23 @@ parse_missing_comma_after_match_arm = expected `,` following `match` arm
 parse_missing_const_type = missing type for `{$kind}` item
     .suggestion = provide a type for the item
 
+parse_missing_enum_for_enum_definition = missing `enum` for enum definition
+    .suggestion = add `enum` here to parse `{$ident}` as an enum
+
+parse_missing_enum_or_struct_for_item_definition = missing `enum` or `struct` for enum or struct definition
+
 parse_missing_expression_in_for_loop = missing expression to iterate on in `for` loop
     .suggestion = try adding an expression to the `for` loop
 
 parse_missing_fn_for_function_definition = missing `fn` for function definition
-    .suggestion = add `fn` here to parse `{$ident}` as a public function
+    .suggestion = add `fn` here to parse `{$ident}` as a function
 
 parse_missing_fn_for_method_definition = missing `fn` for method definition
-    .suggestion = add `fn` here to parse `{$ident}` as a public method
+    .suggestion = add `fn` here to parse `{$ident}` as a method
+
+parse_missing_fn_or_struct_for_item_definition = missing `fn` or `struct` for function or struct definition
+    .suggestion = if you meant to call a macro, try
+    .help = if you meant to call a macro, remove the `pub` and add a trailing `!` after the identifier
 
 parse_missing_fn_params = missing parameters for function definition
     .suggestion = add a parameter list
@@ -555,7 +560,7 @@ parse_missing_semicolon_before_array = expected `;`, found `[`
     .suggestion = consider adding `;` here
 
 parse_missing_struct_for_struct_definition = missing `struct` for struct definition
-    .suggestion = add `struct` here to parse `{$ident}` as a public struct
+    .suggestion = add `struct` here to parse `{$ident}` as a struct
 
 parse_missing_trait_in_trait_impl = missing trait in a trait impl
     .suggestion_add_trait = add a trait here

@@ -1,4 +1,2 @@
-pub S<'a> {
+Whoops {}
 //~^ ERROR missing `enum` or `struct` for enum or struct definition
-}
-fn main() {}
