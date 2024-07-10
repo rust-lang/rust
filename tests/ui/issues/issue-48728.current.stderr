@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Clone` for type `Node<[_]>`
-  --> $DIR/issue-48728.rs:4:10
+  --> $DIR/issue-48728.rs:9:10
    |
 LL | #[derive(Clone)]
    |          ^^^^^ conflicting implementation for `Node<[_]>`
