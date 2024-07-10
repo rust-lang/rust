@@ -3,7 +3,7 @@
 GIT_REPO="https://github.com/rust-lang/gcc"
 
 # This commit hash needs to be updated to use a more recent gcc fork version.
-GIT_COMMIT="78dc50f0e50e6cd1433149520bd512a4e0eaa1bc"
+GIT_COMMIT="341be3b7d7ac6976cfed8ed59da3573c040d0776"
 
 set -ex
 
