@@ -36,6 +36,8 @@ optimize_for_size = []
 # Make `RefCell` store additional debugging information, which is printed out when
 # a borrow error occurs
 debug_refcell = []
+# Adds a function to check if an element is contained in an iterator
+contains = []
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
