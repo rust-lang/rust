@@ -13,7 +13,7 @@ use crate::lists::{
 use crate::macros::{rewrite_macro, MacroPosition};
 use crate::overflow;
 use crate::pairs::{rewrite_pair, PairParts};
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
@@ -292,7 +292,8 @@ impl Rewrite for Pat {
                 self.span,
                 context,
                 shape,
-            ),
+            )
+            .ok(),
             PatKind::MacCall(ref mac) => {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Pat)
             }
@@ -313,20 +314,21 @@ fn rewrite_struct_pat(
     span: Span,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     // 2 =  ` {`
-    let path_shape = shape.sub_width(2)?;
-    let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape).ok()?;
+    let path_shape = shape.sub_width(2).max_width_error(shape.width, span)?;
+    let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape)?;
 
     if fields.is_empty() && !ellipsis {
-        return Some(format!("{path_str} {{}}"));
+        return Ok(format!("{path_str} {{}}"));
     }
 
     let (ellipsis_str, terminator) = if ellipsis { (", ..", "..") } else { ("", "}") };
 
     // 3 = ` { `, 2 = ` }`.
     let (h_shape, v_shape) =
-        struct_lit_shape(shape, context, path_str.len() + 3, ellipsis_str.len() + 2)?;
+        struct_lit_shape(shape, context, path_str.len() + 3, ellipsis_str.len() + 2)
+            .max_width_error(shape.width, span)?;
 
     let items = itemize_list(
         context.snippet_provider,
@@ -352,7 +354,7 @@ fn rewrite_struct_pat(
     let nested_shape = shape_for_tactic(tactic, h_shape, v_shape);
     let fmt = struct_lit_formatting(nested_shape, tactic, context, false);
 
-    let mut fields_str = write_list(&item_vec, &fmt)?;
+    let mut fields_str = write_list(&item_vec, &fmt).unknown_error()?;
     let one_line_width = h_shape.map_or(0, |shape| shape.width);
 
     let has_trailing_comma = fmt.needs_trailing_separator();
@@ -380,7 +382,7 @@ fn rewrite_struct_pat(
 
     // ast::Pat doesn't have attrs so use &[]
     let fields_str = wrap_struct_field(context, &[], &fields_str, shape, v_shape, one_line_width)?;
-    Some(format!("{path_str} {{{fields_str}}}"))
+    Ok(format!("{path_str} {{{fields_str}}}"))
 }
 
 impl Rewrite for PatField {

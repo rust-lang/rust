@@ -13,7 +13,7 @@ use crate::items::{rewrite_struct_field, rewrite_struct_field_prefix};
 use crate::lists::{
     definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
 };
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteResult};
 use crate::shape::{Indent, Shape};
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
@@ -30,7 +30,7 @@ pub(crate) trait AlignedItem {
         context: &RewriteContext<'_>,
         shape: Shape,
         prefix_max_width: usize,
-    ) -> Option<String>;
+    ) -> RewriteResult;
 }
 
 impl AlignedItem for ast::FieldDef {
@@ -66,8 +66,8 @@ impl AlignedItem for ast::FieldDef {
         context: &RewriteContext<'_>,
         shape: Shape,
         prefix_max_width: usize,
-    ) -> Option<String> {
-        rewrite_struct_field(context, self, shape, prefix_max_width).ok()
+    ) -> RewriteResult {
+        rewrite_struct_field(context, self, shape, prefix_max_width)
     }
 }
 
@@ -103,7 +103,7 @@ impl AlignedItem for ast::ExprField {
         context: &RewriteContext<'_>,
         shape: Shape,
         prefix_max_width: usize,
-    ) -> Option<String> {
+    ) -> RewriteResult {
         rewrite_field(context, self, shape, prefix_max_width)
     }
 }
@@ -228,7 +228,11 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         ",",
         |field| field.get_span().lo(),
         |field| field.get_span().hi(),
-        |field| field.rewrite_aligned_item(context, item_shape, field_prefix_max_width),
+        |field| {
+            field
+                .rewrite_aligned_item(context, item_shape, field_prefix_max_width)
+                .ok()
+        },
         span.lo(),
         span.hi(),
         false,
@@ -244,8 +248,9 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
 
     if tactic == DefinitiveListTactic::Horizontal {
         // since the items fits on a line, there is no need to align them
-        let do_rewrite =
-            |field: &T| -> Option<String> { field.rewrite_aligned_item(context, item_shape, 0) };
+        let do_rewrite = |field: &T| -> Option<String> {
+            field.rewrite_aligned_item(context, item_shape, 0).ok()
+        };
         fields
             .iter()
             .zip(items.iter_mut())

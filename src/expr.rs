@@ -128,6 +128,7 @@ pub(crate) fn format_expr(
                 expr.span,
                 shape,
             )
+            .ok()
         }
         ast::ExprKind::Tup(ref items) => {
             rewrite_tuple(context, items.iter(), expr.span, shape, items.len() == 1)
@@ -1603,7 +1604,7 @@ fn rewrite_struct_lit<'a>(
     attrs: &[ast::Attribute],
     span: Span,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     debug!("rewrite_struct_lit: shape {:?}", shape);
 
     enum StructLitField<'a> {
@@ -1613,20 +1614,21 @@ fn rewrite_struct_lit<'a>(
     }
 
     // 2 = " {".len()
-    let path_shape = shape.sub_width(2)?;
-    let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape).ok()?;
+    let path_shape = shape.sub_width(2).max_width_error(shape.width, span)?;
+    let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape)?;
 
     let has_base_or_rest = match struct_rest {
-        ast::StructRest::None if fields.is_empty() => return Some(format!("{path_str} {{}}")),
+        ast::StructRest::None if fields.is_empty() => return Ok(format!("{path_str} {{}}")),
         ast::StructRest::Rest(_) if fields.is_empty() => {
-            return Some(format!("{path_str} {{ .. }}"));
+            return Ok(format!("{path_str} {{ .. }}"));
         }
         ast::StructRest::Rest(_) | ast::StructRest::Base(_) => true,
         _ => false,
     };
 
     // Foo { a: Foo } - indent is +3, width is -5.
-    let (h_shape, v_shape) = struct_lit_shape(shape, context, path_str.len() + 3, 2)?;
+    let (h_shape, v_shape) = struct_lit_shape(shape, context, path_str.len() + 3, 2)
+        .max_width_error(shape.width, span)?;
 
     let one_line_width = h_shape.map_or(0, |shape| shape.width);
     let body_lo = context.snippet_provider.span_after(span, "{");
@@ -1639,7 +1641,8 @@ fn rewrite_struct_lit<'a>(
             v_shape,
             mk_sp(body_lo, span.hi()),
             one_line_width,
-        )?
+        )
+        .unknown_error()?
     } else {
         let field_iter = fields.iter().map(StructLitField::Regular).chain(
             match struct_rest {
@@ -1668,12 +1671,13 @@ fn rewrite_struct_lit<'a>(
         let rewrite = |item: &StructLitField<'_>| match *item {
             StructLitField::Regular(field) => {
                 // The 1 taken from the v_budget is for the comma.
-                rewrite_field(context, field, v_shape.sub_width(1)?, 0)
+                let v_shape = v_shape.sub_width(1)?;
+                rewrite_field(context, field, v_shape, 0).ok()
             }
             StructLitField::Base(expr) => {
                 // 2 = ..
-                expr.rewrite(context, v_shape.offset_left(2)?)
-                    .map(|s| format!("..{}", s))
+                let v_shape = v_shape.sub_width(2)?;
+                expr.rewrite(context, v_shape).map(|s| format!("..{}", s))
             }
             StructLitField::Rest(_) => Some("..".to_owned()),
         };
@@ -1705,12 +1709,12 @@ fn rewrite_struct_lit<'a>(
             force_no_trailing_comma || has_base_or_rest || !context.use_block_indent(),
         );
 
-        write_list(&item_vec, &fmt)?
+        write_list(&item_vec, &fmt).unknown_error()?
     };
 
     let fields_str =
         wrap_struct_field(context, attrs, &fields_str, shape, v_shape, one_line_width)?;
-    Some(format!("{path_str} {{{fields_str}}}"))
+    Ok(format!("{path_str} {{{fields_str}}}"))
 
     // FIXME if context.config.indent_style() == Visual, but we run out
     // of space, we should fall back to BlockIndent.
@@ -1723,7 +1727,7 @@ pub(crate) fn wrap_struct_field(
     shape: Shape,
     nested_shape: Shape,
     one_line_width: usize,
-) -> Option<String> {
+) -> RewriteResult {
     let should_vertical = context.config.indent_style() == IndentStyle::Block
         && (fields_str.contains('\n')
             || !context.config.struct_lit_single_line()
@@ -1732,7 +1736,7 @@ pub(crate) fn wrap_struct_field(
     let inner_attrs = &inner_attributes(attrs);
     if inner_attrs.is_empty() {
         if should_vertical {
-            Some(format!(
+            Ok(format!(
                 "{}{}{}",
                 nested_shape.indent.to_string_with_newline(context.config),
                 fields_str,
@@ -1740,13 +1744,13 @@ pub(crate) fn wrap_struct_field(
             ))
         } else {
             // One liner or visual indent.
-            Some(format!(" {fields_str} "))
+            Ok(format!(" {fields_str} "))
         }
     } else {
-        Some(format!(
+        Ok(format!(
             "{}{}{}{}{}",
             nested_shape.indent.to_string_with_newline(context.config),
-            inner_attrs.rewrite(context, shape)?,
+            inner_attrs.rewrite_result(context, shape)?,
             nested_shape.indent.to_string_with_newline(context.config),
             fields_str,
             shape.indent.to_string_with_newline(context.config)
@@ -1763,38 +1767,40 @@ pub(crate) fn rewrite_field(
     field: &ast::ExprField,
     shape: Shape,
     prefix_max_width: usize,
-) -> Option<String> {
+) -> RewriteResult {
     if contains_skip(&field.attrs) {
-        return Some(context.snippet(field.span()).to_owned());
+        return Ok(context.snippet(field.span()).to_owned());
     }
-    let mut attrs_str = field.attrs.rewrite(context, shape)?;
+    let mut attrs_str = field.attrs.rewrite_result(context, shape)?;
     if !attrs_str.is_empty() {
         attrs_str.push_str(&shape.indent.to_string_with_newline(context.config));
     };
     let name = context.snippet(field.ident.span);
     if field.is_shorthand {
-        Some(attrs_str + name)
+        Ok(attrs_str + name)
     } else {
         let mut separator = String::from(struct_lit_field_separator(context.config));
         for _ in 0..prefix_max_width.saturating_sub(name.len()) {
             separator.push(' ');
         }
         let overhead = name.len() + separator.len();
-        let expr_shape = shape.offset_left(overhead)?;
-        let expr = field.expr.rewrite(context, expr_shape);
+        let expr_shape = shape
+            .offset_left(overhead)
+            .max_width_error(shape.width, field.span)?;
+        let expr = field.expr.rewrite_result(context, expr_shape);
         let is_lit = matches!(field.expr.kind, ast::ExprKind::Lit(_));
         match expr {
-            Some(ref e)
+            Ok(ref e)
                 if !is_lit && e.as_str() == name && context.config.use_field_init_shorthand() =>
             {
-                Some(attrs_str + name)
+                Ok(attrs_str + name)
             }
-            Some(e) => Some(format!("{attrs_str}{name}{separator}{e}")),
-            None => {
+            Ok(e) => Ok(format!("{attrs_str}{name}{separator}{e}")),
+            Err(_) => {
                 let expr_offset = shape.indent.block_indent(context.config);
                 let expr = field
                     .expr
-                    .rewrite(context, Shape::indented(expr_offset, context.config));
+                    .rewrite_result(context, Shape::indented(expr_offset, context.config));
                 expr.map(|s| {
                     format!(
                         "{}{}:\n{}{}",
