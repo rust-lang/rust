@@ -188,17 +188,17 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
 
-      - name: create github artifacts
-        run: src/ci/scripts/create-doc-artifacts.sh
+      # - name: create github artifacts
+      #   run: src/ci/scripts/create-doc-artifacts.sh
 
-      - name: upload artifacts to github
-        uses: actions/upload-artifact@v4
-        with:
-          # name is set in previous step
-          name: ${{ env.DOC_ARTIFACT_NAME }}
-          path: obj/artifacts/doc
-          if-no-files-found: ignore
-          retention-days: 5
+      # - name: upload artifacts to github
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     # name is set in previous step
+      #     name: ${{ env.DOC_ARTIFACT_NAME }}
+      #     path: obj/artifacts/doc
+      #     if-no-files-found: ignore
+      #     retention-days: 5
 
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh

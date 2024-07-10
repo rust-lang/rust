@@ -68,7 +68,7 @@ envs:
     # - not running `opt-dist`'s post-optimization smoke tests on the resulting toolchain
     #
     # If you *want* these to happen however, temporarily uncomment it before triggering a try build.
-    DIST_TRY_BUILD: 1
+    # DIST_TRY_BUILD: 1
 
   auto:
     <<: *production
@@ -80,26 +80,39 @@ envs:
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
 pr:
-  - image: mingw-check
-    <<: *job-linux-4c
-  - image: mingw-check-tidy
-    continue_on_error: true
-    <<: *job-linux-4c
-  - image: x86_64-gnu-llvm-17
+  - image: x86_64-msvc-ext1
     env:
-      ENABLE_GCC_CODEGEN: "1"
-    <<: *job-linux-16c
-  - image: x86_64-gnu-tools
-    <<: *job-linux-16c
+      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+      HOST_TARGET: x86_64-pc-windows-msvc
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+      DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
+    <<: *job-windows-8c
+  - image: x86_64-msvc-ext2
+    env:
+      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+      HOST_TARGET: x86_64-pc-windows-msvc
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+      DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
+    <<: *job-windows-8c
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
 # it in each job definition.
 try:
-  - image: dist-x86_64-linux
+  - image: x86_64-msvc-ext1
     env:
-      CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-16c
+      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+      HOST_TARGET: x86_64-pc-windows-msvc
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+      DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
+    <<: *job-windows-8c
+  - image: x86_64-msvc-ext2
+    env:
+      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+      HOST_TARGET: x86_64-pc-windows-msvc
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+      DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
+    <<: *job-windows-8c
 
 # Main CI jobs that have to be green to merge a commit into master
 # These jobs automatically inherit envs.auto, to avoid repeating
