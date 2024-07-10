@@ -117,8 +117,9 @@ use rustc_data_structures::{base_n, flock};
 use rustc_fs_util::{LinkOrCopy, link_or_copy, try_canonicalize};
 use rustc_middle::bug;
 use rustc_session::config::CrateType;
-use rustc_session::output::{collect_crate_types, find_crate_name};
+use rustc_session::output::collect_crate_types;
 use rustc_session::{Session, StableCrateId};
+use rustc_span::Symbol;
 use tracing::debug;
 
 use crate::errors;
@@ -211,7 +212,7 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// The garbage collection will take care of it.
 ///
 /// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
-pub(crate) fn prepare_session_directory(sess: &Session) {
+pub(crate) fn prepare_session_directory(sess: &Session, crate_name: Symbol) {
     if sess.opts.incremental.is_none() {
         return;
     }
@@ -221,7 +222,7 @@ pub(crate) fn prepare_session_directory(sess: &Session) {
     debug!("prepare_session_directory");
 
     // {incr-comp-dir}/{crate-name-and-disambiguator}
-    let crate_dir = crate_path(sess);
+    let crate_dir = crate_path(sess, crate_name);
     debug!("crate-dir: {}", crate_dir.display());
     create_dir(sess, &crate_dir, "crate");
 
@@ -594,10 +595,9 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, &'static str> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(sess: &Session) -> PathBuf {
+fn crate_path(sess: &Session, crate_name: Symbol) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
-    let crate_name = find_crate_name(sess, &[]);
     let crate_types = collect_crate_types(sess, &[]);
     let stable_crate_id = StableCrateId::new(
         crate_name,
