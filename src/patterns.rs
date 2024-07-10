@@ -254,10 +254,11 @@ impl Rewrite for Pat {
             }
             PatKind::Tuple(ref items) => rewrite_tuple_pat(items, None, self.span, context, shape),
             PatKind::Path(ref q_self, ref path) => {
-                rewrite_path(context, PathContext::Expr, q_self, path, shape)
+                rewrite_path(context, PathContext::Expr, q_self, path, shape).ok()
             }
             PatKind::TupleStruct(ref q_self, ref path, ref pat_vec) => {
-                let path_str = rewrite_path(context, PathContext::Expr, q_self, path, shape)?;
+                let path_str =
+                    rewrite_path(context, PathContext::Expr, q_self, path, shape).ok()?;
                 rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape)
             }
             PatKind::Lit(ref expr) => expr.rewrite(context, shape),
@@ -315,7 +316,7 @@ fn rewrite_struct_pat(
 ) -> Option<String> {
     // 2 =  ` {`
     let path_shape = shape.sub_width(2)?;
-    let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape)?;
+    let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape).ok()?;
 
     if fields.is_empty() && !ellipsis {
         return Some(format!("{path_str} {{}}"));

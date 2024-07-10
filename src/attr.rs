@@ -276,10 +276,11 @@ impl Rewrite for ast::MetaItem {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         Some(match self.kind {
             ast::MetaItemKind::Word => {
-                rewrite_path(context, PathContext::Type, &None, &self.path, shape)?
+                rewrite_path(context, PathContext::Type, &None, &self.path, shape).ok()?
             }
             ast::MetaItemKind::List(ref list) => {
-                let path = rewrite_path(context, PathContext::Type, &None, &self.path, shape)?;
+                let path =
+                    rewrite_path(context, PathContext::Type, &None, &self.path, shape).ok()?;
                 let has_trailing_comma = crate::expr::span_ends_with_comma(context, self.span);
                 overflow::rewrite_with_parens(
                     context,
@@ -297,7 +298,8 @@ impl Rewrite for ast::MetaItem {
                 )?
             }
             ast::MetaItemKind::NameValue(ref lit) => {
-                let path = rewrite_path(context, PathContext::Type, &None, &self.path, shape)?;
+                let path =
+                    rewrite_path(context, PathContext::Type, &None, &self.path, shape).ok()?;
                 // 3 = ` = `
                 let lit_shape = shape.shrink_left(path.len() + 3)?;
                 // `rewrite_literal` returns `None` when `lit` exceeds max

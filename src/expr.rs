@@ -185,7 +185,7 @@ pub(crate) fn format_expr(
             rewrite_match(context, cond, arms, shape, expr.span, &expr.attrs, kind)
         }
         ast::ExprKind::Path(ref qself, ref path) => {
-            rewrite_path(context, PathContext::Expr, qself, path, shape)
+            rewrite_path(context, PathContext::Expr, qself, path, shape).ok()
         }
         ast::ExprKind::Assign(ref lhs, ref rhs, _) => {
             rewrite_assignment(context, lhs, rhs, None, shape)
@@ -1614,7 +1614,7 @@ fn rewrite_struct_lit<'a>(
 
     // 2 = " {".len()
     let path_shape = shape.sub_width(2)?;
-    let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape)?;
+    let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape).ok()?;
 
     let has_base_or_rest = match struct_rest {
         ast::StructRest::None if fields.is_empty() => return Some(format!("{path_str} {{}}")),

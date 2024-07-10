@@ -40,7 +40,7 @@ pub(crate) fn rewrite_path(
     qself: &Option<ptr::P<ast::QSelf>>,
     path: &ast::Path,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     let skip_count = qself.as_ref().map_or(0, |x| x.position);
 
     // 32 covers almost all path lengths measured when compiling core, and there isn't a big
@@ -56,7 +56,7 @@ pub(crate) fn rewrite_path(
     if let Some(qself) = qself {
         result.push('<');
 
-        let fmt_ty = qself.ty.rewrite(context, shape)?;
+        let fmt_ty = qself.ty.rewrite_result(context, shape)?;
         result.push_str(&fmt_ty);
 
         if skip_count > 0 {
@@ -66,7 +66,7 @@ pub(crate) fn rewrite_path(
             }
 
             // 3 = ">::".len()
-            let shape = shape.sub_width(3)?;
+            let shape = shape.sub_width(3).max_width_error(shape.width, path.span)?;
 
             result = rewrite_path_segments(
                 PathContext::Type,
@@ -102,7 +102,7 @@ fn rewrite_path_segments<'a, I>(
     span_hi: BytePos,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String>
+) -> RewriteResult
 where
     I: Iterator<Item = &'a ast::PathSegment>,
 {
@@ -121,7 +121,9 @@ where
         }
 
         let extra_offset = extra_offset(&buffer, shape);
-        let new_shape = shape.shrink_left(extra_offset)?;
+        let new_shape = shape
+            .shrink_left(extra_offset)
+            .max_width_error(shape.width, mk_sp(span_lo, span_hi))?;
         let segment_string = rewrite_segment(
             path_context,
             segment,
@@ -134,7 +136,7 @@ where
         buffer.push_str(&segment_string);
     }
 
-    Some(buffer)
+    Ok(buffer)
 }
 
 #[derive(Debug)]
@@ -183,8 +185,12 @@ impl<'a> Rewrite for SegmentParam<'a> {
 
 impl Rewrite for ast::PreciseCapturingArg {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match self {
-            ast::PreciseCapturingArg::Lifetime(lt) => lt.rewrite(context, shape),
+            ast::PreciseCapturingArg::Lifetime(lt) => lt.rewrite_result(context, shape),
             ast::PreciseCapturingArg::Arg(p, _) => {
                 rewrite_path(context, PathContext::Type, &None, p, shape)
             }
@@ -194,13 +200,20 @@ impl Rewrite for ast::PreciseCapturingArg {
 
 impl Rewrite for ast::AssocItemConstraint {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         use ast::AssocItemConstraintKind::{Bound, Equality};
 
         let mut result = String::with_capacity(128);
         result.push_str(rewrite_ident(context, self.ident));
 
         if let Some(ref gen_args) = self.gen_args {
-            let budget = shape.width.checked_sub(result.len())?;
+            let budget = shape
+                .width
+                .checked_sub(result.len())
+                .max_width_error(shape.width, self.span)?;
             let shape = Shape::legacy(budget, shape.indent + result.len());
             let gen_str = rewrite_generic_args(gen_args, context, shape, gen_args.span())?;
             result.push_str(&gen_str);
@@ -213,12 +226,15 @@ impl Rewrite for ast::AssocItemConstraint {
         };
         result.push_str(infix);
 
-        let budget = shape.width.checked_sub(result.len())?;
+        let budget = shape
+            .width
+            .checked_sub(result.len())
+            .max_width_error(shape.width, self.span)?;
         let shape = Shape::legacy(budget, shape.indent + result.len());
-        let rewrite = self.kind.rewrite(context, shape)?;
+        let rewrite = self.kind.rewrite_result(context, shape)?;
         result.push_str(&rewrite);
 
-        Some(result)
+        Ok(result)
     }
 }
 
@@ -255,16 +271,17 @@ fn rewrite_segment(
     span_hi: BytePos,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     let mut result = String::with_capacity(128);
     result.push_str(rewrite_ident(context, segment.ident));
 
     let ident_len = result.len();
     let shape = if context.use_block_indent() {
-        shape.offset_left(ident_len)?
+        shape.offset_left(ident_len)
     } else {
-        shape.shrink_left(ident_len)?
-    };
+        shape.shrink_left(ident_len)
+    }
+    .max_width_error(shape.width, mk_sp(*span_lo, span_hi))?;
 
     if let Some(ref args) = segment.args {
         let generics_str = rewrite_generic_args(args, context, shape, mk_sp(*span_lo, span_hi))?;
@@ -295,7 +312,7 @@ fn rewrite_segment(
         result.push_str(&generics_str)
     }
 
-    Some(result)
+    Ok(result)
 }
 
 fn format_function_type<'a, I>(
@@ -498,7 +515,7 @@ fn rewrite_generic_args(
     context: &RewriteContext<'_>,
     shape: Shape,
     span: Span,
-) -> Option<String> {
+) -> RewriteResult {
     match gen_args {
         ast::GenericArgs::AngleBracketed(ref data) if !data.args.is_empty() => {
             let args = data
@@ -515,6 +532,7 @@ fn rewrite_generic_args(
                 .collect::<Vec<_>>();
 
             overflow::rewrite_with_angle_brackets(context, "", args.iter(), shape, span)
+                .unknown_error()
         }
         ast::GenericArgs::Parenthesized(ref data) => format_function_type(
             data.inputs.iter().map(|x| &**x),
@@ -523,9 +541,8 @@ fn rewrite_generic_args(
             data.span,
             context,
             shape,
-        )
-        .ok(),
-        _ => Some("".to_owned()),
+        ),
+        _ => Ok("".to_owned()),
     }
 }
 
@@ -717,23 +734,32 @@ impl Rewrite for ast::GenericParam {
 
 impl Rewrite for ast::PolyTraitRef {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         if let Some(lifetime_str) = rewrite_bound_params(context, shape, &self.bound_generic_params)
         {
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
-            let path_str = self
-                .trait_ref
-                .rewrite(context, shape.offset_left(extra_offset)?)?;
+            let shape = shape
+                .offset_left(extra_offset)
+                .max_width_error(shape.width, self.span)?;
+            let path_str = self.trait_ref.rewrite_result(context, shape)?;
 
-            Some(format!("for<{lifetime_str}> {path_str}"))
+            Ok(format!("for<{lifetime_str}> {path_str}"))
         } else {
-            self.trait_ref.rewrite(context, shape)
+            self.trait_ref.rewrite_result(context, shape)
         }
     }
 }
 
 impl Rewrite for ast::TraitRef {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         rewrite_path(context, PathContext::Type, &None, &self.path, shape)
     }
 }
@@ -912,7 +938,7 @@ impl Rewrite for ast::Ty {
             ast::TyKind::AnonStruct(..) => Ok(context.snippet(self.span).to_owned()),
             ast::TyKind::AnonUnion(..) => Ok(context.snippet(self.span).to_owned()),
             ast::TyKind::Path(ref q_self, ref path) => {
-                rewrite_path(context, PathContext::Type, q_self, path, shape).unknown_error()
+                rewrite_path(context, PathContext::Type, q_self, path, shape)
             }
             ast::TyKind::Array(ref ty, ref repeats) => rewrite_pair(
                 &**ty,
