@@ -1,3 +1,11 @@
+error: `for<...>` binder not allowed with `?` trait polarity modifier
+  --> $DIR/bounds-type.rs:8:16
+   |
+LL |     T: for<'a> ?Trait,
+   |           ---- ^
+   |           |
+   |           there is not a well-defined meaning for a higher-ranked `?` trait
+
 error: `?` may only modify trait bounds, not lifetime bounds
   --> $DIR/bounds-type.rs:10:8
    |
@@ -16,5 +24,5 @@ error: `const` may only modify trait bounds, not lifetime bounds
 LL |     T: const 'a,
    |        ^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

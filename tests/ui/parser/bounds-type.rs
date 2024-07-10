@@ -5,7 +5,7 @@ struct S<
     T: Tr + 'a, // OK
     T: 'a, // OK
     T:, // OK
-    T: for<'a> ?Trait, // OK
+    T: for<'a> ?Trait, //~ ERROR `for<...>` binder not allowed with `?` trait polarity modifier
     T: Tr +, // OK
     T: ?'a, //~ ERROR `?` may only modify trait bounds, not lifetime bounds
 

@@ -53,6 +53,9 @@ parse_bare_cr = {$double_quotes ->
 
 parse_bare_cr_in_raw_string = bare CR not allowed in raw string
 
+parse_binder_and_polarity = `for<...>` binder not allowed with `{$polarity}` trait polarity modifier
+    .label = there is not a well-defined meaning for a higher-ranked `{$polarity}` trait
+
 parse_binder_before_modifiers = `for<...>` binder should be placed before trait bound modifiers
     .label = place the `for<...>` binder before any modifiers
 

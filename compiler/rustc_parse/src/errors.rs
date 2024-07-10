@@ -3050,3 +3050,13 @@ pub struct BinderBeforeModifiers {
     #[label]
     pub modifiers_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_binder_and_polarity)]
+pub struct BinderAndPolarity {
+    #[primary_span]
+    pub polarity_span: Span,
+    #[label]
+    pub binder_span: Span,
+    pub polarity: &'static str,
+}

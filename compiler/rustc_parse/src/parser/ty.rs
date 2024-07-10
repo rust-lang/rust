@@ -994,6 +994,19 @@ impl<'a> Parser<'a> {
         let modifiers = self.parse_trait_bound_modifiers()?;
         let modifiers_span = modifiers_lo.to(self.prev_token.span);
 
+        if let Some(binder_span) = binder_span {
+            match modifiers.polarity {
+                BoundPolarity::Negative(polarity_span) | BoundPolarity::Maybe(polarity_span) => {
+                    self.dcx().emit_err(errors::BinderAndPolarity {
+                        binder_span,
+                        polarity_span,
+                        polarity: modifiers.polarity.as_str(),
+                    });
+                }
+                BoundPolarity::Positive => {}
+            }
+        }
+
         // Recover erroneous lifetime bound with modifiers or binder.
         // e.g. `T: for<'a> 'a` or `T: ~const 'a`.
         if self.token.is_lifetime() {
