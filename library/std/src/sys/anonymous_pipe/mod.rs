@@ -51,57 +51,85 @@ impl PipeWriter {
     }
 }
 
-macro_rules! forward_io_read_traits {
-    ($name:ty) => {
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl io::Read for $name {
-            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-                self.0.read(buf)
-            }
-            fn read_vectored(&mut self, bufs: &mut [io::IoSliceMut<'_>]) -> io::Result<usize> {
-                self.0.read_vectored(bufs)
-            }
-            #[inline]
-            fn is_read_vectored(&self) -> bool {
-                self.0.is_read_vectored()
-            }
-            fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-                self.0.read_to_end(buf)
-            }
-            fn read_buf(&mut self, buf: io::BorrowedCursor<'_>) -> io::Result<()> {
-                self.0.read_buf(buf)
-            }
-        }
-    };
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl io::Read for &PipeReader {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.read(buf)
+    }
+    fn read_vectored(&mut self, bufs: &mut [io::IoSliceMut<'_>]) -> io::Result<usize> {
+        self.0.read_vectored(bufs)
+    }
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.0.read_to_end(buf)
+    }
+    fn read_buf(&mut self, buf: io::BorrowedCursor<'_>) -> io::Result<()> {
+        self.0.read_buf(buf)
+    }
 }
-forward_io_read_traits!(PipeReader);
-forward_io_read_traits!(&PipeReader);
 
-macro_rules! forward_io_write_traits {
-    ($name:ty) => {
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl io::Write for $name {
-            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-                self.0.write(buf)
-            }
-            #[inline]
-            fn flush(&mut self) -> io::Result<()> {
-                Ok(())
-            }
-
-            fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
-                self.0.write_vectored(bufs)
-            }
-
-            #[inline]
-            fn is_write_vectored(&self) -> bool {
-                self.0.is_write_vectored()
-            }
-        }
-    };
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl io::Read for PipeReader {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.read(buf)
+    }
+    fn read_vectored(&mut self, bufs: &mut [io::IoSliceMut<'_>]) -> io::Result<usize> {
+        self.0.read_vectored(bufs)
+    }
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.0.read_to_end(buf)
+    }
+    fn read_buf(&mut self, buf: io::BorrowedCursor<'_>) -> io::Result<()> {
+        self.0.read_buf(buf)
+    }
 }
-forward_io_write_traits!(PipeWriter);
-forward_io_write_traits!(&PipeWriter);
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl io::Write for &PipeWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
+    }
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
+    }
+}
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl io::Write for PipeWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
+    }
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
+    }
+}
 
 #[cfg(unix)]
 mod unix;

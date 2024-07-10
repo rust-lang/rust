@@ -17,50 +17,83 @@ pub(super) fn pipe() -> io::Result<(PipeReader, PipeWriter)> {
     anon_pipe(true, false).map(|Pipes { ours, theirs }| (PipeReader(ours), PipeWriter(theirs)))
 }
 
-macro_rules! impl_traits {
-    ($name:ty) => {
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl AsHandle for $name {
-            fn as_handle(&self) -> BorrowedHandle<'_> {
-                self.0.handle().as_handle()
-            }
-        }
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl AsRawHandle for $name {
-            fn as_raw_handle(&self) -> RawHandle {
-                self.0.handle().as_raw_handle()
-            }
-        }
-
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl FromRawHandle for $name {
-            unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
-                Self(AnonPipe::from_inner(Handle::from_raw_handle(raw_handle)))
-            }
-        }
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl IntoRawHandle for $name {
-            fn into_raw_handle(self) -> RawHandle {
-                self.0.into_handle().into_raw_handle()
-            }
-        }
-
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl From<$name> for OwnedHandle {
-            fn from(pipe: $name) -> Self {
-                Handle::into_inner(AnonPipe::into_inner(pipe.0))
-            }
-        }
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl From<$name> for Stdio {
-            fn from(pipe: $name) -> Self {
-                Self::from(OwnedHandle::from(pipe))
-            }
-        }
-    };
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl AsHandle for PipeReader {
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        self.0.handle().as_handle()
+    }
 }
-impl_traits!(PipeReader);
-impl_traits!(PipeWriter);
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl AsRawHandle for PipeReader {
+    fn as_raw_handle(&self) -> RawHandle {
+        self.0.handle().as_raw_handle()
+    }
+}
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl FromRawHandle for PipeReader {
+    unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
+        Self(AnonPipe::from_inner(Handle::from_raw_handle(raw_handle)))
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl IntoRawHandle for PipeReader {
+    fn into_raw_handle(self) -> RawHandle {
+        self.0.into_handle().into_raw_handle()
+    }
+}
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl From<PipeReader> for OwnedHandle {
+    fn from(pipe: PipeReader) -> Self {
+        Handle::into_inner(AnonPipe::into_inner(pipe.0))
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl From<PipeReader> for Stdio {
+    fn from(pipe: PipeReader) -> Self {
+        Self::from(OwnedHandle::from(pipe))
+    }
+}
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl AsHandle for PipeWriter {
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        self.0.handle().as_handle()
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl AsRawHandle for PipeWriter {
+    fn as_raw_handle(&self) -> RawHandle {
+        self.0.handle().as_raw_handle()
+    }
+}
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl FromRawHandle for PipeWriter {
+    unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
+        Self(AnonPipe::from_inner(Handle::from_raw_handle(raw_handle)))
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl IntoRawHandle for PipeWriter {
+    fn into_raw_handle(self) -> RawHandle {
+        self.0.into_handle().into_raw_handle()
+    }
+}
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl From<PipeWriter> for OwnedHandle {
+    fn from(pipe: PipeWriter) -> Self {
+        Handle::into_inner(AnonPipe::into_inner(pipe.0))
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl From<PipeWriter> for Stdio {
+    fn from(pipe: PipeWriter) -> Self {
+        Self::from(OwnedHandle::from(pipe))
+    }
+}
 
 fn convert_to_pipe(owned_handle: OwnedHandle) -> io::Result<AnonPipe> {
     if unsafe { GetFileType(owned_handle.as_raw_handle()) } == FILE_TYPE_PIPE {

@@ -18,48 +18,79 @@ pub(super) fn pipe() -> io::Result<(PipeReader, PipeWriter)> {
     anon_pipe().map(|(rx, tx)| (PipeReader(rx), PipeWriter(tx)))
 }
 
-macro_rules! impl_traits {
-    ($name:ty) => {
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl AsFd for $name {
-            fn as_fd(&self) -> BorrowedFd<'_> {
-                self.0.as_fd()
-            }
-        }
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl AsRawFd for $name {
-            fn as_raw_fd(&self) -> RawFd {
-                self.0.as_raw_fd()
-            }
-        }
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl From<$name> for OwnedFd {
-            fn from(pipe: $name) -> Self {
-                FileDesc::into_inner(AnonPipe::into_inner(pipe.0))
-            }
-        }
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl FromRawFd for $name {
-            unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
-                Self(AnonPipe::from_raw_fd(raw_fd))
-            }
-        }
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl IntoRawFd for $name {
-            fn into_raw_fd(self) -> RawFd {
-                self.0.into_raw_fd()
-            }
-        }
-        #[unstable(feature = "anonymous_pipe", issue = "127154")]
-        impl From<$name> for Stdio {
-            fn from(pipe: $name) -> Self {
-                Self::from(OwnedFd::from(pipe))
-            }
-        }
-    };
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl AsFd for PipeReader {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.0.as_fd()
+    }
 }
-impl_traits!(PipeReader);
-impl_traits!(PipeWriter);
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl AsRawFd for PipeReader {
+    fn as_raw_fd(&self) -> RawFd {
+        self.0.as_raw_fd()
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl From<PipeReader> for OwnedFd {
+    fn from(pipe: PipeReader) -> Self {
+        FileDesc::into_inner(AnonPipe::into_inner(pipe.0))
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl FromRawFd for PipeReader {
+    unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        Self(AnonPipe::from_raw_fd(raw_fd))
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl IntoRawFd for PipeReader {
+    fn into_raw_fd(self) -> RawFd {
+        self.0.into_raw_fd()
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl From<PipeReader> for Stdio {
+    fn from(pipe: PipeReader) -> Self {
+        Self::from(OwnedFd::from(pipe))
+    }
+}
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl AsFd for PipeWriter {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.0.as_fd()
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl AsRawFd for PipeWriter {
+    fn as_raw_fd(&self) -> RawFd {
+        self.0.as_raw_fd()
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl From<PipeWriter> for OwnedFd {
+    fn from(pipe: PipeWriter) -> Self {
+        FileDesc::into_inner(AnonPipe::into_inner(pipe.0))
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl FromRawFd for PipeWriter {
+    unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        Self(AnonPipe::from_raw_fd(raw_fd))
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl IntoRawFd for PipeWriter {
+    fn into_raw_fd(self) -> RawFd {
+        self.0.into_raw_fd()
+    }
+}
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl From<PipeWriter> for Stdio {
+    fn from(pipe: PipeWriter) -> Self {
+        Self::from(OwnedFd::from(pipe))
+    }
+}
 
 fn convert_to_pipe(owned_fd: OwnedFd) -> io::Result<AnonPipe> {
     let file = File::from(owned_fd);
