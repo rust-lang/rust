@@ -19,7 +19,7 @@ pub const TR_OK: i32 = 50;
 // On Windows we use __fastfail to abort, which is documented to use this
 // exception code.
 #[cfg(windows)]
-const STATUS_ABORTED: i32 = 0xC0000409u32 as i32;
+const STATUS_FAIL_FAST_EXCEPTION: i32 = 0xC0000409u32 as i32;
 
 // On Zircon (the Fuchsia kernel), an abort from userspace calls the
 // LLVM implementation of __builtin_trap(), e.g., ud2 on x86, which
@@ -104,7 +104,7 @@ pub fn get_result_from_exit_code(
     let result = match status.code() {
         Some(TR_OK) => TestResult::TrOk,
         #[cfg(windows)]
-        Some(STATUS_ABORTED) => TestResult::TrFailed,
+        Some(STATUS_FAIL_FAST_EXCEPTION) => TestResult::TrFailed,
         #[cfg(unix)]
         None => match status.signal() {
             Some(libc::SIGABRT) => TestResult::TrFailed,
