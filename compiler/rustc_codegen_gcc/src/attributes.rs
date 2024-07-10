@@ -92,7 +92,7 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
     let mut function_features = function_features
         .iter()
         .flat_map(|feat| to_gcc_features(cx.tcx.sess, feat).into_iter())
-        .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
+        .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match *x {
             InstructionSetAttr::ArmA32 => "-thumb-mode", // TODO(antoyo): support removing feature.
             InstructionSetAttr::ArmT32 => "thumb-mode",
         }))
@@ -118,8 +118,8 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
 
             if feature.starts_with('-') {
                 Some(format!("no{}", feature))
-            } else if feature.starts_with('+') {
-                Some(feature[1..].to_string())
+            } else if let Some(stripped) = feature.strip_prefix('+') {
+                Some(stripped.to_string())
             } else {
                 Some(feature.to_string())
             }
@@ -128,6 +128,12 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         .join(",");
     if !target_features.is_empty() {
         #[cfg(feature = "master")]
-        func.add_attribute(FnAttribute::Target(&target_features));
+        match cx.sess().target.arch.as_ref() {
+            "x86" | "x86_64" | "powerpc" => {
+                func.add_attribute(FnAttribute::Target(&target_features))
+            }
+            // The target attribute is not supported on other targets in GCC.
+            _ => (),
+        }
     }
 }
