@@ -37,7 +37,7 @@ jobs:
       run: sudo apt-get install ninja-build ripgrep
 
     - name: Download artifact
-      run: curl -LO https://github.com/antoyo/gcc/releases/latest/download/gcc-13.deb
+      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-13.deb
 
     - name: Setup path to libgccjit
       run: |
@@ -53,7 +53,7 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        EMBED_LTO_BITCODE=1 ./y.sh build --release --release-sysroot
+        EMBED_LTO_BITCODE=1 ./y.sh build --sysroot --release --release-sysroot
         cargo test
         ./y.sh clean all
 
@@ -62,12 +62,12 @@ jobs:
         git config --global user.email "user@example.com"
         git config --global user.name "User"
         ./y.sh prepare
-        # FIXME(antoyo): we cannot enable LTO for stdarch tests currently because of some failing LTO tests using proc-macros.
-        echo -n 'lto = "fat"' >> build_sysroot/Cargo.toml
 
     - name: Add more failing tests because of undefined symbol errors (FIXME)
       run: cat tests/failing-lto-tests.txt >> tests/failing-ui-tests.txt
 
     - name: Run tests
       run: |
+        # FIXME(antoyo): we cannot enable LTO for stdarch tests currently because of some failing LTO tests using proc-macros.
+        echo -n 'lto = "fat"' >> build_system/build_sysroot/Cargo.toml
         EMBED_LTO_BITCODE=1 ./y.sh test --release --clean --release-sysroot --build-sysroot ${{ matrix.commands }}

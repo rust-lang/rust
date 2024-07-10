@@ -35,7 +35,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
     pub fn declare_unnamed_global(&self, ty: Type<'gcc>) -> LValue<'gcc> {
         let name = self.generate_local_symbol_name("global");
-        self.context.new_global(None, GlobalKind::Internal, ty, &name)
+        self.context.new_global(None, GlobalKind::Internal, ty, name)
     }
 
     pub fn declare_global_with_linkage(
@@ -176,16 +176,14 @@ fn declare_raw_fn<'gcc>(
         cx.functions.borrow()[name]
     } else {
         let params: Vec<_> = param_types
-            .into_iter()
+            .iter()
             .enumerate()
-            .map(|(index, param)| {
-                cx.context.new_parameter(None, *param, &format!("param{}", index))
-            }) // TODO(antoyo): set name.
+            .map(|(index, param)| cx.context.new_parameter(None, *param, format!("param{}", index))) // TODO(antoyo): set name.
             .collect();
         #[cfg(not(feature = "master"))]
-        let name = mangle_name(name);
+        let name = &mangle_name(name);
         let func =
-            cx.context.new_function(None, cx.linkage.get(), return_type, &params, &name, variadic);
+            cx.context.new_function(None, cx.linkage.get(), return_type, &params, name, variadic);
         cx.functions.borrow_mut().insert(name.to_string(), func);
 
         #[cfg(feature = "master")]
@@ -200,10 +198,10 @@ fn declare_raw_fn<'gcc>(
             // create a wrapper function that calls rust_eh_personality.
 
             let params: Vec<_> = param_types
-                .into_iter()
+                .iter()
                 .enumerate()
                 .map(|(index, param)| {
-                    cx.context.new_parameter(None, *param, &format!("param{}", index))
+                    cx.context.new_parameter(None, *param, format!("param{}", index))
                 }) // TODO(antoyo): set name.
                 .collect();
             let gcc_func = cx.context.new_function(

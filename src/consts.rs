@@ -1,15 +1,16 @@
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, VarAttribute, Visibility};
-use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue};
-use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, DerivedTypeMethods, StaticMethods};
+use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
+use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, StaticMethods};
+use rustc_hir::def::DefKind;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
     self, read_target_uint, ConstAllocation, ErrorHandled, Scalar as InterpScalar,
 };
-use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::{self, Instance};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRange};
 
@@ -63,16 +64,15 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         global_value
     }
 
+    #[cfg_attr(not(feature = "master"), allow(unused_mut))]
     fn codegen_static(&self, def_id: DefId) {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
 
-        let value = match codegen_static_initializer(&self, def_id) {
-            Ok((value, _)) => value,
+        let Ok((value, alloc)) = codegen_static_initializer(self, def_id) else {
             // Error has already been reported
-            Err(_) => return,
+            return;
         };
-
-        let global = self.get_static(def_id);
+        let alloc = alloc.inner();
 
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected
@@ -81,23 +81,25 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
             unimplemented!();
         };
 
-        let instance = Instance::mono(self.tcx, def_id);
-        let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
-        let gcc_type = self.layout_of(ty).gcc_type(self);
+        let is_thread_local = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
+        let global = self.get_static_inner(def_id, val_llty);
 
-        set_global_alignment(self, global, self.align_of(ty));
+        #[cfg(feature = "master")]
+        if global.to_rvalue().get_type() != val_llty {
+            global.to_rvalue().set_type(val_llty);
+        }
+        set_global_alignment(self, global, alloc.align);
 
-        let value = self.bitcast_if_needed(value, gcc_type);
         global.global_set_initializer_rvalue(value);
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
-        if !self.tcx.static_mutability(def_id).unwrap().is_mut() && self.type_is_freeze(ty) {
+        if alloc.mutability.is_not() {
             #[cfg(feature = "master")]
             global.global_set_readonly();
         }
 
-        if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
+        if is_thread_local {
             // Do not allow LLVM to change the alignment of a TLS on macOS.
             //
             // By default a global's alignment can be freely increased.
@@ -205,35 +207,49 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
     pub fn get_static(&self, def_id: DefId) -> LValue<'gcc> {
         let instance = Instance::mono(self.tcx, def_id);
-        let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
+        let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
+        // Nested statics do not have a type, so pick a random type and let `define_static` figure out
+        // the gcc type from the actual evaluated initializer.
+        let gcc_type = if nested {
+            self.type_i8()
+        } else {
+            let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+            self.layout_of(ty).gcc_type(self)
+        };
+
+        self.get_static_inner(def_id, gcc_type)
+    }
+
+    pub(crate) fn get_static_inner(&self, def_id: DefId, gcc_type: Type<'gcc>) -> LValue<'gcc> {
+        let instance = Instance::mono(self.tcx, def_id);
         if let Some(&global) = self.instances.borrow().get(&instance) {
+            trace!("used cached value");
             return global;
         }
 
-        let defined_in_current_codegen_unit =
-            self.codegen_unit.items().contains_key(&MonoItem::Static(def_id));
-        assert!(
-            !defined_in_current_codegen_unit,
-            "consts::get_static() should always hit the cache for \
-                 statics defined in the same CGU, but did not for `{:?}`",
-            def_id
-        );
-
-        let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+        // FIXME: Once we stop removing globals in `codegen_static`, we can uncomment this code.
+        // let defined_in_current_codegen_unit =
+        //     self.codegen_unit.items().contains_key(&MonoItem::Static(def_id));
+        // assert!(
+        //     !defined_in_current_codegen_unit,
+        //     "consts::get_static() should always hit the cache for \
+        //          statics defined in the same CGU, but did not for `{:?}`",
+        //     def_id
+        // );
         let sym = self.tcx.symbol_name(instance).name;
+        let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
 
         let global = if def_id.is_local() && !self.tcx.is_foreign_item(def_id) {
-            let llty = self.layout_of(ty).gcc_type(self);
             if let Some(global) = self.get_declared_value(sym) {
-                if self.val_ty(global) != self.type_ptr_to(llty) {
+                if self.val_ty(global) != self.type_ptr_to(gcc_type) {
                     span_bug!(self.tcx.def_span(def_id), "Conflicting types for static");
                 }
             }
 
             let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
             let global = self.declare_global(
-                &sym,
-                llty,
+                sym,
+                gcc_type,
                 GlobalKind::Exported,
                 is_tls,
                 fn_attrs.link_section,
@@ -246,7 +262,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
             global
         } else {
-            check_and_apply_linkage(&self, &fn_attrs, ty, sym)
+            check_and_apply_linkage(self, fn_attrs, gcc_type, sym)
         };
 
         if !def_id.is_local() {
@@ -360,18 +376,14 @@ fn codegen_static_initializer<'gcc, 'tcx>(
 fn check_and_apply_linkage<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     attrs: &CodegenFnAttrs,
-    ty: Ty<'tcx>,
+    gcc_type: Type<'gcc>,
     sym: &str,
 ) -> LValue<'gcc> {
     let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-    let gcc_type = cx.layout_of(ty).gcc_type(cx);
     if let Some(linkage) = attrs.import_linkage {
         // Declare a symbol `foo` with the desired linkage.
-        let global1 = cx.declare_global_with_linkage(
-            &sym,
-            cx.type_i8(),
-            base::global_linkage_to_gcc(linkage),
-        );
+        let global1 =
+            cx.declare_global_with_linkage(sym, cx.type_i8(), base::global_linkage_to_gcc(linkage));
 
         // Declare an internal global `extern_with_linkage_foo` which
         // is initialized with the address of `foo`.  If `foo` is
@@ -380,7 +392,7 @@ fn check_and_apply_linkage<'gcc, 'tcx>(
         // `extern_with_linkage_foo` will instead be initialized to
         // zero.
         let mut real_name = "_rust_extern_with_linkage_".to_string();
-        real_name.push_str(&sym);
+        real_name.push_str(sym);
         let global2 = cx.define_global(&real_name, gcc_type, is_tls, attrs.link_section);
         // TODO(antoyo): set linkage.
         let value = cx.const_ptrcast(global1.get_address(None), gcc_type);
@@ -397,6 +409,6 @@ fn check_and_apply_linkage<'gcc, 'tcx>(
         // don't do this then linker errors can be generated where the linker
         // complains that one object files has a thread local version of the
         // symbol and another one doesn't.
-        cx.declare_global(&sym, gcc_type, GlobalKind::Imported, is_tls, attrs.link_section)
+        cx.declare_global(sym, gcc_type, GlobalKind::Imported, is_tls, attrs.link_section)
     }
 }

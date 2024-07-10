@@ -120,6 +120,12 @@ impl Add for isize {
     }
 }
 
+#[track_caller]
+#[lang = "panic_const_add_overflow"]
+pub fn panic_const_add_overflow() -> ! {
+    panic("attempt to add with overflow");
+}
+
 /*
  * Code
  */
