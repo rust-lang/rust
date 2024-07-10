@@ -1,10 +1,9 @@
-use anyhow::Error;
+use anyhow::{Context, Error};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 mod cargo_metadata;
-mod licenses;
 
 /// The entry point to the binary.
 ///
@@ -71,7 +70,7 @@ fn main() -> Result<(), Error> {
     render_deps(collected_cargo_metadata.iter(), &mut buffer, &mut license_set)?;
 
     // Now we've rendered the tree, we can fetch all the license texts we've just referred to
-    let license_map = download_licenses(license_set)?;
+    let license_map = load_licenses(license_set)?;
 
     writeln!(buffer)?;
     writeln!(buffer, "## License Texts")?;
@@ -208,7 +207,7 @@ fn render_deps<'a, 'b>(
 }
 
 /// Download licenses from SPDX Github
-fn download_licenses(license_set: BTreeSet<String>) -> Result<BTreeMap<String, String>, Error> {
+fn load_licenses(license_set: BTreeSet<String>) -> Result<BTreeMap<String, String>, Error> {
     let mut license_map = BTreeMap::new();
     for license_string in license_set {
         let mut licenses = Vec::new();
@@ -220,8 +219,8 @@ fn download_licenses(license_set: BTreeSet<String>) -> Result<BTreeMap<String, S
         }
         for license in licenses {
             if !license_map.contains_key(license) {
-                let text = licenses::get(license)?;
-                license_map.insert(license.to_owned(), text.to_owned());
+                let text = get_license_text(license)?;
+                license_map.insert(license.to_owned(), text);
             }
         }
     }
@@ -270,6 +269,16 @@ pub(crate) enum Node {
 struct License {
     spdx: String,
     copyright: Vec<String>,
+}
+
+/// Fetch a license text
+pub fn get_license_text(name: &str) -> Result<String, anyhow::Error> {
+    let license_path =
+        PathBuf::from(format!("./src/tools/generate-copyright/licenses/{}.txt", name));
+    let contents = std::fs::read_to_string(&license_path).with_context(|| {
+        format!("Cannot open {:?} from CWD {:?}", license_path, std::env::current_dir())
+    })?;
+    Ok(contents)
 }
 
 /// Grab an environment variable as a PathBuf, or fail nicely.
