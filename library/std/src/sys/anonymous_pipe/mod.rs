@@ -1,3 +1,13 @@
+//! Module for annoymous pipe
+//!
+//! ```
+//! #![feature(anonymous_pipe)]
+//! # fn main() -> std::io::Result<()> {
+//! let (reader, writer) = std::pipe::pipe()?;
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::{io, process::Stdio, sys::pipe::AnonPipe};
 
 /// Create annoymous pipe that is close-on-exec and blocking.

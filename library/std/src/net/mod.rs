@@ -33,8 +33,6 @@ pub use self::tcp::IntoIncoming;
 pub use self::tcp::{Incoming, TcpListener, TcpStream};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::udp::UdpSocket;
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
-pub use crate::sys::anonymous_pipe::{pipe, PipeReader, PipeWriter};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::net::AddrParseError;
 
