@@ -426,6 +426,7 @@ fn enums() {
 
 #[test]
 fn primitives() {
+    // FIXME(#17451): Add `f16` and `f128` once they are stabilised.
     size_and_align! {
         struct Goal(i32, i128, isize, usize, f32, f64, bool, char);
     }

@@ -2622,6 +2622,13 @@ impl BuiltinType {
         matches!(self.inner, hir_def::builtin_type::BuiltinType::Float(_))
     }
 
+    pub fn is_f16(&self) -> bool {
+        matches!(
+            self.inner,
+            hir_def::builtin_type::BuiltinType::Float(hir_def::builtin_type::BuiltinFloat::F16)
+        )
+    }
+
     pub fn is_f32(&self) -> bool {
         matches!(
             self.inner,
@@ -2633,6 +2640,13 @@ impl BuiltinType {
         matches!(
             self.inner,
             hir_def::builtin_type::BuiltinType::Float(hir_def::builtin_type::BuiltinFloat::F64)
+        )
+    }
+
+    pub fn is_f128(&self) -> bool {
+        matches!(
+            self.inner,
+            hir_def::builtin_type::BuiltinType::Float(hir_def::builtin_type::BuiltinFloat::F128)
         )
     }
 

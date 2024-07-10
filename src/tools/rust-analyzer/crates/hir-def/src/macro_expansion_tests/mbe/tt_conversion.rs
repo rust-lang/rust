@@ -36,6 +36,7 @@ macro_rules! m {
         let _ = 'c';
         let _ = 1000;
         let _ = 12E+99_f64;
+        let _ = 45E+1234_f128;
         let _ = "rust1";
         let _ = -92;
     }
@@ -50,6 +51,7 @@ macro_rules! m {
         let _ = 'c';
         let _ = 1000;
         let _ = 12E+99_f64;
+        let _ = 45E+1234_f128;
         let _ = "rust1";
         let _ = -92;
     }
@@ -58,6 +60,7 @@ fn f() {
     let _ = 'c';
     let _ = 1000;
     let _ = 12E+99_f64;
+    let _ = 45E+1234_f128;
     let _ = "rust1";
     let _ = -92;
 }

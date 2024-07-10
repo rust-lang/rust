@@ -127,9 +127,11 @@ pub(crate) const ALL_INT_FPS: [TyFingerprint; 12] = [
     TyFingerprint::Scalar(Scalar::Uint(UintTy::Usize)),
 ];
 
-pub(crate) const ALL_FLOAT_FPS: [TyFingerprint; 2] = [
+pub(crate) const ALL_FLOAT_FPS: [TyFingerprint; 4] = [
+    TyFingerprint::Scalar(Scalar::Float(FloatTy::F16)),
     TyFingerprint::Scalar(Scalar::Float(FloatTy::F32)),
     TyFingerprint::Scalar(Scalar::Float(FloatTy::F64)),
+    TyFingerprint::Scalar(Scalar::Float(FloatTy::F128)),
 ];
 
 type TraitFpMap = FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Box<[ImplId]>>>;

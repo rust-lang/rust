@@ -16,6 +16,10 @@ use ide_db::{
     RootDatabase,
 };
 use itertools::Itertools;
+use rustc_apfloat::{
+    ieee::{Half as f16, Quad as f128},
+    Float,
+};
 use stdx::format_to;
 use syntax::{algo, ast, match_ast, AstNode, AstToken, Direction, SyntaxToken, T};
 
@@ -540,12 +544,21 @@ pub(super) fn literal(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) ->
             ast::Char(char)         => char  .value().as_ref().map_err(|e| format!("{e:?}")).map(ToString::to_string),
             ast::Byte(byte)         => byte  .value().as_ref().map_err(|e| format!("{e:?}")).map(|it| format!("0x{it:X}")),
             ast::FloatNumber(num) => {
-                let (text, _) = num.split_into_parts();
-                let text = text.replace('_', "");
-                if ty.as_builtin().map(|it| it.is_f32()).unwrap_or(false) {
+                let text = num.value_string();
+                if ty.as_builtin().map(|it| it.is_f16()).unwrap_or(false) {
+                    match text.parse::<f16>() {
+                        Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
+                        Err(e) => Err(e.0.to_owned()),
+                    }
+                } else if ty.as_builtin().map(|it| it.is_f32()).unwrap_or(false) {
                     match text.parse::<f32>() {
                         Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
                         Err(e) => Err(e.to_string()),
+                    }
+                } else if ty.as_builtin().map(|it| it.is_f128()).unwrap_or(false) {
+                    match text.parse::<f128>() {
+                        Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
+                        Err(e) => Err(e.0.to_owned()),
                     }
                 } else {
                     match text.parse::<f64>() {

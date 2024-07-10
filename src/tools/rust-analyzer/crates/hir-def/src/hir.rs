@@ -20,6 +20,7 @@ use std::fmt;
 use hir_expand::name::Name;
 use intern::Interned;
 use la_arena::{Idx, RawIdx};
+use rustc_apfloat::ieee::{Half as f16, Quad as f128};
 use smallvec::SmallVec;
 use syntax::ast;
 
@@ -62,9 +63,14 @@ pub type LabelId = Idx<Label>;
 #[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct FloatTypeWrapper(Box<str>);
 
+// FIXME(#17451): Use builtin types once stabilised.
 impl FloatTypeWrapper {
     pub fn new(value: String) -> Self {
         Self(value.into())
+    }
+
+    pub fn to_f128(&self) -> f128 {
+        self.0.parse().unwrap_or_default()
     }
 
     pub fn to_f64(&self) -> f64 {
@@ -72,6 +78,10 @@ impl FloatTypeWrapper {
     }
 
     pub fn to_f32(&self) -> f32 {
+        self.0.parse().unwrap_or_default()
+    }
+
+    pub fn to_f16(&self) -> f16 {
         self.0.parse().unwrap_or_default()
     }
 }
@@ -91,7 +101,7 @@ pub enum Literal {
     Bool(bool),
     Int(i128, Option<BuiltinInt>),
     Uint(u128, Option<BuiltinUint>),
-    // Here we are using a wrapper around float because f32 and f64 do not implement Eq, so they
+    // Here we are using a wrapper around float because float primitives do not implement Eq, so they
     // could not be used directly here, to understand how the wrapper works go to definition of
     // FloatTypeWrapper
     Float(FloatTypeWrapper, Option<BuiltinFloat>),
