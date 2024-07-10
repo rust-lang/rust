@@ -1,6 +1,9 @@
-//@ only-x86_64
+//@ only-64bit
 
-const HUGE_SIZE: usize = !0usize / 8;
+// This test validates we gracefully fail computing a const or static of absurdly large size.
+// The oddly-specific number is because of LLVM measuring object sizes in bits.
+
+const HUGE_SIZE: usize = 1 << 61;
 
 
 pub struct TooBigArray {
