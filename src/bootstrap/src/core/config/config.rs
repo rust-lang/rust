@@ -1330,6 +1330,17 @@ impl Config {
             TomlConfig::default()
         };
 
+        if cfg!(test) {
+            // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
+            // same ones used to call the tests (if custom ones are not defined in the toml). If we
+            // don't do that, bootstrap will use its own detection logic to find a suitable rustc
+            // and Cargo, which doesn't work when the caller is specìfying a custom local rustc or
+            // Cargo in their config.toml.
+            let build = toml.build.get_or_insert_with(Default::default);
+            build.rustc = build.rustc.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
+            build.cargo = build.cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
+        }
+
         if let Some(include) = &toml.profile {
             // Allows creating alias for profile names, allowing
             // profiles to be renamed while maintaining back compatibility
@@ -1448,7 +1459,12 @@ impl Config {
             rustc
         } else {
             config.download_beta_toolchain();
-            config.out.join(config.build.triple).join("stage0/bin/rustc")
+            config
+                .out
+                .join(config.build.triple)
+                .join("stage0")
+                .join("bin")
+                .join(exe("rustc", config.build))
         };
 
         config.initial_cargo = if let Some(cargo) = cargo {
@@ -1458,7 +1474,12 @@ impl Config {
             cargo
         } else {
             config.download_beta_toolchain();
-            config.out.join(config.build.triple).join("stage0/bin/cargo")
+            config
+                .out
+                .join(config.build.triple)
+                .join("stage0")
+                .join("bin")
+                .join(exe("cargo", config.build))
         };
 
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.
