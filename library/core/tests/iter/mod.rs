@@ -99,8 +99,3 @@ pub fn extend_for_unit() {
     }
     assert_eq!(x, 5);
 }
-
-#[test]
-fn test_edge_case_handling_iterator_with_large_number_of_elements() {
-    assert!((1..1000).contain(&500));
-}

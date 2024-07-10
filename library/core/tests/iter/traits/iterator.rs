@@ -629,7 +629,7 @@ fn test_edge_case_handling_none_values() {
 
 #[test]
 fn test_edge_case_handling_empty_iterator() {
-    assert!(!vec![].iter().contain(&1));
+    assert!(!Vec::<i32>::new().iter().contain(&1));
 }
 
 #[test]
@@ -646,11 +646,30 @@ fn test_edge_case_handling_iterator_with_custom_struct() {
     assert!([Item { value: 1 }, Item { value: 2 }].iter().contain(&Item { value: 2 }));
 }
 
+// #[test]
+// fn test_str_iterator_contain_string() {
+//     assert!(["a", "b", "c"].iter().contain("b".to_owned()));
+//     assert!(!["a", "b", "c"].iter().contain("d".to_owned()));
+// }
+
 #[test]
-fn test_str_iterator_contain_string() {
-    assert!([&"a", &"b", &"c"].iter().contain("b".to_string()));
-    assert!(!&["a", "b", "c"].iter().contain("d".to_string()));
+fn test_str_iterator_contain_string_slice() {
+    assert!(["a", "b", "c"].iter().contain(&"b"));
+    assert!(!["a", "b", "c"].iter().contain(&"d"));
 }
+
+#[test]
+fn test_string_iterator_contain_str_slice() {
+    assert!(["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contain("b"));
+    assert!(!["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contain("d"));
+}
+
+
+#[test]
+fn test_edge_case_handling_iterator_with_large_number_of_elements() {
+    assert!((1..1000).contain(500));
+}
+
 
 // just tests by whether or not this compiles
 fn _empty_impl_all_auto_traits<T>() {

@@ -1,5 +1,4 @@
 use crate::array;
-use crate::borrow::Borrow;
 use crate::cmp::{self, Ordering};
 use crate::num::NonZero;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
@@ -4124,15 +4123,13 @@ pub trait Iterator {
     /// assert!((1..1000).contain(&500));
     /// ```
     #[unstable(feature = "contains", reason = "new API", issue = "127494")]
-    fn contain<Q>(&mut self, item: Q) -> bool
+    fn contain<Q: Sized>(&mut self, item: Q) -> bool
     where
-        Self::Item: PartialEq,
-        Q: Borrow<Self::Item>,
+        Self::Item: PartialEq<Q>,
         Self: Sized,
     {
-        let borrowed_item: &Self::Item = item.borrow();
         for element in self {
-            if element == *borrowed_item {
+            if element == item {
                 return true;
             }
         }
