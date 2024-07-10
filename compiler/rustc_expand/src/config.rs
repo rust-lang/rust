@@ -283,7 +283,10 @@ impl<'a> StripUnconfigured<'a> {
                 .flat_map(|item| self.process_cfg_attr(&self.expand_cfg_attr_item(cfg_attr, item)))
                 .collect()
         } else {
-            expanded_attrs.into_iter().map(|item| self.expand_cfg_attr_item(cfg_attr, item)).collect()
+            expanded_attrs
+                .into_iter()
+                .map(|item| self.expand_cfg_attr_item(cfg_attr, item))
+                .collect()
         }
     }
 
