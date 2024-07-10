@@ -1099,7 +1099,7 @@ impl Drop for PanicGuard {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn park() {
     let guard = PanicGuard;
-    // SAFETY: park_timeout is called on the parker owned by this thread.
+    // SAFETY: park is called on the parker owned by this thread.
     unsafe {
         current().park();
     }
@@ -1168,7 +1168,7 @@ pub fn park_timeout(dur: Duration) {
     let guard = PanicGuard;
     // SAFETY: park_timeout is called on the parker owned by this thread.
     unsafe {
-        current().inner.as_ref().parker().park_timeout(dur);
+        current().park_timeout(dur);
     }
     // No panic occurred, do not abort.
     forget(guard);
@@ -1359,6 +1359,15 @@ impl Thread {
     /// May only be called from the thread to which this handle belongs.
     pub(crate) unsafe fn park(&self) {
         unsafe { self.inner.as_ref().parker().park() }
+    }
+
+    /// Like the public [`park_timeout`], but callable on any handle. This is used to
+    /// allow parking in TLS destructors.
+    ///
+    /// # Safety
+    /// May only be called from the thread to which this handle belongs.
+    pub(crate) unsafe fn park_timeout(&self, dur: Duration) {
+        unsafe { self.inner.as_ref().parker().park_timeout(dur) }
     }
 
     /// Atomically makes the handle's token available if it is not already.

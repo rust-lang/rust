@@ -36,7 +36,7 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn lock(&self) {
+    pub fn lock(&self) {
         // Try multiple times to acquire the lock without resorting to the ticktimer
         // server. For locks that are held for a short amount of time, this will
         // result in the ticktimer server never getting invoked. The `locked` value

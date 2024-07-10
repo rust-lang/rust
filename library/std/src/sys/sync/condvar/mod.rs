@@ -12,24 +12,21 @@ cfg_if::cfg_if! {
     ))] {
         mod futex;
         pub use futex::Condvar;
+    } else if #[cfg(any(
+        all(target_os = "windows", target_vendor = "win7"),
+        target_os = "netbsd",
+        all(target_vendor = "fortanix", target_env = "sgx"),
+        target_os = "teeos",
+        target_os = "xous",
+    ))] {
+        mod queue;
+        pub use queue::Condvar;
     } else if #[cfg(target_family = "unix")] {
         mod pthread;
         pub use pthread::Condvar;
-    } else if #[cfg(all(target_os = "windows", target_vendor = "win7"))] {
-        mod windows7;
-        pub use windows7::Condvar;
-    } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
-        mod sgx;
-        pub use sgx::Condvar;
     } else if #[cfg(target_os = "solid_asp3")] {
         mod itron;
         pub use itron::Condvar;
-    } else if #[cfg(target_os = "teeos")] {
-        mod teeos;
-        pub use teeos::Condvar;
-    } else if #[cfg(target_os = "xous")] {
-        mod xous;
-        pub use xous::Condvar;
     } else {
         mod no_threads;
         pub use no_threads::Condvar;

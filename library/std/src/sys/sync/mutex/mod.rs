@@ -19,10 +19,11 @@ cfg_if::cfg_if! {
         target_os = "teeos",
     ))] {
         mod pthread;
+        #[allow(unused_imports)]
         pub use pthread::{Mutex, raw};
     } else if #[cfg(all(target_os = "windows", target_vendor = "win7"))] {
         mod windows7;
-        pub use windows7::{Mutex, raw};
+        pub use windows7::Mutex;
     } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
         mod sgx;
         pub use sgx::Mutex;

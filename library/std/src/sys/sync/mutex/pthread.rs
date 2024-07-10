@@ -103,7 +103,7 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn lock(&self) {
+    pub fn lock(&self) {
         #[cold]
         #[inline(never)]
         fn fail(r: i32) -> ! {
@@ -111,7 +111,7 @@ impl Mutex {
             panic!("failed to lock mutex: {error}");
         }
 
-        let r = libc::pthread_mutex_lock(raw(self));
+        let r = unsafe { libc::pthread_mutex_lock(raw(self)) };
         // As we set the mutex type to `PTHREAD_MUTEX_NORMAL` above, we expect
         // the lock call to never fail. Unfortunately however, some platforms
         // (Solaris) do not conform to the standard, and instead always provide
@@ -131,8 +131,8 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn try_lock(&self) -> bool {
-        libc::pthread_mutex_trylock(raw(self)) == 0
+    pub fn try_lock(&self) -> bool {
+        unsafe { libc::pthread_mutex_trylock(raw(self)) == 0 }
     }
 }
 
