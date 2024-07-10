@@ -10,6 +10,7 @@
 //@ ignore-wasm no panic or subprocess support
 //@ ignore-emscripten no panic or subprocess support
 //@ ignore-sgx no subprocess support
+//@ ignore-fuchsia code returned as ZX_TASK_RETCODE_EXCEPTION_KILL, FIXME (#127539)
 
 #![cfg(test)]
 

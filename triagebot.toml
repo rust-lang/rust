@@ -1050,7 +1050,6 @@ project-const-traits = [
 project-stable-mir = [
     "@celinval",
     "@oli-obk",
-    "@spastorino",
     "@ouz-a",
 ]
 
