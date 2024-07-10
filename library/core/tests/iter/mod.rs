@@ -136,6 +136,12 @@ fn test_edge_case_handling_iterator_with_custom_struct() {
 }
 
 #[test]
+fn test_str_iterator_contain_string() {
+    assert!([&"a", &"b", &"c"].iter().contain("b".to_string()));
+    assert!(!&["a", "b", "c"].iter().contain("d".to_string()));
+}
+
+#[test]
 fn test_edge_case_handling_iterator_with_large_number_of_elements() {
     assert!((1..1000).contain(&500));
 }
