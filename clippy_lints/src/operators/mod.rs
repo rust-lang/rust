@@ -636,7 +636,7 @@ declare_clippy_lint! {
     /// values (apart from zero), except in functions called `*eq*` (which probably
     /// implement equality for a type involving floats).
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Floating point calculations are usually imprecise, so asking if two values are *exactly*
     /// equal is asking for trouble because arriving at the same logical result via different
     /// routes (e.g. calculation versus constant) may yield different values.
