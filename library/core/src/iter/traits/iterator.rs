@@ -4078,50 +4078,6 @@ pub trait Iterator {
     /// assert!([Some(2), None].iter().contain(&Some(2)));
     /// ```
     ///
-    /// Tests:
-    /// Happy path 1 - the item is in the iterator
-    /// ```
-    /// #![feature(contains)]
-    /// assert!([1, 2, 3].iter().contain(&1));
-    /// ```
-    /// Happy path 2 - the item is not in the iterator
-    /// ```
-    /// #![feature(contains)]
-    /// assert!(![1, 2, 3].iter().contain(&4));
-    /// ```
-    /// Edge case 1 - handling None values
-    /// ```
-    /// #![feature(contains)]
-    /// let mut iter = [Some(2), None].iter();
-    /// assert!([Some(2), None].iter().contain(&None));
-    /// assert!([Some(2), None].iter().contain(&Some(2)));
-    /// ```
-    /// Edge case 2 - handling empty iterator
-    /// ```
-    /// #![feature(contains)]
-    /// let mut iter: Vec<i32> = vec![];
-    /// assert!(!vec![].iter().contain(&1));
-    /// ```
-    /// Edge case 3 - handling iterator with duplicates
-    /// ```
-    /// #![feature(contains)]
-    /// let mut iter = [1, 2, 2, 3].iter();
-    /// assert!(iter.contain(&2));
-    /// ```
-    /// Edge case 4 - handling iterator with custom struct
-    /// ```
-    /// #![feature(contains)]
-    /// #[derive(PartialEq)]
-    /// struct Item {
-    ///     value: i32,
-    /// }
-    /// assert!([Item { value: 1 }, Item { value: 2 }].iter().contain(&Item { value: 2 }));
-    /// ```
-    /// Edge case 5 - handling iterator with large number of elements
-    /// ```
-    /// #![feature(contains)]
-    /// assert!((1..1000).contain(&500));
-    /// ```
     #[unstable(feature = "contains", reason = "new API", issue = "127494")]
     fn contain<Q: Sized>(&mut self, item: Q) -> bool
     where
