@@ -1,0 +1,272 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ min-llvm-version: 19
+   LL|       |//@ compile-flags: -Zcoverage-options=mcdc
+   LL|       |//@ llvm-cov-flags: --show-branches=count --show-mcdc
+   LL|       |
+   LL|       |#[derive(Clone, Copy)]
+   LL|       |enum Pat {
+   LL|       |    A(Option<i32>),
+   LL|       |    B(i32),
+   LL|       |    C(i32),
+   LL|       |}
+   LL|       |
+   LL|      2|fn single_nested_pattern(pat: Pat) {
+   LL|      1|    if let Pat::A(Some(_)) = pat {
+  ------------------
+  |  Branch (LL:12): [True: 1, False: 1]
+  |  Branch (LL:12): [True: 1, False: 1]
+  |  Branch (LL:19): [True: 1, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:12) to (LL:27)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:12)
+  |     Condition C2 --> (LL:19)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |  2 { T,  T  = T      }
+  |
+  |  C1-Pair: covered: (1,2)
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      1|        say("matched");
+   LL|      1|    }
+   LL|      2|}
+   LL|       |
+   LL|      2|fn simple_or_pattern(pat: Pat) {
+   LL|      2|    if let Pat::B(_) | Pat::C(_) = pat {
+  ------------------
+  |  Branch (LL:12): [True: 1, False: 1]
+  |  Branch (LL:12): [True: 0, False: 2]
+  |  Branch (LL:24): [True: 1, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:12) to (LL:33)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:12)
+  |     Condition C2 --> (LL:24)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  F  = F      }
+  |  2 { F,  T  = T      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: covered: (1,2)
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      1|        say("matched");
+   LL|      1|    }
+   LL|      2|}
+   LL|       |
+   LL|      3|fn simple_joint_pattern(pat: (Pat, Pat)) {
+   LL|      1|    if let (Pat::A(Some(_)), Pat::B(_)) = pat {
+  ------------------
+  |  Branch (LL:12): [True: 1, False: 2]
+  |  Branch (LL:13): [True: 2, False: 1]
+  |  Branch (LL:20): [True: 1, False: 0]
+  |  Branch (LL:30): [True: 1, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:12) to (LL:40)
+  |
+  |  Number of Conditions: 3
+  |     Condition C1 --> (LL:13)
+  |     Condition C2 --> (LL:20)
+  |     Condition C3 --> (LL:30)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2, C3    Result
+  |  1 { F,  -,  -  = F      }
+  |  2 { T,  -,  F  = F      }
+  |  3 { T,  T,  T  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: not covered
+  |  C3-Pair: covered: (2,3)
+  |  MC/DC Coverage for Decision: 66.67%
+  |
+  ------------------
+   LL|      1|        say("matched");
+   LL|      2|    }
+   LL|      3|}
+   LL|       |
+   LL|      4|fn joint_pattern_with_or(pat: (Pat, Pat)) {
+   LL|      2|    if let (Pat::A(Some(_)) | Pat::C(_), Pat::B(_)) = pat {
+                                                                    ^1
+  ------------------
+  |  Branch (LL:12): [True: 2, False: 2]
+  |  Branch (LL:13): [True: 1, False: 2]
+  |  Branch (LL:20): [True: 1, False: 0]
+  |  Branch (LL:31): [True: 1, False: 1]
+  |  Branch (LL:42): [True: 3, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:12) to (LL:52)
+  |
+  |  Number of Conditions: 4
+  |     Condition C1 --> (LL:42)
+  |     Condition C2 --> (LL:13)
+  |     Condition C3 --> (LL:20)
+  |     Condition C4 --> (LL:31)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2, C3, C4    Result
+  |  1 { F,  -,  -,  -  = F      }
+  |  2 { T,  F,  -,  F  = F      }
+  |  3 { T,  F,  -,  T  = T      }
+  |  4 { T,  T,  T,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: covered: (2,4)
+  |  C3-Pair: not covered
+  |  C4-Pair: covered: (2,3)
+  |  MC/DC Coverage for Decision: 75.00%
+  |
+  ------------------
+   LL|      2|        say("matched");
+   LL|      2|    }
+   LL|      4|}
+   LL|       |
+   LL|      4|fn joint_or_patterns(pat: (Pat, Pat)) {
+   LL|      2|    if let (Pat::A(Some(_)) | Pat::C(_), Pat::B(_) | Pat::C(_)) = pat {
+  ------------------
+  |  Branch (LL:12): [True: 2, False: 2]
+  |  Branch (LL:13): [True: 1, False: 3]
+  |  Branch (LL:20): [True: 1, False: 0]
+  |  Branch (LL:31): [True: 1, False: 2]
+  |  Branch (LL:42): [True: 2, False: 0]
+  |  Branch (LL:54): [True: 0, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:12) to (LL:64)
+  |
+  |  Number of Conditions: 5
+  |     Condition C1 --> (LL:13)
+  |     Condition C2 --> (LL:20)
+  |     Condition C3 --> (LL:31)
+  |     Condition C4 --> (LL:42)
+  |     Condition C5 --> (LL:54)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2, C3, C4, C5    Result
+  |  1 { F,  -,  F,  -,  -  = F      }
+  |  2 { F,  -,  T,  T,  -  = T      }
+  |  3 { T,  T,  -,  T,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: not covered
+  |  C3-Pair: covered: (1,2)
+  |  C4-Pair: not covered
+  |  C5-Pair: not covered
+  |  MC/DC Coverage for Decision: 40.00%
+  |
+  ------------------
+   LL|      2|        say("matched");
+   LL|      2|    }
+   LL|       |
+   LL|       |    // Try to use the matched value
+   LL|      2|    if let (Pat::A(Some(a)) | Pat::C(a), Pat::B(b) | Pat::C(b)) = pat {
+                                      ^1           ^1         ^1          ^0    ^1
+  ------------------
+  |  Branch (LL:12): [True: 2, False: 2]
+  |  Branch (LL:13): [True: 1, False: 3]
+  |  Branch (LL:20): [True: 1, False: 0]
+  |  Branch (LL:31): [True: 1, False: 2]
+  |  Branch (LL:42): [True: 2, False: 0]
+  |  Branch (LL:54): [True: 0, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:12) to (LL:64)
+  |
+  |  Number of Conditions: 5
+  |     Condition C1 --> (LL:13)
+  |     Condition C2 --> (LL:20)
+  |     Condition C3 --> (LL:31)
+  |     Condition C4 --> (LL:42)
+  |     Condition C5 --> (LL:54)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2, C3, C4, C5    Result
+  |  1 { F,  -,  F,  -,  -  = F      }
+  |  2 { F,  -,  T,  T,  -  = T      }
+  |  3 { T,  T,  -,  T,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: not covered
+  |  C3-Pair: covered: (1,2)
+  |  C4-Pair: not covered
+  |  C5-Pair: not covered
+  |  MC/DC Coverage for Decision: 40.00%
+  |
+  ------------------
+   LL|      2|        say(&format!("matched {a} and {b}"));
+   LL|      2|    }
+   LL|      4|}
+   LL|       |
+   LL|      2|fn let_else(value: Pat) {
+   LL|      1|    let Pat::A(Some(_)) = value else { return };
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 1]
+  |  Branch (LL:9): [True: 1, False: 1]
+  |  Branch (LL:16): [True: 1, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:24)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:9)
+  |     Condition C2 --> (LL:16)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |  2 { T,  T  = T      }
+  |
+  |  C1-Pair: covered: (1,2)
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      1|    say("matched");
+   LL|      2|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    single_nested_pattern(Pat::A(Some(5)));
+   LL|       |    single_nested_pattern(Pat::B(5));
+   LL|       |
+   LL|       |    simple_or_pattern(Pat::A(None));
+   LL|       |    simple_or_pattern(Pat::C(3));
+   LL|       |
+   LL|       |    simple_joint_pattern((Pat::A(Some(1)), Pat::B(2)));
+   LL|       |    simple_joint_pattern((Pat::A(Some(1)), Pat::C(2)));
+   LL|       |    simple_joint_pattern((Pat::B(1), Pat::B(2)));
+   LL|       |
+   LL|       |    joint_pattern_with_or((Pat::A(Some(1)), Pat::B(2)));
+   LL|       |    joint_pattern_with_or((Pat::B(1), Pat::C(2)));
+   LL|       |    joint_pattern_with_or((Pat::B(1), Pat::B(2)));
+   LL|       |    joint_pattern_with_or((Pat::C(1), Pat::B(2)));
+   LL|       |
+   LL|       |    joint_or_patterns((Pat::A(Some(1)), Pat::B(2)));
+   LL|       |    joint_or_patterns((Pat::B(1), Pat::C(2)));
+   LL|       |    joint_or_patterns((Pat::B(1), Pat::B(2)));
+   LL|       |    joint_or_patterns((Pat::C(1), Pat::B(2)));
+   LL|       |
+   LL|       |    let_else(Pat::A(Some(5)));
+   LL|       |    let_else(Pat::B(3));
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn say(message: &str) {
+   LL|       |    core::hint::black_box(message);
+   LL|       |}
+

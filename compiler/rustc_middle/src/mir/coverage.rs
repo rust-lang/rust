@@ -402,6 +402,8 @@ impl Default for CandidateCovId {
 }
 
 impl CandidateCovId {
+    /// Return `true` is this `CandidateCovId` is assigned properly through coverage mechanism
+    /// and can be mapped as a decision.
     pub fn is_valid(&self) -> bool {
         *self != Self::default()
     }

@@ -1,3 +1,5 @@
+mod matching;
+use matching::{LateMatchingState, MatchingDecisionCtx};
 use std::cell::Cell;
 use std::collections::VecDeque;
 use std::rc::Rc;
@@ -174,13 +176,16 @@ impl BooleanDecisionCtx {
 #[derive(Debug)]
 enum DecisionCtx {
     Boolean(BooleanDecisionCtx),
-    #[allow(unused)]
-    Matching,
+    Matching(MatchingDecisionCtx),
 }
 
 impl DecisionCtx {
     fn new_boolean(id: DecisionId) -> Self {
         Self::Boolean(BooleanDecisionCtx::new(id))
+    }
+
+    fn new_matching(ids: &[DecisionId]) -> Self {
+        Self::Matching(MatchingDecisionCtx::new(ids))
     }
 }
 
@@ -270,6 +275,7 @@ pub(crate) struct MCDCInfoBuilder {
     normal_branch_spans: Vec<MCDCBranchSpan>,
     mcdc_targets: FxIndexMap<DecisionId, MCDCTargetInfo>,
     state_stack: Vec<MCDCState>,
+    late_matching_state: LateMatchingState,
     decision_id_gen: DecisionIdGen,
 }
 
@@ -279,6 +285,7 @@ impl MCDCInfoBuilder {
             normal_branch_spans: vec![],
             mcdc_targets: FxIndexMap::default(),
             state_stack: vec![],
+            late_matching_state: Default::default(),
             decision_id_gen: DecisionIdGen::default(),
         }
     }
@@ -291,6 +298,11 @@ impl MCDCInfoBuilder {
     fn current_state_mut(&mut self) -> &mut MCDCState {
         let current_idx = self.state_stack.len() - 1;
         &mut self.state_stack[current_idx]
+    }
+
+    fn current_processing_ctx_mut(&mut self) -> Option<&mut DecisionCtx> {
+        self.ensure_active_state();
+        self.state_stack.last_mut().and_then(|state| state.current_ctx.as_mut())
     }
 
     fn ensure_active_state(&mut self) {
@@ -445,17 +457,26 @@ impl MCDCInfoBuilder {
 
         let (id, decision, conditions) = ctx.into_done();
         let info = MCDCTargetInfo { decision, conditions, nested_decisions_id };
-        let entry_decision_id = self.append_mcdc_info(tcx, id, info).then_some(id);
-        self.on_ctx_finished(tcx, entry_decision_id);
+        if self.late_matching_state.is_guard_decision(id) {
+            self.late_matching_state.add_guard_decision(id, info);
+        } else {
+            let entry_id = self.append_mcdc_info(tcx, id, info).then_some(id);
+            self.on_ctx_finished(tcx, entry_id)
+        }
     }
 
     pub(crate) fn into_done(
         self,
     ) -> (Vec<MCDCBranchSpan>, Vec<(MCDCDecisionSpan, Vec<MCDCBranchSpan>)>) {
+        assert!(
+            !self.has_processing_decision() && self.late_matching_state.is_empty(),
+            "has unfinished decisions"
+        );
         let MCDCInfoBuilder {
             normal_branch_spans,
             mcdc_targets,
             state_stack: _,
+            late_matching_state: _,
             decision_id_gen: _,
         } = self;
 
