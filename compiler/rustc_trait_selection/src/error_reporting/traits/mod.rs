@@ -1,23 +1,34 @@
-// ignore-tidy-filelength :(
-
 pub mod ambiguity;
+mod fulfillment_errors;
 mod infer_ctxt_ext;
 pub mod on_unimplemented;
+mod overflow;
 pub mod suggestions;
-mod type_err_ctxt_ext;
 
-use rustc_data_structures::fx::FxIndexSet;
-use rustc_hir as hir;
+use std::iter;
+
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode, PredicateObligation};
+use rustc_hir::{self as hir, LangItem};
+use rustc_infer::infer::error_reporting::TypeErrCtxt;
+use rustc_infer::traits::{
+    Obligation, ObligationCause, ObligationCauseCode, PredicateObligation, SelectionError,
+};
+use rustc_macros::extension;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::Span;
-use std::ops::ControlFlow;
+use rustc_span::{ErrorGuaranteed, ExpnKind, Span};
 
+use ambiguity::TypeErrCtxtAmbiguityExt as _;
+use fulfillment_errors::TypeErrCtxtExt as _;
+use suggestions::TypeErrCtxtExt as _;
+
+use crate::traits::{FulfillmentError, FulfillmentErrorCode};
+
+pub use self::fulfillment_errors::*;
 pub use self::infer_ctxt_ext::*;
-pub use self::type_err_ctxt_ext::*;
+pub use self::overflow::*;
 
 // When outputting impl candidates, prefer showing those that are more similar.
 //
@@ -89,49 +100,6 @@ impl<'v> Visitor<'v> for FindExprBySpan<'v> {
     }
 }
 
-/// Look for type `param` in an ADT being used only through a reference to confirm that suggesting
-/// `param: ?Sized` would be a valid constraint.
-struct FindTypeParam {
-    param: rustc_span::Symbol,
-    invalid_spans: Vec<Span>,
-    nested: bool,
-}
-
-impl<'v> Visitor<'v> for FindTypeParam {
-    fn visit_where_predicate(&mut self, _: &'v hir::WherePredicate<'v>) {
-        // Skip where-clauses, to avoid suggesting indirection for type parameters found there.
-    }
-
-    fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
-        // We collect the spans of all uses of the "bare" type param, like in `field: T` or
-        // `field: (T, T)` where we could make `T: ?Sized` while skipping cases that are known to be
-        // valid like `field: &'a T` or `field: *mut T` and cases that *might* have further `Sized`
-        // obligations like `Box<T>` and `Vec<T>`, but we perform no extra analysis for those cases
-        // and suggest `T: ?Sized` regardless of their obligations. This is fine because the errors
-        // in that case should make what happened clear enough.
-        match ty.kind {
-            hir::TyKind::Ptr(_) | hir::TyKind::Ref(..) | hir::TyKind::TraitObject(..) => {}
-            hir::TyKind::Path(hir::QPath::Resolved(None, path))
-                if path.segments.len() == 1 && path.segments[0].ident.name == self.param =>
-            {
-                if !self.nested {
-                    debug!(?ty, "FindTypeParam::visit_ty");
-                    self.invalid_spans.push(ty.span);
-                }
-            }
-            hir::TyKind::Path(_) => {
-                let prev = self.nested;
-                self.nested = true;
-                hir::intravisit::walk_ty(self, ty);
-                self.nested = prev;
-            }
-            _ => {
-                hir::intravisit::walk_ty(self, ty);
-            }
-        }
-    }
-}
-
 /// Summarizes information
 #[derive(Clone)]
 pub enum ArgKind {
@@ -163,24 +131,199 @@ impl ArgKind {
     }
 }
 
-struct HasNumericInferVisitor;
-
-impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for HasNumericInferVisitor {
-    type Result = ControlFlow<()>;
-
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-        if matches!(ty.kind(), ty::Infer(ty::FloatVar(_) | ty::IntVar(_))) {
-            ControlFlow::Break(())
-        } else {
-            ControlFlow::Continue(())
-        }
-    }
-}
-
 #[derive(Copy, Clone)]
 pub enum DefIdOrName {
     DefId(DefId),
     Name(&'static str),
+}
+
+#[extension(pub trait TypeErrCtxtExt<'a, 'tcx>)]
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
+    fn report_fulfillment_errors(
+        &self,
+        mut errors: Vec<FulfillmentError<'tcx>>,
+    ) -> ErrorGuaranteed {
+        self.sub_relations
+            .borrow_mut()
+            .add_constraints(self, errors.iter().map(|e| e.obligation.predicate));
+
+        #[derive(Debug)]
+        struct ErrorDescriptor<'tcx> {
+            predicate: ty::Predicate<'tcx>,
+            index: Option<usize>, // None if this is an old error
+        }
+
+        let mut error_map: FxIndexMap<_, Vec<_>> = self
+            .reported_trait_errors
+            .borrow()
+            .iter()
+            .map(|(&span, predicates)| {
+                (
+                    span,
+                    predicates
+                        .0
+                        .iter()
+                        .map(|&predicate| ErrorDescriptor { predicate, index: None })
+                        .collect(),
+                )
+            })
+            .collect();
+
+        // Ensure `T: Sized` and `T: WF` obligations come last. This lets us display diagnostics
+        // with more relevant type information and hide redundant E0282 errors.
+        errors.sort_by_key(|e| match e.obligation.predicate.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
+                if self.tcx.is_lang_item(pred.def_id(), LangItem::Sized) =>
+            {
+                1
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
+            ty::PredicateKind::Coerce(_) => 2,
+            _ => 0,
+        });
+
+        for (index, error) in errors.iter().enumerate() {
+            // We want to ignore desugarings here: spans are equivalent even
+            // if one is the result of a desugaring and the other is not.
+            let mut span = error.obligation.cause.span;
+            let expn_data = span.ctxt().outer_expn_data();
+            if let ExpnKind::Desugaring(_) = expn_data.kind {
+                span = expn_data.call_site;
+            }
+
+            error_map.entry(span).or_default().push(ErrorDescriptor {
+                predicate: error.obligation.predicate,
+                index: Some(index),
+            });
+        }
+
+        // We do this in 2 passes because we want to display errors in order, though
+        // maybe it *is* better to sort errors by span or something.
+        let mut is_suppressed = vec![false; errors.len()];
+        for (_, error_set) in error_map.iter() {
+            // We want to suppress "duplicate" errors with the same span.
+            for error in error_set {
+                if let Some(index) = error.index {
+                    // Suppress errors that are either:
+                    // 1) strictly implied by another error.
+                    // 2) implied by an error with a smaller index.
+                    for error2 in error_set {
+                        if error2.index.is_some_and(|index2| is_suppressed[index2]) {
+                            // Avoid errors being suppressed by already-suppressed
+                            // errors, to prevent all errors from being suppressed
+                            // at once.
+                            continue;
+                        }
+
+                        if self.error_implies(error2.predicate, error.predicate)
+                            && !(error2.index >= error.index
+                                && self.error_implies(error.predicate, error2.predicate))
+                        {
+                            info!("skipping {:?} (implied by {:?})", error, error2);
+                            is_suppressed[index] = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut reported = None;
+
+        for from_expansion in [false, true] {
+            for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
+                if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
+                    let guar = self.report_fulfillment_error(error);
+                    self.infcx.set_tainted_by_errors(guar);
+                    reported = Some(guar);
+                    // We want to ignore desugarings here: spans are equivalent even
+                    // if one is the result of a desugaring and the other is not.
+                    let mut span = error.obligation.cause.span;
+                    let expn_data = span.ctxt().outer_expn_data();
+                    if let ExpnKind::Desugaring(_) = expn_data.kind {
+                        span = expn_data.call_site;
+                    }
+                    self.reported_trait_errors
+                        .borrow_mut()
+                        .entry(span)
+                        .or_insert_with(|| (vec![], guar))
+                        .0
+                        .push(error.obligation.predicate);
+                }
+            }
+        }
+
+        // It could be that we don't report an error because we have seen an `ErrorReported` from
+        // another source. We should probably be able to fix most of these, but some are delayed
+        // bugs that get a proper error after this function.
+        reported.unwrap_or_else(|| self.dcx().delayed_bug("failed to report fulfillment errors"))
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>) -> ErrorGuaranteed {
+        let mut error = FulfillmentError {
+            obligation: error.obligation.clone(),
+            code: error.code.clone(),
+            root_obligation: error.root_obligation.clone(),
+        };
+        if matches!(
+            error.code,
+            FulfillmentErrorCode::Select(crate::traits::SelectionError::Unimplemented)
+                | FulfillmentErrorCode::Project(_)
+        ) && self.apply_do_not_recommend(&mut error.obligation)
+        {
+            error.code = FulfillmentErrorCode::Select(SelectionError::Unimplemented);
+        }
+
+        match error.code {
+            FulfillmentErrorCode::Select(ref selection_error) => self.report_selection_error(
+                error.obligation.clone(),
+                &error.root_obligation,
+                selection_error,
+            ),
+            FulfillmentErrorCode::Project(ref e) => {
+                self.report_projection_error(&error.obligation, e)
+            }
+            FulfillmentErrorCode::Ambiguity { overflow: None } => {
+                self.maybe_report_ambiguity(&error.obligation)
+            }
+            FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) } => {
+                self.report_overflow_no_abort(error.obligation.clone(), suggest_increasing_limit)
+            }
+            FulfillmentErrorCode::Subtype(ref expected_found, ref err) => self
+                .report_mismatched_types(
+                    &error.obligation.cause,
+                    expected_found.expected,
+                    expected_found.found,
+                    *err,
+                )
+                .emit(),
+            FulfillmentErrorCode::ConstEquate(ref expected_found, ref err) => {
+                let mut diag = self.report_mismatched_consts(
+                    &error.obligation.cause,
+                    expected_found.expected,
+                    expected_found.found,
+                    *err,
+                );
+                let code = error.obligation.cause.code().peel_derives().peel_match_impls();
+                if let ObligationCauseCode::WhereClause(..)
+                | ObligationCauseCode::WhereClauseInExpr(..) = code
+                {
+                    self.note_obligation_cause_code(
+                        error.obligation.cause.body_id,
+                        &mut diag,
+                        error.obligation.predicate,
+                        error.obligation.param_env,
+                        code,
+                        &mut vec![],
+                        &mut Default::default(),
+                    );
+                }
+                diag.emit()
+            }
+            FulfillmentErrorCode::Cycle(ref cycle) => self.report_overflow_obligation_cycle(cycle),
+        }
+    }
 }
 
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a

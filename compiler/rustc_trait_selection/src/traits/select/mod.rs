@@ -18,7 +18,7 @@ use super::{
     TraitQueryMode,
 };
 
-use crate::error_reporting::traits::TypeErrCtxtExt;
+use crate::error_reporting::traits::TypeErrCtxtOverflowExt;
 use crate::infer::{InferCtxt, InferCtxtExt, InferOk, TypeFreshener};
 use crate::solve::InferCtxtSelectExt as _;
 use crate::traits::normalize::normalize_with_depth;
