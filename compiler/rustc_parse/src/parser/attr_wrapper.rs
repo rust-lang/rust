@@ -295,21 +295,22 @@ impl<'a> Parser<'a> {
 
         let num_calls = end_pos - start_pos;
 
-        // If we have no attributes, then we will never need to
-        // use any replace ranges.
-        let replace_ranges: Box<[ReplaceRange]> = if ret.attrs().is_empty() && !self.capture_cfg {
-            Box::new([])
-        } else {
-            // Grab any replace ranges that occur *inside* the current AST node.
-            // We will perform the actual replacement when we convert the `LazyAttrTokenStream`
-            // to an `AttrTokenStream`.
-            self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end]
-                .iter()
-                .cloned()
-                .chain(inner_attr_replace_ranges.iter().cloned())
-                .map(|(range, data)| ((range.start - start_pos)..(range.end - start_pos), data))
-                .collect()
-        };
+        // This is hot enough for `deep-vector` that checking the conditions for an empty iterator
+        // is measurably faster than actually executing the iterator.
+        let replace_ranges: Box<[ReplaceRange]> =
+            if replace_ranges_start == replace_ranges_end && inner_attr_replace_ranges.is_empty() {
+                Box::new([])
+            } else {
+                // Grab any replace ranges that occur *inside* the current AST node.
+                // We will perform the actual replacement when we convert the `LazyAttrTokenStream`
+                // to an `AttrTokenStream`.
+                self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end]
+                    .iter()
+                    .cloned()
+                    .chain(inner_attr_replace_ranges.iter().cloned())
+                    .map(|(range, data)| ((range.start - start_pos)..(range.end - start_pos), data))
+                    .collect()
+            };
 
         let tokens = LazyAttrTokenStream::new(LazyAttrTokenStreamImpl {
             start_token,
