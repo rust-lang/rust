@@ -181,11 +181,12 @@ pub trait CommandExt: Sealed {
     #[stable(feature = "windows_process_extensions", since = "1.16.0")]
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command;
 
-    /// Sets the field [wShowWindow][1] of [STARTUPINFO][2] that is passed to `CreateProcess`.
+    /// Sets the field `wShowWindow` of [STARTUPINFO][1] that is passed to `CreateProcess`.
+    /// Allowed values are the ones listed in
+    /// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow
     ///
-    /// [1]: https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow
-    /// [2]: https://learn.microsoft.com/es-es/windows/win32/api/processthreadsapi/ns-processthreadsapi-startupinfow
-    #[unstable(feature = "windows_process_extensions_show_window", issue = "none")]
+    /// [1]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/ns-processthreadsapi-startupinfow
+    #[unstable(feature = "windows_process_extensions_show_window", issue = "127544")]
     fn show_window(&mut self, cmd_show: u16) -> &mut process::Command;
 
     /// Forces all arguments to be wrapped in quote (`"`) characters.
