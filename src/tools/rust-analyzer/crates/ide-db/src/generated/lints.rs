@@ -6074,6 +6074,17 @@ The tracking issue for this feature is: None.
 
 ------------------------
 
+"##,
+    },
+    Lint {
+        label: "contains",
+        description: r##"# `contains`
+
+The tracking issue for this feature is: [#94047]
+
+[#94047]: https://github.com/rust-lang/rust/issues/94047
+
+
 The `rustc` compiler has certain pluggable operations, that is,
 functionality that isn't hard-coded into the language, but is
 implemented in libraries, with a special marker to tell the compiler
