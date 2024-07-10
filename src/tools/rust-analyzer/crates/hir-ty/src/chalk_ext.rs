@@ -119,8 +119,10 @@ impl TyExt for Ty {
             TyKind::Scalar(Scalar::Bool) => Some(BuiltinType::Bool),
             TyKind::Scalar(Scalar::Char) => Some(BuiltinType::Char),
             TyKind::Scalar(Scalar::Float(fty)) => Some(BuiltinType::Float(match fty {
+                FloatTy::F128 => BuiltinFloat::F128,
                 FloatTy::F64 => BuiltinFloat::F64,
                 FloatTy::F32 => BuiltinFloat::F32,
+                FloatTy::F16 => BuiltinFloat::F16,
             })),
             TyKind::Scalar(Scalar::Int(ity)) => Some(BuiltinType::Int(match ity {
                 IntTy::Isize => BuiltinInt::Isize,

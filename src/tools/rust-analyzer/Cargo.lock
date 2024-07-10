@@ -167,9 +167,9 @@ checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
 name = "chalk-derive"
-version = "0.97.0"
+version = "0.98.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92a0aedc4ac2adc5c0b7dc9ec38c5c816284ad28da6d4ecd01873b9683f54972"
+checksum = "9426c8fd0fe61c3da880b801d3b510524df17843a8f9ec1f5b9cec24fb7412df"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -179,9 +179,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.97.0"
+version = "0.98.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db18493569b190f7266a04901e520fc3a5c00564475154287906f8a27302c119"
+checksum = "d5f2eb1cd6054da221bd1ac0197fb2fe5e2caf3dcb93619398fc1433f8f09093"
 dependencies = [
  "bitflags 2.5.0",
  "chalk-derive",
@@ -189,9 +189,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.97.0"
+version = "0.98.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae4ba8ce5bd2e1b59f1f79495bc8704db09a8285e51cc5ddf01d9baee1bf447d"
+checksum = "129dc03458f71cfb9c3cd621c9c68166a94e87b85b16ccd29af015d7ff9a1c61"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -202,9 +202,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.97.0"
+version = "0.98.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2ec1b3b7f7b1ec38f099ef39c2bc3ea29335be1b8316d114baff46d96d131e9"
+checksum = "d7e8a8c1e928f98cdf227b868416ef21dcd8cc3c61b347576d783713444d41c8"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -546,6 +546,7 @@ dependencies = [
  "ra-ap-rustc_abi",
  "ra-ap-rustc_parse_format",
  "rustc-hash",
+ "rustc_apfloat",
  "smallvec",
  "span",
  "stdx",
@@ -613,6 +614,7 @@ dependencies = [
  "ra-ap-rustc_index",
  "ra-ap-rustc_pattern_analysis",
  "rustc-hash",
+ "rustc_apfloat",
  "scoped-tls",
  "smallvec",
  "span",
@@ -658,6 +660,7 @@ dependencies = [
  "profile",
  "pulldown-cmark",
  "pulldown-cmark-to-cmark",
+ "rustc_apfloat",
  "smallvec",
  "span",
  "stdx",
@@ -1939,6 +1942,7 @@ dependencies = [
  "rayon",
  "rowan",
  "rustc-hash",
+ "rustc_apfloat",
  "smol_str",
  "stdx",
  "test-utils",

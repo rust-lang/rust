@@ -489,6 +489,8 @@ impl ast::Byte {
 
 #[cfg(test)]
 mod tests {
+    use rustc_apfloat::ieee::Quad as f128;
+
     use crate::ast::{self, make, FloatNumber, IntNumber};
 
     fn check_float_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
@@ -499,14 +501,16 @@ mod tests {
         assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());
     }
 
-    fn check_float_value(lit: &str, expected: impl Into<Option<f64>> + Copy) {
+    // FIXME(#17451) Use `expected: f128` once `f128` is stabilised.
+    fn check_float_value(lit: &str, expected: &str) {
+        let expected = Some(expected.parse::<f128>().unwrap());
         assert_eq!(
-            FloatNumber { syntax: make::tokens::literal(lit) }.value_string().parse::<f64>().ok(),
-            expected.into()
+            FloatNumber { syntax: make::tokens::literal(lit) }.value_string().parse::<f128>().ok(),
+            expected
         );
         assert_eq!(
-            IntNumber { syntax: make::tokens::literal(lit) }.value_string().parse::<f64>().ok(),
-            expected.into()
+            IntNumber { syntax: make::tokens::literal(lit) }.value_string().parse::<f128>().ok(),
+            expected
         );
     }
 
@@ -520,9 +524,9 @@ mod tests {
         check_float_suffix("123f32", "f32");
         check_float_suffix("123.0e", None);
         check_float_suffix("123.0e4", None);
-        check_float_suffix("123.0ef32", "f32");
+        check_float_suffix("123.0ef16", "f16");
         check_float_suffix("123.0E4f32", "f32");
-        check_float_suffix("1_2_3.0_f32", "f32");
+        check_float_suffix("1_2_3.0_f128", "f128");
     }
 
     #[test]
@@ -589,8 +593,10 @@ bcde", b"abcde",
 
     #[test]
     fn test_value_underscores() {
-        check_float_value("1.234567891011121_f64", 1.234567891011121_f64);
-        check_float_value("1__0.__0__f32", 10.0);
+        check_float_value("1.3_4665449586950493453___6_f128", "1.346654495869504934536");
+        check_float_value("1.234567891011121_f64", "1.234567891011121");
+        check_float_value("1__0.__0__f32", "10.0");
+        check_float_value("3._0_f16", "3.0");
         check_int_value("0b__1_0_", 2);
         check_int_value("1_1_1_1_1_1", 111111);
     }

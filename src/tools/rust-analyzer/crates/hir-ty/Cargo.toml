@@ -33,6 +33,7 @@ triomphe.workspace = true
 nohash-hasher.workspace = true
 typed-arena = "2.0.1"
 indexmap.workspace = true
+rustc_apfloat = "0.2.0"
 
 ra-ap-rustc_abi.workspace = true
 ra-ap-rustc_index.workspace = true

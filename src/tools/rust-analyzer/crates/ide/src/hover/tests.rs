@@ -5332,6 +5332,49 @@ const FOO$0: f32 = 1.9999999403953552_f32;
             This is a doc
         "#]],
     );
+    // Check `f16` and `f128`
+    check(
+        r#"
+/// This is a doc
+const FOO$0: f16 = -1.0f16;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: f16 = -1.0
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    check(
+        r#"
+/// This is a doc
+const FOO$0: f128 = -1.0f128;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: f128 = -1.0
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
 }
 
 #[test]
@@ -8046,6 +8089,22 @@ fn main() {
     check(
         r#"
 fn main() {
+    $01.0f16;
+}
+"#,
+        expect![[r#"
+            *1.0f16*
+            ```rust
+            f16
+            ```
+            ___
+
+            value of literal: 1 (bits: 0x3C00)
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
     $01.0f32;
 }
 "#,
@@ -8057,6 +8116,22 @@ fn main() {
             ___
 
             value of literal: 1 (bits: 0x3F800000)
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $01.0f128;
+}
+"#,
+        expect![[r#"
+            *1.0f128*
+            ```rust
+            f128
+            ```
+            ___
+
+            value of literal: 1 (bits: 0x3FFF0000000000000000000000000000)
         "#]],
     );
     check(
@@ -8390,8 +8465,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 7791..7999,
-                                focus_range: 7856..7862,
+                                full_range: 7800..8008,
+                                focus_range: 7865..7871,
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
@@ -8404,8 +8479,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 8629..9095,
-                                focus_range: 8673..8681,
+                                full_range: 8638..9104,
+                                focus_range: 8682..8690,
                                 name: "Iterator",
                                 kind: Trait,
                                 container_name: "iterator",

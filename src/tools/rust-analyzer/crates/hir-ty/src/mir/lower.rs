@@ -19,6 +19,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
+use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
 use syntax::TextRange;
 use triomphe::Arc;
@@ -1432,10 +1433,14 @@ impl<'ctx> MirLowerCtx<'ctx> {
             hir_def::hir::Literal::Int(it, _) => Box::from(&it.to_le_bytes()[0..size()?]),
             hir_def::hir::Literal::Uint(it, _) => Box::from(&it.to_le_bytes()[0..size()?]),
             hir_def::hir::Literal::Float(f, _) => match size()? {
+                16 => Box::new(f.to_f128().to_bits().to_le_bytes()),
                 8 => Box::new(f.to_f64().to_le_bytes()),
                 4 => Box::new(f.to_f32().to_le_bytes()),
+                2 => Box::new(u16::try_from(f.to_f16().to_bits()).unwrap().to_le_bytes()),
                 _ => {
-                    return Err(MirLowerError::TypeError("float with size other than 4 or 8 bytes"))
+                    return Err(MirLowerError::TypeError(
+                        "float with size other than 2, 4, 8 or 16 bytes",
+                    ))
                 }
             },
         };

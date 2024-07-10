@@ -27,8 +27,10 @@ pub fn uint_ty_to_string(ty: UintTy) -> &'static str {
 
 pub fn float_ty_to_string(ty: FloatTy) -> &'static str {
     match ty {
+        FloatTy::F16 => "f16",
         FloatTy::F32 => "f32",
         FloatTy::F64 => "f64",
+        FloatTy::F128 => "f128",
     }
 }
 
@@ -56,7 +58,9 @@ pub(super) fn uint_ty_from_builtin(t: BuiltinUint) -> UintTy {
 
 pub(super) fn float_ty_from_builtin(t: BuiltinFloat) -> FloatTy {
     match t {
+        BuiltinFloat::F16 => FloatTy::F16,
         BuiltinFloat::F32 => FloatTy::F32,
         BuiltinFloat::F64 => FloatTy::F64,
+        BuiltinFloat::F128 => FloatTy::F128,
     }
 }

@@ -28,6 +28,10 @@ use hir_expand::name::Name;
 use intern::{Internable, Interned};
 use itertools::Itertools;
 use la_arena::ArenaMap;
+use rustc_apfloat::{
+    ieee::{Half as f16, Quad as f128},
+    Float,
+};
 use smallvec::SmallVec;
 use stdx::{never, IsNoneOr};
 use triomphe::Arc;
@@ -545,6 +549,17 @@ fn render_const_scalar(
                 write!(f, "{it}")
             }
             Scalar::Float(fl) => match fl {
+                chalk_ir::FloatTy::F16 => {
+                    // FIXME(#17451): Replace with builtins once they are stabilised.
+                    let it = f16::from_bits(u16::from_le_bytes(b.try_into().unwrap()).into());
+                    let s = it.to_string();
+                    if s.strip_prefix('-').unwrap_or(&s).chars().all(|c| c.is_ascii_digit()) {
+                        // Match Rust debug formatting
+                        write!(f, "{s}.0")
+                    } else {
+                        write!(f, "{s}")
+                    }
+                }
                 chalk_ir::FloatTy::F32 => {
                     let it = f32::from_le_bytes(b.try_into().unwrap());
                     write!(f, "{it:?}")
@@ -552,6 +567,17 @@ fn render_const_scalar(
                 chalk_ir::FloatTy::F64 => {
                     let it = f64::from_le_bytes(b.try_into().unwrap());
                     write!(f, "{it:?}")
+                }
+                chalk_ir::FloatTy::F128 => {
+                    // FIXME(#17451): Replace with builtins once they are stabilised.
+                    let it = f128::from_bits(u128::from_le_bytes(b.try_into().unwrap()));
+                    let s = it.to_string();
+                    if s.strip_prefix('-').unwrap_or(&s).chars().all(|c| c.is_ascii_digit()) {
+                        // Match Rust debug formatting
+                        write!(f, "{s}.0")
+                    } else {
+                        write!(f, "{s}")
+                    }
                 }
             },
         },
