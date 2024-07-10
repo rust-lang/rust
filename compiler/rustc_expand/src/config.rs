@@ -187,6 +187,7 @@ impl<'a> StripUnconfigured<'a> {
             .iter()
             .filter_map(|tree| match tree.clone() {
                 AttrTokenTree::AttrsTarget(mut target) => {
+                    // Expand any `cfg_attr` attributes.
                     target.attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
 
                     if self.in_cfg(&target.attrs) {
@@ -195,6 +196,8 @@ impl<'a> StripUnconfigured<'a> {
                         );
                         Some(AttrTokenTree::AttrsTarget(target))
                     } else {
+                        // Remove the target if there's a `cfg` attribute and
+                        // the condition isn't satisfied.
                         None
                     }
                 }

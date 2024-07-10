@@ -269,11 +269,14 @@ fn attrs_and_tokens_to_token_trees(
 /// with its attributes.
 ///
 /// This is constructed during parsing when we need to capture
-/// tokens.
+/// tokens, for `cfg` and `cfg_attr` attributes.
 ///
 /// For example, `#[cfg(FALSE)] struct Foo {}` would
 /// have an `attrs` field containing the `#[cfg(FALSE)]` attr,
 /// and a `tokens` field storing the (unparsed) tokens `struct Foo {}`
+///
+/// The `cfg`/`cfg_attr` processing occurs in
+/// `StripUnconfigured::configure_tokens`.
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct AttrsTarget {
     /// Attributes, both outer and inner.
