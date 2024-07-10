@@ -81,6 +81,6 @@ impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // TODO(antoyo): use inline attribute from there in linkage.set() above.
 
         self.functions.borrow_mut().insert(symbol_name.to_string(), decl);
-        self.function_instances.borrow_mut().insert(instance, unsafe { std::mem::transmute(decl) });
+        self.function_instances.borrow_mut().insert(instance, decl);
     }
 }
