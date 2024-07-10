@@ -462,12 +462,15 @@ fn add_enum_def(
     target_node: SyntaxNode,
     target_module: &hir::Module,
 ) -> Option<()> {
+    let insert_before = node_to_insert_before(target_node);
+
     if ctx
-        .find_node_at_offset::<ast::SourceFile>()?
-        .syntax()
-        .children()
-        .filter_map(|node| ast::Enum::cast(node).and_then(|e| ctx.sema.to_def(&e)))
-        .any(|def| def.name(ctx.db()).as_str() == Some("Bool"))
+        .sema
+        .scope(&insert_before)?
+        .module()
+        .scope(ctx.db(), Some(*target_module))
+        .iter()
+        .any(|(name, _)| name.as_str() == Some("Bool"))
     {
         return None;
     }
@@ -482,7 +485,6 @@ fn add_enum_def(
         .any(|module| module.nearest_non_block_module(ctx.db()) != *target_module);
     let enum_def = make_bool_enum(make_enum_pub);
 
-    let insert_before = node_to_insert_before(target_node);
     let indent = IndentLevel::from_node(&insert_before);
     enum_def.reindent_to(indent);
 
