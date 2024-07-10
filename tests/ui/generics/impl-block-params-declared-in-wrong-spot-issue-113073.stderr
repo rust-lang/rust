@@ -14,8 +14,9 @@ LL | impl Foo<T: Default> for String {}
    |
 help: declare the type parameter right after the `impl` keyword
    |
-LL | impl<T: Default> Foo<T> for String {}
-   |     ++++++++++++     ~
+LL - impl Foo<T: Default> for String {}
+LL + impl<T: Default> Foo<T> for String {}
+   |
 
 error[E0229]: associated item constraints are not allowed here
   --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:7:10
@@ -25,8 +26,9 @@ LL | impl Foo<T: 'a + Default> for u8 {}
    |
 help: declare the type parameter right after the `impl` keyword
    |
-LL | impl<'a, T: 'a + Default> Foo<T> for u8 {}
-   |     +++++++++++++++++++++     ~
+LL - impl Foo<T: 'a + Default> for u8 {}
+LL + impl<'a, T: 'a + Default> Foo<T> for u8 {}
+   |
 
 error[E0229]: associated item constraints are not allowed here
   --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:13:13
@@ -36,8 +38,9 @@ LL | impl<T> Foo<T: Default> for u16 {}
    |
 help: declare the type parameter right after the `impl` keyword
    |
-LL | impl<T, T: Default> Foo<T> for u16 {}
-   |       ++++++++++++      ~
+LL - impl<T> Foo<T: Default> for u16 {}
+LL + impl<T, T: Default> Foo<T> for u16 {}
+   |
 
 error[E0229]: associated item constraints are not allowed here
   --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:17:14
@@ -47,8 +50,9 @@ LL | impl<'a> Foo<T: 'a + Default> for u32 {}
    |
 help: declare the type parameter right after the `impl` keyword
    |
-LL | impl<'a, 'a, T: 'a + Default> Foo<T> for u32 {}
-   |        +++++++++++++++++++++      ~
+LL - impl<'a> Foo<T: 'a + Default> for u32 {}
+LL + impl<'a, 'a, T: 'a + Default> Foo<T> for u32 {}
+   |
 
 error[E0229]: associated item constraints are not allowed here
   --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:23:10
@@ -58,8 +62,9 @@ LL | impl Bar<T: Default, K: Default> for String {}
    |
 help: declare the type parameter right after the `impl` keyword
    |
-LL | impl<T: Default> Bar<T, K: Default> for String {}
-   |     ++++++++++++     ~
+LL - impl Bar<T: Default, K: Default> for String {}
+LL + impl<T: Default> Bar<T, K: Default> for String {}
+   |
 
 error[E0107]: trait takes 2 generic arguments but 1 generic argument was supplied
   --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:27:9
@@ -87,8 +92,9 @@ LL | impl<T> Bar<T, K: Default> for u8 {}
    |
 help: declare the type parameter right after the `impl` keyword
    |
-LL | impl<T, K: Default> Bar<T, K> for u8 {}
-   |       ++++++++++++         ~
+LL - impl<T> Bar<T, K: Default> for u8 {}
+LL + impl<T, K: Default> Bar<T, K> for u8 {}
+   |
 
 error: aborting due to 8 previous errors
 
