@@ -93,7 +93,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     docker --version
 
     REGISTRY=ghcr.io
-    REGISTRY_USERNAME=${GITHUB_REPOSITORY_OWNER}
+    REGISTRY_USERNAME=${GITHUB_REPOSITORY_OWNER:-rust-lang-ci}
     # Tag used to push the final Docker image, so that it can be pulled by e.g. rustup
     IMAGE_TAG=${REGISTRY}/${REGISTRY_USERNAME}/rust-ci:${cksum}
     # Tag used to cache the Docker build
