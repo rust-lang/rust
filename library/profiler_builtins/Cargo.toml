@@ -14,3 +14,6 @@ compiler_builtins = { version = "0.1.0", features = ['rustc-dep-of-std'] }
 
 [build-dependencies]
 cc = "1.0.97"
+
+[patch.crates-io]
+compiler_builtins = { git = "https://github.com/tgross35/compiler-builtins.git", branch = "android-testing"}

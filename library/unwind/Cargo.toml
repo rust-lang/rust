@@ -34,3 +34,6 @@ llvm-libunwind = []
 # If crt-static is enabled, static link to `libunwind.a` provided by system
 # If crt-static is disabled, dynamic link to `libunwind.so` provided by system
 system-llvm-libunwind = []
+
+[patch.crates-io]
+compiler_builtins = { git = "https://github.com/tgross35/compiler-builtins.git", branch = "android-testing"}
