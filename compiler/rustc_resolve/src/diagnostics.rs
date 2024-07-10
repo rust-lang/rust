@@ -371,6 +371,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         };
 
         let mut suggestion = None;
+        let mut span = binding_span;
         match import.kind {
             ImportKind::Single { type_ns_only: true, .. } => {
                 suggestion = Some(format!("self as {suggested_name}"))
@@ -381,12 +382,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(binding_span) {
                         if pos <= snippet.len() {
-                            suggestion = Some(format!(
-                                "{} as {}{}",
-                                &snippet[..pos],
-                                suggested_name,
-                                if snippet.ends_with(';') { ";" } else { "" }
-                            ))
+                            span = binding_span
+                                .with_lo(binding_span.lo() + BytePos(pos as u32))
+                                .with_hi(
+                                    binding_span.hi()
+                                        - BytePos(if snippet.ends_with(';') { 1 } else { 0 }),
+                                );
+                            suggestion = Some(format!(" as {suggested_name}"));
                         }
                     }
                 }
@@ -402,9 +404,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         if let Some(suggestion) = suggestion {
-            err.subdiagnostic(ChangeImportBindingSuggestion { span: binding_span, suggestion });
+            err.subdiagnostic(ChangeImportBindingSuggestion { span, suggestion });
         } else {
-            err.subdiagnostic(ChangeImportBinding { span: binding_span });
+            err.subdiagnostic(ChangeImportBinding { span });
         }
     }
 
