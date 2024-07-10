@@ -286,13 +286,13 @@ pub(crate) fn highlight_exit_points(
         sema: &Semantics<'_, RootDatabase>,
         def_token: Option<SyntaxToken>,
         body: ast::Expr,
-    ) -> Option<FxHashMap<EditionedFileId, Vec<HighlightedRange>>> {
-        let mut highlights: FxHashMap<EditionedFileId, Vec<_>> = FxHashMap::default();
+    ) -> Option<FxHashMap<EditionedFileId, FxHashSet<HighlightedRange>>> {
+        let mut highlights: FxHashMap<EditionedFileId, FxHashSet<_>> = FxHashMap::default();
 
         let mut push_to_highlights = |file_id, range| {
             if let Some(FileRange { file_id, range }) = original_frange(sema.db, file_id, range) {
                 let hrange = HighlightedRange { category: ReferenceCategory::empty(), range };
-                highlights.entry(file_id).or_default().push(hrange);
+                highlights.entry(file_id).or_default().insert(hrange);
             }
         };
 
@@ -379,7 +379,7 @@ pub(crate) fn highlight_exit_points(
         merge_map(&mut res, new_map);
     }
 
-    res
+    res.into_iter().map(|(file_id, ranges)| (file_id, ranges.into_iter().collect())).collect()
 }
 
 pub(crate) fn highlight_break_points(
@@ -392,13 +392,13 @@ pub(crate) fn highlight_break_points(
         loop_token: Option<SyntaxToken>,
         label: Option<ast::Label>,
         expr: ast::Expr,
-    ) -> Option<FxHashMap<EditionedFileId, Vec<HighlightedRange>>> {
-        let mut highlights: FxHashMap<EditionedFileId, Vec<_>> = FxHashMap::default();
+    ) -> Option<FxHashMap<EditionedFileId, FxHashSet<HighlightedRange>>> {
+        let mut highlights: FxHashMap<EditionedFileId, FxHashSet<_>> = FxHashMap::default();
 
         let mut push_to_highlights = |file_id, range| {
             if let Some(FileRange { file_id, range }) = original_frange(sema.db, file_id, range) {
                 let hrange = HighlightedRange { category: ReferenceCategory::empty(), range };
-                highlights.entry(file_id).or_default().push(hrange);
+                highlights.entry(file_id).or_default().insert(hrange);
             }
         };
 
@@ -445,11 +445,12 @@ pub(crate) fn highlight_break_points(
         Some(highlights)
     }
 
+    let Some(loops) = goto_definition::find_loops(sema, &token) else {
+        return FxHashMap::default();
+    };
+
     let mut res = FxHashMap::default();
     let token_kind = token.kind();
-    let Some(loops) = goto_definition::find_loops(sema, &token) else {
-        return res;
-    };
     for expr in loops {
         let new_map = match &expr {
             ast::Expr::LoopExpr(l) => hl(sema, token_kind, l.loop_token(), l.label(), expr),
@@ -461,7 +462,7 @@ pub(crate) fn highlight_break_points(
         merge_map(&mut res, new_map);
     }
 
-    res
+    res.into_iter().map(|(file_id, ranges)| (file_id, ranges.into_iter().collect())).collect()
 }
 
 pub(crate) fn highlight_yield_points(
@@ -472,13 +473,13 @@ pub(crate) fn highlight_yield_points(
         sema: &Semantics<'_, RootDatabase>,
         async_token: Option<SyntaxToken>,
         body: Option<ast::Expr>,
-    ) -> Option<FxHashMap<EditionedFileId, Vec<HighlightedRange>>> {
-        let mut highlights: FxHashMap<EditionedFileId, Vec<_>> = FxHashMap::default();
+    ) -> Option<FxHashMap<EditionedFileId, FxHashSet<HighlightedRange>>> {
+        let mut highlights: FxHashMap<EditionedFileId, FxHashSet<_>> = FxHashMap::default();
 
         let mut push_to_highlights = |file_id, range| {
             if let Some(FileRange { file_id, range }) = original_frange(sema.db, file_id, range) {
                 let hrange = HighlightedRange { category: ReferenceCategory::empty(), range };
-                highlights.entry(file_id).or_default().push(hrange);
+                highlights.entry(file_id).or_default().insert(hrange);
             }
         };
 
@@ -524,7 +525,7 @@ pub(crate) fn highlight_yield_points(
         merge_map(&mut res, new_map);
     }
 
-    res
+    res.into_iter().map(|(file_id, ranges)| (file_id, ranges.into_iter().collect())).collect()
 }
 
 fn cover_range(r0: Option<TextRange>, r1: Option<TextRange>) -> Option<TextRange> {
@@ -553,8 +554,8 @@ fn original_frange(
 }
 
 fn merge_map(
-    res: &mut FxHashMap<EditionedFileId, Vec<HighlightedRange>>,
-    new: Option<FxHashMap<EditionedFileId, Vec<HighlightedRange>>>,
+    res: &mut FxHashMap<EditionedFileId, FxHashSet<HighlightedRange>>,
+    new: Option<FxHashMap<EditionedFileId, FxHashSet<HighlightedRange>>>,
 ) {
     let Some(new) = new else {
         return;
@@ -1966,6 +1967,38 @@ fn main() {
          // ^^^^^
         };
     }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn no_highlight_on_return_in_macro_call() {
+        check(
+            r#"
+//- minicore:include
+//- /lib.rs
+macro_rules! M {
+    ($blk:expr) => {
+        $blk
+    };
+}
+
+fn main() {
+    fn f() {
+ // ^^
+        M!({ return$0; });
+          // ^^^^^^
+     // ^^^^^^^^^^^^^^^
+
+        include!("a.rs")
+     // ^^^^^^^^^^^^^^^^
+    }
+}
+
+//- /a.rs
+{
+    return;
 }
 "#,
         )

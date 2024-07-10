@@ -386,7 +386,7 @@ fn nav_for_break_points(
                 ast::Expr::LoopExpr(loop_) => loop_.loop_token()?.text_range(),
                 ast::Expr::WhileExpr(while_) => while_.while_token()?.text_range(),
                 ast::Expr::ForExpr(for_) => for_.for_token()?.text_range(),
-                // We garentee that the label exists
+                // We guarantee that the label exists
                 ast::Expr::BlockExpr(blk) => blk.label().unwrap().syntax().text_range(),
                 _ => return None,
             };

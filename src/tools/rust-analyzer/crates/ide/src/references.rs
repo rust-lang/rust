@@ -1236,7 +1236,7 @@ impl Foo {
         let refs = analysis.find_all_refs(pos, search_scope).unwrap().unwrap();
 
         let mut actual = String::new();
-        for refs in refs {
+        for mut refs in refs {
             actual += "\n\n";
 
             if let Some(decl) = refs.declaration {
@@ -1247,7 +1247,8 @@ impl Foo {
                 actual += "\n\n";
             }
 
-            for (file_id, references) in &refs.references {
+            for (file_id, references) in &mut refs.references {
+                references.sort_by_key(|(range, _)| range.start());
                 for (range, category) in references {
                     format_to!(actual, "{:?} {:?}", file_id, range);
                     for (name, _flag) in category.iter_names() {
@@ -2276,8 +2277,8 @@ fn$0 foo() -> u32 {
 "#,
             expect![[r#"
                 FileId(0) 0..2
-                FileId(0) 62..63
                 FileId(0) 40..46
+                FileId(0) 62..63
                 FileId(0) 69..80
             "#]],
         );
@@ -2297,8 +2298,8 @@ pub async$0 fn foo() {
 "#,
             expect![[r#"
                 FileId(0) 4..9
-                FileId(0) 63..68
                 FileId(0) 48..53
+                FileId(0) 63..68
                 FileId(0) 114..119
             "#]],
         );
@@ -2439,6 +2440,47 @@ fn main() {
             expect![[r#"
                 FileId(0) 16..21
                 FileId(0) 32..38
+            "#]],
+        )
+    }
+
+    #[test]
+    fn goto_ref_on_return_in_macro_call() {
+        check(
+            r#"
+//- minicore:include
+//- /lib.rs
+macro_rules! M {
+    ($blk:expr) => {
+        fn f() {
+            $blk
+        }
+
+        $blk
+    };
+}
+
+fn main() {
+    M!({
+        return$0;
+    });
+
+    f();
+    include!("a.rs")
+}
+
+//- /a.rs
+{
+    return;
+}
+"#,
+            expect![[r#"
+                FileId(0) 46..48
+                FileId(0) 106..108
+                FileId(0) 122..149
+                FileId(0) 135..141
+                FileId(0) 165..181
+                FileId(1) 6..12
             "#]],
         )
     }
