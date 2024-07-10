@@ -1451,11 +1451,6 @@ impl Config {
             config.out = crate::utils::helpers::absolute(&config.out);
         }
 
-        // Hacky way to determine the executable suffix for the build target. We cannot use
-        // std::env::consts::EXE_SUFFIX as the build target might not be the target bootstrap was
-        // compiled with.
-        let initial_exe_suffix = if config.build.triple.contains("windows") { ".exe" } else { "" };
-
         config.initial_rustc = if let Some(rustc) = rustc {
             if !flags.skip_stage0_validation {
                 config.check_stage0_version(&rustc, "rustc");
@@ -1468,7 +1463,7 @@ impl Config {
                 .join(config.build.triple)
                 .join("stage0")
                 .join("bin")
-                .join(format!("rustc{initial_exe_suffix}"))
+                .join(exe("rustc", config.build))
         };
 
         config.initial_cargo = if let Some(cargo) = cargo {
@@ -1483,7 +1478,7 @@ impl Config {
                 .join(config.build.triple)
                 .join("stage0")
                 .join("bin")
-                .join(format!("cargo{initial_exe_suffix}"))
+                .join(exe("cargo", config.build))
         };
 
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.
