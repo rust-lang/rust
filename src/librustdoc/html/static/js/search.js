@@ -1630,17 +1630,20 @@ function initSearch(rawSearchIndex) {
              */
             function writeFn(fnType, result) {
                 if (fnType.id < 0) {
-                    const queryId =  mgens && mgens.has(fnType.id) ? mgens.get(fnType.id) : null;
                     if (fnParamNames[-1 - fnType.id] === "") {
                         for (const nested of fnType.generics) {
                             writeFn(nested, result);
                         }
                         return;
-                    } else if (queryId < 0) {
-                        mappedNames.set(
-                            fnParamNames[-1 - fnType.id],
-                            queryParamNames[-1 - queryId],
-                        );
+                    } else if (mgens) {
+                        for (const [queryId, fnId] of mgens) {
+                            if (fnId === fnType.id) {
+                                mappedNames.set(
+                                    queryParamNames[-1 - queryId],
+                                    fnParamNames[-1 - fnType.id],
+                                );
+                            }
+                        }
                     }
                     pushText({
                         name: fnParamNames[-1 - fnType.id],
@@ -1863,7 +1866,7 @@ function initSearch(rawSearchIndex) {
          * @param {Array<QueryElement>} queryElems - The elements from the parsed query.
          * @param {[FunctionType]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgensIn
-         *     - Map functions generics to query generics (never modified).
+         *     - Map query generics to function generics (never modified).
          * @param {null|Map<number,number> -> bool} solutionCb - Called for each `mgens` solution.
          * @param {number} unboxingDepth
          *     - Limit checks that Ty matches Vec<Ty>,
@@ -1904,12 +1907,12 @@ function initSearch(rawSearchIndex) {
                         continue;
                     }
                     if (fnType.id < 0 && queryElem.id < 0) {
-                        if (mgens && mgens.has(fnType.id) &&
-                            mgens.get(fnType.id) !== queryElem.id) {
+                        if (mgens && mgens.has(queryElem.id) &&
+                            mgens.get(queryElem.id) !== fnType.id) {
                             continue;
                         }
                         const mgensScratch = new Map(mgens);
-                        mgensScratch.set(fnType.id, queryElem.id);
+                        mgensScratch.set(queryElem.id, fnType.id);
                         if (!solutionCb || solutionCb(mgensScratch)) {
                             const highlighted = [...fnTypesIn];
                             highlighted[i] = Object.assign({
@@ -1925,7 +1928,7 @@ function initSearch(rawSearchIndex) {
                         highlighted[i] = Object.assign({
                             highlighted: true,
                         }, fnType, {
-                            generics: unifyFunctionTypes(
+                            generics: unifyGenericTypes(
                                 fnType.generics,
                                 queryElem.generics,
                                 whereClause,
@@ -1948,17 +1951,11 @@ function initSearch(rawSearchIndex) {
                         continue;
                     }
                     if (fnType.id < 0) {
-                        if (mgens && mgens.has(fnType.id) &&
-                            mgens.get(fnType.id) !== 0) {
-                            continue;
-                        }
-                        const mgensScratch = new Map(mgens);
-                        mgensScratch.set(fnType.id, 0);
                         const highlightedGenerics = unifyFunctionTypes(
                             whereClause[(-fnType.id) - 1],
                             queryElems,
                             whereClause,
-                            mgensScratch,
+                            mgens,
                             solutionCb,
                             unboxingDepth + 1,
                         );
@@ -2029,11 +2026,11 @@ function initSearch(rawSearchIndex) {
                 let mgensScratch;
                 if (fnType.id < 0) {
                     mgensScratch = new Map(mgens);
-                    if (mgensScratch.has(fnType.id)
-                        && mgensScratch.get(fnType.id) !== queryElem.id) {
+                    if (mgensScratch.has(queryElem.id)
+                        && mgensScratch.get(queryElem.id) !== fnType.id) {
                         continue;
                     }
-                    mgensScratch.set(fnType.id, queryElem.id);
+                    mgensScratch.set(queryElem.id, fnType.id);
                 } else {
                     mgensScratch = mgens;
                 }
@@ -2070,7 +2067,7 @@ function initSearch(rawSearchIndex) {
                         }
                         const simplifiedGenerics = solution.simplifiedGenerics;
                         for (const simplifiedMgens of solution.mgens) {
-                            unifiedGenerics = unifyFunctionTypes(
+                            unifiedGenerics = unifyGenericTypes(
                                 simplifiedGenerics,
                                 queryElem.generics,
                                 whereClause,
@@ -2078,7 +2075,7 @@ function initSearch(rawSearchIndex) {
                                 solutionCb,
                                 unboxingDepth,
                             );
-                            if (unifiedGenerics) {
+                            if (unifiedGenerics !== null) {
                                 unifiedGenericsMgens = simplifiedMgens;
                                 return true;
                             }
@@ -2122,16 +2119,6 @@ function initSearch(rawSearchIndex) {
                 )) {
                     continue;
                 }
-                let mgensScratch;
-                if (fnType.id < 0) {
-                    mgensScratch = new Map(mgens);
-                    if (mgensScratch.has(fnType.id) && mgensScratch.get(fnType.id) !== 0) {
-                        continue;
-                    }
-                    mgensScratch.set(fnType.id, 0);
-                } else {
-                    mgensScratch = mgens;
-                }
                 const generics = fnType.id < 0 ?
                     whereClause[(-fnType.id) - 1] :
                     fnType.generics;
@@ -2142,7 +2129,7 @@ function initSearch(rawSearchIndex) {
                     fnTypes.toSpliced(i, 1, ...bindings, ...generics),
                     queryElems,
                     whereClause,
-                    mgensScratch,
+                    mgens,
                     solutionCb,
                     unboxingDepth + 1,
                 );
@@ -2167,6 +2154,199 @@ function initSearch(rawSearchIndex) {
             return null;
         }
         /**
+         * This function compares two lists of generics.
+         *
+         * This function behaves very similarly to `unifyFunctionTypes`, except that it
+         * doesn't skip or reorder anything. This is intended to match the behavior of
+         * the ordinary Rust type system, so that `Vec<Allocator>` only matches an actual
+         * `Vec` of `Allocators` and not the implicit `Allocator` parameter that every
+         * `Vec` has.
+         *
+         * @param {Array<FunctionType>} fnTypesIn - The objects to check.
+         * @param {Array<QueryElement>} queryElems - The elements from the parsed query.
+         * @param {[FunctionType]} whereClause - Trait bounds for generic items.
+         * @param {Map<number,number>|null} mgensIn
+         *     - Map functions generics to query generics (never modified).
+         * @param {null|Map<number,number> -> bool} solutionCb - Called for each `mgens` solution.
+         * @param {number} unboxingDepth
+         *     - Limit checks that Ty matches Vec<Ty>,
+         *       but not Vec<ParamEnvAnd<WithInfcx<ConstTy<Interner<Ty=Ty>>>>>
+         *
+         * @return {[FunctionType]|null} - Returns highlighed results if a match, null otherwise.
+         */
+        function unifyGenericTypes(
+            fnTypesIn,
+            queryElems,
+            whereClause,
+            mgensIn,
+            solutionCb,
+            unboxingDepth,
+        ) {
+            if (unboxingDepth >= UNBOXING_LIMIT) {
+                return null;
+            }
+            /**
+             * @type Map<integer, integer>|null
+             */
+            const mgens = mgensIn === null ? null : new Map(mgensIn);
+            if (queryElems.length === 0) {
+                return (!solutionCb || solutionCb(mgens)) ? fnTypesIn : null;
+            }
+            if (!fnTypesIn || fnTypesIn.length === 0) {
+                return null;
+            }
+            const fnType = fnTypesIn[0];
+            const queryElem = queryElems[0];
+            if (unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgens)) {
+                if (fnType.id < 0 && queryElem.id < 0) {
+                    if (!mgens || !mgens.has(queryElem.id) ||
+                        mgens.get(queryElem.id) === fnType.id
+                    ) {
+                        const mgensScratch = new Map(mgens);
+                        mgensScratch.set(queryElem.id, fnType.id);
+                        const fnTypesRemaining = unifyGenericTypes(
+                            fnTypesIn.slice(1),
+                            queryElems.slice(1),
+                            whereClause,
+                            mgensScratch,
+                            solutionCb,
+                            unboxingDepth,
+                        );
+                        if (fnTypesRemaining) {
+                            const highlighted = [fnType, ...fnTypesRemaining];
+                            highlighted[0] = Object.assign({
+                                highlighted: true,
+                            }, fnType, {
+                                generics: whereClause[-1 - fnType.id],
+                            });
+                            return highlighted;
+                        }
+                    }
+                } else {
+                    let unifiedGenerics;
+                    const fnTypesRemaining = unifyGenericTypes(
+                        fnTypesIn.slice(1),
+                        queryElems.slice(1),
+                        whereClause,
+                        mgens,
+                        mgensScratch => {
+                            const solution = unifyFunctionTypeCheckBindings(
+                                fnType,
+                                queryElem,
+                                whereClause,
+                                mgensScratch,
+                                unboxingDepth,
+                            );
+                            if (!solution) {
+                                return false;
+                            }
+                            const simplifiedGenerics = solution.simplifiedGenerics;
+                            for (const simplifiedMgens of solution.mgens) {
+                                unifiedGenerics = unifyGenericTypes(
+                                    simplifiedGenerics,
+                                    queryElem.generics,
+                                    whereClause,
+                                    simplifiedMgens,
+                                    solutionCb,
+                                    unboxingDepth,
+                                );
+                                if (unifiedGenerics !== null) {
+                                    return true;
+                                }
+                            }
+                        },
+                        unboxingDepth,
+                    );
+                    if (fnTypesRemaining) {
+                        const highlighted = [fnType, ...fnTypesRemaining];
+                        highlighted[0] = Object.assign({
+                            highlighted: true,
+                        }, fnType, {
+                            generics: unifiedGenerics || fnType.generics,
+                        });
+                        return highlighted;
+                    }
+                }
+            }
+            if (unifyFunctionTypeIsUnboxCandidate(
+                fnType,
+                queryElem,
+                whereClause,
+                mgens,
+                unboxingDepth + 1,
+            )) {
+                let highlightedRemaining;
+                if (fnType.id < 0) {
+                    // Where clause corresponds to `F: A + B`
+                    //                                 ^^^^^
+                    // The order of the constraints doesn't matter, so
+                    // use order-agnostic matching for it.
+                    const highlightedGenerics = unifyFunctionTypes(
+                        whereClause[(-fnType.id) - 1],
+                        [queryElem],
+                        whereClause,
+                        mgens,
+                        mgensScratch => {
+                            const hl = unifyGenericTypes(
+                                fnTypesIn.slice(1),
+                                queryElems.slice(1),
+                                whereClause,
+                                mgensScratch,
+                                solutionCb,
+                                unboxingDepth,
+                            );
+                            if (hl) {
+                                highlightedRemaining = hl;
+                            }
+                            return hl;
+                        },
+                        unboxingDepth + 1,
+                    );
+                    if (highlightedGenerics) {
+                        return [Object.assign({
+                            highlighted: true,
+                        }, fnType, {
+                            generics: highlightedGenerics,
+                        }), ...highlightedRemaining];
+                    }
+                } else {
+                    const highlightedGenerics = unifyGenericTypes(
+                        [
+                            ...Array.from(fnType.bindings.values()).flat(),
+                            ...fnType.generics,
+                        ],
+                        [queryElem],
+                        whereClause,
+                        mgens,
+                        mgensScratch => {
+                            const hl = unifyGenericTypes(
+                                fnTypesIn.slice(1),
+                                queryElems.slice(1),
+                                whereClause,
+                                mgensScratch,
+                                solutionCb,
+                                unboxingDepth,
+                            );
+                            if (hl) {
+                                highlightedRemaining = hl;
+                            }
+                            return hl;
+                        },
+                        unboxingDepth + 1,
+                    );
+                    if (highlightedGenerics) {
+                        return [Object.assign({}, fnType, {
+                            generics: highlightedGenerics,
+                            bindings: new Map([...fnType.bindings.entries()].map(([k, v]) => {
+                                return [k, highlightedGenerics.splice(0, v.length)];
+                            })),
+                        }), ...highlightedRemaining];
+                    }
+                }
+            }
+            return null;
+        }
+        /**
          * Check if this function is a match candidate.
          *
          * This function is all the fast checks that don't require backtracking.
@@ -2177,7 +2357,7 @@ function initSearch(rawSearchIndex) {
          *
          * @param {FunctionType} fnType
          * @param {QueryElement} queryElem
-         * @param {Map<number,number>|null} mgensIn - Map functions generics to query generics.
+         * @param {Map<number,number>|null} mgensIn - Map query generics to function generics.
          * @returns {boolean}
          */
         function unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgensIn) {
@@ -2187,22 +2367,13 @@ function initSearch(rawSearchIndex) {
             }
             // fnType.id < 0 means generic
             // queryElem.id < 0 does too
-            // mgensIn[fnType.id] = queryElem.id
-            // or, if mgensIn[fnType.id] = 0, then we've matched this generic with a bare trait
-            // and should make that same decision everywhere it appears
+            // mgensIn[queryElem.id] = fnType.id
             if (fnType.id < 0 && queryElem.id < 0) {
-                if (mgensIn) {
-                    if (mgensIn.has(fnType.id) && mgensIn.get(fnType.id) !== queryElem.id) {
-                        return false;
-                    }
-                    for (const [fid, qid] of mgensIn.entries()) {
-                        if (fnType.id !== fid && queryElem.id === qid) {
-                            return false;
-                        }
-                        if (fnType.id === fid && queryElem.id !== qid) {
-                            return false;
-                        }
-                    }
+                if (
+                    mgensIn && mgensIn.has(queryElem.id) &&
+                    mgensIn.get(queryElem.id) !== fnType.id
+                ) {
+                    return false;
                 }
                 return true;
             } else {
@@ -2279,7 +2450,7 @@ function initSearch(rawSearchIndex) {
          * @param {FunctionType} fnType
          * @param {QueryElement} queryElem
          * @param {[FunctionType]} whereClause - Trait bounds for generic items.
-         * @param {Map<number,number>} mgensIn - Map functions generics to query generics.
+         * @param {Map<number,number>} mgensIn - Map query generics to function generics.
          *                                            Never modified.
          * @param {number} unboxingDepth
          * @returns {false|{mgens: [Map<number,number>], simplifiedGenerics: [FunctionType]}}
@@ -2347,7 +2518,7 @@ function initSearch(rawSearchIndex) {
          * @param {FunctionType} fnType
          * @param {QueryElement} queryElem
          * @param {[FunctionType]} whereClause - Trait bounds for generic items.
-         * @param {Map<number,number>|null} mgens - Map functions generics to query generics.
+         * @param {Map<number,number>|null} mgens - Map query generics to function generics.
          * @param {number} unboxingDepth
          * @returns {boolean}
          */
@@ -2361,19 +2532,10 @@ function initSearch(rawSearchIndex) {
             if (unboxingDepth >= UNBOXING_LIMIT) {
                 return false;
             }
-            if (fnType.id < 0 && queryElem.id >= 0) {
+            if (fnType.id < 0) {
                 if (!whereClause) {
                     return false;
                 }
-                // mgens[fnType.id] === 0 indicates that we committed to unboxing this generic
-                // mgens[fnType.id] === null indicates that we haven't decided yet
-                if (mgens && mgens.has(fnType.id) && mgens.get(fnType.id) !== 0) {
-                    return false;
-                }
-                // Where clauses can represent cyclical data.
-                // `null` prevents it from trying to unbox in an infinite loop
-                const mgensTmp = new Map(mgens);
-                mgensTmp.set(fnType.id, null);
                 // This is only a potential unbox if the search query appears in the where clause
                 // for example, searching `Read -> usize` should find
                 // `fn read_all<R: Read>(R) -> Result<usize>`
@@ -2382,7 +2544,7 @@ function initSearch(rawSearchIndex) {
                     whereClause[(-fnType.id) - 1],
                     queryElem,
                     whereClause,
-                    mgensTmp,
+                    mgens,
                     unboxingDepth,
                 );
             } else if (fnType.generics.length > 0 || fnType.bindings.size > 0) {
@@ -3143,7 +3305,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                             displayType.appendChild(line);
                             addWhereLineFn = () => {};
                         };
-                        for (const [name, qname] of mappedNames) {
+                        for (const [qname, name] of mappedNames) {
                             // don't care unless the generic name is different
                             if (name === qname) {
                                 continue;
