@@ -2177,10 +2177,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         skip_fields: &[hir::ExprField<'_>],
         kind_name: &str,
     ) -> ErrorGuaranteed {
-        if variant.is_recovered() {
-            let guar =
-                self.dcx().span_delayed_bug(expr.span, "parser recovered but no error was emitted");
-            self.set_tainted_by_errors(guar);
+        // we don't care to report errors for a struct if the struct itself is tainted
+        if let Err(guar) = variant.has_errors() {
             return guar;
         }
         let mut err = self.err_ctxt().type_error_struct_with_diag(
@@ -2345,6 +2343,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut last_ty = None;
                     let mut nested_fields = Vec::new();
                     let mut index = None;
+
+                    // we don't care to report errors for a struct if the struct itself is tainted
+                    if let Err(guar) = adt_def.non_enum_variant().has_errors() {
+                        return Ty::new_error(self.tcx(), guar);
+                    }
                     while let Some(idx) = self.tcx.find_field((adt_def.did(), ident)) {
                         let &mut first_idx = index.get_or_insert(idx);
                         let field = &adt_def.non_enum_variant().fields[idx];
