@@ -618,23 +618,23 @@ fn test_next_chunk() {
 }
 #[test]
 fn test_happy_path_item_not_in_iterator() {
-    assert!(![1, 2, 3].iter().contain(&4));
+    assert!(![1i32, 2i32, 3i32].iter().contain(&4i32));
 }
 
 #[test]
 fn test_edge_case_handling_none_values() {
-    assert!([Some(2), None].iter().contain(&None));
-    assert!([Some(2), None].iter().contain(&Some(2)));
+    assert!([Some(2i32), Option::<i32>::None].iter().contain(&None));
+    assert!([Some(2i32), Option::<i32>::None].iter().contain(&Some(2i32)));
 }
 
 #[test]
 fn test_edge_case_handling_empty_iterator() {
-    assert!(!Vec::<i32>::new().iter().contain(&1));
+    assert!(!Vec::<i32>::new().iter().contain(&1i32));
 }
 
 #[test]
 fn test_edge_case_handling_iterator_with_duplicates() {
-    assert!([1, 2, 2, 3].iter().contain(&2));
+    assert!([1i32, 2i32, 2i32, 3i32].iter().contain(&2i32));
 }
 
 #[test]
@@ -643,14 +643,14 @@ fn test_edge_case_handling_iterator_with_custom_struct() {
     struct Item {
         value: i32,
     }
-    assert!([Item { value: 1 }, Item { value: 2 }].iter().contain(&Item { value: 2 }));
+    assert!([Item { value: 1i32 }, Item { value: 2i32 }].iter().contain(&Item { value: 2i32 }));
 }
 
-// #[test]
-// fn test_str_iterator_contain_string() {
-//     assert!(["a", "b", "c"].iter().contain("b".to_owned()));
-//     assert!(!["a", "b", "c"].iter().contain("d".to_owned()));
-// }
+#[test]
+fn test_str_iterator_contain_string() {
+    assert!(["a", "b", "c"].iter().contain(&"b".to_owned()));
+    assert!(!["a", "b", "c"].iter().contain(&"d".to_owned()));
+}
 
 #[test]
 fn test_str_iterator_contain_string_slice() {
@@ -660,14 +660,14 @@ fn test_str_iterator_contain_string_slice() {
 
 #[test]
 fn test_string_iterator_contain_str_slice() {
-    assert!(["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contain("b"));
-    assert!(!["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contain("d"));
+    assert!(["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contain(&"b"));
+    assert!(!["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contain(&"d"));
 }
 
 
 #[test]
 fn test_edge_case_handling_iterator_with_large_number_of_elements() {
-    assert!((1..1000).contain(500));
+    assert!((1..1000).contain(500i32));
 }
 
 

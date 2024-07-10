@@ -4072,20 +4072,33 @@ pub trait Iterator {
     /// Example:
     /// ```
     /// #![feature(contains)]
-    /// assert!([1, 2, 3].iter().contain(&1));
-    /// assert!(![1, 2, 3].iter().contain(&4));
-    /// assert!([Some(2), None].iter().contain(&None));
-    /// assert!([Some(2), None].iter().contain(&Some(2)));
+    /// assert!(![1i32, 2i32, 3i32].iter().contain(&4i32));
+    /// assert!([Some(2i32), Option::<i32>::None].iter().contain(&None));
+    /// assert!([Some(2i32), Option::<i32>::None].iter().contain(&Some(2i32)));
+    /// assert!(!Vec::<i32>::new().iter().contain(&1i32));
+    /// assert!([1i32, 2i32, 2i32, 3i32].iter().contain(&2i32));
+    /// #[derive(PartialEq)]
+    /// struct Item {
+    ///     value: i32,
+    /// }
+    /// assert!([Item { value: 1i32 }, Item { value: 2i32 }].iter().contain(&Item { value: 2i32 }));
+    /// assert!(["a", "b", "c"].iter().contain(&"b".to_owned()));
+    /// assert!(!["a", "b", "c"].iter().contain(&"d".to_owned()));
+    /// assert!(["a", "b", "c"].iter().contain(&"b"));
+    /// assert!(!["a", "b", "c"].iter().contain(&"d"));
+    /// assert!(["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contain(&"b"));
+    /// assert!(!["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contain(&"d"));
+    /// assert!((1..1000).contain(500i32));
     /// ```
     ///
     #[unstable(feature = "contains", reason = "new API", issue = "127494")]
-    fn contain<Q: Sized>(&mut self, item: Q) -> bool
+    fn contain<Q: ?Sized>(&mut self, item: Q) -> bool
     where
-        Self::Item: PartialEq<Q>,
+        Q: PartialEq<Self::Item>,
         Self: Sized,
     {
         for element in self {
-            if element == item {
+            if item == element {
                 return true;
             }
         }
