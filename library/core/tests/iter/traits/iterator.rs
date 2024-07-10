@@ -664,12 +664,10 @@ fn test_string_iterator_contain_str_slice() {
     assert!(!["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contain(&"d"));
 }
 
-
 #[test]
 fn test_edge_case_handling_iterator_with_large_number_of_elements() {
     assert!((1..1000).contain(500i32));
 }
-
 
 // just tests by whether or not this compiles
 fn _empty_impl_all_auto_traits<T>() {
