@@ -632,4 +632,45 @@ mod issue_11246 {
 // Safety: Another safety comment
 const FOO: () = unsafe {};
 
+// trait items and impl items
+mod issue_11709 {
+    trait MyTrait {
+        const NO_SAFETY_IN_TRAIT_BUT_IN_IMPL: u8 = unsafe { 0 };
+        //~^ ERROR: unsafe block missing a safety comment
+
+        // SAFETY: safe
+        const HAS_SAFETY_IN_TRAIT: i32 = unsafe { 1 };
+
+        // SAFETY: unrelated
+        unsafe fn unsafe_fn() {}
+
+        const NO_SAFETY_IN_TRAIT: i32 = unsafe { 1 };
+        //~^ ERROR: unsafe block missing a safety comment
+    }
+
+    struct UnsafeStruct;
+
+    impl MyTrait for UnsafeStruct {
+        // SAFETY: safe in this impl
+        const NO_SAFETY_IN_TRAIT_BUT_IN_IMPL: u8 = unsafe { 2 };
+
+        const HAS_SAFETY_IN_TRAIT: i32 = unsafe { 3 };
+        //~^ ERROR: unsafe block missing a safety comment
+    }
+
+    impl UnsafeStruct {
+        const NO_SAFETY_IN_IMPL: i32 = unsafe { 1 };
+        //~^ ERROR: unsafe block missing a safety comment
+    }
+}
+
+fn issue_13024() {
+    let mut just_a_simple_variable_with_a_very_long_name_that_has_seventy_eight_characters = 0;
+    let here_is_another_variable_with_long_name = 100;
+
+    // SAFETY: good
+    just_a_simple_variable_with_a_very_long_name_that_has_seventy_eight_characters =
+        unsafe { here_is_another_variable_with_long_name };
+}
+
 fn main() {}
