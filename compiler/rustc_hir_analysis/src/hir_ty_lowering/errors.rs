@@ -11,9 +11,9 @@ use rustc_errors::MultiSpan;
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed,
 };
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, Node};
 use rustc_middle::bug;
 use rustc_middle::query::Key;
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
@@ -740,7 +740,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if object_safety_violations {
             return;
         }
+
+        // related to issue #91997, turbofishes added only when in an expr or pat
+        let mut in_expr_or_pat = false;
         if let ([], [bound]) = (&potential_assoc_types[..], &trait_bounds) {
+            let grandparent = tcx.parent_hir_node(tcx.parent_hir_id(bound.trait_ref.hir_ref_id));
+            in_expr_or_pat = match grandparent {
+                Node::Expr(_) | Node::Pat(_) => true,
+                _ => false,
+            };
             match bound.trait_ref.path.segments {
                 // FIXME: `trait_ref.path.span` can point to a full path with multiple
                 // segments, even though `trait_ref.path.segments` is of length `1`. Work
@@ -896,6 +904,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     // `Trait<'a, Item = Type>` while accounting for the `<'a>` in the
                     // suggestion.
                     format!("{}, {}>", &snippet[..snippet.len() - 1], types.join(", "))
+                } else if in_expr_or_pat {
+                    // The user wrote `Iterator`, so we don't have a type we can suggest, but at
+                    // least we can clue them to the correct syntax `Iterator::<Item = Type>`.
+                    format!("{}::<{}>", snippet, types.join(", "))
                 } else {
                     // The user wrote `Iterator`, so we don't have a type we can suggest, but at
                     // least we can clue them to the correct syntax `Iterator<Item = Type>`.

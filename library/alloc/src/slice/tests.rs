@@ -240,6 +240,7 @@ fn panic_safe() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_sort() {
     let mut rng = test_rng();
 
