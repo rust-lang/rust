@@ -187,14 +187,14 @@ fn render_deps<'a, 'b>(
     buffer: &'b mut Vec<u8>,
     license_set: &mut BTreeSet<String>,
 ) -> Result<(), Error> {
-    writeln!(buffer, "| Package | License | URL | Authors |")?;
-    writeln!(buffer, "|---------|---------|-----|---------|")?;
+    writeln!(buffer, "| Package | License | Authors |")?;
+    writeln!(buffer, "|---------|---------|---------|")?;
     for dep in deps {
         let authors_list = dep.authors.join(", ").replace("<", "\\<").replace(">", "\\>");
         let url = format!("https://crates.io/crates/{}/{}", dep.name, dep.version);
         writeln!(
             buffer,
-            "| {name} {version} | {license} | <{url}> | {authors} |",
+            "| [{name} {version}]({url}) | {license} | {authors} |",
             name = dep.name,
             version = dep.version,
             license = dep.license,
