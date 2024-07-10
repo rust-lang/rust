@@ -2,10 +2,10 @@ use std::{iter, mem::discriminant};
 
 use crate::{
     doc_links::token_as_doc_comment, navigation_target::ToNav, FilePosition, NavigationTarget,
-    RangeInfo, TryToNav, UpmappingResult,
+    RangeInfo, TryToNav,
 };
 use hir::{
-    AsAssocItem, AssocItem, DescendPreference, InFile, MacroFileIdExt, ModuleDef, Semantics,
+    AsAssocItem, AssocItem, DescendPreference, FileRange, InFile, MacroFileIdExt, ModuleDef, Semantics
 };
 use ide_db::{
     base_db::{AnchoredPath, FileLoader},
@@ -14,11 +14,12 @@ use ide_db::{
     FileId, RootDatabase,
 };
 use itertools::Itertools;
+
 use syntax::{
-    ast::{self, HasLoopBody, Label},
+    ast::{self, HasLoopBody},
     match_ast, AstNode, AstToken,
     SyntaxKind::*,
-    SyntaxToken, TextRange, T,
+    SyntaxNode, SyntaxToken, TextRange, T,
 };
 
 // Feature: Go to Definition
@@ -208,136 +209,127 @@ fn handle_control_flow_keywords(
     match token.kind() {
         // For `fn` / `loop` / `while` / `for` / `async`, return the keyword it self,
         // so that VSCode will find the references when using `ctrl + click`
-        T![fn] | T![async] | T![try] | T![return] => try_find_fn_or_closure(sema, token),
-        T![loop] | T![while] | T![break] | T![continue] => try_find_loop(sema, token),
+        T![fn] | T![async] | T![try] | T![return] => nav_for_exit_points(sema, token),
+        T![loop] | T![while] | T![break] | T![continue] => nav_for_break_points(sema, token),
         T![for] if token.parent().and_then(ast::ForExpr::cast).is_some() => {
-            try_find_loop(sema, token)
+            nav_for_break_points(sema, token)
         }
         _ => None,
     }
 }
 
-fn try_find_fn_or_closure(
+pub(crate) fn find_fn_or_blocks(
+    sema: &Semantics<'_, RootDatabase>,
+    token: &SyntaxToken,
+) -> Vec<SyntaxNode> {
+    let find_ancestors = |token: SyntaxToken| {
+        let token_kind = token.kind();
+
+        for anc in sema.token_ancestors_with_macros(token) {
+            let node = match_ast! {
+                match anc {
+                    ast::Fn(fn_) => fn_.syntax().clone(),
+                    ast::ClosureExpr(c) => c.syntax().clone(),
+                    ast::BlockExpr(blk) => {
+                        match blk.modifier() {
+                            Some(ast::BlockModifier::Async(_)) => blk.syntax().clone(),
+                            Some(ast::BlockModifier::Try(_)) if token_kind != T![return] => blk.syntax().clone(),
+                            _ => continue,
+                        }
+                    },
+                    _ => continue,
+                }
+            };
+
+            return Some(node);
+        }
+        None
+    };
+
+    sema.descend_into_macros(DescendPreference::None, token.clone())
+        .into_iter()
+        .filter_map(find_ancestors)
+        .collect_vec()
+}
+
+fn nav_for_exit_points(
     sema: &Semantics<'_, RootDatabase>,
     token: &SyntaxToken,
 ) -> Option<Vec<NavigationTarget>> {
-    fn find_exit_point(
-        sema: &Semantics<'_, RootDatabase>,
-        token: SyntaxToken,
-    ) -> Option<UpmappingResult<NavigationTarget>> {
-        let db = sema.db;
+    let db = sema.db;
+    let token_kind = token.kind();
 
-        for anc in sema.token_ancestors_with_macros(token.clone()) {
-            let file_id = sema.hir_file_for(&anc);
+    let navs = find_fn_or_blocks(sema, token)
+        .into_iter()
+        .filter_map(|node| {
+            let file_id = sema.hir_file_for(&node);
+
             match_ast! {
-                match anc {
+                match node {
                     ast::Fn(fn_) => {
-                        let fn_: ast::Fn = fn_;
-                        let nav = sema.to_def(&fn_)?.try_to_nav(db)?;
+                        let mut nav = sema.to_def(&fn_)?.try_to_nav(db)?;
                         // For async token, we navigate to itself, which triggers
                         // VSCode to find the references
-                        let focus_token = if matches!(token.kind(), T![async]) {
+                        let focus_token = if matches!(token_kind, T![async]) {
                             fn_.async_token()?
                         } else {
                             fn_.fn_token()?
                         };
 
-                        let focus_range = InFile::new(file_id, focus_token.text_range())
-                             .original_node_file_range_opt(db)
-                             .map(|(frange, _)| frange.range);
-                        return Some(nav.map(|it| {
-                            if focus_range.is_some_and(|range| it.full_range.contains_range(range)) {
-                                NavigationTarget { focus_range, ..it }
-                            } else {
-                                it
+                        let focus_frange = InFile::new(file_id, focus_token.text_range())
+                            .original_node_file_range_opt(db)
+                            .map(|(frange, _)| frange);
+
+                        if let Some(FileRange { file_id, range }) = focus_frange {
+                            let contains_frange = |nav: &NavigationTarget| {
+                                nav.file_id == file_id && nav.full_range.contains_range(range)
+                            };
+
+                            if let Some(def_site) = nav.def_site.as_mut() {
+                                if contains_frange(def_site) {
+                                    def_site.focus_range = Some(range);
+                                }
+                            } else if contains_frange(&nav.call_site) {
+                                nav.call_site.focus_range = Some(range);
                             }
-                        }));
+                        }
+
+                        Some(nav)
                     },
                     ast::ClosureExpr(c) => {
-                        let pipe_tok = c.param_list().and_then(|it| it.pipe_token())?.into();
-                        let c_infile = InFile::new(file_id, c.into());
-                        let nav = NavigationTarget::from_expr(db, c_infile, pipe_tok);
-                        return Some(nav);
+                        let pipe_tok = c.param_list().and_then(|it| it.pipe_token())?.text_range();
+                        let closure_in_file = InFile::new(file_id, c.into());
+                        Some(NavigationTarget::from_expr(db, closure_in_file, Some(pipe_tok)))
                     },
                     ast::BlockExpr(blk) => {
                         match blk.modifier() {
                             Some(ast::BlockModifier::Async(_)) => {
-                                let async_tok = blk.async_token()?.into();
-                                let blk_infile = InFile::new(file_id, blk.into());
-                                let nav = NavigationTarget::from_expr(db, blk_infile, async_tok);
-                                return Some(nav);
+                                let async_tok = blk.async_token()?.text_range();
+                                let blk_in_file = InFile::new(file_id, blk.into());
+                                Some(NavigationTarget::from_expr(db, blk_in_file, Some(async_tok)))
                             },
-                            Some(ast::BlockModifier::Try(_)) if token.kind() != T![return] => {
-                                let try_tok = blk.try_token()?.into();
-                                let blk_infile = InFile::new(file_id, blk.into());
-                                let nav = NavigationTarget::from_expr(db, blk_infile, try_tok);
-                                return Some(nav);
+                            Some(ast::BlockModifier::Try(_)) if token_kind != T![return] => {
+                                let try_tok = blk.try_token()?.text_range();
+                                let blk_in_file = InFile::new(file_id, blk.into());
+                                Some(NavigationTarget::from_expr(db, blk_in_file, Some(try_tok)))
                             },
-                            _ => {}
+                            _ => None,
                         }
                     },
-                    _ => {}
+                    _ => None,
                 }
             }
-        }
-        None
-    }
-
-    sema.descend_into_macros(DescendPreference::None, token.clone())
-        .into_iter()
-        .filter_map(|descended| find_exit_point(sema, descended))
+        })
         .flatten()
-        .collect_vec()
-        .into()
+        .collect_vec();
+
+    Some(navs)
 }
 
-fn try_find_loop(
+pub(crate) fn find_loops(
     sema: &Semantics<'_, RootDatabase>,
     token: &SyntaxToken,
-) -> Option<Vec<NavigationTarget>> {
-    fn find_break_point(
-        sema: &Semantics<'_, RootDatabase>,
-        token: SyntaxToken,
-        label_matches: impl Fn(Option<Label>) -> bool,
-    ) -> Option<UpmappingResult<NavigationTarget>> {
-        let db = sema.db;
-        let file_id = sema.hir_file_for(&token.parent()?);
-
-        for anc in sema.token_ancestors_with_macros(token.clone()).filter_map(ast::Expr::cast) {
-            match anc {
-                ast::Expr::LoopExpr(loop_) if label_matches(loop_.label()) => {
-                    let expr = ast::Expr::LoopExpr(loop_.clone());
-                    let loop_tok = loop_.loop_token()?.into();
-                    let nav = NavigationTarget::from_expr(db, InFile::new(file_id, expr), loop_tok);
-                    return Some(nav);
-                }
-                ast::Expr::WhileExpr(while_) if label_matches(while_.label()) => {
-                    let expr = ast::Expr::WhileExpr(while_.clone());
-                    let while_tok = while_.while_token()?.into();
-                    let nav =
-                        NavigationTarget::from_expr(db, InFile::new(file_id, expr), while_tok);
-                    return Some(nav);
-                }
-                ast::Expr::ForExpr(for_) if label_matches(for_.label()) => {
-                    let expr = ast::Expr::ForExpr(for_.clone());
-                    let for_tok = for_.for_token()?.into();
-                    let nav = NavigationTarget::from_expr(db, InFile::new(file_id, expr), for_tok);
-                    return Some(nav);
-                }
-                ast::Expr::BlockExpr(blk)
-                    if blk.label().is_some() && label_matches(blk.label()) =>
-                {
-                    let expr = ast::Expr::BlockExpr(blk.clone());
-                    let lbl = blk.label().unwrap().syntax().clone().into();
-                    let nav = NavigationTarget::from_expr(db, InFile::new(file_id, expr), lbl);
-                    return Some(nav);
-                }
-                _ => {}
-            }
-        }
-        None
-    }
-
+) -> Option<Vec<ast::Expr>> {
     let parent = token.parent()?;
     let lbl = match_ast! {
         match parent {
@@ -353,12 +345,58 @@ fn try_find_loop(
             (Some(_), None) => false,
         };
 
+    let find_ancestors = |token: SyntaxToken| {
+        for anc in sema.token_ancestors_with_macros(token).filter_map(ast::Expr::cast) {
+            let node = match &anc {
+                ast::Expr::LoopExpr(loop_) if label_matches(loop_.label()) => anc,
+                ast::Expr::WhileExpr(while_) if label_matches(while_.label()) => anc,
+                ast::Expr::ForExpr(for_) if label_matches(for_.label()) => anc,
+                ast::Expr::BlockExpr(blk)
+                    if blk.label().is_some() && label_matches(blk.label()) =>
+                {
+                    anc
+                }
+                _ => continue,
+            };
+
+            return Some(node);
+        }
+        None
+    };
+
     sema.descend_into_macros(DescendPreference::None, token.clone())
         .into_iter()
-        .filter_map(|descended| find_break_point(sema, descended, label_matches))
-        .flatten()
+        .filter_map(find_ancestors)
         .collect_vec()
         .into()
+}
+
+fn nav_for_break_points(
+    sema: &Semantics<'_, RootDatabase>,
+    token: &SyntaxToken,
+) -> Option<Vec<NavigationTarget>> {
+    let db = sema.db;
+
+    let navs = find_loops(sema, token)?
+        .into_iter()
+        .filter_map(|expr| {
+            let file_id = sema.hir_file_for(expr.syntax());
+            let expr_in_file = InFile::new(file_id, expr.clone());
+            let focus_range = match expr {
+                ast::Expr::LoopExpr(loop_) => loop_.loop_token()?.text_range(),
+                ast::Expr::WhileExpr(while_) => while_.while_token()?.text_range(),
+                ast::Expr::ForExpr(for_) => for_.for_token()?.text_range(),
+                // We garentee that the label exists
+                ast::Expr::BlockExpr(blk) => blk.label().unwrap().syntax().text_range(),
+                _ => return None,
+            };
+            let nav = NavigationTarget::from_expr(db, expr_in_file, Some(focus_range));
+            Some(nav)
+        })
+        .flatten()
+        .collect_vec();
+
+    Some(navs)
 }
 
 fn def_to_nav(db: &RootDatabase, def: Definition) -> Vec<NavigationTarget> {

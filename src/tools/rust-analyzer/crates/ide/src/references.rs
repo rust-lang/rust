@@ -305,28 +305,31 @@ fn handle_control_flow_keywords(
     sema: &Semantics<'_, RootDatabase>,
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<ReferenceSearchResult> {
-    let file = sema.parse(file_id);
+    let file = sema.parse_guess_edition(file_id);
     let token = file.syntax().token_at_offset(offset).find(|t| t.kind().is_keyword())?;
 
-    let refs = match token.kind() {
-        T![fn] | T![return] | T![try] => highlight_related::highlight_exit_points(sema, token)?,
-        T![async] => highlight_related::highlight_yield_points(sema, token)?,
+    let references = match token.kind() {
+        T![fn] | T![return] | T![try] => highlight_related::highlight_exit_points(sema, token),
+        T![async] => highlight_related::highlight_yield_points(sema, token),
         T![loop] | T![while] | T![break] | T![continue] => {
-            highlight_related::highlight_break_points(sema, token)?
+            highlight_related::highlight_break_points(sema, token)
         }
         T![for] if token.parent().and_then(ast::ForExpr::cast).is_some() => {
-            highlight_related::highlight_break_points(sema, token)?
+            highlight_related::highlight_break_points(sema, token)
         }
         _ => return None,
     }
     .into_iter()
-    .map(|HighlightedRange { range, category }| (range, category))
+    .map(|(file_id, ranges)| {
+        let ranges = ranges
+            .into_iter()
+            .map(|HighlightedRange { range, category }| (range, category))
+            .collect();
+        (file_id.into(), ranges)
+    })
     .collect();
 
-    Some(ReferenceSearchResult {
-        declaration: None,
-        references: IntMap::from_iter([(file_id, refs)]),
-    })
+    Some(ReferenceSearchResult { declaration: None, references })
 }
 
 #[cfg(test)]

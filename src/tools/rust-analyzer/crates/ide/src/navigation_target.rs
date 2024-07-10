@@ -16,7 +16,7 @@ use ide_db::{
 use stdx::never;
 use syntax::{
     ast::{self, HasName},
-    format_smolstr, AstNode, SmolStr, SyntaxElement, SyntaxNode, TextRange, ToSmolStr,
+    format_smolstr, AstNode, SmolStr, SyntaxNode, TextRange, ToSmolStr,
 };
 
 /// `NavigationTarget` represents an element in the editor's UI which you can
@@ -155,11 +155,10 @@ impl NavigationTarget {
     pub(crate) fn from_expr(
         db: &RootDatabase,
         InFile { file_id, value }: InFile<ast::Expr>,
-        focus_syntax: SyntaxElement,
+        focus_range: Option<TextRange>,
     ) -> UpmappingResult<NavigationTarget> {
         let name: SmolStr = "<expr>".into();
         let kind = SymbolKind::Label;
-        let focus_range = Some(focus_syntax.text_range());
 
         orig_range_with_focus_r(db, file_id, value.syntax().text_range(), focus_range).map(
             |(FileRange { file_id, range: full_range }, focus_range)| {
