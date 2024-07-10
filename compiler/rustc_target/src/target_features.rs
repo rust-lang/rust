@@ -4,6 +4,9 @@ use rustc_span::symbol::Symbol;
 /// Features that control behaviour of rustc, rather than the codegen.
 pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 
+/// Features that require special handling when passing to LLVM.
+pub const RUSTC_SPECIAL_FEATURES: &[&str] = &["backchain"];
+
 /// Stability information for target features.
 #[derive(Debug, Clone, Copy)]
 pub enum Stability {
