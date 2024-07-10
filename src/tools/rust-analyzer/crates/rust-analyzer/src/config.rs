@@ -2885,19 +2885,6 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Only show discriminant hints on fieldless enum variants."
             ]
         },
-        "GenericParameterHintsDef" => set! {
-            "type": "string",
-            "enum": [
-                "always",
-                "never",
-                "const_only"
-            ],
-            "enumDescriptions": [
-                "Always show generic parameter hints.",
-                "Never show generic parameter hints.",
-                "Only show const generic parameter hints."
-            ]
-        },
         "AdjustmentHintsModeDef" => set! {
             "type": "string",
             "enum": [
