@@ -1,5 +1,5 @@
 error: macros that expand to items must be delimited with braces or followed by a semicolon
-  --> $DIR/issue-118786.rs:15:13
+  --> $DIR/issue-118786.rs:16:13
    |
 LL | make_macro!((meow));
    |             ^^^^^^
@@ -34,10 +34,10 @@ LL | make_macro!((meow));
    | ------------------- in this macro invocation
    |
 note: maybe you have forgotten to define a name for this `macro_rules!`
-  --> $DIR/issue-118786.rs:7:9
+  --> $DIR/issue-118786.rs:7:20
    |
 LL |         macro_rules! $macro_name {
-   |         ^^^^^^^^^^^
+   |                    ^ put a macro name here
 ...
 LL | make_macro!((meow));
    | ------------------- in this macro invocation
