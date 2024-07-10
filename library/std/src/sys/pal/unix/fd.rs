@@ -26,24 +26,6 @@ use libc::off64_t;
 )))]
 use libc::off_t as off64_t;
 
-#[derive(Copy, Clone)]
-pub enum AccessMode {
-    ReadOnly,
-    WriteOnly,
-    ReadWrite,
-    None,
-}
-
-impl AccessMode {
-    pub fn is_readable(self) -> bool {
-        matches!(self, AccessMode::ReadOnly | AccessMode::ReadWrite)
-    }
-
-    pub fn is_writable(self) -> bool {
-        matches!(self, AccessMode::WriteOnly | AccessMode::ReadWrite)
-    }
-}
-
 #[derive(Debug)]
 pub struct FileDesc(OwnedFd);
 
@@ -536,30 +518,20 @@ impl FileDesc {
         }
     }
 
-    fn get_flags(&self) -> io::Result<libc::c_int> {
-        unsafe { cvt(libc::fcntl(self.as_raw_fd(), libc::F_GETFL)) }
-    }
-
-    pub fn get_access_mode(&self) -> io::Result<AccessMode> {
-        let access_mode = self.get_flags()? & libc::O_ACCMODE;
-        Ok(match access_mode {
-            libc::O_RDWR => AccessMode::ReadWrite,
-            libc::O_RDONLY => AccessMode::ReadOnly,
-            libc::O_WRONLY => AccessMode::WriteOnly,
-
-            _ => AccessMode::None,
-        })
-    }
-
     #[cfg(not(target_os = "linux"))]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
-        let previous = self.get_flags()?;
-        let new =
-            if nonblocking { previous | libc::O_NONBLOCK } else { previous & !libc::O_NONBLOCK };
-        if new != previous {
-            unsafe { cvt(libc::fcntl(self.as_raw_fd(), libc::F_SETFL, new)) }?;
+        unsafe {
+            let previous = cvt(libc::fcntl(self.as_raw_fd(), libc::F_GETFL))?;
+            let new = if nonblocking {
+                previous | libc::O_NONBLOCK
+            } else {
+                previous & !libc::O_NONBLOCK
+            };
+            if new != previous {
+                cvt(libc::fcntl(self.as_raw_fd(), libc::F_SETFL, new))?;
+            }
+            Ok(())
         }
-        Ok(())
     }
 
     #[inline]

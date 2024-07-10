@@ -5,7 +5,6 @@ use crate::{
         AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
     },
     sys::{
-        c::{GetFileType, FILE_TYPE_PIPE},
         handle::Handle,
         pipe::{anon_pipe, AnonPipe, Pipes},
     },
@@ -95,28 +94,20 @@ impl From<PipeWriter> for Stdio {
     }
 }
 
-fn convert_to_pipe(owned_handle: OwnedHandle) -> io::Result<AnonPipe> {
-    if unsafe { GetFileType(owned_handle.as_raw_handle()) } == FILE_TYPE_PIPE {
-        Ok(AnonPipe::from_inner(Handle::from_inner(owned_handle)))
-    } else {
-        Err(io::Error::new(io::ErrorKind::InvalidInput, "Not a pipe"))
+fn convert_to_pipe(owned_handle: OwnedHandle) -> AnonPipe {
+    AnonPipe::from_inner(Handle::from_inner(owned_handle))
+}
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl From<OwnedHandle> for PipeReader {
+    fn from(owned_handle: OwnedHandle) -> Self {
+        Self(convert_to_pipe(owned_handle))
     }
 }
 
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
-impl TryFrom<OwnedHandle> for PipeReader {
-    type Error = io::Error;
-
-    fn try_from(owned_handle: OwnedHandle) -> Result<Self, Self::Error> {
-        convert_to_pipe(owned_handle).map(Self)
-    }
-}
-
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
-impl TryFrom<OwnedHandle> for PipeWriter {
-    type Error = io::Error;
-
-    fn try_from(owned_handle: OwnedHandle) -> Result<Self, Self::Error> {
-        convert_to_pipe(owned_handle).map(Self)
+impl From<OwnedHandle> for PipeWriter {
+    fn from(owned_handle: OwnedHandle) -> Self {
+        Self(convert_to_pipe(owned_handle))
     }
 }

@@ -1,11 +1,7 @@
 use super::*;
 
 use crate::{
-    fs::File,
-    os::{
-        fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
-        unix::fs::FileTypeExt,
-    },
+    os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
     sys::{
         fd::FileDesc,
         pipe::{anon_pipe, AnonPipe},
@@ -92,51 +88,20 @@ impl From<PipeWriter> for Stdio {
     }
 }
 
-fn convert_to_pipe(owned_fd: OwnedFd) -> io::Result<AnonPipe> {
-    let file = File::from(owned_fd);
-    if file.metadata()?.file_type().is_fifo() {
-        Ok(AnonPipe::from_inner(FileDesc::from_inner(OwnedFd::from(file))))
-    } else {
-        Err(io::Error::new(io::ErrorKind::InvalidInput, "Not a pipe"))
+fn convert_to_pipe(owned_fd: OwnedFd) -> AnonPipe {
+    AnonPipe::from_inner(FileDesc::from_inner(OwnedFd::from(owned_fd)))
+}
+
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl From<OwnedFd> for PipeReader {
+    fn from(owned_fd: OwnedFd) -> Self {
+        Self(convert_to_pipe(owned_fd))
     }
 }
 
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
-impl TryFrom<OwnedFd> for PipeReader {
-    type Error = io::Error;
-
-    fn try_from(owned_fd: OwnedFd) -> Result<Self, Self::Error> {
-        convert_to_pipe(owned_fd)
-            .and_then(|pipe| {
-                if pipe.as_file_desc().get_access_mode()?.is_readable() {
-                    Ok(pipe)
-                } else {
-                    Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        format!("Pipe {} is not readable", pipe.as_raw_fd()),
-                    ))
-                }
-            })
-            .map(Self)
-    }
-}
-
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
-impl TryFrom<OwnedFd> for PipeWriter {
-    type Error = io::Error;
-
-    fn try_from(owned_fd: OwnedFd) -> Result<Self, Self::Error> {
-        convert_to_pipe(owned_fd)
-            .and_then(|pipe| {
-                if pipe.as_file_desc().get_access_mode()?.is_writable() {
-                    Ok(pipe)
-                } else {
-                    Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        format!("Pipe {} is not writable", pipe.as_raw_fd()),
-                    ))
-                }
-            })
-            .map(Self)
+impl From<OwnedFd> for PipeWriter {
+    fn from(owned_fd: OwnedFd) -> Self {
+        Self(convert_to_pipe(owned_fd))
     }
 }
