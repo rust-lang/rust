@@ -2,7 +2,7 @@ error: `repr` is not an unsafe attribute
   --> $DIR/unsafe-safe-attribute.rs:3:3
    |
 LL | #[unsafe(repr(C))]
-   |   ^^^^^^
+   |   ^^^^^^ this is not an unsafe attribute
    |
    = note: extraneous unsafe is not allowed in attributes
 
