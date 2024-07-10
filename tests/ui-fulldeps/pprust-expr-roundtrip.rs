@@ -202,7 +202,7 @@ impl MutVisitor for RemoveParens {
             ExprKind::Paren(inner) => *e = inner,
             _ => {}
         };
-        mut_visit::noop_visit_expr(e, self);
+        mut_visit::walk_expr(e, self);
     }
 }
 
@@ -211,7 +211,7 @@ struct AddParens;
 
 impl MutVisitor for AddParens {
     fn visit_expr(&mut self, e: &mut P<Expr>) {
-        mut_visit::noop_visit_expr(e, self);
+        mut_visit::walk_expr(e, self);
         visit_clobber(e, |e| {
             P(Expr {
                 id: DUMMY_NODE_ID,

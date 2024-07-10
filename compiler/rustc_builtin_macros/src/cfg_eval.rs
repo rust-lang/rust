@@ -212,18 +212,18 @@ impl MutVisitor for CfgEval<'_> {
     #[instrument(level = "trace", skip(self))]
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
         self.0.configure_expr(expr, false);
-        mut_visit::noop_visit_expr(expr, self);
+        mut_visit::walk_expr(expr, self);
     }
 
     #[instrument(level = "trace", skip(self))]
     fn visit_method_receiver_expr(&mut self, expr: &mut P<ast::Expr>) {
         self.0.configure_expr(expr, true);
-        mut_visit::noop_visit_expr(expr, self);
+        mut_visit::walk_expr(expr, self);
     }
 
     fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         let mut expr = configure!(self, expr);
-        mut_visit::noop_visit_expr(&mut expr, self);
+        mut_visit::walk_expr(&mut expr, self);
         Some(expr)
     }
 
@@ -231,15 +231,15 @@ impl MutVisitor for CfgEval<'_> {
         &mut self,
         param: ast::GenericParam,
     ) -> SmallVec<[ast::GenericParam; 1]> {
-        mut_visit::noop_flat_map_generic_param(configure!(self, param), self)
+        mut_visit::walk_flat_map_generic_param(configure!(self, param), self)
     }
 
     fn flat_map_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
-        mut_visit::noop_flat_map_stmt(configure!(self, stmt), self)
+        mut_visit::walk_flat_map_stmt(configure!(self, stmt), self)
     }
 
     fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
-        mut_visit::noop_flat_map_item(configure!(self, item), None, self)
+        mut_visit::walk_flat_map_item(configure!(self, item), None, self)
     }
 
     fn flat_map_assoc_item(
@@ -247,37 +247,37 @@ impl MutVisitor for CfgEval<'_> {
         item: P<ast::AssocItem>,
         ctxt: AssocCtxt,
     ) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        mut_visit::noop_flat_map_item(configure!(self, item), Some(ctxt), self)
+        mut_visit::walk_flat_map_item(configure!(self, item), Some(ctxt), self)
     }
 
     fn flat_map_foreign_item(
         &mut self,
         foreign_item: P<ast::ForeignItem>,
     ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
-        mut_visit::noop_flat_map_item(configure!(self, foreign_item), None, self)
+        mut_visit::walk_flat_map_item(configure!(self, foreign_item), None, self)
     }
 
     fn flat_map_arm(&mut self, arm: ast::Arm) -> SmallVec<[ast::Arm; 1]> {
-        mut_visit::noop_flat_map_arm(configure!(self, arm), self)
+        mut_visit::walk_flat_map_arm(configure!(self, arm), self)
     }
 
     fn flat_map_expr_field(&mut self, field: ast::ExprField) -> SmallVec<[ast::ExprField; 1]> {
-        mut_visit::noop_flat_map_expr_field(configure!(self, field), self)
+        mut_visit::walk_flat_map_expr_field(configure!(self, field), self)
     }
 
     fn flat_map_pat_field(&mut self, fp: ast::PatField) -> SmallVec<[ast::PatField; 1]> {
-        mut_visit::noop_flat_map_pat_field(configure!(self, fp), self)
+        mut_visit::walk_flat_map_pat_field(configure!(self, fp), self)
     }
 
     fn flat_map_param(&mut self, p: ast::Param) -> SmallVec<[ast::Param; 1]> {
-        mut_visit::noop_flat_map_param(configure!(self, p), self)
+        mut_visit::walk_flat_map_param(configure!(self, p), self)
     }
 
     fn flat_map_field_def(&mut self, sf: ast::FieldDef) -> SmallVec<[ast::FieldDef; 1]> {
-        mut_visit::noop_flat_map_field_def(configure!(self, sf), self)
+        mut_visit::walk_flat_map_field_def(configure!(self, sf), self)
     }
 
     fn flat_map_variant(&mut self, variant: ast::Variant) -> SmallVec<[ast::Variant; 1]> {
-        mut_visit::noop_flat_map_variant(configure!(self, variant), self)
+        mut_visit::walk_flat_map_variant(configure!(self, variant), self)
     }
 }
