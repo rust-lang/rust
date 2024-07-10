@@ -1,7 +1,7 @@
 //@ run-pass
 //@ check-run-results
 
-use std::any::Any;
+use std::{alloc::Layout, any::Any};
 
 const fn yeet_principal(x: Box<dyn Any + Send>) -> Box<dyn Send> {
     x
@@ -35,12 +35,18 @@ fn goodbye() {
 
 fn main() {
     let x = Box::new(CallMe::new(goodbye)) as Box<dyn Any + Send>;
+    let x_layout = Layout::for_value(&*x);
     let y = yeet_principal(x);
+    let y_layout = Layout::for_value(&*y);
+    assert_eq!(x_layout, y_layout);
     println!("before");
     drop(y);
 
     let x = Box::new(CallMe::new(goodbye)) as Box<dyn Bar>;
+    let x_layout = Layout::for_value(&*x);
     let y = yeet_principal_2(x);
+    let y_layout = Layout::for_value(&*y);
+    assert_eq!(x_layout, y_layout);
     println!("before");
     drop(y);
 }
