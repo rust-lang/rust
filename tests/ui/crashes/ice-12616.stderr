@@ -1,4 +1,4 @@
-error: `as` casting between raw pointers without changing its mutability
+error: `as` casting between raw pointers without changing their constness
   --> tests/ui/crashes/ice-12616.rs:6:5
    |
 LL |     s() as *const ();
