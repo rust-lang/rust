@@ -1,5 +1,7 @@
 //! Gets metadata about a workspace from Cargo
 
+use std::path::Path;
+
 /// Describes how this module can fail
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -32,11 +34,7 @@ pub struct Dependency {
 ///
 /// Any dependency with a path beginning with `root_path` is ignored, as we
 /// assume `reuse` has covered it already.
-pub fn get(
-    cargo: &std::path::Path,
-    manifest_path: &std::path::Path,
-    root_path: &std::path::Path,
-) -> Result<Vec<Dependency>, Error> {
+pub fn get(cargo: &Path, manifest_path: &Path, root_path: &Path) -> Result<Vec<Dependency>, Error> {
     if manifest_path.file_name() != Some(std::ffi::OsStr::new("Cargo.toml")) {
         panic!("cargo_manifest::get requires a path to a Cargo.toml file");
     }
@@ -66,7 +64,7 @@ pub fn get(
         let manifest_path = package
             .get("manifest_path")
             .and_then(|v| v.as_str())
-            .map(std::path::Path::new)
+            .map(Path::new)
             .ok_or_else(|| Error::MissingJsonElement("package.manifest_path"))?;
         if manifest_path.starts_with(&root_path) {
             // it's an in-tree dependency and reuse covers it
