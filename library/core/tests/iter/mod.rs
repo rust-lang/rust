@@ -99,3 +99,43 @@ pub fn extend_for_unit() {
     }
     assert_eq!(x, 5);
 }
+
+#[test]
+fn test_happy_path_item_in_iterator() {
+    assert!([1, 2, 3].iter().contain(&1));
+}
+
+#[test]
+fn test_happy_path_item_not_in_iterator() {
+    assert!(![1, 2, 3].iter().contain(&4));
+}
+
+#[test]
+fn test_edge_case_handling_none_values() {
+    assert!([Some(2), None].iter().contain(&None));
+    assert!([Some(2), None].iter().contain(&Some(2)));
+}
+
+#[test]
+fn test_edge_case_handling_empty_iterator() {
+    assert!(!vec![].iter().contain(&1));
+}
+
+#[test]
+fn test_edge_case_handling_iterator_with_duplicates() {
+    assert!([1, 2, 2, 3].iter().contain(&2));
+}
+
+#[test]
+fn test_edge_case_handling_iterator_with_custom_struct() {
+    #[derive(PartialEq)]
+    struct Item {
+        value: i32,
+    }
+    assert!([Item { value: 1 }, Item { value: 2 }].iter().contain(&Item { value: 2 }));
+}
+
+#[test]
+fn test_edge_case_handling_iterator_with_large_number_of_elements() {
+    assert!((1..1000).contain(&500));
+}
