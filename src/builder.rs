@@ -2369,12 +2369,6 @@ impl<'tcx> HasWasmCAbiOpt for Builder<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> HasWasmCAbiOpt for Builder<'_, '_, 'tcx> {
-    fn wasm_c_abi_opt(&self) -> WasmCAbi {
-        self.cx.wasm_c_abi_opt()
-    }
-}
-
 pub trait ToGccComp {
     fn to_gcc_comparison(&self) -> ComparisonOp;
 }
