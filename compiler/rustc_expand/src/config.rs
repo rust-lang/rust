@@ -292,8 +292,6 @@ impl<'a> StripUnconfigured<'a> {
         attr: &Attribute,
         (item, item_span): (ast::AttrItem, Span),
     ) -> Attribute {
-        let orig_tokens = attr.get_tokens();
-
         // We are taking an attribute of the form `#[cfg_attr(pred, attr)]`
         // and producing an attribute of the form `#[attr]`. We
         // have captured tokens for `attr` itself, but we need to
@@ -302,7 +300,7 @@ impl<'a> StripUnconfigured<'a> {
 
         // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
         // for `attr` when we expand it to `#[attr]`
-        let mut orig_trees = orig_tokens.trees();
+        let mut orig_trees = attr.token_trees().into_iter();
         let TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _) =
             orig_trees.next().unwrap().clone()
         else {

@@ -225,11 +225,12 @@ impl AttrTokenStream {
                                 // properly implemented - we always synthesize fake tokens,
                                 // so we never reach this code.
 
-                                let mut stream = TokenStream::default();
+                                let mut tts = vec![];
                                 for inner_attr in inner_attrs {
-                                    stream.push_stream(inner_attr.get_tokens());
+                                    tts.extend(inner_attr.token_trees());
                                 }
-                                stream.push_stream(delim_tokens.clone());
+                                tts.extend(delim_tokens.0.iter().cloned());
+                                let stream = TokenStream::new(tts);
                                 *tree = TokenTree::Delimited(*span, *spacing, *delim, stream);
                                 found = true;
                                 break;
@@ -242,7 +243,7 @@ impl AttrTokenStream {
                         );
                     }
                     for attr in outer_attrs {
-                        res.extend(attr.get_tokens().0.iter().cloned());
+                        res.extend(attr.token_trees());
                     }
                     res.extend(target_tokens);
                 }
