@@ -1912,6 +1912,36 @@
             {
                 "title": "inlayHints",
                 "properties": {
+                    "rust-analyzer.inlayHints.genericParameterHints.const.enable": {
+                        "markdownDescription": "Whether to show const generic parameter name inlay hints.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "inlayHints",
+                "properties": {
+                    "rust-analyzer.inlayHints.genericParameterHints.lifetime.enable": {
+                        "markdownDescription": "Whether to show generic lifetime parameter name inlay hints.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "inlayHints",
+                "properties": {
+                    "rust-analyzer.inlayHints.genericParameterHints.type.enable": {
+                        "markdownDescription": "Whether to show generic type parameter name inlay hints.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "inlayHints",
+                "properties": {
                     "rust-analyzer.inlayHints.implicitDrops.enable": {
                         "markdownDescription": "Whether to show implicit drop hints.",
                         "default": false,

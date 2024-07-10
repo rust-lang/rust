@@ -655,6 +655,21 @@ Whether to hide inlay hints for type adjustments outside of `unsafe` blocks.
 --
 Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
 --
+[[rust-analyzer.inlayHints.genericParameterHints.const.enable]]rust-analyzer.inlayHints.genericParameterHints.const.enable (default: `false`)::
++
+--
+Whether to show const generic parameter name inlay hints.
+--
+[[rust-analyzer.inlayHints.genericParameterHints.lifetime.enable]]rust-analyzer.inlayHints.genericParameterHints.lifetime.enable (default: `true`)::
++
+--
+Whether to show generic lifetime parameter name inlay hints.
+--
+[[rust-analyzer.inlayHints.genericParameterHints.type.enable]]rust-analyzer.inlayHints.genericParameterHints.type.enable (default: `false`)::
++
+--
+Whether to show generic type parameter name inlay hints.
+--
 [[rust-analyzer.inlayHints.implicitDrops.enable]]rust-analyzer.inlayHints.implicitDrops.enable (default: `false`)::
 +
 --
