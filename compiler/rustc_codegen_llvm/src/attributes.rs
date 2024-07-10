@@ -6,7 +6,6 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, PatchableFuncti
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{FunctionReturn, OptLevel};
 use rustc_span::symbol::sym;
-use rustc_target::spec::abi::Abi;
 use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
 
@@ -482,7 +481,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         return;
     }
 
-    let mut function_features = function_features
+    let function_features = function_features
         .iter()
         .flat_map(|feat| {
             llvm_util::to_llvm_features(cx.tcx.sess, feat).into_iter().map(|f| format!("+{f}"))
@@ -503,17 +502,6 @@ pub fn from_fn_attrs<'ll, 'tcx>(
                 codegen_fn_attrs.link_name.unwrap_or_else(|| cx.tcx.item_name(instance.def_id()));
             let name = name.as_str();
             to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-name", name));
-        }
-
-        // The `"wasm"` abi on wasm targets automatically enables the
-        // `+multivalue` feature because the purpose of the wasm abi is to match
-        // the WebAssembly specification, which has this feature. This won't be
-        // needed when LLVM enables this `multivalue` feature by default.
-        if !cx.tcx.is_closure_like(instance.def_id()) {
-            let abi = cx.tcx.fn_sig(instance.def_id()).skip_binder().abi();
-            if abi == Abi::Wasm {
-                function_features.push("+multivalue".to_string());
-            }
         }
     }
 
