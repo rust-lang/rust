@@ -4620,7 +4620,7 @@ declare_lint! {
     /// [against]: https://github.com/rust-lang/rust/issues/38831
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
-    Warn,
+    Deny,
     "elided lifetimes cannot be used in associated constants in impls",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
