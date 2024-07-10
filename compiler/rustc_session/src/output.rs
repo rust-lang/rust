@@ -2,15 +2,12 @@
 
 use std::path::Path;
 
-use rustc_ast::{self as ast, attr};
+use rustc_ast as ast;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::Session;
-use crate::config::{self, CrateType, Input, OutFileName, OutputFilenames, OutputType};
-use crate::errors::{
-    self, CrateNameDoesNotMatch, CrateNameEmpty, CrateNameInvalid, FileIsNotWriteable,
-    InvalidCharacterInCrateName,
-};
+use crate::config::{self, CrateType, OutFileName, OutputFilenames, OutputType};
+use crate::errors::{self, CrateNameEmpty, FileIsNotWriteable, InvalidCharacterInCrateName};
 
 pub fn out_filename(
     sess: &Session,
@@ -47,53 +44,6 @@ fn is_writeable(p: &Path) -> bool {
         Err(..) => true,
         Ok(m) => !m.permissions().readonly(),
     }
-}
-
-/// Find and [validate] the crate name.
-///
-/// [validate]: validate_crate_name
-pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute]) -> Symbol {
-    let validate = |name, span| {
-        validate_crate_name(sess, name, span);
-        name
-    };
-
-    // Look in attributes 100% of the time to make sure the attribute is marked
-    // as used. After doing this, however, we still prioritize a crate name from
-    // the command line over one found in the #[crate_name] attribute. If we
-    // find both we ensure that they're the same later on as well.
-    let attr_crate_name =
-        attr::find_by_name(attrs, sym::crate_name).and_then(|at| at.value_str().map(|s| (at, s)));
-
-    if let Some(crate_name) = &sess.opts.crate_name {
-        let crate_name = Symbol::intern(crate_name);
-        if let Some((attr, attr_crate_name)) = attr_crate_name
-            && attr_crate_name != crate_name
-        {
-            sess.dcx().emit_err(CrateNameDoesNotMatch {
-                span: attr.span,
-                crate_name,
-                attr_crate_name,
-            });
-        }
-        return validate(crate_name, None);
-    }
-
-    if let Some((attr, crate_name)) = attr_crate_name {
-        return validate(crate_name, Some(attr.span));
-    }
-
-    if let Input::File(ref path) = sess.io.input
-        && let Some(s) = path.file_stem().and_then(|s| s.to_str())
-    {
-        if s.starts_with('-') {
-            sess.dcx().emit_err(CrateNameInvalid { s });
-        } else {
-            return validate(Symbol::intern(&s.replace('-', "_")), None);
-        }
-    }
-
-    sym::rust_out
 }
 
 /// Validate the given crate name.

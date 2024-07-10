@@ -11,6 +11,7 @@ use rustc_serialize::Decodable;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_session::Session;
 use rustc_session::config::IncrementalStateAssertion;
+use rustc_span::Symbol;
 use tracing::{debug, warn};
 
 use super::data::*;
@@ -203,9 +204,9 @@ pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache> {
 
 /// Setups the dependency graph by loading an existing graph from disk and set up streaming of a
 /// new graph to an incremental session directory.
-pub fn setup_dep_graph(sess: &Session) -> DepGraph {
+pub fn setup_dep_graph(sess: &Session, crate_name: Symbol) -> DepGraph {
     // `load_dep_graph` can only be called after `prepare_session_directory`.
-    prepare_session_directory(sess);
+    prepare_session_directory(sess, crate_name);
 
     let res = sess.opts.build_dep_graph().then(|| load_dep_graph(sess));
 
