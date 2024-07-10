@@ -8,7 +8,9 @@ use rustc_ast::tokenstream::{
 use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, NodeId};
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-use rustc_feature::{AttributeSafety, Features, ACCEPTED_FEATURES, REMOVED_FEATURES, UNSTABLE_FEATURES};
+use rustc_feature::{
+    AttributeSafety, Features, ACCEPTED_FEATURES, REMOVED_FEATURES, UNSTABLE_FEATURES,
+};
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
 use rustc_session::parse::feature_err;

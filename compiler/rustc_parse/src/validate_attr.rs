@@ -163,52 +163,52 @@ pub fn check_attribute_safety(
     safety: AttributeSafety,
     attr: &Attribute,
 ) {
-    if features.unsafe_attributes {
-        let attr_item = attr.get_normal_item();
+    if !features.unsafe_attributes {
+        return;
+    }
 
-        if safety == AttributeSafety::Unsafe {
-            if let ast::Safety::Default = attr_item.unsafety {
-                let path_span = attr_item.path.span;
+    let attr_item = attr.get_normal_item();
 
-                // If the `attr_item`'s span is not from a macro, then just suggest
-                // wrapping it in `unsafe(...)`. Otherwise, we suggest putting the
-                // `unsafe(`, `)` right after and right before the opening and closing
-                // square bracket respectively.
-                let diag_span = if attr_item.span().can_be_used_for_suggestions() {
-                    attr_item.span()
-                } else {
-                    attr.span
-                        .with_lo(attr.span.lo() + BytePos(2))
-                        .with_hi(attr.span.hi() - BytePos(1))
-                };
+    if safety == AttributeSafety::Unsafe {
+        if let ast::Safety::Default = attr_item.unsafety {
+            let path_span = attr_item.path.span;
 
-                if attr.span.at_least_rust_2024() {
-                    psess.dcx().emit_err(errors::UnsafeAttrOutsideUnsafe {
-                        span: path_span,
-                        suggestion: errors::UnsafeAttrOutsideUnsafeSuggestion {
-                            left: diag_span.shrink_to_lo(),
-                            right: diag_span.shrink_to_hi(),
-                        },
-                    });
-                } else {
-                    psess.buffer_lint(
-                        UNSAFE_ATTR_OUTSIDE_UNSAFE,
-                        path_span,
-                        ast::CRATE_NODE_ID,
-                        BuiltinLintDiag::UnsafeAttrOutsideUnsafe {
-                            attribute_name_span: path_span,
-                            sugg_spans: (diag_span.shrink_to_lo(), diag_span.shrink_to_hi()),
-                        },
-                    );
-                }
-            }
-        } else {
-            if let Safety::Unsafe(unsafe_span) = attr_item.unsafety {
-                psess.dcx().emit_err(errors::InvalidAttrUnsafe {
-                    span: unsafe_span,
-                    name: attr_item.path.clone(),
+            // If the `attr_item`'s span is not from a macro, then just suggest
+            // wrapping it in `unsafe(...)`. Otherwise, we suggest putting the
+            // `unsafe(`, `)` right after and right before the opening and closing
+            // square bracket respectively.
+            let diag_span = if attr_item.span().can_be_used_for_suggestions() {
+                attr_item.span()
+            } else {
+                attr.span.with_lo(attr.span.lo() + BytePos(2)).with_hi(attr.span.hi() - BytePos(1))
+            };
+
+            if attr.span.at_least_rust_2024() {
+                psess.dcx().emit_err(errors::UnsafeAttrOutsideUnsafe {
+                    span: path_span,
+                    suggestion: errors::UnsafeAttrOutsideUnsafeSuggestion {
+                        left: diag_span.shrink_to_lo(),
+                        right: diag_span.shrink_to_hi(),
+                    },
                 });
+            } else {
+                psess.buffer_lint(
+                    UNSAFE_ATTR_OUTSIDE_UNSAFE,
+                    path_span,
+                    ast::CRATE_NODE_ID,
+                    BuiltinLintDiag::UnsafeAttrOutsideUnsafe {
+                        attribute_name_span: path_span,
+                        sugg_spans: (diag_span.shrink_to_lo(), diag_span.shrink_to_hi()),
+                    },
+                );
             }
+        }
+    } else {
+        if let Safety::Unsafe(unsafe_span) = attr_item.unsafety {
+            psess.dcx().emit_err(errors::InvalidAttrUnsafe {
+                span: unsafe_span,
+                name: attr_item.path.clone(),
+            });
         }
     }
 }
