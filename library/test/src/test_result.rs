@@ -21,6 +21,14 @@ pub const TR_OK: i32 = 50;
 #[cfg(windows)]
 const STATUS_ABORTED: i32 = 0xC0000409u32 as i32;
 
+// On Zircon (the Fuchsia kernel), an abort from userspace calls the
+// LLVM implementation of __builtin_trap(), e.g., ud2 on x86, which
+// raises a kernel exception. If a userspace process does not
+// otherwise arrange exception handling, the kernel kills the process
+// with this return code.
+#[cfg(target_os = "fuchsia")]
+const ZX_TASK_RETCODE_EXCEPTION_KILL: i32 = -1028;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum TestResult {
     TrOk,
@@ -105,6 +113,9 @@ pub fn get_result_from_exit_code(
             }
             None => unreachable!("status.code() returned None but status.signal() was None"),
         },
+        // Upon an abort, Fuchsia returns the status code ZX_TASK_RETCODE_EXCEPTION_KILL.
+        #[cfg(target_os = "fuchsia")]
+        Some(ZX_TASK_RETCODE_EXCEPTION_KILL) => TestResult::TrFailed,
         #[cfg(not(unix))]
         None => TestResult::TrFailedMsg(format!("unknown return code")),
         #[cfg(any(windows, unix))]
