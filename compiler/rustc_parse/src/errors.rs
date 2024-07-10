@@ -3060,3 +3060,14 @@ pub struct BinderAndPolarity {
     pub binder_span: Span,
     pub polarity: &'static str,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_modifiers_and_polarity)]
+pub struct PolarityAndModifiers {
+    #[primary_span]
+    pub polarity_span: Span,
+    #[label]
+    pub modifiers_span: Span,
+    pub polarity: &'static str,
+    pub modifiers_concatenated: String,
+}

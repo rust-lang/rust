@@ -930,6 +930,7 @@ impl<'a> Parser<'a> {
     /// TRAIT_BOUND_MODIFIERS = [["~"] "const"] ["async"] ["?" | "!"]
     /// ```
     fn parse_trait_bound_modifiers(&mut self) -> PResult<'a, TraitBoundModifiers> {
+        let modifier_lo = self.token.span;
         let constness = if self.eat(&token::Tilde) {
             let tilde = self.prev_token.span;
             self.expect_keyword(kw::Const)?;
@@ -962,6 +963,7 @@ impl<'a> Parser<'a> {
         } else {
             BoundAsyncness::Normal
         };
+        let modifier_hi = self.prev_token.span;
 
         let polarity = if self.eat(&token::Question) {
             BoundPolarity::Maybe(self.prev_token.span)
@@ -971,6 +973,33 @@ impl<'a> Parser<'a> {
         } else {
             BoundPolarity::Positive
         };
+
+        // Enforce the mutual-exclusivity of `const`/`async` and `?`/`!`.
+        match polarity {
+            BoundPolarity::Positive => {
+                // All trait bound modifiers allowed to combine with positive polarity
+            }
+            BoundPolarity::Maybe(polarity_span) | BoundPolarity::Negative(polarity_span) => {
+                match (asyncness, constness) {
+                    (BoundAsyncness::Normal, BoundConstness::Never) => {
+                        // Ok, no modifiers.
+                    }
+                    (_, _) => {
+                        let constness = constness.as_str();
+                        let asyncness = asyncness.as_str();
+                        let glue =
+                            if !constness.is_empty() && !asyncness.is_empty() { " " } else { "" };
+                        let modifiers_concatenated = format!("{constness}{glue}{asyncness}");
+                        self.dcx().emit_err(errors::PolarityAndModifiers {
+                            polarity_span,
+                            polarity: polarity.as_str(),
+                            modifiers_span: modifier_lo.to(modifier_hi),
+                            modifiers_concatenated,
+                        });
+                    }
+                }
+            }
+        }
 
         Ok(TraitBoundModifiers { constness, asyncness, polarity })
     }

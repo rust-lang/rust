@@ -575,6 +575,9 @@ parse_missing_trait_in_trait_impl = missing trait in a trait impl
 parse_modifier_lifetime = `{$modifier}` may only modify trait bounds, not lifetime bounds
     .suggestion = remove the `{$modifier}`
 
+parse_modifiers_and_polarity = `{$modifiers_concatenated}` trait not allowed with `{$polarity}` trait polarity modifier
+    .label = there is not a well-defined meaning for a `{$modifiers_concatenated} {$polarity}` trait
+
 parse_more_than_one_char = character literal may only contain one codepoint
     .followed_by = this `{$chr}` is followed by the combining {$len ->
         [one] mark
