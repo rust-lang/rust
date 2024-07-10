@@ -264,6 +264,47 @@ impl Once {
         self.inner.is_completed()
     }
 
+    /// Blocks the current thread until initialization has completed.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// #![feature(once_wait)]
+    ///
+    /// use std::sync::Once;
+    /// use std::thread;
+    ///
+    /// static READY: Once = Once::new();
+    ///
+    /// let thread = thread::spawn(|| {
+    ///     READY.wait();
+    ///     println!("everything is ready");
+    /// });
+    ///
+    /// READY.call_once(|| println!("performing setup"));
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// If this [`Once`] has been poisoned because an initialization closure has
+    /// panicked, this method will also panic. Use [`wait_force`](Self::wait_force)
+    /// if this behaviour is not desired.
+    #[unstable(feature = "once_wait", issue = "127527")]
+    pub fn wait(&self) {
+        if !self.inner.is_completed() {
+            self.inner.wait(false);
+        }
+    }
+
+    /// Blocks the current thread until initialization has completed, ignoring
+    /// poisoning.
+    #[unstable(feature = "once_wait", issue = "127527")]
+    pub fn wait_force(&self) {
+        if !self.inner.is_completed() {
+            self.inner.wait(true);
+        }
+    }
+
     /// Returns the current state of the `Once` instance.
     ///
     /// Since this takes a mutable reference, no initialization can currently
