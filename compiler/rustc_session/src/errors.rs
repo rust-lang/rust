@@ -216,8 +216,8 @@ pub(crate) struct FileWriteFail<'a> {
 pub(crate) struct CrateNameDoesNotMatch {
     #[primary_span]
     pub(crate) span: Span,
-    pub(crate) s: Symbol,
-    pub(crate) name: Symbol,
+    pub(crate) crate_name: Symbol,
+    pub(crate) attr_crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -234,20 +234,14 @@ pub(crate) struct CrateNameEmpty {
 }
 
 #[derive(Diagnostic)]
-#[diag(session_invalid_character_in_create_name)]
+#[diag(session_invalid_character_in_crate_name)]
 pub(crate) struct InvalidCharacterInCrateName {
     #[primary_span]
     pub(crate) span: Option<Span>,
     pub(crate) character: char,
     pub(crate) crate_name: Symbol,
-    #[subdiagnostic]
-    pub(crate) crate_name_help: Option<InvalidCrateNameHelp>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum InvalidCrateNameHelp {
-    #[help(session_invalid_character_in_create_name_help)]
-    AddCrateName,
+    #[help]
+    pub(crate) help: Option<()>,
 }
 
 #[derive(Subdiagnostic)]
