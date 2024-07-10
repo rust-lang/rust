@@ -41,10 +41,10 @@ macro_rules! synchronized {
 }
 
 fn main() {
-    // For this example it is important that we have at least two bytes
-    // because lazyness is involved.
-    let mut data = [0u8; 2];
-    let ptr = SendPtr(std::ptr::addr_of_mut!(data[0]));
+    // The conflict occurs one one single location but the example involves
+    // lazily initialized permissions.
+    let mut data = 0u8;
+    let ptr = SendPtr(std::ptr::addr_of_mut!(data));
     let barrier = Arc::new(Barrier::new(2));
     let bx = Arc::clone(&barrier);
     let by = Arc::clone(&barrier);
@@ -84,17 +84,20 @@ fn main() {
         let ptr = ptr;
         synchronized!(b, "retag x (&mut, protect)");
         synchronized!(b, "[lazy] retag y (&mut, protect, IM)");
-        fn inner(y: &mut Cell<u8>, b: IdxBarrier) -> *mut u8 {
+        fn inner(y: &mut Cell<()>, b: IdxBarrier) -> *mut u8 {
             synchronized!(b, "spurious write x");
             synchronized!(b, "ret y");
-            y as *mut Cell<u8> as *mut u8
+            // `y` is not retagged for any bytes, so the pointer we return
+            // has its permission lazily initialized.
+            y as *mut Cell<()> as *mut u8
         }
-        // Currently `ptr` points to `data[0]`. We retag it for `data[1]`
-        // then use it for `data[0]` where its initialization has been deferred.
-        let y = inner(unsafe { &mut *(ptr.0 as *mut Cell<u8>).wrapping_add(1) }, b.clone());
+        // Currently `ptr` points to `data`.
+        // We do a zero-sized retag so that its permission is lazy.
+        let y_zst = unsafe { &mut *(ptr.0 as *mut Cell<()>) };
+        let y = inner(y_zst, b.clone());
         synchronized!(b, "ret x");
         synchronized!(b, "write y");
-        unsafe { *y.wrapping_sub(1) = 13 } //~ERROR: /write access through .* is forbidden/
+        unsafe { *y = 13 } //~ERROR: /write access through .* is forbidden/
         synchronized!(b, "end");
     });
 
