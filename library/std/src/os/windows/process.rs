@@ -183,9 +183,9 @@ pub trait CommandExt: Sealed {
 
     /// Sets the field `wShowWindow` of [STARTUPINFO][1] that is passed to `CreateProcess`.
     /// Allowed values are the ones listed in
-    /// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow
+    /// <https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow>
     ///
-    /// [1]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/ns-processthreadsapi-startupinfow
+    /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/ns-processthreadsapi-startupinfow>
     #[unstable(feature = "windows_process_extensions_show_window", issue = "127544")]
     fn show_window(&mut self, cmd_show: u16) -> &mut process::Command;
 
