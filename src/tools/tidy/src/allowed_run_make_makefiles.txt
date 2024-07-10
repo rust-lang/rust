@@ -9,7 +9,6 @@ run-make/c-unwind-abi-catch-lib-panic/Makefile
 run-make/c-unwind-abi-catch-panic/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
 run-make/cdylib-dylib-linkage/Makefile
-run-make/cdylib-fewer-symbols/Makefile
 run-make/compiler-lookup-paths-2/Makefile
 run-make/compiler-lookup-paths/Makefile
 run-make/compiler-rt-works-on-mingw/Makefile
@@ -28,7 +27,6 @@ run-make/env-dep-info/Makefile
 run-make/export-executable-symbols/Makefile
 run-make/extern-diff-internal-name/Makefile
 run-make/extern-flag-disambiguates/Makefile
-run-make/extern-flag-pathless/Makefile
 run-make/extern-fn-explicit-align/Makefile
 run-make/extern-fn-generic/Makefile
 run-make/extern-fn-mangle/Makefile
@@ -86,7 +84,6 @@ run-make/lto-smoke-c/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/macos-fat-archive/Makefile
 run-make/manual-link/Makefile
-run-make/metadata-dep-info/Makefile
 run-make/min-global-align/Makefile
 run-make/missing-crate-dependency/Makefile
 run-make/mixing-libs/Makefile
@@ -126,7 +123,6 @@ run-make/sanitizer-cdylib-link/Makefile
 run-make/sanitizer-dylib-link/Makefile
 run-make/sanitizer-staticlib-link/Makefile
 run-make/share-generics-dylib/Makefile
-run-make/silly-file-names/Makefile
 run-make/simd-ffi/Makefile
 run-make/split-debuginfo/Makefile
 run-make/stable-symbol-names/Makefile
@@ -137,7 +133,6 @@ run-make/staticlib-dylib-linkage/Makefile
 run-make/std-core-cycle/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/symbol-visibility/Makefile
-run-make/symbols-include-type-name/Makefile
 run-make/sysroot-crates-are-unstable/Makefile
 run-make/test-benches/Makefile
 run-make/thumb-none-cortex-m/Makefile
