@@ -445,6 +445,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 } else {
                     (None, &[][..], 0)
                 };
+                let mut can_suggest_clone = true;
                 if let Some(def_id) = def_id
                     && let node = self.infcx.tcx.hir_node_by_def_id(def_id)
                     && let Some(fn_sig) = node.fn_sig()
@@ -452,24 +453,73 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
                     && let Some(arg) = fn_sig.decl.inputs.get(pos + offset)
                 {
-                    let mut span: MultiSpan = arg.span.into();
-                    span.push_span_label(
-                        arg.span,
-                        "this parameter takes ownership of the value".to_string(),
-                    );
-                    let descr = match node.fn_kind() {
-                        Some(hir::intravisit::FnKind::ItemFn(..)) | None => "function",
-                        Some(hir::intravisit::FnKind::Method(..)) => "method",
-                        Some(hir::intravisit::FnKind::Closure) => "closure",
-                    };
-                    span.push_span_label(ident.span, format!("in this {descr}"));
-                    err.span_note(
-                        span,
-                        format!(
-                            "consider changing this parameter type in {descr} `{ident}` to borrow \
-                             instead if owning the value isn't necessary",
-                        ),
-                    );
+                    let mut is_mut = false;
+                    if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = arg.kind
+                        && let Res::Def(DefKind::TyParam, param_def_id) = path.res
+                        && self
+                            .infcx
+                            .tcx
+                            .predicates_of(def_id)
+                            .instantiate_identity(self.infcx.tcx)
+                            .predicates
+                            .into_iter()
+                            .any(|pred| {
+                                if let ty::ClauseKind::Trait(predicate) = pred.kind().skip_binder()
+                                    && [
+                                        self.infcx.tcx.get_diagnostic_item(sym::AsRef),
+                                        self.infcx.tcx.get_diagnostic_item(sym::AsMut),
+                                        self.infcx.tcx.get_diagnostic_item(sym::Borrow),
+                                        self.infcx.tcx.get_diagnostic_item(sym::BorrowMut),
+                                    ]
+                                    .contains(&Some(predicate.def_id()))
+                                    && let ty::Param(param) = predicate.self_ty().kind()
+                                    && let generics = self.infcx.tcx.generics_of(def_id)
+                                    && let param = generics.type_param(*param, self.infcx.tcx)
+                                    && param.def_id == param_def_id
+                                {
+                                    if [
+                                        self.infcx.tcx.get_diagnostic_item(sym::AsMut),
+                                        self.infcx.tcx.get_diagnostic_item(sym::BorrowMut),
+                                    ]
+                                    .contains(&Some(predicate.def_id()))
+                                    {
+                                        is_mut = true;
+                                    }
+                                    true
+                                } else {
+                                    false
+                                }
+                            })
+                    {
+                        // The type of the argument corresponding to the expression that got moved
+                        // is a type parameter `T`, which is has a `T: AsRef` obligation.
+                        err.span_suggestion_verbose(
+                            expr.span.shrink_to_lo(),
+                            "borrow the value to avoid moving it",
+                            format!("&{}", if is_mut { "mut " } else { "" }),
+                            Applicability::MachineApplicable,
+                        );
+                        can_suggest_clone = is_mut;
+                    } else {
+                        let mut span: MultiSpan = arg.span.into();
+                        span.push_span_label(
+                            arg.span,
+                            "this parameter takes ownership of the value".to_string(),
+                        );
+                        let descr = match node.fn_kind() {
+                            Some(hir::intravisit::FnKind::ItemFn(..)) | None => "function",
+                            Some(hir::intravisit::FnKind::Method(..)) => "method",
+                            Some(hir::intravisit::FnKind::Closure) => "closure",
+                        };
+                        span.push_span_label(ident.span, format!("in this {descr}"));
+                        err.span_note(
+                            span,
+                            format!(
+                                "consider changing this parameter type in {descr} `{ident}` to \
+                                 borrow instead if owning the value isn't necessary",
+                            ),
+                        );
+                    }
                 }
                 let place = &self.move_data.move_paths[mpi].place;
                 let ty = place.ty(self.body, self.infcx.tcx).ty;
@@ -487,9 +537,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                         ClosureKind::Coroutine(CoroutineKind::Desugared(_, CoroutineSource::Block)),
                     ..
                 } = move_spans
+                    && can_suggest_clone
                 {
                     self.suggest_cloning(err, ty, expr, None, Some(move_spans));
-                } else if self.suggest_hoisting_call_outside_loop(err, expr) {
+                } else if self.suggest_hoisting_call_outside_loop(err, expr) && can_suggest_clone {
                     // The place where the type moves would be misleading to suggest clone.
                     // #121466
                     self.suggest_cloning(err, ty, expr, None, Some(move_spans));

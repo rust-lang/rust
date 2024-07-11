@@ -1089,8 +1089,8 @@ pub(crate) struct ToolWasAlreadyRegistered {
 #[derive(Diagnostic)]
 #[diag(resolve_tool_only_accepts_identifiers)]
 pub(crate) struct ToolOnlyAcceptsIdentifiers {
-    #[label]
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
     pub(crate) tool: Symbol,
 }

@@ -2608,22 +2608,8 @@ impl DerefMut for Target {
 
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
-    pub fn adjust_abi<C>(&self, cx: &C, abi: Abi, c_variadic: bool) -> Abi
-    where
-        C: HasWasmCAbiOpt,
-    {
+    pub fn adjust_abi(&self, abi: Abi, c_variadic: bool) -> Abi {
         match abi {
-            Abi::C { .. } => {
-                if self.arch == "wasm32"
-                    && self.os == "unknown"
-                    && cx.wasm_c_abi_opt() == WasmCAbi::Legacy
-                {
-                    Abi::Wasm
-                } else {
-                    abi
-                }
-            }
-
             // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
             // `__stdcall` only applies on x86 and on non-variadic functions:
             // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
@@ -2676,7 +2662,6 @@ impl Target {
             Msp430Interrupt => self.arch == "msp430",
             RiscvInterruptM | RiscvInterruptS => ["riscv32", "riscv64"].contains(&&self.arch[..]),
             AvrInterrupt | AvrNonBlockingInterrupt => self.arch == "avr",
-            Wasm => ["wasm32", "wasm64"].contains(&&self.arch[..]),
             Thiscall { .. } => self.arch == "x86",
             // On windows these fall-back to platform native calling convention (C) when the
             // architecture is not supported.

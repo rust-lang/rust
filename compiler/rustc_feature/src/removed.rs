@@ -215,6 +215,9 @@ declare_features! (
     /// Permits specifying whether a function should permit unwinding or abort on unwind.
     (removed, unwind_attributes, "1.56.0", Some(58760), Some("use the C-unwind ABI instead")),
     (removed, visible_private_types, "1.0.0", None, None),
+    /// Allows `extern "wasm" fn`
+    (removed, wasm_abi, "CURRENT_RUSTC_VERSION", Some(83788),
+     Some("non-standard wasm ABI is no longer supported")),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
     // Features are listed in alphabetical order. Tidy will fail if you don't keep it this way.
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
