@@ -3,6 +3,10 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 pub struct AnonPipe(!);
 
 impl AnonPipe {
+    pub fn try_clone(&self) -> io::Result<Self> {
+        self.0
+    }
+
     pub fn read(&self, _buf: &mut [u8]) -> io::Result<usize> {
         self.0
     }
