@@ -101,7 +101,7 @@ fn write(
         unsafe {
             let handle = Handle::from_raw_handle(handle);
             let ret = handle.write(data);
-            handle.into_raw_handle(); // Don't close the handle
+            let _ = handle.into_raw_handle(); // Don't close the handle
             return ret;
         }
     }
@@ -250,7 +250,7 @@ impl io::Read for Stdin {
             unsafe {
                 let handle = Handle::from_raw_handle(handle);
                 let ret = handle.read(buf);
-                handle.into_raw_handle(); // Don't close the handle
+                let _ = handle.into_raw_handle(); // Don't close the handle
                 return ret;
             }
         }
