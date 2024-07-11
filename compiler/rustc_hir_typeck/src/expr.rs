@@ -519,7 +519,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_error(tcx, e)
             }
             Res::Def(DefKind::Variant, _) => {
-                let e = report_unexpected_variant_res(tcx, res, qpath, expr.span, E0533, "value");
+                let e = report_unexpected_variant_res(
+                    tcx,
+                    res,
+                    Some(expr),
+                    qpath,
+                    expr.span,
+                    E0533,
+                    "value",
+                );
                 Ty::new_error(tcx, e)
             }
             _ => {
