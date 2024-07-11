@@ -237,9 +237,9 @@
 </tspan>
     <tspan x="10px" y="1954px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="1972px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan>    </tspan><tspan class="fg-ansi256-010">Enum::Tuple(/* fields */)</tspan><tspan>;</tspan>
+    <tspan x="10px" y="1972px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan>    Enum::Tuple</tspan><tspan class="fg-ansi256-010">(/* i32 */)</tspan><tspan>;</tspan>
 </tspan>
-    <tspan x="10px" y="1990px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>     </tspan><tspan class="fg-ansi256-010">~~~~~~~~~~~~~~~~~~~~~~~~~</tspan>
+    <tspan x="10px" y="1990px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>                </tspan><tspan class="fg-ansi256-010">~~~~~~~~~~~</tspan>
 </tspan>
     <tspan x="10px" y="2008px">
 </tspan>
@@ -375,9 +375,9 @@
 </tspan>
     <tspan x="10px" y="3196px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="3214px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan>    </tspan><tspan class="fg-ansi256-010">Enum::Tuple(/* fields */)</tspan><tspan>;</tspan>
+    <tspan x="10px" y="3214px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan>    Enum::Tuple</tspan><tspan class="fg-ansi256-010">(/* i32 */)</tspan><tspan>;</tspan>
 </tspan>
-    <tspan x="10px" y="3232px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>     </tspan><tspan class="fg-ansi256-010">~~~~~~~~~~~~~~~~~~~~~~~~~</tspan>
+    <tspan x="10px" y="3232px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>                </tspan><tspan class="fg-ansi256-010">~~~~~~~~~~~</tspan>
 </tspan>
     <tspan x="10px" y="3250px">
 </tspan>
@@ -403,9 +403,9 @@
 </tspan>
     <tspan x="10px" y="3448px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="3466px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan>    </tspan><tspan class="fg-ansi256-010">Enum::Tuple(/* fields */)</tspan><tspan>;</tspan>
+    <tspan x="10px" y="3466px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan>    Enum::Tuple</tspan><tspan class="fg-ansi256-010">(/* i32 */)</tspan><tspan>;</tspan>
 </tspan>
-    <tspan x="10px" y="3484px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>     </tspan><tspan class="fg-ansi256-010">~~~~~~~~~~~~~~~~~~~~~~~~~</tspan>
+    <tspan x="10px" y="3484px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>                </tspan><tspan class="fg-ansi256-010">~~~~~~~~~~~</tspan>
 </tspan>
     <tspan x="10px" y="3502px">
 </tspan>
