@@ -4061,9 +4061,10 @@ pub trait Iterator {
         unreachable!("Always specialized");
     }
 
-    /// Checks if the Iterator has a value.
+    /// Returns `true` if the iterator contains a value.
+    ///
     /// 'contains' is short-circuiting; in other words, it will stop processing
-    /// as soon as the function finds the item in the Iterator.
+    /// as soon as the function finds the item in the `Iterator`.
     ///
     /// Performance:
     /// This method checks the whole iterator, which takes O(n) time.
