@@ -20,7 +20,7 @@ use path::PathStyle;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{AttributesData, DelimSpacing, DelimSpan, Spacing};
+use rustc_ast::tokenstream::{AttrsTarget, DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
@@ -153,7 +153,7 @@ pub struct Parser<'a> {
     expected_tokens: Vec<TokenType>,
     token_cursor: TokenCursor,
     // The number of calls to `bump`, i.e. the position in the token stream.
-    num_bump_calls: usize,
+    num_bump_calls: u32,
     // During parsing we may sometimes need to 'unglue' a glued token into two
     // component tokens (e.g. '>>' into '>' and '>), so the parser can consume
     // them one at a time. This process bypasses the normal capturing mechanism
@@ -192,7 +192,7 @@ pub struct Parser<'a> {
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(Parser<'_>, 264);
+rustc_data_structures::static_assert_size!(Parser<'_>, 256);
 
 /// Stores span information about a closure.
 #[derive(Clone, Debug)]
@@ -203,13 +203,13 @@ struct ClosureSpans {
 }
 
 /// Indicates a range of tokens that should be replaced by
-/// the tokens in the provided vector. This is used in two
+/// the tokens in the provided `AttrsTarget`. This is used in two
 /// places during token collection:
 ///
 /// 1. During the parsing of an AST node that may have a `#[derive]`
 /// attribute, we parse a nested AST node that has `#[cfg]` or `#[cfg_attr]`
 /// In this case, we use a `ReplaceRange` to replace the entire inner AST node
-/// with `FlatToken::AttrTarget`, allowing us to perform eager cfg-expansion
+/// with `FlatToken::AttrsTarget`, allowing us to perform eager cfg-expansion
 /// on an `AttrTokenStream`.
 ///
 /// 2. When we parse an inner attribute while collecting tokens. We
@@ -219,7 +219,7 @@ struct ClosureSpans {
 /// the first macro inner attribute to invoke a proc-macro).
 /// When create a `TokenStream`, the inner attributes get inserted
 /// into the proper place in the token stream.
-type ReplaceRange = (Range<u32>, Vec<(FlatToken, Spacing)>);
+type ReplaceRange = (Range<u32>, Option<AttrsTarget>);
 
 /// Controls how we capture tokens. Capturing can be expensive,
 /// so we try to avoid performing capturing in cases where
@@ -1214,6 +1214,9 @@ impl<'a> Parser<'a> {
         if self.eat_keyword_case(kw::Unsafe, case) {
             Safety::Unsafe(self.prev_token.uninterpolated_span())
         } else if self.eat_keyword_case(kw::Safe, case) {
+            self.psess
+                .gated_spans
+                .gate(sym::unsafe_extern_blocks, self.prev_token.uninterpolated_span());
             Safety::Safe(self.prev_token.uninterpolated_span())
         } else {
             Safety::Default
@@ -1569,7 +1572,7 @@ impl<'a> Parser<'a> {
         self.expected_tokens.clear();
     }
 
-    pub fn approx_token_stream_pos(&self) -> usize {
+    pub fn approx_token_stream_pos(&self) -> u32 {
         self.num_bump_calls
     }
 }
@@ -1605,11 +1608,10 @@ enum FlatToken {
     /// A token - this holds both delimiter (e.g. '{' and '}')
     /// and non-delimiter tokens
     Token(Token),
-    /// Holds the `AttributesData` for an AST node. The
-    /// `AttributesData` is inserted directly into the
-    /// constructed `AttrTokenStream` as
-    /// an `AttrTokenTree::Attributes`.
-    AttrTarget(AttributesData),
+    /// Holds the `AttrsTarget` for an AST node. The `AttrsTarget` is inserted
+    /// directly into the constructed `AttrTokenStream` as an
+    /// `AttrTokenTree::AttrsTarget`.
+    AttrsTarget(AttrsTarget),
     /// A special 'empty' token that is ignored during the conversion
     /// to an `AttrTokenStream`. This is used to simplify the
     /// handling of replace ranges.

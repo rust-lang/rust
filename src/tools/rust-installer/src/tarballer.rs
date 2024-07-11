@@ -32,6 +32,12 @@ actor! {
         /// The formats used to compress the tarball.
         #[arg(value_name = "FORMAT", default_value_t)]
         compression_formats: CompressionFormats,
+
+        /// Modification time that will be set for all files added to the archive.
+        /// The default is the date of the first Rust commit from 2006.
+        /// This serves for better reproducibility of the archives.
+        #[arg(value_name = "FILE_MTIME", default_value_t = 1153704088)]
+        override_file_mtime: u64,
     }
 }
 
@@ -65,6 +71,8 @@ impl Tarballer {
         let buf = BufWriter::with_capacity(1024 * 1024, encoder);
         let mut builder = Builder::new(buf);
         // Make uid, gid and mtime deterministic to improve reproducibility
+        // The modification time of directories will be set to the date of the first Rust commit.
+        // The modification time of files will be set to `override_file_mtime` (see `append_path`).
         builder.mode(HeaderMode::Deterministic);
 
         let pool = rayon::ThreadPoolBuilder::new().num_threads(2).build().unwrap();
@@ -77,7 +85,7 @@ impl Tarballer {
             }
             for path in files {
                 let src = Path::new(&self.work_dir).join(&path);
-                append_path(&mut builder, &src, &path)
+                append_path(&mut builder, &src, &path, self.override_file_mtime)
                     .with_context(|| format!("failed to tar file '{}'", src.display()))?;
             }
             builder
@@ -93,10 +101,16 @@ impl Tarballer {
     }
 }
 
-fn append_path<W: Write>(builder: &mut Builder<W>, src: &Path, path: &String) -> Result<()> {
+fn append_path<W: Write>(
+    builder: &mut Builder<W>,
+    src: &Path,
+    path: &String,
+    override_file_mtime: u64,
+) -> Result<()> {
     let stat = symlink_metadata(src)?;
     let mut header = Header::new_gnu();
     header.set_metadata_in_mode(&stat, HeaderMode::Deterministic);
+    header.set_mtime(override_file_mtime);
 
     if stat.file_type().is_symlink() {
         let link = read_link(src)?;

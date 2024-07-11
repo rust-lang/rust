@@ -23,10 +23,11 @@ use super::{
     MemoryKind, Misalignment, OpTy, PlaceTy, Pointer, Provenance,
 };
 
-/// Data returned by Machine::stack_pop,
-/// to provide further control over the popping of the stack frame
+/// Data returned by [`Machine::after_stack_pop`], and consumed by
+/// [`InterpCx::return_from_current_stack_frame`] to determine what actions should be done when
+/// returning from a stack frame.
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
-pub enum StackPopJump {
+pub enum ReturnAction {
     /// Indicates that no special handling should be
     /// done - we'll either return normally or unwind
     /// based on the terminator for the function
@@ -36,6 +37,9 @@ pub enum StackPopJump {
     /// Indicates that we should *not* jump to the return/unwind address, as the callback already
     /// took care of everything.
     NoJump,
+
+    /// Returned by [`InterpCx::pop_stack_frame`] when no cleanup should be done.
+    NoCleanup,
 }
 
 /// Whether this kind of memory is allowed to leak
@@ -522,10 +526,10 @@ pub trait Machine<'tcx>: Sized {
         _ecx: &mut InterpCx<'tcx, Self>,
         _frame: Frame<'tcx, Self::Provenance, Self::FrameExtra>,
         unwinding: bool,
-    ) -> InterpResult<'tcx, StackPopJump> {
+    ) -> InterpResult<'tcx, ReturnAction> {
         // By default, we do not support unwinding from panics
         assert!(!unwinding);
-        Ok(StackPopJump::Normal)
+        Ok(ReturnAction::Normal)
     }
 
     /// Called immediately after actual memory was allocated for a local

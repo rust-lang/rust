@@ -2,11 +2,11 @@
 //! which folds deeply, invoking the underlying
 //! `normalize_canonicalized_projection_ty` query when it encounters projections.
 
+use crate::error_reporting::traits::OverflowCause;
+use crate::error_reporting::traits::TypeErrCtxtOverflowExt;
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::error_reporting::OverflowCause;
-use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::normalize::needs_normalization;
 use crate::traits::Normalized;
 use crate::traits::{BoundVarReplacer, PlaceholderReplacer, ScrubbedTraitError};
@@ -172,7 +172,7 @@ struct QueryNormalizer<'cx, 'tcx> {
 impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> {
     type Error = NoSolution;
 
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -217,7 +217,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
 
                     Reveal::All => {
                         let args = data.args.try_fold_with(self)?;
-                        let recursion_limit = self.interner().recursion_limit();
+                        let recursion_limit = self.cx().recursion_limit();
 
                         if !recursion_limit.value_within_limit(self.anon_depth) {
                             let guar = self
@@ -229,15 +229,15 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                                     true,
                                 )
                                 .delay_as_bug();
-                            return Ok(Ty::new_error(self.interner(), guar));
+                            return Ok(Ty::new_error(self.cx(), guar));
                         }
 
-                        let generic_ty = self.interner().type_of(data.def_id);
-                        let mut concrete_ty = generic_ty.instantiate(self.interner(), args);
+                        let generic_ty = self.cx().type_of(data.def_id);
+                        let mut concrete_ty = generic_ty.instantiate(self.cx(), args);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
                             concrete_ty = Ty::new_error_with_message(
-                                self.interner(),
+                                self.cx(),
                                 DUMMY_SP,
                                 "recursive opaque type",
                             );

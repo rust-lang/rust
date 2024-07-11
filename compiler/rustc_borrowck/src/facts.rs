@@ -213,8 +213,32 @@ trait FactCell {
     fn to_string(&self, location_table: &LocationTable) -> String;
 }
 
-impl<A: Debug> FactCell for A {
-    default fn to_string(&self, _location_table: &LocationTable) -> String {
+impl FactCell for BorrowIndex {
+    fn to_string(&self, _location_table: &LocationTable) -> String {
+        format!("{self:?}")
+    }
+}
+
+impl FactCell for Local {
+    fn to_string(&self, _location_table: &LocationTable) -> String {
+        format!("{self:?}")
+    }
+}
+
+impl FactCell for MovePathIndex {
+    fn to_string(&self, _location_table: &LocationTable) -> String {
+        format!("{self:?}")
+    }
+}
+
+impl FactCell for PoloniusRegionVid {
+    fn to_string(&self, _location_table: &LocationTable) -> String {
+        format!("{self:?}")
+    }
+}
+
+impl FactCell for RegionVid {
+    fn to_string(&self, _location_table: &LocationTable) -> String {
         format!("{self:?}")
     }
 }

@@ -53,6 +53,7 @@ use type_variable::TypeVariableOrigin;
 
 pub mod at;
 pub mod canonical;
+mod context;
 pub mod error_reporting;
 pub mod free_regions;
 mod freshen;
@@ -684,8 +685,8 @@ impl<'tcx> InferOk<'tcx, ()> {
 }
 
 impl<'tcx> InferCtxt<'tcx> {
-    pub fn dcx(&self) -> DiagCtxtHandle<'tcx> {
-        self.tcx.dcx()
+    pub fn dcx(&self) -> DiagCtxtHandle<'_> {
+        self.tcx.dcx().taintable_handle(&self.tainted_by_errors)
     }
 
     pub fn defining_opaque_types(&self) -> &'tcx ty::List<LocalDefId> {
@@ -767,19 +768,9 @@ impl<'tcx> InferCtxt<'tcx> {
             .collect()
     }
 
-    pub fn can_sub<T>(&self, param_env: ty::ParamEnv<'tcx>, expected: T, actual: T) -> bool
-    where
-        T: at::ToTrace<'tcx>,
-    {
-        let origin = &ObligationCause::dummy();
-        self.probe(|_| {
-            // We're only answering whether there could be a subtyping relation, and with
-            // opaque types, "there could be one", via registering a hidden type.
-            self.at(origin, param_env).sub(DefineOpaqueTypes::Yes, expected, actual).is_ok()
-        })
-    }
-
-    pub fn can_eq<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
+    // FIXME(-Znext-solver): Get rid of this method, it's never correct. Either that,
+    // or we need to process the obligations.
+    pub fn can_eq_shallow<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
     where
         T: at::ToTrace<'tcx>,
     {
@@ -1089,19 +1080,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// inference variables, regionck errors).
     #[must_use = "this method does not have any side effects"]
     pub fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
-        if let Some(guar) = self.tainted_by_errors.get() {
-            Some(guar)
-        } else if self.dcx().err_count_excluding_lint_errs() > self.err_count_on_creation {
-            // Errors reported since this infcx was made. Lint errors are
-            // excluded to avoid some being swallowed in the presence of
-            // non-lint errors. (It's arguable whether or not this exclusion is
-            // important.)
-            let guar = self.dcx().has_errors().unwrap();
-            self.set_tainted_by_errors(guar);
-            Some(guar)
-        } else {
-            None
-        }
+        self.tainted_by_errors.get()
     }
 
     /// Set the "tainted by errors" flag to true. We call this when we
@@ -1285,6 +1264,9 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
+        if let Err(guar) = value.error_reported() {
+            self.set_tainted_by_errors(guar);
+        }
         if !value.has_non_region_infer() {
             return value;
         }
@@ -1328,8 +1310,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     bug!("`{value:?}` is not fully resolved");
                 }
                 if value.has_infer_regions() {
-                    let guar =
-                        self.tcx.dcx().delayed_bug(format!("`{value:?}` is not fully resolved"));
+                    let guar = self.dcx().delayed_bug(format!("`{value:?}` is not fully resolved"));
                     Ok(self.tcx.fold_regions(value, |re, _| {
                         if re.is_var() { ty::Region::new_error(self.tcx, guar) } else { re }
                     }))
@@ -1607,7 +1588,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     // [Note-Type-error-reporting]
     // An invariant is that anytime the expected or actual type is Error (the special
     // error type, meaning that an error occurred when typechecking this expression),
@@ -1623,9 +1604,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         sp: Span,
         mk_diag: M,
         actual_ty: Ty<'tcx>,
-    ) -> Diag<'tcx>
+    ) -> Diag<'a>
     where
-        M: FnOnce(String) -> Diag<'tcx>,
+        M: FnOnce(String) -> Diag<'a>,
     {
         let actual_ty = self.resolve_vars_if_possible(actual_ty);
         debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
@@ -1646,7 +1627,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         err: TypeError<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         self.report_and_explain_type_error(TypeTrace::types(cause, true, expected, actual), err)
     }
 
@@ -1656,7 +1637,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         expected: ty::Const<'tcx>,
         actual: ty::Const<'tcx>,
         err: TypeError<'tcx>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         self.report_and_explain_type_error(TypeTrace::consts(cause, true, expected, actual), err)
     }
 }
@@ -1719,7 +1700,7 @@ struct InferenceLiteralEraser<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceLiteralEraser<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1859,7 +1840,7 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
     }
 
     impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceParamAndInferWithPlaceholder<'tcx> {
-        fn interner(&self) -> TyCtxt<'tcx> {
+        fn cx(&self) -> TyCtxt<'tcx> {
             self.tcx
         }
 

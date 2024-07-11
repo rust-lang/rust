@@ -14,7 +14,7 @@ passes_abi_of =
     fn_abi_of({$fn_name}) = {$fn_abi}
 
 passes_allow_incoherent_impl =
-    `rustc_allow_incoherent_impl` attribute should be applied to impl items.
+    `rustc_allow_incoherent_impl` attribute should be applied to impl items
     .label = the only currently supported targets are inherent methods
 
 passes_allow_internal_unstable =
@@ -103,18 +103,9 @@ passes_continue_labeled_block =
     .label = labeled blocks cannot be `continue`'d
     .block_label = labeled block the `continue` points to
 
-passes_coverage_fn_defn =
-    `#[coverage]` may only be applied to function definitions
-
-passes_coverage_ignored_function_prototype =
-    `#[coverage]` is ignored on function prototypes
-
-passes_coverage_not_coverable =
-    `#[coverage]` must be applied to coverable code
-    .label = not coverable code
-
-passes_coverage_propagate =
-    `#[coverage]` does not propagate into items and must be applied to the contained functions directly
+passes_coverage_not_fn_or_closure =
+    attribute should be applied to a function definition or closure
+    .label = not a function or closure
 
 passes_dead_codes =
     { $multiple ->
@@ -253,8 +244,8 @@ passes_doc_test_unknown_spotlight =
     .no_op_note = `doc(spotlight)` is now a no-op
 
 passes_duplicate_diagnostic_item_in_crate =
-    duplicate diagnostic item in crate `{$crate_name}`: `{$name}`.
-    .note = the diagnostic item is first defined in crate `{$orig_crate_name}`.
+    duplicate diagnostic item in crate `{$crate_name}`: `{$name}`
+    .note = the diagnostic item is first defined in crate `{$orig_crate_name}`
 
 passes_duplicate_feature_err =
     the feature `{$feature}` has already been declared
@@ -263,27 +254,27 @@ passes_duplicate_lang_item =
     found duplicate lang item `{$lang_item_name}`
     .first_defined_span = the lang item is first defined here
     .first_defined_crate_depends = the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)
-    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`.
+    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`
     .first_definition_local = first definition in the local crate (`{$orig_crate_name}`)
     .second_definition_local = second definition in the local crate (`{$crate_name}`)
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
 passes_duplicate_lang_item_crate =
-    duplicate lang item in crate `{$crate_name}`: `{$lang_item_name}`.
+    duplicate lang item in crate `{$crate_name}`: `{$lang_item_name}`
     .first_defined_span = the lang item is first defined here
     .first_defined_crate_depends = the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)
-    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`.
+    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`
     .first_definition_local = first definition in the local crate (`{$orig_crate_name}`)
     .second_definition_local = second definition in the local crate (`{$crate_name}`)
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
 passes_duplicate_lang_item_crate_depends =
-    duplicate lang item in crate `{$crate_name}` (which `{$dependency_of}` depends on): `{$lang_item_name}`.
+    duplicate lang item in crate `{$crate_name}` (which `{$dependency_of}` depends on): `{$lang_item_name}`
     .first_defined_span = the lang item is first defined here
     .first_defined_crate_depends = the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)
-    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`.
+    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`
     .first_definition_local = first definition in the local crate (`{$orig_crate_name}`)
     .second_definition_local = second definition in the local crate (`{$crate_name}`)
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
@@ -315,7 +306,7 @@ passes_ffi_pure_invalid_target =
     `#[ffi_pure]` may only be used on foreign functions
 
 passes_has_incoherent_inherent_impl =
-    `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits.
+    `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits
     .label = only adts, extern types and traits are supported
 
 passes_ignored_attr =
@@ -383,10 +374,6 @@ passes_invalid_attr_at_crate_level =
 
 passes_invalid_attr_at_crate_level_item =
     the inner attribute doesn't annotate this {$kind}
-
-passes_invalid_attr_unsafe = `{$name}` is not an unsafe attribute
-    .suggestion = remove the `unsafe(...)`
-    .note = extraneous unsafe is not allowed in attributes
 
 passes_invalid_macro_export_arguments = `{$name}` isn't a valid `#[macro_export]` argument
 
@@ -795,6 +782,7 @@ passes_used_compiler_linker =
 
 passes_used_static =
     attribute must be applied to a `static` variable
+    .label = but this is a {$target}
 
 passes_useless_assignment =
     useless assignment of {$is_field_assign ->

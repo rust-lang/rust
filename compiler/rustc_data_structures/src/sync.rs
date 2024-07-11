@@ -35,11 +35,11 @@
 //! |                         |                     |                                 |
 //! | `ParallelIterator`      | `Iterator`          | `rayon::iter::ParallelIterator` |
 //!
-//! [^1] `MTLock` is similar to `Lock`, but the serial version avoids the cost
+//! [^1]: `MTLock` is similar to `Lock`, but the serial version avoids the cost
 //! of a `RefCell`. This is appropriate when interior mutability is not
 //! required.
 //!
-//! [^2] `MTRef`, `MTLockRef` are type aliases.
+//! [^2]: `MTRef`, `MTLockRef` are type aliases.
 
 pub use crate::marker::*;
 use std::collections::HashMap;
@@ -270,12 +270,11 @@ cfg_match! {
 
         pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32};
 
-        // PowerPC and MIPS platforms with 32-bit pointers do not
-        // have AtomicU64 type.
-        #[cfg(not(any(target_arch = "powerpc", target_arch = "mips")))]
+        // Use portable AtomicU64 for targets without native 64-bit atomics
+        #[cfg(target_has_atomic = "64")]
         pub use std::sync::atomic::AtomicU64;
 
-        #[cfg(any(target_arch = "powerpc", target_arch = "mips"))]
+        #[cfg(not(target_has_atomic = "64"))]
         pub use portable_atomic::AtomicU64;
 
         pub use std::sync::Arc as Lrc;

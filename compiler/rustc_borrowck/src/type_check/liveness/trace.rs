@@ -43,7 +43,7 @@ pub(super) fn trace<'mir, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
     elements: &Rc<DenseLocationMap>,
-    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'_, 'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
     relevant_live_locals: Vec<Local>,
     boring_locals: Vec<Local>,
@@ -101,7 +101,7 @@ pub(super) fn trace<'mir, 'tcx>(
 }
 
 /// Contextual state for the type-liveness coroutine.
-struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
+struct LivenessContext<'a, 'me, 'typeck, 'flow, 'tcx> {
     /// Current type-checker, giving us our inference context etc.
     typeck: &'me mut TypeChecker<'typeck, 'tcx>,
 
@@ -119,7 +119,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
-    flow_inits: &'me mut ResultsCursor<'flow, 'tcx, MaybeInitializedPlaces<'flow, 'tcx>>,
+    flow_inits: &'me mut ResultsCursor<'flow, 'tcx, MaybeInitializedPlaces<'a, 'flow, 'tcx>>,
 
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
@@ -131,8 +131,8 @@ struct DropData<'tcx> {
     region_constraint_data: Option<&'tcx QueryRegionConstraints<'tcx>>,
 }
 
-struct LivenessResults<'me, 'typeck, 'flow, 'tcx> {
-    cx: LivenessContext<'me, 'typeck, 'flow, 'tcx>,
+struct LivenessResults<'a, 'me, 'typeck, 'flow, 'tcx> {
+    cx: LivenessContext<'a, 'me, 'typeck, 'flow, 'tcx>,
 
     /// Set of points that define the current local.
     defs: BitSet<PointIndex>,
@@ -153,8 +153,8 @@ struct LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     stack: Vec<PointIndex>,
 }
 
-impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
-    fn new(cx: LivenessContext<'me, 'typeck, 'flow, 'tcx>) -> Self {
+impl<'a, 'me, 'typeck, 'flow, 'tcx> LivenessResults<'a, 'me, 'typeck, 'flow, 'tcx> {
+    fn new(cx: LivenessContext<'a, 'me, 'typeck, 'flow, 'tcx>) -> Self {
         let num_points = cx.elements.num_points();
         LivenessResults {
             cx,
@@ -217,35 +217,52 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     /// Add facts for all locals with free regions, since regions may outlive
     /// the function body only at certain nodes in the CFG.
     fn add_extra_drop_facts(&mut self, relevant_live_locals: &[Local]) -> Option<()> {
-        let drop_used = self
-            .cx
-            .typeck
-            .borrowck_context
-            .all_facts
-            .as_ref()
-            .map(|facts| facts.var_dropped_at.clone())?;
+        // This collect is more necessary than immediately apparent
+        // because these facts go into `add_drop_live_facts_for()`,
+        // which also writes to `all_facts`, and so this is genuinely
+        // a simulatneous overlapping mutable borrow.
+        // FIXME for future hackers: investigate whether this is
+        // actually necessary; these facts come from Polonius
+        // and probably maybe plausibly does not need to go back in.
+        // It may be necessary to just pick out the parts of
+        // `add_drop_live_facts_for()` that make sense.
+        let facts_to_add: Vec<_> = {
+            let drop_used = &self.cx.typeck.borrowck_context.all_facts.as_ref()?.var_dropped_at;
 
-        let relevant_live_locals: FxIndexSet<_> = relevant_live_locals.iter().copied().collect();
+            let relevant_live_locals: FxIndexSet<_> =
+                relevant_live_locals.iter().copied().collect();
 
-        let locations = IntervalSet::new(self.cx.elements.num_points());
+            drop_used
+                .iter()
+                .filter_map(|(local, location_index)| {
+                    let local_ty = self.cx.body.local_decls[*local].ty;
+                    if relevant_live_locals.contains(local) || !local_ty.has_free_regions() {
+                        return None;
+                    }
 
-        for (local, location_index) in drop_used {
-            if !relevant_live_locals.contains(&local) {
-                let local_ty = self.cx.body.local_decls[local].ty;
-                if local_ty.has_free_regions() {
                     let location = match self
                         .cx
                         .typeck
                         .borrowck_context
                         .location_table
-                        .to_location(location_index)
+                        .to_location(*location_index)
                     {
                         RichLocation::Start(l) => l,
                         RichLocation::Mid(l) => l,
                     };
-                    self.cx.add_drop_live_facts_for(local, local_ty, &[location], &locations);
-                }
-            }
+
+                    Some((*local, local_ty, location))
+                })
+                .collect()
+        };
+
+        // FIXME: these locations seem to have a special meaning (e.g. everywhere, at the end, ...), but I don't know which one. Please help me rename it to something descriptive!
+        // Also, if this IntervalSet is used in many places, it maybe should have a newtype'd
+        // name with a description of what it means for future mortals passing by.
+        let locations = IntervalSet::new(self.cx.elements.num_points());
+
+        for (local, local_ty, location) in facts_to_add {
+            self.cx.add_drop_live_facts_for(local, local_ty, &[location], &locations);
         }
         Some(())
     }
@@ -490,7 +507,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     }
 }
 
-impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
+impl<'tcx> LivenessContext<'_, '_, '_, '_, 'tcx> {
     /// Returns `true` if the local variable (or some part of it) is initialized at the current
     /// cursor position. Callers should call one of the `seek` methods immediately before to point
     /// the cursor to the desired location.

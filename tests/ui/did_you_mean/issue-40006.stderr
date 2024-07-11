@@ -11,26 +11,36 @@ LL | }
    | unexpected token
    | the item list ends here
 
-error: expected one of `!` or `::`, found `(`
-  --> $DIR/issue-40006.rs:8:6
+error: missing `fn` for function definition
+  --> $DIR/issue-40006.rs:8:5
    |
 LL | trait X {
    |         - while parsing this item list starting here
 LL |     X() {}
-   |      ^ expected one of `!` or `::`
+   |     ^
 ...
 LL | }
    | - the item list ends here
+   |
+help: add `fn` here to parse `X` as a function
+   |
+LL |     fn X() {}
+   |     ++
 
-error: expected one of `!` or `::`, found `(`
-  --> $DIR/issue-40006.rs:16:6
+error: missing `fn` for function definition
+  --> $DIR/issue-40006.rs:16:5
    |
 LL | trait A {
    |         - while parsing this item list starting here
 LL |     X() {}
-   |      ^ expected one of `!` or `::`
+   |     ^
 LL | }
    | - the item list ends here
+   |
+help: add `fn` here to parse `X` as a function
+   |
+LL |     fn X() {}
+   |     ++
 
 error: expected one of `!` or `[`, found `#`
   --> $DIR/issue-40006.rs:19:17
@@ -69,17 +79,17 @@ LL | }
    | - the item list ends here
 
 error: missing `fn` for method definition
-  --> $DIR/issue-40006.rs:32:8
+  --> $DIR/issue-40006.rs:32:5
    |
 LL | impl S {
    |        - while parsing this item list starting here
 LL |     pub hello_method(&self) {
-   |        ^
+   |     ^^^^^^^^^^^^^^^^
 ...
 LL | }
    | - the item list ends here
    |
-help: add `fn` here to parse `hello_method` as a public method
+help: add `fn` here to parse `hello_method` as a method
    |
 LL |     pub fn hello_method(&self) {
    |         ++

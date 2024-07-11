@@ -301,9 +301,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         }
                         // The signed form of the intrinsic allows this. If we interpret the
                         // difference as isize, we'll get the proper signed difference. If that
-                        // seems *positive*, they were more than isize::MAX apart.
+                        // seems *positive* or equal to isize::MIN, they were more than isize::MAX apart.
                         let dist = val.to_target_isize(self)?;
-                        if dist >= 0 {
+                        if dist >= 0 || i128::from(dist) == self.pointer_size().signed_int_min() {
                             throw_ub_custom!(
                                 fluent::const_eval_offset_from_underflow,
                                 name = intrinsic_name,

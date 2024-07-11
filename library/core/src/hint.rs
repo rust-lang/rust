@@ -111,41 +111,92 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 
 /// Makes a *soundness* promise to the compiler that `cond` holds.
 ///
-/// This may allow the optimizer to simplify things,
-/// but it might also make the generated code slower.
-/// Either way, calling it will most likely make compilation take longer.
+/// This may allow the optimizer to simplify things, but it might also make the generated code
+/// slower. Either way, calling it will most likely make compilation take longer.
 ///
-/// This is a situational tool for micro-optimization, and is allowed to do nothing.
-/// Any use should come with a repeatable benchmark to show the value
-/// and allow removing it later should the optimizer get smarter and no longer need it.
+/// You may know this from other places as
+/// [`llvm.assume`](https://llvm.org/docs/LangRef.html#llvm-assume-intrinsic) or, in C,
+/// [`__builtin_assume`](https://clang.llvm.org/docs/LanguageExtensions.html#builtin-assume).
 ///
-/// The more complicated the condition the less likely this is to be fruitful.
-/// For example, `assert_unchecked(foo.is_sorted())` is a complex enough value
-/// that the compiler is unlikely to be able to take advantage of it.
+/// This promotes a correctness requirement to a soundness requirement. Don't do that without
+/// very good reason.
 ///
-/// There's also no need to `assert_unchecked` basic properties of things.  For
-/// example, the compiler already knows the range of `count_ones`, so there's no
-/// benefit to `let n = u32::count_ones(x); assert_unchecked(n <= u32::BITS);`.
+/// # Usage
 ///
-/// If ever you're tempted to write `assert_unchecked(false)`, then you're
-/// actually looking for [`unreachable_unchecked()`].
+/// This is a situational tool for micro-optimization, and is allowed to do nothing. Any use
+/// should come with a repeatable benchmark to show the value, with the expectation to drop it
+/// later should the optimizer get smarter and no longer need it.
 ///
-/// You may know this from other places
-/// as [`llvm.assume`](https://llvm.org/docs/LangRef.html#llvm-assume-intrinsic)
-/// or [`__builtin_assume`](https://clang.llvm.org/docs/LanguageExtensions.html#builtin-assume).
+/// The more complicated the condition, the less likely this is to be useful. For example,
+/// `assert_unchecked(foo.is_sorted())` is a complex enough value that the compiler is unlikely
+/// to be able to take advantage of it.
 ///
-/// This promotes a correctness requirement to a soundness requirement.
-/// Don't do that without very good reason.
+/// There's also no need to `assert_unchecked` basic properties of things.  For example, the
+/// compiler already knows the range of `count_ones`, so there is no benefit to
+/// `let n = u32::count_ones(x); assert_unchecked(n <= u32::BITS);`.
+///
+/// `assert_unchecked` is logically equivalent to `if !cond { unreachable_unchecked(); }`. If
+/// ever you are tempted to write `assert_unchecked(false)`, you should instead use
+/// [`unreachable_unchecked()`] directly.
 ///
 /// # Safety
 ///
-/// `cond` must be `true`.  It's immediate UB to call this with `false`.
+/// `cond` must be `true`. It is immediate UB to call this with `false`.
 ///
+/// # Example
+///
+/// ```
+/// use core::hint;
+///
+/// /// # Safety
+/// ///
+/// /// `p` must be nonnull and valid
+/// pub unsafe fn next_value(p: *const i32) -> i32 {
+///     // SAFETY: caller invariants guarantee that `p` is not null
+///     unsafe { hint::assert_unchecked(!p.is_null()) }
+///
+///     if p.is_null() {
+///         return -1;
+///     } else {
+///         // SAFETY: caller invariants guarantee that `p` is valid
+///         unsafe { *p + 1 }
+///     }
+/// }
+/// ```
+///
+/// Without the `assert_unchecked`, the above function produces the following with optimizations
+/// enabled:
+///
+/// ```asm
+/// next_value:
+///         test    rdi, rdi
+///         je      .LBB0_1
+///         mov     eax, dword ptr [rdi]
+///         inc     eax
+///         ret
+/// .LBB0_1:
+///         mov     eax, -1
+///         ret
+/// ```
+///
+/// Adding the assertion allows the optimizer to remove the extra check:
+///
+/// ```asm
+/// next_value:
+///         mov     eax, dword ptr [rdi]
+///         inc     eax
+///         ret
+/// ```
+///
+/// This example is quite unlike anything that would be used in the real world: it is redundant
+/// to put an assertion right next to code that checks the same thing, and dereferencing a
+/// pointer already has the builtin assumption that it is nonnull. However, it illustrates the
+/// kind of changes the optimizer can make even when the behavior is less obviously related.
+#[track_caller]
 #[inline(always)]
 #[doc(alias = "assume")]
-#[track_caller]
-#[unstable(feature = "hint_assert_unchecked", issue = "119131")]
-#[rustc_const_unstable(feature = "const_hint_assert_unchecked", issue = "119131")]
+#[stable(feature = "hint_assert_unchecked", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "hint_assert_unchecked", since = "CURRENT_RUSTC_VERSION")]
 pub const unsafe fn assert_unchecked(cond: bool) {
     // SAFETY: The caller promised `cond` is true.
     unsafe {
@@ -263,7 +314,7 @@ pub fn spin_loop() {
 /// extent to which it can block optimisations may vary depending upon the platform and code-gen
 /// backend used. Programs cannot rely on `black_box` for *correctness*, beyond it behaving as the
 /// identity function. As such, it **must not be relied upon to control critical program behavior.**
-/// This _immediately_ precludes any direct use of this function for cryptographic or security
+/// This also means that this function does not offer any guarantees for cryptographic or security
 /// purposes.
 ///
 /// [`std::convert::identity`]: crate::convert::identity

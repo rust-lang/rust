@@ -1,4 +1,3 @@
-#![feature(lint_reasons)]
 #![allow(
     unused,
     clippy::many_single_char_names,

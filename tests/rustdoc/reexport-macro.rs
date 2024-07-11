@@ -3,9 +3,9 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/macro.foo.html'
-// @!has - '//*[@class="toggle top-doc"]/*[@class="docblock"]' 'x y'
-// @has - '//*[@class="toggle top-doc"]/*[@class="docblock"]' 'y'
+//@ has 'foo/macro.foo.html'
+//@ !has - '//*[@class="toggle top-doc"]/*[@class="docblock"]' 'x y'
+//@ has - '//*[@class="toggle top-doc"]/*[@class="docblock"]' 'y'
 #[macro_use]
 mod my_module {
     /// y
@@ -15,8 +15,8 @@ mod my_module {
     }
 }
 
-// @has 'foo/another_mod/macro.bar.html'
-// @has - '//*[@class="toggle top-doc"]/*[@class="docblock"]' 'x y'
+//@ has 'foo/another_mod/macro.bar.html'
+//@ has - '//*[@class="toggle top-doc"]/*[@class="docblock"]' 'x y'
 pub mod another_mod {
     /// x
     pub use crate::foo as bar;

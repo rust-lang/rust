@@ -27,7 +27,7 @@ use crate::io::{self, ErrorKind};
 pub use self::ip_addr::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::socket_addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
-#[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
+#[unstable(feature = "tcplistener_into_incoming", issue = "88373")]
 pub use self::tcp::IntoIncoming;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::tcp::{Incoming, TcpListener, TcpStream};

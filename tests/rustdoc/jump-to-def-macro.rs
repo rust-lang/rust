@@ -4,12 +4,12 @@
 
 #![crate_name = "foo"]
 
-// @has 'src/foo/jump-to-def-macro.rs.html'
+//@ has 'src/foo/jump-to-def-macro.rs.html'
 
 #[macro_use]
 extern crate jump_to_def_macro;
 
-// @has - '//a[@href="../../jump_to_def_macro/macro.symbols.html"]' 'symbols!'
+//@ has - '//a[@href="../../jump_to_def_macro/macro.symbols.html"]' 'symbols!'
 symbols! {
     A = 12
 }

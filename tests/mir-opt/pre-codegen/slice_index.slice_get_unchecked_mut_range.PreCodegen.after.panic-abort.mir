@@ -8,25 +8,24 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
     let mut _4: usize;
     scope 1 (inlined core::slice::<impl [u32]>::get_unchecked_mut::<std::ops::Range<usize>>) {
         let mut _5: *mut [u32];
-        let mut _12: *mut [u32];
+        let mut _11: *mut [u32];
         scope 2 (inlined <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked_mut) {
-            let mut _7: usize;
-            let _8: ();
-            let _9: usize;
+            let mut _6: usize;
+            let _7: ();
+            let _8: usize;
             scope 3 {
                 scope 6 (inlined core::slice::index::get_offset_len_mut_noubcheck::<u32>) {
-                    let _11: *mut u32;
+                    let _10: *mut u32;
                     scope 7 {
                     }
                     scope 8 (inlined core::slice::index::get_mut_noubcheck::<u32>) {
-                        let _10: *mut u32;
+                        let _9: *mut u32;
                         scope 9 {
                         }
                     }
                 }
             }
             scope 4 (inlined std::ptr::mut_ptr::<impl *mut [u32]>::len) {
-                let mut _6: *const [u32];
                 scope 5 (inlined std::ptr::metadata::<[u32]>) {
                 }
             }
@@ -38,28 +37,25 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         _4 = move (_2.1: usize);
         StorageLive(_5);
         _5 = &raw mut (*_1);
-        StorageLive(_9);
-        StorageLive(_7);
+        StorageLive(_8);
         StorageLive(_6);
-        _6 = _5 as *const [u32] (PtrToPtr);
-        _7 = PtrMetadata(_6);
-        StorageDead(_6);
-        _8 = <std::ops::Range<usize> as SliceIndex<[T]>>::get_unchecked_mut::precondition_check(_3, _4, move _7) -> [return: bb1, unwind unreachable];
+        _6 = PtrMetadata(_1);
+        _7 = <std::ops::Range<usize> as SliceIndex<[T]>>::get_unchecked_mut::precondition_check(_3, _4, move _6) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
-        StorageDead(_7);
-        _9 = SubUnchecked(_4, _3);
-        StorageLive(_11);
+        StorageDead(_6);
+        _8 = SubUnchecked(_4, _3);
         StorageLive(_10);
-        _10 = _5 as *mut u32 (PtrToPtr);
-        _11 = Offset(_10, _3);
-        StorageDead(_10);
-        _12 = *mut [u32] from (_11, _9);
-        StorageDead(_11);
+        StorageLive(_9);
+        _9 = _5 as *mut u32 (PtrToPtr);
+        _10 = Offset(_9, _3);
         StorageDead(_9);
+        _11 = *mut [u32] from (_10, _8);
+        StorageDead(_10);
+        StorageDead(_8);
         StorageDead(_5);
-        _0 = &mut (*_12);
+        _0 = &mut (*_11);
         return;
     }
 }

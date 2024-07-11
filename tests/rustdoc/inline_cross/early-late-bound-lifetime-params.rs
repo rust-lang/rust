@@ -8,10 +8,10 @@
 //@ aux-crate:dep=early-late-bound-lifetime-params.rs
 //@ edition:2021
 
-// @has usr/fn.f.html
-// @has - '//pre[@class="rust item-decl"]' "fn f<'a, 'b, 'c, 'd, T, const N: usize>(_: impl Copy)"
+//@ has usr/fn.f.html
+//@ has - '//pre[@class="rust item-decl"]' "fn f<'a, 'b, 'c, 'd, T, const N: usize>(_: impl Copy)"
 pub use dep::f;
 
-// @has usr/struct.Ty.html
-// @has - '//*[@id="method.f"]' "fn f<'a, 'b, 'c, 'd, T, const N: usize>(_: impl Copy)"
+//@ has usr/struct.Ty.html
+//@ has - '//*[@id="method.f"]' "fn f<'a, 'b, 'c, 'd, T, const N: usize>(_: impl Copy)"
 pub use dep::Ty;

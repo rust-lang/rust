@@ -473,8 +473,8 @@ pub fn write_mir_intro<'tcx>(
     // Add an empty line before the first block is printed.
     writeln!(w)?;
 
-    if let Some(branch_info) = &body.coverage_branch_info {
-        write_coverage_branch_info(branch_info, w)?;
+    if let Some(coverage_info_hi) = &body.coverage_info_hi {
+        write_coverage_info_hi(coverage_info_hi, w)?;
     }
     if let Some(function_coverage_info) = &body.function_coverage_info {
         write_function_coverage_info(function_coverage_info, w)?;
@@ -483,18 +483,26 @@ pub fn write_mir_intro<'tcx>(
     Ok(())
 }
 
-fn write_coverage_branch_info(
-    branch_info: &coverage::BranchInfo,
+fn write_coverage_info_hi(
+    coverage_info_hi: &coverage::CoverageInfoHi,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::BranchInfo { branch_spans, mcdc_branch_spans, mcdc_decision_spans, .. } =
-        branch_info;
+    let coverage::CoverageInfoHi {
+        num_block_markers: _,
+        branch_spans,
+        mcdc_branch_spans,
+        mcdc_decision_spans,
+    } = coverage_info_hi;
+
+    // Only add an extra trailing newline if we printed at least one thing.
+    let mut did_print = false;
 
     for coverage::BranchSpan { span, true_marker, false_marker } in branch_spans {
         writeln!(
             w,
             "{INDENT}coverage branch {{ true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
         )?;
+        did_print = true;
     }
 
     for coverage::MCDCBranchSpan {
@@ -510,6 +518,7 @@ fn write_coverage_branch_info(
             "{INDENT}coverage mcdc branch {{ condition_id: {:?}, true: {true_marker:?}, false: {false_marker:?}, depth: {decision_depth:?} }} => {span:?}",
             condition_info.map(|info| info.condition_id)
         )?;
+        did_print = true;
     }
 
     for coverage::MCDCDecisionSpan { span, num_conditions, end_markers, decision_depth } in
@@ -519,10 +528,10 @@ fn write_coverage_branch_info(
             w,
             "{INDENT}coverage mcdc decision {{ num_conditions: {num_conditions:?}, end: {end_markers:?}, depth: {decision_depth:?} }} => {span:?}"
         )?;
+        did_print = true;
     }
 
-    if !branch_spans.is_empty() || !mcdc_branch_spans.is_empty() || !mcdc_decision_spans.is_empty()
-    {
+    if did_print {
         writeln!(w)?;
     }
 
@@ -845,6 +854,16 @@ impl<'tcx> TerminatorKind<'tcx> {
                 }
                 write!(fmt, ")")
             }
+            TailCall { func, args, .. } => {
+                write!(fmt, "tailcall {func:?}(")?;
+                for (index, arg) in args.iter().enumerate() {
+                    if index > 0 {
+                        write!(fmt, ", ")?;
+                    }
+                    write!(fmt, "{:?}", arg)?;
+                }
+                write!(fmt, ")")
+            }
             Assert { cond, expected, msg, .. } => {
                 write!(fmt, "assert(")?;
                 if !expected {
@@ -912,7 +931,12 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::TerminatorKind::*;
         match *self {
-            Return | UnwindResume | UnwindTerminate(_) | Unreachable | CoroutineDrop => vec![],
+            Return
+            | TailCall { .. }
+            | UnwindResume
+            | UnwindTerminate(_)
+            | Unreachable
+            | CoroutineDrop => vec![],
             Goto { .. } => vec!["".into()],
             SwitchInt { ref targets, .. } => targets
                 .values
@@ -1449,7 +1473,7 @@ pub fn write_allocations<'tcx>(
             // This can't really happen unless there are bugs, but it doesn't cost us anything to
             // gracefully handle it and allow buggy rustc to be debugged via allocation printing.
             None => write!(w, " (deallocated)")?,
-            Some(GlobalAlloc::Function(inst)) => write!(w, " (fn: {inst})")?,
+            Some(GlobalAlloc::Function { instance, .. }) => write!(w, " (fn: {instance})")?,
             Some(GlobalAlloc::VTable(ty, Some(trait_ref))) => {
                 write!(w, " (vtable: impl {trait_ref} for {ty})")?
             }

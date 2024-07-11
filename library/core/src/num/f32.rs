@@ -490,6 +490,21 @@ impl f32 {
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NEG_INFINITY: f32 = -1.0_f32 / 0.0_f32;
 
+    /// Sign bit
+    const SIGN_MASK: u32 = 0x8000_0000;
+
+    /// Exponent mask
+    const EXP_MASK: u32 = 0x7f80_0000;
+
+    /// Mantissa mask
+    const MAN_MASK: u32 = 0x007f_ffff;
+
+    /// Minimum representable positive value (min subnormal)
+    const TINY_BITS: u32 = 0x1;
+
+    /// Minimum representable negative value (min negative subnormal)
+    const NEG_TINY_BITS: u32 = Self::TINY_BITS | Self::SIGN_MASK;
+
     /// Returns `true` if this value is NaN.
     ///
     /// ```
@@ -515,7 +530,7 @@ impl f32 {
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub(crate) const fn abs_private(self) -> f32 {
         // SAFETY: This transmutation is fine. Probably. For the reasons std is using it.
-        unsafe { mem::transmute::<u32, f32>(mem::transmute::<f32, u32>(self) & 0x7fff_ffff) }
+        unsafe { mem::transmute::<u32, f32>(mem::transmute::<f32, u32>(self) & !Self::SIGN_MASK) }
     }
 
     /// Returns `true` if this value is positive infinity or negative infinity, and
@@ -682,12 +697,9 @@ impl f32 {
     // runtime-deviating logic which may or may not be acceptable.
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     const unsafe fn partial_classify(self) -> FpCategory {
-        const EXP_MASK: u32 = 0x7f800000;
-        const MAN_MASK: u32 = 0x007fffff;
-
         // SAFETY: The caller is not asking questions for which this will tell lies.
         let b = unsafe { mem::transmute::<f32, u32>(self) };
-        match (b & MAN_MASK, b & EXP_MASK) {
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
             (0, 0) => FpCategory::Zero,
             (_, 0) => FpCategory::Subnormal,
             _ => FpCategory::Normal,
@@ -699,12 +711,9 @@ impl f32 {
     // plus a transmute. We do not live in a just world, but we can make it more so.
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     const fn classify_bits(b: u32) -> FpCategory {
-        const EXP_MASK: u32 = 0x7f800000;
-        const MAN_MASK: u32 = 0x007fffff;
-
-        match (b & MAN_MASK, b & EXP_MASK) {
-            (0, EXP_MASK) => FpCategory::Infinite,
-            (_, EXP_MASK) => FpCategory::Nan,
+        match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
+            (0, Self::EXP_MASK) => FpCategory::Infinite,
+            (_, Self::EXP_MASK) => FpCategory::Nan,
             (0, 0) => FpCategory::Zero,
             (_, 0) => FpCategory::Subnormal,
             _ => FpCategory::Normal,
@@ -787,19 +796,17 @@ impl f32 {
     #[unstable(feature = "float_next_up_down", issue = "91399")]
     #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_up(self) -> Self {
-        // We must use strictly integer arithmetic to prevent denormals from
-        // flushing to zero after an arithmetic operation on some platforms.
-        const TINY_BITS: u32 = 0x1; // Smallest positive f32.
-        const CLEAR_SIGN_MASK: u32 = 0x7fff_ffff;
-
+        // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
+        // denormals to zero. This is in general unsound and unsupported, but here
+        // we do our best to still produce the correct result on such targets.
         let bits = self.to_bits();
         if self.is_nan() || bits == Self::INFINITY.to_bits() {
             return self;
         }
 
-        let abs = bits & CLEAR_SIGN_MASK;
+        let abs = bits & !Self::SIGN_MASK;
         let next_bits = if abs == 0 {
-            TINY_BITS
+            Self::TINY_BITS
         } else if bits == abs {
             bits + 1
         } else {
@@ -837,19 +844,17 @@ impl f32 {
     #[unstable(feature = "float_next_up_down", issue = "91399")]
     #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_down(self) -> Self {
-        // We must use strictly integer arithmetic to prevent denormals from
-        // flushing to zero after an arithmetic operation on some platforms.
-        const NEG_TINY_BITS: u32 = 0x8000_0001; // Smallest (in magnitude) negative f32.
-        const CLEAR_SIGN_MASK: u32 = 0x7fff_ffff;
-
+        // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
+        // denormals to zero. This is in general unsound and unsupported, but here
+        // we do our best to still produce the correct result on such targets.
         let bits = self.to_bits();
         if self.is_nan() || bits == Self::NEG_INFINITY.to_bits() {
             return self;
         }
 
-        let abs = bits & CLEAR_SIGN_MASK;
+        let abs = bits & !Self::SIGN_MASK;
         let next_bits = if abs == 0 {
-            NEG_TINY_BITS
+            Self::NEG_TINY_BITS
         } else if bits == abs {
             bits - 1
         } else {

@@ -8,9 +8,9 @@ mod private_module {
     pub struct Public;
 }
 
-// @has 'foo/index.html'
-// @has - '//*[@id="reexport.Foo"]/code' 'pub use crate::private_module::Public as Foo;'
+//@ has 'foo/index.html'
+//@ has - '//*[@id="reexport.Foo"]/code' 'pub use crate::private_module::Public as Foo;'
 pub use crate::private_module::Public as Foo;
 // Glob re-exports with no visible items should not be displayed.
-// @count - '//*[@class="item-table"]/li' 1
+//@ count - '//*[@class="item-table"]/li' 1
 pub use crate::private_module::*;

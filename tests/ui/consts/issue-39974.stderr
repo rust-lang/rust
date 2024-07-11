@@ -2,10 +2,12 @@ error[E0308]: mismatched types
   --> $DIR/issue-39974.rs:1:21
    |
 LL | const LENGTH: f64 = 2;
-   |                     ^
-   |                     |
-   |                     expected `f64`, found integer
-   |                     help: use a float literal: `2.0`
+   |                     ^ expected `f64`, found integer
+   |
+help: use a float literal
+   |
+LL | const LENGTH: f64 = 2.0;
+   |                      ++
 
 error[E0308]: mismatched types
   --> $DIR/issue-39974.rs:5:19

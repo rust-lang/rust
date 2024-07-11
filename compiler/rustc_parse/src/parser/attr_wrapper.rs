@@ -1,6 +1,6 @@
 use super::{Capturing, FlatToken, ForceCollect, Parser, ReplaceRange, TokenCursor, TrailingToken};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, AttributesData, DelimSpacing};
+use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, AttrsTarget, DelimSpacing};
 use rustc_ast::tokenstream::{DelimSpan, LazyAttrTokenStream, Spacing, ToAttrTokenStream};
 use rustc_ast::{self as ast};
 use rustc_ast::{AttrVec, Attribute, HasAttrs, HasTokens};
@@ -8,7 +8,7 @@ use rustc_errors::PResult;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Span, DUMMY_SP};
 
-use std::ops::Range;
+use std::{iter, mem};
 
 /// A wrapper type to ensure that the parser handles outer attributes correctly.
 /// When we parse outer attributes, we need to ensure that we capture tokens
@@ -29,15 +29,15 @@ pub struct AttrWrapper {
     // The start of the outer attributes in the token cursor.
     // This allows us to create a `ReplaceRange` for the entire attribute
     // target, including outer attributes.
-    start_pos: usize,
+    start_pos: u32,
 }
 
 impl AttrWrapper {
-    pub(super) fn new(attrs: AttrVec, start_pos: usize) -> AttrWrapper {
+    pub(super) fn new(attrs: AttrVec, start_pos: u32) -> AttrWrapper {
         AttrWrapper { attrs, start_pos }
     }
     pub fn empty() -> AttrWrapper {
-        AttrWrapper { attrs: AttrVec::new(), start_pos: usize::MAX }
+        AttrWrapper { attrs: AttrVec::new(), start_pos: u32::MAX }
     }
 
     pub(crate) fn take_for_recovery(self, psess: &ParseSess) -> AttrVec {
@@ -53,7 +53,7 @@ impl AttrWrapper {
     // FIXME: require passing an NT to prevent misuse of this method
     pub(crate) fn prepend_to_nt_inner(self, attrs: &mut AttrVec) {
         let mut self_attrs = self.attrs;
-        std::mem::swap(attrs, &mut self_attrs);
+        mem::swap(attrs, &mut self_attrs);
         attrs.extend(self_attrs);
     }
 
@@ -87,11 +87,10 @@ fn has_cfg_or_cfg_attr(attrs: &[Attribute]) -> bool {
 //
 // This also makes `Parser` very cheap to clone, since
 // there is no intermediate collection buffer to clone.
-#[derive(Clone)]
 struct LazyAttrTokenStreamImpl {
     start_token: (Token, Spacing),
     cursor_snapshot: TokenCursor,
-    num_calls: usize,
+    num_calls: u32,
     break_last_token: bool,
     replace_ranges: Box<[ReplaceRange]>,
 }
@@ -104,15 +103,16 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
         // produce an empty `TokenStream` if no calls were made, and omit the
         // final token otherwise.
         let mut cursor_snapshot = self.cursor_snapshot.clone();
-        let tokens =
-            std::iter::once((FlatToken::Token(self.start_token.0.clone()), self.start_token.1))
-                .chain(std::iter::repeat_with(|| {
-                    let token = cursor_snapshot.next();
-                    (FlatToken::Token(token.0), token.1)
-                }))
-                .take(self.num_calls);
+        let tokens = iter::once((FlatToken::Token(self.start_token.0.clone()), self.start_token.1))
+            .chain(iter::repeat_with(|| {
+                let token = cursor_snapshot.next();
+                (FlatToken::Token(token.0), token.1)
+            }))
+            .take(self.num_calls as usize);
 
-        if !self.replace_ranges.is_empty() {
+        if self.replace_ranges.is_empty() {
+            make_attr_token_stream(tokens, self.break_last_token)
+        } else {
             let mut tokens: Vec<_> = tokens.collect();
             let mut replace_ranges = self.replace_ranges.to_vec();
             replace_ranges.sort_by_key(|(range, _)| range.start);
@@ -144,29 +144,26 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
             // start position, we ensure that any replace range which encloses
             // another replace range will capture the *replaced* tokens for the inner
             // range, not the original tokens.
-            for (range, new_tokens) in replace_ranges.into_iter().rev() {
+            for (range, target) in replace_ranges.into_iter().rev() {
                 assert!(!range.is_empty(), "Cannot replace an empty range: {range:?}");
-                // Replace ranges are only allowed to decrease the number of tokens.
-                assert!(
-                    range.len() >= new_tokens.len(),
-                    "Range {range:?} has greater len than {new_tokens:?}"
-                );
 
-                // Replace any removed tokens with `FlatToken::Empty`.
-                // This keeps the total length of `tokens` constant throughout the
-                // replacement process, allowing us to use all of the `ReplaceRanges` entries
-                // without adjusting indices.
-                let filler = std::iter::repeat((FlatToken::Empty, Spacing::Alone))
-                    .take(range.len() - new_tokens.len());
-
+                // Replace the tokens in range with zero or one `FlatToken::AttrsTarget`s, plus
+                // enough `FlatToken::Empty`s to fill up the rest of the range. This keeps the
+                // total length of `tokens` constant throughout the replacement process, allowing
+                // us to use all of the `ReplaceRanges` entries without adjusting indices.
+                let target_len = target.is_some() as usize;
                 tokens.splice(
                     (range.start as usize)..(range.end as usize),
-                    new_tokens.into_iter().chain(filler),
+                    target
+                        .into_iter()
+                        .map(|target| (FlatToken::AttrsTarget(target), Spacing::Alone))
+                        .chain(
+                            iter::repeat((FlatToken::Empty, Spacing::Alone))
+                                .take(range.len() - target_len),
+                        ),
                 );
             }
-            make_token_stream(tokens.into_iter(), self.break_last_token)
-        } else {
-            make_token_stream(tokens, self.break_last_token)
+            make_attr_token_stream(tokens.into_iter(), self.break_last_token)
         }
     }
 }
@@ -218,24 +215,23 @@ impl<'a> Parser<'a> {
         let start_token = (self.token.clone(), self.token_spacing);
         let cursor_snapshot = self.token_cursor.clone();
         let start_pos = self.num_bump_calls;
-
         let has_outer_attrs = !attrs.attrs.is_empty();
-        let prev_capturing = std::mem::replace(&mut self.capture_state.capturing, Capturing::Yes);
         let replace_ranges_start = self.capture_state.replace_ranges.len();
 
-        let ret = f(self, attrs.attrs);
-
-        self.capture_state.capturing = prev_capturing;
-
-        let (mut ret, trailing) = ret?;
+        let (mut ret, trailing) = {
+            let prev_capturing = mem::replace(&mut self.capture_state.capturing, Capturing::Yes);
+            let ret_and_trailing = f(self, attrs.attrs);
+            self.capture_state.capturing = prev_capturing;
+            ret_and_trailing?
+        };
 
         // When we're not in `capture-cfg` mode, then bail out early if:
         // 1. Our target doesn't support tokens at all (e.g we're parsing an `NtIdent`)
         //    so there's nothing for us to do.
         // 2. Our target already has tokens set (e.g. we've parsed something
-        // like `#[my_attr] $item`. The actual parsing code takes care of prepending
-        // any attributes to the nonterminal, so we don't need to modify the
-        // already captured tokens.
+        //    like `#[my_attr] $item`). The actual parsing code takes care of
+        //    prepending any attributes to the nonterminal, so we don't need to
+        //    modify the already captured tokens.
         // Note that this check is independent of `force_collect`- if we already
         // have tokens, or can't even store them, then there's never a need to
         // force collection of new tokens.
@@ -276,37 +272,32 @@ impl<'a> Parser<'a> {
 
         let replace_ranges_end = self.capture_state.replace_ranges.len();
 
-        let mut end_pos = self.num_bump_calls;
-
-        let mut captured_trailing = false;
-
         // Capture a trailing token if requested by the callback 'f'
-        match trailing {
-            TrailingToken::None => {}
+        let captured_trailing = match trailing {
+            TrailingToken::None => false,
             TrailingToken::Gt => {
                 assert_eq!(self.token.kind, token::Gt);
+                false
             }
             TrailingToken::Semi => {
                 assert_eq!(self.token.kind, token::Semi);
-                end_pos += 1;
-                captured_trailing = true;
+                true
             }
-            TrailingToken::MaybeComma => {
-                if self.token.kind == token::Comma {
-                    end_pos += 1;
-                    captured_trailing = true;
-                }
-            }
-        }
+            TrailingToken::MaybeComma => self.token.kind == token::Comma,
+        };
 
-        // If we 'broke' the last token (e.g. breaking a '>>' token to two '>' tokens),
-        // then extend the range of captured tokens to include it, since the parser
-        // was not actually bumped past it. When the `LazyAttrTokenStream` gets converted
-        // into an `AttrTokenStream`, we will create the proper token.
-        if self.break_last_token {
-            assert!(!captured_trailing, "Cannot set break_last_token and have trailing token");
-            end_pos += 1;
-        }
+        assert!(
+            !(self.break_last_token && captured_trailing),
+            "Cannot set break_last_token and have trailing token"
+        );
+
+        let end_pos = self.num_bump_calls
+            + captured_trailing as u32
+            // If we 'broke' the last token (e.g. breaking a '>>' token to two '>' tokens), then
+            // extend the range of captured tokens to include it, since the parser was not actually
+            // bumped past it. When the `LazyAttrTokenStream` gets converted into an
+            // `AttrTokenStream`, we will create the proper token.
+            + self.break_last_token as u32;
 
         let num_calls = end_pos - start_pos;
 
@@ -318,14 +309,11 @@ impl<'a> Parser<'a> {
             // Grab any replace ranges that occur *inside* the current AST node.
             // We will perform the actual replacement when we convert the `LazyAttrTokenStream`
             // to an `AttrTokenStream`.
-            let start_calls: u32 = start_pos.try_into().unwrap();
             self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end]
                 .iter()
                 .cloned()
                 .chain(inner_attr_replace_ranges.iter().cloned())
-                .map(|(range, tokens)| {
-                    ((range.start - start_calls)..(range.end - start_calls), tokens)
-                })
+                .map(|(range, data)| ((range.start - start_pos)..(range.end - start_pos), data))
                 .collect()
         };
 
@@ -340,7 +328,7 @@ impl<'a> Parser<'a> {
         // If we support tokens at all
         if let Some(target_tokens) = ret.tokens_mut() {
             if target_tokens.is_none() {
-                // Store se our newly captured tokens into the AST node
+                // Store our newly captured tokens into the AST node.
                 *target_tokens = Some(tokens.clone());
             }
         }
@@ -355,18 +343,14 @@ impl<'a> Parser<'a> {
             && matches!(self.capture_state.capturing, Capturing::Yes)
             && has_cfg_or_cfg_attr(final_attrs)
         {
-            let attr_data = AttributesData { attrs: final_attrs.iter().cloned().collect(), tokens };
-
-            // Replace the entire AST node that we just parsed, including attributes,
-            // with a `FlatToken::AttrTarget`. If this AST node is inside an item
-            // that has `#[derive]`, then this will allow us to cfg-expand this
-            // AST node.
-            let start_pos = if has_outer_attrs { attrs.start_pos } else { start_pos };
-            let new_tokens = vec![(FlatToken::AttrTarget(attr_data), Spacing::Alone)];
-
             assert!(!self.break_last_token, "Should not have unglued last token with cfg attr");
-            let range: Range<u32> = (start_pos.try_into().unwrap())..(end_pos.try_into().unwrap());
-            self.capture_state.replace_ranges.push((range, new_tokens));
+
+            // Replace the entire AST node that we just parsed, including attributes, with
+            // `target`. If this AST node is inside an item that has `#[derive]`, then this will
+            // allow us to cfg-expand this AST node.
+            let start_pos = if has_outer_attrs { attrs.start_pos } else { start_pos };
+            let target = AttrsTarget { attrs: final_attrs.iter().cloned().collect(), tokens };
+            self.capture_state.replace_ranges.push((start_pos..end_pos, Some(target)));
             self.capture_state.replace_ranges.extend(inner_attr_replace_ranges);
         }
 
@@ -382,10 +366,10 @@ impl<'a> Parser<'a> {
     }
 }
 
-/// Converts a flattened iterator of tokens (including open and close delimiter tokens)
-/// into a `TokenStream`, creating a `TokenTree::Delimited` for each matching pair
-/// of open and close delims.
-fn make_token_stream(
+/// Converts a flattened iterator of tokens (including open and close delimiter tokens) into an
+/// `AttrTokenStream`, creating an `AttrTokenTree::Delimited` for each matching pair of open and
+/// close delims.
+fn make_attr_token_stream(
     mut iter: impl Iterator<Item = (FlatToken, Spacing)>,
     break_last_token: bool,
 ) -> AttrTokenStream {
@@ -428,11 +412,11 @@ fn make_token_stream(
                 .expect("Bottom token frame is missing!")
                 .inner
                 .push(AttrTokenTree::Token(token, spacing)),
-            FlatToken::AttrTarget(data) => stack
+            FlatToken::AttrsTarget(target) => stack
                 .last_mut()
                 .expect("Bottom token frame is missing!")
                 .inner
-                .push(AttrTokenTree::Attributes(data)),
+                .push(AttrTokenTree::AttrsTarget(target)),
             FlatToken::Empty => {}
         }
         token_and_spacing = iter.next();
@@ -464,6 +448,6 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(AttrWrapper, 16);
-    static_assert_size!(LazyAttrTokenStreamImpl, 104);
+    static_assert_size!(LazyAttrTokenStreamImpl, 96);
     // tidy-alphabetical-end
 }

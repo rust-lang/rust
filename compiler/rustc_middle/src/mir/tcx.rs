@@ -289,19 +289,7 @@ impl<'tcx> UnOp {
     pub fn ty(&self, tcx: TyCtxt<'tcx>, arg_ty: Ty<'tcx>) -> Ty<'tcx> {
         match self {
             UnOp::Not | UnOp::Neg => arg_ty,
-            UnOp::PtrMetadata => {
-                let pointee_ty = arg_ty
-                    .builtin_deref(true)
-                    .unwrap_or_else(|| bug!("PtrMetadata of non-dereferenceable ty {arg_ty:?}"));
-                if pointee_ty.is_trivially_sized(tcx) {
-                    tcx.types.unit
-                } else {
-                    let Some(metadata_def_id) = tcx.lang_items().metadata_type() else {
-                        bug!("No metadata_type lang item while looking at {arg_ty:?}")
-                    };
-                    Ty::new_projection(tcx, metadata_def_id, [pointee_ty])
-                }
-            }
+            UnOp::PtrMetadata => arg_ty.pointee_metadata_ty_or_projection(tcx),
         }
     }
 }

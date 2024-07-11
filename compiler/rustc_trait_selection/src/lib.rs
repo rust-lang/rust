@@ -26,12 +26,14 @@
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 #![feature(type_alias_impl_trait)]
+#![feature(unwrap_infallible)]
 #![recursion_limit = "512"] // For rustdoc
 // tidy-alphabetical-end
 
 #[macro_use]
 extern crate tracing;
 
+pub mod error_reporting;
 pub mod errors;
 pub mod infer;
 pub mod regions;

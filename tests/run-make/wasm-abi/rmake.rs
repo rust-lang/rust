@@ -1,9 +1,8 @@
 //@ only-wasm32-wasip1
 //@ needs-wasmtime
 
-use run_make_support::rustc;
+use run_make_support::{cmd, rustc};
 use std::path::Path;
-use std::process::Command;
 
 fn main() {
     rustc().input("foo.rs").target("wasm32-wasip1").run();
@@ -19,14 +18,12 @@ fn main() {
 }
 
 fn run(file: &Path, method: &str, expected_output: &str) {
-    let output = Command::new("wasmtime")
+    cmd("wasmtime")
         .arg("run")
         .arg("--preload=host=host.wat")
         .arg("--invoke")
         .arg(method)
         .arg(file)
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    assert_eq!(expected_output, String::from_utf8_lossy(&output.stdout));
+        .run()
+        .assert_stdout_equals(expected_output);
 }

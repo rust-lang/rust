@@ -352,7 +352,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Float(float) => write!(f, "{float:?}"),
             Adt(d, s) => {
                 write!(f, "{d:?}")?;
-                let mut s = s.into_iter();
+                let mut s = s.iter();
                 let first = s.next();
                 match first {
                     Some(first) => write!(f, "<{:?}", first)?,
@@ -388,7 +388,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Tuple(t) => {
                 write!(f, "(")?;
                 let mut count = 0;
-                for ty in *t {
+                for ty in t.iter() {
                     if count > 0 {
                         write!(f, ", ")?;
                     }
@@ -452,19 +452,24 @@ pub struct AliasTy<I: Interner> {
     /// aka. `interner.parent(def_id)`.
     pub def_id: I::DefId,
 
-    /// This field exists to prevent the creation of `AliasTy` without using [`AliasTy::new`].
+    /// This field exists to prevent the creation of `AliasTy` without using [`AliasTy::new_from_args`].
     #[derivative(Debug = "ignore")]
     pub(crate) _use_alias_ty_new_instead: (),
 }
 
 impl<I: Interner> AliasTy<I> {
+    pub fn new_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> AliasTy<I> {
+        interner.debug_assert_args_compatible(def_id, args);
+        AliasTy { def_id, args, _use_alias_ty_new_instead: () }
+    }
+
     pub fn new(
         interner: I,
         def_id: I::DefId,
         args: impl IntoIterator<Item: Into<I::GenericArg>>,
     ) -> AliasTy<I> {
-        let args = interner.check_and_mk_args(def_id, args);
-        AliasTy { def_id, args, _use_alias_ty_new_instead: () }
+        let args = interner.mk_args_from_iter(args.into_iter().map(Into::into));
+        Self::new_from_args(interner, def_id, args)
     }
 
     pub fn kind(self, interner: I) -> AliasTyKind {
@@ -491,7 +496,7 @@ impl<I: Interner> AliasTy<I> {
         AliasTy::new(
             interner,
             self.def_id,
-            [self_ty.into()].into_iter().chain(self.args.into_iter().skip(1)),
+            [self_ty.into()].into_iter().chain(self.args.iter().skip(1)),
         )
     }
 
@@ -539,7 +544,7 @@ impl<I: Interner> AliasTy<I> {
         interner: I,
     ) -> I::GenericArgs {
         debug_assert_eq!(self.kind(interner), AliasTyKind::Inherent);
-        interner.mk_args_from_iter(impl_args.into_iter().chain(self.args.into_iter().skip(1)))
+        interner.mk_args_from_iter(impl_args.iter().chain(self.args.iter().skip(1)))
     }
 }
 
@@ -1000,7 +1005,7 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
     #[inline]
     #[track_caller]
     pub fn input(self, index: usize) -> ty::Binder<I, I::Ty> {
-        self.map_bound(|fn_sig| fn_sig.inputs()[index])
+        self.map_bound(|fn_sig| fn_sig.inputs().get(index).unwrap())
     }
 
     pub fn inputs_and_output(self) -> ty::Binder<I, I::Tys> {

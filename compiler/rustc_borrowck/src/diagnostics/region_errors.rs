@@ -10,14 +10,12 @@ use rustc_hir::GenericBound::Trait;
 use rustc_hir::QPath::Resolved;
 use rustc_hir::WherePredicate::BoundPredicate;
 use rustc_hir::{PolyTraitRef, TyKind, WhereBoundPredicate};
-use rustc_infer::infer::{
-    error_reporting::nice_region_error::{
-        self, find_anon_type, find_param_with_region, suggest_adding_lifetime_params,
-        HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor,
-    },
-    error_reporting::unexpected_hidden_region_diagnostic,
-    NllRegionVariableOrigin, RelateParamBound,
+use rustc_infer::infer::error_reporting::nice_region_error::{
+    self, find_anon_type, find_param_with_region, suggest_adding_lifetime_params,
+    HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor,
 };
+use rustc_infer::infer::error_reporting::region::unexpected_hidden_region_diagnostic;
+use rustc_infer::infer::{NllRegionVariableOrigin, RelateParamBound};
 use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
@@ -66,7 +64,8 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             ConstraintCategory::Predicate(_)
             | ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
-            | ConstraintCategory::Internal => "",
+            | ConstraintCategory::Internal
+            | ConstraintCategory::IllegalUniverse => "",
         }
     }
 }
@@ -160,7 +159,7 @@ pub struct ErrorConstraintInfo<'tcx> {
     pub(super) span: Span,
 }
 
-impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     /// Converts a region inference variable into a `ty::Region` that
     /// we can use for error reporting. If `r` is universally bound,
     /// then we use the name that we have on record for it. If `r` is
@@ -360,7 +359,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let named_key = self.regioncx.name_regions(self.infcx.tcx, key);
                     let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
                     let diag = unexpected_hidden_region_diagnostic(
-                        self.infcx.tcx,
+                        self.infcx,
                         self.mir_def_id(),
                         span,
                         named_ty,
@@ -589,7 +588,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &self,
         errci: &ErrorConstraintInfo<'tcx>,
         kind: ReturnConstraint,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
@@ -658,7 +657,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ///    |     ^^^^^^^^^^ `x` escapes the function body here
     /// ```
     #[instrument(level = "debug", skip(self))]
-    fn report_escaping_data_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'tcx> {
+    fn report_escaping_data_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'infcx> {
         let ErrorConstraintInfo { span, category, .. } = errci;
 
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
@@ -767,7 +766,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ///    |                    is returning data with lifetime `'b`
     /// ```
     #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
-    fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'tcx> {
+    fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'infcx> {
         let ErrorConstraintInfo {
             fr,
             fr_is_local,
@@ -895,7 +894,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             for alias_ty in alias_tys {
                 if alias_ty.span.desugaring_kind().is_some() {
                     // Skip `async` desugaring `impl Future`.
-                    ()
                 }
                 if let TyKind::TraitObject(_, lt, _) = alias_ty.kind {
                     if lt.ident.name == kw::Empty {
@@ -949,7 +947,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 return;
             }
 
-            if let Ok(Some(instance)) = ty::Instance::resolve(
+            if let Ok(Some(instance)) = ty::Instance::try_resolve(
                 tcx,
                 self.param_env,
                 *fn_did,
@@ -1152,7 +1150,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // Get the arguments for the found method, only specifying that `Self` is the receiver type.
         let Some(possible_rcvr_ty) = typeck_results.node_type_opt(rcvr.hir_id) else { return };
         let args = GenericArgs::for_item(tcx, method_def_id, |param, _| {
-            if param.index == 0 {
+            if let ty::GenericParamDefKind::Lifetime = param.kind {
+                tcx.lifetimes.re_erased.into()
+            } else if param.index == 0 && param.name == kw::SelfUpper {
                 possible_rcvr_ty.into()
             } else if param.index == closure_param.index {
                 closure_ty.into()
@@ -1169,7 +1169,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             Obligation::misc(tcx, span, self.mir_def_id(), self.param_env, pred)
         }));
 
-        if ocx.select_all_or_error().is_empty() {
+        if ocx.select_all_or_error().is_empty() && count > 0 {
             diag.span_suggestion_verbose(
                 tcx.hir().body(*body).value.peel_blocks().span.shrink_to_lo(),
                 "dereference the return value",

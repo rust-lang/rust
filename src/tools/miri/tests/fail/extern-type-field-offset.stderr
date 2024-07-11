@@ -1,8 +1,8 @@
-error: unsupported operation: `extern type` does not have a known offset
+error: unsupported operation: `extern type` field does not have a known offset
   --> $DIR/extern-type-field-offset.rs:LL:CC
    |
 LL |     let _field = &x.a;
-   |                  ^^^^ `extern type` does not have a known offset
+   |                  ^^^^ `extern type` field does not have a known offset
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:

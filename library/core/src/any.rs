@@ -602,7 +602,7 @@ impl dyn Any + Send + Sync {
 /// While `TypeId` implements `Hash`, `PartialOrd`, and `Ord`, it is worth
 /// noting that the hashes and ordering will vary between Rust releases. Beware
 /// of relying on them inside of your code!
-#[derive(Clone, Copy, Debug, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Eq, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
     // We avoid using `u128` because that imposes higher alignment requirements on many platforms.
@@ -644,6 +644,10 @@ impl TypeId {
         let t2 = t as u64;
         TypeId { t: (t1, t2) }
     }
+
+    fn as_u128(self) -> u128 {
+        u128::from(self.t.0) << 64 | u128::from(self.t.1)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -663,6 +667,13 @@ impl hash::Hash for TypeId {
         //   with an `Eq` implementation that considers the entire value, as
         //   ours does.
         self.t.1.hash(state);
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for TypeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "TypeId({:#034x})", self.as_u128())
     }
 }
 

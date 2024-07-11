@@ -26,14 +26,14 @@ macro_rules! idents_11 {
 macro_rules! no_params {
     () => {
         let ${concat(r#abc, abc)}: () = ();
-        //~^ ERROR `${concat(..)}` currently does not support raw identifiers
+        //~^ ERROR expected identifier or string literal
         //~| ERROR expected pattern, found `$`
 
         let ${concat(abc, r#abc)}: () = ();
-        //~^ ERROR `${concat(..)}` currently does not support raw identifiers
+        //~^ ERROR expected identifier or string literal
 
         let ${concat(r#abc, r#abc)}: () = ();
-        //~^ ERROR `${concat(..)}` currently does not support raw identifiers
+        //~^ ERROR expected identifier or string literal
     };
 }
 

@@ -6,8 +6,8 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
-impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
-    pub fn dcx(&self) -> DiagCtxtHandle<'tcx> {
+impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
+    pub fn dcx(&self) -> DiagCtxtHandle<'infcx> {
         self.infcx.dcx()
     }
 
@@ -18,7 +18,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         place: &str,
         borrow_place: &str,
         value_place: &str,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         self.dcx().create_err(crate::session_diagnostics::MoveBorrow {
             place,
             span,
@@ -34,7 +34,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         desc: &str,
         borrow_span: Span,
         borrow_desc: &str,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         struct_span_code_err!(
             self.dcx(),
             span,
@@ -54,7 +54,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         old_loan_span: Span,
         old_opt_via: &str,
         old_load_end_span: Option<Span>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let via = |msg: &str| if msg.is_empty() { "".to_string() } else { format!(" (via {msg})") };
         let mut err = struct_span_code_err!(
             self.dcx(),
@@ -101,7 +101,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         desc: &str,
         old_loan_span: Span,
         old_load_end_span: Option<Span>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let mut err = struct_span_code_err!(
             self.dcx(),
             new_loan_span,
@@ -134,7 +134,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         noun_old: &str,
         old_opt_via: &str,
         previous_end_span: Option<Span>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let mut err = struct_span_code_err!(
             self.dcx(),
             new_loan_span,
@@ -166,7 +166,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         old_opt_via: &str,
         previous_end_span: Option<Span>,
         second_borrow_desc: &str,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let mut err = struct_span_code_err!(
             self.dcx(),
             new_loan_span,
@@ -198,7 +198,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         kind_old: &str,
         msg_old: &str,
         old_load_end_span: Option<Span>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let via = |msg: &str| if msg.is_empty() { "".to_string() } else { format!(" (via {msg})") };
         let mut err = struct_span_code_err!(
             self.dcx(),
@@ -213,7 +213,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             via(msg_old),
         );
 
-        if msg_new == "" {
+        if msg_new.is_empty() {
             // If `msg_new` is empty, then this isn't a borrow of a union field.
             err.span_label(span, format!("{kind_new} borrow occurs here"));
             err.span_label(old_span, format!("{kind_old} borrow occurs here"));
@@ -239,7 +239,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         borrow_span: Span,
         desc: &str,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         struct_span_code_err!(
             self.dcx(),
             span,
@@ -256,12 +256,12 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         desc: &str,
         is_arg: bool,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let msg = if is_arg { "to immutable argument" } else { "twice to immutable variable" };
         struct_span_code_err!(self.dcx(), span, E0384, "cannot assign {} {}", msg, desc)
     }
 
-    pub(crate) fn cannot_assign(&self, span: Span, desc: &str) -> Diag<'tcx> {
+    pub(crate) fn cannot_assign(&self, span: Span, desc: &str) -> Diag<'infcx> {
         struct_span_code_err!(self.dcx(), span, E0594, "cannot assign to {}", desc)
     }
 
@@ -269,7 +269,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         move_from_span: Span,
         move_from_desc: &str,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         struct_span_code_err!(
             self.dcx(),
             move_from_span,
@@ -287,7 +287,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         move_from_span: Span,
         ty: Ty<'_>,
         is_index: Option<bool>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let type_name = match (&ty.kind(), is_index) {
             (&ty::Array(_, _), Some(true)) | (&ty::Array(_, _), None) => "array",
             (&ty::Slice(_), _) => "slice",
@@ -308,7 +308,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         move_from_span: Span,
         container_ty: Ty<'_>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         struct_span_code_err!(
             self.dcx(),
             move_from_span,
@@ -325,7 +325,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         verb: &str,
         optional_adverb_for_moved: &str,
         moved_path: Option<String>,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let moved_path = moved_path.map(|mp| format!(": `{mp}`")).unwrap_or_default();
 
         struct_span_code_err!(
@@ -344,7 +344,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         path: &str,
         reason: &str,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         struct_span_code_err!(
             self.dcx(),
             span,
@@ -362,7 +362,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         immutable_place: &str,
         immutable_section: &str,
         action: &str,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         struct_span_code_err!(
             self.dcx(),
             mutate_span,
@@ -380,7 +380,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         span: Span,
         yield_span: Span,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         let coroutine_kind = self.body.coroutine.as_ref().unwrap().coroutine_kind;
         struct_span_code_err!(
             self.dcx(),
@@ -391,7 +391,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         .with_span_label(yield_span, "possible yield occurs here")
     }
 
-    pub(crate) fn cannot_borrow_across_destructor(&self, borrow_span: Span) -> Diag<'tcx> {
+    pub(crate) fn cannot_borrow_across_destructor(&self, borrow_span: Span) -> Diag<'infcx> {
         struct_span_code_err!(
             self.dcx(),
             borrow_span,
@@ -400,7 +400,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         )
     }
 
-    pub(crate) fn path_does_not_live_long_enough(&self, span: Span, path: &str) -> Diag<'tcx> {
+    pub(crate) fn path_does_not_live_long_enough(&self, span: Span, path: &str) -> Diag<'infcx> {
         struct_span_code_err!(self.dcx(), span, E0597, "{} does not live long enough", path,)
     }
 
@@ -410,7 +410,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         return_kind: &str,
         reference_desc: &str,
         path_desc: &str,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         struct_span_code_err!(
             self.dcx(),
             span,
@@ -433,7 +433,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         borrowed_path: &str,
         capture_span: Span,
         scope: &str,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'infcx> {
         struct_span_code_err!(
             self.dcx(),
             closure_span,
@@ -445,7 +445,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         .with_span_label(closure_span, format!("may outlive borrowed value {borrowed_path}"))
     }
 
-    pub(crate) fn thread_local_value_does_not_live_long_enough(&self, span: Span) -> Diag<'tcx> {
+    pub(crate) fn thread_local_value_does_not_live_long_enough(&self, span: Span) -> Diag<'infcx> {
         struct_span_code_err!(
             self.dcx(),
             span,
@@ -454,7 +454,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         )
     }
 
-    pub(crate) fn temporary_value_borrowed_for_too_long(&self, span: Span) -> Diag<'tcx> {
+    pub(crate) fn temporary_value_borrowed_for_too_long(&self, span: Span) -> Diag<'infcx> {
         struct_span_code_err!(self.dcx(), span, E0716, "temporary value dropped while borrowed",)
     }
 }

@@ -53,9 +53,9 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use rustc_trait_selection::error_reporting::traits::suggestions::TypeErrCtxtExt as _;
+use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt;
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
@@ -638,7 +638,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Set expectation to error in that case and set tainted
                 // by error (#114529)
                 let coerce_to = opt_coerce_to.unwrap_or_else(|| {
-                    let guar = tcx.dcx().span_delayed_bug(
+                    let guar = self.dcx().span_delayed_bug(
                         expr.span,
                         "illegal break with value found but no error reported",
                     );
@@ -708,7 +708,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // else an error would have been flagged by the
                 // `loops` pass for using break with an expression
                 // where you are not supposed to.
-                assert!(expr_opt.is_none() || self.dcx().has_errors().is_some());
+                assert!(expr_opt.is_none() || self.tainted_by_errors().is_some());
             }
 
             // If we encountered a `break`, then (no surprise) it may be possible to break from the
@@ -1716,7 +1716,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 error_happened = true;
                 let guar = if let Some(prev_span) = seen_fields.get(&ident) {
-                    tcx.dcx().emit_err(FieldMultiplySpecifiedInInitializer {
+                    self.dcx().emit_err(FieldMultiplySpecifiedInInitializer {
                         span: field.ident.span,
                         prev_span: *prev_span,
                         ident,
@@ -1757,7 +1757,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if adt_kind == AdtKind::Union {
             if hir_fields.len() != 1 {
                 struct_span_code_err!(
-                    tcx.dcx(),
+                    self.dcx(),
                     span,
                     E0784,
                     "union expressions should have exactly one field",
@@ -2177,10 +2177,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         skip_fields: &[hir::ExprField<'_>],
         kind_name: &str,
     ) -> ErrorGuaranteed {
-        if variant.is_recovered() {
-            let guar =
-                self.dcx().span_delayed_bug(expr.span, "parser recovered but no error was emitted");
-            self.set_tainted_by_errors(guar);
+        // we don't care to report errors for a struct if the struct itself is tainted
+        if let Err(guar) = variant.has_errors() {
             return guar;
         }
         let mut err = self.err_ctxt().type_error_struct_with_diag(
@@ -2345,6 +2343,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut last_ty = None;
                     let mut nested_fields = Vec::new();
                     let mut index = None;
+
+                    // we don't care to report errors for a struct if the struct itself is tainted
+                    if let Err(guar) = adt_def.non_enum_variant().has_errors() {
+                        return Ty::new_error(self.tcx(), guar);
+                    }
                     while let Some(idx) = self.tcx.find_field((adt_def.did(), ident)) {
                         let &mut first_idx = index.get_or_insert(idx);
                         let field = &adt_def.non_enum_variant().fields[idx];
@@ -2551,10 +2554,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match *base_ty.peel_refs().kind() {
             ty::Array(_, len) => {
-                self.maybe_suggest_array_indexing(&mut err, expr, base, ident, len);
+                self.maybe_suggest_array_indexing(&mut err, base, ident, len);
             }
             ty::RawPtr(..) => {
-                self.suggest_first_deref_field(&mut err, expr, base, ident);
+                self.suggest_first_deref_field(&mut err, base, ident);
             }
             ty::Param(param_ty) => {
                 err.span_label(ident.span, "unknown field");
@@ -2721,7 +2724,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn maybe_suggest_array_indexing(
         &self,
         err: &mut Diag<'_>,
-        expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
         field: Ident,
         len: ty::Const<'tcx>,
@@ -2729,32 +2731,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_label(field.span, "unknown field");
         if let (Some(len), Ok(user_index)) =
             (len.try_eval_target_usize(self.tcx, self.param_env), field.as_str().parse::<u64>())
-            && let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span)
         {
             let help = "instead of using tuple indexing, use array indexing";
-            let suggestion = format!("{base}[{field}]");
             let applicability = if len < user_index {
                 Applicability::MachineApplicable
             } else {
                 Applicability::MaybeIncorrect
             };
-            err.span_suggestion(expr.span, help, suggestion, applicability);
+            err.multipart_suggestion(
+                help,
+                vec![
+                    (base.span.between(field.span), "[".to_string()),
+                    (field.span.shrink_to_hi(), "]".to_string()),
+                ],
+                applicability,
+            );
         }
     }
 
-    fn suggest_first_deref_field(
-        &self,
-        err: &mut Diag<'_>,
-        expr: &hir::Expr<'_>,
-        base: &hir::Expr<'_>,
-        field: Ident,
-    ) {
+    fn suggest_first_deref_field(&self, err: &mut Diag<'_>, base: &hir::Expr<'_>, field: Ident) {
         err.span_label(field.span, "unknown field");
-        if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
-            let msg = format!("`{base}` is a raw pointer; try dereferencing it");
-            let suggestion = format!("(*{base}).{field}");
-            err.span_suggestion(expr.span, msg, suggestion, Applicability::MaybeIncorrect);
-        }
+        let val = if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span)
+            && base.len() < 20
+        {
+            format!("`{base}`")
+        } else {
+            "the value".to_string()
+        };
+        err.multipart_suggestion(
+            format!("{val} is a raw pointer; try dereferencing it"),
+            vec![
+                (base.span.shrink_to_lo(), "(*".to_string()),
+                (base.span.shrink_to_hi(), ")".to_string()),
+            ],
+            Applicability::MaybeIncorrect,
+        );
     }
 
     fn no_such_field_err(&self, field: Ident, expr_t: Ty<'tcx>, id: HirId) -> Diag<'_> {
@@ -3108,7 +3119,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let element_ty = ocx.normalize(
                 &cause,
                 self.param_env,
-                Ty::new_projection(self.tcx, index_trait_output_def_id, impl_trait_ref.args),
+                Ty::new_projection_from_args(
+                    self.tcx,
+                    index_trait_output_def_id,
+                    impl_trait_ref.args,
+                ),
             );
 
             let true_errors = ocx.select_where_possible();

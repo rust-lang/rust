@@ -5,11 +5,11 @@
 
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::ops::Deref;
 
 use rustc_ast_ir::Mutability;
-use rustc_data_structures::fx::FxHashSet;
 
+use crate::data_structures::HashSet;
+use crate::elaborate::Elaboratable;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
 use crate::solve::{CacheData, CanonicalInput, QueryResult, Reveal};
@@ -41,11 +41,23 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_var(interner: I, var: ty::TyVid) -> Self;
 
+    fn new_param(interner: I, param: I::ParamTy) -> Self;
+
+    fn new_placeholder(interner: I, param: I::PlaceholderTy) -> Self;
+
     fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundTy) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
     fn new_alias(interner: I, kind: ty::AliasTyKind, alias_ty: ty::AliasTy<I>) -> Self;
+
+    fn new_projection_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self {
+        Ty::new_alias(
+            interner,
+            ty::AliasTyKind::Projection,
+            ty::AliasTy::new_from_args(interner, def_id, args),
+        )
+    }
 
     fn new_projection(
         interner: I,
@@ -113,6 +125,14 @@ pub trait Ty<I: Interner<Ty = Self>>:
         matches!(self.kind(), ty::Infer(ty::TyVar(_)))
     }
 
+    fn is_floating_point(self) -> bool {
+        matches!(self.kind(), ty::Float(_) | ty::Infer(ty::FloatVar(_)))
+    }
+
+    fn is_integral(self) -> bool {
+        matches!(self.kind(), ty::Infer(ty::IntVar(_)) | ty::Int(_) | ty::Uint(_))
+    }
+
     fn is_fn_ptr(self) -> bool {
         matches!(self.kind(), ty::FnPtr(_))
     }
@@ -120,7 +140,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
         match self.kind() {
             ty::FnPtr(sig) => sig,
-            ty::FnDef(def_id, args) => interner.fn_sig(def_id).instantiate(interner, &args),
+            ty::FnDef(def_id, args) => interner.fn_sig(def_id).instantiate(interner, args),
             ty::Error(_) => {
                 // ignore errors (#54954)
                 ty::Binder::dummy(ty::FnSig {
@@ -182,14 +202,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 }
 
 pub trait Tys<I: Interner<Tys = Self>>:
-    Copy
-    + Debug
-    + Hash
-    + Eq
-    + IntoIterator<Item = I::Ty>
-    + Deref<Target: Deref<Target = [I::Ty]>>
-    + TypeFoldable<I>
-    + Default
+    Copy + Debug + Hash + Eq + SliceLike<Item = I::Ty> + TypeFoldable<I> + Default
 {
     fn split_inputs_and_output(self) -> (I::FnInputTys, I::Ty);
 }
@@ -224,6 +237,10 @@ pub trait Region<I: Interner<Region = Self>>:
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
     fn new_static(interner: I) -> Self;
+
+    fn is_bound(self) -> bool {
+        matches!(self.kind(), ty::ReBound(..))
+    }
 }
 
 pub trait Const<I: Interner<Const = Self>>:
@@ -262,6 +279,10 @@ pub trait Const<I: Interner<Const = Self>>:
     fn is_ct_var(self) -> bool {
         matches!(self.kind(), ty::ConstKind::Infer(ty::InferConst::Var(_)))
     }
+}
+
+pub trait ExprConst<I: Interner<ExprConst = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
+    fn args(self) -> I::GenericArgs;
 }
 
 pub trait GenericsOf<I: Interner<GenericsOf = Self>> {
@@ -354,14 +375,7 @@ pub trait Term<I: Interner<Term = Self>>:
 }
 
 pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
-    Copy
-    + Debug
-    + Hash
-    + Eq
-    + IntoIterator<Item = I::GenericArg>
-    + Deref<Target: Deref<Target = [I::GenericArg]>>
-    + Default
-    + Relate<I>
+    Copy + Debug + Hash + Eq + SliceLike<Item = I::GenericArg> + Default + Relate<I>
 {
     fn rebase_onto(
         self,
@@ -420,6 +434,8 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Region>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
 {
+    fn as_clause(self) -> Option<I::Clause>;
+
     fn is_coinductive(self, interner: I) -> bool;
 
     // FIXME: Eventually uplift the impl out of rustc and make this defaulted.
@@ -432,35 +448,35 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + Hash
     + Eq
     + TypeFoldable<I>
-    // FIXME: Remove these, uplift the `Upcast` impls.
+    + UpcastFrom<I, ty::Binder<I, ty::ClauseKind<I>>>
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::ProjectionPredicate<I>>
     + UpcastFrom<I, ty::Binder<I, ty::ProjectionPredicate<I>>>
     + IntoKind<Kind = ty::Binder<I, ty::ClauseKind<I>>>
+    + Elaboratable<I>
 {
     fn as_trait_clause(self) -> Option<ty::Binder<I, ty::TraitPredicate<I>>> {
         self.kind()
-            .map_bound(|clause| {
-                if let ty::ClauseKind::Trait(t) = clause {
-                    Some(t)
-                } else {
-                    None
-                }
-            })
+            .map_bound(|clause| if let ty::ClauseKind::Trait(t) = clause { Some(t) } else { None })
             .transpose()
     }
+
     fn as_projection_clause(self) -> Option<ty::Binder<I, ty::ProjectionPredicate<I>>> {
         self.kind()
-            .map_bound(|clause| {
-                if let ty::ClauseKind::Projection(p) = clause {
-                    Some(p)
-                } else {
-                    None
-                }
-            })
+            .map_bound(
+                |clause| {
+                    if let ty::ClauseKind::Projection(p) = clause { Some(p) } else { None }
+                },
+            )
             .transpose()
     }
+
+    /// Performs a instantiation suitable for going from a
+    /// poly-trait-ref to supertraits that must hold if that
+    /// poly-trait-ref holds. This is slightly different from a normal
+    /// instantiation in terms of what happens with bound regions.
+    fn instantiate_supertrait(self, tcx: I, trait_ref: ty::Binder<I, ty::TraitRef<I>>) -> Self;
 }
 
 /// Common capabilities of placeholder kinds
@@ -505,6 +521,8 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;
 
     fn sized_constraint(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
+
+    fn is_fundamental(self) -> bool;
 }
 
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
@@ -530,7 +548,7 @@ pub trait EvaluationCache<I: Interner> {
         proof_tree: Option<I::CanonicalGoalEvaluationStepRef>,
         additional_depth: usize,
         encountered_overflow: bool,
-        cycle_participants: FxHashSet<CanonicalInput<I>>,
+        cycle_participants: HashSet<CanonicalInput<I>>,
         dep_node: I::DepNodeIndex,
         result: QueryResult<I>,
     );
@@ -549,16 +567,13 @@ pub trait EvaluationCache<I: Interner> {
 }
 
 pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
+    fn is_local(self) -> bool;
+
     fn as_local(self) -> Option<I::LocalDefId>;
 }
 
 pub trait BoundExistentialPredicates<I: Interner>:
-    Copy
-    + Debug
-    + Hash
-    + Eq
-    + Relate<I>
-    + IntoIterator<Item = ty::Binder<I, ty::ExistentialPredicate<I>>>
+    Copy + Debug + Hash + Eq + Relate<I> + SliceLike<Item = ty::Binder<I, ty::ExistentialPredicate<I>>>
 {
     fn principal_def_id(self) -> Option<I::DefId>;
 
@@ -569,4 +584,83 @@ pub trait BoundExistentialPredicates<I: Interner>:
     fn projection_bounds(
         self,
     ) -> impl IntoIterator<Item = ty::Binder<I, ty::ExistentialProjection<I>>>;
+}
+
+pub trait SliceLike: Sized + Copy {
+    type Item: Copy;
+    type IntoIter: Iterator<Item = Self::Item>;
+
+    fn iter(self) -> Self::IntoIter;
+
+    fn as_slice(&self) -> &[Self::Item];
+
+    fn get(self, idx: usize) -> Option<Self::Item> {
+        self.as_slice().get(idx).copied()
+    }
+
+    fn len(self) -> usize {
+        self.as_slice().len()
+    }
+
+    fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
+    fn contains(self, t: &Self::Item) -> bool
+    where
+        Self::Item: PartialEq,
+    {
+        self.as_slice().contains(t)
+    }
+
+    fn to_vec(self) -> Vec<Self::Item> {
+        self.as_slice().to_vec()
+    }
+
+    fn last(self) -> Option<Self::Item> {
+        self.as_slice().last().copied()
+    }
+
+    fn split_last(&self) -> Option<(&Self::Item, &[Self::Item])> {
+        self.as_slice().split_last()
+    }
+}
+
+impl<'a, T: Copy> SliceLike for &'a [T] {
+    type Item = T;
+    type IntoIter = std::iter::Copied<std::slice::Iter<'a, T>>;
+
+    fn iter(self) -> Self::IntoIter {
+        self.iter().copied()
+    }
+
+    fn as_slice(&self) -> &[Self::Item] {
+        *self
+    }
+}
+
+impl<'a, T: Copy, const N: usize> SliceLike for &'a [T; N] {
+    type Item = T;
+    type IntoIter = std::iter::Copied<std::slice::Iter<'a, T>>;
+
+    fn iter(self) -> Self::IntoIter {
+        self.into_iter().copied()
+    }
+
+    fn as_slice(&self) -> &[Self::Item] {
+        *self
+    }
+}
+
+impl<'a, S: SliceLike> SliceLike for &'a S {
+    type Item = S::Item;
+    type IntoIter = S::IntoIter;
+
+    fn iter(self) -> Self::IntoIter {
+        (*self).iter()
+    }
+
+    fn as_slice(&self) -> &[Self::Item] {
+        (*self).as_slice()
+    }
 }

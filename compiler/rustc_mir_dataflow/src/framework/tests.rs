@@ -34,7 +34,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
         2,
         mir::TerminatorKind::Call {
             func: mir::Operand::Copy(dummy_place.clone()),
-            args: vec![],
+            args: [].into(),
             destination: dummy_place.clone(),
             target: Some(mir::START_BLOCK),
             unwind: mir::UnwindAction::Continue,
@@ -48,7 +48,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
         4,
         mir::TerminatorKind::Call {
             func: mir::Operand::Copy(dummy_place.clone()),
-            args: vec![],
+            args: [].into(),
             destination: dummy_place.clone(),
             target: Some(mir::START_BLOCK),
             unwind: mir::UnwindAction::Continue,

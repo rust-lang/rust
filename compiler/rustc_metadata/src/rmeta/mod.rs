@@ -391,7 +391,9 @@ define_tables! {
     inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     associated_types_for_impl_traits_in_associated_fn: Table<DefIndex, LazyArray<DefId>>,
+    associated_type_for_effects: Table<DefIndex, Option<LazyValue<DefId>>>,
     opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
+    is_effects_desugaring: Table<DefIndex, bool>,
     unused_generic_params: Table<DefIndex, UnusedGenericParams>,
     // Reexported names are not associated with individual `DefId`s,
     // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
@@ -416,10 +418,10 @@ define_tables! {
     lookup_deprecation_entry: Table<DefIndex, LazyValue<attr::Deprecation>>,
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
-    super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
+    explicit_super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     // As an optimization, we only store this for trait aliases,
-    // since it's identical to super_predicates_of for traits.
-    implied_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
+    // since it's identical to explicit_super_predicates_of for traits.
+    explicit_implied_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     type_of: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, Ty<'static>>>>,
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
     fn_sig: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::PolyFnSig<'static>>>>,

@@ -49,9 +49,10 @@ use rustc_index::{Idx, IndexVec};
 use std::mem;
 use tracing::debug;
 
+use crate::data_structures::Lrc;
 use crate::inherent::*;
 use crate::visit::{TypeVisitable, TypeVisitableExt as _};
-use crate::{self as ty, Interner, Lrc};
+use crate::{self as ty, Interner};
 
 #[cfg(feature = "nightly")]
 type Never = !;
@@ -128,7 +129,7 @@ pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
 /// the infallible methods of this trait to ensure that the two APIs
 /// are coherent.
 pub trait TypeFolder<I: Interner>: FallibleTypeFolder<I, Error = Never> {
-    fn interner(&self) -> I;
+    fn cx(&self) -> I;
 
     fn fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T>
     where
@@ -166,7 +167,7 @@ pub trait TypeFolder<I: Interner>: FallibleTypeFolder<I, Error = Never> {
 pub trait FallibleTypeFolder<I: Interner>: Sized {
     type Error;
 
-    fn interner(&self) -> I;
+    fn cx(&self) -> I;
 
     fn try_fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> Result<ty::Binder<I, T>, Self::Error>
     where
@@ -202,8 +203,8 @@ where
 {
     type Error = Never;
 
-    fn interner(&self) -> I {
-        TypeFolder::interner(self)
+    fn cx(&self) -> I {
+        TypeFolder::cx(self)
     }
 
     fn try_fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> Result<ty::Binder<I, T>, Never>
@@ -322,6 +323,12 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Vec<T> {
     }
 }
 
+impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Box<[T]> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Vec::from(self).try_fold_with(folder).map(Vec::into_boxed_slice)
+    }
+}
+
 impl<I: Interner, T: TypeFoldable<I>, Ix: Idx> TypeFoldable<I> for IndexVec<Ix, T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.raw.try_fold_with(folder).map(IndexVec::from_raw)
@@ -350,7 +357,7 @@ impl<I: Interner> Shifter<I> {
 }
 
 impl<I: Interner> TypeFolder<I> for Shifter<I> {
-    fn interner(&self) -> I {
+    fn cx(&self) -> I {
         self.tcx
     }
 

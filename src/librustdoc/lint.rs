@@ -66,7 +66,7 @@ where
 macro_rules! declare_rustdoc_lint {
     (
         $(#[$attr:meta])* $name: ident, $level: ident, $descr: literal $(,)?
-        $(@feature_gate = $gate:expr;)?
+        $(@feature_gate = $gate:ident;)?
     ) => {
         declare_tool_lint! {
             $(#[$attr])* pub rustdoc::$name, $level, $descr
@@ -128,7 +128,7 @@ declare_rustdoc_lint! {
     MISSING_DOC_CODE_EXAMPLES,
     Allow,
     "detects publicly-exported items without code samples in their documentation",
-    @feature_gate = rustc_span::symbol::sym::rustdoc_missing_doc_code_examples;
+    @feature_gate = rustdoc_missing_doc_code_examples;
 }
 
 declare_rustdoc_lint! {
@@ -196,6 +196,14 @@ declare_rustdoc_lint! {
     "detects redundant explicit links in doc comments"
 }
 
+declare_rustdoc_lint! {
+    /// This compatibility lint checks for Markdown syntax that works in the old engine but not
+    /// the new one.
+    UNPORTABLE_MARKDOWN,
+    Warn,
+    "detects markdown that is interpreted differently in different parser"
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -209,6 +217,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         MISSING_CRATE_LEVEL_DOCS,
         UNESCAPED_BACKTICKS,
         REDUNDANT_EXPLICIT_LINKS,
+        UNPORTABLE_MARKDOWN,
     ]
 });
 

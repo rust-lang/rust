@@ -334,6 +334,7 @@ pub trait Hasher {
     ///
     /// [`write`]: Hasher::write
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     fn finish(&self) -> u64;
 
     /// Writes some data into this `Hasher`.

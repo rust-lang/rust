@@ -393,6 +393,17 @@ pub enum BadReturnTypeNotation {
         #[suggestion(code = "", applicability = "maybe-incorrect")]
         span: Span,
     },
+    #[diag(ast_lowering_bad_return_type_notation_needs_dots)]
+    NeedsDots {
+        #[primary_span]
+        #[suggestion(code = "(..)", applicability = "maybe-incorrect")]
+        span: Span,
+    },
+    #[diag(ast_lowering_bad_return_type_notation_position)]
+    Position {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(Diagnostic)]
@@ -420,6 +431,14 @@ pub(crate) struct AsyncBoundOnlyForFnTraits {
 #[derive(Diagnostic)]
 #[diag(ast_lowering_no_precise_captures_on_apit)]
 pub(crate) struct NoPreciseCapturesOnApit {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_no_precise_captures_on_rpitit)]
+#[note]
+pub(crate) struct NoPreciseCapturesOnRpitit {
     #[primary_span]
     pub span: Span,
 }

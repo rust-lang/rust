@@ -2,6 +2,8 @@
 #![allow(clippy::diverging_sub_expression)]
 #![no_main]
 
+// FIXME(f16_f128): add these types when `{to_from}_*_bytes` are available
+
 macro_rules! fn_body {
     () => {
         2u8.to_ne_bytes();

@@ -1,4 +1,3 @@
-#![feature(lint_reasons)]
 #![warn(clippy::same_name_method)]
 #![allow(dead_code, non_camel_case_types)]
 

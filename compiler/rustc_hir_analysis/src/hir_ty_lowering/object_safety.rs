@@ -13,7 +13,7 @@ use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{self, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{DynKind, Upcast};
 use rustc_span::{ErrorGuaranteed, Span};
-use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
+use rustc_trait_selection::error_reporting::traits::report_object_safety_error;
 use rustc_trait_selection::traits::{self, hir_ty_lowering_object_safety_violations};
 
 use smallvec::{smallvec, SmallVec};
@@ -59,7 +59,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let mut trait_bounds = vec![];
         let mut projection_bounds = vec![];
-        for (pred, span) in bounds.clauses() {
+        for (pred, span) in bounds.clauses(tcx) {
             let bound_pred = pred.kind();
             match bound_pred.skip_binder() {
                 ty::ClauseKind::Trait(trait_pred) => {
@@ -133,7 +133,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
                                 .filter(|item| item.kind == ty::AssocKind::Type)
-                                .filter(|item| !item.is_impl_trait_in_trait())
+                                .filter(|item| {
+                                    !item.is_impl_trait_in_trait() && !item.is_effects_desugaring
+                                })
                                 .map(|item| item.def_id),
                         );
                     }
@@ -234,7 +236,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             Ty::new_misc_error(tcx).into()
                         } else if arg.walk().any(|arg| arg == dummy_self.into()) {
                             references_self = true;
-                            let guar = tcx.dcx().span_delayed_bug(
+                            let guar = self.dcx().span_delayed_bug(
                                 span,
                                 "trait object trait bounds reference `Self`",
                             );
@@ -260,8 +262,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 if references_self {
                     let def_id = i.bottom().0.def_id();
-                    let reported = struct_span_code_err!(
-                        tcx.dcx(),
+                    struct_span_code_err!(
+                        self.dcx(),
                         i.bottom().1,
                         E0038,
                         "the {} `{}` cannot be made into an object",
@@ -273,7 +275,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             .error_msg(),
                     )
                     .emit();
-                    self.set_tainted_by_errors(reported);
                 }
 
                 ty::ExistentialTraitRef { def_id: trait_ref.def_id, args }

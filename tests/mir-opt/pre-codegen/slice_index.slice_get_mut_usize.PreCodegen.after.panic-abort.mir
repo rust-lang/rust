@@ -23,7 +23,7 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
         StorageLive(_7);
         StorageLive(_4);
         StorageLive(_3);
-        _3 = Len((*_1));
+        _3 = PtrMetadata(_1);
         _4 = Lt(_2, move _3);
         switchInt(move _4) -> [0: bb1, otherwise: bb2];
     }

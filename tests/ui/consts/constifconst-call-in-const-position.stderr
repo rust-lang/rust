@@ -1,36 +1,26 @@
-warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/constifconst-call-in-const-position.rs:3:30
+error: using `#![feature(effects)]` without enabling next trait solver globally
    |
-LL | #![feature(const_trait_impl, generic_const_exprs)]
-   |                              ^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
-   = note: `#[warn(incomplete_features)]` on by default
+   = note: the next trait solver must be enabled globally for the effects feature to work correctly
+   = help: use `-Znext-solver` to enable
 
-error[E0015]: cannot call non-const fn `<T as Tr>::a` in constants
-  --> $DIR/constifconst-call-in-const-position.rs:17:9
-   |
-LL |     [0; T::a()]
-   |         ^^^^^^
-   |
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
-
-error[E0015]: cannot call non-const fn `<T as Tr>::a` in constants
-  --> $DIR/constifconst-call-in-const-position.rs:16:38
+error[E0308]: mismatched types
+  --> $DIR/constifconst-call-in-const-position.rs:17:38
    |
 LL | const fn foo<T: ~const Tr>() -> [u8; T::a()] {
-   |                                      ^^^^^^
+   |                                      ^^^^^^ expected `false`, found `host`
    |
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
+   = note: expected constant `false`
+              found constant `host`
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error[E0308]: mismatched types
+  --> $DIR/constifconst-call-in-const-position.rs:18:9
+   |
+LL |     [0; T::a()]
+   |         ^^^^^^ expected `false`, found `host`
+   |
+   = note: expected constant `false`
+              found constant `host`
 
-For more information about this error, try `rustc --explain E0015`.
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

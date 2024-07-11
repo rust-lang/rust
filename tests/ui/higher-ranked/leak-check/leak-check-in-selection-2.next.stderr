@@ -1,11 +1,11 @@
 error[E0283]: type annotations needed
-  --> $DIR/leak-check-in-selection-2.rs:16:5
+  --> $DIR/leak-check-in-selection-2.rs:17:5
    |
 LL |     impls_trait::<(), _>();
    |     ^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `U` declared on the function `impls_trait`
    |
 note: multiple `impl`s satisfying `for<'a> (): Trait<&'a str, _>` found
-  --> $DIR/leak-check-in-selection-2.rs:9:1
+  --> $DIR/leak-check-in-selection-2.rs:10:1
    |
 LL | impl<'a> Trait<&'a str, &'a str> for () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL |
 LL | impl<'a> Trait<&'a str, String> for () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `impls_trait`
-  --> $DIR/leak-check-in-selection-2.rs:13:19
+  --> $DIR/leak-check-in-selection-2.rs:14:19
    |
 LL | fn impls_trait<T: for<'a> Trait<&'a str, U>, U>() {}
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `impls_trait`

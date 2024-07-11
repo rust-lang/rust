@@ -571,7 +571,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
+        let drcx = DeepRejectCtxt::new(self.tcx(), TreatParams::ForLookup);
         let obligation_args = obligation.predicate.skip_binder().trait_ref.args;
         self.tcx().for_each_relevant_impl(
             obligation.predicate.def_id(),
@@ -940,7 +940,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let ty = traits::normalize_projection_ty(
                 self,
                 param_env,
-                ty::AliasTy::new(tcx, tcx.lang_items().deref_target()?, trait_ref.args),
+                ty::AliasTy::new_from_args(tcx, tcx.lang_items().deref_target()?, trait_ref.args),
                 cause.clone(),
                 0,
                 // We're *intentionally* throwing these away,

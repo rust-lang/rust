@@ -1,16 +1,18 @@
 use std::ops::ControlFlow;
 
-use rustc_data_structures::stack::ensure_sufficient_stack;
+#[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use rustc_type_ir::{self as ty, CanonicalVarValues, Interner};
+use rustc_type_ir::{self as ty, CanonicalVarValues, InferCtxtLike, Interner};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::{instrument, trace};
 
-use crate::infcx::SolverDelegate;
+use crate::coherence;
+use crate::delegate::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
@@ -22,9 +24,9 @@ use crate::solve::{
 pub(super) mod canonical;
 mod probe;
 
-pub struct EvalCtxt<'a, Infcx, I = <Infcx as SolverDelegate>::Interner>
+pub struct EvalCtxt<'a, D, I = <D as SolverDelegate>::Interner>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     /// The inference context that backs (mostly) inference and placeholder terms
@@ -42,7 +44,7 @@ where
     /// If some `InferCtxt` method is missing, please first think defensively about
     /// the method's compatibility with this solver, or if an existing one does
     /// the job already.
-    infcx: &'a Infcx,
+    delegate: &'a D,
 
     /// The variable info for the `var_values`, only used to make an ambiguous response
     /// with no constraints.
@@ -82,13 +84,13 @@ where
     // evaluation code.
     tainted: Result<(), NoSolution>,
 
-    pub(super) inspect: ProofTreeBuilder<Infcx>,
+    pub(super) inspect: ProofTreeBuilder<D>,
 }
 
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""), Debug(bound = ""), Default(bound = ""))]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
-#[derive(TyDecodable, TyEncodable, HashStable_NoContext)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 // FIXME: This can be made crate-private once `EvalCtxt` also lives in this crate.
 pub struct NestedGoals<I: Interner> {
     /// These normalizes-to goals are treated specially during the evaluation
@@ -116,7 +118,8 @@ impl<I: Interner> NestedGoals<I> {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Hash, HashStable_NoContext, Clone, Copy)]
+#[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum GenerateProofTree {
     Yes,
     No,
@@ -141,9 +144,9 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
     );
 }
 
-impl<Infcx, I> SolverDelegateEvalExt for Infcx
+impl<D, I> SolverDelegateEvalExt for D
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     /// Evaluates a goal from **outside** of the trait solver.
@@ -176,9 +179,9 @@ where
     }
 }
 
-impl<'a, Infcx, I> EvalCtxt<'a, Infcx>
+impl<'a, D, I> EvalCtxt<'a, D>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     pub(super) fn solver_mode(&self) -> SolverMode {
@@ -193,22 +196,22 @@ where
     /// used from outside of any evaluation, and other methods should be preferred
     /// over using this manually (such as [`SolverDelegateEvalExt::evaluate_root_goal`]).
     pub(super) fn enter_root<R>(
-        infcx: &Infcx,
+        delegate: &D,
         generate_proof_tree: GenerateProofTree,
-        f: impl FnOnce(&mut EvalCtxt<'_, Infcx>) -> R,
+        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> R,
     ) -> (R, Option<inspect::GoalEvaluation<I>>) {
-        let mut search_graph = search_graph::SearchGraph::new(infcx.solver_mode());
+        let mut search_graph = search_graph::SearchGraph::new(delegate.solver_mode());
 
         let mut ecx = EvalCtxt {
-            infcx,
+            delegate,
             search_graph: &mut search_graph,
             nested_goals: NestedGoals::new(),
             inspect: ProofTreeBuilder::new_maybe_root(generate_proof_tree),
 
             // Only relevant when canonicalizing the response,
             // which we don't do within this evaluation context.
-            predefined_opaques_in_body: infcx
-                .interner()
+            predefined_opaques_in_body: delegate
+                .cx()
                 .mk_predefined_opaques_in_body(PredefinedOpaquesData::default()),
             max_input_universe: ty::UniverseIndex::ROOT,
             variables: Default::default(),
@@ -237,17 +240,17 @@ where
     /// This function takes care of setting up the inference context, setting the anchor,
     /// and registering opaques from the canonicalized input.
     fn enter_canonical<R>(
-        tcx: I,
+        cx: I,
         search_graph: &'a mut search_graph::SearchGraph<I>,
         canonical_input: CanonicalInput<I>,
-        canonical_goal_evaluation: &mut ProofTreeBuilder<Infcx>,
-        f: impl FnOnce(&mut EvalCtxt<'_, Infcx>, Goal<I, I::Predicate>) -> R,
+        canonical_goal_evaluation: &mut ProofTreeBuilder<D>,
+        f: impl FnOnce(&mut EvalCtxt<'_, D>, Goal<I, I::Predicate>) -> R,
     ) -> R {
-        let (ref infcx, input, var_values) =
-            SolverDelegate::build_with_canonical(tcx, search_graph.solver_mode(), &canonical_input);
+        let (ref delegate, input, var_values) =
+            SolverDelegate::build_with_canonical(cx, search_graph.solver_mode(), &canonical_input);
 
         let mut ecx = EvalCtxt {
-            infcx,
+            delegate,
             variables: canonical_input.variables,
             var_values,
             is_normalizes_to_goal: false,
@@ -260,7 +263,7 @@ where
         };
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
-            ecx.infcx.inject_new_hidden_type_unchecked(key, ty);
+            ecx.delegate.inject_new_hidden_type_unchecked(key, ty);
         }
 
         if !ecx.nested_goals.is_empty() {
@@ -268,7 +271,7 @@ where
         }
 
         let result = f(&mut ecx, input.goal);
-        ecx.inspect.probe_final_state(ecx.infcx, ecx.max_input_universe);
+        ecx.inspect.probe_final_state(ecx.delegate, ecx.max_input_universe);
         canonical_goal_evaluation.goal_evaluation_step(ecx.inspect);
 
         // When creating a query response we clone the opaque type constraints
@@ -276,7 +279,7 @@ where
         // assertions against dropping an `InferCtxt` without taking opaques.
         // FIXME: Once we remove support for the old impl we can remove this.
         // FIXME: Could we make `build_with_canonical` into `enter_with_canonical` and call this at the end?
-        infcx.reset_opaque_types();
+        delegate.reset_opaque_types();
 
         result
     }
@@ -290,12 +293,12 @@ where
     /// Instead of calling this function directly, use either [EvalCtxt::evaluate_goal]
     /// if you're inside of the solver or [SolverDelegateEvalExt::evaluate_root_goal] if you're
     /// outside of it.
-    #[instrument(level = "debug", skip(tcx, search_graph, goal_evaluation), ret)]
+    #[instrument(level = "debug", skip(cx, search_graph, goal_evaluation), ret)]
     fn evaluate_canonical_goal(
-        tcx: I,
+        cx: I,
         search_graph: &'a mut search_graph::SearchGraph<I>,
         canonical_input: CanonicalInput<I>,
-        goal_evaluation: &mut ProofTreeBuilder<Infcx>,
+        goal_evaluation: &mut ProofTreeBuilder<D>,
     ) -> QueryResult<I> {
         let mut canonical_goal_evaluation =
             goal_evaluation.new_canonical_goal_evaluation(canonical_input);
@@ -305,12 +308,12 @@ where
         // The actual solver logic happens in `ecx.compute_goal`.
         let result = ensure_sufficient_stack(|| {
             search_graph.with_new_goal(
-                tcx,
+                cx,
                 canonical_input,
                 &mut canonical_goal_evaluation,
                 |search_graph, canonical_goal_evaluation| {
                     EvalCtxt::enter_canonical(
-                        tcx,
+                        cx,
                         search_graph,
                         canonical_input,
                         canonical_goal_evaluation,
@@ -362,7 +365,7 @@ where
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
         let canonical_response = EvalCtxt::evaluate_canonical_goal(
-            self.interner(),
+            self.cx(),
             self.search_graph,
             canonical_goal,
             &mut goal_evaluation,
@@ -464,8 +467,8 @@ where
                 }
             }
         } else {
-            self.infcx.enter_forall(kind, |kind| {
-                let goal = goal.with(self.interner(), ty::Binder::dummy(kind));
+            self.delegate.enter_forall(kind, |kind| {
+                let goal = goal.with(self.cx(), ty::Binder::dummy(kind));
                 self.add_goal(GoalSource::InstantiateHigherRanked, goal);
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
@@ -504,7 +507,7 @@ where
     ///
     /// Goals for the next step get directly added to the nested goals of the `EvalCtxt`.
     fn evaluate_added_goals_step(&mut self) -> Result<Option<Certainty>, NoSolution> {
-        let tcx = self.interner();
+        let cx = self.cx();
         let mut goals = core::mem::take(&mut self.nested_goals);
 
         // If this loop did not result in any progress, what's our final certainty.
@@ -514,7 +517,7 @@ where
             // RHS does not affect projection candidate assembly.
             let unconstrained_rhs = self.next_term_infer_of_kind(goal.predicate.term);
             let unconstrained_goal = goal.with(
-                tcx,
+                cx,
                 ty::NormalizesTo { alias: goal.predicate.alias, term: unconstrained_rhs },
             );
 
@@ -586,11 +589,11 @@ where
 
     /// Record impl args in the proof tree for later access by `InspectCandidate`.
     pub(crate) fn record_impl_args(&mut self, impl_args: I::GenericArgs) {
-        self.inspect.record_impl_args(self.infcx, self.max_input_universe, impl_args)
+        self.inspect.record_impl_args(self.delegate, self.max_input_universe, impl_args)
     }
 
-    pub(super) fn interner(&self) -> I {
-        self.infcx.interner()
+    pub(super) fn cx(&self) -> I {
+        self.delegate.cx()
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -598,7 +601,7 @@ where
         goal.predicate = goal
             .predicate
             .fold_with(&mut ReplaceAliasWithInfer { ecx: self, param_env: goal.param_env });
-        self.inspect.add_normalizes_to_goal(self.infcx, self.max_input_universe, goal);
+        self.inspect.add_normalizes_to_goal(self.delegate, self.max_input_universe, goal);
         self.nested_goals.normalizes_to_goals.push(goal);
     }
 
@@ -607,7 +610,7 @@ where
         goal.predicate = goal
             .predicate
             .fold_with(&mut ReplaceAliasWithInfer { ecx: self, param_env: goal.param_env });
-        self.inspect.add_goal(self.infcx, self.max_input_universe, source, goal);
+        self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
         self.nested_goals.goals.push((source, goal));
     }
 
@@ -623,13 +626,13 @@ where
     }
 
     pub(super) fn next_ty_infer(&mut self) -> I::Ty {
-        let ty = self.infcx.next_ty_infer();
+        let ty = self.delegate.next_ty_infer();
         self.inspect.add_var_value(ty);
         ty
     }
 
     pub(super) fn next_const_infer(&mut self) -> I::Const {
-        let ct = self.infcx.next_const_infer();
+        let ct = self.delegate.next_const_infer();
         self.inspect.add_var_value(ct);
         ct
     }
@@ -652,27 +655,27 @@ where
         let universe_of_term = match goal.predicate.term.kind() {
             ty::TermKind::Ty(ty) => {
                 if let ty::Infer(ty::TyVar(vid)) = ty.kind() {
-                    self.infcx.universe_of_ty(vid).unwrap()
+                    self.delegate.universe_of_ty(vid).unwrap()
                 } else {
                     return false;
                 }
             }
             ty::TermKind::Const(ct) => {
                 if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() {
-                    self.infcx.universe_of_ct(vid).unwrap()
+                    self.delegate.universe_of_ct(vid).unwrap()
                 } else {
                     return false;
                 }
             }
         };
 
-        struct ContainsTermOrNotNameable<'a, Infcx: SolverDelegate<Interner = I>, I: Interner> {
+        struct ContainsTermOrNotNameable<'a, D: SolverDelegate<Interner = I>, I: Interner> {
             term: I::Term,
             universe_of_term: ty::UniverseIndex,
-            infcx: &'a Infcx,
+            delegate: &'a D,
         }
 
-        impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ContainsTermOrNotNameable<'_, Infcx, I> {
+        impl<D: SolverDelegate<Interner = I>, I: Interner> ContainsTermOrNotNameable<'_, D, I> {
             fn check_nameable(&self, universe: ty::UniverseIndex) -> ControlFlow<()> {
                 if self.universe_of_term.can_name(universe) {
                     ControlFlow::Continue(())
@@ -682,21 +685,24 @@ where
             }
         }
 
-        impl<Infcx: SolverDelegate<Interner = I>, I: Interner> TypeVisitor<I>
-            for ContainsTermOrNotNameable<'_, Infcx, I>
+        impl<D: SolverDelegate<Interner = I>, I: Interner> TypeVisitor<I>
+            for ContainsTermOrNotNameable<'_, D, I>
         {
             type Result = ControlFlow<()>;
             fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
                 match t.kind() {
                     ty::Infer(ty::TyVar(vid)) => {
-                        if let ty::TermKind::Ty(term) = self.term.kind()
-                            && let ty::Infer(ty::TyVar(term_vid)) = term.kind()
-                            && self.infcx.root_ty_var(vid) == self.infcx.root_ty_var(term_vid)
-                        {
-                            ControlFlow::Break(())
-                        } else {
-                            self.check_nameable(self.infcx.universe_of_ty(vid).unwrap())
+                        if let ty::TermKind::Ty(term) = self.term.kind() {
+                            if let ty::Infer(ty::TyVar(term_vid)) = term.kind() {
+                                if self.delegate.root_ty_var(vid)
+                                    == self.delegate.root_ty_var(term_vid)
+                                {
+                                    return ControlFlow::Break(());
+                                }
+                            }
                         }
+
+                        self.check_nameable(self.delegate.universe_of_ty(vid).unwrap())
                     }
                     ty::Placeholder(p) => self.check_nameable(p.universe()),
                     _ => {
@@ -712,14 +718,18 @@ where
             fn visit_const(&mut self, c: I::Const) -> Self::Result {
                 match c.kind() {
                     ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                        if let ty::TermKind::Const(term) = self.term.kind()
-                            && let ty::ConstKind::Infer(ty::InferConst::Var(term_vid)) = term.kind()
-                            && self.infcx.root_const_var(vid) == self.infcx.root_const_var(term_vid)
-                        {
-                            ControlFlow::Break(())
-                        } else {
-                            self.check_nameable(self.infcx.universe_of_ct(vid).unwrap())
+                        if let ty::TermKind::Const(term) = self.term.kind() {
+                            if let ty::ConstKind::Infer(ty::InferConst::Var(term_vid)) = term.kind()
+                            {
+                                if self.delegate.root_const_var(vid)
+                                    == self.delegate.root_const_var(term_vid)
+                                {
+                                    return ControlFlow::Break(());
+                                }
+                            }
                         }
+
+                        self.check_nameable(self.delegate.universe_of_ct(vid).unwrap())
                     }
                     ty::ConstKind::Placeholder(p) => self.check_nameable(p.universe()),
                     _ => {
@@ -734,7 +744,7 @@ where
         }
 
         let mut visitor = ContainsTermOrNotNameable {
-            infcx: self.infcx,
+            delegate: self.delegate,
             universe_of_term,
             term: goal.predicate.term,
         };
@@ -768,7 +778,7 @@ where
         // NOTE: this check is purely an optimization, the structural eq would
         // always fail if the term is not an inference variable.
         if term.is_infer() {
-            let tcx = self.interner();
+            let cx = self.cx();
             // We need to relate `alias` to `term` treating only the outermost
             // constructor as rigid, relating any contained generic arguments as
             // normal. We do this by first structurally equating the `term`
@@ -778,10 +788,10 @@ where
             // Alternatively we could modify `Equate` for this case by adding another
             // variant to `StructurallyRelateAliases`.
             let identity_args = self.fresh_args_for_item(alias.def_id);
-            let rigid_ctor = ty::AliasTerm::new(tcx, alias.def_id, identity_args);
-            let ctor_term = rigid_ctor.to_term(tcx);
+            let rigid_ctor = ty::AliasTerm::new_from_args(cx, alias.def_id, identity_args);
+            let ctor_term = rigid_ctor.to_term(cx);
             let obligations =
-                self.infcx.eq_structurally_relating_aliases(param_env, term, ctor_term)?;
+                self.delegate.eq_structurally_relating_aliases(param_env, term, ctor_term)?;
             debug_assert!(obligations.is_empty());
             self.relate(param_env, alias, variance, rigid_ctor)
         } else {
@@ -799,7 +809,7 @@ where
         lhs: T,
         rhs: T,
     ) -> Result<(), NoSolution> {
-        let result = self.infcx.eq_structurally_relating_aliases(param_env, lhs, rhs)?;
+        let result = self.delegate.eq_structurally_relating_aliases(param_env, lhs, rhs)?;
         assert_eq!(result, vec![]);
         Ok(())
     }
@@ -822,7 +832,7 @@ where
         variance: ty::Variance,
         rhs: T,
     ) -> Result<(), NoSolution> {
-        let goals = self.infcx.relate(param_env, lhs, variance, rhs)?;
+        let goals = self.delegate.relate(param_env, lhs, variance, rhs)?;
         self.add_goals(GoalSource::Misc, goals);
         Ok(())
     }
@@ -839,14 +849,14 @@ where
         lhs: T,
         rhs: T,
     ) -> Result<Vec<Goal<I, I::Predicate>>, NoSolution> {
-        self.infcx.relate(param_env, lhs, ty::Variance::Invariant, rhs)
+        self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs)
     }
 
     pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<I> + Copy>(
         &self,
         value: ty::Binder<I, T>,
     ) -> T {
-        self.infcx.instantiate_binder_with_infer(value)
+        self.delegate.instantiate_binder_with_infer(value)
     }
 
     pub(super) fn enter_forall<T: TypeFoldable<I> + Copy, U>(
@@ -854,31 +864,31 @@ where
         value: ty::Binder<I, T>,
         f: impl FnOnce(T) -> U,
     ) -> U {
-        self.infcx.enter_forall(value, f)
+        self.delegate.enter_forall(value, f)
     }
 
     pub(super) fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
         T: TypeFoldable<I>,
     {
-        self.infcx.resolve_vars_if_possible(value)
+        self.delegate.resolve_vars_if_possible(value)
     }
 
     pub(super) fn fresh_args_for_item(&mut self, def_id: I::DefId) -> I::GenericArgs {
-        let args = self.infcx.fresh_args_for_item(def_id);
-        for arg in args {
+        let args = self.delegate.fresh_args_for_item(def_id);
+        for arg in args.iter() {
             self.inspect.add_var_value(arg);
         }
         args
     }
 
     pub(super) fn register_ty_outlives(&self, ty: I::Ty, lt: I::Region) {
-        self.infcx.register_ty_outlives(ty, lt);
+        self.delegate.register_ty_outlives(ty, lt);
     }
 
     pub(super) fn register_region_outlives(&self, a: I::Region, b: I::Region) {
         // `b : a` ==> `a <= b`
-        self.infcx.sub_regions(b, a);
+        self.delegate.sub_regions(b, a);
     }
 
     /// Computes the list of goals required for `arg` to be well-formed
@@ -887,7 +897,7 @@ where
         param_env: I::ParamEnv,
         arg: I::GenericArg,
     ) -> Option<Vec<Goal<I, I::Predicate>>> {
-        self.infcx.well_formed_goals(param_env, arg)
+        self.delegate.well_formed_goals(param_env, arg)
     }
 
     pub(super) fn trait_ref_is_knowable(
@@ -895,9 +905,10 @@ where
         param_env: I::ParamEnv,
         trait_ref: ty::TraitRef<I>,
     ) -> Result<bool, NoSolution> {
-        let infcx = self.infcx;
+        let delegate = self.delegate;
         let lazily_normalize_ty = |ty| self.structurally_normalize_ty(param_env, ty);
-        infcx.trait_ref_is_knowable(trait_ref, lazily_normalize_ty)
+        coherence::trait_ref_is_knowable(&**delegate, trait_ref, lazily_normalize_ty)
+            .map(|is_knowable| is_knowable.is_ok())
     }
 
     pub(super) fn fetch_eligible_assoc_item(
@@ -907,7 +918,7 @@ where
         trait_assoc_def_id: I::DefId,
         impl_def_id: I::DefId,
     ) -> Result<Option<I::DefId>, NoSolution> {
-        self.infcx.fetch_eligible_assoc_item(
+        self.delegate.fetch_eligible_assoc_item(
             param_env,
             goal_trait_ref,
             trait_assoc_def_id,
@@ -916,7 +927,7 @@ where
     }
 
     pub(super) fn can_define_opaque_ty(&self, def_id: I::LocalDefId) -> bool {
-        self.infcx.defining_opaque_types().contains(&def_id)
+        self.delegate.defining_opaque_types().contains(&def_id)
     }
 
     pub(super) fn insert_hidden_type(
@@ -926,7 +937,7 @@ where
         hidden_ty: I::Ty,
     ) -> Result<(), NoSolution> {
         let mut goals = Vec::new();
-        self.infcx.insert_hidden_type(opaque_type_key, param_env, hidden_ty, &mut goals)?;
+        self.delegate.insert_hidden_type(opaque_type_key, param_env, hidden_ty, &mut goals)?;
         self.add_goals(GoalSource::Misc, goals);
         Ok(())
     }
@@ -939,7 +950,7 @@ where
         hidden_ty: I::Ty,
     ) {
         let mut goals = Vec::new();
-        self.infcx.add_item_bounds_for_hidden_type(
+        self.delegate.add_item_bounds_for_hidden_type(
             opaque_def_id,
             opaque_args,
             param_env,
@@ -958,7 +969,7 @@ where
         ty: I::Ty,
     ) -> Vec<CanonicalResponse<I>> {
         // FIXME: Super inefficient to be cloning this...
-        let opaques = self.infcx.clone_opaque_types_for_query_response();
+        let opaques = self.delegate.clone_opaque_types_for_query_response();
 
         let mut values = vec![];
         for (candidate_key, candidate_ty) in opaques {
@@ -970,7 +981,7 @@ where
                     result: *result,
                 })
                 .enter(|ecx| {
-                    for (a, b) in std::iter::zip(candidate_key.args, key.args) {
+                    for (a, b) in std::iter::zip(candidate_key.args.iter(), key.args.iter()) {
                         ecx.eq(param_env, a, b)?;
                     }
                     ecx.eq(param_env, candidate_ty, ty)?;
@@ -995,7 +1006,7 @@ where
         param_env: I::ParamEnv,
         unevaluated: ty::UnevaluatedConst<I>,
     ) -> Option<I::Const> {
-        self.infcx.try_const_eval_resolve(param_env, unevaluated)
+        self.delegate.try_const_eval_resolve(param_env, unevaluated)
     }
 
     pub(super) fn is_transmutable(
@@ -1005,7 +1016,7 @@ where
         src: I::Ty,
         assume: I::Const,
     ) -> Result<Certainty, NoSolution> {
-        self.infcx.is_transmutable(param_env, dst, src, assume)
+        self.delegate.is_transmutable(param_env, dst, src, assume)
     }
 }
 
@@ -1016,22 +1027,22 @@ where
 ///
 /// This is a performance optimization to more eagerly detect cycles during trait
 /// solving. See tests/ui/traits/next-solver/cycles/cycle-modulo-ambig-aliases.rs.
-struct ReplaceAliasWithInfer<'me, 'a, Infcx, I>
+struct ReplaceAliasWithInfer<'me, 'a, D, I>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    ecx: &'me mut EvalCtxt<'a, Infcx>,
+    ecx: &'me mut EvalCtxt<'a, D>,
     param_env: I::ParamEnv,
 }
 
-impl<Infcx, I> TypeFolder<I> for ReplaceAliasWithInfer<'_, '_, Infcx, I>
+impl<D, I> TypeFolder<I> for ReplaceAliasWithInfer<'_, '_, D, I>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    fn interner(&self) -> I {
-        self.ecx.interner()
+    fn cx(&self) -> I {
+        self.ecx.cx()
     }
 
     fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
@@ -1045,7 +1056,7 @@ where
                 );
                 self.ecx.add_goal(
                     GoalSource::Misc,
-                    Goal::new(self.interner(), self.param_env, normalizes_to),
+                    Goal::new(self.cx(), self.param_env, normalizes_to),
                 );
                 infer_ty
             }
@@ -1064,7 +1075,7 @@ where
                 );
                 self.ecx.add_goal(
                     GoalSource::Misc,
-                    Goal::new(self.interner(), self.param_env, normalizes_to),
+                    Goal::new(self.cx(), self.param_env, normalizes_to),
                 );
                 infer_ct
             }

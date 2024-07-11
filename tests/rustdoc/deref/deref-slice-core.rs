@@ -5,9 +5,9 @@
 
 use core::ops::Deref;
 
-// @has 'deref_slice_core/struct.MyArray.html'
-// @has '-' '//*[@id="deref-methods-%5BT%5D"]' 'Methods from Deref<Target = [T]>'
-// @has '-' '//*[@class="impl-items"]//*[@id="method.len"]' 'pub fn len(&self)'
+//@ has 'deref_slice_core/struct.MyArray.html'
+//@ has '-' '//*[@id="deref-methods-%5BT%5D"]' 'Methods from Deref<Target = [T]>'
+//@ has '-' '//*[@class="impl-items"]//*[@id="method.len"]' 'pub fn len(&self)'
 
 pub struct MyArray<T> {
     array: [T; 10],

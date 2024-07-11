@@ -6,7 +6,7 @@ use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt, Upcast, VtblEntry};
 use rustc_middle::ty::{GenericArgs, TypeVisitableExt};
-use rustc_span::{sym, Span};
+use rustc_span::{sym, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use std::fmt::Debug;
@@ -117,7 +117,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
             let &(inner_most_trait_ref, _, _) = stack.last().unwrap();
 
             let mut direct_super_traits_iter = tcx
-                .super_predicates_of(inner_most_trait_ref.def_id())
+                .explicit_super_predicates_of(inner_most_trait_ref.def_id())
                 .predicates
                 .into_iter()
                 .filter_map(move |(pred, _)| {
@@ -285,13 +285,14 @@ fn vtable_entries<'tcx>(
                         return VtblEntry::Vacant;
                     }
 
-                    let instance = ty::Instance::resolve_for_vtable(
+                    let instance = ty::Instance::expect_resolve_for_vtable(
                         tcx,
                         ty::ParamEnv::reveal_all(),
                         def_id,
                         args,
-                    )
-                    .expect("resolution failed during building vtable representation");
+                        DUMMY_SP,
+                    );
+
                     VtblEntry::Method(instance)
                 });
 

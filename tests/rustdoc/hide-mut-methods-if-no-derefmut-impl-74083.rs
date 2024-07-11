@@ -9,8 +9,8 @@ impl Foo {
     pub fn foo(&mut self) {}
 }
 
-// @has foo/struct.Bar.html
-// @!has - '//div[@class="sidebar-links"]/a[@href="#method.foo"]' 'foo'
+//@ has foo/struct.Bar.html
+//@ !has - '//div[@class="sidebar-links"]/a[@href="#method.foo"]' 'foo'
 pub struct Bar {
     foo: Foo,
 }

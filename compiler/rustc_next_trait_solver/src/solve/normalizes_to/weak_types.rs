@@ -6,30 +6,30 @@
 
 use rustc_type_ir::{self as ty, Interner};
 
-use crate::infcx::SolverDelegate;
+use crate::delegate::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource, QueryResult};
 
-impl<Infcx, I> EvalCtxt<'_, Infcx>
+impl<D, I> EvalCtxt<'_, D>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     pub(super) fn normalize_weak_type(
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
     ) -> QueryResult<I> {
-        let tcx = self.interner();
+        let cx = self.cx();
         let weak_ty = goal.predicate.alias;
 
         // Check where clauses
         self.add_goals(
             GoalSource::Misc,
-            tcx.predicates_of(weak_ty.def_id)
-                .iter_instantiated(tcx, &weak_ty.args)
-                .map(|pred| goal.with(tcx, pred)),
+            cx.predicates_of(weak_ty.def_id)
+                .iter_instantiated(cx, weak_ty.args)
+                .map(|pred| goal.with(cx, pred)),
         );
 
-        let actual = tcx.type_of(weak_ty.def_id).instantiate(tcx, &weak_ty.args);
+        let actual = cx.type_of(weak_ty.def_id).instantiate(cx, weak_ty.args);
         self.instantiate_normalizes_to_term(goal, actual.into());
 
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

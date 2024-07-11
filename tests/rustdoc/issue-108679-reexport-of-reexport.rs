@@ -5,12 +5,12 @@
 #![crate_name = "foo"]
 
 pub mod a {
-    // @has 'foo/a/index.html'
+    //@ has 'foo/a/index.html'
     // Should only contain "Structs".
-    // @count - '//*[@id="main-content"]//*[@class="item-table"]' 1
-    // @has - '//*[@id="structs"]' 'Structs'
-    // @has - '//*[@id="main-content"]//a[@href="struct.A.html"]' 'A'
-    // @has - '//*[@id="main-content"]//a[@href="struct.B.html"]' 'B'
+    //@ count - '//*[@id="main-content"]//*[@class="item-table"]' 1
+    //@ has - '//*[@id="structs"]' 'Structs'
+    //@ has - '//*[@id="main-content"]//a[@href="struct.A.html"]' 'A'
+    //@ has - '//*[@id="main-content"]//a[@href="struct.B.html"]' 'B'
     mod b {
         pub struct B;
     }
@@ -18,12 +18,12 @@ pub mod a {
     pub struct A;
 }
 
-// @has 'foo/index.html'
-// @!has - '//*[@id="structs"]' 'Structs'
-// @has - '//*[@id="reexports"]' 'Re-exports'
-// @has - '//*[@id="modules"]' 'Modules'
-// @has - '//*[@id="main-content"]//*[@id="reexport.A"]' 'pub use self::a::A;'
-// @has - '//*[@id="main-content"]//*[@id="reexport.B"]' 'pub use self::a::B;'
+//@ has 'foo/index.html'
+//@ !has - '//*[@id="structs"]' 'Structs'
+//@ has - '//*[@id="reexports"]' 'Re-exports'
+//@ has - '//*[@id="modules"]' 'Modules'
+//@ has - '//*[@id="main-content"]//*[@id="reexport.A"]' 'pub use self::a::A;'
+//@ has - '//*[@id="main-content"]//*[@id="reexport.B"]' 'pub use self::a::B;'
 // Should only contain "Modules" and "Re-exports".
-// @count - '//*[@id="main-content"]//*[@class="item-table"]' 2
+//@ count - '//*[@id="main-content"]//*[@class="item-table"]' 2
 pub use self::a::{A, B};

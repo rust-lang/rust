@@ -112,7 +112,7 @@ pub fn check(
             let file = entry.path();
             let filename = file.file_name().unwrap().to_string_lossy();
             let filen_underscore = filename.replace('-', "_").replace(".rs", "");
-            let filename_is_gate_test = test_filen_gate(&filen_underscore, &mut features);
+            let filename_gate = test_filen_gate(&filen_underscore, &mut features);
 
             for (i, line) in contents.lines().enumerate() {
                 let mut err = |msg: &str| {
@@ -128,7 +128,7 @@ pub fn check(
                 };
                 match features.get_mut(feature_name) {
                     Some(f) => {
-                        if filename_is_gate_test {
+                        if filename_gate == Some(feature_name) {
                             err(&format!(
                                 "The file is already marked as gate test \
                                       through its name, no need for a \
@@ -259,18 +259,18 @@ fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
     r.captures(line).and_then(|c| c.get(1)).map(|m| m.as_str())
 }
 
-fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
+fn test_filen_gate<'f>(filen_underscore: &'f str, features: &mut Features) -> Option<&'f str> {
     let prefix = "feature_gate_";
-    if filen_underscore.starts_with(prefix) {
+    if let Some(suffix) = filen_underscore.strip_prefix(prefix) {
         for (n, f) in features.iter_mut() {
             // Equivalent to filen_underscore == format!("feature_gate_{n}")
-            if &filen_underscore[prefix.len()..] == n {
+            if suffix == n {
                 f.has_gate_test = true;
-                return true;
+                return Some(suffix);
             }
         }
     }
-    false
+    None
 }
 
 pub fn collect_lang_features(base_compiler_path: &Path, bad: &mut bool) -> Features {

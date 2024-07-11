@@ -71,6 +71,7 @@ This API is completely unstable and subject to change.
 #![feature(rustdoc_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
+#![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 
 #[macro_use]
@@ -91,7 +92,6 @@ mod errors;
 pub mod hir_wf_check;
 mod impl_wf_check;
 mod outlives;
-pub mod structured_errors;
 mod variance;
 
 use rustc_hir as hir;
@@ -151,8 +151,10 @@ pub fn provide(providers: &mut Providers) {
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
-    if tcx.features().rustc_attrs {
-        let _ = tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
+    // FIXME(effects): remove once effects is implemented in old trait solver
+    // or if the next solver is stabilized.
+    if tcx.features().effects && !tcx.next_trait_solver_globally() {
+        tcx.dcx().emit_err(errors::EffectsWithoutNextSolver);
     }
 
     tcx.sess.time("coherence_checking", || {
@@ -169,11 +171,11 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     });
 
     if tcx.features().rustc_attrs {
-        let _ = tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
-    }
-
-    if tcx.features().rustc_attrs {
-        let _ = collect::test_opaque_hidden_types(tcx);
+        tcx.sess.time("outlives_dumping", || outlives::dump::inferred_outlives(tcx));
+        tcx.sess.time("variance_dumping", || variance::dump::variances(tcx));
+        collect::dump::opaque_hidden_types(tcx);
+        collect::dump::predicates_and_item_bounds(tcx);
+        collect::dump::def_parents(tcx);
     }
 
     // Make sure we evaluate all static and (non-associated) const items, even if unused.

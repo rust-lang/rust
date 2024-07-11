@@ -2,6 +2,6 @@
 
 #![crate_name = "foo"]
 
-// @!has 'foo/index.html' '//code' 'extern crate std;'
-// @!has 'foo/index.html' '//code' 'use std::prelude'
+//@ !has 'foo/index.html' '//code' 'extern crate std;'
+//@ !has 'foo/index.html' '//code' 'use std::prelude'
 pub struct Foo;

@@ -147,14 +147,13 @@ cfg_match! {
             [crate::owned_slice::OwnedSlice]
         );
 
-        // PowerPC and MIPS platforms with 32-bit pointers do not
-        // have AtomicU64 type.
-        #[cfg(not(any(target_arch = "powerpc", target_arch = "mips")))]
+        // Use portable AtomicU64 for targets without native 64-bit atomics
+        #[cfg(target_has_atomic = "64")]
         already_sync!(
             [std::sync::atomic::AtomicU64]
         );
 
-        #[cfg(any(target_arch = "powerpc", target_arch = "mips"))]
+        #[cfg(not(target_has_atomic = "64"))]
         already_sync!(
             [portable_atomic::AtomicU64]
         );

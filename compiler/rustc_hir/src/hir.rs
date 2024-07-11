@@ -526,6 +526,7 @@ pub enum GenericParamKind<'hir> {
         /// Optional default value for the const generic param
         default: Option<&'hir AnonConst>,
         is_host_effect: bool,
+        synthetic: bool,
     },
 }
 
@@ -2413,7 +2414,7 @@ pub enum ImplItemKind<'hir> {
 /// * the `A: Bound` in `Trait<A: Bound>`
 /// * the `RetTy` in `Trait(ArgTy, ArgTy) -> RetTy`
 /// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `associated_const_equality`)
-/// * the `f(): Bound` in `Trait<f(): Bound>` (feature `return_type_notation`)
+/// * the `f(..): Bound` in `Trait<f(..): Bound>` (feature `return_type_notation`)
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct AssocItemConstraint<'hir> {
     pub hir_id: HirId,
@@ -3364,6 +3365,7 @@ pub enum ItemKind<'hir> {
 /// Refer to [`ImplItem`] for an associated item within an impl block.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Impl<'hir> {
+    pub constness: Constness,
     pub safety: Safety,
     pub polarity: ImplPolarity,
     pub defaultness: Defaultness,

@@ -87,9 +87,7 @@ impl Diff {
         self
     }
 
-    #[track_caller]
-    pub fn run(&mut self) {
-        self.drop_bomb.defuse();
+    fn run_common(&self) -> (&str, &str, String, String) {
         let expected = self.expected.as_ref().expect("expected text not set");
         let mut actual = self.actual.as_ref().expect("actual text not set").to_string();
         let expected_name = self.expected_name.as_ref().unwrap();
@@ -104,6 +102,14 @@ impl Diff {
             .header(expected_name, actual_name)
             .to_string();
 
+        (expected_name, actual_name, output, actual)
+    }
+
+    #[track_caller]
+    pub fn run(&mut self) {
+        self.drop_bomb.defuse();
+        let (expected_name, actual_name, output, actual) = self.run_common();
+
         if !output.is_empty() {
             // If we can bless (meaning we have a file to write into and the `RUSTC_BLESS_TEST`
             // environment variable set), then we write into the file and return.
@@ -116,6 +122,28 @@ impl Diff {
             }
             panic!(
                 "test failed: `{}` is different from `{}`\n\n{}",
+                expected_name, actual_name, output
+            )
+        }
+    }
+
+    #[track_caller]
+    pub fn run_fail(&mut self) {
+        self.drop_bomb.defuse();
+        let (expected_name, actual_name, output, actual) = self.run_common();
+
+        if output.is_empty() {
+            // If we can bless (meaning we have a file to write into and the `RUSTC_BLESS_TEST`
+            // environment variable set), then we write into the file and return.
+            if let Some(ref expected_file) = self.expected_file {
+                if std::env::var("RUSTC_BLESS_TEST").is_ok() {
+                    println!("Blessing `{}`", expected_file.display());
+                    fs_wrapper::write(expected_file, actual);
+                    return;
+                }
+            }
+            panic!(
+                "test failed: `{}` is not different from `{}`\n\n{}",
                 expected_name, actual_name, output
             )
         }

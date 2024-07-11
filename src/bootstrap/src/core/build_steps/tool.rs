@@ -1,7 +1,6 @@
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use crate::core::build_steps::compile;
 use crate::core::build_steps::toolstate::ToolState;
@@ -9,7 +8,7 @@ use crate::core::builder;
 use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
-use crate::utils::helpers::output;
+use crate::utils::exec::{command, BootstrapCommand};
 use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::Compiler;
 use crate::Mode;
@@ -32,6 +31,8 @@ struct ToolBuild {
     extra_features: Vec<String>,
     /// Nightly-only features that are allowed (comma-separated list).
     allow_features: &'static str,
+    /// Additional arguments to pass to the `cargo` invocation.
+    cargo_args: Vec<String>,
 }
 
 impl Builder<'_> {
@@ -100,6 +101,7 @@ impl Step for ToolBuild {
         if !self.allow_features.is_empty() {
             cargo.allow_features(self.allow_features);
         }
+        cargo.args(self.cargo_args);
         let _guard = builder.msg_tool(
             Kind::Build,
             self.mode,
@@ -126,10 +128,7 @@ impl Step for ToolBuild {
             if tool == "tidy" {
                 tool = "rust-tidy";
             }
-            let cargo_out = builder.cargo_out(compiler, self.mode, target).join(exe(tool, target));
-            let bin = builder.tools_dir(compiler).join(exe(tool, target));
-            builder.copy_link(&cargo_out, &bin);
-            bin
+            copy_link_tool_bin(builder, self.compiler, self.target, self.mode, tool)
         }
     }
 }
@@ -211,7 +210,29 @@ pub fn prepare_tool_cargo(
     // See https://github.com/rust-lang/rust/issues/116538
     cargo.rustflag("-Zunstable-options");
 
+    // `-Zon-broken-pipe=kill` breaks cargo tests
+    if !path.ends_with("cargo") {
+        // If the output is piped to e.g. `head -n1` we want the process to be killed,
+        // rather than having an error bubble up and cause a panic.
+        cargo.rustflag("-Zon-broken-pipe=kill");
+    }
+
     cargo
+}
+
+/// Links a built tool binary with the given `name` from the build directory to the
+/// tools directory.
+fn copy_link_tool_bin(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+    mode: Mode,
+    name: &str,
+) -> PathBuf {
+    let cargo_out = builder.cargo_out(compiler, mode, target).join(exe(name, target));
+    let bin = builder.tools_dir(compiler).join(exe(name, target));
+    builder.copy_link(&cargo_out, &bin);
+    bin
 }
 
 macro_rules! bootstrap_tool {
@@ -223,6 +244,7 @@ macro_rules! bootstrap_tool {
         ;
     )+) => {
         #[derive(PartialEq, Eq, Clone)]
+        #[allow(dead_code)]
         pub enum Tool {
             $(
                 $name,
@@ -283,6 +305,7 @@ macro_rules! bootstrap_tool {
                     },
                     extra_features: vec![],
                     allow_features: concat!($($allow_features)*),
+                    cargo_args: vec![]
                 })
             }
         }
@@ -313,6 +336,7 @@ bootstrap_tool!(
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
+    RustcPerfWrapper, "src/tools/rustc-perf-wrapper", "rustc-perf-wrapper";
 );
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -349,7 +373,57 @@ impl Step for OptimizedDist {
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
+            cargo_args: Vec::new(),
         })
+    }
+}
+
+/// The [rustc-perf](https://github.com/rust-lang/rustc-perf) benchmark suite, which is added
+/// as a submodule at `src/tools/rustc-perf`.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct RustcPerf {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for RustcPerf {
+    /// Path to the built `collector` binary.
+    type Output = PathBuf;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/rustc-perf")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustcPerf {
+            compiler: run.builder.compiler(0, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        // We need to ensure the rustc-perf submodule is initialized.
+        builder.update_submodule(Path::new("src/tools/rustc-perf"));
+
+        let tool = ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "collector",
+            mode: Mode::ToolBootstrap,
+            path: "src/tools/rustc-perf",
+            source_type: SourceType::Submodule,
+            extra_features: Vec::new(),
+            allow_features: "",
+            // Only build the collector package, which is used for benchmarking through
+            // a CLI.
+            cargo_args: vec!["-p".to_string(), "collector".to_string()],
+        };
+        let collector_bin = builder.ensure(tool.clone());
+        // We also need to symlink the `rustc-fake` binary to the corresponding directory,
+        // because `collector` expects it in the same directory.
+        copy_link_tool_bin(builder, tool.compiler, tool.target, tool.mode, "rustc-fake");
+
+        collector_bin
     }
 }
 
@@ -359,12 +433,12 @@ pub struct ErrorIndex {
 }
 
 impl ErrorIndex {
-    pub fn command(builder: &Builder<'_>) -> Command {
+    pub fn command(builder: &Builder<'_>) -> BootstrapCommand {
         // Error-index-generator links with the rustdoc library, so we need to add `rustc_lib_paths`
         // for rustc_private and libLLVM.so, and `sysroot_lib` for libstd, etc.
         let host = builder.config.build;
         let compiler = builder.compiler_for(builder.top_stage, host, host);
-        let mut cmd = Command::new(builder.ensure(ErrorIndex { compiler }));
+        let mut cmd = command(builder.ensure(ErrorIndex { compiler }));
         let mut dylib_paths = builder.rustc_lib_paths(compiler);
         dylib_paths.push(PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host)));
         add_dylib_path(dylib_paths, &mut cmd);
@@ -403,6 +477,7 @@ impl Step for ErrorIndex {
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
+            cargo_args: Vec::new(),
         })
     }
 }
@@ -437,6 +512,7 @@ impl Step for RemoteTestServer {
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
+            cargo_args: Vec::new(),
         })
     }
 }
@@ -476,24 +552,23 @@ impl Step for Rustdoc {
             return builder.initial_rustc.with_file_name(exe("rustdoc", target_compiler.host));
         }
         let target = target_compiler.host;
-        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-        // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
-        // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
-        // rustc compiler it's paired with, so it must be built with the previous stage compiler.
-        let build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
+
+        let build_compiler = if builder.download_rustc() && target_compiler.stage == 1 {
+            // We already have the stage 1 compiler, we don't need to cut the stage.
+            builder.compiler(target_compiler.stage, builder.config.build)
+        } else {
+            // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+            // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
+            // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
+            // rustc compiler it's paired with, so it must be built with the previous stage compiler.
+            builder.compiler(target_compiler.stage - 1, builder.config.build)
+        };
 
         // When using `download-rustc` and a stage0 build_compiler, copying rustc doesn't actually
         // build stage0 libstd (because the libstd in sysroot has the wrong ABI). Explicitly build
         // it.
         builder.ensure(compile::Std::new(build_compiler, target_compiler.host));
         builder.ensure(compile::Rustc::new(build_compiler, target_compiler.host));
-        // NOTE: this implies that `download-rustc` is pretty useless when compiling with the stage0
-        // compiler, since you do just as much work.
-        if !builder.config.dry_run() && builder.download_rustc() && build_compiler.stage == 0 {
-            println!(
-                "WARNING: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
-            );
-        }
 
         // The presence of `target_compiler` ensures that the necessary libraries (codegen backends,
         // compiler libraries, ...) are built. Rustdoc does not require the presence of any
@@ -507,7 +582,8 @@ impl Step for Rustdoc {
             features.push("jemalloc".to_string());
         }
 
-        let mut cargo = prepare_tool_cargo(
+        // NOTE: Never modify the rustflags here, it breaks the build cache for other tools!
+        let cargo = prepare_tool_cargo(
             builder,
             build_compiler,
             Mode::ToolRustc,
@@ -518,11 +594,6 @@ impl Step for Rustdoc {
             features.as_slice(),
         );
 
-        // If the rustdoc output is piped to e.g. `head -n1` we want the process
-        // to be killed, rather than having an error bubble up and cause a
-        // panic.
-        cargo.rustflag("-Zon-broken-pipe=kill");
-
         let _guard = builder.msg_tool(
             Kind::Build,
             Mode::ToolRustc,
@@ -531,7 +602,7 @@ impl Step for Rustdoc {
             &self.compiler.host,
             &target,
         );
-        builder.run(&mut cargo.into());
+        cargo.into_cmd().run(builder);
 
         // Cargo adds a number of paths to the dylib search path on windows, which results in
         // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
@@ -586,6 +657,8 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
+        builder.build.update_submodule(Path::new("src/tools/cargo"));
+
         builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
@@ -595,6 +668,7 @@ impl Step for Cargo {
             source_type: SourceType::Submodule,
             extra_features: Vec::new(),
             allow_features: "",
+            cargo_args: Vec::new(),
         })
     }
 }
@@ -622,6 +696,7 @@ impl Step for LldWrapper {
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
+            cargo_args: Vec::new(),
         })
     }
 }
@@ -670,6 +745,7 @@ impl Step for RustAnalyzer {
             extra_features: vec!["in-rust-tree".to_owned()],
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
+            cargo_args: Vec::new(),
         })
     }
 }
@@ -717,6 +793,7 @@ impl Step for RustAnalyzerProcMacroSrv {
             extra_features: vec!["in-rust-tree".to_owned()],
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
+            cargo_args: Vec::new(),
         });
 
         // Copy `rust-analyzer-proc-macro-srv` to `<sysroot>/libexec/`
@@ -780,7 +857,7 @@ impl Step for LlvmBitcodeLinker {
             &self.extra_features,
         );
 
-        builder.run(&mut cargo.into());
+        cargo.into_cmd().run(builder);
 
         let tool_out = builder
             .cargo_out(self.compiler, Mode::ToolRustc, self.target)
@@ -835,20 +912,20 @@ impl Step for LibcxxVersionTool {
             }
 
             let compiler = builder.cxx(self.target).unwrap();
-            let mut cmd = Command::new(compiler);
+            let mut cmd = command(compiler);
 
             cmd.arg("-o")
                 .arg(&executable)
                 .arg(builder.src.join("src/tools/libcxx-version/main.cpp"));
 
-            builder.run_cmd(&mut cmd);
+            cmd.run(builder);
 
             if !executable.exists() {
                 panic!("Something went wrong. {} is not present", executable.display());
             }
         }
 
-        let version_output = output(&mut Command::new(executable));
+        let version_output = command(executable).capture_stdout().run(builder).stdout();
 
         let version_str = version_output.split_once("version:").unwrap().1;
         let version = version_str.trim().parse::<usize>().unwrap();
@@ -923,6 +1000,7 @@ macro_rules! tool_extended {
                     extra_features: $sel.extra_features,
                     source_type: SourceType::InTree,
                     allow_features: concat!($($allow_features)*),
+                    cargo_args: vec![]
                 });
 
                 if (false $(|| !$add_bins_to_sysroot.is_empty())?) && $sel.compiler.stage > 0 {
@@ -968,10 +1046,10 @@ tool_extended!((self, builder),
 );
 
 impl<'a> Builder<'a> {
-    /// Gets a `Command` which is ready to run `tool` in `stage` built for
+    /// Gets a `BootstrapCommand` which is ready to run `tool` in `stage` built for
     /// `host`.
-    pub fn tool_cmd(&self, tool: Tool) -> Command {
-        let mut cmd = Command::new(self.tool_exe(tool));
+    pub fn tool_cmd(&self, tool: Tool) -> BootstrapCommand {
+        let mut cmd = command(self.tool_exe(tool));
         let compiler = self.compiler(0, self.config.build);
         let host = &compiler.host;
         // Prepares the `cmd` provided to be able to run the `compiler` provided.

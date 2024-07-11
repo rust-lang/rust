@@ -7,9 +7,10 @@
 use std::marker::PhantomData;
 use std::mem;
 
+use rustc_type_ir::inherent::*;
 use rustc_type_ir::{self as ty, Interner};
 
-use crate::infcx::SolverDelegate;
+use crate::delegate::SolverDelegate;
 use crate::solve::eval_ctxt::canonical;
 use crate::solve::inspect;
 use crate::solve::{
@@ -37,12 +38,12 @@ use crate::solve::{
 /// trees. At the end of trait solving `ProofTreeBuilder::finalize`
 /// is called to recursively convert the whole structure to a
 /// finished proof tree.
-pub(in crate::solve) struct ProofTreeBuilder<Infcx, I = <Infcx as SolverDelegate>::Interner>
+pub(in crate::solve) struct ProofTreeBuilder<D, I = <D as SolverDelegate>::Interner>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    _infcx: PhantomData<Infcx>,
+    _infcx: PhantomData<D>,
     state: Option<Box<DebugSolver<I>>>,
 }
 
@@ -235,8 +236,8 @@ impl<I: Interner> WipProbeStep<I> {
     }
 }
 
-impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
-    fn new(state: impl Into<DebugSolver<I>>) -> ProofTreeBuilder<Infcx> {
+impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
+    fn new(state: impl Into<DebugSolver<I>>) -> ProofTreeBuilder<D> {
         ProofTreeBuilder { state: Some(Box::new(state.into())), _infcx: PhantomData }
     }
 
@@ -258,7 +259,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
         self.state.as_deref_mut()
     }
 
-    pub fn take_and_enter_probe(&mut self) -> ProofTreeBuilder<Infcx> {
+    pub fn take_and_enter_probe(&mut self) -> ProofTreeBuilder<D> {
         let mut nested = ProofTreeBuilder { state: self.state.take(), _infcx: PhantomData };
         nested.enter_probe();
         nested
@@ -273,18 +274,18 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
         }
     }
 
-    pub fn new_maybe_root(generate_proof_tree: GenerateProofTree) -> ProofTreeBuilder<Infcx> {
+    pub fn new_maybe_root(generate_proof_tree: GenerateProofTree) -> ProofTreeBuilder<D> {
         match generate_proof_tree {
             GenerateProofTree::No => ProofTreeBuilder::new_noop(),
             GenerateProofTree::Yes => ProofTreeBuilder::new_root(),
         }
     }
 
-    pub fn new_root() -> ProofTreeBuilder<Infcx> {
+    pub fn new_root() -> ProofTreeBuilder<D> {
         ProofTreeBuilder::new(DebugSolver::Root)
     }
 
-    pub fn new_noop() -> ProofTreeBuilder<Infcx> {
+    pub fn new_noop() -> ProofTreeBuilder<D> {
         ProofTreeBuilder { state: None, _infcx: PhantomData }
     }
 
@@ -297,7 +298,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
         goal: Goal<I, I::Predicate>,
         orig_values: &[I::GenericArg],
         kind: GoalEvaluationKind,
-    ) -> ProofTreeBuilder<Infcx> {
+    ) -> ProofTreeBuilder<D> {
         self.opt_nested(|| match kind {
             GoalEvaluationKind::Root => Some(WipGoalEvaluation {
                 uncanonicalized_goal: goal,
@@ -311,7 +312,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
     pub fn new_canonical_goal_evaluation(
         &mut self,
         goal: CanonicalInput<I>,
-    ) -> ProofTreeBuilder<Infcx> {
+    ) -> ProofTreeBuilder<D> {
         self.nested(|| WipCanonicalGoalEvaluation {
             goal,
             kind: None,
@@ -322,13 +323,13 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
 
     pub fn finalize_canonical_goal_evaluation(
         &mut self,
-        tcx: I,
+        cx: I,
     ) -> Option<I::CanonicalGoalEvaluationStepRef> {
         self.as_mut().map(|this| match this {
             DebugSolver::CanonicalGoalEvaluation(evaluation) => {
                 let final_revision = mem::take(&mut evaluation.final_revision).unwrap();
                 let final_revision =
-                    tcx.intern_canonical_goal_evaluation_step(final_revision.finalize());
+                    cx.intern_canonical_goal_evaluation_step(final_revision.finalize());
                 let kind = WipCanonicalGoalEvaluationKind::Interned { final_revision };
                 assert_eq!(evaluation.kind.replace(kind), None);
                 final_revision
@@ -337,10 +338,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
         })
     }
 
-    pub fn canonical_goal_evaluation(
-        &mut self,
-        canonical_goal_evaluation: ProofTreeBuilder<Infcx>,
-    ) {
+    pub fn canonical_goal_evaluation(&mut self, canonical_goal_evaluation: ProofTreeBuilder<D>) {
         if let Some(this) = self.as_mut() {
             match (this, *canonical_goal_evaluation.state.unwrap()) {
                 (
@@ -366,7 +364,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
         }
     }
 
-    pub fn goal_evaluation(&mut self, goal_evaluation: ProofTreeBuilder<Infcx>) {
+    pub fn goal_evaluation(&mut self, goal_evaluation: ProofTreeBuilder<D>) {
         if let Some(this) = self.as_mut() {
             match this {
                 DebugSolver::Root => *this = *goal_evaluation.state.unwrap(),
@@ -382,7 +380,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
         &mut self,
         var_values: ty::CanonicalVarValues<I>,
         instantiated_goal: QueryInput<I, I::Predicate>,
-    ) -> ProofTreeBuilder<Infcx> {
+    ) -> ProofTreeBuilder<D> {
         self.nested(|| WipCanonicalGoalEvaluationStep {
             var_values: var_values.var_values.to_vec(),
             instantiated_goal,
@@ -396,7 +394,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
         })
     }
 
-    pub fn goal_evaluation_step(&mut self, goal_evaluation_step: ProofTreeBuilder<Infcx>) {
+    pub fn goal_evaluation_step(&mut self, goal_evaluation_step: ProofTreeBuilder<D>) {
         if let Some(this) = self.as_mut() {
             match (this, *goal_evaluation_step.state.unwrap()) {
                 (
@@ -448,12 +446,12 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
         }
     }
 
-    pub fn probe_final_state(&mut self, infcx: &Infcx, max_input_universe: ty::UniverseIndex) {
+    pub fn probe_final_state(&mut self, delegate: &D, max_input_universe: ty::UniverseIndex) {
         match self.as_mut() {
             None => {}
             Some(DebugSolver::CanonicalGoalEvaluationStep(state)) => {
                 let final_state = canonical::make_canonical_state(
-                    infcx,
+                    delegate,
                     &state.var_values,
                     max_input_universe,
                     (),
@@ -467,21 +465,21 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
 
     pub fn add_normalizes_to_goal(
         &mut self,
-        infcx: &Infcx,
+        delegate: &D,
         max_input_universe: ty::UniverseIndex,
         goal: Goal<I, ty::NormalizesTo<I>>,
     ) {
         self.add_goal(
-            infcx,
+            delegate,
             max_input_universe,
             GoalSource::Misc,
-            goal.with(infcx.interner(), goal.predicate),
+            goal.with(delegate.cx(), goal.predicate),
         );
     }
 
     pub fn add_goal(
         &mut self,
-        infcx: &Infcx,
+        delegate: &D,
         max_input_universe: ty::UniverseIndex,
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
@@ -490,7 +488,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
             None => {}
             Some(DebugSolver::CanonicalGoalEvaluationStep(state)) => {
                 let goal = canonical::make_canonical_state(
-                    infcx,
+                    delegate,
                     &state.var_values,
                     max_input_universe,
                     goal,
@@ -503,14 +501,14 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
 
     pub(crate) fn record_impl_args(
         &mut self,
-        infcx: &Infcx,
+        delegate: &D,
         max_input_universe: ty::UniverseIndex,
         impl_args: I::GenericArgs,
     ) {
         match self.as_mut() {
             Some(DebugSolver::CanonicalGoalEvaluationStep(state)) => {
                 let impl_args = canonical::make_canonical_state(
-                    infcx,
+                    delegate,
                     &state.var_values,
                     max_input_universe,
                     impl_args,
@@ -538,7 +536,7 @@ impl<Infcx: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<Infcx> {
         }
     }
 
-    pub fn finish_probe(mut self) -> ProofTreeBuilder<Infcx> {
+    pub fn finish_probe(mut self) -> ProofTreeBuilder<D> {
         match self.as_mut() {
             None => {}
             Some(DebugSolver::CanonicalGoalEvaluationStep(state)) => {

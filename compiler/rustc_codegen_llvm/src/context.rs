@@ -3,6 +3,7 @@ use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::coverageinfo;
 use crate::debuginfo;
+use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
 use crate::llvm;
 use crate::llvm_util;
 use crate::type_::Type;
@@ -27,7 +28,7 @@ use rustc_session::config::{BranchProtection, CFGuard, CFProtection};
 use rustc_session::config::{CrateType, DebugInfo, PAuthKey, PacRet};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{call::FnAbi, HasDataLayout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 use smallvec::SmallVec;
@@ -43,7 +44,6 @@ use std::str;
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
 pub struct CodegenCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
-    pub check_overflow: bool,
     pub use_dll_storage_attrs: bool,
     pub tls_model: llvm::ThreadLocalMode,
 
@@ -441,8 +441,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         // start) and then strongly recommending static linkage on Windows!
         let use_dll_storage_attrs = tcx.sess.target.is_like_windows;
 
-        let check_overflow = tcx.sess.overflow_checks();
-
         let tls_model = to_llvm_tls_model(tcx.sess.tls_model());
 
         let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
@@ -466,7 +464,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         CodegenCx {
             tcx,
-            check_overflow,
             use_dll_storage_attrs,
             tls_model,
             llmod,
@@ -522,6 +519,15 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         &self.vtables
     }
 
+    fn apply_vcall_visibility_metadata(
+        &self,
+        ty: Ty<'tcx>,
+        poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        vtable: &'ll Value,
+    ) {
+        apply_vcall_visibility_metadata(self, ty, poly_trait_ref, vtable);
+    }
+
     fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
         get_fn(self, instance)
     }
@@ -574,6 +580,7 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 ty::ParamEnv::reveal_all(),
                 def_id,
                 ty::List::empty(),
+                DUMMY_SP,
             )),
             _ => {
                 let name = name.unwrap_or("rust_eh_personality");
@@ -594,10 +601,6 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn sess(&self) -> &Session {
         self.tcx.sess
-    }
-
-    fn check_overflow(&self) -> bool {
-        self.check_overflow
     }
 
     fn codegen_unit(&self) -> &'tcx CodegenUnit<'tcx> {

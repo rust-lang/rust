@@ -37,7 +37,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use rustc_target::abi::FieldIdx;
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCauseCode, ObligationCtxt, StructurallyNormalizeExt,
 };
@@ -1139,7 +1139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // parameter's value explicitly, so we have to do some error-
             // checking here.
             let arg_count =
-                check_generic_arg_count_for_call(tcx, def_id, generics, seg, IsMethodCall::No);
+                check_generic_arg_count_for_call(self, def_id, generics, seg, IsMethodCall::No);
 
             if let ExplicitLateBound::Yes = arg_count.explicit_late_bound {
                 explicit_late_bound = ExplicitLateBound::Yes;
@@ -1182,7 +1182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     name: self.tcx.item_name(def.did()).to_ident_string(),
                 });
                 if ty.raw.has_param() {
-                    let guar = self.tcx.dcx().emit_err(errors::SelfCtorFromOuterItem {
+                    let guar = self.dcx().emit_err(errors::SelfCtorFromOuterItem {
                         span: path_span,
                         impl_span: tcx.def_span(impl_def_id),
                         sugg,
@@ -1207,7 +1207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Check the visibility of the ctor.
                     let vis = tcx.visibility(ctor_def_id);
                     if !vis.is_accessible_from(tcx.parent_module(hir_id).to_def_id(), tcx) {
-                        tcx.dcx()
+                        self.dcx()
                             .emit_err(CtorIsPrivate { span, def: tcx.def_path_str(adt_def.did()) });
                     }
                     let new_res = Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
@@ -1216,7 +1216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (new_res, Some(user_args.args))
                 }
                 _ => {
-                    let mut err = tcx.dcx().struct_span_err(
+                    let mut err = self.dcx().struct_span_err(
                         span,
                         "the `Self` constructor can only be used with tuple or unit structs",
                     );
@@ -1304,7 +1304,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.fcx.ty_infer(Some(param), inf.span).into()
                     }
                     (
-                        &GenericParamDefKind::Const { has_default, is_host_effect },
+                        &GenericParamDefKind::Const { has_default, is_host_effect, .. },
                         GenericArg::Infer(inf),
                     ) => {
                         if has_default && is_host_effect {
@@ -1346,7 +1346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx.var_for_def(self.span, param)
                         }
                     }
-                    GenericParamDefKind::Const { has_default, is_host_effect } => {
+                    GenericParamDefKind::Const { has_default, is_host_effect, .. } => {
                         if has_default {
                             // N.B. this is a bit of a hack. `infer_args` is passed depending on
                             // whether the user has provided generic args. E.g. for `Vec::new`
@@ -1375,7 +1375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let args_raw = self_ctor_args.unwrap_or_else(|| {
             lower_generic_args(
-                tcx,
+                self,
                 def_id,
                 &[],
                 has_self,

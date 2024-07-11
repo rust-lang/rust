@@ -141,7 +141,7 @@ impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx> {
                 return false;
             };
             let (callee, call_args) = if let Ok(Some(instance)) =
-                Instance::resolve(tcx, param_env, callee, normalized_args)
+                Instance::try_resolve(tcx, param_env, callee, normalized_args)
             {
                 (instance.def_id(), instance.args)
             } else {
@@ -217,12 +217,28 @@ impl<'mir, 'tcx, C: TerminatorClassifier<'tcx>> TriColorVisitor<BasicBlocks<'tcx
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. } => ControlFlow::Continue(()),
+
+            // Note that tail call terminator technically returns to the caller,
+            // but for purposes of this lint it makes sense to count it as possibly recursive,
+            // since it's still a call.
+            //
+            // If this'll be repurposed for something else, this might need to be changed.
+            TerminatorKind::TailCall { .. } => ControlFlow::Continue(()),
         }
     }
 
     fn node_settled(&mut self, bb: BasicBlock) -> ControlFlow<Self::BreakVal> {
         // When we examine a node for the last time, remember it if it is a recursive call.
         let terminator = self.body[bb].terminator();
+
+        // FIXME(explicit_tail_calls): highlight tail calls as "recursive call site"
+        //
+        // We don't want to lint functions that recurse only through tail calls
+        // (such as `fn g() { become () }`), so just adding `| TailCall { ... }`
+        // here won't work.
+        //
+        // But at the same time we would like to highlight both calls in a function like
+        // `fn f() { if false { become f() } else { f() } }`, so we need to figure something out.
         if self.classifier.is_recursive_terminator(self.tcx, self.body, terminator) {
             self.reachable_recursive_calls.push(terminator.source_info.span);
         }

@@ -65,7 +65,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageLive(_6);
         StorageLive(_4);
         StorageLive(_5);
-        _3 = Len((*_1));
+        _3 = PtrMetadata(_1);
         _4 = &raw const (*_1);
         _5 = _4 as *const T (PtrToPtr);
         _6 = NonNull::<T> { pointer: _5 };

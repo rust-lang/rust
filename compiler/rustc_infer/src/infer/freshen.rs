@@ -30,6 +30,7 @@
 //! solving a set of constraints. In contrast, the type inferencer assigns a value to each type
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
+
 use super::InferCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;
@@ -100,7 +101,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -117,7 +118,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
             | ty::RePlaceholder(..)
             | ty::ReStatic
             | ty::ReError(_)
-            | ty::ReErased => self.interner().lifetimes.re_erased,
+            | ty::ReErased => self.cx().lifetimes.re_erased,
         }
     }
 

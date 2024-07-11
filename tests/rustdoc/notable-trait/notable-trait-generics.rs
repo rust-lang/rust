@@ -10,8 +10,8 @@ pub mod generic_return {
 
     impl NotableTrait for Wrapper<u8> {}
 
-    // @has notable_trait_generics/generic_return/fn.returning.html
-    // @!has - '//a[@class="tooltip"]/@data-notable-ty' 'Wrapper<T>'
+    //@ has notable_trait_generics/generic_return/fn.returning.html
+    //@ !has - '//a[@class="tooltip"]/@data-notable-ty' 'Wrapper<T>'
     pub fn returning<T>() -> Wrapper<T> {
         loop {}
     }
@@ -27,8 +27,8 @@ pub mod generic_impl {
 
     impl<T> NotableTrait for Wrapper<T> {}
 
-    // @has notable_trait_generics/generic_impl/fn.returning.html
-    // @has - '//a[@class="tooltip"]/@data-notable-ty' 'Wrapper<u8>'
+    //@ has notable_trait_generics/generic_impl/fn.returning.html
+    //@ has - '//a[@class="tooltip"]/@data-notable-ty' 'Wrapper<u8>'
     pub fn returning() -> Wrapper<u8> {
         loop {}
     }

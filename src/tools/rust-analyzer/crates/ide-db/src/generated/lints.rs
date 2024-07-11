@@ -49,7 +49,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         label: "bindings_with_variant_name",
         description: r##"detects pattern bindings with the same name as one of the matched variants"##,
     },
-    Lint { label: "box_pointers", description: r##"use of owned (Box type) heap memory"## },
     Lint {
         label: "boxed_slice_into_iter",
         description: r##"detects calling `into_iter` on boxed slices in Rust 2015, 2018, and 2021"##,

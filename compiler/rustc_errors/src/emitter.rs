@@ -902,7 +902,7 @@ impl HumanEmitter {
         //      <EMPTY LINE>
         //
         let mut annotations_position = vec![];
-        let mut line_len = 0;
+        let mut line_len: usize = 0;
         let mut p = 0;
         for (i, annotation) in annotations.iter().enumerate() {
             for (j, next) in annotations.iter().enumerate() {
@@ -971,6 +971,31 @@ impl HumanEmitter {
         // MultilineLine, then there's only code being shown, stop processing.
         if line.annotations.iter().all(|a| a.is_line()) {
             return vec![];
+        }
+
+        if annotations_position
+            .iter()
+            .all(|(_, ann)| matches!(ann.annotation_type, AnnotationType::MultilineStart(_)))
+            && let Some(max_pos) = annotations_position.iter().map(|(pos, _)| *pos).max()
+        {
+            // Special case the following, so that we minimize overlapping multiline spans.
+            //
+            // 3 │       X0 Y0 Z0
+            //   │ ┏━━━━━┛  │  │     < We are writing these lines
+            //   │ ┃┌───────┘  │     < by reverting the "depth" of
+            //   │ ┃│┌─────────┘     < their multilne spans.
+            // 4 │ ┃││   X1 Y1 Z1
+            // 5 │ ┃││   X2 Y2 Z2
+            //   │ ┃│└────╿──│──┘ `Z` label
+            //   │ ┃└─────│──┤
+            //   │ ┗━━━━━━┥  `Y` is a good letter too
+            //   ╰╴       `X` is a good letter
+            for (pos, _) in &mut annotations_position {
+                *pos = max_pos - *pos;
+            }
+            // We know then that we don't need an additional line for the span label, saving us
+            // one line of vertical space.
+            line_len = line_len.saturating_sub(1);
         }
 
         // Write the column separator.
@@ -1905,7 +1930,7 @@ impl HumanEmitter {
                     //
                     // LL | this line was highlighted
                     // LL | this line is just for context
-                    //   ...
+                    // ...
                     // LL | this line is just for context
                     // LL | this line was highlighted
                     _ => {
@@ -1926,7 +1951,7 @@ impl HumanEmitter {
                             )
                         }
 
-                        buffer.puts(row_num, max_line_num_len - 1, "...", Style::LineNumber);
+                        buffer.puts(row_num, 0, "...", Style::LineNumber);
                         row_num += 1;
 
                         if let Some((p, l)) = last_line {
@@ -2248,9 +2273,26 @@ impl HumanEmitter {
                     &normalize_whitespace(last_line),
                     Style::NoStyle,
                 );
-                buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
-                buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
-                buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
+                if !line_to_add.trim().is_empty() {
+                    // Check if after the removal, the line is left with only whitespace. If so, we
+                    // will not show an "addition" line, as removing the whole line is what the user
+                    // would really want.
+                    // For example, for the following:
+                    //   |
+                    // 2 -     .await
+                    // 2 +     (note the left over whitepsace)
+                    //   |
+                    // We really want
+                    //   |
+                    // 2 -     .await
+                    //   |
+                    // *row_num -= 1;
+                    buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
+                    buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
+                    buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
+                } else {
+                    *row_num -= 1;
+                }
             } else {
                 *row_num -= 2;
             }

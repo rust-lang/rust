@@ -13,6 +13,11 @@
 // use a directory with non-existing parent like `/does-not-exist/output`.
 // See https://github.com/rust-lang/rust/issues/66530
 
+//@ ignore-riscv64
+// FIXME: The riscv64gc-gnu build container runs as root, and can always write
+// into `inaccessible/tmp`. Ideally, the riscv64-gnu docker container
+// would use a non-root user, but this leads to issues with
+// `mkfs.ext4 -d`, as well as mounting a loop device for the rootfs.
 //@ ignore-arm
 // Reason: linker error on `armhf-gnu`
 //@ ignore-windows

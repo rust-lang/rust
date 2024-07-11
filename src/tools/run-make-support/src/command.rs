@@ -36,8 +36,10 @@ impl Command {
         Self { cmd: StdCommand::new(program), stdin: None, drop_bomb: DropBomb::arm(program) }
     }
 
-    pub fn set_stdin(&mut self, stdin: Box<[u8]>) {
-        self.stdin = Some(stdin);
+    /// Specify a stdin input
+    pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
+        self.stdin = Some(input.as_ref().to_vec().into_boxed_slice());
+        self
     }
 
     /// Specify an environment variable.
@@ -73,11 +75,12 @@ impl Command {
     /// Generic command arguments provider. Prefer specific helper methods if possible.
     /// Note that for some executables, arguments might be platform specific. For C/C++
     /// compilers, arguments might be platform *and* compiler specific.
-    pub fn args<S>(&mut self, args: &[S]) -> &mut Self
+    pub fn args<S, V>(&mut self, args: V) -> &mut Self
     where
         S: AsRef<ffi::OsStr>,
+        V: AsRef<[S]>,
     {
-        self.cmd.args(args);
+        self.cmd.args(args.as_ref());
         self
     }
 
@@ -183,14 +186,14 @@ impl CompletedProcess {
     /// Checks that `stdout` does not contain `unexpected`.
     #[track_caller]
     pub fn assert_stdout_not_contains<S: AsRef<str>>(&self, unexpected: S) -> &Self {
-        assert_not_contains(&self.stdout_utf8(), unexpected.as_ref());
+        assert_not_contains(&self.stdout_utf8(), unexpected);
         self
     }
 
     /// Checks that `stdout` contains `expected`.
     #[track_caller]
     pub fn assert_stdout_contains<S: AsRef<str>>(&self, expected: S) -> &Self {
-        assert_contains(&self.stdout_utf8(), expected.as_ref());
+        assert_contains(&self.stdout_utf8(), expected);
         self
     }
 
@@ -204,14 +207,14 @@ impl CompletedProcess {
     /// Checks that `stderr` contains `expected`.
     #[track_caller]
     pub fn assert_stderr_contains<S: AsRef<str>>(&self, expected: S) -> &Self {
-        assert_contains(&self.stderr_utf8(), expected.as_ref());
+        assert_contains(&self.stderr_utf8(), expected);
         self
     }
 
     /// Checks that `stderr` does not contain `unexpected`.
     #[track_caller]
     pub fn assert_stderr_not_contains<S: AsRef<str>>(&self, unexpected: S) -> &Self {
-        assert_not_contains(&self.stdout_utf8(), unexpected.as_ref());
+        assert_not_contains(&self.stdout_utf8(), unexpected);
         self
     }
 

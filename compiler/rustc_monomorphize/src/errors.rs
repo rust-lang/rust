@@ -20,19 +20,6 @@ pub struct RecursionLimit {
 }
 
 #[derive(Diagnostic)]
-#[diag(monomorphize_type_length_limit)]
-#[help(monomorphize_consider_type_length_limit)]
-pub struct TypeLengthLimit {
-    #[primary_span]
-    pub span: Span,
-    pub shrunk: String,
-    #[note(monomorphize_written_to_path)]
-    pub was_written: Option<()>,
-    pub path: PathBuf,
-    pub type_length: usize,
-}
-
-#[derive(Diagnostic)]
 #[diag(monomorphize_no_optimized_mir)]
 pub struct NoOptimizedMir {
     #[note]

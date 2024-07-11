@@ -1,4 +1,7 @@
-//@ check-pass
+// FIXME(effects) check-pass
+//@ known-bug: #110395
+//@ compile-flags: -Znext-solver
+#![allow(incomplete_features)]
 #![feature(const_trait_impl, effects)]
 
 #[const_trait]

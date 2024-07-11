@@ -459,6 +459,12 @@ impl<'a> Arguments<'a> {
     }
 }
 
+// Manually implementing these results in better error messages.
+#[stable(feature = "rust1", since = "1.0.0")]
+impl !Send for Arguments<'_> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl !Sync for Arguments<'_> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for Arguments<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
@@ -511,7 +517,10 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {origin:?}"), "The origin is: Point { x: 0, y: 0 }");
+/// assert_eq!(
+///     format!("The origin is: {origin:?}"),
+///     "The origin is: Point { x: 0, y: 0 }",
+/// );
 /// ```
 ///
 /// Manually implementing:
@@ -535,7 +544,10 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {origin:?}"), "The origin is: Point { x: 0, y: 0 }");
+/// assert_eq!(
+///     format!("The origin is: {origin:?}"),
+///     "The origin is: Point { x: 0, y: 0 }",
+/// );
 /// ```
 ///
 /// There are a number of helper methods on the [`Formatter`] struct to help you with manual
@@ -576,11 +588,11 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {origin:#?}"),
-/// "The origin is: Point {
+/// let expected = "The origin is: Point {
 ///     x: 0,
 ///     y: 0,
-/// }");
+/// }";
+/// assert_eq!(format!("The origin is: {origin:#?}"), expected);
 /// ```
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -732,8 +744,10 @@ pub trait Display {
     ///     }
     /// }
     ///
-    /// assert_eq!("(1.987, 2.983)",
-    ///            format!("{}", Position { longitude: 1.987, latitude: 2.983, }));
+    /// assert_eq!(
+    ///     "(1.987, 2.983)",
+    ///     format!("{}", Position { longitude: 1.987, latitude: 2.983, }),
+    /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
@@ -2478,8 +2492,7 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        // Cast is needed here because `.expose_provenance()` requires `T: Sized`.
-        pointer_fmt_inner((*self as *const ()).expose_provenance(), f)
+        pointer_fmt_inner(self.expose_provenance(), f)
     }
 }
 

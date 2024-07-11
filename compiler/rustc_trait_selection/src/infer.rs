@@ -1,3 +1,4 @@
+use crate::infer::at::ToTrace;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{self, Obligation, ObligationCause, ObligationCtxt, SelectionContext};
 
@@ -17,6 +18,16 @@ pub use rustc_infer::infer::*;
 
 #[extension(pub trait InferCtxtExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
+    fn can_eq<T: ToTrace<'tcx>>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool {
+        self.probe(|_| {
+            let ocx = ObligationCtxt::new(self);
+            let Ok(()) = ocx.eq(&ObligationCause::dummy(), param_env, a, b) else {
+                return false;
+            };
+            ocx.select_where_possible().is_empty()
+        })
+    }
+
     fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
 

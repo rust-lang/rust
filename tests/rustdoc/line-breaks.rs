@@ -3,7 +3,7 @@
 use std::fmt::Display;
 use std::ops::Add;
 
-// @matches foo/fn.function_with_a_really_long_name.html '//*[@class="rust item-decl"]//code' "\
+//@ matches foo/fn.function_with_a_really_long_name.html '//*[@class="rust item-decl"]//code' "\
 //     function_with_a_really_long_name\(\n\
 //    \    parameter_one: i32,\n\
 //    \    parameter_two: i32,\n\
@@ -12,13 +12,13 @@ pub fn function_with_a_really_long_name(parameter_one: i32, parameter_two: i32) 
     Some(parameter_one + parameter_two)
 }
 
-// @matches foo/fn.short_name.html '//*[@class="rust item-decl"]//code' \
+//@ matches foo/fn.short_name.html '//*[@class="rust item-decl"]//code' \
 //     "short_name\(param: i32\) -> i32$"
 pub fn short_name(param: i32) -> i32 {
     param + 1
 }
 
-// @matches foo/fn.where_clause.html '//*[@class="rust item-decl"]//code' "\
+//@ matches foo/fn.where_clause.html '//*[@class="rust item-decl"]//code' "\
 //     where_clause<T, U>\(param_one: T, param_two: U\)where\n\
 //    \    T: Add<U> \+ Display \+ Copy,\n\
 //    \    U: Add<T> \+ Display \+ Copy,\n\

@@ -41,6 +41,7 @@
 #![feature(trait_upcasting)]
 // tidy-alphabetical-end
 
+mod async_closures;
 mod async_fn_in_trait;
 pub mod builtin;
 mod context;
@@ -60,6 +61,7 @@ mod late;
 mod let_underscore;
 mod levels;
 mod lints;
+mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
 mod methods;
 mod multiple_supertrait_upcastable;
@@ -86,6 +88,7 @@ use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
+use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use builtin::*;
 use deref_into_dyn_supertrait::*;
@@ -97,6 +100,7 @@ use impl_trait_overcaptures::ImplTraitOvercaptures;
 use internal::*;
 use invalid_from_utf8::*;
 use let_underscore::*;
+use macro_expr_fragment_specifier_2024_migration::*;
 use map_unit_fn::*;
 use methods::*;
 use multiple_supertrait_upcastable::*;
@@ -170,6 +174,7 @@ early_lint_methods!(
             IncompleteInternalFeatures: IncompleteInternalFeatures,
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
+            Expr2024: Expr2024,
         ]
     ]
 );
@@ -187,7 +192,6 @@ late_lint_methods!(
             ImproperCTypesDefinitions: ImproperCTypesDefinitions,
             InvalidFromUtf8: InvalidFromUtf8,
             VariantSizeDifferences: VariantSizeDifferences,
-            BoxPointers: BoxPointers,
             PathStatements: PathStatements,
             LetUnderscore: LetUnderscore,
             InvalidReferenceCasting: InvalidReferenceCasting,
@@ -227,6 +231,7 @@ late_lint_methods!(
             MapUnitFn: MapUnitFn,
             MissingDebugImplementations: MissingDebugImplementations,
             MissingDoc: MissingDoc,
+            AsyncClosureUsage: AsyncClosureUsage,
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
             ImplTraitOvercaptures: ImplTraitOvercaptures,
@@ -550,6 +555,10 @@ fn register_builtins(store: &mut LintStore) {
         "pointer_structural_match",
         "converted into hard error, see RFC #3535 \
          <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
+    );
+    store.register_removed(
+        "box_pointers",
+        "it does not detect other kinds of allocations, and existed only for historical reasons",
     );
 }
 

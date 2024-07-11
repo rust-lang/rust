@@ -11,7 +11,7 @@
 //@ [aarch64] needs-llvm-components: aarch64
 //@ [aarch64] min-llvm-version: 18.0
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type=lib -O
+//@ compile-flags: --crate-type=lib -O -C panic=abort
 
 #![feature(no_core, lang_items, repr_simd, intrinsics)]
 #![no_core]

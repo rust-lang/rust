@@ -7,16 +7,16 @@ use rustc_ast::{self as ast, visit};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{Lrc, OnceLock, WorkerLocal};
-use rustc_errors::PResult;
+use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, Lrc, OnceLock, WorkerLocal};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
+use rustc_hir::def_id::{StableCrateId, StableCrateIdMap, LOCAL_CRATE};
+use rustc_hir::definitions::Definitions;
+use rustc_incremental::setup_dep_graph;
 use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
-use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_parse::{
@@ -28,6 +28,7 @@ use rustc_session::code_stats::VTableSizeInfo;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
 use rustc_session::output::filename_for_input;
+use rustc_session::output::{collect_crate_types, find_crate_name};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};
@@ -39,20 +40,22 @@ use std::any::Any;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::{env, fs, iter};
 use tracing::{info, instrument};
 
-pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
-    let krate = sess.time("parse_crate", || {
-        let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
-            Input::File(file) => new_parser_from_file(&sess.psess, file, None),
-            Input::Str { input, name } => {
-                new_parser_from_source_str(&sess.psess, name.clone(), input.clone())
-            }
-        });
-        parser.parse_crate_mod()
-    })?;
+pub(crate) fn parse<'a>(sess: &'a Session) -> Result<ast::Crate> {
+    let krate = sess
+        .time("parse_crate", || {
+            let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
+                Input::File(file) => new_parser_from_file(&sess.psess, file, None),
+                Input::Str { input, name } => {
+                    new_parser_from_source_str(&sess.psess, name.clone(), input.clone())
+                }
+            });
+            parser.parse_crate_mod()
+        })
+        .map_err(|parse_error| parse_error.emit())?;
 
     if sess.opts.unstable_opts.input_stats {
         eprintln!("Lines of code:             {}", sess.source_map().count_lines());
@@ -559,7 +562,7 @@ fn resolver_for_lowering_raw<'tcx>(
     (tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate)))), resolutions)
 }
 
-pub(crate) fn write_dep_info(tcx: TyCtxt<'_>) {
+pub fn write_dep_info(tcx: TyCtxt<'_>) {
     // Make sure name resolution and macro expansion is run for
     // the side-effect of providing a complete set of all
     // accessed files and env vars.
@@ -640,22 +643,48 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     *providers
 });
 
-pub fn create_global_ctxt<'tcx>(
+pub(crate) fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
-    crate_types: Vec<CrateType>,
-    stable_crate_id: StableCrateId,
-    dep_graph: DepGraph,
-    untracked: Untracked,
+    mut krate: rustc_ast::Crate,
     gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
     hir_arena: &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
-) -> &'tcx GlobalCtxt<'tcx> {
+) -> Result<&'tcx GlobalCtxt<'tcx>> {
+    let sess = &compiler.sess;
+
+    rustc_builtin_macros::cmdline_attrs::inject(
+        &mut krate,
+        &sess.psess,
+        &sess.opts.unstable_opts.crate_attr,
+    );
+
+    let pre_configured_attrs = rustc_expand::config::pre_configure_attrs(sess, &krate.attrs);
+
+    // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
+    let crate_name = find_crate_name(sess, &pre_configured_attrs);
+    let crate_types = collect_crate_types(sess, &pre_configured_attrs);
+    let stable_crate_id = StableCrateId::new(
+        crate_name,
+        crate_types.contains(&CrateType::Executable),
+        sess.opts.cg.metadata.clone(),
+        sess.cfg_version,
+    );
+    let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
+    let dep_graph = setup_dep_graph(sess)?;
+
+    let cstore =
+        FreezeLock::new(Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _);
+    let definitions = FreezeLock::new(Definitions::new(stable_crate_id));
+
+    let stable_crate_ids = FreezeLock::new(StableCrateIdMap::default());
+    let untracked =
+        Untracked { cstore, source_span: AppendOnlyIndexVec::new(), definitions, stable_crate_ids };
+
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
-    let sess = &compiler.sess;
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
     let codegen_backend = &compiler.codegen_backend;
@@ -669,7 +698,7 @@ pub fn create_global_ctxt<'tcx>(
     let incremental = dep_graph.is_fully_enabled();
 
     sess.time("setup_global_ctxt", || {
-        gcx_cell.get_or_init(move || {
+        let qcx = gcx_cell.get_or_init(move || {
             TyCtxt::create_global_ctxt(
                 sess,
                 crate_types,
@@ -688,7 +717,23 @@ pub fn create_global_ctxt<'tcx>(
                 providers.hooks,
                 compiler.current_gcx.clone(),
             )
-        })
+        });
+
+        qcx.enter(|tcx| {
+            let feed = tcx.create_crate_num(stable_crate_id).unwrap();
+            assert_eq!(feed.key(), LOCAL_CRATE);
+            feed.crate_name(crate_name);
+
+            let feed = tcx.feed_unit_query();
+            feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
+                sess,
+                &pre_configured_attrs,
+                crate_name,
+            )));
+            feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
+            feed.output_filenames(Arc::new(outputs));
+        });
+        Ok(qcx)
     })
 }
 
@@ -924,12 +969,56 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     Ok(())
 }
 
+/// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
+/// to write UI tests that actually test that compilation succeeds without reporting
+/// an error.
+fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
+    let Some((def_id, _)) = tcx.entry_fn(()) else { return };
+    for attr in tcx.get_attrs(def_id, sym::rustc_error) {
+        match attr.meta_item_list() {
+            // Check if there is a `#[rustc_error(delayed_bug_from_inside_query)]`.
+            Some(list)
+                if list.iter().any(|list_item| {
+                    matches!(
+                        list_item.ident().map(|i| i.name),
+                        Some(sym::delayed_bug_from_inside_query)
+                    )
+                }) =>
+            {
+                tcx.ensure().trigger_delayed_bug(def_id);
+            }
+
+            // Bare `#[rustc_error]`.
+            None => {
+                tcx.dcx().emit_fatal(errors::RustcErrorFatal { span: tcx.def_span(def_id) });
+            }
+
+            // Some other attribute.
+            Some(_) => {
+                tcx.dcx().emit_warn(errors::RustcErrorUnexpectedAnnotation {
+                    span: tcx.def_span(def_id),
+                });
+            }
+        }
+    }
+}
+
 /// Runs the codegen backend, after which the AST and analysis can
 /// be discarded.
-pub fn start_codegen<'tcx>(
+pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-) -> Box<dyn Any> {
+) -> Result<Box<dyn Any>> {
+    // Don't do code generation if there were any errors. Likewise if
+    // there were any delayed bugs, because codegen will likely cause
+    // more ICEs, obscuring the original problem.
+    if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
+        return Err(guar);
+    }
+
+    // Hook for UI tests.
+    check_for_rustc_errors_attr(tcx);
+
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
     let (metadata, need_metadata_module) = rustc_metadata::fs::encode_and_write_metadata(tcx);
@@ -952,7 +1041,7 @@ pub fn start_codegen<'tcx>(
         }
     }
 
-    codegen
+    Ok(codegen)
 }
 
 fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {

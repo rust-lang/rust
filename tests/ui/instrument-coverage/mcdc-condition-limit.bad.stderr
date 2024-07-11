@@ -1,4 +1,4 @@
-warning: Number of conditions in decision (7) exceeds limit (6). MC/DC analysis will not count this expression.
+warning: number of conditions in decision (7) exceeds limit (6), so MC/DC analysis will not count this expression
   --> $DIR/mcdc-condition-limit.rs:29:8
    |
 LL |     if a && b && c && d && e && f && g {

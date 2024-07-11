@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
-use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, snippet_opt};
+use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, IntoSpan, SpanRangeExt};
 use clippy_utils::ty::{needs_ordered_drop, InteriorMut};
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{
@@ -14,7 +14,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Span, Symbol};
+use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -266,12 +266,12 @@ fn lint_branches_sharing_code<'tcx>(
 
         let span = span.with_hi(last_block.span.hi());
         // Improve formatting if the inner block has indention (i.e. normal Rust formatting)
-        let test_span = Span::new(span.lo() - BytePos(4), span.lo(), span.ctxt(), span.parent());
-        let span = if snippet_opt(cx, test_span).map_or(false, |snip| snip == "    ") {
-            span.with_lo(test_span.lo())
-        } else {
-            span
-        };
+        let span = span
+            .map_range(cx, |src, range| {
+                (range.start > 4 && src.get(range.start - 4..range.start)? == "    ")
+                    .then_some(range.start - 4..range.end)
+            })
+            .map_or(span, |range| range.with_ctxt(span.ctxt()));
         (span, suggestion.to_string())
     });
 

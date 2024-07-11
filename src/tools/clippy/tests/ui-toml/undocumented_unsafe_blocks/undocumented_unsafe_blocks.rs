@@ -10,7 +10,6 @@
     clippy::let_unit_value,
     clippy::missing_safety_doc
 )]
-#![feature(lint_reasons)]
 
 extern crate proc_macro_unsafe;
 

@@ -105,7 +105,7 @@ pub struct Incoming<'a> {
 ///
 /// [`accept`]: TcpListener::accept
 #[derive(Debug)]
-#[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
+#[unstable(feature = "tcplistener_into_incoming", issue = "88373")]
 pub struct IntoIncoming {
     listener: TcpListener,
 }
@@ -894,7 +894,7 @@ impl TcpListener {
     /// }
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
+    #[unstable(feature = "tcplistener_into_incoming", issue = "88373")]
     pub fn into_incoming(self) -> IntoIncoming {
         IntoIncoming { listener: self }
     }
@@ -1033,7 +1033,7 @@ impl<'a> Iterator for Incoming<'a> {
 #[stable(feature = "tcp_listener_incoming_fused_iterator", since = "1.64.0")]
 impl FusedIterator for Incoming<'_> {}
 
-#[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
+#[unstable(feature = "tcplistener_into_incoming", issue = "88373")]
 impl Iterator for IntoIncoming {
     type Item = io::Result<TcpStream>;
     fn next(&mut self) -> Option<io::Result<TcpStream>> {
@@ -1041,7 +1041,7 @@ impl Iterator for IntoIncoming {
     }
 }
 
-#[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
+#[unstable(feature = "tcplistener_into_incoming", issue = "88373")]
 impl FusedIterator for IntoIncoming {}
 
 impl AsInner<net_imp::TcpListener> for TcpListener {

@@ -1,16 +1,16 @@
-error: `${concat(..)}` currently does not support raw identifiers
+error: expected identifier or string literal
   --> $DIR/raw-identifiers.rs:28:22
    |
 LL |         let ${concat(r#abc, abc)}: () = ();
    |                      ^^^^^
 
-error: `${concat(..)}` currently does not support raw identifiers
+error: expected identifier or string literal
   --> $DIR/raw-identifiers.rs:32:27
    |
 LL |         let ${concat(abc, r#abc)}: () = ();
    |                           ^^^^^
 
-error: `${concat(..)}` currently does not support raw identifiers
+error: expected identifier or string literal
   --> $DIR/raw-identifiers.rs:35:22
    |
 LL |         let ${concat(r#abc, r#abc)}: () = ();

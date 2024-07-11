@@ -1,5 +1,5 @@
 //! Tests macro_metavars_in_unsafe with default configuration
-#![feature(decl_macro, lint_reasons)]
+#![feature(decl_macro)]
 #![warn(clippy::macro_metavars_in_unsafe)]
 #![allow(clippy::no_effect)]
 

@@ -218,8 +218,8 @@ struct Builder<'a, 'tcx> {
     lint_level_roots_cache: GrowableBitSet<hir::ItemLocalId>,
 
     /// Collects additional coverage information during MIR building.
-    /// Only present if branch coverage is enabled and this function is eligible.
-    coverage_branch_info: Option<coverageinfo::BranchInfoBuilder>,
+    /// Only present if coverage is enabled and this function is eligible.
+    coverage_info: Option<coverageinfo::CoverageInfoBuilder>,
 }
 
 type CaptureMap<'tcx> = SortedIndexMultiMap<usize, HirId, Capture<'tcx>>;
@@ -773,7 +773,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             unit_temp: None,
             var_debug_info: vec![],
             lint_level_roots_cache: GrowableBitSet::new_empty(),
-            coverage_branch_info: coverageinfo::BranchInfoBuilder::new_if_enabled(tcx, def),
+            coverage_info: coverageinfo::CoverageInfoBuilder::new_if_enabled(tcx, def),
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
@@ -802,7 +802,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine,
             None,
         );
-        body.coverage_branch_info = self.coverage_branch_info.and_then(|b| b.into_done());
+        body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
         body
     }
 

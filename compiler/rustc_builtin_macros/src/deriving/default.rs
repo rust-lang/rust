@@ -240,7 +240,7 @@ fn has_a_default_variant(item: &Annotatable) -> bool {
             if v.attrs.iter().any(|attr| attr.has_name(kw::Default)) {
                 ControlFlow::Break(())
             } else {
-                // no need to subrecurse.
+                // no need to walk the variant, we are only looking for top level variants
                 ControlFlow::Continue(())
             }
         }

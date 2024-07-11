@@ -1,4 +1,5 @@
-//! Inlining pass for MIR functions
+//! Inlining pass for MIR functions.
+
 use crate::deref_separator::deref_finder;
 use rustc_attr::InlineAttr;
 use rustc_hir::def::DefKind;
@@ -10,7 +11,7 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs}
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt, TypeFlags};
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
@@ -40,6 +41,12 @@ struct CallSite<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for Inline {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        // FIXME(#127234): Coverage instrumentation currently doesn't handle inlined
+        // MIR correctly when Modified Condition/Decision Coverage is enabled.
+        if sess.instrument_coverage_mcdc() {
+            return false;
+        }
+
         if let Some(enabled) = sess.opts.unstable_opts.inline_mir {
             return enabled;
         }
@@ -84,13 +91,18 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     }
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
+    let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
 
     let mut this = Inliner {
         tcx,
         param_env,
-        codegen_fn_attrs: tcx.codegen_fn_attrs(def_id),
+        codegen_fn_attrs,
         history: Vec::new(),
         changed: false,
+        caller_is_inline_forwarder: matches!(
+            codegen_fn_attrs.inline,
+            InlineAttr::Hint | InlineAttr::Always
+        ) && body_is_forwarder(body),
     };
     let blocks = START_BLOCK..body.basic_blocks.next_index();
     this.process_blocks(body, blocks);
@@ -110,6 +122,9 @@ struct Inliner<'tcx> {
     history: Vec<DefId>,
     /// Indicates that the caller body has been modified.
     changed: bool,
+    /// Indicates that the caller is #[inline] and just calls another function,
+    /// and thus we can inline less into it as it'll be inlined itself.
+    caller_is_inline_forwarder: bool,
 }
 
 impl<'tcx> Inliner<'tcx> {
@@ -305,6 +320,16 @@ impl<'tcx> Inliner<'tcx> {
             InstanceKind::Intrinsic(_) | InstanceKind::Virtual(..) => {
                 return Err("instance without MIR (intrinsic / virtual)");
             }
+
+            // FIXME(#127030): `ConstParamHasTy` has bad interactions with
+            // the drop shim builder, which does not evaluate predicates in
+            // the correct param-env for types being dropped. Stall resolving
+            // the MIR for this instance until all of its const params are
+            // substituted.
+            InstanceKind::DropGlue(_, Some(ty)) if ty.has_type_flags(TypeFlags::HAS_CT_PARAM) => {
+                return Err("still needs substitution");
+            }
+
             // This cannot result in an immediate cycle since the callee MIR is a shim, which does
             // not get any optimizations run on it. Any subsequent inlining may cause cycles, but we
             // do not need to catch this here, we can wait until the inliner decides to continue
@@ -364,13 +389,15 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Option<CallSite<'tcx>> {
         // Only consider direct calls to functions
         let terminator = bb_data.terminator();
+
+        // FIXME(explicit_tail_calls): figure out if we can inline tail calls
         if let TerminatorKind::Call { ref func, fn_span, .. } = terminator.kind {
             let func_ty = func.ty(caller_body, self.tcx);
             if let ty::FnDef(def_id, args) = *func_ty.kind() {
                 // To resolve an instance its args have to be fully normalized.
                 let args = self.tcx.try_normalize_erasing_regions(self.param_env, args).ok()?;
                 let callee =
-                    Instance::resolve(self.tcx, self.param_env, def_id, args).ok().flatten()?;
+                    Instance::try_resolve(self.tcx, self.param_env, def_id, args).ok().flatten()?;
 
                 if let InstanceKind::Virtual(..) | InstanceKind::Intrinsic(_) = callee.def {
                     return None;
@@ -474,7 +501,9 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Result<(), &'static str> {
         let tcx = self.tcx;
 
-        let mut threshold = if cross_crate_inlinable {
+        let mut threshold = if self.caller_is_inline_forwarder {
+            self.tcx.sess.opts.unstable_opts.inline_mir_forwarder_threshold.unwrap_or(30)
+        } else if cross_crate_inlinable {
             self.tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
         } else {
             self.tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(50)
@@ -492,6 +521,8 @@ impl<'tcx> Inliner<'tcx> {
 
         let mut checker =
             CostChecker::new(self.tcx, self.param_env, Some(callsite.callee), callee_body);
+
+        checker.add_function_level_costs();
 
         // Traverse the MIR manually so we can account for the effects of inlining on the CFG.
         let mut work_list = vec![START_BLOCK];
@@ -527,6 +558,9 @@ impl<'tcx> Inliner<'tcx> {
                 // inline-asm is detected. LLVM will still possibly do an inline later on
                 // if the no-attribute function ends up with the same instruction set anyway.
                 return Err("Cannot move inline-asm across instruction sets");
+            } else if let TerminatorKind::TailCall { .. } = term.kind {
+                // FIXME(explicit_tail_calls): figure out how exactly functions containing tail calls can be inlined (and if they even should)
+                return Err("can't inline functions with tail calls");
             } else {
                 work_list.extend(term.successors())
             }
@@ -623,8 +657,7 @@ impl<'tcx> Inliner<'tcx> {
         };
 
         // Copy the arguments if needed.
-        let args: Vec<_> =
-            self.make_call_args(args, &callsite, caller_body, &callee_body, return_block);
+        let args = self.make_call_args(args, &callsite, caller_body, &callee_body, return_block);
 
         let mut integrator = Integrator {
             args: &args,
@@ -735,12 +768,12 @@ impl<'tcx> Inliner<'tcx> {
 
     fn make_call_args(
         &self,
-        args: Vec<Spanned<Operand<'tcx>>>,
+        args: Box<[Spanned<Operand<'tcx>>]>,
         callsite: &CallSite<'tcx>,
         caller_body: &mut Body<'tcx>,
         callee_body: &Body<'tcx>,
         return_block: Option<BasicBlock>,
-    ) -> Vec<Local> {
+    ) -> Box<[Local]> {
         let tcx = self.tcx;
 
         // There is a bit of a mismatch between the *caller* of a closure and the *callee*.
@@ -767,7 +800,8 @@ impl<'tcx> Inliner<'tcx> {
         //
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
         if callsite.fn_sig.abi() == Abi::RustCall && callee_body.spread_arg.is_none() {
-            let mut args = args.into_iter();
+            // FIXME(edition_2024): switch back to a normal method call.
+            let mut args = <_>::into_iter(args);
             let self_ = self.create_temp_if_necessary(
                 args.next().unwrap().node,
                 callsite,
@@ -801,7 +835,8 @@ impl<'tcx> Inliner<'tcx> {
 
             closure_ref_arg.chain(tuple_tmp_args).collect()
         } else {
-            args.into_iter()
+            // FIXME(edition_2024): switch back to a normal method call.
+            <_>::into_iter(args)
                 .map(|a| self.create_temp_if_necessary(a.node, callsite, caller_body, return_block))
                 .collect()
         }
@@ -1014,6 +1049,10 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                 *target = self.map_block(*target);
                 *unwind = self.map_unwind(*unwind);
             }
+            TerminatorKind::TailCall { .. } => {
+                // check_mir_body forbids tail calls
+                unreachable!()
+            }
             TerminatorKind::Call { ref mut target, ref mut unwind, .. } => {
                 if let Some(ref mut tgt) = *target {
                     *tgt = self.map_block(*tgt);
@@ -1078,4 +1117,38 @@ fn try_instance_mir<'tcx>(
         }
     }
     Ok(tcx.instance_mir(instance))
+}
+
+fn body_is_forwarder(body: &Body<'_>) -> bool {
+    let TerminatorKind::Call { target, .. } = body.basic_blocks[START_BLOCK].terminator().kind
+    else {
+        return false;
+    };
+    if let Some(target) = target {
+        let TerminatorKind::Return = body.basic_blocks[target].terminator().kind else {
+            return false;
+        };
+    }
+
+    let max_blocks = if !body.is_polymorphic {
+        2
+    } else if target.is_none() {
+        3
+    } else {
+        4
+    };
+    if body.basic_blocks.len() > max_blocks {
+        return false;
+    }
+
+    body.basic_blocks.iter_enumerated().all(|(bb, bb_data)| {
+        bb == START_BLOCK
+            || matches!(
+                bb_data.terminator().kind,
+                TerminatorKind::Return
+                    | TerminatorKind::Drop { .. }
+                    | TerminatorKind::UnwindResume
+                    | TerminatorKind::UnwindTerminate(_)
+            )
+    })
 }

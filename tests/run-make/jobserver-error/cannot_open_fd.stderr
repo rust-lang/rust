@@ -4,3 +4,5 @@ warning: failed to connect to jobserver from environment variable `MAKEFLAGS="--
 
 error: no input filename given
 
+error: aborting due to 1 previous error
+

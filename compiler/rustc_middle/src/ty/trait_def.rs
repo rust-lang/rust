@@ -18,6 +18,9 @@ pub struct TraitDef {
 
     pub safety: hir::Safety,
 
+    /// Whether this trait has been annotated with `#[const_trait]`.
+    pub constness: hir::Constness,
+
     /// If `true`, then this trait had the `#[rustc_paren_sugar]`
     /// attribute, indicating that it should be used with `Foo()`
     /// sugar. This is a temporary thing -- eventually any trait will
@@ -31,7 +34,7 @@ pub struct TraitDef {
     /// and thus `impl`s of it are allowed to overlap.
     pub is_marker: bool,
 
-    /// If `true`, then this trait has to `#[rustc_coinductive]` attribute or
+    /// If `true`, then this trait has the `#[rustc_coinductive]` attribute or
     /// is an auto trait. This indicates that trait solver cycles involving an
     /// `X: ThisTrait` goal are accepted.
     ///
@@ -39,6 +42,11 @@ pub struct TraitDef {
     /// formal understanding of what exactly that means and should probably
     /// also have already switched to the new trait solver.
     pub is_coinductive: bool,
+
+    /// If `true`, then this trait has the `#[fundamental]` attribute. This
+    /// affects how conherence computes whether a trait may have trait implementations
+    /// added in the future.
+    pub is_fundamental: bool,
 
     /// If `true`, then this trait has the `#[rustc_skip_during_method_dispatch(array)]`
     /// attribute, indicating that editions before 2021 should not consider this trait

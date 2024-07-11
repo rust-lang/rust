@@ -72,6 +72,7 @@ pub mod ext_tool_checks;
 pub mod extdeps;
 pub mod features;
 pub mod fluent_alphabetical;
+pub mod fluent_period;
 mod fluent_used;
 pub(crate) mod iter_header;
 pub mod known_bug;

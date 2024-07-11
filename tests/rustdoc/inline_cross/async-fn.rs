@@ -6,14 +6,14 @@
 //@ edition: 2021
 #![crate_name = "user"]
 
-// @has user/fn.load.html
-// @has - '//pre[@class="rust item-decl"]' "pub async fn load() -> i32"
+//@ has user/fn.load.html
+//@ has - '//pre[@class="rust item-decl"]' "pub async fn load() -> i32"
 pub use async_fn::load;
 
-// @has user/trait.Load.html
-// @has - '//*[@id="tymethod.run"]' 'async fn run(&self) -> i32'
+//@ has user/trait.Load.html
+//@ has - '//*[@id="tymethod.run"]' 'async fn run(&self) -> i32'
 pub use async_fn::Load;
 
-// @has user/struct.Loader.html
-// @has - '//*[@id="method.run"]' 'async fn run(&self) -> i32'
+//@ has user/struct.Loader.html
+//@ has - '//*[@id="method.run"]' 'async fn run(&self) -> i32'
 pub use async_fn::Loader;

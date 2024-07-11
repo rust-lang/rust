@@ -959,7 +959,7 @@ extern "rust-intrinsic" {
 /// not be used if the invariant can be discovered by the optimizer on its
 /// own, or if it does not enable any significant optimizations.
 ///
-/// This intrinsic does not have a stable counterpart.
+/// The stabilized version of this intrinsic is [`core::hint::assert_unchecked`].
 #[rustc_const_stable(feature = "const_assume", since = "1.77.0")]
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
@@ -2579,7 +2579,7 @@ extern "rust-intrinsic" {
 ///     fn runtime() -> i32 { 1 }
 ///     const fn compiletime() -> i32 { 2 }
 ///
-//      // ⚠ This code violates the required equivalence of `compiletime`
+///     // ⚠ This code violates the required equivalence of `compiletime`
 ///     // and `runtime`.
 ///     const_eval_select((), compiletime, runtime)
 /// }

@@ -87,10 +87,10 @@ pub(super) fn populate_access_facts<'a, 'tcx>(
     body: &Body<'tcx>,
     move_data: &MoveData<'tcx>,
 ) {
-    debug!("populate_access_facts()");
-    let location_table = typeck.borrowck_context.location_table;
-
     if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
+        debug!("populate_access_facts()");
+        let location_table = typeck.borrowck_context.location_table;
+
         let mut extractor = UseFactsExtractor {
             var_defined_at: &mut facts.var_defined_at,
             var_used_at: &mut facts.var_used_at,

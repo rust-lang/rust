@@ -10,6 +10,15 @@ help: use `addr_of!` instead to create a raw pointer
 LL |     let _x = addr_of!(X);
    |              ~~~~~~~~~~~
 
-error: aborting due to 1 previous error
+error[E0133]: use of mutable static is unsafe and requires unsafe block
+  --> $DIR/reference-to-mut-static-safe.rs:9:15
+   |
+LL |     let _x = &X;
+   |               ^ use of mutable static
+   |
+   = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
-For more information about this error, try `rustc --explain E0796`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0133, E0796.
+For more information about an error, try `rustc --explain E0133`.

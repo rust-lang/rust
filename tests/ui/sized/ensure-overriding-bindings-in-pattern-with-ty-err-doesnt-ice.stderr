@@ -32,7 +32,18 @@ error[E0533]: expected unit struct, unit variant or constant, found associated f
 LL |     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a unit struct, unit variant or constant
 
-error: aborting due to 4 previous errors
+error[E0282]: type annotations needed
+  --> $DIR/ensure-overriding-bindings-in-pattern-with-ty-err-doesnt-ice.rs:2:31
+   |
+LL |     let str::<{fn str() { let str::T>>::as_bytes; }}, T>::as_bytes;
+   |                               ^^^^^^^^^^^^^^^^^^
+   |
+help: consider giving this pattern a type
+   |
+LL |     let str::<{fn str() { let str::T>>::as_bytes: /* Type */; }}, T>::as_bytes;
+   |                                                 ++++++++++++
 
-Some errors have detailed explanations: E0109, E0412, E0533.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0109, E0282, E0412, E0533.
 For more information about an error, try `rustc --explain E0109`.

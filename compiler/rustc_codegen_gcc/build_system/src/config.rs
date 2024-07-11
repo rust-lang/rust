@@ -1,5 +1,6 @@
 use crate::utils::{
-    create_symlink, get_os_name, run_command_with_output, rustc_version_info, split_args,
+    create_dir, create_symlink, get_os_name, get_sysroot_dir, run_command_with_output,
+    rustc_version_info, split_args,
 };
 use std::collections::HashMap;
 use std::env as std_env;
@@ -26,11 +27,7 @@ impl Channel {
 }
 
 fn failed_config_parsing(config_file: &Path, err: &str) -> Result<ConfigFile, String> {
-    Err(format!(
-        "Failed to parse `{}`: {}",
-        config_file.display(),
-        err
-    ))
+    Err(format!("Failed to parse `{}`: {}", config_file.display(), err))
 }
 
 #[derive(Default)]
@@ -48,11 +45,7 @@ impl ConfigFile {
             )
         })?;
         let toml = Toml::parse(&content).map_err(|err| {
-            format!(
-                "Error occurred around `{}`: {:?}",
-                &content[err.start..=err.end],
-                err.kind
-            )
+            format!("Error occurred around `{}`: {:?}", &content[err.start..=err.end], err.kind)
         })?;
         let mut config = Self::default();
         for (key, value) in toml.iter() {
@@ -181,11 +174,7 @@ impl ConfigInfo {
             },
             "--use-backend" => match args.next() {
                 Some(backend) if !backend.is_empty() => self.backend = Some(backend),
-                _ => {
-                    return Err(
-                        "Expected an argument after `--use-backend`, found nothing".into()
-                    )
-                }
+                _ => return Err("Expected an argument after `--use-backend`, found nothing".into()),
             },
             "--no-default-features" => self.no_default_features = true,
             _ => return Ok(false),
@@ -228,20 +217,10 @@ impl ConfigInfo {
 
         let output_dir = output_dir.join(&commit);
         if !output_dir.is_dir() {
-            std::fs::create_dir_all(&output_dir).map_err(|err| {
-                format!(
-                    "failed to create folder `{}`: {:?}",
-                    output_dir.display(),
-                    err,
-                )
-            })?;
+            create_dir(&output_dir)?;
         }
         let output_dir = output_dir.canonicalize().map_err(|err| {
-            format!(
-                "Failed to get absolute path of `{}`: {:?}",
-                output_dir.display(),
-                err
-            )
+            format!("Failed to get absolute path of `{}`: {:?}", output_dir.display(), err)
         })?;
 
         let libgccjit_so_name = "libgccjit.so";
@@ -252,13 +231,7 @@ impl ConfigInfo {
             let tempfile = output_dir.join(&tempfile_name);
             let is_in_ci = std::env::var("GITHUB_ACTIONS").is_ok();
 
-            let url = format!(
-                "https://github.com/antoyo/gcc/releases/download/master-{}/libgccjit.so",
-                commit,
-            );
-
-            println!("Downloading `{}`...", url);
-            download_gccjit(url, &output_dir, tempfile_name, !is_in_ci)?;
+            download_gccjit(&commit, &output_dir, tempfile_name, !is_in_ci)?;
 
             let libgccjit_so = output_dir.join(libgccjit_so_name);
             // If we reach this point, it means the file was correctly downloaded, so let's
@@ -275,10 +248,7 @@ impl ConfigInfo {
             println!("Downloaded libgccjit.so version {} successfully!", commit);
             // We need to create a link named `libgccjit.so.0` because that's what the linker is
             // looking for.
-            create_symlink(
-                &libgccjit_so,
-                output_dir.join(&format!("{}.0", libgccjit_so_name)),
-            )?;
+            create_symlink(&libgccjit_so, output_dir.join(&format!("{}.0", libgccjit_so_name)))?;
         }
 
         self.gcc_path = output_dir.display().to_string();
@@ -298,10 +268,7 @@ impl ConfigInfo {
             Some(config_file) => config_file.into(),
             None => self.compute_path("config.toml"),
         };
-        let ConfigFile {
-            gcc_path,
-            download_gccjit,
-        } = ConfigFile::new(&config_file)?;
+        let ConfigFile { gcc_path, download_gccjit } = ConfigFile::new(&config_file)?;
 
         if let Some(true) = download_gccjit {
             self.download_gccjit_if_needed()?;
@@ -310,10 +277,7 @@ impl ConfigInfo {
         self.gcc_path = match gcc_path {
             Some(path) => path,
             None => {
-                return Err(format!(
-                    "missing `gcc-path` value from `{}`",
-                    config_file.display(),
-                ))
+                return Err(format!("missing `gcc-path` value from `{}`", config_file.display(),))
             }
         };
         Ok(())
@@ -393,15 +357,16 @@ impl ConfigInfo {
             .join(&format!("librustc_codegen_gcc.{}", self.dylib_ext))
             .display()
             .to_string();
-        self.sysroot_path = current_dir
-            .join("build_sysroot/sysroot")
-            .display()
-            .to_string();
+        self.sysroot_path =
+            current_dir.join(&get_sysroot_dir()).join("sysroot").display().to_string();
         if let Some(backend) = &self.backend {
+            // This option is only used in the rust compiler testsuite. The sysroot is handled
+            // by its build system directly so no need to set it ourselves.
             rustflags.push(format!("-Zcodegen-backend={}", backend));
         } else {
             rustflags.extend_from_slice(&[
-                "--sysroot".to_string(), self.sysroot_path.clone(),
+                "--sysroot".to_string(),
+                self.sysroot_path.clone(),
                 format!("-Zcodegen-backend={}", self.cg_backend_path),
             ]);
         }
@@ -422,13 +387,6 @@ impl ConfigInfo {
             rustflags.push("-Csymbol-mangling-version=v0".to_string());
         }
 
-        rustflags.push("-Cdebuginfo=2".to_string());
-
-        // Since we don't support ThinLTO, disable LTO completely when not trying to do LTO.
-        // TODO(antoyo): remove when we can handle ThinLTO.
-        if !env.contains_key(&"FAT_LTO".to_string()) {
-            rustflags.push("-Clto=off".to_string());
-        }
         // FIXME(antoyo): remove once the atomic shim is gone
         if os_name == "Darwin" {
             rustflags.extend_from_slice(&[
@@ -440,10 +398,9 @@ impl ConfigInfo {
         // display metadata load errors
         env.insert("RUSTC_LOG".to_string(), "warn".to_string());
 
-        let sysroot = current_dir.join(&format!(
-            "build_sysroot/sysroot/lib/rustlib/{}/lib",
-            self.target_triple,
-        ));
+        let sysroot = current_dir
+            .join(&get_sysroot_dir())
+            .join(&format!("sysroot/lib/rustlib/{}/lib", self.target_triple));
         let ld_library_path = format!(
             "{target}:{sysroot}:{gcc_path}",
             target = self.cargo_target_dir,
@@ -501,11 +458,27 @@ impl ConfigInfo {
 }
 
 fn download_gccjit(
-    url: String,
+    commit: &str,
     output_dir: &Path,
     tempfile_name: String,
     with_progress_bar: bool,
 ) -> Result<(), String> {
+    let url = if std::env::consts::OS == "linux" && std::env::consts::ARCH == "x86_64" {
+        format!("https://github.com/rust-lang/gcc/releases/download/master-{}/libgccjit.so", commit)
+    } else {
+        eprintln!(
+            "\
+Pre-compiled libgccjit.so not available for this os or architecture.
+Please compile it yourself and update the `config.toml` file
+to `download-gccjit = false` and set `gcc-path` to the appropriate directory."
+        );
+        return Err(String::from(
+            "no appropriate pre-compiled libgccjit.so available for download",
+        ));
+    };
+
+    println!("Downloading `{}`...", url);
+
     // Try curl. If that fails and we are on windows, fallback to PowerShell.
     let mut ret = run_command_with_output(
         &[
@@ -521,11 +494,7 @@ fn download_gccjit(
             &"--retry",
             &"3",
             &"-SRfL",
-            if with_progress_bar {
-                &"--progress-bar"
-            } else {
-                &"-s"
-            },
+            if with_progress_bar { &"--progress-bar" } else { &"-s" },
             &url.as_str(),
         ],
         Some(&output_dir),

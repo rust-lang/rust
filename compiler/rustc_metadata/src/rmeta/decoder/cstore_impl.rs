@@ -211,8 +211,8 @@ provide! { tcx, def_id, other, cdata,
     explicit_predicates_of => { table }
     generics_of => { table }
     inferred_outlives_of => { table_defaulted_array }
-    super_predicates_of => { table }
-    implied_predicates_of => { table }
+    explicit_super_predicates_of => { table }
+    explicit_implied_predicates_of => { table }
     type_of => { table }
     type_alias_is_lazy => { cdata.root.tables.type_alias_is_lazy.get(cdata, def_id.index) }
     variances_of => { table }
@@ -279,6 +279,9 @@ provide! { tcx, def_id, other, cdata,
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
     }
 
+    associated_type_for_effects => {
+        table
+    }
     associated_types_for_impl_traits_in_associated_fn => { table_defaulted_array }
 
     visibility => { cdata.get_visibility(def_id.index) }

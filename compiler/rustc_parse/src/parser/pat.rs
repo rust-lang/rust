@@ -939,7 +939,8 @@ impl<'a> Parser<'a> {
             || self.look_ahead(dist, |t| {
                 t.is_path_start() // e.g. `MY_CONST`;
                 || t.kind == token::Dot // e.g. `.5` for recovery;
-                || t.can_begin_literal_maybe_minus() // e.g. `42`.
+                || matches!(t.kind, token::Literal(..) | token::BinOp(token::Minus))
+                || t.is_bool_lit()
                 || t.is_whole_expr()
                 || t.is_lifetime() // recover `'a` instead of `'a'`
                 || (self.may_recover() // recover leading `(`

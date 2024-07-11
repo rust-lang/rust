@@ -12,10 +12,10 @@ use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
 use crate::errors::TypeofReservedKeywordUsed;
+use crate::hir_ty_lowering::HirTyLowerer;
 
 use super::bad_placeholder;
 use super::ItemCtxt;
-pub use opaque::test_opaque_hidden_types;
 
 mod opaque;
 
@@ -358,7 +358,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 .and_then(|body_id| {
                     ty.is_suggestable_infer_ty().then(|| {
                         infer_placeholder_type(
-                            tcx,
+                            icx.lowerer(),
                             def_id,
                             body_id,
                             ty.span,
@@ -382,7 +382,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             ImplItemKind::Const(ty, body_id) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
-                        tcx,
+                        icx.lowerer(),
                         def_id,
                         body_id,
                         ty.span,
@@ -406,7 +406,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             ItemKind::Static(ty, .., body_id) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
-                        tcx,
+                        icx.lowerer(),
                         def_id,
                         body_id,
                         ty.span,
@@ -419,7 +419,14 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             }
             ItemKind::Const(ty, _, body_id) => {
                 if ty.is_suggestable_infer_ty() {
-                    infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident, "constant")
+                    infer_placeholder_type(
+                        icx.lowerer(),
+                        def_id,
+                        body_id,
+                        ty.span,
+                        item.ident,
+                        "constant",
+                    )
                 } else {
                     icx.lower_ty(ty)
                 }
@@ -560,21 +567,22 @@ pub(super) fn type_of_opaque(
     }
 }
 
-fn infer_placeholder_type<'a>(
-    tcx: TyCtxt<'a>,
+fn infer_placeholder_type<'tcx>(
+    cx: &dyn HirTyLowerer<'tcx>,
     def_id: LocalDefId,
     body_id: hir::BodyId,
     span: Span,
     item_ident: Ident,
     kind: &'static str,
-) -> Ty<'a> {
+) -> Ty<'tcx> {
+    let tcx = cx.tcx();
     let ty = tcx.diagnostic_only_typeck(def_id).node_type(body_id.hir_id);
 
     // If this came from a free `const` or `static mut?` item,
     // then the user may have written e.g. `const A = 42;`.
     // In this case, the parser has stashed a diagnostic for
     // us to improve in typeck so we do that now.
-    let guar = tcx
+    let guar = cx
         .dcx()
         .try_steal_modify_and_emit_err(span, StashKey::ItemNoType, |err| {
             if !ty.references_error() {
@@ -603,7 +611,7 @@ fn infer_placeholder_type<'a>(
             }
         })
         .unwrap_or_else(|| {
-            let mut diag = bad_placeholder(tcx, vec![span], kind);
+            let mut diag = bad_placeholder(cx, vec![span], kind);
 
             if !ty.references_error() {
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {

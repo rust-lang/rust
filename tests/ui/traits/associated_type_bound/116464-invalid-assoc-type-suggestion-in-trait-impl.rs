@@ -11,7 +11,7 @@ impl<T, S> Trait<T> for i32 {
     type Assoc = String;
 }
 
-// Should not not trigger suggestion here...
+// Should not trigger suggestion here...
 impl<T, S> Trait<T, S> for () {}
 //~^ ERROR trait takes 1 generic argument but 2 generic arguments were supplied
 

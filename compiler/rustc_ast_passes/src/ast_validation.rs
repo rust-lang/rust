@@ -1,10 +1,20 @@
-// Validate AST before lowering it to HIR.
-//
-// This pass is supposed to catch things that fit into AST data structures,
-// but not permitted by the language. It runs after expansion when AST is frozen,
-// so it can check for erroneous constructions produced by syntax extensions.
-// This pass is supposed to perform only simple checks not requiring name resolution
-// or type checking or some other kind of complex analysis.
+//! Validate AST before lowering it to HIR.
+//!
+//! This pass intends to check that the constructed AST is *syntactically valid* to allow the rest
+//! of the compiler to assume that the AST is valid. These checks cannot be performed during parsing
+//! because attribute macros are allowed to accept certain pieces of invalid syntax such as a
+//! function without body outside of a trait definition:
+//!
+//! ```ignore (illustrative)
+//! #[my_attribute]
+//! mod foo {
+//!     fn missing_body();
+//! }
+//! ```
+//!
+//! These checks are run post-expansion, after AST is frozen, to be able to check for erroneous
+//! constructions produced by proc macros. This pass is only intended for simple checks that do not
+//! require name resolution or type checking, or other kinds of complex analysis.
 
 use itertools::{Either, Itertools};
 use rustc_ast::ptr::P;
@@ -456,15 +466,34 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_foreign_item_safety(&self, item_span: Span, safety: Safety) {
-        if matches!(safety, Safety::Unsafe(_) | Safety::Safe(_))
-            && (self.extern_mod_safety == Some(Safety::Default)
-                || !self.features.unsafe_extern_blocks)
-        {
-            self.dcx().emit_err(errors::InvalidSafetyOnExtern {
-                item_span,
-                block: self.current_extern_span(),
-            });
+    fn check_item_safety(&self, span: Span, safety: Safety) {
+        match self.extern_mod_safety {
+            Some(extern_safety) => {
+                if matches!(safety, Safety::Unsafe(_) | Safety::Safe(_)) {
+                    if extern_safety == Safety::Default {
+                        self.dcx().emit_err(errors::InvalidSafetyOnExtern {
+                            item_span: span,
+                            block: Some(self.current_extern_span().shrink_to_lo()),
+                        });
+                    } else if !self.features.unsafe_extern_blocks {
+                        self.dcx().emit_err(errors::InvalidSafetyOnExtern {
+                            item_span: span,
+                            block: None,
+                        });
+                    }
+                }
+            }
+            None => {
+                if matches!(safety, Safety::Safe(_)) {
+                    self.dcx().emit_err(errors::InvalidSafetyOnItem { span });
+                }
+            }
+        }
+    }
+
+    fn check_bare_fn_safety(&self, span: Span, safety: Safety) {
+        if matches!(safety, Safety::Safe(_)) {
+            self.dcx().emit_err(errors::InvalidSafetyOnBareFn { span });
         }
     }
 
@@ -623,6 +652,7 @@ impl<'a> AstValidator<'a> {
             (Some(FnCtxt::Foreign), _) => return,
             (Some(FnCtxt::Free), Some(header)) => match header.ext {
                 Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }, _)
+                | Extern::Explicit(StrLit { symbol_unescaped: sym::C_dash_unwind, .. }, _)
                 | Extern::Implicit(_)
                     if matches!(header.safety, Safety::Unsafe(_)) =>
                 {
@@ -746,6 +776,7 @@ impl<'a> AstValidator<'a> {
     fn visit_ty_common(&mut self, ty: &'a Ty) {
         match &ty.kind {
             TyKind::BareFn(bfty) => {
+                self.check_bare_fn_safety(bfty.decl_span, bfty.safety);
                 self.check_fn_decl(&bfty.decl, SelfSemantic::No);
                 Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
                     self.dcx().emit_err(errors::PatternFnPointer { span });
@@ -883,7 +914,7 @@ fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericPara
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_attr(&self.session.psess, attr);
+        validate_attr::check_attr(&self.features, &self.session.psess, attr);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
@@ -1072,7 +1103,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             }
                         }
                     } else if let &Safety::Unsafe(span) = safety {
-                        this.dcx().emit_err(errors::UnsafeItem { span, kind: "extern block" });
+                        let mut diag = this
+                            .dcx()
+                            .create_err(errors::UnsafeItem { span, kind: "extern block" });
+                        rustc_session::parse::add_feature_diagnostics(
+                            &mut diag,
+                            self.session,
+                            sym::unsafe_extern_blocks,
+                        );
+                        diag.emit();
                     }
 
                     if abi.is_none() {
@@ -1174,11 +1213,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     });
                 }
             }
-            ItemKind::Static(box StaticItem { expr: None, .. }) => {
-                self.dcx().emit_err(errors::StaticWithoutBody {
-                    span: item.span,
-                    replace_span: self.ending_semi_or_hi(item.span),
-                });
+            ItemKind::Static(box StaticItem { expr, safety, .. }) => {
+                self.check_item_safety(item.span, *safety);
+
+                if expr.is_none() {
+                    self.dcx().emit_err(errors::StaticWithoutBody {
+                        span: item.span,
+                        replace_span: self.ending_semi_or_hi(item.span),
+                    });
+                }
             }
             ItemKind::TyAlias(
                 ty_alias @ box TyAlias { defaultness, bounds, where_clauses, ty, .. },
@@ -1212,7 +1255,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         match &fi.kind {
             ForeignItemKind::Fn(box Fn { defaultness, sig, body, .. }) => {
-                self.check_foreign_item_safety(fi.span, sig.header.safety);
                 self.check_defaultness(fi.span, *defaultness);
                 self.check_foreign_fn_bodyless(fi.ident, body.as_deref());
                 self.check_foreign_fn_headerless(sig.header);
@@ -1232,8 +1274,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_foreign_ty_genericless(generics, where_clauses);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
-            ForeignItemKind::Static(box StaticForeignItem { expr, safety, .. }) => {
-                self.check_foreign_item_safety(fi.span, *safety);
+            ForeignItemKind::Static(box StaticItem { expr, safety, .. }) => {
+                self.check_item_safety(fi.span, *safety);
                 self.check_foreign_kind_bodyless(fi.ident, "static", expr.as_ref().map(|b| b.span));
                 self.check_foreign_item_ascii_only(fi.ident);
             }
@@ -1270,6 +1312,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.with_impl_trait(None, |this| this.visit_ty(ty));
                 }
             }
+            GenericArgs::ParenthesizedElided(_span) => {}
         }
     }
 
@@ -1426,7 +1469,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                 span: args.span,
                             });
                         }
-                        None => {}
+                        Some(ast::GenericArgs::ParenthesizedElided(_)) | None => {}
                     }
                 }
             }
@@ -1452,6 +1495,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             _ => SelfSemantic::No,
         };
         self.check_fn_decl(fk.decl(), self_semantic);
+
+        if let Some(&FnHeader { safety, .. }) = fk.header() {
+            self.check_item_safety(span, safety);
+        }
 
         self.check_c_variadic_type(fk);
 
@@ -1670,7 +1717,9 @@ fn deny_equality_constraints(
                 // Add `<Bar = RhsTy>` to `Foo`.
                 match &mut assoc_path.segments[len].args {
                     Some(args) => match args.deref_mut() {
-                        GenericArgs::Parenthesized(_) => continue,
+                        GenericArgs::Parenthesized(_) | GenericArgs::ParenthesizedElided(..) => {
+                            continue;
+                        }
                         GenericArgs::AngleBracketed(args) => {
                             args.args.push(arg);
                         }

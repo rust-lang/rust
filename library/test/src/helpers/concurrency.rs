@@ -1,5 +1,6 @@
 //! Helper module which helps to determine amount of threads to be used
 //! during tests execution.
+
 use std::{env, num::NonZero, thread};
 
 pub fn get_concurrency() -> usize {

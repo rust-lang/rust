@@ -7,9 +7,7 @@ use crate::sys::cvt;
 use crate::sys::process::process_common::*;
 
 #[cfg(target_os = "linux")]
-use crate::os::linux::process::PidFd;
-#[cfg(target_os = "linux")]
-use crate::os::unix::io::AsRawFd;
+use crate::sys::pal::unix::linux::pidfd::PidFd;
 
 #[cfg(target_os = "vxworks")]
 use libc::RTP_ID as pid_t;
@@ -815,16 +813,7 @@ impl Process {
         #[cfg(target_os = "linux")]
         if let Some(pid_fd) = self.pidfd.as_ref() {
             // pidfd_send_signal predates pidfd_open. so if we were able to get an fd then sending signals will work too
-            return cvt(unsafe {
-                libc::syscall(
-                    libc::SYS_pidfd_send_signal,
-                    pid_fd.as_raw_fd(),
-                    libc::SIGKILL,
-                    crate::ptr::null::<()>(),
-                    0,
-                )
-            })
-            .map(drop);
+            return pid_fd.kill();
         }
         cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(drop)
     }
@@ -836,12 +825,7 @@ impl Process {
         }
         #[cfg(target_os = "linux")]
         if let Some(pid_fd) = self.pidfd.as_ref() {
-            let mut siginfo: libc::siginfo_t = unsafe { crate::mem::zeroed() };
-
-            cvt_r(|| unsafe {
-                libc::waitid(libc::P_PIDFD, pid_fd.as_raw_fd() as u32, &mut siginfo, libc::WEXITED)
-            })?;
-            let status = ExitStatus::from_waitid_siginfo(siginfo);
+            let status = pid_fd.wait()?;
             self.status = Some(status);
             return Ok(status);
         }
@@ -857,22 +841,11 @@ impl Process {
         }
         #[cfg(target_os = "linux")]
         if let Some(pid_fd) = self.pidfd.as_ref() {
-            let mut siginfo: libc::siginfo_t = unsafe { crate::mem::zeroed() };
-
-            cvt(unsafe {
-                libc::waitid(
-                    libc::P_PIDFD,
-                    pid_fd.as_raw_fd() as u32,
-                    &mut siginfo,
-                    libc::WEXITED | libc::WNOHANG,
-                )
-            })?;
-            if unsafe { siginfo.si_pid() } == 0 {
-                return Ok(None);
+            let status = pid_fd.try_wait()?;
+            if let Some(status) = status {
+                self.status = Some(status)
             }
-            let status = ExitStatus::from_waitid_siginfo(siginfo);
-            self.status = Some(status);
-            return Ok(Some(status));
+            return Ok(status);
         }
         let mut status = 0 as c_int;
         let pid = cvt(unsafe { libc::waitpid(self.pid, &mut status, libc::WNOHANG) })?;
@@ -1105,20 +1078,33 @@ impl ExitStatusError {
 }
 
 #[cfg(target_os = "linux")]
-#[unstable(feature = "linux_pidfd", issue = "82971")]
-impl crate::os::linux::process::ChildExt for crate::process::Child {
-    fn pidfd(&self) -> io::Result<&PidFd> {
-        self.handle
-            .pidfd
-            .as_ref()
-            .ok_or_else(|| Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
-    }
+mod linux_child_ext {
 
-    fn take_pidfd(&mut self) -> io::Result<PidFd> {
-        self.handle
-            .pidfd
-            .take()
-            .ok_or_else(|| Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
+    use crate::io;
+    use crate::mem;
+    use crate::os::linux::process as os;
+    use crate::sys::pal::unix::linux::pidfd as imp;
+    use crate::sys::pal::unix::ErrorKind;
+    use crate::sys_common::FromInner;
+
+    #[unstable(feature = "linux_pidfd", issue = "82971")]
+    impl crate::os::linux::process::ChildExt for crate::process::Child {
+        fn pidfd(&self) -> io::Result<&os::PidFd> {
+            self.handle
+                .pidfd
+                .as_ref()
+                // SAFETY: The os type is a transparent wrapper, therefore we can transmute references
+                .map(|fd| unsafe { mem::transmute::<&imp::PidFd, &os::PidFd>(fd) })
+                .ok_or_else(|| io::Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
+        }
+
+        fn into_pidfd(mut self) -> Result<os::PidFd, Self> {
+            self.handle
+                .pidfd
+                .take()
+                .map(|fd| <os::PidFd as FromInner<imp::PidFd>>::from_inner(fd))
+                .ok_or_else(|| self)
+        }
     }
 }
 

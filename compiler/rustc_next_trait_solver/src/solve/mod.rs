@@ -29,12 +29,12 @@ use rustc_type_ir::{self as ty, Interner};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{EvalCtxt, GenerateProofTree, SolverDelegateEvalExt};
-use crate::infcx::SolverDelegate;
+use crate::delegate::SolverDelegate;
 
 /// How many fixpoint iterations we should attempt inside of the solver before bailing
 /// with overflow.
 ///
-/// We previously used  `tcx.recursion_limit().0.checked_ilog2().unwrap_or(0)` for this.
+/// We previously used  `cx.recursion_limit().0.checked_ilog2().unwrap_or(0)` for this.
 /// However, it feels unlikely that uncreasing the recursion limit by a power of two
 /// to get one more itereation is every useful or desirable. We now instead used a constant
 /// here. If there ever ends up some use-cases where a bigger number of fixpoint iterations
@@ -48,17 +48,25 @@ enum GoalEvaluationKind {
     Nested,
 }
 
+// FIXME(trait-system-refactor-initiative#117): we don't detect whether a response
+// ended up pulling down any universes.
 fn has_no_inference_or_external_constraints<I: Interner>(
     response: ty::Canonical<I, Response<I>>,
 ) -> bool {
-    response.value.external_constraints.region_constraints.is_empty()
-        && response.value.var_values.is_identity()
-        && response.value.external_constraints.opaque_types.is_empty()
+    let ExternalConstraintsData {
+        ref region_constraints,
+        ref opaque_types,
+        ref normalization_nested_goals,
+    } = *response.value.external_constraints;
+    response.value.var_values.is_identity()
+        && region_constraints.is_empty()
+        && opaque_types.is_empty()
+        && normalization_nested_goals.is_empty()
 }
 
-impl<'a, Infcx, I> EvalCtxt<'a, Infcx>
+impl<'a, D, I> EvalCtxt<'a, D>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     #[instrument(level = "trace", skip(self))]
@@ -104,7 +112,7 @@ where
     }
 
     fn compute_object_safe_goal(&mut self, trait_def_id: I::DefId) -> QueryResult<I> {
-        if self.interner().trait_is_object_safe(trait_def_id) {
+        if self.cx().trait_is_object_safe(trait_def_id) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             Err(NoSolution)
@@ -182,7 +190,7 @@ where
                 return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
             }
             ty::ConstKind::Unevaluated(uv) => {
-                self.interner().type_of(uv.def).instantiate(self.interner(), &uv.args)
+                self.cx().type_of(uv.def).instantiate(self.cx(), uv.args)
             }
             ty::ConstKind::Expr(_) => unimplemented!(
                 "`feature(generic_const_exprs)` is not supported in the new trait solver"
@@ -193,7 +201,7 @@ where
             ty::ConstKind::Bound(_, _) => panic!("escaping bound vars in {:?}", ct),
             ty::ConstKind::Value(ty, _) => ty,
             ty::ConstKind::Placeholder(placeholder) => {
-                self.interner().find_const_ty_from_env(goal.param_env, placeholder)
+                self.cx().find_const_ty_from_env(goal.param_env, placeholder)
             }
         };
 
@@ -202,9 +210,9 @@ where
     }
 }
 
-impl<Infcx, I> EvalCtxt<'_, Infcx>
+impl<D, I> EvalCtxt<'_, D>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     /// Try to merge multiple possible ways to prove a goal, if that is not possible returns `None`.
@@ -267,7 +275,7 @@ where
         if let ty::Alias(..) = ty.kind() {
             let normalized_ty = self.next_ty_infer();
             let alias_relate_goal = Goal::new(
-                self.interner(),
+                self.cx(),
                 param_env,
                 ty::PredicateKind::AliasRelate(
                     ty.into(),
@@ -285,7 +293,7 @@ where
 }
 
 fn response_no_constraints_raw<I: Interner>(
-    tcx: I,
+    cx: I,
     max_universe: ty::UniverseIndex,
     variables: I::CanonicalVars,
     certainty: Certainty,
@@ -294,10 +302,10 @@ fn response_no_constraints_raw<I: Interner>(
         max_universe,
         variables,
         value: Response {
-            var_values: ty::CanonicalVarValues::make_identity(tcx, variables),
-            // FIXME: maybe we should store the "no response" version in tcx, like
-            // we do for tcx.types and stuff.
-            external_constraints: tcx.mk_external_constraints(ExternalConstraintsData::default()),
+            var_values: ty::CanonicalVarValues::make_identity(cx, variables),
+            // FIXME: maybe we should store the "no response" version in cx, like
+            // we do for cx.types and stuff.
+            external_constraints: cx.mk_external_constraints(ExternalConstraintsData::default()),
             certainty,
         },
         defining_opaque_types: Default::default(),

@@ -92,6 +92,14 @@ pub const TOO_FAR_APART2: isize = {
     unsafe { ptr_offset_from(ptr1, ptr2) } //~ERROR evaluation of constant value failed
     //~| too far before
 };
+pub const TOO_FAR_APART3: isize = {
+    let ptr1 = &0u8 as *const u8;
+    let ptr2 = ptr1.wrapping_offset(isize::MIN);
+    // The result of this would be `isize::MIN`, which *does* fit in an `isize`, but its
+    // absolute value does not. (Also anyway there cannot be an allocation of that size.)
+    unsafe { ptr_offset_from(ptr1, ptr2) } //~ERROR evaluation of constant value failed
+    //~| too far before
+};
 
 const WRONG_ORDER_UNSIGNED: usize = {
     let a = ['a', 'b', 'c'];

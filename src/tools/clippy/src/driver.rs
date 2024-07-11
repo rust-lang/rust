@@ -2,7 +2,7 @@
 #![allow(rustc::untranslatable_diagnostic)]
 #![feature(rustc_private)]
 #![feature(let_chains)]
-#![feature(lint_reasons)]
+#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]

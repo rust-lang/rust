@@ -95,7 +95,7 @@ pub fn check(tests_path: &Path, src_path: &Path, bless: bool, bad: &mut bool) {
             tidy_error!(
                 bad,
                 "Makefile `{}` no longer exists and should be removed from the exclusions in \
-                `src/tools/tidy/src/allowed_run_make_makefiles.txt`, you can run --bless to update \
+                `src/tools/tidy/src/allowed_run_make_makefiles.txt`, you can run `x test tidy --bless` to update \
                 the allow list",
                 p.display()
             );

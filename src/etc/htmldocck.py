@@ -240,9 +240,37 @@ def concat_multi_lines(f):
         print_err(lineno, line, 'Trailing backslash at the end of the file')
 
 
+def get_known_directive_names():
+    def filter_line(line):
+        line = line.strip()
+        return line.startswith('"') and (line.endswith('",') or line.endswith('"'))
+
+    # Equivalent to `src/tools/compiletest/src/header.rs` constant of the same name.
+    with open(
+        os.path.join(
+            # We go back to `src`.
+            os.path.dirname(os.path.dirname(__file__)),
+            "tools/compiletest/src/command-list.rs",
+        ),
+        "r",
+        encoding="utf8"
+    ) as fd:
+        content = fd.read()
+        return [
+            line.strip().replace('",', '').replace('"', '')
+            for line in content.split('\n')
+            if filter_line(line)
+        ]
+
+
+# To prevent duplicating the list of commmands between `compiletest` and `htmldocck`, we put
+# it into a common file which is included in rust code and parsed here.
+# FIXME: This setup is temporary until we figure out how to improve this situation.
+KNOWN_DIRECTIVE_NAMES = get_known_directive_names()
+
 LINE_PATTERN = re.compile(r'''
-    (?<=(?<!\S))(?P<invalid>!?)@(?P<negated>!?)
-    (?P<cmd>[A-Za-z]+(?:-[A-Za-z]+)*)
+    //@\s+
+    (?P<negated>!?)(?P<cmd>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)
     (?P<args>.*)$
 ''', re.X | re.UNICODE)
 
@@ -254,17 +282,9 @@ def get_commands(template):
             if not m:
                 continue
 
-            negated = (m.group('negated') == '!')
             cmd = m.group('cmd')
-            if m.group('invalid') == '!':
-                print_err(
-                    lineno,
-                    line,
-                    'Invalid command: `!@{0}{1}`, (help: try with `@!{1}`)'.format(
-                        '!' if negated else '',
-                        cmd,
-                    ),
-                )
+            negated = (m.group('negated') == '!')
+            if not negated and cmd in KNOWN_DIRECTIVE_NAMES:
                 continue
             args = m.group('args')
             if args and not args[:1].isspace():
@@ -549,7 +569,7 @@ def get_nb_matching_elements(cache, c, regexp, stop_at_first):
 def check_files_in_folder(c, cache, folder, files):
     files = files.strip()
     if not files.startswith('[') or not files.endswith(']'):
-        raise InvalidCheck("Expected list as second argument of @{} (ie '[]')".format(c.cmd))
+        raise InvalidCheck("Expected list as second argument of {} (ie '[]')".format(c.cmd))
 
     folder = cache.get_absolute_path(folder)
 
@@ -558,7 +578,7 @@ def check_files_in_folder(c, cache, folder, files):
     files_set = set()
     for file in files:
         if file in files_set:
-            raise InvalidCheck("Duplicated file `{}` in @{}".format(file, c.cmd))
+            raise InvalidCheck("Duplicated file `{}` in {}".format(file, c.cmd))
         files_set.add(file)
     folder_set = set([f for f in os.listdir(folder) if f != "." and f != ".."])
 
@@ -590,7 +610,7 @@ def check_command(c, cache):
         if c.cmd in ['has', 'hasraw', 'matches', 'matchesraw']:  # string test
             regexp = c.cmd.startswith('matches')
 
-            # @has <path> = file existence
+            # has <path> = file existence
             if len(c.args) == 1 and not regexp and 'raw' not in c.cmd:
                 try:
                     cache.get_file(c.args[0])
@@ -598,40 +618,40 @@ def check_command(c, cache):
                 except FailedCheck as err:
                     cerr = str(err)
                     ret = False
-            # @hasraw/matchesraw <path> <pat> = string test
+            # hasraw/matchesraw <path> <pat> = string test
             elif len(c.args) == 2 and 'raw' in c.cmd:
                 cerr = "`PATTERN` did not match"
                 ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
-            # @has/matches <path> <pat> <match> = XML tree test
+            # has/matches <path> <pat> <match> = XML tree test
             elif len(c.args) == 3 and 'raw' not in c.cmd:
                 cerr = "`XPATH PATTERN` did not match"
                 ret = get_nb_matching_elements(cache, c, regexp, True) != 0
             else:
-                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+                raise InvalidCheck('Invalid number of {} arguments'.format(c.cmd))
 
         elif c.cmd == 'files': # check files in given folder
-            if len(c.args) != 2: # @files <folder path> <file list>
-                raise InvalidCheck("Invalid number of @{} arguments".format(c.cmd))
+            if len(c.args) != 2: # files <folder path> <file list>
+                raise InvalidCheck("Invalid number of {} arguments".format(c.cmd))
             elif c.negated:
-                raise InvalidCheck("@{} doesn't support negative check".format(c.cmd))
+                raise InvalidCheck("{} doesn't support negative check".format(c.cmd))
             ret = check_files_in_folder(c, cache, c.args[0], c.args[1])
 
         elif c.cmd == 'count':  # count test
-            if len(c.args) == 3:  # @count <path> <pat> <count> = count test
+            if len(c.args) == 3:  # count <path> <pat> <count> = count test
                 expected = int(c.args[2])
                 found = get_tree_count(cache.get_tree(c.args[0]), c.args[1])
                 cerr = "Expected {} occurrences but found {}".format(expected, found)
                 ret = expected == found
-            elif len(c.args) == 4:  # @count <path> <pat> <text> <count> = count test
+            elif len(c.args) == 4:  # count <path> <pat> <text> <count> = count test
                 expected = int(c.args[3])
                 found = get_nb_matching_elements(cache, c, False, False)
                 cerr = "Expected {} occurrences but found {}".format(expected, found)
                 ret = found == expected
             else:
-                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+                raise InvalidCheck('Invalid number of {} arguments'.format(c.cmd))
 
         elif c.cmd == 'snapshot':  # snapshot test
-            if len(c.args) == 3:  # @snapshot <snapshot-name> <html-path> <xpath>
+            if len(c.args) == 3:  # snapshot <snapshot-name> <html-path> <xpath>
                 [snapshot_name, html_path, pattern] = c.args
                 tree = cache.get_tree(html_path)
                 xpath = normalize_xpath(pattern)
@@ -654,10 +674,10 @@ def check_command(c, cache):
                 else:
                     raise FailedCheck('Expected 1 match, but found {}'.format(len(subtrees)))
             else:
-                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+                raise InvalidCheck('Invalid number of {} arguments'.format(c.cmd))
 
         elif c.cmd == 'has-dir':  # has-dir test
-            if len(c.args) == 1:  # @has-dir <path> = has-dir test
+            if len(c.args) == 1:  # has-dir <path> = has-dir test
                 try:
                     cache.get_dir(c.args[0])
                     ret = True
@@ -665,22 +685,22 @@ def check_command(c, cache):
                     cerr = str(err)
                     ret = False
             else:
-                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+                raise InvalidCheck('Invalid number of {} arguments'.format(c.cmd))
 
         elif c.cmd == 'valid-html':
-            raise InvalidCheck('Unimplemented @valid-html')
+            raise InvalidCheck('Unimplemented valid-html')
 
         elif c.cmd == 'valid-links':
-            raise InvalidCheck('Unimplemented @valid-links')
+            raise InvalidCheck('Unimplemented valid-links')
 
         else:
-            raise InvalidCheck('Unrecognized @{}'.format(c.cmd))
+            raise InvalidCheck('Unrecognized {}'.format(c.cmd))
 
         if ret == c.negated:
             raise FailedCheck(cerr)
 
     except FailedCheck as err:
-        message = '@{}{} check failed'.format('!' if c.negated else '', c.cmd)
+        message = '{}{} check failed'.format('!' if c.negated else '', c.cmd)
         print_err(c.lineno, c.context, str(err), message)
     except InvalidCheck as err:
         print_err(c.lineno, c.context, str(err))

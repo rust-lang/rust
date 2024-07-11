@@ -6,6 +6,7 @@
 //! outside this crate.
 //!
 //! [`collections`]: crate::collections
+
 #[allow(deprecated)]
 use super::{BuildHasher, Hasher, SipHasher13};
 use crate::cell::Cell;

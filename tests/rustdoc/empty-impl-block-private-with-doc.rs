@@ -4,13 +4,13 @@
 #![allow(incomplete_features)]
 #![crate_name = "foo"]
 
-// @has 'foo/struct.Foo.html'
+//@ has 'foo/struct.Foo.html'
 pub struct Foo;
 
 // There are 3 impl blocks with public item and one that should not be displayed
 // by default because it only contains private items (but not in this case because
 // we used `--document-private-items`).
-// @count - '//*[@class="impl"]' 'impl Foo' 4
+//@ count - '//*[@class="impl"]' 'impl Foo' 4
 
 // Impl block only containing private items should not be displayed unless the
 // `--document-private-items` flag is used.

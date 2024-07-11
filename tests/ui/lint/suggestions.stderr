@@ -41,9 +41,8 @@ warning: variable does not need to be mutable
   --> $DIR/suggestions.rs:54:13
    |
 LL |            let mut
-   |  ______________^
-   | | _____________|
-   | ||
+   |   _____________^
+   |  |_____________|
 LL | ||             b = 1;
    | ||____________-^
    | |_____________|

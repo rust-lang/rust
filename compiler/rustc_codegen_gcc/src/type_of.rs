@@ -8,7 +8,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, CoroutineArgsExt, Ty, TypeVisitableExt};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 use rustc_target::abi::{
-    self, Abi, Align, FieldsShape, Float, Int, Integer, PointeeInfo, Pointer, Size, TyAbiInterface,
+    self, Abi, FieldsShape, Float, Int, Integer, PointeeInfo, Pointer, Size, TyAbiInterface,
     Variants,
 };
 
@@ -53,12 +53,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
-    pub fn align_of(&self, ty: Ty<'tcx>) -> Align {
-        self.layout_of(ty).align.abi
-    }
-}
-
 fn uncached_gcc_type<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     layout: TyAndLayout<'tcx>,
@@ -90,7 +84,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
         Abi::Uninhabited | Abi::Aggregate { .. } => {}
     }
 
-    let name = match layout.ty.kind() {
+    let name = match *layout.ty.kind() {
         // FIXME(eddyb) producing readable type names for trait objects can result
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
@@ -220,7 +214,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
                 // to fn_ptr_backend_type handle the on-stack attribute.
                 // TODO(antoyo): find a less hackish way to hande the on-stack attribute.
                 ty::FnPtr(sig) => {
-                    cx.fn_ptr_backend_type(&cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
+                    cx.fn_ptr_backend_type(cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
                 }
                 _ => self.scalar_gcc_type_at(cx, scalar, Size::ZERO),
             };

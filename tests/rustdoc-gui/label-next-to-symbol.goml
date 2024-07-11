@@ -1,6 +1,9 @@
 // These tests verify that labels like "UNIX" and "Deprecated" stay on the same line as their symbol.
 // It also verifies the staggered layout on mobile.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+
+call-function: ("switch-theme", {"theme": "light"})
 
 // Desktop view
 set-window-size: (1080, 600)

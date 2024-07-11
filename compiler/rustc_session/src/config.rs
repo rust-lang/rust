@@ -19,7 +19,7 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};
-use rustc_target::spec::{LinkSelfContainedComponents, LinkerFeatures};
+use rustc_target::spec::{FramePointer, LinkSelfContainedComponents, LinkerFeatures};
 use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple};
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
@@ -498,9 +498,11 @@ pub enum OutputType {
     DepInfo,
 }
 
-// Safety: Trivial C-Style enums have a stable sort order across compilation sessions.
-unsafe impl StableOrd for OutputType {
+impl StableOrd for OutputType {
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // Trivial C-Style enums have a stable sort order across compilation sessions.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
@@ -2524,6 +2526,15 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         }
     }
 
+    if !nightly_options::is_unstable_enabled(matches)
+        && cg.force_frame_pointers == FramePointer::NonLeaf
+    {
+        early_dcx.early_fatal(
+            "`-Cforce-frame-pointers=non-leaf` or `always` also requires `-Zunstable-options` \
+                and a nightly compiler",
+        )
+    }
+
     // For testing purposes, until we have more feedback about these options: ensure `-Z
     // unstable-options` is required when using the unstable `-C link-self-contained` and `-C
     // linker-flavor` options.
@@ -2954,8 +2965,9 @@ pub(crate) mod dep_tracking {
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FunctionReturn,
         InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
         LtoCli, NextSolverConfig, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
-        Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm,
-        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+        PatchableFunctionEntry, Polonius, RemapPathScopeComponents, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -2966,10 +2978,8 @@ pub(crate) mod dep_tracking {
     use rustc_span::edition::Edition;
     use rustc_span::RealFileName;
     use rustc_target::spec::{
-        CodeModel, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel, WasmCAbi,
-    };
-    use rustc_target::spec::{
-        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
+        CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
+        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel, WasmCAbi,
     };
     use std::collections::BTreeMap;
     use std::hash::{DefaultHasher, Hash};
@@ -3023,6 +3033,7 @@ pub(crate) mod dep_tracking {
         lint::Level,
         WasiExecModel,
         u32,
+        FramePointer,
         RelocModel,
         CodeModel,
         TlsModel,
@@ -3063,6 +3074,7 @@ pub(crate) mod dep_tracking {
         OomStrategy,
         LanguageIdentifier,
         NextSolverConfig,
+        PatchableFunctionEntry,
         Polonius,
         InliningThreshold,
         FunctionReturn,
@@ -3237,6 +3249,35 @@ impl DumpMonoStatsFormat {
             Self::Markdown => "md",
             Self::Json => "json",
         }
+    }
+}
+
+/// `-Z patchable-function-entry` representation - how many nops to put before and after function
+/// entry.
+#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+pub struct PatchableFunctionEntry {
+    /// Nops before the entry
+    prefix: u8,
+    /// Nops after the entry
+    entry: u8,
+}
+
+impl PatchableFunctionEntry {
+    pub fn from_total_and_prefix_nops(
+        total_nops: u8,
+        prefix_nops: u8,
+    ) -> Option<PatchableFunctionEntry> {
+        if total_nops < prefix_nops {
+            None
+        } else {
+            Some(Self { prefix: prefix_nops, entry: total_nops - prefix_nops })
+        }
+    }
+    pub fn prefix(&self) -> u8 {
+        self.prefix
+    }
+    pub fn entry(&self) -> u8 {
+        self.entry
     }
 }
 

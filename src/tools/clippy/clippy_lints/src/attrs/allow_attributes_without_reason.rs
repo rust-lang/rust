@@ -8,11 +8,6 @@ use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 
 pub(super) fn check<'cx>(cx: &LateContext<'cx>, name: Symbol, items: &[NestedMetaItem], attr: &'cx Attribute) {
-    // Check for the feature
-    if !cx.tcx.features().lint_reasons {
-        return;
-    }
-
     // Check if the reason is present
     if let Some(item) = items.last().and_then(NestedMetaItem::meta_item)
         && let MetaItemKind::NameValue(_) = &item.kind
@@ -22,7 +17,7 @@ pub(super) fn check<'cx>(cx: &LateContext<'cx>, name: Symbol, items: &[NestedMet
     }
 
     // Check if the attribute is in an external macro and therefore out of the developer's control
-    if in_external_macro(cx.sess(), attr.span) || is_from_proc_macro(cx, &attr) {
+    if in_external_macro(cx.sess(), attr.span) || is_from_proc_macro(cx, attr) {
         return;
     }
 

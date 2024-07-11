@@ -1,5 +1,5 @@
 --out windows_sys.rs
---config flatten std
+--config flatten sys
 --filter
 !Windows.Win32.Foundation.INVALID_HANDLE_VALUE
 Windows.Wdk.Storage.FileSystem.FILE_COMPLETE_IF_OPLOCKED

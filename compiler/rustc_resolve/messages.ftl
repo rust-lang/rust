@@ -240,7 +240,7 @@ resolve_label_with_similar_name_reachable =
 
 resolve_lending_iterator_report_error =
     associated type `Iterator::Item` is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
-    .note = you can't create an `Iterator` that borrows each `Item` from itself, but you can instead create a new type that borrows your existing type and implement `Iterator` for that new type.
+    .note = you can't create an `Iterator` that borrows each `Item` from itself, but you can instead create a new type that borrows your existing type and implement `Iterator` for that new type
 
 resolve_lifetime_param_in_enum_discriminant =
     lifetime parameters may not be used in enum discriminant values

@@ -1,5 +1,6 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where one region is named and the other is anonymous.
+
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::{
     errors::ExplicitLifetimeRequired,

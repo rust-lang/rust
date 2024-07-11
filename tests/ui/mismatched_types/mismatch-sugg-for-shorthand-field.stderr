@@ -52,13 +52,13 @@ error[E0308]: mismatched types
   --> $DIR/mismatch-sugg-for-shorthand-field.rs:57:20
    |
 LL |     let a = async { 42 };
-   |             ------------ the found `async` block
+   |             ----- the found `async` block
 ...
 LL |     let s = Demo { a };
    |                    ^ expected `Pin<Box<...>>`, found `async` block
    |
    = note:     expected struct `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>`
-           found `async` block `{async block@$DIR/mismatch-sugg-for-shorthand-field.rs:53:13: 53:25}`
+           found `async` block `{async block@$DIR/mismatch-sugg-for-shorthand-field.rs:53:13: 53:18}`
 help: you need to pin and box this expression
    |
 LL |     let s = Demo { a: Box::pin(a) };

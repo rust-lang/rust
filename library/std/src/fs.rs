@@ -2742,18 +2742,15 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(fs_try_exists)]
 /// use std::fs;
 ///
-/// assert!(!fs::try_exists("does_not_exist.txt").expect("Can't check existence of file does_not_exist.txt"));
-/// assert!(fs::try_exists("/root/secret_file.txt").is_err());
+/// assert!(!fs::exists("does_not_exist.txt").expect("Can't check existence of file does_not_exist.txt"));
+/// assert!(fs::exists("/root/secret_file.txt").is_err());
 /// ```
 ///
 /// [`Path::exists`]: crate::path::Path::exists
-// FIXME: stabilization should modify documentation of `exists()` to recommend this method
-// instead.
-#[unstable(feature = "fs_try_exists", issue = "83186")]
+#[stable(feature = "fs_try_exists", since = "CURRENT_RUSTC_VERSION")]
 #[inline]
-pub fn try_exists<P: AsRef<Path>>(path: P) -> io::Result<bool> {
-    fs_imp::try_exists(path.as_ref())
+pub fn exists<P: AsRef<Path>>(path: P) -> io::Result<bool> {
+    fs_imp::exists(path.as_ref())
 }

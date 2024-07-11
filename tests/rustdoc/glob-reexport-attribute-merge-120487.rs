@@ -5,11 +5,11 @@
 #![crate_name = "foo"]
 #![feature(doc_cfg)]
 
-// @has 'foo/index.html'
+//@ has 'foo/index.html'
 // There are two items.
-// @count - '//*[@class="item-table"]//div[@class="item-name"]' 2
+//@ count - '//*[@class="item-table"]//div[@class="item-name"]' 2
 // Only one of them should have an attribute.
-// @count - '//*[@class="item-table"]//div[@class="item-name"]/*[@class="stab portability"]' 1
+//@ count - '//*[@class="item-table"]//div[@class="item-name"]/*[@class="stab portability"]' 1
 
 mod a {
     #[doc(cfg(not(feature = "a")))]
@@ -23,10 +23,10 @@ mod b {
     pub struct Test2;
 }
 
-// @has 'foo/struct.Test1.html'
-// @count - '//*[@id="main-content"]/*[@class="item-info"]' 1
-// @has - '//*[@id="main-content"]/*[@class="item-info"]' 'Available on non-crate feature a only.'
+//@ has 'foo/struct.Test1.html'
+//@ count - '//*[@id="main-content"]/*[@class="item-info"]' 1
+//@ has - '//*[@id="main-content"]/*[@class="item-info"]' 'Available on non-crate feature a only.'
 pub use a::*;
-// @has 'foo/struct.Test2.html'
-// @count - '//*[@id="main-content"]/*[@class="item-info"]' 0
+//@ has 'foo/struct.Test2.html'
+//@ count - '//*[@id="main-content"]/*[@class="item-info"]' 0
 pub use b::Test2;

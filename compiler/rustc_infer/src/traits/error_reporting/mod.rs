@@ -12,15 +12,15 @@ use std::fmt;
 use std::iter;
 
 impl<'tcx> InferCtxt<'tcx> {
-    pub fn report_extra_impl_obligation(
-        &self,
+    pub fn report_extra_impl_obligation<'a>(
+        &'a self,
         error_span: Span,
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
         requirement: &dyn fmt::Display,
-    ) -> Diag<'tcx> {
+    ) -> Diag<'a> {
         let mut err = struct_span_code_err!(
-            self.tcx.dcx(),
+            self.dcx(),
             error_span,
             E0276,
             "impl has stricter requirements than trait"

@@ -1,6 +1,7 @@
 //! Locals are in a private module as updating `LocalRef::Operand` has to
 //! be careful wrt to subtyping. To deal with this we only allow updates by using
 //! `FunctionCx::overwrite_local` which handles it automatically.
+
 use crate::mir::{FunctionCx, LocalRef};
 use crate::traits::BuilderMethods;
 use rustc_index::IndexVec;
@@ -46,7 +47,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let expected_ty = self.monomorphize(self.mir.local_decls[local].ty);
                     if expected_ty != op.layout.ty {
                         warn!(
-                            "Unexpected initial operand type: expected {expected_ty:?}, found {:?}.\
+                            "Unexpected initial operand type:\nexpected {expected_ty:?},\nfound    {:?}.\n\
                             See <https://github.com/rust-lang/rust/issues/114858>.",
                             op.layout.ty
                         );

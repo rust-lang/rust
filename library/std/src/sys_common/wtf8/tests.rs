@@ -725,3 +725,27 @@ fn wtf8_utf8_boundary_between_surrogates() {
     string.push(CodePoint::from_u32(0xD800).unwrap());
     check_utf8_boundary(&string, 3);
 }
+
+#[test]
+fn wobbled_wtf8_plus_bytes_isnt_utf8() {
+    let mut string: Wtf8Buf = unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").to_owned() };
+    assert!(!string.is_known_utf8);
+    string.extend_from_slice(b"some utf-8");
+    assert!(!string.is_known_utf8);
+}
+
+#[test]
+fn wobbled_wtf8_plus_str_isnt_utf8() {
+    let mut string: Wtf8Buf = unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").to_owned() };
+    assert!(!string.is_known_utf8);
+    string.push_str("some utf-8");
+    assert!(!string.is_known_utf8);
+}
+
+#[test]
+fn unwobbly_wtf8_plus_utf8_is_utf8() {
+    let mut string: Wtf8Buf = Wtf8Buf::from_str("hello world");
+    assert!(string.is_known_utf8);
+    string.push_str("some utf-8");
+    assert!(string.is_known_utf8);
+}

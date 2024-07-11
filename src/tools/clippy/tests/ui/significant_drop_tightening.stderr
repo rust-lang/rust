@@ -64,7 +64,6 @@ LL +         let rslt0 = mutex.lock().unwrap().abs();
 help: remove separated single usage
    |
 LL -         let rslt0 = lock.abs();
-LL +         
    |
 
 error: temporary with significant `Drop` can be early dropped
@@ -88,7 +87,6 @@ LL +         mutex.lock().unwrap().clear();
 help: remove separated single usage
    |
 LL -         lock.clear();
-LL +         
    |
 
 error: aborting due to 4 previous errors

@@ -452,7 +452,7 @@ impl TtParser {
         &mut self,
         matcher: &'matcher [MatcherLoc],
         token: &Token,
-        approx_position: usize,
+        approx_position: u32,
         track: &mut T,
     ) -> Option<NamedParseResult<T::Failure>> {
         // Matcher positions that would be valid if the macro invocation was over now. Only

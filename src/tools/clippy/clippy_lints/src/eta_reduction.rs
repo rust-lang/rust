@@ -15,7 +15,7 @@ use rustc_middle::ty::{
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::error_reporting::traits::InferCtxtExt as _;
 
 declare_clippy_lint! {
     /// ### What it does
