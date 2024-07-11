@@ -1125,7 +1125,10 @@ fn lower_variant(
             vis: tcx.visibility(f.def_id),
         })
         .collect();
-    let recovered = matches!(def, hir::VariantData::Struct { recovered: Recovered::Yes(_), .. });
+    let recovered = match def {
+        hir::VariantData::Struct { recovered: Recovered::Yes(guar), .. } => Some(*guar),
+        _ => None,
+    };
     ty::VariantDef::new(
         ident.name,
         variant_did.map(LocalDefId::to_def_id),

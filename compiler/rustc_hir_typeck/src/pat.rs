@@ -1531,9 +1531,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter(|(_, ident)| !used_fields.contains_key(ident))
             .collect::<Vec<_>>();
 
-        let inexistent_fields_err = if !(inexistent_fields.is_empty() || variant.is_recovered())
+        let inexistent_fields_err = if !inexistent_fields.is_empty()
             && !inexistent_fields.iter().any(|field| field.ident.name == kw::Underscore)
         {
+            // we don't care to report errors for a struct if the struct itself is tainted
+            variant.has_errors()?;
             Some(self.error_inexistent_fields(
                 adt.variant_descr(),
                 &inexistent_fields,
@@ -1811,6 +1813,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if is_tuple_struct_match {
                 return Ok(());
             }
+
+            // we don't care to report errors for a struct if the struct itself is tainted
+            variant.has_errors()?;
 
             let path = rustc_hir_pretty::qpath_to_string(&self.tcx, qpath);
             let mut err = struct_span_code_err!(

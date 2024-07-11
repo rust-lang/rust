@@ -1,5 +1,4 @@
-//@ known-bug: rust-lang/rust#126744
-struct X {,}
+struct X {,} //~ ERROR expected identifier, found `,`
 
 fn main() {
     || {
