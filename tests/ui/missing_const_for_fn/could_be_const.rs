@@ -104,15 +104,18 @@ fn main() {}
 
 struct D;
 
+/* FIXME(effects)
 impl const Drop for D {
     fn drop(&mut self) {
         todo!();
     }
 }
+*/
 
 // Lint this, since it can be dropped in const contexts
 // FIXME(effects)
 fn d(this: D) {}
+//~^ ERROR: this could be a `const fn`
 
 mod msrv {
     struct Foo(*const u8, &'static u8);

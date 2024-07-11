@@ -9,7 +9,7 @@ use rustc_middle::ty::{self, AliasTy, ClauseKind, PredicateKind};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span};
-use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
+use rustc_trait_selection::error_reporting::traits::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::{self, FulfillmentError, ObligationCtxt};
 
 declare_clippy_lint! {
