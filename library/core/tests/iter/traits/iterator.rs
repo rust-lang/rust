@@ -641,9 +641,10 @@ fn test_edge_case_handling_iterator_with_duplicates() {
 /// Tests that short-circuiting works correctly when using `has_item`
 /// When you run the function, it should move the iterator forward after the first appearance of the item
 fn test_short_circuiting() {
-    let mut iterator = vec![1, 2, 3, 1, 1].into_iter();
+    let vector = vec![1, 2, 3, 1, 1];
+    let mut iterator = vector.iter();
     assert!(iterator.has_item(&1));
-    assert_eq!(iterator.next(), Some(2));
+    assert_eq!(iterator.next(), Some(&2));
     assert!(!iterator.has_item(&4));
     assert_eq!(iterator.next(), None);
 }
