@@ -4071,7 +4071,7 @@ pub trait Iterator {
     ///
     /// Example:
     /// ```
-    /// #![feature(has_item)]
+    /// #![feature(iter_has_item)]
     /// assert!(![1i32, 2i32, 3i32].iter().has_item(&4i32));
     /// assert!([Some(2i32), Option::<i32>::None].iter().has_item(&None));
     /// assert!([Some(2i32), Option::<i32>::None].iter().has_item(&Some(2i32)));
@@ -4091,7 +4091,7 @@ pub trait Iterator {
     /// assert!((1..1000).has_item(500i32));
     /// ```
     ///
-    #[unstable(feature = "has_item", reason = "new API", issue = "127494")]
+    #[unstable(feature = "iter_has_item", reason = "new API", issue = "127494")]
     fn has_item<Q: ?Sized>(&mut self, item: Q) -> bool
     where
         Q: PartialEq<Self::Item>,
