@@ -121,3 +121,21 @@ impl Buffer {
         Ok(self.buffer())
     }
 }
+
+impl Clone for Buffer {
+    fn clone(&self) -> Self {
+        Self {
+            buf: self.buf.clone(),
+            pos: self.pos,
+            filled: self.filled,
+            initialized: self.initialized,
+        }
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        self.buf.clone_from(&other.buf);
+        self.pos = other.pos;
+        self.filled = other.filled;
+        self.initialized = other.initialized;
+    }
+}

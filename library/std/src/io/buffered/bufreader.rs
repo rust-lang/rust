@@ -401,6 +401,18 @@ impl<R: ?Sized + Read> BufRead for BufReader<R> {
     }
 }
 
+#[stable(feature = "io_buf_clone", since = "CURRENT_RUSTC_VERSION")]
+impl<R: Clone> Clone for BufReader<R> {
+    fn clone(&self) -> Self {
+        Self { buf: self.buf.clone(), inner: self.inner.clone() }
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        self.buf.clone_from(&other.buf);
+        self.inner.clone_from(&other.inner);
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<R> fmt::Debug for BufReader<R>
 where

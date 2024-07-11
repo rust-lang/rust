@@ -217,6 +217,17 @@ impl<W: ?Sized + Write> Write for LineWriter<W> {
     }
 }
 
+#[stable(feature = "io_buf_clone", since = "CURRENT_RUSTC_VERSION")]
+impl<W: Clone + Write> Clone for LineWriter<W> {
+    fn clone(&self) -> Self {
+        Self { inner: self.inner.clone() }
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        self.inner.clone_from(&other.inner);
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W: ?Sized + Write> fmt::Debug for LineWriter<W>
 where
