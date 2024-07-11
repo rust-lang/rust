@@ -76,14 +76,11 @@ impl Num {
 
 impl LateLintPass<'_> for ManualRangePatterns {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &'_ rustc_hir::Pat<'_>) {
-        if in_external_macro(cx.sess(), pat.span) {
-            return;
-        }
-
         // a pattern like 1 | 2 seems fine, lint if there are at least 3 alternatives
         // or at least one range
         if let PatKind::Or(pats) = pat.kind
             && (pats.len() >= 3 || pats.iter().any(|p| matches!(p.kind, PatKind::Range(..))))
+            && !in_external_macro(cx.sess(), pat.span)
         {
             let mut min = Num::dummy(i128::MAX);
             let mut max = Num::dummy(i128::MIN);

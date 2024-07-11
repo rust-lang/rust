@@ -541,5 +541,32 @@ LL ~     let value = mutex.lock().unwrap()[0];
 LL ~     for val in [value, 2] {
    |
 
-error: aborting due to 27 previous errors
+error: temporary with significant `Drop` in `if let` scrutinee will live until the end of the `if let` expression
+  --> tests/ui/significant_drop_in_scrutinee.rs:807:24
+   |
+LL |     if let Some(val) = mutex.lock().unwrap().first().copied() {
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     }
+   |      - temporary lives until here
+   |
+   = note: this might lead to deadlocks or other unexpected behavior
+help: try moving the temporary above the match
+   |
+LL ~     let value = mutex.lock().unwrap().first().copied();
+LL ~     if let Some(val) = value {
+   |
+
+error: temporary with significant `Drop` in `while let` scrutinee will live until the end of the `while let` expression
+  --> tests/ui/significant_drop_in_scrutinee.rs:823:27
+   |
+LL |     while let Some(val) = mutex.lock().unwrap().pop() {
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     }
+   |      - temporary lives until here
+   |
+   = note: this might lead to deadlocks or other unexpected behavior
+
+error: aborting due to 29 previous errors
 

@@ -36,6 +36,10 @@ pub(crate) struct LintcheckConfig {
     /// Apply a filter to only collect specified lints, this also overrides `allow` attributes
     #[clap(long = "filter", value_name = "clippy_lint_name", use_value_delimiter = true)]
     pub lint_filter: Vec<String>,
+    /// Set all lints to the "warn" lint level, even resitriction ones. Usually,
+    /// it's better to use `--filter` instead
+    #[clap(long, conflicts_with("lint_filter"))]
+    pub warn_all: bool,
     /// Set the output format of the log file
     #[clap(long, short, default_value = "text")]
     pub format: OutputFormat,

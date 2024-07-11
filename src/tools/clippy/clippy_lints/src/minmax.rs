@@ -5,7 +5,7 @@ use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
-use std::cmp::Ordering;
+use std::cmp::Ordering::{Equal, Greater, Less};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -36,26 +36,21 @@ declare_lint_pass!(MinMaxPass => [MIN_MAX]);
 
 impl<'tcx> LateLintPass<'tcx> for MinMaxPass {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some((outer_max, outer_c, oe)) = min_max(cx, expr) {
-            if let Some((inner_max, inner_c, ie)) = min_max(cx, oe) {
-                if outer_max == inner_max {
-                    return;
-                }
-                match (
-                    outer_max,
-                    Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(ie), &outer_c, &inner_c),
-                ) {
-                    (_, None) | (MinMax::Max, Some(Ordering::Less)) | (MinMax::Min, Some(Ordering::Greater)) => (),
-                    _ => {
-                        span_lint(
-                            cx,
-                            MIN_MAX,
-                            expr.span,
-                            "this `min`/`max` combination leads to constant result",
-                        );
-                    },
-                }
-            }
+        if let Some((outer_max, outer_c, oe)) = min_max(cx, expr)
+            && let Some((inner_max, inner_c, ie)) = min_max(cx, oe)
+            && outer_max != inner_max
+            && let Some(ord) = Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(ie), &outer_c, &inner_c)
+            && matches!(
+                (outer_max, ord),
+                (MinMax::Max, Equal | Greater) | (MinMax::Min, Equal | Less)
+            )
+        {
+            span_lint(
+                cx,
+                MIN_MAX,
+                expr.span,
+                "this `min`/`max` combination leads to constant result",
+            );
         }
     }
 }
