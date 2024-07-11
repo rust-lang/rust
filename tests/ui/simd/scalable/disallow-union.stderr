@@ -4,6 +4,19 @@ error[E0800]: Scalable simd types cannot exist within a union
 LL |     x: ScalableSimdFloat,
    |        ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/disallow-union.rs:9:5
+   |
+LL |     x: ScalableSimdFloat,
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     x: std::mem::ManuallyDrop<ScalableSimdFloat>,
+   |        +++++++++++++++++++++++                 +
 
-For more information about this error, try `rustc --explain E0800`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0740, E0800.
+For more information about an error, try `rustc --explain E0740`.

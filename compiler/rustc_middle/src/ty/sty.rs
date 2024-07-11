@@ -1851,10 +1851,6 @@ impl<'tcx> Ty<'tcx> {
     /// This is mostly useful for optimizations, as these are the types
     /// on which we can replace cloning with dereferencing.
     pub fn is_trivially_pure_clone_copy(self) -> bool {
-        if self.is_scalable_simd() {
-            return true;
-        }
-
         match self.kind() {
             ty::Bool | ty::Char | ty::Never => true,
 

@@ -61,7 +61,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn consume_by_copy_or_move(&self, place: Place<'tcx>) -> Operand<'tcx> {
         let tcx = self.tcx;
         let ty = place.ty(&self.local_decls, tcx).ty;
-        if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty) {
+        if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty) && !ty.is_scalable_simd() {
             Operand::Move(place)
         } else {
             Operand::Copy(place)
