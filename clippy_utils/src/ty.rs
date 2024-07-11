@@ -96,11 +96,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                         return false;
                     }
 
-                    for (predicate, _span) in cx
-                        .tcx
-                        .explicit_item_super_predicates(def_id)
-                        .iter_identity_copied()
-                    {
+                    for (predicate, _span) in cx.tcx.explicit_item_super_predicates(def_id).iter_identity_copied() {
                         match predicate.kind().skip_binder() {
                             // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
                             // and check substitutions to find `U`.
@@ -1332,19 +1328,13 @@ pub fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl 
 /// If you need this, you should wrap this call in `clippy_utils::ty::deref_chain().any(...)`.
 pub fn get_adt_inherent_method<'a>(cx: &'a LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> Option<&'a AssocItem> {
     if let Some(ty_did) = ty.ty_adt_def().map(AdtDef::did) {
-        cx.tcx
-            .inherent_impls(ty_did)
-            .into_iter()
-            .flatten()
-            .map(|&did| {
-                cx.tcx
-                    .associated_items(did)
-                    .filter_by_name_unhygienic(method_name)
-                    .next()
-                    .filter(|item| item.kind == AssocKind::Fn)
-            })
-            .next()
-            .flatten()
+        cx.tcx.inherent_impls(ty_did).into_iter().flatten().find_map(|&did| {
+            cx.tcx
+                .associated_items(did)
+                .filter_by_name_unhygienic(method_name)
+                .next()
+                .filter(|item| item.kind == AssocKind::Fn)
+        })
     } else {
         None
     }

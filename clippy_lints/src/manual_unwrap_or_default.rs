@@ -172,11 +172,10 @@ fn handle<'tcx>(cx: &LateContext<'tcx>, if_let_or_match: IfLetOrMatch<'tcx>, exp
 
 impl<'tcx> LateLintPass<'tcx> for ManualUnwrapOrDefault {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if expr.span.from_expansion() || in_constant(cx, expr.hir_id) {
-            return;
-        }
-        // Call handle only if the expression is `if let` or `match`
-        if let Some(if_let_or_match) = IfLetOrMatch::parse(cx, expr) {
+        if let Some(if_let_or_match) = IfLetOrMatch::parse(cx, expr)
+            && !expr.span.from_expansion()
+            && !in_constant(cx, expr.hir_id)
+        {
             handle(cx, if_let_or_match, expr);
         }
     }

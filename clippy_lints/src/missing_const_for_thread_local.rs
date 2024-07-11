@@ -39,23 +39,23 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "1.77.0"]
-    pub THREAD_LOCAL_INITIALIZER_CAN_BE_MADE_CONST,
+    pub MISSING_CONST_FOR_THREAD_LOCAL,
     perf,
     "suggest using `const` in `thread_local!` macro"
 }
 
-pub struct ThreadLocalInitializerCanBeMadeConst {
+pub struct MissingConstForThreadLocal {
     msrv: Msrv,
 }
 
-impl ThreadLocalInitializerCanBeMadeConst {
+impl MissingConstForThreadLocal {
     #[must_use]
     pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
 
-impl_lint_pass!(ThreadLocalInitializerCanBeMadeConst => [THREAD_LOCAL_INITIALIZER_CAN_BE_MADE_CONST]);
+impl_lint_pass!(MissingConstForThreadLocal => [MISSING_CONST_FOR_THREAD_LOCAL]);
 
 #[inline]
 fn is_thread_local_initializer(
@@ -102,7 +102,7 @@ fn initializer_can_be_made_const(cx: &LateContext<'_>, defid: rustc_span::def_id
     false
 }
 
-impl<'tcx> LateLintPass<'tcx> for ThreadLocalInitializerCanBeMadeConst {
+impl<'tcx> LateLintPass<'tcx> for MissingConstForThreadLocal {
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -113,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for ThreadLocalInitializerCanBeMadeConst {
         local_defid: rustc_span::def_id::LocalDefId,
     ) {
         let defid = local_defid.to_def_id();
-        if self.msrv.meets(msrvs::THREAD_LOCAL_INITIALIZER_CAN_BE_MADE_CONST)
+        if self.msrv.meets(msrvs::THREAD_LOCAL_CONST_INIT)
             && is_thread_local_initializer(cx, fn_kind, span).unwrap_or(false)
             // Some implementations of `thread_local!` include an initializer fn.
             // In the case of a const initializer, the init fn is also const,
@@ -139,7 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for ThreadLocalInitializerCanBeMadeConst {
         {
             span_lint_and_sugg(
                 cx,
-                THREAD_LOCAL_INITIALIZER_CAN_BE_MADE_CONST,
+                MISSING_CONST_FOR_THREAD_LOCAL,
                 unpeeled.span,
                 "initializer for `thread_local` value can be made `const`",
                 "replace with",
