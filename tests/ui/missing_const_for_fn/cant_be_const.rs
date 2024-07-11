@@ -7,6 +7,7 @@
 
 #![warn(clippy::missing_const_for_fn)]
 #![feature(start)]
+#![feature(type_alias_impl_trait)]
 
 extern crate helper;
 extern crate proc_macros;
@@ -179,5 +180,22 @@ mod msrv {
         fn deref_mut_ptr_cannot_be_const(self) -> usize {
             unsafe { *self.1 as usize }
         }
+    }
+
+    #[clippy::msrv = "1.61"]
+    extern "C" fn c() {}
+}
+
+mod with_extern {
+    extern "C-unwind" fn c_unwind() {}
+    extern "system" fn system() {}
+    extern "system-unwind" fn system_unwind() {}
+}
+
+mod with_ty_alias {
+    type Foo = impl std::fmt::Debug;
+
+    fn foo(_: Foo) {
+        let _: Foo = 1;
     }
 }
