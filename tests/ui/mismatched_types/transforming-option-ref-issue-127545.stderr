@@ -8,6 +8,10 @@ LL |     arg
    |
    = note: expected enum `Option<&[i32]>`
               found enum `Option<&Vec<i32>>`
+help: try using `.map(|v| &**v)` to convert `Option<&Vec<i32>>` to `Option<&[i32]>`
+   |
+LL |     arg.map(|v| &**v)
+   |        ++++++++++++++
 
 error: aborting due to 1 previous error
 
