@@ -228,8 +228,9 @@ fn clean_generic_bound<'tcx>(
 
             GenericBound::TraitBound(clean_poly_trait_ref(t, cx), modifier)
         }
-        // FIXME(precise_capturing): Implement rustdoc support
-        hir::GenericBound::Use(..) => return None,
+        hir::GenericBound::Use(args, ..) => {
+            GenericBound::Use(args.iter().map(|arg| arg.name()).collect())
+        }
     })
 }
 
