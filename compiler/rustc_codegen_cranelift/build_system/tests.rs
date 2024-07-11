@@ -446,6 +446,7 @@ impl<'a> TestRunner<'a> {
         cmd.arg("-Cpanic=abort");
         cmd.arg("-Zunstable-options");
         cmd.arg("--check-cfg=cfg(jit)");
+        cmd.arg("--emit=metadata,link");
         cmd.args(args);
         cmd
     }

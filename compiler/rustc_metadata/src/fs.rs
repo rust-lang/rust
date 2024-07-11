@@ -50,7 +50,8 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
         .tempdir_in(out_filename.parent().unwrap_or_else(|| Path::new("")))
         .unwrap_or_else(|err| tcx.dcx().emit_fatal(FailedCreateTempdir { err }));
     let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
-    let metadata_filename = metadata_tmpdir.as_ref().join(METADATA_FILENAME);
+    let metadata_filename = metadata_tmpdir.as_ref().join("full.rmeta");
+    let metadata_reference_filename = metadata_tmpdir.as_ref().join("ref.rmeta");
 
     // Always create a file at `metadata_filename`, even if we have nothing to write to it.
     // This simplifies the creation of the output `out_filename` when requested.
@@ -60,9 +61,12 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
             std::fs::File::create(&metadata_filename).unwrap_or_else(|err| {
                 tcx.dcx().emit_fatal(FailedCreateFile { filename: &metadata_filename, err });
             });
+            std::fs::File::create(&metadata_reference_filename).unwrap_or_else(|err| {
+                tcx.dcx().emit_fatal(FailedCreateFile { filename: &metadata_filename, err });
+            });
         }
         MetadataKind::Uncompressed | MetadataKind::Compressed => {
-            encode_metadata(tcx, &metadata_filename);
+            encode_metadata(tcx, &metadata_filename, &metadata_reference_filename)
         }
     };
 
@@ -100,9 +104,10 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
 
     // Load metadata back to memory: codegen may need to include it in object files.
     let metadata =
-        EncodedMetadata::from_path(metadata_filename, metadata_tmpdir).unwrap_or_else(|err| {
-            tcx.dcx().emit_fatal(FailedCreateEncodedMetadata { err });
-        });
+        EncodedMetadata::from_path(metadata_filename, metadata_reference_filename, metadata_tmpdir)
+            .unwrap_or_else(|err| {
+                tcx.dcx().emit_fatal(FailedCreateEncodedMetadata { err });
+            });
 
     let need_metadata_module = metadata_kind == MetadataKind::Compressed;
 
