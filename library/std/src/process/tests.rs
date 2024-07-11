@@ -386,7 +386,7 @@ fn test_interior_nul_in_env_value_is_error() {
 fn test_creation_flags() {
     use crate::os::windows::process::CommandExt;
     use crate::sys::c::{BOOL, DWORD, INFINITE};
-    #[repr(C, packed)]
+    #[repr(C)]
     struct DEBUG_EVENT {
         pub event_code: DWORD,
         pub process_id: DWORD,
