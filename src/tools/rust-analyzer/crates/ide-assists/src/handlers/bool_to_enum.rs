@@ -96,7 +96,7 @@ struct BoolNodeData {
 
 /// Attempts to find an appropriate node to apply the action to.
 fn find_bool_node(ctx: &AssistContext<'_>) -> Option<BoolNodeData> {
-    let name: ast::Name = ctx.find_node_at_offset()?;
+    let name = ctx.find_node_at_offset::<ast::Name>()?;
 
     if let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
         let def = ctx.sema.to_def(&ident_pat)?;
@@ -461,7 +461,20 @@ fn add_enum_def(
     usages: &UsageSearchResult,
     target_node: SyntaxNode,
     target_module: &hir::Module,
-) {
+) -> Option<()> {
+    let insert_before = node_to_insert_before(target_node);
+
+    if ctx
+        .sema
+        .scope(&insert_before)?
+        .module()
+        .scope(ctx.db(), Some(*target_module))
+        .iter()
+        .any(|(name, _)| name.as_str() == Some("Bool"))
+    {
+        return None;
+    }
+
     let make_enum_pub = usages
         .iter()
         .flat_map(|(_, refs)| refs)
@@ -472,7 +485,6 @@ fn add_enum_def(
         .any(|module| module.nearest_non_block_module(ctx.db()) != *target_module);
     let enum_def = make_bool_enum(make_enum_pub);
 
-    let insert_before = node_to_insert_before(target_node);
     let indent = IndentLevel::from_node(&insert_before);
     enum_def.reindent_to(indent);
 
@@ -480,6 +492,8 @@ fn add_enum_def(
         insert_before.text_range().start(),
         format!("{}\n\n{indent}", enum_def.syntax().text()),
     );
+
+    Some(())
 }
 
 /// Finds where to put the new enum definition.
@@ -547,6 +561,33 @@ enum Bool { True, False }
 fn function(foo: Bool, bar: bool) {
     if foo == Bool::True {
         println!("foo");
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn no_duplicate_enums() {
+        check_assist(
+            bool_to_enum,
+            r#"
+#[derive(PartialEq, Eq)]
+enum Bool { True, False }
+
+fn function(foo: bool, $0bar: bool) {
+    if bar {
+        println!("bar");
+    }
+}
+"#,
+            r#"
+#[derive(PartialEq, Eq)]
+enum Bool { True, False }
+
+fn function(foo: bool, bar: Bool) {
+    if bar == Bool::True {
+        println!("bar");
     }
 }
 "#,
