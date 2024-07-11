@@ -167,14 +167,12 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
             } else {
                 edits.extend(addr_of_edits);
             }
-            edits.push((
-                name_span,
-                String::from(match name {
-                    "map" => "inspect",
-                    "map_err" => "inspect_err",
-                    _ => return,
-                }),
-            ));
+            let edit = match name {
+                "map" => "inspect",
+                "map_err" => "inspect_err",
+                _ => return,
+            };
+            edits.push((name_span, edit.to_string()));
             edits.push((
                 final_expr
                     .span
@@ -187,9 +185,15 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
             } else {
                 Applicability::MachineApplicable
             };
-            span_lint_and_then(cx, MANUAL_INSPECT, name_span, "", |diag| {
-                diag.multipart_suggestion("try", edits, app);
-            });
+            span_lint_and_then(
+                cx,
+                MANUAL_INSPECT,
+                name_span,
+                format!("using `{name}` over `{edit}`"),
+                |diag| {
+                    diag.multipart_suggestion("try", edits, app);
+                },
+            );
         }
     }
 }

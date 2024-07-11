@@ -7,6 +7,7 @@ use clippy_utils::{
     path_to_local_id, span_contains_cfg, span_find_starting_semi,
 };
 use core::ops::ControlFlow;
+use rustc_ast::NestedMetaItem;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::LangItem::ResultErr;
@@ -14,13 +15,13 @@ use rustc_hir::{
     Block, Body, Expr, ExprKind, FnDecl, HirId, ItemKind, LangItem, MatchSource, Node, OwnerNode, PatKind, QPath, Stmt,
     StmtKind,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, Level, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{BytePos, Pos, Span};
+use rustc_span::{sym, BytePos, Pos, Span};
 use std::borrow::Cow;
 use std::fmt::Display;
 
@@ -80,6 +81,9 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub NEEDLESS_RETURN,
+    // This lint requires some special handling in `check_final_expr` for `#[expect]`.
+    // This handling needs to be updated if the group gets changed. This should also
+    // be caught by tests.
     style,
     "using a return statement like `return expr;` where an expression would suffice"
 }
@@ -90,6 +94,9 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// The `return` is unnecessary.
+    ///
+    /// Returns may be used to add attributes to the return expression. Return
+    /// statements with attributes are therefore be accepted by this lint.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -377,12 +384,38 @@ fn check_final_expr<'tcx>(
                 }
             };
 
-            if !cx.tcx.hir().attrs(expr.hir_id).is_empty() {
-                return;
-            }
             let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
             if borrows {
                 return;
+            }
+            if ret_span.from_expansion() {
+                return;
+            }
+
+            // Returns may be used to turn an expression into a statement in rustc's AST.
+            // This allows the addition of attributes, like `#[allow]` (See: clippy#9361)
+            // `#[expect(clippy::needless_return)]` needs to be handled separatly to
+            // actually fullfil the expectation (clippy::#12998)
+            match cx.tcx.hir().attrs(expr.hir_id) {
+                [] => {},
+                [attr] => {
+                    if matches!(Level::from_attr(attr), Some(Level::Expect(_)))
+                        && let metas = attr.meta_item_list()
+                        && let Some(lst) = metas
+                        && let [NestedMetaItem::MetaItem(meta_item)] = lst.as_slice()
+                        && let [tool, lint_name] = meta_item.path.segments.as_slice()
+                        && tool.ident.name == sym::clippy
+                        && matches!(
+                            lint_name.ident.name.as_str(),
+                            "needless_return" | "style" | "all" | "warnings"
+                        )
+                    {
+                        // This is an expectation of the `needless_return` lint
+                    } else {
+                        return;
+                    }
+                },
+                _ => return,
             }
 
             emit_return_lint(cx, ret_span, semi_spans, &replacement, expr.hir_id);
@@ -415,10 +448,6 @@ fn emit_return_lint(
     replacement: &RetReplacement<'_>,
     at: HirId,
 ) {
-    if ret_span.from_expansion() {
-        return;
-    }
-
     span_lint_hir_and_then(
         cx,
         NEEDLESS_RETURN,

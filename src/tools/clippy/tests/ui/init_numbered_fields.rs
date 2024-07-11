@@ -14,10 +14,18 @@ fn main() {
     let tuple_struct = TupleStruct::default();
 
     // This should lint
-    let _ = TupleStruct(1u32, 42, 23u8);
+    let _ = TupleStruct {
+        0: 1u32,
+        1: 42,
+        2: 23u8,
+    };
 
     // This should also lint and order the fields correctly
-    let _ = TupleStruct(1u32, 3u32, 2u8);
+    let _ = TupleStruct {
+        0: 1u32,
+        2: 2u8,
+        1: 3u32,
+    };
 
     // Ok because of default initializer
     let _ = TupleStruct { 0: 42, ..tuple_struct };
@@ -38,5 +46,14 @@ fn main() {
     // Issue #12367
     struct TupleStructVec(Vec<usize>);
 
-    let _ = TupleStructVec(vec![0, 1, 2, 3]);
+    let _ = TupleStructVec { 0: vec![0, 1, 2, 3] };
+
+    {
+        struct S(i32, i32);
+        let mut iter = [1i32, 1i32].into_iter();
+        let _ = S {
+            1: iter.next().unwrap(),
+            0: iter.next().unwrap(),
+        };
+    }
 }

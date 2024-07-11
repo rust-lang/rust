@@ -6,7 +6,8 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::Visitable;
 use clippy_utils::{in_constant, is_entrypoint_fn, is_trait_impl_item, method_chain_args};
 use pulldown_cmark::Event::{
-    Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start, TaskListMarker, Text,
+    Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
+    TaskListMarker, Text,
 };
 use pulldown_cmark::Tag::{BlockQuote, CodeBlock, FootnoteDefinition, Heading, Item, Link, Paragraph};
 use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
@@ -747,7 +748,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             },
             Start(FootnoteDefinition(..)) => in_footnote_definition = true,
             End(TagEnd::FootnoteDefinition) => in_footnote_definition = false,
-            Start(_) | End(_) => (), // We don't care about other tags
+            Start(_) | End(_)  // We don't care about other tags
+            | TaskListMarker(_) | Code(_) | Rule | InlineMath(..) | DisplayMath(..) => (),
             SoftBreak | HardBreak => {
                 if !containers.is_empty()
                     && let Some((next_event, next_range)) = events.peek()
@@ -762,13 +764,24 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         range.end..next_range.start,
                         Span::new(span.hi(), next_span.lo(), span.ctxt(), span.parent()),
                         &containers[..],
+                        span,
                     );
                 }
             },
-            TaskListMarker(_) | Code(_) | Rule | InlineMath(..) | DisplayMath(..) => (),
             FootnoteReference(text) | Text(text) => {
                 paragraph_range.end = range.end;
-                ticks_unbalanced |= text.contains('`') && !in_code;
+                let range_ = range.clone();
+                ticks_unbalanced |= text.contains('`')
+                    && !in_code
+                    && doc[range.clone()].bytes().enumerate().any(|(i, c)| {
+                        // scan the markdown source code bytes for backquotes that aren't preceded by backslashes
+                        // - use bytes, instead of chars, to avoid utf8 decoding overhead (special chars are ascii)
+                        // - relevant backquotes are within doc[range], but backslashes are not, because they're not
+                        //   actually part of the rendered text (pulldown-cmark doesn't emit any events for escapes)
+                        // - if `range_.start + i == 0`, then `range_.start + i - 1 == -1`, and since we're working in
+                        //   usize, that would underflow and maybe panic
+                        c == b'`' && (range_.start + i == 0 || doc.as_bytes().get(range_.start + i - 1) != Some(&b'\\'))
+                    });
                 if Some(&text) == in_link.as_ref() || ticks_unbalanced {
                     // Probably a link of the form `<http://example.com>`
                     // Which are represented as a link to "http://example.com" with

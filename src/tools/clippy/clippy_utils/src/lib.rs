@@ -102,10 +102,11 @@ use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
-    self as hir, def, Arm, ArrayLen, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, Destination, Expr,
-    ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item,
-    ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment,
-    PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
+    self as hir, def, Arm, ArrayLen, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstContext,
+    Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind,
+    ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat,
+    PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef,
+    TyKind, UnOp,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -210,7 +211,10 @@ pub fn local_is_initialized(cx: &LateContext<'_>, local: HirId) -> bool {
     false
 }
 
-/// Returns `true` if the given `NodeId` is inside a constant context
+/// Returns `true` if the given `HirId` is inside a constant context.
+///
+/// This is the same as `is_inside_always_const_context`, but also includes
+/// `const fn`.
 ///
 /// # Example
 ///
@@ -221,6 +225,24 @@ pub fn local_is_initialized(cx: &LateContext<'_>, local: HirId) -> bool {
 /// ```
 pub fn in_constant(cx: &LateContext<'_>, id: HirId) -> bool {
     cx.tcx.hir().is_inside_const_context(id)
+}
+
+/// Returns `true` if the given `HirId` is inside an always constant context.
+///
+/// This context includes:
+///  * const/static items
+///  * const blocks (or inline consts)
+///  * associated constants
+pub fn is_inside_always_const_context(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
+    use ConstContext::{Const, ConstFn, Static};
+    let hir = tcx.hir();
+    let Some(ctx) = hir.body_const_context(hir.enclosing_body_owner(hir_id)) else {
+        return false;
+    };
+    match ctx {
+        ConstFn => false,
+        Static(_) | Const { inline: _ } => true,
+    }
 }
 
 /// Checks if a `Res` refers to a constructor of a `LangItem`
@@ -1904,8 +1926,18 @@ pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool
     false
 }
 
-pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_>, node: HirId) -> bool {
-    any_parent_has_attr(tcx, node, sym::automatically_derived)
+/// Checks if the given HIR node is inside an `impl` block with the `automatically_derived`
+/// attribute.
+pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
+    tcx.hir()
+        .parent_owner_iter(id)
+        .filter(|(_, node)| matches!(node, OwnerNode::Item(item) if matches!(item.kind, ItemKind::Impl(_))))
+        .any(|(id, _)| {
+            has_attr(
+                tcx.hir().attrs(tcx.local_def_id_to_hir_id(id.def_id)),
+                sym::automatically_derived,
+            )
+        })
 }
 
 /// Matches a function call with the given path and returns the arguments.
@@ -2472,6 +2504,17 @@ pub fn peel_hir_ty_refs<'a>(mut ty: &'a hir::Ty<'a>) -> (&'a hir::Ty<'a>, usize)
     }
 }
 
+/// Peels off all references on the type. Returns the underlying type and the number of references
+/// removed.
+pub fn peel_middle_ty_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize) {
+    let mut count = 0;
+    while let rustc_ty::Ref(_, dest_ty, _) = ty.kind() {
+        ty = *dest_ty;
+        count += 1;
+    }
+    (ty, count)
+}
+
 /// Removes `AddrOf` operators (`&`) or deref operators (`*`), but only if a reference type is
 /// dereferenced. An overloaded deref such as `Vec` to slice would not be removed.
 pub fn peel_ref_operators<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
@@ -2592,16 +2635,6 @@ pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
             .parent_iter(tcx.local_def_id_to_hir_id(def_id))
             .flat_map(|(parent_id, _)| hir.attrs(parent_id))
             .any(|attr| attr.has_name(sym::cfg))
-}
-
-/// Checks whether item either has `test` attribute applied, or
-/// is a module with `test` in its name.
-///
-/// Note: Add `//@compile-flags: --test` to UI tests with a `#[test]` function
-pub fn is_test_module_or_function(tcx: TyCtxt<'_>, item: &Item<'_>) -> bool {
-    is_in_test_function(tcx, item.hir_id())
-        || matches!(item.kind, ItemKind::Mod(..))
-            && item.ident.name.as_str().split('_').any(|a| a == "test" || a == "tests")
 }
 
 /// Walks up the HIR tree from the given expression in an attempt to find where the value is

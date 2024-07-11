@@ -97,19 +97,15 @@ impl_lint_pass!(ManualNonExhaustiveEnum => [MANUAL_NON_EXHAUSTIVE]);
 
 impl EarlyLintPass for ManualNonExhaustiveStruct {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if !self.msrv.meets(msrvs::NON_EXHAUSTIVE) {
-            return;
-        }
-
-        if let ast::ItemKind::Struct(variant_data, _) = &item.kind {
-            let (fields, delimiter) = match variant_data {
+        if let ast::ItemKind::Struct(variant_data, _) = &item.kind
+            && let (fields, delimiter) = match variant_data {
                 ast::VariantData::Struct { fields, .. } => (&**fields, '{'),
                 ast::VariantData::Tuple(fields, _) => (&**fields, '('),
                 ast::VariantData::Unit(_) => return,
-            };
-            if fields.len() <= 1 {
-                return;
             }
+            && fields.len() > 1
+            && self.msrv.meets(msrvs::NON_EXHAUSTIVE)
+        {
             let mut iter = fields.iter().filter_map(|f| match f.vis.kind {
                 VisibilityKind::Public => None,
                 VisibilityKind::Inherited => Some(Ok(f)),

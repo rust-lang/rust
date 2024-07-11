@@ -2,8 +2,8 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_then, span_lint_hir_and
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    any_parent_is_automatically_derived, fulfill_or_allowed, get_parent_expr, is_lint_allowed, iter_input_pats,
-    last_path_segment, SpanlessEq,
+    fulfill_or_allowed, get_parent_expr, in_automatically_derived, is_lint_allowed, iter_input_pats, last_path_segment,
+    SpanlessEq,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -206,7 +206,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span)
             || expr.span.desugaring_kind().is_some()
-            || any_parent_is_automatically_derived(cx.tcx, expr.hir_id)
+            || in_automatically_derived(cx.tcx, expr.hir_id)
         {
             return;
         }

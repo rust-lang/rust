@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::is_in_test;
 use clippy_utils::macros::{format_arg_removal_span, root_macro_call_first_node, FormatArgsStorage, MacroCall};
 use clippy_utils::source::{expand_past_previous_comma, snippet_opt};
-use clippy_utils::{is_in_cfg_test, is_in_test_function};
 use rustc_ast::token::LitKind;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgs, FormatArgsPiece, FormatOptions, FormatPlaceholder,
@@ -297,8 +297,7 @@ impl<'tcx> LateLintPass<'tcx> for Write {
             .as_ref()
             .map_or(false, |crate_name| crate_name == "build_script_build");
 
-        let allowed_in_tests = self.allow_print_in_tests
-            && (is_in_test_function(cx.tcx, expr.hir_id) || is_in_cfg_test(cx.tcx, expr.hir_id));
+        let allowed_in_tests = self.allow_print_in_tests && is_in_test(cx.tcx, expr.hir_id);
         match diag_name {
             sym::print_macro | sym::println_macro if !allowed_in_tests => {
                 if !is_build_script {
