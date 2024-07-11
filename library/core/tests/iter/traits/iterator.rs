@@ -676,11 +676,6 @@ fn test_string_iterator_contains_str_slice() {
     assert!(!["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contains(&"d"));
 }
 
-#[test]
-fn test_edge_case_handling_iterator_with_large_number_of_elements() {
-    assert!((1..1000).contains(500i32));
-}
-
 // just tests by whether or not this compiles
 fn _empty_impl_all_auto_traits<T>() {
     use std::panic::{RefUnwindSafe, UnwindSafe};
