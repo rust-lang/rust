@@ -66,7 +66,7 @@ extern "C" {
 /// 0 or `a[s[i] % 16]` depending on the implementation.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.relaxed_swizzle))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("i8x16.relaxed_swizzle"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn i8x16_relaxed_swizzle(a: v128, s: v128) -> v128 {
@@ -83,7 +83,7 @@ pub use i8x16_relaxed_swizzle as u8x16_relaxed_swizzle;
 /// result as `i32x4_trunc_sat_f32x4` or may return `i32::MIN`.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.relaxed_trunc_f32x4_s))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("i32x4.relaxed_trunc_f32x4_s"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn i32x4_relaxed_trunc_f32x4(a: v128) -> v128 {
@@ -97,7 +97,7 @@ pub fn i32x4_relaxed_trunc_f32x4(a: v128) -> v128 {
 /// same result as `u32x4_trunc_sat_f32x4` or may return `u32::MAX`.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.relaxed_trunc_f32x4_u))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("i32x4.relaxed_trunc_f32x4_u"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn u32x4_relaxed_trunc_f32x4(a: v128) -> v128 {
@@ -111,7 +111,7 @@ pub fn u32x4_relaxed_trunc_f32x4(a: v128) -> v128 {
 /// result as `i32x4_trunc_sat_f32x4` or may return `i32::MIN`.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.relaxed_trunc_f64x2_s_zero))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("i32x4.relaxed_trunc_f64x2_s_zero"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn i32x4_relaxed_trunc_f64x2_zero(a: v128) -> v128 {
@@ -125,7 +125,7 @@ pub fn i32x4_relaxed_trunc_f64x2_zero(a: v128) -> v128 {
 /// same result as `u32x4_trunc_sat_f32x4` or may return `u32::MAX`.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.relaxed_trunc_f64x2_u_zero))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("i32x4.relaxed_trunc_f64x2_u_zero"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn u32x4_relaxed_trunc_f64x2_zero(a: v128) -> v128 {
@@ -135,7 +135,7 @@ pub fn u32x4_relaxed_trunc_f64x2_zero(a: v128) -> v128 {
 /// Computes `a * b + c` with either one rounding or two roundings.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.relaxed_madd))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("f32x4.relaxed_madd"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn f32x4_relaxed_madd(a: v128, b: v128, c: v128) -> v128 {
@@ -145,7 +145,7 @@ pub fn f32x4_relaxed_madd(a: v128, b: v128, c: v128) -> v128 {
 /// Computes `-a * b + c` with either one rounding or two roundings.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.relaxed_nmadd))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("f32x4.relaxed_nmadd"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn f32x4_relaxed_nmadd(a: v128, b: v128, c: v128) -> v128 {
@@ -155,7 +155,7 @@ pub fn f32x4_relaxed_nmadd(a: v128, b: v128, c: v128) -> v128 {
 /// Computes `a * b + c` with either one rounding or two roundings.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.relaxed_madd))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("f64x2.relaxed_madd"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn f64x2_relaxed_madd(a: v128, b: v128, c: v128) -> v128 {
@@ -165,7 +165,7 @@ pub fn f64x2_relaxed_madd(a: v128, b: v128, c: v128) -> v128 {
 /// Computes `-a * b + c` with either one rounding or two roundings.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.relaxed_nmadd))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("f64x2.relaxed_nmadd"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn f64x2_relaxed_nmadd(a: v128, b: v128, c: v128) -> v128 {
@@ -181,7 +181,7 @@ pub fn f64x2_relaxed_nmadd(a: v128, b: v128, c: v128) -> v128 {
 /// is the same as `v128_bitselect`.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.relaxed_laneselect))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("i8x16.relaxed_laneselect"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn i8x16_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
@@ -200,7 +200,7 @@ pub use i8x16_relaxed_laneselect as u8x16_relaxed_laneselect;
 /// is the same as `v128_bitselect`.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.relaxed_laneselect))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("i16x8.relaxed_laneselect"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn i16x8_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
@@ -219,7 +219,7 @@ pub use i16x8_relaxed_laneselect as u16x8_relaxed_laneselect;
 /// is the same as `v128_bitselect`.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.relaxed_laneselect))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("i32x4.relaxed_laneselect"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn i32x4_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
@@ -238,7 +238,7 @@ pub use i32x4_relaxed_laneselect as u32x4_relaxed_laneselect;
 /// is the same as `v128_bitselect`.
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.relaxed_laneselect))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("i64x2.relaxed_laneselect"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn i64x2_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
@@ -252,7 +252,7 @@ pub use i64x2_relaxed_laneselect as u64x2_relaxed_laneselect;
 /// `f32x4_pmin`.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.relaxed_min))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("f32x4.relaxed_min"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn f32x4_relaxed_min(a: v128, b: v128) -> v128 {
@@ -263,7 +263,7 @@ pub fn f32x4_relaxed_min(a: v128, b: v128) -> v128 {
 /// `f32x4_pmax`.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.relaxed_max))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("f32x4.relaxed_max"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn f32x4_relaxed_max(a: v128, b: v128) -> v128 {
@@ -274,7 +274,7 @@ pub fn f32x4_relaxed_max(a: v128, b: v128) -> v128 {
 /// `f64x2_pmin`.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.relaxed_min))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("f64x2.relaxed_min"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn f64x2_relaxed_min(a: v128, b: v128) -> v128 {
@@ -285,7 +285,7 @@ pub fn f64x2_relaxed_min(a: v128, b: v128) -> v128 {
 /// `f64x2_pmax`.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.relaxed_max))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("f64x2.relaxed_max"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn f64x2_relaxed_max(a: v128, b: v128) -> v128 {
@@ -296,7 +296,7 @@ pub fn f64x2_relaxed_max(a: v128, b: v128) -> v128 {
 /// `i16::MIN` then the result is either `i16::MIN` or `i16::MAX`.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.relaxed_q15mulr_s))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("i16x8.relaxed_q15mulr_s"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn i16x8_relaxed_q15mulr(a: v128, b: v128) -> v128 {
@@ -319,7 +319,7 @@ pub use i16x8_relaxed_q15mulr as u16x8_relaxed_q15mulr;
 /// on other platforms it may wrap-around on overflow.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.relaxed_dot_i8x16_i7x16_s))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("i16x8.relaxed_dot_i8x16_i7x16_s"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn i16x8_relaxed_dot_i8x16_i7x16(a: v128, b: v128) -> v128 {
@@ -334,7 +334,7 @@ pub use i16x8_relaxed_dot_i8x16_i7x16 as u16x8_relaxed_dot_i8x16_i7x16;
 /// `i32x4_add` to add the value `c` to the result.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.relaxed_dot_i8x16_i7x16_add_s))]
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "relaxed-simd,simd128")]
 #[doc(alias("i32x4.relaxed_dot_i8x16_i7x16_add_s"))]
 #[stable(feature = "stdarch_wasm_relaxed_simd", since = "1.81.0")]
 pub fn i32x4_relaxed_dot_i8x16_i7x16_add(a: v128, b: v128, c: v128) -> v128 {
