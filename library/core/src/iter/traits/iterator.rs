@@ -79,10 +79,10 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next(&mut self) -> Option<Self::Item>;
 
-    /// Advances the iterator and returns an array containing the next `N` values.
+    /// Advances the iterator and returns an array has_iteming the next `N` values.
     ///
     /// If there are not enough elements to fill the array then `Err` is returned
-    /// containing an iterator over the remaining elements.
+    /// has_iteming an iterator over the remaining elements.
     ///
     /// # Examples
     ///
@@ -1327,7 +1327,7 @@ pub trait Iterator {
     /// `take(n)` yields elements until `n` elements are yielded or the end of
     /// the iterator is reached (whichever happens first).
     /// The returned iterator is a prefix of length `n` if the original iterator
-    /// contains at least `n` elements, otherwise it contains all of the
+    /// has_items at least `n` elements, otherwise it has_items all of the
     /// (fewer than `n`) elements of the original iterator.
     ///
     /// # Examples
@@ -3356,7 +3356,7 @@ pub trait Iterator {
         Rev::new(self)
     }
 
-    /// Converts an iterator of pairs into a pair of containers.
+    /// Converts an iterator of pairs into a pair of has_itemers.
     ///
     /// `unzip()` consumes an entire iterator of pairs, producing two
     /// collections: one from the left elements of the pairs, and one
@@ -4061,38 +4061,38 @@ pub trait Iterator {
         unreachable!("Always specialized");
     }
 
-    /// Checks if the Iterator contains the value.
-    /// 'contains' is short-circuiting; in other words, it will stop processing
-    /// as soon as the closure returns `true`.
+    /// Checks if the Iterator has a value.
+    /// 'has_items' is short-circuiting; in other words, it will stop processing
+    /// as soon as the function finds the item in the Iterator.
     ///
     /// Performance:
     /// This method checks the whole iterator, which takes O(n) time.
-    /// If the iterator is sorted, or a hash map please use the appropriate method.
+    /// If the iterator is sorted, or a hash map please use the appropriate method instead.
     ///
     /// Example:
     /// ```
-    /// #![feature(contains)]
-    /// assert!(![1i32, 2i32, 3i32].iter().contain(&4i32));
-    /// assert!([Some(2i32), Option::<i32>::None].iter().contain(&None));
-    /// assert!([Some(2i32), Option::<i32>::None].iter().contain(&Some(2i32)));
-    /// assert!(!Vec::<i32>::new().iter().contain(&1i32));
-    /// assert!([1i32, 2i32, 2i32, 3i32].iter().contain(&2i32));
+    /// #![feature(has_item)]
+    /// assert!(![1i32, 2i32, 3i32].iter().has_item(&4i32));
+    /// assert!([Some(2i32), Option::<i32>::None].iter().has_item(&None));
+    /// assert!([Some(2i32), Option::<i32>::None].iter().has_item(&Some(2i32)));
+    /// assert!(!Vec::<i32>::new().iter().has_item(&1i32));
+    /// assert!([1i32, 2i32, 2i32, 3i32].iter().has_item(&2i32));
     /// #[derive(PartialEq)]
     /// struct Item {
     ///     value: i32,
     /// }
-    /// assert!([Item { value: 1i32 }, Item { value: 2i32 }].iter().contain(&Item { value: 2i32 }));
-    /// assert!(["a", "b", "c"].iter().contain(&"b".to_owned()));
-    /// assert!(!["a", "b", "c"].iter().contain(&"d".to_owned()));
-    /// assert!(["a", "b", "c"].iter().contain(&"b"));
-    /// assert!(!["a", "b", "c"].iter().contain(&"d"));
-    /// assert!(["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contain(&"b"));
-    /// assert!(!["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contain(&"d"));
-    /// assert!((1..1000).contain(500i32));
+    /// assert!([Item { value: 1i32 }, Item { value: 2i32 }].iter().has_item(&Item { value: 2i32 }));
+    /// assert!(["a", "b", "c"].iter().has_item(&"b".to_owned()));
+    /// assert!(!["a", "b", "c"].iter().has_item(&"d".to_owned()));
+    /// assert!(["a", "b", "c"].iter().has_item(&"b"));
+    /// assert!(!["a", "b", "c"].iter().has_item(&"d"));
+    /// assert!(["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().has_item(&"b"));
+    /// assert!(!["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().has_item(&"d"));
+    /// assert!((1..1000).has_item(500i32));
     /// ```
     ///
-    #[unstable(feature = "contains", reason = "new API", issue = "127494")]
-    fn contain<Q: ?Sized>(&mut self, item: Q) -> bool
+    #[unstable(feature = "has_item", reason = "new API", issue = "127494")]
+    fn has_item<Q: ?Sized>(&mut self, item: Q) -> bool
     where
         Q: PartialEq<Self::Item>,
         Self: Sized,
