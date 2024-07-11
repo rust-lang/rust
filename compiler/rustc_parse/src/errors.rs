@@ -1784,7 +1784,7 @@ pub(crate) struct ExpectedTraitInTraitImplFoundType {
 #[diag(parse_extra_impl_keyword_in_trait_impl)]
 pub(crate) struct ExtraImplKeywordInTraitImpl {
     #[primary_span]
-    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
+    #[suggestion(code = "", applicability = "maybe-incorrect", style = "short")]
     pub extra_impl_kw: Span,
     #[note]
     pub impl_trait_span: Span,
@@ -2890,7 +2890,7 @@ pub(crate) struct MacroRulesMissingBang {
 #[diag(parse_macro_name_remove_bang)]
 pub(crate) struct MacroNameRemoveBang {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "short")]
     pub span: Span,
 }
 
