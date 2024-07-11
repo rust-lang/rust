@@ -14,8 +14,11 @@ const EXCEPTIONS: &[&str] = &[
     "csky_unknown_linux_gnuabiv2hf",
     // FIXME: disabled since it requires a custom LLVM until the upstream LLVM adds support for the target (https://github.com/espressif/llvm-project/issues/4)
     "xtensa_esp32_none_elf",
+    "xtensa_esp32_espidf",
     "xtensa_esp32s2_none_elf",
+    "xtensa_esp32s2_espidf",
     "xtensa_esp32s3_none_elf",
+    "xtensa_esp32s3_espidf",
 ];
 
 pub fn check(root_path: &Path, bad: &mut bool) {

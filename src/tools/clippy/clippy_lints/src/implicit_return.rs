@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context, walk_span_to_context};
 use clippy_utils::visitors::for_each_expr_without_closures;
-use clippy_utils::{get_async_fn_body, is_async_fn};
+use clippy_utils::{get_async_fn_body, is_async_fn, is_from_proc_macro};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -245,6 +245,10 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
         } else {
             body.value
         };
+
+        if is_from_proc_macro(cx, expr) {
+            return;
+        }
         lint_implicit_returns(cx, expr, expr.span.ctxt(), None);
     }
 }

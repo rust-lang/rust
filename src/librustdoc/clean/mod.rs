@@ -549,7 +549,7 @@ fn clean_generic_param_def<'tcx>(
                 },
             )
         }
-        ty::GenericParamDefKind::Const { has_default, is_host_effect } => (
+        ty::GenericParamDefKind::Const { has_default, synthetic, is_host_effect: _ } => (
             def.name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_middle_ty(
@@ -572,7 +572,7 @@ fn clean_generic_param_def<'tcx>(
                 } else {
                     None
                 },
-                is_host_effect,
+                synthetic,
             },
         ),
     };
@@ -628,13 +628,13 @@ fn clean_generic_param<'tcx>(
                 },
             )
         }
-        hir::GenericParamKind::Const { ty, default, is_host_effect } => (
+        hir::GenericParamKind::Const { ty, default, synthetic, is_host_effect: _ } => (
             param.name.ident().name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default
                     .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
-                is_host_effect,
+                synthetic,
             },
         ),
     };
@@ -1404,14 +1404,17 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
 
             let mut predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
             if let ty::TraitContainer = assoc_item.container {
-                let bounds =
-                    tcx.explicit_item_bounds(assoc_item.def_id).instantiate_identity_iter_copied();
+                let bounds = tcx.explicit_item_bounds(assoc_item.def_id).iter_identity_copied();
                 predicates = tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
             }
             let mut generics = clean_ty_generics(
                 cx,
                 tcx.generics_of(assoc_item.def_id),
-                ty::GenericPredicates { parent: None, predicates },
+                ty::GenericPredicates {
+                    parent: None,
+                    predicates,
+                    effects_min_tys: ty::List::empty(),
+                },
             );
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
@@ -3077,9 +3080,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            // FIXME(missing_unsafe_on_extern) handle safety of foreign fns.
-            // Safety was added as part of the implementation of unsafe extern blocks PR #124482
-            hir::ForeignItemKind::Fn(decl, names, generics, _) => {
+            hir::ForeignItemKind::Fn(decl, names, generics, safety) => {
                 let (generics, decl) = enter_impl_trait(cx, |cx| {
                     // NOTE: generics must be cleaned before args
                     let generics = clean_generics(generics, cx);
@@ -3087,13 +3088,12 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
                     let decl = clean_fn_decl_with_args(cx, decl, None, args);
                     (generics, decl)
                 });
-                ForeignFunctionItem(Box::new(Function { decl, generics }))
+                ForeignFunctionItem(Box::new(Function { decl, generics }), safety)
             }
-            // FIXME(missing_unsafe_on_extern) handle safety of foreign statics.
-            // Safety was added as part of the implementation of unsafe extern blocks PR #124482
-            hir::ForeignItemKind::Static(ty, mutability, _) => {
-                ForeignStaticItem(Static { type_: clean_ty(ty, cx), mutability, expr: None })
-            }
+            hir::ForeignItemKind::Static(ty, mutability, safety) => ForeignStaticItem(
+                Static { type_: clean_ty(ty, cx), mutability, expr: None },
+                safety,
+            ),
             hir::ForeignItemKind::Type => ForeignTypeItem,
         };
 

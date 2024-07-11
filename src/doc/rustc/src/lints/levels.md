@@ -1,12 +1,13 @@
 # Lint Levels
 
-In `rustc`, lints are divided into five *levels*:
+In `rustc`, lints are divided into six *levels*:
 
 1. allow
-2. warn
-3. force-warn
-4. deny
-5. forbid
+2. expect
+3. warn
+4. force-warn
+5. deny
+6. forbid
 
 Each lint has a default level (explained in the lint listing later in this
 chapter), and the compiler has a default warning level. First, let's explain
@@ -32,6 +33,40 @@ But this code violates the `missing_docs` lint.
 
 These lints exist mostly to be manually turned on via configuration, as we'll
 talk about later in this section.
+
+## expect
+
+Sometimes, it can be helpful to suppress lints, but at the same time ensure that
+the code in question still emits them. The 'expect' level does exactly this. If
+the lint in question is not emitted, the `unfulfilled_lint_expectation` lint
+triggers on the `expect` attribute, notifying you that the expectation is no
+longer fulfilled.
+
+```rust
+fn main() {
+    #[expect(unused_variables)]
+    let unused = "Everyone ignores me";
+
+    #[expect(unused_variables)] // `unused_variables` lint is not emitted
+    let used = "I'm useful";    // the expectation is therefore unfulfilled
+    println!("The `used` value is equal to: {:?}", used);
+}
+```
+
+This will produce the following warning:
+
+```txt
+warning: this lint expectation is unfulfilled
+ --> src/main.rs:7:14
+  |
+7 |     #[expect(unused_variables)]
+  |              ^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+```
+
+This level can only be defined via the `#[expect]` attribute, there is no equivalent
+flag. Lints with the special 'force-warn' level will still be emitted as usual.
 
 ## warn
 
@@ -238,6 +273,21 @@ And use multiple attributes together:
 #![deny(unused_variables)]
 
 pub fn foo() {}
+```
+
+All lint attributes support an additional `reason` parameter, to give context why
+a certain attribute was added. This reason will be displayed as part of the lint
+message, if the lint is emitted at the defined level.
+
+```rust
+use std::path::PathBuf;
+pub fn get_path() -> PathBuf {
+    #[allow(unused_mut, reason = "this is only modified on some platforms")]
+    let mut file_name = PathBuf::from("git");
+    #[cfg(target_os = "windows")]
+    file_name.set_extension("exe");
+    file_name
+}
 ```
 
 ### Capping lints

@@ -190,7 +190,7 @@ error: unrecognized meta-variable expression
 LL |     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
    |                                 ^^^^^^^^^^^^^^ help: supported expressions are count, ignore, index and len
 
-error: expected identifier
+error: expected identifier or string literal
   --> $DIR/syntax-errors.rs:118:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ {} } };

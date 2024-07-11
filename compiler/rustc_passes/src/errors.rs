@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::fluent_generated as fluent;
-use rustc_ast::{ast, Label};
+use rustc_ast::Label;
 use rustc_errors::{
     codes::*, Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee,
     Level, MultiSpan, SubdiagMessageOp, Subdiagnostic,
@@ -60,21 +60,9 @@ pub struct InlineNotFnOrClosure {
     pub defn_span: Span,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(passes_coverage_ignored_function_prototype)]
-pub struct IgnoredCoverageFnProto;
-
-#[derive(LintDiagnostic)]
-#[diag(passes_coverage_propagate)]
-pub struct IgnoredCoveragePropagate;
-
-#[derive(LintDiagnostic)]
-#[diag(passes_coverage_fn_defn)]
-pub struct IgnoredCoverageFnDefn;
-
 #[derive(Diagnostic)]
-#[diag(passes_coverage_not_coverable, code = E0788)]
-pub struct IgnoredCoverageNotCoverable {
+#[diag(passes_coverage_not_fn_or_closure, code = E0788)]
+pub struct CoverageNotFnOrClosure {
     #[primary_span]
     pub attr_span: Span,
     #[label]
@@ -563,7 +551,10 @@ pub struct ReprConflictingLint;
 #[diag(passes_used_static)]
 pub struct UsedStatic {
     #[primary_span]
+    pub attr_span: Span,
+    #[label]
     pub span: Span,
+    pub target: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -861,15 +852,6 @@ pub struct InvalidAttrAtCrateLevel {
     pub sugg_span: Option<Span>,
     pub name: Symbol,
     pub item: Option<ItemFollowingInnerAttr>,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_invalid_attr_unsafe)]
-#[note]
-pub struct InvalidAttrUnsafe {
-    #[primary_span]
-    pub span: Span,
-    pub name: ast::Path,
 }
 
 #[derive(Clone, Copy)]

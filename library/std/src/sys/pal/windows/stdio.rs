@@ -232,13 +232,7 @@ fn write_u16s(handle: c::HANDLE, data: &[u16]) -> io::Result<usize> {
     debug_assert!(data.len() < u32::MAX as usize);
     let mut written = 0;
     cvt(unsafe {
-        c::WriteConsoleW(
-            handle,
-            data.as_ptr() as c::LPCVOID,
-            data.len() as u32,
-            &mut written,
-            ptr::null_mut(),
-        )
+        c::WriteConsoleW(handle, data.as_ptr(), data.len() as u32, &mut written, ptr::null_mut())
     })?;
     Ok(written as usize)
 }

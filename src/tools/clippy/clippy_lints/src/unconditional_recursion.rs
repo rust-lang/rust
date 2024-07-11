@@ -15,7 +15,7 @@ use rustc_middle::ty::{self, AssocKind, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{sym, Span};
-use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
+use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
 
 declare_clippy_lint! {
     /// ### What it does

@@ -1,6 +1,7 @@
 //! See docs in build/expr/mod.rs
 
 use crate::build::expr::category::{Category, RvalueFunc};
+use crate::build::matches::DeclareLetBindings;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
@@ -86,7 +87,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     cond,
                                     Some(condition_scope), // Temp scope
                                     source_info,
-                                    true, // Declare `let` bindings normally
+                                    DeclareLetBindings::Yes, // Declare `let` bindings normally
                                 ));
 
                                 // Lower the `then` arm into its block.
@@ -163,7 +164,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             source_info,
                             // This flag controls how inner `let` expressions are lowered,
                             // but either way there shouldn't be any of those in here.
-                            true,
+                            DeclareLetBindings::LetNotPermitted,
                         )
                     });
                 let (short_circuit, continuation, constant) = match op {
@@ -238,7 +239,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Call { ty: _, fun, ref args, from_hir_call, fn_span } => {
                 let fun = unpack!(block = this.as_local_operand(block, fun));
-                let args: Vec<_> = args
+                let args: Box<[_]> = args
                     .into_iter()
                     .copied()
                     .map(|arg| Spanned {
@@ -485,7 +486,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         operands,
                         options,
                         line_spans,
-                        targets,
+                        targets: targets.into_boxed_slice(),
                         unwind: if options.contains(InlineAsmOptions::MAY_UNWIND) {
                             UnwindAction::Continue
                         } else {

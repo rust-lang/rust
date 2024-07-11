@@ -141,18 +141,17 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
 #[must_use]
 fn max_digits(fty: FloatTy) -> u32 {
     match fty {
-        // FIXME(f16_f128): replace the magic numbers once `{f16,f128}::DIGITS` are available
-        FloatTy::F16 => 3,
+        FloatTy::F16 => f16::DIGITS,
         FloatTy::F32 => f32::DIGITS,
         FloatTy::F64 => f64::DIGITS,
-        FloatTy::F128 => 33,
+        FloatTy::F128 => f128::DIGITS,
     }
 }
 
 /// Counts the digits excluding leading zeros
 #[must_use]
 fn count_digits(s: &str) -> usize {
-    // Note that s does not contain the f32/64 suffix, and underscores have been stripped
+    // Note that s does not contain the `f{16,32,64,128}` suffix, and underscores have been stripped
     s.chars()
         .filter(|c| *c != '-' && *c != '.')
         .take_while(|c| *c != 'e' && *c != 'E')

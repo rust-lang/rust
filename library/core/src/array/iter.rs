@@ -101,7 +101,6 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// ```
     /// #![feature(array_into_iter_constructors)]
     /// #![feature(maybe_uninit_uninit_array_transpose)]
-    /// #![feature(maybe_uninit_uninit_array)]
     /// use std::array::IntoIter;
     /// use std::mem::MaybeUninit;
     ///
@@ -111,7 +110,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// fn next_chunk<T: Copy, const N: usize>(
     ///     it: &mut impl Iterator<Item = T>,
     /// ) -> Result<[T; N], IntoIter<T, N>> {
-    ///     let mut buffer = MaybeUninit::uninit_array();
+    ///     let mut buffer = [const { MaybeUninit::uninit() }; N];
     ///     let mut i = 0;
     ///     while i < N {
     ///         match it.next() {
@@ -203,7 +202,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     #[unstable(feature = "array_into_iter_constructors", issue = "91583")]
     #[rustc_const_unstable(feature = "const_array_into_iter_constructors", issue = "91583")]
     pub const fn empty() -> Self {
-        let buffer = MaybeUninit::uninit_array();
+        let buffer = [const { MaybeUninit::uninit() }; N];
         let initialized = 0..0;
 
         // SAFETY: We're telling it that none of the elements are initialized,
@@ -405,7 +404,8 @@ impl<T: Clone, const N: usize> Clone for IntoIter<T, N> {
     fn clone(&self) -> Self {
         // Note, we don't really need to match the exact same alive range, so
         // we can just clone into offset 0 regardless of where `self` is.
-        let mut new = Self { data: MaybeUninit::uninit_array(), alive: IndexRange::zero_to(0) };
+        let mut new =
+            Self { data: [const { MaybeUninit::uninit() }; N], alive: IndexRange::zero_to(0) };
 
         // Clone all alive elements.
         for (src, dst) in iter::zip(self.as_slice(), &mut new.data) {

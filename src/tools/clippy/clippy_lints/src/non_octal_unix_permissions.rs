@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{snippet_opt, snippet_with_applicability};
+use clippy_utils::source::{snippet_with_applicability, SpanRangeExt};
 use clippy_utils::{match_def_path, paths};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
@@ -53,8 +53,9 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                             && cx.tcx.is_diagnostic_item(sym::FsPermissions, adt.did())))
                     && let ExprKind::Lit(_) = param.kind
                     && param.span.eq_ctxt(expr.span)
-                    && let Some(snip) = snippet_opt(cx, param.span)
-                    && !(snip.starts_with("0o") || snip.starts_with("0b"))
+                    && param
+                        .span
+                        .check_source_text(cx, |src| !matches!(src.as_bytes(), [b'0', b'o' | b'b', ..]))
                 {
                     show_error(cx, param);
                 }
@@ -65,8 +66,9 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                     && match_def_path(cx, def_id, &paths::PERMISSIONS_FROM_MODE)
                     && let ExprKind::Lit(_) = param.kind
                     && param.span.eq_ctxt(expr.span)
-                    && let Some(snip) = snippet_opt(cx, param.span)
-                    && !(snip.starts_with("0o") || snip.starts_with("0b"))
+                    && param
+                        .span
+                        .check_source_text(cx, |src| !matches!(src.as_bytes(), [b'0', b'o' | b'b', ..]))
                 {
                     show_error(cx, param);
                 }

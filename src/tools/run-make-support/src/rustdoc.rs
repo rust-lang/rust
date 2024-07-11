@@ -92,7 +92,7 @@ impl Rustdoc {
 
     /// Specify a stdin input
     pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
-        self.cmd.set_stdin(input.as_ref().to_vec().into_boxed_slice());
+        self.cmd.stdin(input);
         self
     }
 
@@ -104,7 +104,8 @@ impl Rustdoc {
     }
 
     /// Specify the target triple, or a path to a custom target json spec file.
-    pub fn target(&mut self, target: &str) -> &mut Self {
+    pub fn target<S: AsRef<str>>(&mut self, target: S) -> &mut Self {
+        let target = target.as_ref();
         self.cmd.arg(format!("--target={target}"));
         self
     }

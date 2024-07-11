@@ -5,6 +5,7 @@ edition = "2021"
 autobins = false
 
 [dependencies]
+build_helper = { path = "../build_helper" }
 cargo_metadata = "0.15"
 regex = "1"
 miropt-test-tools = { path = "../miropt-test-tools" }
@@ -13,6 +14,8 @@ ignore = "0.4.18"
 semver = "1.0"
 termcolor = "1.1.3"
 rustc-hash = "1.1.0"
+fluent-syntax = "0.11.1"
+similar = "2.5.0"
 
 [[bin]]
 name = "rust-tidy"

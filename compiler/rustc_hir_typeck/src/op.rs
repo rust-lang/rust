@@ -18,8 +18,8 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
+use rustc_trait_selection::error_reporting::traits::suggestions::TypeErrCtxtExt as _;
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{FulfillmentError, ObligationCtxt};
 use rustc_type_ir::TyKind::*;
 
@@ -838,8 +838,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     },
                                 ) = ex.kind
                                 {
-                                    err.span_suggestion(
-                                        ex.span,
+                                    let span = if let hir::Node::Expr(parent) =
+                                        self.tcx.parent_hir_node(ex.hir_id)
+                                        && let hir::ExprKind::Cast(..) = parent.kind
+                                    {
+                                        // `-1 as usize` -> `usize::MAX`
+                                        parent.span
+                                    } else {
+                                        ex.span
+                                    };
+                                    err.span_suggestion_verbose(
+                                        span,
                                         format!(
                                             "you may have meant the maximum value of `{actual}`",
                                         ),

@@ -156,7 +156,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     if self.can_define_opaque_ty(b_def_id)
                         && self.tcx.is_type_alias_impl_trait(b_def_id)
                     {
-                        self.tcx.dcx().emit_err(OpaqueHiddenTypeDiag {
+                        self.dcx().emit_err(OpaqueHiddenTypeDiag {
                             span,
                             hidden_type: self.tcx.def_span(b_def_id),
                             opaque_type: self.tcx.def_span(def_id),

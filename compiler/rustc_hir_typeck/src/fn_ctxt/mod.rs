@@ -5,7 +5,7 @@ mod checks;
 mod inspect_obligations;
 mod suggestions;
 
-use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
+use rustc_errors::DiagCtxtHandle;
 
 use crate::coercion::DynamicCoerceMany;
 use crate::fallback::DivergingFallbackBehavior;
@@ -144,8 +144,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn dcx(&self) -> DiagCtxtHandle<'tcx> {
-        self.infcx.dcx()
+    pub(crate) fn dcx(&self) -> DiagCtxtHandle<'a> {
+        self.root_ctxt.infcx.dcx()
     }
 
     pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {
@@ -217,6 +217,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         self.tcx
     }
 
+    fn dcx(&self) -> DiagCtxtHandle<'_> {
+        self.root_ctxt.dcx()
+    }
+
     fn item_def_id(&self) -> LocalDefId {
         self.body_id
     }
@@ -274,6 +278,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                     }
                 }),
             ),
+            effects_min_tys: ty::List::empty(),
         }
     }
 
@@ -297,7 +302,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             trait_ref.args,
         );
 
-        Ty::new_projection(self.tcx(), item_def_id, item_args)
+        Ty::new_projection_from_args(self.tcx(), item_def_id, item_args)
     }
 
     fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {
@@ -335,10 +340,6 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 
     fn infcx(&self) -> Option<&infer::InferCtxt<'tcx>> {
         Some(&self.infcx)
-    }
-
-    fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
-        self.infcx.set_tainted_by_errors(e)
     }
 
     fn lower_fn_sig(

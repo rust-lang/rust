@@ -7,7 +7,7 @@ LL |     take_range(0..1);
    |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
-                 found struct `Range<{integer}>`
+                 found struct `core::ops::Range<{integer}>`
 note: function defined here
   --> $DIR/issue-54505-no-std.rs:25:4
    |
@@ -27,7 +27,7 @@ LL |     take_range(1..);
    |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
-                 found struct `RangeFrom<{integer}>`
+                 found struct `core::ops::RangeFrom<{integer}>`
 note: function defined here
   --> $DIR/issue-54505-no-std.rs:25:4
    |
@@ -67,7 +67,7 @@ LL |     take_range(0..=1);
    |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
-                 found struct `RangeInclusive<{integer}>`
+                 found struct `core::ops::RangeInclusive<{integer}>`
 note: function defined here
   --> $DIR/issue-54505-no-std.rs:25:4
    |

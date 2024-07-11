@@ -11,8 +11,8 @@ pub trait Stream {
     fn size_hint(&self) -> (usize, Option<usize>);
 }
 
-// @has 'foo/trait.Stream.html'
-// @has - '//*[@class="code-header"]' 'impl<S: ?Sized + Stream + Unpin> Stream for &mut S'
+//@ has 'foo/trait.Stream.html'
+//@ has - '//*[@class="code-header"]' 'impl<S: ?Sized + Stream + Unpin> Stream for &mut S'
 impl<S: ?Sized + Stream + Unpin> Stream for &mut S {
     type Item = S::Item;
 

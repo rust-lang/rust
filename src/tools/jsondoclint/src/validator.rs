@@ -374,8 +374,8 @@ impl<'a> Validator<'a> {
                 bounds.iter().for_each(|b| self.check_generic_bound(b));
                 generic_params.iter().for_each(|gpd| self.check_generic_param_def(gpd));
             }
-            WherePredicate::RegionPredicate { lifetime: _, bounds } => {
-                bounds.iter().for_each(|b| self.check_generic_bound(b));
+            WherePredicate::LifetimePredicate { lifetime: _, outlives: _ } => {
+                // nop, all strings.
             }
             WherePredicate::EqPredicate { lhs, rhs } => {
                 self.check_type(lhs);

@@ -187,7 +187,7 @@ fn predicates_reference_self(
 ) -> SmallVec<[Span; 1]> {
     let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_def_id));
     let predicates = if supertraits_only {
-        tcx.super_predicates_of(trait_def_id)
+        tcx.explicit_super_predicates_of(trait_def_id)
     } else {
         tcx.predicates_of(trait_def_id)
     };
@@ -203,7 +203,7 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
     tcx.associated_items(trait_def_id)
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Type)
-        .flat_map(|item| tcx.explicit_item_bounds(item.def_id).instantiate_identity_iter_copied())
+        .flat_map(|item| tcx.explicit_item_bounds(item.def_id).iter_identity_copied())
         .filter_map(|c| predicate_references_self(tcx, c))
         .collect()
 }
@@ -256,7 +256,7 @@ fn super_predicates_have_non_lifetime_binders(
     if !tcx.features().non_lifetime_binders {
         return SmallVec::new();
     }
-    tcx.super_predicates_of(trait_def_id)
+    tcx.explicit_super_predicates_of(trait_def_id)
         .predicates
         .iter()
         .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(*span))
@@ -689,7 +689,7 @@ fn receiver_is_dispatchable<'tcx>(
                 if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
             });
 
-            ty::TraitRef::new(tcx, trait_def_id, args).upcast(tcx)
+            ty::TraitRef::new_from_args(tcx, trait_def_id, args).upcast(tcx)
         };
 
         let caller_bounds =
@@ -805,10 +805,11 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
                         .unwrap()
                         .contains(&data.trait_ref(self.tcx).def_id);
 
+                    // only walk contained types if it's not a super trait
                     if is_supertrait_of_current_trait {
-                        ControlFlow::Continue(()) // do not walk contained types, do not report error, do collect $200
+                        ControlFlow::Continue(())
                     } else {
-                        t.super_visit_with(self) // DO walk contained types, POSSIBLY reporting an error
+                        t.super_visit_with(self) // POSSIBLY reporting an error
                     }
                 }
                 _ => t.super_visit_with(self), // walk contained types, if any

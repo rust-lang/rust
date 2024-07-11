@@ -245,7 +245,6 @@ use self::Ordering::*;
     append_const_msg
 )]
 #[rustc_diagnostic_item = "PartialEq"]
-#[const_trait]
 pub trait PartialEq<Rhs: ?Sized = Self> {
     /// This method tests for `self` and `other` values to be equal, and is used
     /// by `==`.
@@ -1475,8 +1474,7 @@ mod impls {
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-            impl const PartialEq for $t {
+            impl PartialEq for $t {
                 #[inline]
                 fn eq(&self, other: &$t) -> bool { (*self) == (*other) }
                 #[inline]

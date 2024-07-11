@@ -263,9 +263,6 @@ extern "rust-intrinsic" {
     ///
     /// `V` must be a vector of integers with the same length as `T` (but any element size).
     ///
-    /// `idx` must be a constant: either naming a constant item, or an inline
-    /// `const {}` expression.
-    ///
     /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, read the pointer.
     /// Otherwise if the corresponding value in `mask` is `0`, return the corresponding value from
     /// `val`.
@@ -463,7 +460,7 @@ extern "rust-intrinsic" {
     /// `T` must be an integer vector.
     ///
     /// `U` must be either the smallest unsigned integer with at least as many bits as the length
-    /// of `T`, or the smallest array of `u8` with as many bits as the length of `T`.
+    /// of `T`, or the smallest array of `u8` with at least as many bits as the length of `T`.
     ///
     /// Each element is truncated to a single bit and packed into the result.
     ///
@@ -475,12 +472,19 @@ extern "rust-intrinsic" {
     /// * On little endian, the least significant bit corresponds to the first vector element.
     /// * On big endian, the least significant bit corresponds to the last vector element.
     ///
-    /// For example, `[!0, 0, !0, !0]` packs to `0b1101` on little endian and `0b1011` on big
-    /// endian.
+    /// For example, `[!0, 0, !0, !0]` packs to
+    /// - `0b1101u8` or `[0b1101]` on little endian, and
+    /// - `0b1011u8` or `[0b1011]` on big endian.
     ///
-    /// To consider a larger example, `[!0, 0, 0, 0, 0, 0, 0, 0, !0, !0, 0, 0, 0, 0, !0, 0]` packs
-    /// to `[0b00000001, 0b01000011]` or `0b0100001100000001` on little endian, and `[0b10000000,
-    /// 0b11000010]` or `0b1000000011000010` on big endian.
+    /// To consider a larger example,
+    /// `[!0, 0, 0, 0, 0, 0, 0, 0, !0, !0, 0, 0, 0, 0, !0, 0]` packs to
+    /// - `0b0100001100000001u16` or `[0b00000001, 0b01000011]` on little endian, and
+    /// - `0b1000000011000010u16` or `[0b10000000, 0b11000010]` on big endian.
+    ///
+    /// And finally, a non-power-of-2 example with multiple bytes:
+    /// `[!0, !0, 0, !0, 0, 0, !0, 0, !0, 0]` packs to
+    /// - `0b0101001011u16` or `[0b01001011, 0b01]` on little endian, and
+    /// - `0b1101001010u16` or `[0b11, 0b01001010]` on big endian.
     ///
     /// # Safety
     /// `x` must contain only `0` and `!0`.

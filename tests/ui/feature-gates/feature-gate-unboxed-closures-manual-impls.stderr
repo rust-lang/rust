@@ -89,13 +89,14 @@ error[E0053]: method `call` has an incompatible type for trait
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:13:32
    |
 LL |     extern "rust-call" fn call(self, args: ()) -> () {}
-   |                                ^^^^
-   |                                |
-   |                                expected `&Foo`, found `Foo`
-   |                                help: change the self-receiver type to match the trait: `&self`
+   |                                ^^^^ expected `&Foo`, found `Foo`
    |
    = note: expected signature `extern "rust-call" fn(&Foo, ()) -> _`
-              found signature `extern "rust-call" fn(Foo, ())`
+              found signature `extern "rust-call" fn(Foo, ()) -> ()`
+help: change the self-receiver type to match the trait
+   |
+LL |     extern "rust-call" fn call(&self, args: ()) -> () {}
+   |                                ~~~~~
 
 error[E0183]: manual implementations of `FnOnce` are experimental
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:18:6
@@ -158,13 +159,14 @@ error[E0053]: method `call_mut` has an incompatible type for trait
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:30:36
    |
 LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
-   |                                    ^^^^^
-   |                                    |
-   |                                    types differ in mutability
-   |                                    help: change the self-receiver type to match the trait: `&mut self`
+   |                                    ^^^^^ types differ in mutability
    |
    = note: expected signature `extern "rust-call" fn(&mut Bar, ()) -> _`
-              found signature `extern "rust-call" fn(&Bar, ())`
+              found signature `extern "rust-call" fn(&Bar, ()) -> ()`
+help: change the self-receiver type to match the trait
+   |
+LL |     extern "rust-call" fn call_mut(&mut self, args: ()) -> () {}
+   |                                    ~~~~~~~~~
 
 error[E0046]: not all trait items implemented, missing: `Output`
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:35:1

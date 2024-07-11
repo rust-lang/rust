@@ -8,8 +8,8 @@ impl Foo {
     pub fn foo(&mut self) {}
 }
 
-// @has foo/struct.Bar.html
-// @has - '//*[@class="sidebar-elems"]//*[@class="block deref-methods"]//a[@href="#method.foo"]' 'foo'
+//@ has foo/struct.Bar.html
+//@ has - '//*[@class="sidebar-elems"]//*[@class="block deref-methods"]//a[@href="#method.foo"]' 'foo'
 pub struct Bar {
     foo: Foo,
 }

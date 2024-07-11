@@ -1,4 +1,5 @@
 //! The common code for `tests/lang_tests_*.rs`
+
 use std::{
     env::{self, current_dir},
     path::{Path, PathBuf},
@@ -79,8 +80,7 @@ pub fn main_inner(profile: Profile) {
             compiler.args([
                 &format!("-Zcodegen-backend={}/target/debug/librustc_codegen_gcc.so", current_dir),
                 "--sysroot",
-                &format!("{}/build_sysroot/sysroot/", current_dir),
-                "-Zno-parallel-llvm",
+                &format!("{}/build/build_sysroot/sysroot/", current_dir),
                 "-C",
                 "link-arg=-lc",
                 "-o",

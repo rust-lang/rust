@@ -33,6 +33,32 @@
       </ArrayItems>
     </Expand>
   </Type>
+  <Type Name="f16">
+    <Intrinsic Name="sign_mask" Expression="(unsigned __int16) 0x8000" />
+    <Intrinsic Name="exponent_mask" Expression="(unsigned __int16) 0x7c00" />
+    <Intrinsic Name="significand_mask" Expression="(unsigned __int16) 0x03ff" />
+    <Intrinsic Name="sign_bit" Expression="(unsigned __int16) (bits &amp; sign_mask())" />
+    <Intrinsic Name="exponent_bits" Expression="(unsigned __int16) (bits &amp; exponent_mask())" />
+    <Intrinsic Name="significand_bits" Expression="(unsigned __int16) (bits &amp; significand_mask())" />
+
+    <Intrinsic Name="if_set" Expression="(bits &amp; mask) != 0 ? value : 1.0">
+      <Parameter Name="mask" Type="unsigned __int16" />
+      <Parameter Name="value" Type="float" />
+    </Intrinsic>
+    <!-- Calculates 2**exp without needing a pow function. Each float in if_set() is the square of the previous float. 32768 == 2.pow(bias), bias == 15 -->
+    <Intrinsic Name="two_pow_exponent" Expression="if_set(0x0400, 2.0) * if_set(0x0800, 4.0) * if_set(0x1000, 16.0) * if_set(0x2000, 256.0) * if_set(0x4000, 65536.0) / 32768.0" />
+    <!-- Calculates 0.significand, without any implicit bit. 1024 == 2.pow(explicit significand width), explicit significand width == 10 -->
+    <Intrinsic Name="raw_significand" Expression="((float) significand_bits()) / 1024.0" />
+    <Intrinsic Name="sign" Expression="sign_bit() == 0 ? 1.0 : -1.0" />
+
+    <DisplayString Condition="bits == 0x7c00">inf</DisplayString>
+    <DisplayString Condition="bits == 0xfc00">-inf</DisplayString>
+    <DisplayString Condition="exponent_bits() == exponent_mask()">NaN</DisplayString>
+    <!-- Subnormal or zero (16384 == 2.pow(bias - 1), bias - 1 == 14) -->
+    <DisplayString Condition="exponent_bits() == 0">{(float) (sign() * raw_significand() / 16384.0)}</DisplayString>
+    <!-- Normal -->
+    <DisplayString>{(float) (sign() * (raw_significand() + 1.0) * two_pow_exponent())}</DisplayString>
+  </Type>
   <Type Name="tuple$&lt;&gt;">
     <DisplayString>()</DisplayString>
   </Type>

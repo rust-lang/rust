@@ -356,10 +356,10 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for loops which have a range bound that is a mutable variable
+    /// Checks for loops with a range bound that is a mutable variable.
     ///
     /// ### Why is this bad?
-    /// One might think that modifying the mutable variable changes the loop bounds
+    /// One might think that modifying the mutable variable changes the loop bounds. It doesn't.
     ///
     /// ### Known problems
     /// False positive when mutation is followed by a `break`, but the `break` is not immediately
@@ -381,7 +381,7 @@ declare_clippy_lint! {
     /// let mut foo = 42;
     /// for i in 0..foo {
     ///     foo -= 1;
-    ///     println!("{}", i); // prints numbers from 0 to 42, not 0 to 21
+    ///     println!("{i}"); // prints numbers from 0 to 41, not 0 to 21
     /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]

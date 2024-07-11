@@ -3293,10 +3293,9 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
         // call after consuming `{`
         decodeList() {
-            const cb = "}".charCodeAt(0);
             let c = this.string.charCodeAt(this.offset);
             const ret = [];
-            while (c !== cb) {
+            while (c !== 125) { // 125 = "}"
                 ret.push(this.decode());
                 c = this.string.charCodeAt(this.offset);
             }
@@ -3305,14 +3304,13 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
         // consumes and returns a list or integer
         decode() {
-            const [ob, la] = ["{", "`"].map(c => c.charCodeAt(0));
             let n = 0;
             let c = this.string.charCodeAt(this.offset);
-            if (c === ob) {
+            if (c === 123) { // 123 = "{"
                 this.offset += 1;
                 return this.decodeList();
             }
-            while (c < la) {
+            while (c < 96) { // 96 = "`"
                 n = (n << 4) | (c & 0xF);
                 this.offset += 1;
                 c = this.string.charCodeAt(this.offset);
@@ -3325,15 +3323,14 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
         next() {
             const c = this.string.charCodeAt(this.offset);
-            const [zero, ua, la] = ["0", "@", "`"].map(c => c.charCodeAt(0));
             // sixteen characters after "0" are backref
-            if (c >= zero && c < ua) {
+            if (c >= 48 && c < 64) { // 48 = "0", 64 = "@"
                 this.offset += 1;
-                return this.backrefQueue[c - zero];
+                return this.backrefQueue[c - 48];
             }
             // special exception: 0 doesn't use backref encoding
             // it's already one character, and it's always nullish
-            if (c === la) {
+            if (c === 96) { // 96 = "`"
                 this.offset += 1;
                 return this.cons(0);
             }
@@ -3472,7 +3469,6 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         searchIndex = [];
         searchIndexDeprecated = new Map();
         searchIndexEmptyDesc = new Map();
-        const charA = "A".charCodeAt(0);
         let currentIndex = 0;
         let id = 0;
 
@@ -3639,7 +3635,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 // object defined above.
                 const row = {
                     crate,
-                    ty: itemTypes.charCodeAt(i) - charA,
+                    ty: itemTypes.charCodeAt(i) - 65, // 65 = "A"
                     name: itemNames[i],
                     path,
                     descShard,

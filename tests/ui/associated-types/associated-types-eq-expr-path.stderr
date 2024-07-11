@@ -1,5 +1,5 @@
 error[E0229]: associated item constraints are not allowed here
-  --> $DIR/associated-types-eq-expr-path.rs:14:26
+  --> $DIR/associated-types-eq-expr-path.rs:16:26
    |
 LL |     let x: isize = Foo::<A = usize>::bar();
    |                          ^^^^^^^^^ associated item constraint not allowed here

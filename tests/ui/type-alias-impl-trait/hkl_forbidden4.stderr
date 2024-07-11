@@ -44,18 +44,6 @@ LL |
 LL |     call(operation).await
    |     ^^^^^^^^^^^^^^^
 
-error[E0792]: expected generic lifetime parameter, found `'any`
-  --> $DIR/hkl_forbidden4.rs:23:1
-   |
-LL |   type FutNothing<'a> = impl 'a + Future<Output = ()>;
-   |                   -- this generic parameter must be used with a generic lifetime parameter
-...
-LL | / {
-LL | |
-LL | |
-LL | | }
-   | |_^
-
 error: concrete type differs from previous defining opaque type use
   --> $DIR/hkl_forbidden4.rs:13:1
    |
@@ -67,6 +55,18 @@ note: previous use here
    |
 LL |     call(operation).await
    |     ^^^^^^^^^^^^^^^
+
+error[E0792]: expected generic lifetime parameter, found `'any`
+  --> $DIR/hkl_forbidden4.rs:23:1
+   |
+LL |   type FutNothing<'a> = impl 'a + Future<Output = ()>;
+   |                   -- this generic parameter must be used with a generic lifetime parameter
+...
+LL | / {
+LL | |
+LL | |
+LL | | }
+   | |_^
 
 error: aborting due to 6 previous errors
 

@@ -3,7 +3,7 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/oops/enum.OhNo.html'
+//@ has 'foo/oops/enum.OhNo.html'
 
 pub mod oops {
     pub use crate::oops::OhNo;

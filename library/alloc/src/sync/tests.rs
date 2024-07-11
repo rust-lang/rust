@@ -396,7 +396,7 @@ fn show_arc() {
 
 // Make sure deriving works with Arc<T>
 #[derive(Eq, Ord, PartialEq, PartialOrd, Clone, Debug, Default)]
-struct Foo {
+struct _Foo {
     inner: Arc<i32>,
 }
 

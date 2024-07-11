@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(lint_reasons)]
-
 #![warn(unused_variables)]
 
 macro_rules! trigger_unused_variables_macro {

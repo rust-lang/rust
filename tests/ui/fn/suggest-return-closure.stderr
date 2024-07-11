@@ -34,11 +34,13 @@ LL | fn fun() -> _ {
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/suggest-return-closure.rs:23:9
    |
-LL |     let x = String::new();
-   |         - help: consider changing this to be mutable: `mut x`
-...
 LL |         x.push(c);
    |         ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut x = String::new();
+   |         +++
 
 error[E0597]: `x` does not live long enough
   --> $DIR/suggest-return-closure.rs:23:9

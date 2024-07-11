@@ -9,6 +9,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
 mod pattern_types;
 pub use pattern_types::*;
+pub mod wrong_number_of_generic_args;
 
 mod precise_captures;
 pub(crate) use precise_captures::*;
@@ -453,12 +454,11 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MissingTypeParams {
             } else {
                 // The user wrote `Iterator`, so we don't have a type we can suggest, but at
                 // least we can clue them to the correct syntax `Iterator<Type>`.
-                err.span_suggestion(
-                    self.span,
+                err.span_suggestion_verbose(
+                    self.span.shrink_to_hi(),
                     fluent::hir_analysis_suggestion,
                     format!(
-                        "{}<{}>",
-                        snippet,
+                        "<{}>",
                         self.missing_type_params
                             .iter()
                             .map(|n| n.to_string())
@@ -682,7 +682,7 @@ pub(crate) enum CannotCaptureLateBound {
 pub(crate) struct VariancesOf {
     #[primary_span]
     pub span: Span,
-    pub variances_of: String,
+    pub variances: String,
 }
 
 #[derive(Diagnostic)]
@@ -690,30 +690,7 @@ pub(crate) struct VariancesOf {
 pub(crate) struct TypeOf<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub type_of: Ty<'tcx>,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_pass_to_variadic_function, code = E0617)]
-pub(crate) struct PassToVariadicFunction<'tcx, 'a> {
-    #[primary_span]
-    pub span: Span,
     pub ty: Ty<'tcx>,
-    pub cast_ty: &'a str,
-    #[suggestion(code = "{replace}", applicability = "machine-applicable")]
-    pub sugg_span: Option<Span>,
-    pub replace: String,
-    #[help]
-    pub help: Option<()>,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_cast_thin_pointer_to_fat_pointer, code = E0607)]
-pub(crate) struct CastThinPointerToFatPointer<'tcx> {
-    #[primary_span]
-    pub span: Span,
-    pub expr_ty: Ty<'tcx>,
-    pub cast_ty: String,
 }
 
 #[derive(Diagnostic)]
@@ -1699,3 +1676,9 @@ pub struct InvalidReceiverTy<'tcx> {
     pub span: Span,
     pub receiver_ty: Ty<'tcx>,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_effects_without_next_solver)]
+#[note]
+#[help]
+pub struct EffectsWithoutNextSolver;

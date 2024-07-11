@@ -1083,7 +1083,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1130,7 +1130,7 @@ struct WeakAliasTypeExpander<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for WeakAliasTypeExpander<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1196,7 +1196,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the minimum and maximum values for the given numeric type (including `char`s) or
     /// returns `None` if the type is not numeric.
     pub fn numeric_min_and_max_as_bits(self, tcx: TyCtxt<'tcx>) -> Option<(u128, u128)> {
-        use rustc_apfloat::ieee::{Double, Single};
+        use rustc_apfloat::ieee::{Double, Half, Quad, Single};
         Some(match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = self.int_size_and_signed(tcx);
@@ -1206,12 +1206,14 @@ impl<'tcx> Ty<'tcx> {
                 (min, max)
             }
             ty::Char => (0, std::char::MAX as u128),
+            ty::Float(ty::FloatTy::F16) => ((-Half::INFINITY).to_bits(), Half::INFINITY.to_bits()),
             ty::Float(ty::FloatTy::F32) => {
                 ((-Single::INFINITY).to_bits(), Single::INFINITY.to_bits())
             }
             ty::Float(ty::FloatTy::F64) => {
                 ((-Double::INFINITY).to_bits(), Double::INFINITY.to_bits())
             }
+            ty::Float(ty::FloatTy::F128) => ((-Quad::INFINITY).to_bits(), Quad::INFINITY.to_bits()),
             _ => return None,
         })
     }
@@ -1795,7 +1797,7 @@ where
             for t in iter {
                 new_list.push(t.try_fold_with(folder)?)
             }
-            Ok(intern(folder.interner(), &new_list))
+            Ok(intern(folder.cx(), &new_list))
         }
         Some((_, Err(err))) => {
             return Err(err);

@@ -1,4 +1,5 @@
 //! A subset of a mir body used for const evaluability checking.
+
 use crate::ty::{
     self, Const, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
@@ -40,7 +41,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Expander<'tcx> {
-            fn interner(&self) -> TyCtxt<'tcx> {
+            fn cx(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {

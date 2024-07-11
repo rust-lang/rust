@@ -76,6 +76,8 @@ pub trait MeetSemiLattice: Eq {
 /// A set that has a "bottom" element, which is less than or equal to any other element.
 pub trait HasBottom {
     const BOTTOM: Self;
+
+    fn is_bottom(&self) -> bool;
 }
 
 /// A set that has a "top" element, which is greater than or equal to any other element.
@@ -114,6 +116,10 @@ impl MeetSemiLattice for bool {
 
 impl HasBottom for bool {
     const BOTTOM: Self = false;
+
+    fn is_bottom(&self) -> bool {
+        !self
+    }
 }
 
 impl HasTop for bool {
@@ -267,6 +273,10 @@ impl<T: Clone + Eq> MeetSemiLattice for FlatSet<T> {
 
 impl<T> HasBottom for FlatSet<T> {
     const BOTTOM: Self = Self::Bottom;
+
+    fn is_bottom(&self) -> bool {
+        matches!(self, Self::Bottom)
+    }
 }
 
 impl<T> HasTop for FlatSet<T> {
@@ -291,6 +301,10 @@ impl<T> MaybeReachable<T> {
 
 impl<T> HasBottom for MaybeReachable<T> {
     const BOTTOM: Self = MaybeReachable::Unreachable;
+
+    fn is_bottom(&self) -> bool {
+        matches!(self, Self::Unreachable)
+    }
 }
 
 impl<T: HasTop> HasTop for MaybeReachable<T> {

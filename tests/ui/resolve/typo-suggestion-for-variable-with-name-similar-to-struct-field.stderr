@@ -2,7 +2,7 @@ error[E0425]: cannot find value `config` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:7:16
    |
 LL |     config: String,
-   |     -------------- a field by that name exists in `Self`
+   |     ------ a field by that name exists in `Self`
 ...
 LL |         Self { config }
    |                ^^^^^^ help: a local variable with a similar name exists: `cofig`
@@ -11,7 +11,7 @@ error[E0425]: cannot find value `config` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:11:20
    |
 LL |     config: String,
-   |     -------------- a field by that name exists in `Self`
+   |     ------ a field by that name exists in `Self`
 ...
 LL |         println!("{config}");
    |                    ^^^^^^ help: a local variable with a similar name exists: `cofig`

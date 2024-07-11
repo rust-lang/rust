@@ -30,7 +30,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// `TypeRelation`. Do not use this, and instead please use `At::eq`, for all
     /// other usecases (i.e. setting the value of a type var).
     #[instrument(level = "debug", skip(self, relation))]
-    pub fn instantiate_ty_var<R: PredicateEmittingRelation<'tcx>>(
+    pub fn instantiate_ty_var<R: PredicateEmittingRelation<InferCtxt<'tcx>>>(
         &self,
         relation: &mut R,
         target_is_expected: bool,
@@ -178,7 +178,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// See `tests/ui/const-generics/occurs-check/` for more examples where this is relevant.
     #[instrument(level = "debug", skip(self, relation))]
-    pub(super) fn instantiate_const_var<R: PredicateEmittingRelation<'tcx>>(
+    pub(super) fn instantiate_const_var<R: PredicateEmittingRelation<InferCtxt<'tcx>>>(
         &self,
         relation: &mut R,
         target_is_expected: bool,

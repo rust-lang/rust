@@ -221,8 +221,22 @@ pub enum ExternBlockSuggestion {
 pub struct InvalidSafetyOnExtern {
     #[primary_span]
     pub item_span: Span,
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
-    pub block: Span,
+    #[suggestion(code = "unsafe ", applicability = "machine-applicable", style = "verbose")]
+    pub block: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_item_invalid_safety)]
+pub struct InvalidSafetyOnItem {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_bare_fn_invalid_safety)]
+pub struct InvalidSafetyOnBareFn {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

@@ -406,7 +406,7 @@ fn file_test_read_buf() {
     let filename = &tmpdir.join("test");
     check!(fs::write(filename, &[1, 2, 3, 4]));
 
-    let mut buf: [MaybeUninit<u8>; 128] = MaybeUninit::uninit_array();
+    let mut buf: [MaybeUninit<u8>; 128] = [MaybeUninit::uninit(); 128];
     let mut buf = BorrowedBuf::from(buf.as_mut_slice());
     let mut file = check!(File::open(filename));
     check!(file.read_buf(buf.unfilled()));

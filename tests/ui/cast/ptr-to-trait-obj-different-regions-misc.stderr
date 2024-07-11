@@ -1,0 +1,136 @@
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:6:5
+   |
+LL | fn change_lt<'a, 'b>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> {
+   |              --  -- lifetime `'b` defined here
+   |              |
+   |              lifetime `'a` defined here
+LL |     x as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable pointer to `dyn Trait<'_>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:6:5
+   |
+LL | fn change_lt<'a, 'b>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> {
+   |              --  -- lifetime `'b` defined here
+   |              |
+   |              lifetime `'a` defined here
+LL |     x as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable pointer to `dyn Trait<'_>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+help: `'b` and `'a` must be the same: replace one with the other
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:11:5
+   |
+LL | fn change_lt_ab<'a: 'b, 'b>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> {
+   |                 --      -- lifetime `'b` defined here
+   |                 |
+   |                 lifetime `'a` defined here
+LL |     x as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable pointer to `dyn Trait<'_>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:15:5
+   |
+LL | fn change_lt_ba<'a, 'b: 'a>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> {
+   |                 --  -- lifetime `'b` defined here
+   |                 |
+   |                 lifetime `'a` defined here
+LL |     x as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable pointer to `dyn Trait<'_>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:25:5
+   |
+LL | fn change_assoc_0<'a, 'b>(
+   |                   --  -- lifetime `'b` defined here
+   |                   |
+   |                   lifetime `'a` defined here
+...
+LL |     x as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable pointer to `dyn Assocked<Assoc = dyn Send>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:25:5
+   |
+LL | fn change_assoc_0<'a, 'b>(
+   |                   --  -- lifetime `'b` defined here
+   |                   |
+   |                   lifetime `'a` defined here
+...
+LL |     x as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable pointer to `dyn Assocked<Assoc = dyn Send>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+help: `'b` and `'a` must be the same: replace one with the other
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:32:5
+   |
+LL | fn change_assoc_1<'a, 'b>(
+   |                   --  -- lifetime `'b` defined here
+   |                   |
+   |                   lifetime `'a` defined here
+...
+LL |     x as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable pointer to `dyn Assocked<Assoc = dyn Trait<'_>>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:32:5
+   |
+LL | fn change_assoc_1<'a, 'b>(
+   |                   --  -- lifetime `'b` defined here
+   |                   |
+   |                   lifetime `'a` defined here
+...
+LL |     x as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable pointer to `dyn Assocked<Assoc = dyn Trait<'_>>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+help: `'b` and `'a` must be the same: replace one with the other
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 8 previous errors
+

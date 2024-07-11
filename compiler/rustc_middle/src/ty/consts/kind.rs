@@ -54,6 +54,13 @@ pub struct Expr<'tcx> {
     pub kind: ExprKind,
     args: ty::GenericArgsRef<'tcx>,
 }
+
+impl<'tcx> rustc_type_ir::inherent::ExprConst<TyCtxt<'tcx>> for Expr<'tcx> {
+    fn args(self) -> ty::GenericArgsRef<'tcx> {
+        self.args
+    }
+}
+
 impl<'tcx> Expr<'tcx> {
     pub fn new_binop(
         tcx: TyCtxt<'tcx>,

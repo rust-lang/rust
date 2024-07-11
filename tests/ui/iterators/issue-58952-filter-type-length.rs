@@ -1,5 +1,5 @@
-//@ run-pass
-//@ ignore-compare-mode-next-solver (hangs)
+//@ build-fail
+//@ error-pattern: reached the type-length limit while instantiating
 
 //! This snippet causes the type length to blowup exponentially,
 //! so check that we don't accidentally exceed the type length limit.
@@ -16,6 +16,10 @@ fn main() {
 
     let _a = vec![1, 2, 3]
         .into_iter()
+        .filter(|a| b.clone().any(|b| *b == *a))
+        .filter(|a| b.clone().any(|b| *b == *a))
+        .filter(|a| b.clone().any(|b| *b == *a))
+        .filter(|a| b.clone().any(|b| *b == *a))
         .filter(|a| b.clone().any(|b| *b == *a))
         .filter(|a| b.clone().any(|b| *b == *a))
         .filter(|a| b.clone().any(|b| *b == *a))

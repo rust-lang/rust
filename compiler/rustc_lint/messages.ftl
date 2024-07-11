@@ -56,8 +56,6 @@ lint_builtin_asm_labels = avoid using named labels in inline assembly
     .help = only local labels of the form `<number>:` should be used in inline asm
     .note = see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
-lint_builtin_box_pointers = type uses owned (Box type) pointers: {$ty}
-
 lint_builtin_clashing_extern_diff_name = `{$this}` redeclares `{$orig}` with a different signature
     .previous_decl_label = `{$orig}` previously declared here
     .mismatch_label = this signature doesn't match the previous declaration
@@ -75,7 +73,7 @@ lint_builtin_deprecated_attr_default_suggestion = remove this attribute
 lint_builtin_deprecated_attr_link = use of deprecated attribute `{$name}`: {$reason}. See {$link}
     .msg_suggestion = {$msg}
     .default_suggestion = remove this attribute
-lint_builtin_deprecated_attr_used = use of deprecated attribute `{$name}`: no longer used.
+lint_builtin_deprecated_attr_used = use of deprecated attribute `{$name}`: no longer used
 lint_builtin_deref_nullptr = dereferencing a null pointer
     .label = this code causes undefined behavior when executed
 
@@ -187,6 +185,10 @@ lint_cfg_attr_no_attributes =
 
 lint_check_name_unknown_tool = unknown lint tool: `{$tool_name}`
 
+lint_closure_returning_async_block = closure returning async block can be made into an async closure
+    .label = this async block can be removed, and the closure can be turned into an async closure
+    .suggestion = turn this into an async closure
+
 lint_command_line_source = `forbid` lint level was set on command line
 
 lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as identifiers, which look alike
@@ -213,7 +215,7 @@ lint_default_hash_types = prefer `{$preferred}` over `{$used}`, it has better pe
 lint_default_source = `forbid` lint level is the default for {$id}
 
 lint_deprecated_lint_name =
-    lint name `{$name}` is deprecated and may not have an effect in the future.
+    lint name `{$name}` is deprecated and may not have an effect in the future
     .suggestion = change it to
     .help = change it to {$replace}
 
@@ -244,11 +246,11 @@ lint_duplicate_matcher_binding = duplicate matcher binding
 
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
-    .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum.
+    .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum
 
 lint_enum_intrinsics_mem_variant =
     the return value of `mem::variant_count` is unspecified when called with a non-enum type
-    .note = the type parameter of `variant_count` should be an enum, but it was instantiated with the type `{$ty_param}`, which is not an enum.
+    .note = the type parameter of `variant_count` should be an enum, but it was instantiated with the type `{$ty_param}`, which is not an enum
 
 lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
@@ -441,6 +443,9 @@ lint_lintpass_by_hand = implementing `LintPass` by hand
 lint_macro_expanded_macro_exports_accessed_by_absolute_paths = macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths
     .note = the macro is defined here
 
+lint_macro_expr_fragment_specifier_2024_migration =
+    the `expr` fragment specifier will accept more expressions in the 2024 edition
+    .suggestion = to keep the existing behavior, use the `expr_2021` fragment specifier
 lint_macro_is_private = macro `{$ident}` is private
 
 lint_macro_rule_never_used = rule #{$n} of macro `{$name}` is never used
@@ -550,7 +555,7 @@ lint_non_local_definitions_impl = non-local `impl` definition, `impl` blocks sho
     .with_trait = an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
     .bounds = `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
     .doctest = make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`
-    .exception = items in an anonymous const item (`const _: () = {"{"} ... {"}"}`) are treated as in the same scope as the anonymous const's declaration
+    .exception = items in an anonymous const item (`const _: () = {"{"} ... {"}"}`) are treated as in the same scope as the anonymous const's declaration for the purpose of this lint
     .const_anon = use a const-anon item to suppress this lint
     .macro_to_change = the {$macro_kind} `{$macro_to_change}` defines the non-local `impl`, and may need to be changed
 
@@ -603,6 +608,9 @@ lint_opaque_hidden_inferred_bound_sugg = add this bound
 
 lint_or_patterns_back_compat = the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
     .suggestion = use pat_param to preserve semantics
+
+lint_out_of_scope_macro_calls = cannot find macro `{$path}` in this scope
+    .help = import `macro_rules` with `use` to make it callable above its definition
 
 lint_overflowing_bin_hex = literal out of range for `{$ty}`
     .negative_note = the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}`
@@ -824,6 +832,10 @@ lint_unnameable_test_items = cannot test inner items
 
 lint_unnecessary_qualification = unnecessary qualification
     .suggestion = remove the unnecessary path segments
+
+lint_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
+    .label = usage of unsafe attribute
+lint_unsafe_attr_outside_unsafe_suggestion = wrap the attribute in `unsafe(...)`
 
 lint_unsupported_group = `{$lint_group}` lint group is not supported with ´--force-warn´
 

@@ -53,25 +53,15 @@
    LL|      1|}
    LL|       |
    LL|      1|fn j(x: u8) {
-   LL|      1|    // non-async versions of `c()`, `d()`, and `f()` to make it similar to async `i()`.
+   LL|       |    // non-async versions of `c()`, `d()`, and `f()` to make it similar to async `i()`.
    LL|      1|    fn c(x: u8) -> u8 {
    LL|      1|        if x == 8 {
-   LL|      1|            1 // This line appears covered, but the 1-character expression span covering the `1`
-                          ^0
-   LL|      1|              // is not executed. (`llvm-cov show` displays a `^0` below the `1` ). This is because
-   LL|      1|              // `fn j()` executes the open brace for the function body, followed by the function's
-   LL|      1|              // first executable statement, `match x`. Inner function declarations are not
-   LL|      1|              // "visible" to the MIR for `j()`, so the code region counts all lines between the
-   LL|      1|              // open brace and the first statement as executed, which is, in a sense, true.
-   LL|      1|              // `llvm-cov show` overcomes this kind of situation by showing the actual counts
-   LL|      1|              // of the enclosed coverages, (that is, the `1` expression was not executed, and
-   LL|      1|              // accurately displays a `0`).
-   LL|      1|        } else {
+   LL|      0|            1
+   LL|       |        } else {
    LL|      1|            0
-   LL|      1|        }
+   LL|       |        }
    LL|      1|    }
-   LL|      1|    fn d() -> u8 { 1 } // inner function is defined in-line, but the function is not executed
-                  ^0
+   LL|      0|    fn d() -> u8 { 1 } // inner function is defined in-line, but the function is not executed
    LL|      1|    fn f() -> u8 { 1 }
    LL|      1|    match x {
    LL|      1|        y if c(x) == y + 1 => { d(); }

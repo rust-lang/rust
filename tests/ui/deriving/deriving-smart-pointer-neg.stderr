@@ -1,0 +1,75 @@
+error: `SmartPointer` can only be derived on `struct`s with `#[repr(transparent)]`
+  --> $DIR/deriving-smart-pointer-neg.rs:5:10
+   |
+LL | #[derive(SmartPointer)]
+   |          ^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `SmartPointer` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: At least one generic type should be designated as `#[pointee]` in order to derive `SmartPointer` traits
+  --> $DIR/deriving-smart-pointer-neg.rs:11:10
+   |
+LL | #[derive(SmartPointer)]
+   |          ^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `SmartPointer` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `SmartPointer` can only be derived on `struct`s with at least one field
+  --> $DIR/deriving-smart-pointer-neg.rs:18:10
+   |
+LL | #[derive(SmartPointer)]
+   |          ^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `SmartPointer` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `SmartPointer` can only be derived on `struct`s with at least one field
+  --> $DIR/deriving-smart-pointer-neg.rs:25:10
+   |
+LL | #[derive(SmartPointer)]
+   |          ^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `SmartPointer` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `SmartPointer` can only be derived on `struct`s with `#[repr(transparent)]`
+  --> $DIR/deriving-smart-pointer-neg.rs:32:10
+   |
+LL | #[derive(SmartPointer)]
+   |          ^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `SmartPointer` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/deriving-smart-pointer-neg.rs:21:16
+   |
+LL | struct NoField<'a, #[pointee] T: ?Sized> {}
+   |                ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/deriving-smart-pointer-neg.rs:21:31
+   |
+LL | struct NoField<'a, #[pointee] T: ?Sized> {}
+   |                               ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/deriving-smart-pointer-neg.rs:28:20
+   |
+LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
+   |                    ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/deriving-smart-pointer-neg.rs:28:35
+   |
+LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
+   |                                   ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

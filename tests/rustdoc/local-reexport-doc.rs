@@ -3,8 +3,8 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/fn.g.html'
-// @has - '//*[@class="toggle top-doc"]/*[@class="docblock"]' \
+//@ has 'foo/fn.g.html'
+//@ has - '//*[@class="toggle top-doc"]/*[@class="docblock"]' \
 // 'outer module inner module'
 
 mod inner_mod {

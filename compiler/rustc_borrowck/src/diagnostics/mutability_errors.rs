@@ -16,9 +16,9 @@ use rustc_middle::{
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, BytePos, DesugaringKind, Span};
 use rustc_target::abi::FieldIdx;
+use rustc_trait_selection::error_reporting::traits::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
-use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 
 use crate::diagnostics::BorrowedContentSource;
 use crate::util::FindAssignments;
@@ -30,7 +30,7 @@ pub(crate) enum AccessKind {
     Mutate,
 }
 
-impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
+impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     pub(crate) fn report_mutability_error(
         &mut self,
         access_place: Place<'tcx>,
@@ -408,10 +408,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     fn_decl.implicit_self,
                                     hir::ImplicitSelfKind::RefImm | hir::ImplicitSelfKind::RefMut
                                 ) {
-                                    err.span_suggestion(
-                                        upvar_ident.span,
+                                    err.span_suggestion_verbose(
+                                        upvar_ident.span.shrink_to_lo(),
                                         "consider changing this to be mutable",
-                                        format!("mut {}", upvar_ident.name),
+                                        "mut ",
                                         Applicability::MachineApplicable,
                                     );
                                     break;
@@ -419,10 +419,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             }
                         }
                     } else {
-                        err.span_suggestion(
-                            upvar_ident.span,
+                        err.span_suggestion_verbose(
+                            upvar_ident.span.shrink_to_lo(),
                             "consider changing this to be mutable",
-                            format!("mut {}", upvar_ident.name),
+                            "mut ",
                             Applicability::MachineApplicable,
                         );
                     }
@@ -449,8 +449,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .is_ok_and(|snippet| snippet.starts_with("&mut ")) =>
             {
                 err.span_label(span, format!("cannot {act}"));
-                err.span_suggestion(
-                    span,
+                err.span_suggestion_verbose(
+                    span.with_hi(span.lo() + BytePos(5)),
                     "try removing `&mut` here",
                     "",
                     Applicability::MaybeIncorrect,
@@ -541,7 +541,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     }
 
     /// Suggest `map[k] = v` => `map.insert(k, v)` and the like.
-    fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diag<'tcx>, span: Span) {
+    fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diag<'infcx>, span: Span) {
         let Some(adt) = ty.ty_adt_def() else { return };
         let did = adt.did();
         if self.infcx.tcx.is_diagnostic_item(sym::HashMap, did)
@@ -550,13 +550,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             /// Walks through the HIR, looking for the corresponding span for this error.
             /// When it finds it, see if it corresponds to assignment operator whose LHS
             /// is an index expr.
-            struct SuggestIndexOperatorAlternativeVisitor<'a, 'tcx> {
+            struct SuggestIndexOperatorAlternativeVisitor<'a, 'infcx, 'tcx> {
                 assign_span: Span,
-                err: &'a mut Diag<'tcx>,
+                err: &'a mut Diag<'infcx>,
                 ty: Ty<'tcx>,
                 suggested: bool,
             }
-            impl<'a, 'tcx> Visitor<'tcx> for SuggestIndexOperatorAlternativeVisitor<'a, 'tcx> {
+            impl<'a, 'cx, 'tcx> Visitor<'tcx> for SuggestIndexOperatorAlternativeVisitor<'a, 'cx, 'tcx> {
                 fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
                     hir::intravisit::walk_stmt(self, stmt);
                     let expr = match stmt.kind {
@@ -755,13 +755,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
                 ..
             }) = node
-            && let Ok(name) =
-                self.infcx.tcx.sess.source_map().span_to_snippet(local_decl.source_info.span)
         {
-            err.span_suggestion(
-                pat_span,
+            err.multipart_suggestion(
                 "consider changing this to be mutable",
-                format!("&(mut {name})"),
+                vec![
+                    (pat_span.until(local_decl.source_info.span), "&(mut ".to_string()),
+                    (
+                        local_decl.source_info.span.shrink_to_hi().with_hi(pat_span.hi()),
+                        ")".to_string(),
+                    ),
+                ],
                 Applicability::MachineApplicable,
             );
             return;

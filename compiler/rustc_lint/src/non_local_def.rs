@@ -11,10 +11,10 @@ use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::Span;
 use rustc_span::{sym, symbol::kw, ExpnKind, MacroKind, Symbol};
-use rustc_trait_selection::infer::TyCtxtInferExt;
-use rustc_trait_selection::traits::error_reporting::ambiguity::{
+use rustc_trait_selection::error_reporting::traits::ambiguity::{
     compute_applicable_impls_for_diagnostics, CandidateSource,
 };
+use rustc_trait_selection::infer::TyCtxtInferExt;
 
 use crate::fluent_generated as fluent;
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
@@ -50,7 +50,7 @@ declare_lint! {
     /// All nested bodies (functions, enum discriminant, array length, consts) (expect for
     /// `const _: Ty = { ... }` in top-level module, which is still undecided) are checked.
     pub NON_LOCAL_DEFINITIONS,
-    Warn,
+    Allow,
     "checks for non-local definitions",
     report_in_external_macro
 }
@@ -390,7 +390,7 @@ struct ReplaceLocalTypesWithInfer<'a, 'tcx, F: FnMut(DefId) -> bool> {
 impl<'a, 'tcx, F: FnMut(DefId) -> bool> TypeFolder<TyCtxt<'tcx>>
     for ReplaceLocalTypesWithInfer<'a, 'tcx, F>
 {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

@@ -1,6 +1,6 @@
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
-use std::path::PathBuf;
-use std::process::Command;
+use crate::utils::exec::command;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct Vendor {
@@ -27,12 +27,15 @@ impl Step for Vendor {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let mut cmd = Command::new(&builder.initial_cargo);
+        let mut cmd = command(&builder.initial_cargo);
         cmd.arg("vendor");
 
         if self.versioned_dirs {
             cmd.arg("--versioned-dirs");
         }
+
+        // cargo submodule must be present for `x vendor` to work.
+        builder.build.update_submodule(Path::new("src/tools/cargo"));
 
         // Sync these paths by default.
         for p in [
@@ -56,6 +59,6 @@ impl Step for Vendor {
 
         cmd.current_dir(self.root_dir);
 
-        builder.run(&mut cmd);
+        cmd.run(builder);
     }
 }

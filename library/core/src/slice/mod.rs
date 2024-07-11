@@ -39,7 +39,6 @@ pub(crate) mod index;
 mod iter;
 mod raw;
 mod rotate;
-mod select;
 mod specialize;
 
 #[unstable(feature = "str_internals", issue = "none")]
@@ -82,10 +81,6 @@ pub use raw::{from_mut, from_ref};
 
 #[unstable(feature = "slice_from_ptr_range", issue = "89792")]
 pub use raw::{from_mut_ptr_range, from_ptr_range};
-
-// This function is public only because there is no other way to unit test heapsort.
-#[unstable(feature = "sort_internals", reason = "internal to sort module", issue = "none")]
-pub use sort::heapsort;
 
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use index::SliceIndex;
@@ -2884,21 +2879,26 @@ impl<T> [T] {
         self.binary_search_by(|k| f(k).cmp(b))
     }
 
-    /// Sorts the slice, but might not preserve the order of equal elements.
+    /// Sorts the slice **without** preserving the initial order of equal elements.
     ///
-    /// This sort is unstable (i.e., may reorder equal elements), in-place
-    /// (i.e., does not allocate), and *O*(*n* \* log(*n*)) worst-case.
+    /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
+    /// allocate), and *O*(*n* \* log(*n*)) worst-case.
+    ///
+    /// If `T: Ord` does not implement a total order the resulting order is unspecified. All
+    /// original elements will remain in the slice and any possible modifications via interior
+    /// mutability are observed in the input. Same is true if `T: Ord` panics.
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on [pattern-defeating quicksort][pdqsort] by Orson Peters,
-    /// which combines the fast average case of randomized quicksort with the fast worst case of
-    /// heapsort, while achieving linear time on slices with certain patterns. It uses some
-    /// randomization to avoid degenerate cases, but with a fixed seed to always provide
-    /// deterministic behavior.
+    /// The current implementation is based on [ipnsort] by Lukas Bergdoll and Orson Peters, which
+    /// combines the fast average case of quicksort with the fast worst case of heapsort, achieving
+    /// linear time on fully sorted and reversed inputs. On inputs with k distinct elements, the
+    /// expected time to sort the data is *O*(*n* \* log(*k*)).
     ///
     /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
-    /// slice consists of several concatenated sorted sequences.
+    /// slice is partially sorted.
+    ///
+    /// If `T: Ord` does not implement a total order, the implementation may panic.
     ///
     /// # Examples
     ///
@@ -2909,25 +2909,29 @@ impl<T> [T] {
     /// assert!(v == [-5, -3, 1, 2, 4]);
     /// ```
     ///
-    /// [pdqsort]: https://github.com/orlp/pdqsort
+    /// [ipnsort]: https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort
     #[stable(feature = "sort_unstable", since = "1.20.0")]
     #[inline]
     pub fn sort_unstable(&mut self)
     where
         T: Ord,
     {
-        sort::quicksort(self, T::lt);
+        sort::unstable::sort(self, &mut T::lt);
     }
 
-    /// Sorts the slice with a comparator function, but might not preserve the order of equal
-    /// elements.
+    /// Sorts the slice with a comparator function, **without** preserving the initial order of
+    /// equal elements.
     ///
-    /// This sort is unstable (i.e., may reorder equal elements), in-place
-    /// (i.e., does not allocate), and *O*(*n* \* log(*n*)) worst-case.
+    /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
+    /// allocate), and *O*(*n* \* log(*n*)) worst-case.
     ///
-    /// The comparator function must define a total ordering for the elements in the slice. If
-    /// the ordering is not total, the order of the elements is unspecified. An order is a
-    /// total order if it is (for all `a`, `b` and `c`):
+    /// The comparator function should define a total ordering for the elements in the slice. If the
+    /// ordering is not total, the order of the elements is unspecified.
+    ///
+    /// If the comparator function does not implement a total order the resulting order is
+    /// unspecified. All original elements will remain in the slice and any possible modifications
+    /// via interior mutability are observed in the input. Same is true if the comparator function
+    /// panics. A total order (for all `a`, `b` and `c`):
     ///
     /// * total and antisymmetric: exactly one of `a < b`, `a == b` or `a > b` is true, and
     /// * transitive, `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
@@ -2943,14 +2947,15 @@ impl<T> [T] {
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on [pattern-defeating quicksort][pdqsort] by Orson Peters,
-    /// which combines the fast average case of randomized quicksort with the fast worst case of
-    /// heapsort, while achieving linear time on slices with certain patterns. It uses some
-    /// randomization to avoid degenerate cases, but with a fixed seed to always provide
-    /// deterministic behavior.
+    /// The current implementation is based on [ipnsort] by Lukas Bergdoll and Orson Peters, which
+    /// combines the fast average case of quicksort with the fast worst case of heapsort, achieving
+    /// linear time on fully sorted and reversed inputs. On inputs with k distinct elements, the
+    /// expected time to sort the data is *O*(*n* \* log(*k*)).
     ///
     /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
-    /// slice consists of several concatenated sorted sequences.
+    /// slice is partially sorted.
+    ///
+    /// If `T: Ord` does not implement a total order, the implementation may panic.
     ///
     /// # Examples
     ///
@@ -2964,34 +2969,37 @@ impl<T> [T] {
     /// assert!(v == [5, 4, 3, 2, 1]);
     /// ```
     ///
-    /// [pdqsort]: https://github.com/orlp/pdqsort
+    /// [ipnsort]: https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort
     #[stable(feature = "sort_unstable", since = "1.20.0")]
     #[inline]
     pub fn sort_unstable_by<F>(&mut self, mut compare: F)
     where
         F: FnMut(&T, &T) -> Ordering,
     {
-        sort::quicksort(self, |a, b| compare(a, b) == Ordering::Less);
+        sort::unstable::sort(self, &mut |a, b| compare(a, b) == Ordering::Less);
     }
 
-    /// Sorts the slice with a key extraction function, but might not preserve the order of equal
-    /// elements.
+    /// Sorts the slice with a key extraction function, **without** preserving the initial order of
+    /// equal elements.
     ///
-    /// This sort is unstable (i.e., may reorder equal elements), in-place
-    /// (i.e., does not allocate), and *O*(*m* \* *n* \* log(*n*)) worst-case, where the key function is
-    /// *O*(*m*).
+    /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
+    /// allocate), and *O*(*n* \* log(*n*)) worst-case.
+    ///
+    /// If `K: Ord` does not implement a total order the resulting order is unspecified.
+    /// All original elements will remain in the slice and any possible modifications via interior
+    /// mutability are observed in the input. Same is true if `K: Ord` panics.
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on [pattern-defeating quicksort][pdqsort] by Orson Peters,
-    /// which combines the fast average case of randomized quicksort with the fast worst case of
-    /// heapsort, while achieving linear time on slices with certain patterns. It uses some
-    /// randomization to avoid degenerate cases, but with a fixed seed to always provide
-    /// deterministic behavior.
+    /// The current implementation is based on [ipnsort] by Lukas Bergdoll and Orson Peters, which
+    /// combines the fast average case of quicksort with the fast worst case of heapsort, achieving
+    /// linear time on fully sorted and reversed inputs. On inputs with k distinct elements, the
+    /// expected time to sort the data is *O*(*n* \* log(*k*)).
     ///
-    /// Due to its key calling strategy, [`sort_unstable_by_key`](#method.sort_unstable_by_key)
-    /// is likely to be slower than [`sort_by_cached_key`](#method.sort_by_cached_key) in
-    /// cases where the key function is expensive.
+    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
+    /// slice is partially sorted.
+    ///
+    /// If `K: Ord` does not implement a total order, the implementation may panic.
     ///
     /// # Examples
     ///
@@ -3002,7 +3010,7 @@ impl<T> [T] {
     /// assert!(v == [1, 2, -3, 4, -5]);
     /// ```
     ///
-    /// [pdqsort]: https://github.com/orlp/pdqsort
+    /// [ipnsort]: https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort
     #[stable(feature = "sort_unstable", since = "1.20.0")]
     #[inline]
     pub fn sort_unstable_by_key<K, F>(&mut self, mut f: F)
@@ -3010,27 +3018,32 @@ impl<T> [T] {
         F: FnMut(&T) -> K,
         K: Ord,
     {
-        sort::quicksort(self, |a, b| f(a).lt(&f(b)));
+        sort::unstable::sort(self, &mut |a, b| f(a).lt(&f(b)));
     }
 
-    /// Reorder the slice such that the element at `index` after the reordering is at its final sorted position.
+    /// Reorder the slice such that the element at `index` after the reordering is at its final
+    /// sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
-    /// unstable (i.e. any number of equal elements may end up at position `index`), in-place
-    /// (i.e. does not allocate), and runs in *O*(*n*) time.
-    /// This function is also known as "kth element" in other libraries.
+    /// unstable (i.e. any number of equal elements may end up at position `index`), in-place (i.e.
+    /// does not allocate), and runs in *O*(*n*) time. This function is also known as "kth element"
+    /// in other libraries.
     ///
-    /// It returns a triplet of the following from the reordered slice:
-    /// the subslice prior to `index`, the element at `index`, and the subslice after `index`;
-    /// accordingly, the values in those two subslices will respectively all be less-than-or-equal-to
-    /// and greater-than-or-equal-to the value of the element at `index`.
+    /// It returns a triplet of the following from the reordered slice: the subslice prior to
+    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
+    /// those two subslices will respectively all be less-than-or-equal-to and
+    /// greater-than-or-equal-to the value of the element at `index`.
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is an introselect implementation based on Pattern Defeating Quicksort, which is also
-    /// the basis for [`sort_unstable`]. The fallback algorithm is Median of Medians using Tukey's Ninther for
-    /// pivot selection, which guarantees linear runtime for all inputs.
+    /// The current algorithm is an introselect implementation based on [ipnsort] by Lukas Bergdoll
+    /// and Orson Peters, which is also the basis for [`sort_unstable`]. The fallback algorithm is
+    /// Median of Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime
+    /// for all inputs.
+    ///
+    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
+    /// slice is nearly fully sorted, where `slice::sort` may be faster.
     ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
@@ -3058,35 +3071,40 @@ impl<T> [T] {
     ///         v == [-3, -5, 1, 4, 2] ||
     ///         v == [-5, -3, 1, 4, 2]);
     /// ```
+    ///
+    /// [ipnsort]: https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort
     #[stable(feature = "slice_select_nth_unstable", since = "1.49.0")]
     #[inline]
     pub fn select_nth_unstable(&mut self, index: usize) -> (&mut [T], &mut T, &mut [T])
     where
         T: Ord,
     {
-        select::partition_at_index(self, index, T::lt)
+        sort::select::partition_at_index(self, index, T::lt)
     }
 
-    /// Reorder the slice with a comparator function such that the element at `index` after the reordering is at
-    /// its final sorted position.
+    /// Reorder the slice with a comparator function such that the element at `index` after the
+    /// reordering is at its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the comparator function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
-    /// position `index`), in-place (i.e. does not allocate), and runs in *O*(*n*) time.
-    /// This function is also known as "kth element" in other libraries.
+    /// position `index`), in-place (i.e. does not allocate), and runs in *O*(*n*) time. This
+    /// function is also known as "kth element" in other libraries.
     ///
-    /// It returns a triplet of the following from
-    /// the slice reordered according to the provided comparator function: the subslice prior to
-    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
-    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
-    /// the value of the element at `index`.
+    /// It returns a triplet of the following from the slice reordered according to the provided
+    /// comparator function: the subslice prior to `index`, the element at `index`, and the subslice
+    /// after `index`; accordingly, the values in those two subslices will respectively all be
+    /// less-than-or-equal-to and greater-than-or-equal-to the value of the element at `index`.
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is an introselect implementation based on Pattern Defeating Quicksort, which is also
-    /// the basis for [`sort_unstable`]. The fallback algorithm is Median of Medians using Tukey's Ninther for
-    /// pivot selection, which guarantees linear runtime for all inputs.
+    /// The current algorithm is an introselect implementation based on [ipnsort] by Lukas Bergdoll
+    /// and Orson Peters, which is also the basis for [`sort_unstable`]. The fallback algorithm is
+    /// Median of Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime
+    /// for all inputs.
+    ///
+    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
+    /// slice is nearly fully sorted, where `slice::sort` may be faster.
     ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
@@ -3114,6 +3132,8 @@ impl<T> [T] {
     ///         v == [4, 2, 1, -5, -3] ||
     ///         v == [4, 2, 1, -3, -5]);
     /// ```
+    ///
+    /// [ipnsort]: https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort
     #[stable(feature = "slice_select_nth_unstable", since = "1.49.0")]
     #[inline]
     pub fn select_nth_unstable_by<F>(
@@ -3124,29 +3144,32 @@ impl<T> [T] {
     where
         F: FnMut(&T, &T) -> Ordering,
     {
-        select::partition_at_index(self, index, |a: &T, b: &T| compare(a, b) == Less)
+        sort::select::partition_at_index(self, index, |a: &T, b: &T| compare(a, b) == Less)
     }
 
-    /// Reorder the slice with a key extraction function such that the element at `index` after the reordering is
-    /// at its final sorted position.
+    /// Reorder the slice with a key extraction function such that the element at `index` after the
+    /// reordering is at its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the key extraction function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
-    /// position `index`), in-place (i.e. does not allocate), and runs in *O*(*n*) time.
-    /// This function is also known as "kth element" in other libraries.
+    /// position `index`), in-place (i.e. does not allocate), and runs in *O*(*n*) time. This
+    /// function is also known as "kth element" in other libraries.
     ///
-    /// It returns a triplet of the following from
-    /// the slice reordered according to the provided key extraction function: the subslice prior to
-    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
-    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
-    /// the value of the element at `index`.
+    /// It returns a triplet of the following from the slice reordered according to the provided key
+    /// extraction function: the subslice prior to `index`, the element at `index`, and the subslice
+    /// after `index`; accordingly, the values in those two subslices will respectively all be
+    /// less-than-or-equal-to and greater-than-or-equal-to the value of the element at `index`.
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is an introselect implementation based on Pattern Defeating Quicksort, which is also
-    /// the basis for [`sort_unstable`]. The fallback algorithm is Median of Medians using Tukey's Ninther for
-    /// pivot selection, which guarantees linear runtime for all inputs.
+    /// The current algorithm is an introselect implementation based on [ipnsort] by Lukas Bergdoll
+    /// and Orson Peters, which is also the basis for [`sort_unstable`]. The fallback algorithm is
+    /// Median of Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime
+    /// for all inputs.
+    ///
+    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
+    /// slice is nearly fully sorted, where `slice::sort` may be faster.
     ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
@@ -3174,6 +3197,8 @@ impl<T> [T] {
     ///         v == [2, 1, -3, 4, -5] ||
     ///         v == [2, 1, -3, -5, 4]);
     /// ```
+    ///
+    /// [ipnsort]: https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort
     #[stable(feature = "slice_select_nth_unstable", since = "1.49.0")]
     #[inline]
     pub fn select_nth_unstable_by_key<K, F>(
@@ -3185,7 +3210,7 @@ impl<T> [T] {
         F: FnMut(&T) -> K,
         K: Ord,
     {
-        select::partition_at_index(self, index, |a: &T, b: &T| f(a).lt(&f(b)))
+        sort::select::partition_at_index(self, index, |a: &T, b: &T| f(a).lt(&f(b)))
     }
 
     /// Moves all consecutive repeated elements to the end of the slice according to the

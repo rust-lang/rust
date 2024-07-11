@@ -170,7 +170,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     .map(|arg|
                         Ok(Spanned { node: self.parse_operand(*arg)?, span: self.thir.exprs[*arg].span  } )
                     )
-                    .collect::<PResult<Vec<_>>>()?;
+                    .collect::<PResult<Box<[_]>>>()?;
                 Ok(TerminatorKind::Call {
                     func: fun,
                     args,
@@ -192,6 +192,10 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             @call(mir_cast_transmute, args) => {
                 let source = self.parse_operand(args[0])?;
                 Ok(Rvalue::Cast(CastKind::Transmute, source, expr.ty))
+            },
+            @call(mir_cast_ptr_to_ptr, args) => {
+                let source = self.parse_operand(args[0])?;
+                Ok(Rvalue::Cast(CastKind::PtrToPtr, source, expr.ty))
             },
             @call(mir_checked, args) => {
                 parse_by_kind!(self, args[0], _, "binary op",

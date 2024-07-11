@@ -5,6 +5,7 @@ use ast::{ForLoopKind, MatchKind};
 use itertools::{Itertools, Position};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
+use rustc_ast::util::classify;
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::{self as ast, BlockCheckMode};
@@ -217,7 +218,7 @@ impl<'a> State<'a> {
     fn print_expr_call(&mut self, func: &ast::Expr, args: &[P<ast::Expr>], fixup: FixupContext) {
         let prec = match func.kind {
             ast::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
-            _ => parser::PREC_POSTFIX,
+            _ => parser::PREC_UNAMBIGUOUS,
         };
 
         // Independent of parenthesization related to precedence, we must
@@ -257,7 +258,7 @@ impl<'a> State<'a> {
         // boundaries, `$receiver.method()` can be parsed back as a statement
         // containing an expression if and only if `$receiver` can be parsed as
         // a statement containing an expression.
-        self.print_expr_maybe_paren(receiver, parser::PREC_POSTFIX, fixup);
+        self.print_expr_maybe_paren(receiver, parser::PREC_UNAMBIGUOUS, fixup);
 
         self.word(".");
         self.print_ident(segment.ident);
@@ -489,7 +490,7 @@ impl<'a> State<'a> {
                         self.space();
                     }
                     MatchKind::Postfix => {
-                        self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX, fixup);
+                        self.print_expr_maybe_paren(expr, parser::PREC_UNAMBIGUOUS, fixup);
                         self.word_nbsp(".match");
                     }
                 }
@@ -540,7 +541,7 @@ impl<'a> State<'a> {
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Gen(capture_clause, blk, kind) => {
+            ast::ExprKind::Gen(capture_clause, blk, kind, _decl_span) => {
                 self.word_nbsp(kind.modifier());
                 self.print_capture_clause(*capture_clause);
                 // cbox/ibox in analogy to the `ExprKind::Block` arm above
@@ -549,7 +550,7 @@ impl<'a> State<'a> {
                 self.print_block_with_attrs(blk, attrs);
             }
             ast::ExprKind::Await(expr, _) => {
-                self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX, fixup);
+                self.print_expr_maybe_paren(expr, parser::PREC_UNAMBIGUOUS, fixup);
                 self.word(".await");
             }
             ast::ExprKind::Assign(lhs, rhs, _) => {
@@ -568,14 +569,14 @@ impl<'a> State<'a> {
                 self.print_expr_maybe_paren(rhs, prec, fixup.subsequent_subexpression());
             }
             ast::ExprKind::Field(expr, ident) => {
-                self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX, fixup);
+                self.print_expr_maybe_paren(expr, parser::PREC_UNAMBIGUOUS, fixup);
                 self.word(".");
                 self.print_ident(*ident);
             }
             ast::ExprKind::Index(expr, index, _) => {
                 self.print_expr_maybe_paren(
                     expr,
-                    parser::PREC_POSTFIX,
+                    parser::PREC_UNAMBIGUOUS,
                     fixup.leftmost_subexpression(),
                 );
                 self.word("[");
@@ -610,9 +611,12 @@ impl<'a> State<'a> {
                 }
                 if let Some(expr) = opt_expr {
                     self.space();
-                    self.print_expr_maybe_paren(
+                    self.print_expr_cond_paren(
                         expr,
-                        parser::PREC_JUMP,
+                        // Parenthesize if required by precedence, or in the
+                        // case of `break 'inner: loop { break 'inner 1 } + 1`
+                        expr.precedence().order() < parser::PREC_JUMP
+                            || (opt_label.is_none() && classify::leading_labeled_expr(expr)),
                         fixup.subsequent_subexpression(),
                     );
                 }
@@ -713,7 +717,7 @@ impl<'a> State<'a> {
                 }
             }
             ast::ExprKind::Try(e) => {
-                self.print_expr_maybe_paren(e, parser::PREC_POSTFIX, fixup);
+                self.print_expr_maybe_paren(e, parser::PREC_UNAMBIGUOUS, fixup);
                 self.word("?")
             }
             ast::ExprKind::TryBlock(blk) => {

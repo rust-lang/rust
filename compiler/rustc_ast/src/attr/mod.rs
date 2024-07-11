@@ -202,14 +202,17 @@ impl Attribute {
         }
     }
 
-    pub fn tokens(&self) -> TokenStream {
+    // Named `get_tokens` to distinguish it from the `<Attribute as HasTokens>::tokens` method.
+    pub fn get_tokens(&self) -> TokenStream {
         match &self.kind {
-            AttrKind::Normal(normal) => normal
-                .tokens
-                .as_ref()
-                .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
-                .to_attr_token_stream()
-                .to_tokenstream(),
+            AttrKind::Normal(normal) => TokenStream::new(
+                normal
+                    .tokens
+                    .as_ref()
+                    .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
+                    .to_attr_token_stream()
+                    .to_token_trees(),
+            ),
             &AttrKind::DocComment(comment_kind, data) => TokenStream::token_alone(
                 token::DocComment(comment_kind, self.style, data),
                 self.span,
@@ -327,7 +330,8 @@ impl MetaItem {
         I: Iterator<Item = &'a TokenTree>,
     {
         // FIXME: Share code with `parse_path`.
-        let path = match tokens.next().map(|tt| TokenTree::uninterpolate(tt)).as_deref() {
+        let tt = tokens.next().map(|tt| TokenTree::uninterpolate(tt));
+        let path = match tt.as_deref() {
             Some(&TokenTree::Token(
                 Token { kind: ref kind @ (token::Ident(..) | token::PathSep), span },
                 _,
@@ -368,6 +372,12 @@ impl MetaItem {
                 token::Nonterminal::NtPath(path) => (**path).clone(),
                 _ => return None,
             },
+            Some(TokenTree::Token(
+                Token { kind: token::OpenDelim(_) | token::CloseDelim(_), .. },
+                _,
+            )) => {
+                panic!("Should be `AttrTokenTree::Delimited`, not delim tokens: {:?}", tt);
+            }
             _ => return None,
         };
         let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi());

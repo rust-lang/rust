@@ -319,6 +319,16 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
         BuiltinLintDiag::UnusedQualifications { removal_span } => {
             lints::UnusedQualifications { removal_span }.decorate_lint(diag);
         }
+        BuiltinLintDiag::UnsafeAttrOutsideUnsafe {
+            attribute_name_span,
+            sugg_spans: (left, right),
+        } => {
+            lints::UnsafeAttrOutsideUnsafe {
+                span: attribute_name_span,
+                suggestion: lints::UnsafeAttrOutsideUnsafeSuggestion { left, right },
+            }
+            .decorate_lint(diag);
+        }
         BuiltinLintDiag::AssociatedConstElidedLifetime {
             elided,
             span: lt_span,
@@ -424,5 +434,8 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
             lints::InnerAttributeUnstable::CustomInnerAttribute
         }
         .decorate_lint(diag),
+        BuiltinLintDiag::OutOfScopeMacroCalls { path } => {
+            lints::OutOfScopeMacroCalls { path }.decorate_lint(diag)
+        }
     }
 }

@@ -1,5 +1,3 @@
-#![feature(c_unwind)]
-
 #[no_mangle]
 extern "C-unwind" fn unwind() {
     panic!();

@@ -47,22 +47,22 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
                 assert_eq!(left_len, right_len);
-                assert_eq!(dest_len.checked_mul(2).unwrap(), left_len);
+                assert_eq!(dest_len.strict_mul(2), left_len);
 
                 for i in 0..dest_len {
-                    let j1 = i.checked_mul(2).unwrap();
+                    let j1 = i.strict_mul(2);
                     let left1 = this.read_scalar(&this.project_index(&left, j1)?)?.to_i16()?;
                     let right1 = this.read_scalar(&this.project_index(&right, j1)?)?.to_i16()?;
 
-                    let j2 = j1.checked_add(1).unwrap();
+                    let j2 = j1.strict_add(1);
                     let left2 = this.read_scalar(&this.project_index(&left, j2)?)?.to_i16()?;
                     let right2 = this.read_scalar(&this.project_index(&right, j2)?)?.to_i16()?;
 
                     let dest = this.project_index(&dest, i)?;
 
                     // Multiplications are i16*i16->i32, which will not overflow.
-                    let mul1 = i32::from(left1).checked_mul(right1.into()).unwrap();
-                    let mul2 = i32::from(left2).checked_mul(right2.into()).unwrap();
+                    let mul1 = i32::from(left1).strict_mul(right1.into());
+                    let mul2 = i32::from(left2).strict_mul(right2.into());
                     // However, this addition can overflow in the most extreme case
                     // (-0x8000)*(-0x8000)+(-0x8000)*(-0x8000) = 0x80000000
                     let res = mul1.wrapping_add(mul2);
@@ -94,14 +94,14 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let dest = this.project_index(&dest, i)?;
 
                     let mut res: u16 = 0;
-                    let n = left_len.checked_div(dest_len).unwrap();
+                    let n = left_len.strict_div(dest_len);
                     for j in 0..n {
-                        let op_i = j.checked_add(i.checked_mul(n).unwrap()).unwrap();
+                        let op_i = j.strict_add(i.strict_mul(n));
                         let left = this.read_scalar(&this.project_index(&left, op_i)?)?.to_u8()?;
                         let right =
                             this.read_scalar(&this.project_index(&right, op_i)?)?.to_u8()?;
 
-                        res = res.checked_add(left.abs_diff(right).into()).unwrap();
+                        res = res.strict_add(left.abs_diff(right).into());
                     }
 
                     this.write_scalar(Scalar::from_u64(res.into()), &dest)?;

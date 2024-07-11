@@ -13,7 +13,7 @@ use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
 use rustc_middle::ty::{Instance, InstanceKind, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::error_reporting::traits::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitor};
 
@@ -135,6 +135,8 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         ccx: &'mir ConstCx<'mir, 'tcx>,
         tainted_by_errors: Option<ErrorGuaranteed>,
     ) -> ConstQualifs {
+        // FIXME(explicit_tail_calls): uhhhh I think we can return without return now, does it change anything
+
         // Find the `Return` terminator if one exists.
         //
         // If no `Return` terminator exists, this MIR is divergent. Just return the conservative
@@ -711,7 +713,14 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
-            TerminatorKind::Call { func, args, fn_span, call_source, .. } => {
+            TerminatorKind::Call { func, args, fn_span, .. }
+            | TerminatorKind::TailCall { func, args, fn_span, .. } => {
+                let call_source = match terminator.kind {
+                    TerminatorKind::Call { call_source, .. } => call_source,
+                    TerminatorKind::TailCall { .. } => CallSource::Normal,
+                    _ => unreachable!(),
+                };
+
                 let ConstCx { tcx, body, param_env, .. } = *self.ccx;
                 let caller = self.def_id();
 
@@ -768,7 +777,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         is_trait = true;
 
                         if let Ok(Some(instance)) =
-                            Instance::resolve(tcx, param_env, callee, fn_args)
+                            Instance::try_resolve(tcx, param_env, callee, fn_args)
                             && let InstanceKind::Item(def) = instance.def
                         {
                             // Resolve a trait method call to its concrete implementation, which may be in a
@@ -783,7 +792,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             callee,
                             args: fn_args,
                             span: *fn_span,
-                            call_source: *call_source,
+                            call_source,
                             feature: Some(if tcx.features().const_trait_impl {
                                 sym::effects
                             } else {
@@ -830,7 +839,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         callee,
                         args: fn_args,
                         span: *fn_span,
-                        call_source: *call_source,
+                        call_source,
                         feature: None,
                     });
                     return;

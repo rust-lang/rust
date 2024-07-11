@@ -639,14 +639,14 @@ impl Item {
             hir::FnHeader { safety: sig.safety(), abi: sig.abi(), constness, asyncness }
         }
         let header = match *self.kind {
-            ItemKind::ForeignFunctionItem(_) => {
+            ItemKind::ForeignFunctionItem(_, safety) => {
                 let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
                     safety: if abi == Abi::RustIntrinsic {
                         intrinsic_operation_unsafety(tcx, def_id.expect_local())
                     } else {
-                        hir::Safety::Unsafe
+                        safety
                     },
                     abi,
                     constness: if tcx.is_const_fn(def_id)
@@ -842,9 +842,9 @@ pub(crate) enum ItemKind {
     StructFieldItem(Type),
     VariantItem(Variant),
     /// `fn`s from an extern block
-    ForeignFunctionItem(Box<Function>),
+    ForeignFunctionItem(Box<Function>, hir::Safety),
     /// `static`s from an extern block
-    ForeignStaticItem(Static),
+    ForeignStaticItem(Static, hir::Safety),
     /// `type`s from an extern block
     ForeignTypeItem,
     MacroItem(Macro),
@@ -893,8 +893,8 @@ impl ItemKind {
             | TyMethodItem(_)
             | MethodItem(_, _)
             | StructFieldItem(_)
-            | ForeignFunctionItem(_)
-            | ForeignStaticItem(_)
+            | ForeignFunctionItem(_, _)
+            | ForeignStaticItem(_, _)
             | ForeignTypeItem
             | MacroItem(_)
             | ProcMacroItem(_)
@@ -924,8 +924,8 @@ impl ItemKind {
                 | StaticItem(_)
                 | ConstantItem(_, _, _)
                 | TraitAliasItem(_)
-                | ForeignFunctionItem(_)
-                | ForeignStaticItem(_)
+                | ForeignFunctionItem(_, _)
+                | ForeignStaticItem(_, _)
                 | ForeignTypeItem
                 | MacroItem(_)
                 | ProcMacroItem(_)
@@ -1286,7 +1286,7 @@ impl GenericBound {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct Lifetime(pub Symbol);
 
 impl Lifetime {
@@ -1321,7 +1321,7 @@ pub(crate) enum GenericParamDefKind {
     Lifetime { outlives: ThinVec<Lifetime> },
     Type { bounds: ThinVec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
     // Option<Box<String>> makes this type smaller than `Option<String>` would.
-    Const { ty: Box<Type>, default: Option<Box<String>>, is_host_effect: bool },
+    Const { ty: Box<Type>, default: Option<Box<String>>, synthetic: bool },
 }
 
 impl GenericParamDefKind {
@@ -1345,7 +1345,7 @@ impl GenericParamDef {
     pub(crate) fn is_synthetic_param(&self) -> bool {
         match self.kind {
             GenericParamDefKind::Lifetime { .. } => false,
-            GenericParamDefKind::Const { is_host_effect, .. } => is_host_effect,
+            GenericParamDefKind::Const { synthetic: is_host_effect, .. } => is_host_effect,
             GenericParamDefKind::Type { synthetic, .. } => synthetic,
         }
     }
@@ -2557,7 +2557,7 @@ pub(crate) struct ProcMacro {
 /// * the `A: Bound` in `Trait<A: Bound>`
 /// * the `RetTy` in `Trait(ArgTy, ArgTy) -> RetTy`
 /// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `associated_const_equality`)
-/// * the `f(): Bound` in `Trait<f(): Bound>` (feature `return_type_notation`)
+/// * the `f(..): Bound` in `Trait<f(..): Bound>` (feature `return_type_notation`)
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct AssocItemConstraint {
     pub(crate) assoc: PathSegment,

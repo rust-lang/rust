@@ -2,7 +2,8 @@
 // at the end of generic args when the generics have defaulted params.
 //
 //@ check-pass
-
+//@ compile-flags: -Znext-solver
+#![allow(incomplete_features)]
 #![feature(const_trait_impl, effects)]
 
 #[const_trait]

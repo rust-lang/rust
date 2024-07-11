@@ -363,8 +363,6 @@ declare_features! (
     (unstable, async_for_loop, "1.77.0", Some(118898)),
     /// Allows builtin # foo() syntax
     (unstable, builtin_syntax, "1.71.0", Some(110680)),
-    /// Treat `extern "C"` function as nounwind.
-    (unstable, c_unwind, "1.52.0", Some(74990)),
     /// Allows using C-variadics.
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
@@ -438,6 +436,8 @@ declare_features! (
     (unstable, deprecated_suggestion, "1.61.0", Some(94785)),
     /// Allows deref patterns.
     (incomplete, deref_patterns, "1.79.0", Some(87121)),
+    /// Allows deriving `SmartPointer` traits
+    (unstable, derive_smart_pointer, "1.79.0", Some(123430)),
     /// Controls errors in trait implementations.
     (unstable, do_not_recommend, "1.67.0", Some(51992)),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
@@ -451,7 +451,7 @@ declare_features! (
     /// Allows `dyn* Trait` objects.
     (incomplete, dyn_star, "1.65.0", Some(102425)),
     /// Uses generic effect parameters for ~const bounds
-    (unstable, effects, "1.72.0", Some(102090)),
+    (incomplete, effects, "1.72.0", Some(102090)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (unstable, exhaustive_patterns, "1.13.0", Some(51085)),
     /// Allows explicit tail calls via `become` expression.
@@ -512,8 +512,6 @@ declare_features! (
     /// Allows using `#[link(kind = "link-arg", name = "...")]`
     /// to pass custom arguments to the linker.
     (unstable, link_arg_attribute, "1.76.0", Some(99427)),
-    /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
-    (unstable, lint_reasons, "1.31.0", Some(54503)),
     /// Give access to additional metadata about declarative macro meta-variables.
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.
@@ -565,6 +563,8 @@ declare_features! (
     (unstable, offset_of_slice, "CURRENT_RUSTC_VERSION", Some(126151)),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
+    /// Allows specifying nop padding on functions for dynamic patching.
+    (unstable, patchable_function_entry, "CURRENT_RUSTC_VERSION", Some(123115)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
     /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
@@ -575,6 +575,8 @@ declare_features! (
     (unstable, raw_ref_op, "1.41.0", Some(64490)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
     (incomplete, ref_pat_eat_one_layer_2024, "1.79.0", Some(123076)),
+    /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024—structural variant
+    (incomplete, ref_pat_eat_one_layer_2024_structural, "CURRENT_RUSTC_VERSION", Some(123076)),
     /// Allows using the `#[register_tool]` attribute.
     (unstable, register_tool, "1.41.0", Some(66079)),
     /// Allows the `#[repr(i128)]` attribute for enums.
@@ -631,7 +633,7 @@ declare_features! (
     /// Allows unsafe on extern declarations and safety qualifiers over internal items.
     (unstable, unsafe_extern_blocks, "1.80.0", Some(123743)),
     /// Allows unsized fn parameters.
-    (unstable, unsized_fn_params, "1.49.0", Some(48055)),
+    (internal, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows unsized rvalues at arguments and parameters.
     (incomplete, unsized_locals, "1.30.0", Some(48055)),
     /// Allows unsized tuple coercion.

@@ -727,10 +727,12 @@ fn project<'cx, 'tcx>(
         ProjectionCandidateSet::None => {
             let tcx = selcx.tcx();
             let term = match tcx.def_kind(obligation.predicate.def_id) {
-                DefKind::AssocTy => {
-                    Ty::new_projection(tcx, obligation.predicate.def_id, obligation.predicate.args)
-                        .into()
-                }
+                DefKind::AssocTy => Ty::new_projection_from_args(
+                    tcx,
+                    obligation.predicate.def_id,
+                    obligation.predicate.args,
+                )
+                .into(),
                 DefKind::AssocConst => ty::Const::new_unevaluated(
                     tcx,
                     ty::UnevaluatedConst::new(
@@ -1387,7 +1389,11 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
     };
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(tcx, obligation.predicate.def_id, trait_ref.args),
+        projection_term: ty::AliasTerm::new_from_args(
+            tcx,
+            obligation.predicate.def_id,
+            trait_ref.args,
+        ),
         term: ty.into(),
     };
 
@@ -1431,7 +1437,11 @@ fn confirm_future_candidate<'cx, 'tcx>(
     debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Output);
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(tcx, obligation.predicate.def_id, trait_ref.args),
+        projection_term: ty::AliasTerm::new_from_args(
+            tcx,
+            obligation.predicate.def_id,
+            trait_ref.args,
+        ),
         term: return_ty.into(),
     };
 
@@ -1473,7 +1483,11 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
     debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Item);
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(tcx, obligation.predicate.def_id, trait_ref.args),
+        projection_term: ty::AliasTerm::new_from_args(
+            tcx,
+            obligation.predicate.def_id,
+            trait_ref.args,
+        ),
         term: yield_ty.into(),
     };
 
@@ -1523,7 +1537,11 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
     let item_ty = args.type_at(0);
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(tcx, obligation.predicate.def_id, trait_ref.args),
+        projection_term: ty::AliasTerm::new_from_args(
+            tcx,
+            obligation.predicate.def_id,
+            trait_ref.args,
+        ),
         term: item_ty.into(),
     };
 
@@ -1592,7 +1610,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
     };
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(tcx, item_def_id, args),
+        projection_term: ty::AliasTerm::new_from_args(tcx, item_def_id, args),
         term,
     };
 
@@ -1753,7 +1771,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         fn_host_effect,
     )
     .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(tcx, fn_once_output_def_id, trait_ref.args),
+        projection_term: ty::AliasTerm::new_from_args(tcx, fn_once_output_def_id, trait_ref.args),
         term: ret_type.into(),
     });
 
@@ -1937,7 +1955,7 @@ fn confirm_async_fn_kind_helper_candidate<'cx, 'tcx>(
     };
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(
+        projection_term: ty::AliasTerm::new_from_args(
             selcx.tcx(),
             obligation.predicate.def_id,
             obligation.predicate.args,

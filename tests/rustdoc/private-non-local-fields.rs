@@ -5,5 +5,5 @@
 
 use std::collections::BTreeMap;
 
-// @has 'foo/type.FooBar.html' '//*[@class="rust item-decl"]/code' 'struct FooBar { /* private fields */ }'
+//@ has 'foo/type.FooBar.html' '//*[@class="rust item-decl"]/code' 'struct FooBar { /* private fields */ }'
 pub type FooBar = BTreeMap<u32, String>;

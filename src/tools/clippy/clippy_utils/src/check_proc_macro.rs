@@ -18,8 +18,8 @@ use rustc_ast::AttrStyle;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, FnRetTy, HirId, Impl,
-    ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, MutTy, Node, QPath, Safety, TraitItem,
-    TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
+    ImplItem, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource, MatchSource, MutTy, Node, Path, QPath, Safety,
+    TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
 };
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
@@ -119,6 +119,26 @@ fn qpath_search_pat(path: &QPath<'_>) -> (Pat, Pat) {
         QPath::TypeRelative(_, name) => (Pat::Str(""), Pat::Sym(name.ident.name)),
         QPath::LangItem(..) => (Pat::Str(""), Pat::Str("")),
     }
+}
+
+fn path_search_pat(path: &Path<'_>) -> (Pat, Pat) {
+    let (head, tail) = match path.segments {
+        [head, .., tail] => (head, tail),
+        [p] => (p, p),
+        [] => return (Pat::Str(""), Pat::Str("")),
+    };
+    (
+        if head.ident.name == kw::PathRoot {
+            Pat::Str("::")
+        } else {
+            Pat::Sym(head.ident.name)
+        },
+        if tail.args.is_some() {
+            Pat::Str(">")
+        } else {
+            Pat::Sym(tail.ident.name)
+        },
+    )
 }
 
 /// Get the search patterns to use for the given expression
@@ -355,19 +375,21 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
     }
 }
 
+fn ident_search_pat(ident: Ident) -> (Pat, Pat) {
+    (Pat::Sym(ident.name), Pat::Sym(ident.name))
+}
+
 pub trait WithSearchPat<'cx> {
     type Context: LintContext;
     fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat);
     fn span(&self) -> Span;
 }
 macro_rules! impl_with_search_pat {
-    ($cx:ident: $ty:ident with $fn:ident $(($tcx:ident))?) => {
-        impl<'cx> WithSearchPat<'cx> for $ty<'cx> {
-            type Context = $cx<'cx>;
-            #[allow(unused_variables)]
-            fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat) {
-                $(let $tcx = cx.tcx;)?
-                $fn($($tcx,)? self)
+    (($cx_ident:ident: $cx_ty:ident<$cx_lt:lifetime>, $self:tt: $ty:ty) => $fn:ident($($args:tt)*)) => {
+        impl<$cx_lt> WithSearchPat<$cx_lt> for $ty {
+            type Context = $cx_ty<$cx_lt>;
+            fn search_pat(&$self, $cx_ident: &Self::Context) -> (Pat, Pat) {
+                $fn($($args)*)
             }
             fn span(&self) -> Span {
                 self.span
@@ -375,13 +397,17 @@ macro_rules! impl_with_search_pat {
         }
     };
 }
-impl_with_search_pat!(LateContext: Expr with expr_search_pat(tcx));
-impl_with_search_pat!(LateContext: Item with item_search_pat);
-impl_with_search_pat!(LateContext: TraitItem with trait_item_search_pat);
-impl_with_search_pat!(LateContext: ImplItem with impl_item_search_pat);
-impl_with_search_pat!(LateContext: FieldDef with field_def_search_pat);
-impl_with_search_pat!(LateContext: Variant with variant_search_pat);
-impl_with_search_pat!(LateContext: Ty with ty_search_pat);
+impl_with_search_pat!((cx: LateContext<'tcx>, self: Expr<'tcx>) => expr_search_pat(cx.tcx, self));
+impl_with_search_pat!((_cx: LateContext<'tcx>, self: Item<'_>) => item_search_pat(self));
+impl_with_search_pat!((_cx: LateContext<'tcx>, self: TraitItem<'_>) => trait_item_search_pat(self));
+impl_with_search_pat!((_cx: LateContext<'tcx>, self: ImplItem<'_>) => impl_item_search_pat(self));
+impl_with_search_pat!((_cx: LateContext<'tcx>, self: FieldDef<'_>) => field_def_search_pat(self));
+impl_with_search_pat!((_cx: LateContext<'tcx>, self: Variant<'_>) => variant_search_pat(self));
+impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ty<'_>) => ty_search_pat(self));
+impl_with_search_pat!((_cx: LateContext<'tcx>, self: Attribute) => attr_search_pat(self));
+impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ident) => ident_search_pat(*self));
+impl_with_search_pat!((_cx: LateContext<'tcx>, self: Lit) => lit_search_pat(&self.node));
+impl_with_search_pat!((_cx: LateContext<'tcx>, self: Path<'_>) => path_search_pat(self));
 
 impl<'cx> WithSearchPat<'cx> for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
     type Context = LateContext<'cx>;
@@ -392,32 +418,6 @@ impl<'cx> WithSearchPat<'cx> for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
 
     fn span(&self) -> Span {
         self.3
-    }
-}
-
-// `Attribute` does not have the `hir` associated lifetime, so we cannot use the macro
-impl<'cx> WithSearchPat<'cx> for &'cx Attribute {
-    type Context = LateContext<'cx>;
-
-    fn search_pat(&self, _cx: &Self::Context) -> (Pat, Pat) {
-        attr_search_pat(self)
-    }
-
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
-// `Ident` does not have the `hir` associated lifetime, so we cannot use the macro
-impl<'cx> WithSearchPat<'cx> for Ident {
-    type Context = LateContext<'cx>;
-
-    fn search_pat(&self, _cx: &Self::Context) -> (Pat, Pat) {
-        (Pat::Sym(self.name), Pat::Sym(self.name))
-    }
-
-    fn span(&self) -> Span {
-        self.span
     }
 }
 

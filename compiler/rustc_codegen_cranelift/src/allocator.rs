@@ -11,15 +11,10 @@ use rustc_session::config::OomStrategy;
 use crate::prelude::*;
 
 /// Returns whether an allocator shim was created
-pub(crate) fn codegen(
-    tcx: TyCtxt<'_>,
-    module: &mut impl Module,
-    unwind_context: &mut UnwindContext,
-) -> bool {
+pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut dyn Module) -> bool {
     let Some(kind) = allocator_kind_for_codegen(tcx) else { return false };
     codegen_inner(
         module,
-        unwind_context,
         kind,
         tcx.alloc_error_handler_kind(()).unwrap(),
         tcx.sess.opts.unstable_opts.oom,
@@ -28,8 +23,7 @@ pub(crate) fn codegen(
 }
 
 fn codegen_inner(
-    module: &mut impl Module,
-    unwind_context: &mut UnwindContext,
+    module: &mut dyn Module,
     kind: AllocatorKind,
     alloc_error_handler_kind: AllocatorKind,
     oom_strategy: OomStrategy,
@@ -67,7 +61,6 @@ fn codegen_inner(
             };
             crate::common::create_wrapper_function(
                 module,
-                unwind_context,
                 sig,
                 &global_fn_name(method.name),
                 &default_fn_name(method.name),
@@ -82,7 +75,6 @@ fn codegen_inner(
     };
     crate::common::create_wrapper_function(
         module,
-        unwind_context,
         sig,
         "__rust_alloc_error_handler",
         &alloc_error_handler_name(alloc_error_handler_kind),

@@ -730,7 +730,7 @@ pub enum TerminatorKind<'tcx> {
         /// reused across function calls without duplicating the contents.
         /// The span for each arg is also included
         /// (e.g. `a` and `b` in `x.foo(a, b)`).
-        args: Vec<Spanned<Operand<'tcx>>>,
+        args: Box<[Spanned<Operand<'tcx>>]>,
         /// Where the returned value will be written
         destination: Place<'tcx>,
         /// Where to go after this call returns. If none, the call necessarily diverges.
@@ -741,6 +741,36 @@ pub enum TerminatorKind<'tcx> {
         call_source: CallSource,
         /// This `Span` is the span of the function, without the dot and receiver
         /// e.g. `foo(a, b)` in `x.foo(a, b)`
+        fn_span: Span,
+    },
+
+    /// Tail call.
+    ///
+    /// Roughly speaking this is a chimera of [`Call`] and [`Return`], with some caveats.
+    /// Semantically tail calls consists of two actions:
+    /// - pop of the current stack frame
+    /// - a call to the `func`, with the return address of the **current** caller
+    ///   - so that a `return` inside `func` returns to the caller of the caller
+    ///     of the function that is currently being executed
+    ///
+    /// Note that in difference with [`Call`] this is missing
+    /// - `destination` (because it's always the return place)
+    /// - `target` (because it's always taken from the current stack frame)
+    /// - `unwind` (because it's always taken from the current stack frame)
+    ///
+    /// [`Call`]: TerminatorKind::Call
+    /// [`Return`]: TerminatorKind::Return
+    TailCall {
+        /// The function that’s being called.
+        func: Operand<'tcx>,
+        /// Arguments the function is called with.
+        /// These are owned by the callee, which is free to modify them.
+        /// This allows the memory occupied by "by-value" arguments to be
+        /// reused across function calls without duplicating the contents.
+        args: Box<[Spanned<Operand<'tcx>>]>,
+        // FIXME(explicit_tail_calls): should we have the span for `become`? is this span accurate? do we need it?
+        /// This `Span` is the span of the function, without the dot and receiver
+        /// (e.g. `foo(a, b)` in `x.foo(a, b)`
         fn_span: Span,
     },
 
@@ -837,7 +867,7 @@ pub enum TerminatorKind<'tcx> {
         template: &'tcx [InlineAsmTemplatePiece],
 
         /// The operands for the inline assembly, as `Operand`s or `Place`s.
-        operands: Vec<InlineAsmOperand<'tcx>>,
+        operands: Box<[InlineAsmOperand<'tcx>]>,
 
         /// Miscellaneous options for the inline assembly.
         options: InlineAsmOptions,
@@ -849,7 +879,7 @@ pub enum TerminatorKind<'tcx> {
         /// Valid targets for the inline assembly.
         /// The first element is the fallthrough destination, unless
         /// InlineAsmOptions::NORETURN is set.
-        targets: Vec<BasicBlock>,
+        targets: Box<[BasicBlock]>,
 
         /// Action to be taken if the inline assembly unwinds. This is present
         /// if and only if InlineAsmOptions::MAY_UNWIND is set.
@@ -870,6 +900,7 @@ impl TerminatorKind<'_> {
             TerminatorKind::Unreachable => "Unreachable",
             TerminatorKind::Drop { .. } => "Drop",
             TerminatorKind::Call { .. } => "Call",
+            TerminatorKind::TailCall { .. } => "TailCall",
             TerminatorKind::Assert { .. } => "Assert",
             TerminatorKind::Yield { .. } => "Yield",
             TerminatorKind::CoroutineDrop => "CoroutineDrop",
@@ -1446,10 +1477,12 @@ pub enum UnOp {
     Not,
     /// The `-` operator for negation
     Neg,
-    /// Get the metadata `M` from a `*const/mut impl Pointee<Metadata = M>`.
+    /// Gets the metadata `M` from a `*const`/`*mut`/`&`/`&mut` to
+    /// `impl Pointee<Metadata = M>`.
     ///
     /// For example, this will give a `()` from `*const i32`, a `usize` from
-    /// `*mut [u8]`, or a pointer to a vtable from a `*const dyn Foo`.
+    /// `&mut [u8]`, or a `ptr::DynMetadata<dyn Foo>` (internally a pointer)
+    /// from a `*mut dyn Foo`.
     ///
     /// Allowed only in [`MirPhase::Runtime`]; earlier it's an intrinsic.
     PtrMetadata,
@@ -1559,6 +1592,6 @@ mod size_asserts {
     static_assert_size!(PlaceElem<'_>, 24);
     static_assert_size!(Rvalue<'_>, 40);
     static_assert_size!(StatementKind<'_>, 16);
-    static_assert_size!(TerminatorKind<'_>, 96);
+    static_assert_size!(TerminatorKind<'_>, 80);
     // tidy-alphabetical-end
 }

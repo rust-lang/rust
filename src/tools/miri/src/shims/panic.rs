@@ -113,7 +113,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         mut extra: FrameExtra<'tcx>,
         unwinding: bool,
-    ) -> InterpResult<'tcx, StackPopJump> {
+    ) -> InterpResult<'tcx, ReturnAction> {
         let this = self.eval_context_mut();
         trace!("handle_stack_pop_unwind(extra = {:?}, unwinding = {})", extra, unwinding);
 
@@ -150,9 +150,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             )?;
 
             // We pushed a new stack frame, the engine should not do any jumping now!
-            Ok(StackPopJump::NoJump)
+            Ok(ReturnAction::NoJump)
         } else {
-            Ok(StackPopJump::Normal)
+            Ok(ReturnAction::Normal)
         }
     }
 

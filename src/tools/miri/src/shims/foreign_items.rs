@@ -12,7 +12,7 @@ use rustc_target::{
     spec::abi::Abi,
 };
 
-use super::alloc::{check_alloc_request, EvalContextExt as _};
+use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
 use crate::*;
 use helpers::{ToHost, ToSoft};
@@ -46,24 +46,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         let this = self.eval_context_mut();
-        let tcx = this.tcx.tcx;
 
         // Some shims forward to other MIR bodies.
         match link_name.as_str() {
-            // This matches calls to the foreign item `panic_impl`.
-            // The implementation is provided by the function with the `#[panic_handler]` attribute.
-            "panic_impl" => {
-                // We don't use `check_shim` here because we are just forwarding to the lang
-                // item. Argument count checking will be performed when the returned `Body` is
-                // called.
-                this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name)?;
-                let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
-                let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
-                return Ok(Some((
-                    this.load_mir(panic_impl_instance.def, None)?,
-                    panic_impl_instance,
-                )));
-            }
             "__rust_alloc_error_handler" => {
                 // Forward to the right symbol that implements this function.
                 let Some(handler_kind) = this.tcx.alloc_error_handler_kind(()) else {
@@ -204,6 +189,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Check some basic requirements for this allocation request:
+    /// non-zero size, power-of-two alignment.
+    fn check_rustc_alloc_request(&self, size: u64, align: u64) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
+        if size == 0 {
+            throw_ub_format!("creating allocation with size 0");
+        }
+        if i128::from(size) > this.tcx.data_layout.pointer_size.signed_int_max() {
+            throw_ub_format!("creating an allocation larger than half the address space");
+        }
+        if !align.is_power_of_two() {
+            throw_ub_format!("creating allocation with non-power-of-two alignment {}", align);
+        }
+        Ok(())
+    }
+
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
@@ -386,7 +387,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 });
                 let (_, addr) = ptr.into_parts(); // we know the offset is absolute
                 // Cannot panic since `align` is a power of 2 and hence non-zero.
-                if addr.bytes().checked_rem(align.bytes()).unwrap() != 0 {
+                if addr.bytes().strict_rem(align.bytes()) != 0 {
                     throw_unsup_format!(
                         "`miri_promise_symbolic_alignment`: pointer is not actually aligned"
                     );
@@ -462,7 +463,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let size = this.read_target_usize(size)?;
                     let align = this.read_target_usize(align)?;
 
-                    check_alloc_request(size, align)?;
+                    this.check_rustc_alloc_request(size, align)?;
 
                     let memory_kind = match link_name.as_str() {
                         "__rust_alloc" => MiriMemoryKind::Rust,
@@ -496,7 +497,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let size = this.read_target_usize(size)?;
                     let align = this.read_target_usize(align)?;
 
-                    check_alloc_request(size, align)?;
+                    this.check_rustc_alloc_request(size, align)?;
 
                     let ptr = this.allocate_ptr(
                         Size::from_bytes(size),
@@ -560,7 +561,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let new_size = this.read_target_usize(new_size)?;
                     // No need to check old_size; we anyway check that they match the allocation.
 
-                    check_alloc_request(new_size, align)?;
+                    this.check_rustc_alloc_request(new_size, align)?;
 
                     let align = Align::from_bytes(align).unwrap();
                     let new_ptr = this.reallocate_ptr(
@@ -698,7 +699,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // That is probably overly cautious, but there also is no fundamental
                 // reason to have `strcpy` destroy pointer provenance.
                 // This reads at least 1 byte, so we are already enforcing that this is a valid pointer.
-                let n = this.read_c_str(ptr_src)?.len().checked_add(1).unwrap();
+                let n = this.read_c_str(ptr_src)?.len().strict_add(1);
                 this.mem_copy(ptr_src, ptr_dest, Size::from_bytes(n), true)?;
                 this.write_pointer(ptr_dest, dest)?;
             }

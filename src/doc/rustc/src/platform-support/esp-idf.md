@@ -1,4 +1,4 @@
-# `*-esp-espidf`
+# `*-espidf`
 
 **Tier: 3**
 
@@ -8,18 +8,22 @@ Targets for the [ESP-IDF](https://github.com/espressif/esp-idf) development fram
 
 - Ivan Markov [@ivmarkov](https://github.com/ivmarkov)
 - Scott Mabin [@MabezDev](https://github.com/MabezDev)
+- Sergio Gasquez [@SergioGasquez](https://github.com/SergioGasquez)
 
 ## Requirements
 
 The target names follow this format: `$ARCH-esp-espidf`, where `$ARCH` specifies the target processor architecture. The following targets are currently defined:
 
-| Target name              | Target CPU(s)                                                   | Minimum ESP-IDF version |
-| ------------------------ | --------------------------------------------------------------- | ----------------------- |
-| `riscv32imc-esp-espidf`  | [ESP32-C2](https://www.espressif.com/en/products/socs/esp32-c2) | `v5.0`                  |
-| `riscv32imc-esp-espidf`  | [ESP32-C3](https://www.espressif.com/en/products/socs/esp32-c3) | `v4.3`                  |
-| `riscv32imac-esp-espidf` | [ESP32-C6](https://www.espressif.com/en/products/socs/esp32-c6) | `v5.1`                  |
-| `riscv32imac-esp-espidf` | [ESP32-H2](https://www.espressif.com/en/products/socs/esp32-h2) | `v5.1`                  |
-| `riscv32imafc-esp-espidf`| [ESP32-P4](https://www.espressif.com/en/news/ESP32-P4)          | `v5.2`                  |
+| Target name               | Target CPU(s)                                                   | Minimum ESP-IDF version |
+| ------------------------- | --------------------------------------------------------------- | ----------------------- |
+| `riscv32imc-esp-espidf`   | [ESP32-C2](https://www.espressif.com/en/products/socs/esp32-c2) | `v5.0`                  |
+| `riscv32imc-esp-espidf`   | [ESP32-C3](https://www.espressif.com/en/products/socs/esp32-c3) | `v4.4`                  |
+| `riscv32imac-esp-espidf`  | [ESP32-C6](https://www.espressif.com/en/products/socs/esp32-c6) | `v5.1`                  |
+| `riscv32imac-esp-espidf`  | [ESP32-H2](https://www.espressif.com/en/products/socs/esp32-h2) | `v5.1`                  |
+| `riscv32imafc-esp-espidf` | [ESP32-P4](https://www.espressif.com/en/news/ESP32-P4)          | `v5.2`                  |
+| `xtensa-esp32-espidf`     | [ESP32](https://www.espressif.com/en/products/socs/esp32)       | `v4.4`                  |
+| `xtensa-esp32s2-espidf`   | [ESP32-S2](https://www.espressif.com/en/products/socs/esp32-s2) | `v4.4`                  |
+| `xtensa-esp32s3-espidf`   | [ESP32-S3](https://www.espressif.com/en/products/socs/esp32-s3) | `v4.4`                  |
 
 It is recommended to use the latest ESP-IDF stable release if possible.
 

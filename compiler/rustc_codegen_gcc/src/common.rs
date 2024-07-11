@@ -21,12 +21,25 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
     fn global_string(&self, string: &str) -> LValue<'gcc> {
         // TODO(antoyo): handle non-null-terminated strings.
-        let string = self.context.new_string_literal(&*string);
+        let string = self.context.new_string_literal(string);
         let sym = self.generate_local_symbol_name("str");
         let global = self.declare_private_global(&sym, self.val_ty(string));
         global.global_set_initializer_rvalue(string);
         global
         // TODO(antoyo): set linkage.
+    }
+
+    pub fn const_bitcast(&self, value: RValue<'gcc>, typ: Type<'gcc>) -> RValue<'gcc> {
+        if value.get_type() == self.bool_type.make_pointer() {
+            if let Some(pointee) = typ.get_pointee() {
+                if pointee.dyncast_vector().is_some() {
+                    panic!()
+                }
+            }
+        }
+        // NOTE: since bitcast makes a value non-constant, don't bitcast if not necessary as some
+        // SIMD builtins require a constant value.
+        self.bitcast_if_needed(value, typ)
     }
 }
 
@@ -174,7 +187,8 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     return self
                         .context
                         .new_rvalue_from_double(ty, f32::from_bits(data as u32) as f64);
-                } else if ty == self.double_type {
+                }
+                if ty == self.double_type {
                     return self.context.new_rvalue_from_double(ty, f64::from_bits(data as u64));
                 }
 
@@ -207,7 +221,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         }
                         value
                     }
-                    GlobalAlloc::Function(fn_instance) => self.get_fn_addr(fn_instance),
+                    GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance),
                     GlobalAlloc::VTable(ty, trait_ref) => {
                         let alloc = self
                             .tcx
@@ -237,19 +251,6 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
         const_alloc_to_gcc(self, alloc)
-    }
-
-    fn const_bitcast(&self, value: RValue<'gcc>, typ: Type<'gcc>) -> RValue<'gcc> {
-        if value.get_type() == self.bool_type.make_pointer() {
-            if let Some(pointee) = typ.get_pointee() {
-                if pointee.dyncast_vector().is_some() {
-                    panic!()
-                }
-            }
-        }
-        // NOTE: since bitcast makes a value non-constant, don't bitcast if not necessary as some
-        // SIMD builtins require a constant value.
-        self.bitcast_if_needed(value, typ)
     }
 
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {
@@ -297,7 +298,7 @@ impl<'gcc, 'tcx> SignType<'gcc, 'tcx> for Type<'gcc> {
         } else if self.is_ulonglong(cx) {
             cx.longlong_type
         } else {
-            self.clone()
+            *self
         }
     }
 
@@ -323,7 +324,7 @@ impl<'gcc, 'tcx> SignType<'gcc, 'tcx> for Type<'gcc> {
         } else if self.is_longlong(cx) {
             cx.ulonglong_type
         } else {
-            self.clone()
+            *self
         }
     }
 }
@@ -436,7 +437,7 @@ impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
     }
 
     fn is_vector(&self) -> bool {
-        let mut typ = self.clone();
+        let mut typ = *self;
         loop {
             if typ.dyncast_vector().is_some() {
                 return true;

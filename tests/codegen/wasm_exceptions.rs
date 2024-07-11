@@ -3,12 +3,12 @@
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
-#![feature(rustc_attrs)]
+
+extern "C-unwind" {
+    fn may_panic();
+}
 
 extern "C" {
-    fn may_panic();
-
-    #[rustc_nounwind]
     fn log_number(number: usize);
 }
 

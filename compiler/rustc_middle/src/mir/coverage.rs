@@ -103,7 +103,7 @@ pub enum CoverageKind {
     SpanMarker,
 
     /// Marks its enclosing basic block with an ID that can be referred to by
-    /// side data in [`BranchInfo`].
+    /// side data in [`CoverageInfoHi`].
     ///
     /// Should be erased before codegen (at some point after `InstrumentCoverage`).
     BlockMarker { id: BlockMarkerId },
@@ -274,10 +274,15 @@ pub struct FunctionCoverageInfo {
     pub mcdc_num_condition_bitmaps: usize,
 }
 
-/// Branch information recorded during THIR-to-MIR lowering, and stored in MIR.
+/// Coverage information for a function, recorded during MIR building and
+/// attached to the corresponding `mir::Body`. Used by the `InstrumentCoverage`
+/// MIR pass.
+///
+/// ("Hi" indicates that this is "high-level" information collected at the
+/// THIR/MIR boundary, before the MIR-based coverage instrumentation pass.)
 #[derive(Clone, Debug)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub struct BranchInfo {
+pub struct CoverageInfoHi {
     /// 1 more than the highest-numbered [`CoverageKind::BlockMarker`] that was
     /// injected into the MIR body. This makes it possible to allocate per-ID
     /// data structures without having to scan the entire body first.

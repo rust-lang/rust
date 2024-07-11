@@ -30,7 +30,7 @@ use rustc_errors::{
 };
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, get_codegen_backend};
-use rustc_interface::{interface, Queries};
+use rustc_interface::{interface, passes, Linker, Queries};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
@@ -41,7 +41,6 @@ use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::output::collect_crate_types;
 use rustc_session::{config, filesearch, EarlyDiagCtxt, Session};
-use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
@@ -367,18 +366,17 @@ fn run_compiler(
             return early_exit();
         }
 
-        let early_dcx = EarlyDiagCtxt::new(sess.opts.error_format);
-
-        if print_crate_info(&early_dcx, codegen_backend, sess, has_input) == Compilation::Stop {
+        if print_crate_info(codegen_backend, sess, has_input) == Compilation::Stop {
             return early_exit();
         }
 
         if !has_input {
-            early_dcx.early_fatal("no input filename given"); // this is fatal
+            #[allow(rustc::diagnostic_outside_of_impl)]
+            sess.dcx().fatal("no input filename given"); // this is fatal
         }
 
         if !sess.opts.unstable_opts.ls.is_empty() {
-            list_metadata(&early_dcx, sess, &*codegen_backend.metadata_loader());
+            list_metadata(sess, &*codegen_backend.metadata_loader());
             return early_exit();
         }
 
@@ -399,7 +397,9 @@ fn run_compiler(
                         Ok(())
                     })?;
 
-                    queries.write_dep_info()?;
+                    queries.global_ctxt()?.enter(|tcx| {
+                        passes::write_dep_info(tcx);
+                    });
                 } else {
                     let krate = queries.parse()?;
                     pretty::print(
@@ -427,7 +427,9 @@ fn run_compiler(
                 return early_exit();
             }
 
-            queries.write_dep_info()?;
+            queries.global_ctxt()?.enter(|tcx| {
+                passes::write_dep_info(tcx);
+            });
 
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
@@ -445,21 +447,9 @@ fn run_compiler(
                 return early_exit();
             }
 
-            let linker = queries.codegen_and_build_linker()?;
-
-            // This must run after monomorphization so that all generic types
-            // have been instantiated.
-            if sess.opts.unstable_opts.print_type_sizes {
-                sess.code_stats.print_type_sizes();
-            }
-
-            if sess.opts.unstable_opts.print_vtable_sizes {
-                let crate_name = queries.global_ctxt()?.enter(|tcx| tcx.crate_name(LOCAL_CRATE));
-
-                sess.code_stats.print_vtable_sizes(crate_name);
-            }
-
-            Ok(Some(linker))
+            queries.global_ctxt()?.enter(|tcx| {
+                Ok(Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend)?))
+            })
         })?;
 
         // Linking is done outside the `compiler.enter()` so that the
@@ -670,7 +660,7 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
     }
 }
 
-fn list_metadata(early_dcx: &EarlyDiagCtxt, sess: &Session, metadata_loader: &dyn MetadataLoader) {
+fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
     match sess.io.input {
         Input::File(ref ifile) => {
             let path = &(*ifile);
@@ -687,13 +677,13 @@ fn list_metadata(early_dcx: &EarlyDiagCtxt, sess: &Session, metadata_loader: &dy
             safe_println!("{}", String::from_utf8(v).unwrap());
         }
         Input::Str { .. } => {
-            early_dcx.early_fatal("cannot list metadata for stdin");
+            #[allow(rustc::diagnostic_outside_of_impl)]
+            sess.dcx().fatal("cannot list metadata for stdin");
         }
     }
 }
 
 fn print_crate_info(
-    early_dcx: &EarlyDiagCtxt,
     codegen_backend: &dyn CodegenBackend,
     sess: &Session,
     parse_attrs: bool,
@@ -877,8 +867,8 @@ fn print_crate_info(
                         .expect("unknown Apple target OS");
                     println_info!("deployment_target={}", format!("{major}.{minor}"))
                 } else {
-                    early_dcx
-                        .early_fatal("only Apple targets currently support deployment version info")
+                    #[allow(rustc::diagnostic_outside_of_impl)]
+                    sess.dcx().fatal("only Apple targets currently support deployment version info")
                 }
             }
         }
@@ -1133,7 +1123,11 @@ pub fn describe_flag_categories(early_dcx: &EarlyDiagCtxt, matches: &Matches) ->
     }
 
     if cg_flags.iter().any(|x| *x == "no-stack-check") {
-        early_dcx.early_warn("the --no-stack-check flag is deprecated and does nothing");
+        early_dcx.early_warn("the `-Cno-stack-check` flag is deprecated and does nothing");
+    }
+
+    if cg_flags.iter().any(|x| x.starts_with("inline-threshold")) {
+        early_dcx.early_warn("the `-Cinline-threshold` flag is deprecated and does nothing (consider using `-Cllvm-args=--inline-threshold=...`)");
     }
 
     if cg_flags.iter().any(|x| *x == "passes=list") {

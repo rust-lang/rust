@@ -3,7 +3,7 @@ use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedF
 use crate::num::NonZero;
 use crate::ops::Try;
 use core::array;
-use core::mem::{ManuallyDrop, MaybeUninit};
+use core::mem::MaybeUninit;
 use core::ops::ControlFlow;
 
 /// An iterator that filters the elements of `iter` with `predicate`.
@@ -24,6 +24,42 @@ pub struct Filter<I, P> {
 impl<I, P> Filter<I, P> {
     pub(in crate::iter) fn new(iter: I, predicate: P) -> Filter<I, P> {
         Filter { iter, predicate }
+    }
+}
+
+impl<I, P> Filter<I, P>
+where
+    I: Iterator,
+    P: FnMut(&I::Item) -> bool,
+{
+    #[inline]
+    fn next_chunk_dropless<const N: usize>(
+        &mut self,
+    ) -> Result<[I::Item; N], array::IntoIter<I::Item, N>> {
+        let mut array: [MaybeUninit<I::Item>; N] = [const { MaybeUninit::uninit() }; N];
+        let mut initialized = 0;
+
+        let result = self.iter.try_for_each(|element| {
+            let idx = initialized;
+            // branchless index update combined with unconditionally copying the value even when
+            // it is filtered reduces branching and dependencies in the loop.
+            initialized = idx + (self.predicate)(&element) as usize;
+            // SAFETY: Loop conditions ensure the index is in bounds.
+            unsafe { array.get_unchecked_mut(idx) }.write(element);
+
+            if initialized < N { ControlFlow::Continue(()) } else { ControlFlow::Break(()) }
+        });
+
+        match result {
+            ControlFlow::Break(()) => {
+                // SAFETY: The loop above is only explicitly broken when the array has been fully initialized
+                Ok(unsafe { MaybeUninit::array_assume_init(array) })
+            }
+            ControlFlow::Continue(()) => {
+                // SAFETY: The range is in bounds since the loop breaks when reaching N elements.
+                Err(unsafe { array::IntoIter::new_unchecked(array, 0..initialized) })
+            }
+        }
     }
 }
 
@@ -64,52 +100,16 @@ where
     fn next_chunk<const N: usize>(
         &mut self,
     ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>> {
-        let mut array: [MaybeUninit<Self::Item>; N] = MaybeUninit::uninit_array();
-
-        struct Guard<'a, T> {
-            array: &'a mut [MaybeUninit<T>],
-            initialized: usize,
-        }
-
-        impl<T> Drop for Guard<'_, T> {
-            #[inline]
-            fn drop(&mut self) {
-                if const { crate::mem::needs_drop::<T>() } {
-                    // SAFETY: self.initialized is always <= N, which also is the length of the array.
-                    unsafe {
-                        core::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
-                            self.array.get_unchecked_mut(..self.initialized),
-                        ));
-                    }
-                }
+        // avoid codegen for the dead branch
+        let fun = const {
+            if crate::mem::needs_drop::<I::Item>() {
+                array::iter_next_chunk::<I::Item, N>
+            } else {
+                Self::next_chunk_dropless::<N>
             }
-        }
+        };
 
-        let mut guard = Guard { array: &mut array, initialized: 0 };
-
-        let result = self.iter.try_for_each(|element| {
-            let idx = guard.initialized;
-            guard.initialized = idx + (self.predicate)(&element) as usize;
-
-            // SAFETY: Loop conditions ensure the index is in bounds.
-            unsafe { guard.array.get_unchecked_mut(idx) }.write(element);
-
-            if guard.initialized < N { ControlFlow::Continue(()) } else { ControlFlow::Break(()) }
-        });
-
-        let guard = ManuallyDrop::new(guard);
-
-        match result {
-            ControlFlow::Break(()) => {
-                // SAFETY: The loop above is only explicitly broken when the array has been fully initialized
-                Ok(unsafe { MaybeUninit::array_assume_init(array) })
-            }
-            ControlFlow::Continue(()) => {
-                let initialized = guard.initialized;
-                // SAFETY: The range is in bounds since the loop breaks when reaching N elements.
-                Err(unsafe { array::IntoIter::new_unchecked(array, 0..initialized) })
-            }
-        }
+        fun(self)
     }
 
     #[inline]

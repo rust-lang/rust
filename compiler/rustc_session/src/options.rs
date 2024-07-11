@@ -12,10 +12,9 @@ use rustc_span::edition::Edition;
 use rustc_span::RealFileName;
 use rustc_span::SourceFileHashAlgorithm;
 use rustc_target::spec::{
-    CodeModel, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy, SanitizerSet, WasmCAbi,
-};
-use rustc_target::spec::{
-    RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
+    CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
+    RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
+    WasmCAbi,
 };
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hasher};
@@ -374,11 +373,13 @@ mod desc {
     pub const parse_opt_comma_list: &str = parse_comma_list;
     pub const parse_number: &str = "a number";
     pub const parse_opt_number: &str = parse_number;
+    pub const parse_frame_pointer: &str = "one of `true`/`yes`/`on`, `false`/`no`/`off`, or (with -Zunstable-options) `non-leaf` or `always`";
     pub const parse_threads: &str = parse_number;
     pub const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
     pub const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
+    pub const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
     pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
@@ -672,6 +673,18 @@ mod parse {
         }
     }
 
+    pub(crate) fn parse_frame_pointer(slot: &mut FramePointer, v: Option<&str>) -> bool {
+        let mut yes = false;
+        match v {
+            _ if parse_bool(&mut yes, v) && yes => slot.ratchet(FramePointer::Always),
+            _ if parse_bool(&mut yes, v) => slot.ratchet(FramePointer::MayOmit),
+            Some("always") => slot.ratchet(FramePointer::Always),
+            Some("non-leaf") => slot.ratchet(FramePointer::NonLeaf),
+            _ => return false,
+        };
+        true
+    }
+
     pub(crate) fn parse_passes(slot: &mut Passes, v: Option<&str>) -> bool {
         match v {
             Some("all") => {
@@ -720,6 +733,32 @@ mod parse {
             _ => return false,
         }
         true
+    }
+
+    pub(crate) fn parse_patchable_function_entry(
+        slot: &mut PatchableFunctionEntry,
+        v: Option<&str>,
+    ) -> bool {
+        let mut total_nops = 0;
+        let mut prefix_nops = 0;
+
+        if !parse_number(&mut total_nops, v) {
+            let parts = v.and_then(|v| v.split_once(',')).unzip();
+            if !parse_number(&mut total_nops, parts.0) {
+                return false;
+            }
+            if !parse_number(&mut prefix_nops, parts.1) {
+                return false;
+            }
+        }
+
+        if let Some(pfe) =
+            PatchableFunctionEntry::from_total_and_prefix_nops(total_nops, prefix_nops)
+        {
+            *slot = pfe;
+            return true;
+        }
+        false
     }
 
     pub(crate) fn parse_oom_strategy(slot: &mut OomStrategy, v: Option<&str>) -> bool {
@@ -1479,7 +1518,7 @@ options! {
         "emit bitcode in rlibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
         "extra data to put in each output filename"),
-    force_frame_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    force_frame_pointers: FramePointer = (FramePointer::MayOmit, parse_frame_pointer, [TRACKED],
         "force use of the frame pointers"),
     #[rustc_lint_opt_deny_field_access("use `Session::must_emit_unwind_tables` instead of this field")]
     force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -1487,7 +1526,8 @@ options! {
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "enable incremental compilation"),
     inline_threshold: Option<u32> = (None, parse_opt_number, [TRACKED],
-        "set the threshold for inlining a function"),
+        "this option is deprecated and does nothing \
+        (consider using `-Cllvm-args=--inline-threshold=...`)"),
     #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
     instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage reports \
@@ -1590,8 +1630,6 @@ options! {
         "only allow the listed language features to be enabled in code (comma separated)"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata (default: no)"),
-    asm_comments: bool = (false, parse_bool, [TRACKED],
-        "generate comments into the assembly (may change behavior) (default: no)"),
     assert_incr_state: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "assert that the incremental cache is in given state: \
          either `loaded` or `not-loaded`."),
@@ -1726,6 +1764,8 @@ options! {
         "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable MIR inlining (default: no)"),
+    inline_mir_forwarder_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "inlining threshold when the caller is a simple forwarding function (default: 30)"),
     inline_mir_hint_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
         "inlining threshold for functions with inline hint (default: 100)"),
     inline_mir_preserve_debug: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -1846,6 +1886,8 @@ options! {
         "panic strategy for panics in drops"),
     parse_only: bool = (false, parse_bool, [UNTRACKED],
         "parse only; do not compile, assemble, or link (default: no)"),
+    patchable_function_entry: PatchableFunctionEntry = (PatchableFunctionEntry::default(), parse_patchable_function_entry, [TRACKED],
+        "nop padding at function entry"),
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
@@ -2063,6 +2105,8 @@ written to standard error output)"),
         "Generate sync unwind tables instead of async unwind tables (default: no)"),
     validate_mir: bool = (false, parse_bool, [UNTRACKED],
         "validate MIR after each transformation"),
+    verbose_asm: bool = (false, parse_bool, [TRACKED],
+        "add descriptive comments from LLVM to the assembly (may change behavior) (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::verbose_internals` instead of this field")]
     verbose_internals: bool = (false, parse_bool, [TRACKED_NO_CRATE_HASH],
         "in general, enable more debug printouts (default: no)"),

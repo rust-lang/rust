@@ -6,6 +6,7 @@
 //!
 //! [rustc dev guide]:
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
+
 use rustc_ast::Mutability;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
@@ -573,7 +574,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Check supertraits hold. This is so that their associated type bounds
         // will be checked in the code below.
         for super_trait in tcx
-            .super_predicates_of(trait_predicate.def_id())
+            .explicit_super_predicates_of(trait_predicate.def_id())
             .instantiate(tcx, trait_predicate.trait_ref.args)
             .predicates
             .into_iter()
@@ -1161,7 +1162,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { mut obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .sup(DefineOpaqueTypes::No, target, source_trait)
+                    .sup(DefineOpaqueTypes::Yes, target, source_trait)
                     .map_err(|_| Unimplemented)?;
 
                 // Register one obligation for 'a: 'b.
@@ -1228,7 +1229,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::No, b, a)
+                    .eq(DefineOpaqueTypes::Yes, b, a)
                     .map_err(|_| Unimplemented)?;
 
                 ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
@@ -1276,7 +1277,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::No, target, new_struct)
+                    .eq(DefineOpaqueTypes::Yes, target, new_struct)
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
 
@@ -1309,7 +1310,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { mut obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::No, target, new_tuple)
+                    .eq(DefineOpaqueTypes::Yes, target, new_tuple)
                     .map_err(|_| Unimplemented)?;
 
                 // Add a nested `T: Unsize<U>` predicate.

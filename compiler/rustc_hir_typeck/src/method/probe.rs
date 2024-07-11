@@ -33,6 +33,7 @@ use rustc_span::edit_distance::{
 };
 use rustc_span::symbol::sym;
 use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
+use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy;
 use rustc_trait_selection::traits::query::method_autoderef::{
@@ -857,7 +858,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let args = self.fresh_args_for_item(self.span, method.def_id);
                 let fty = self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args);
                 let fty = self.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, fty);
-                self.can_sub(self.param_env, fty.output(), expected)
+                self.can_eq(self.param_env, fty.output(), expected)
             }),
             _ => false,
         }
@@ -870,7 +871,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         trait_def_id: DefId,
     ) {
         let trait_args = self.fresh_args_for_item(self.span, trait_def_id);
-        let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, trait_args);
+        let trait_ref = ty::TraitRef::new_from_args(self.tcx, trait_def_id, trait_args);
 
         if self.tcx.is_trait_alias(trait_def_id) {
             // For trait aliases, recursively assume all explicitly named traits are relevant
@@ -1279,6 +1280,7 @@ impl<'tcx> Pick<'tcx> {
                     trait_item_def_id: _,
                     fn_has_self_parameter: _,
                     opt_rpitit_info: _,
+                    is_effects_desugaring: _,
                 },
             kind: _,
             import_ids: _,

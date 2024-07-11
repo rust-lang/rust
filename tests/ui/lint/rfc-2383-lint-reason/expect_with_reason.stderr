@@ -1,5 +1,5 @@
 warning: this lint expectation is unfulfilled
-  --> $DIR/expect_with_reason.rs:6:11
+  --> $DIR/expect_with_reason.rs:5:11
    |
 LL | #![expect(unused_variables, reason = "<This should fail and display this reason>")]
    |           ^^^^^^^^^^^^^^^^

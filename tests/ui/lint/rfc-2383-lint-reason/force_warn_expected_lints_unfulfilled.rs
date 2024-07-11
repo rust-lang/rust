@@ -3,8 +3,6 @@
 //@ compile-flags: --force-warn unused_mut
 //@ check-pass
 
-#![feature(lint_reasons)]
-
 fn expect_early_pass_lint(terminate: bool) {
     #[expect(while_true)]
     //~^ WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]

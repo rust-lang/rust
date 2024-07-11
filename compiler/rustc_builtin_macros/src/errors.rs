@@ -729,6 +729,14 @@ pub(crate) struct AsmExpectedComma {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_asm_expected_string_literal)]
+pub(crate) struct AsmExpectedStringLiteral {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_asm_underscore_input)]
 pub(crate) struct AsmUnderscoreInput {
     #[primary_span]
@@ -779,6 +787,14 @@ pub(crate) struct AsmPositionalAfter {
 pub(crate) struct AsmNoReturn {
     #[primary_span]
     pub(crate) outputs_sp: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_no_matched_argument_name)]
+pub(crate) struct AsmNoMatchedArgumentName {
+    pub(crate) name: String,
+    #[primary_span]
+    pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -871,4 +887,28 @@ pub(crate) struct TakesNoArguments<'a> {
     #[primary_span]
     pub span: Span,
     pub name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_proc_macro_attribute_only_be_used_on_bare_functions)]
+pub(crate) struct AttributeOnlyBeUsedOnBareFunctions<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub path: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_proc_macro_attribute_only_usable_with_crate_type)]
+pub(crate) struct AttributeOnlyUsableWithCrateType<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub path: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_source_uitls_expected_item)]
+pub(crate) struct ExpectedItem<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub token: &'a str,
 }

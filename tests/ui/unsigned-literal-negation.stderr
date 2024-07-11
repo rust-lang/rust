@@ -2,34 +2,37 @@ error[E0600]: cannot apply unary operator `-` to type `usize`
   --> $DIR/unsigned-literal-negation.rs:2:13
    |
 LL |     let x = -1 as usize;
-   |             ^^
-   |             |
-   |             cannot apply unary operator `-`
-   |             help: you may have meant the maximum value of `usize`: `usize::MAX`
+   |             ^^ cannot apply unary operator `-`
    |
    = note: unsigned values cannot be negated
+help: you may have meant the maximum value of `usize`
+   |
+LL |     let x = usize::MAX;
+   |             ~~~~~~~~~~
 
 error[E0600]: cannot apply unary operator `-` to type `usize`
   --> $DIR/unsigned-literal-negation.rs:3:13
    |
 LL |     let x = (-1) as usize;
-   |             ^^^^
-   |             |
-   |             cannot apply unary operator `-`
-   |             help: you may have meant the maximum value of `usize`: `usize::MAX`
+   |             ^^^^ cannot apply unary operator `-`
    |
    = note: unsigned values cannot be negated
+help: you may have meant the maximum value of `usize`
+   |
+LL |     let x = usize::MAX;
+   |             ~~~~~~~~~~
 
 error[E0600]: cannot apply unary operator `-` to type `u32`
   --> $DIR/unsigned-literal-negation.rs:4:18
    |
 LL |     let x: u32 = -1;
-   |                  ^^
-   |                  |
-   |                  cannot apply unary operator `-`
-   |                  help: you may have meant the maximum value of `u32`: `u32::MAX`
+   |                  ^^ cannot apply unary operator `-`
    |
    = note: unsigned values cannot be negated
+help: you may have meant the maximum value of `u32`
+   |
+LL |     let x: u32 = u32::MAX;
+   |                  ~~~~~~~~
 
 error: aborting due to 3 previous errors
 

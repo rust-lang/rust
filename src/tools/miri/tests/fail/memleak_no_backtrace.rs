@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-disable-leak-backtraces
-//@error-in-other-file: the evaluated program leaked memory
+//@error-in-other-file: memory leaked
 //@normalize-stderr-test: ".*│.*" -> "$$stripped$$"
 
 fn main() {

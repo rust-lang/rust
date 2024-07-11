@@ -13,6 +13,8 @@ use crate::os::raw::{c_char, c_long, c_longlong, c_uint, c_ulong, c_ushort, c_vo
 use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
 use crate::ptr;
 
+mod windows_targets;
+
 mod windows_sys;
 pub use windows_sys::*;
 
@@ -54,6 +56,7 @@ pub const EXIT_FAILURE: u32 = 1;
 pub const CONDITION_VARIABLE_INIT: CONDITION_VARIABLE = CONDITION_VARIABLE { Ptr: ptr::null_mut() };
 #[cfg(target_vendor = "win7")]
 pub const SRWLOCK_INIT: SRWLOCK = SRWLOCK { Ptr: ptr::null_mut() };
+#[cfg(not(target_thread_local))]
 pub const INIT_ONCE_STATIC_INIT: INIT_ONCE = INIT_ONCE { Ptr: ptr::null_mut() };
 
 // Some windows_sys types have different signs than the types we use.
@@ -503,11 +506,8 @@ if #[cfg(not(target_vendor = "uwp"))] {
     #[cfg(target_arch = "arm")]
     pub enum CONTEXT {}
 }}
-
-#[link(name = "ws2_32")]
-extern "system" {
-    pub fn WSAStartup(wversionrequested: u16, lpwsadata: *mut WSADATA) -> i32;
-}
+// WSAStartup is only redefined here so that we can override WSADATA for Arm32
+windows_targets::link!("ws2_32.dll" "system" fn WSAStartup(wversionrequested: u16, lpwsadata: *mut WSADATA) -> i32);
 #[cfg(target_arch = "arm")]
 #[repr(C)]
 pub struct WSADATA {

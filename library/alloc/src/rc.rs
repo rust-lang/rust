@@ -249,6 +249,8 @@ use std::boxed::Box;
 use core::any::Any;
 use core::borrow;
 use core::cell::Cell;
+#[cfg(not(no_global_oom_handling))]
+use core::clone::CloneToUninit;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -268,8 +270,6 @@ use core::slice::from_raw_parts_mut;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-#[cfg(not(no_global_oom_handling))]
-use crate::alloc::WriteCloneIntoRaw;
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 #[cfg(not(no_global_oom_handling))]
@@ -1749,7 +1749,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     }
 }
 
-impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
+#[cfg(not(no_global_oom_handling))]
+impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Rc<T, A> {
     /// Makes a mutable reference into the given `Rc`.
     ///
     /// If there are other `Rc` pointers to the same allocation, then `make_mut` will
@@ -1800,31 +1801,52 @@ impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
     /// assert!(76 == *data);
     /// assert!(weak.upgrade().is_none());
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
+        let size_of_val = size_of_val::<T>(&**this);
+
         if Rc::strong_count(this) != 1 {
             // Gotta clone the data, there are other Rcs.
-            // Pre-allocate memory to allow writing the cloned value directly.
-            let mut rc = Self::new_uninit_in(this.alloc.clone());
-            unsafe {
-                let data = Rc::get_mut_unchecked(&mut rc);
-                (**this).write_clone_into_raw(data.as_mut_ptr());
-                *this = rc.assume_init();
-            }
+
+            let this_data_ref: &T = &**this;
+            // `in_progress` drops the allocation if we panic before finishing initializing it.
+            let mut in_progress: UniqueRcUninit<T, A> =
+                UniqueRcUninit::new(this_data_ref, this.alloc.clone());
+
+            // Initialize with clone of this.
+            let initialized_clone = unsafe {
+                // Clone. If the clone panics, `in_progress` will be dropped and clean up.
+                this_data_ref.clone_to_uninit(in_progress.data_ptr());
+                // Cast type of pointer, now that it is initialized.
+                in_progress.into_rc()
+            };
+
+            // Replace `this` with newly constructed Rc.
+            *this = initialized_clone;
         } else if Rc::weak_count(this) != 0 {
             // Can just steal the data, all that's left is Weaks
-            let mut rc = Self::new_uninit_in(this.alloc.clone());
+
+            // We don't need panic-protection like the above branch does, but we might as well
+            // use the same mechanism.
+            let mut in_progress: UniqueRcUninit<T, A> =
+                UniqueRcUninit::new(&**this, this.alloc.clone());
             unsafe {
-                let data = Rc::get_mut_unchecked(&mut rc);
-                data.as_mut_ptr().copy_from_nonoverlapping(&**this, 1);
+                // Initialize `in_progress` with move of **this.
+                // We have to express this in terms of bytes because `T: ?Sized`; there is no
+                // operation that just copies a value based on its `size_of_val()`.
+                ptr::copy_nonoverlapping(
+                    ptr::from_ref(&**this).cast::<u8>(),
+                    in_progress.data_ptr().cast::<u8>(),
+                    size_of_val,
+                );
 
                 this.inner().dec_strong();
                 // Remove implicit strong-weak ref (no need to craft a fake
                 // Weak here -- we know other Weaks can clean up for us)
                 this.inner().dec_weak();
-                ptr::write(this, rc.assume_init());
+                // Replace `this` with newly constructed Rc that has the moved data.
+                ptr::write(this, in_progress.into_rc());
             }
         }
         // This unsafety is ok because we're guaranteed that the pointer
@@ -3683,6 +3705,70 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueRc<T, A> {
             if self.ptr.as_ref().weak() == 0 {
                 self.alloc.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
             }
+        }
+    }
+}
+
+/// A unique owning pointer to a [`RcBox`] **that does not imply the contents are initialized,**
+/// but will deallocate it (without dropping the value) when dropped.
+///
+/// This is a helper for [`Rc::make_mut()`] to ensure correct cleanup on panic.
+/// It is nearly a duplicate of `UniqueRc<MaybeUninit<T>, A>` except that it allows `T: !Sized`,
+/// which `MaybeUninit` does not.
+#[cfg(not(no_global_oom_handling))]
+struct UniqueRcUninit<T: ?Sized, A: Allocator> {
+    ptr: NonNull<RcBox<T>>,
+    layout_for_value: Layout,
+    alloc: Option<A>,
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
+    /// Allocate a RcBox with layout suitable to contain `for_value` or a clone of it.
+    fn new(for_value: &T, alloc: A) -> UniqueRcUninit<T, A> {
+        let layout = Layout::for_value(for_value);
+        let ptr = unsafe {
+            Rc::allocate_for_layout(
+                layout,
+                |layout_for_rcbox| alloc.allocate(layout_for_rcbox),
+                |mem| mem.with_metadata_of(ptr::from_ref(for_value) as *const RcBox<T>),
+            )
+        };
+        Self { ptr: NonNull::new(ptr).unwrap(), layout_for_value: layout, alloc: Some(alloc) }
+    }
+
+    /// Returns the pointer to be written into to initialize the [`Rc`].
+    fn data_ptr(&mut self) -> *mut T {
+        let offset = data_offset_align(self.layout_for_value.align());
+        unsafe { self.ptr.as_ptr().byte_add(offset) as *mut T }
+    }
+
+    /// Upgrade this into a normal [`Rc`].
+    ///
+    /// # Safety
+    ///
+    /// The data must have been initialized (by writing to [`Self::data_ptr()`]).
+    unsafe fn into_rc(mut self) -> Rc<T, A> {
+        let ptr = self.ptr;
+        let alloc = self.alloc.take().unwrap();
+        mem::forget(self);
+        // SAFETY: The pointer is valid as per `UniqueRcUninit::new`, and the caller is responsible
+        // for having initialized the data.
+        unsafe { Rc::from_ptr_in(ptr.as_ptr(), alloc) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: ?Sized, A: Allocator> Drop for UniqueRcUninit<T, A> {
+    fn drop(&mut self) {
+        // SAFETY:
+        // * new() produced a pointer safe to deallocate.
+        // * We own the pointer unless into_rc() was called, which forgets us.
+        unsafe {
+            self.alloc
+                .take()
+                .unwrap()
+                .deallocate(self.ptr.cast(), rcbox_layout_for_value_layout(self.layout_for_value));
         }
     }
 }

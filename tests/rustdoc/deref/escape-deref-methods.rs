@@ -26,8 +26,8 @@ impl Deref for TitleList {
     }
 }
 
-// @has foo/struct.TitleList.html
-// @has - '//div[@class="sidebar-elems"]//h3' 'Methods from Deref<Target=Vec<Title>>'
+//@ has foo/struct.TitleList.html
+//@ has - '//div[@class="sidebar-elems"]//h3' 'Methods from Deref<Target=Vec<Title>>'
 impl DerefMut for TitleList {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.members

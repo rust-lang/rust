@@ -543,6 +543,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_enum_def(enum_definition, item.hir_id()));
         }
         ItemKind::Impl(Impl {
+            constness: _,
             safety: _,
             defaultness: _,
             polarity: _,
@@ -915,7 +916,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
     match param.kind {
         GenericParamKind::Lifetime { .. } => {}
         GenericParamKind::Type { ref default, .. } => visit_opt!(visitor, visit_ty, default),
-        GenericParamKind::Const { ref ty, ref default, is_host_effect: _ } => {
+        GenericParamKind::Const { ref ty, ref default, is_host_effect: _, synthetic: _ } => {
             try_visit!(visitor.visit_ty(ty));
             if let Some(ref default) = default {
                 try_visit!(visitor.visit_const_param_default(param.hir_id, default));

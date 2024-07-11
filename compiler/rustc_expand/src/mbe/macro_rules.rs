@@ -10,7 +10,9 @@ use crate::mbe::transcribe::transcribe;
 
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
-use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind, TokenKind::*};
+use rustc_ast::token::{
+    self, Delimiter, NonterminalKind, NtPatKind::*, Token, TokenKind, TokenKind::*,
+};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
@@ -151,7 +153,7 @@ pub(super) trait Tracker<'matcher> {
     /// Arm failed to match. If the token is `token::Eof`, it indicates an unexpected
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
     /// The usize is the approximate position of the token in the input token stream.
-    fn build_failure(tok: Token, position: usize, msg: &'static str) -> Self::Failure;
+    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure;
 
     /// This is called before trying to match next MatcherLoc on the current token.
     fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
@@ -180,7 +182,7 @@ pub(super) struct NoopTracker;
 impl<'matcher> Tracker<'matcher> for NoopTracker {
     type Failure = ();
 
-    fn build_failure(_tok: Token, _position: usize, _msg: &'static str) -> Self::Failure {}
+    fn build_failure(_tok: Token, _position: u32, _msg: &'static str) -> Self::Failure {}
 
     fn description() -> &'static str {
         "none"
@@ -1145,14 +1147,17 @@ fn check_matcher_core<'tt>(
                     // Macros defined in the current crate have a real node id,
                     // whereas macros from an external crate have a dummy id.
                     if def.id != DUMMY_NODE_ID
-                        && matches!(kind, NonterminalKind::PatParam { inferred: true })
-                        && matches!(next_token, TokenTree::Token(token) if token.kind == BinOp(token::BinOpToken::Or))
+                        && matches!(kind, NonterminalKind::Pat(PatParam { inferred: true }))
+                        && matches!(
+                            next_token,
+                            TokenTree::Token(token) if token.kind == BinOp(token::BinOpToken::Or)
+                        )
                     {
                         // It is suggestion to use pat_param, for example: $x:pat -> $x:pat_param.
                         let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
                             span,
                             name,
-                            Some(NonterminalKind::PatParam { inferred: false }),
+                            Some(NonterminalKind::Pat(PatParam { inferred: false })),
                         ));
                         sess.psess.buffer_lint(
                             RUST_2021_INCOMPATIBLE_OR_PATTERNS,
@@ -1185,14 +1190,14 @@ fn check_matcher_core<'tt>(
                             );
                             err.span_label(sp, format!("not allowed after `{kind}` fragments"));
 
-                            if kind == NonterminalKind::PatWithOr
+                            if kind == NonterminalKind::Pat(PatWithOr)
                                 && sess.psess.edition.at_least_rust_2021()
                                 && next_token.is_token(&BinOp(token::BinOpToken::Or))
                             {
                                 let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
                                     span,
                                     name,
-                                    Some(NonterminalKind::PatParam { inferred: false }),
+                                    Some(NonterminalKind::Pat(PatParam { inferred: false })),
                                 ));
                                 err.span_suggestion(
                                     span,
@@ -1292,7 +1297,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 // maintain
                 IsInFollow::Yes
             }
-            NonterminalKind::Stmt | NonterminalKind::Expr | NonterminalKind::Expr2021 => {
+            NonterminalKind::Stmt | NonterminalKind::Expr(_) => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`;`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
@@ -1302,7 +1307,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            NonterminalKind::PatParam { .. } => {
+            NonterminalKind::Pat(PatParam { .. }) => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
@@ -1315,7 +1320,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            NonterminalKind::PatWithOr => {
+            NonterminalKind::Pat(PatWithOr) => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {

@@ -37,7 +37,6 @@ use rustc_session::lint::{
     },
     Level, Lint, LintExpectationId, LintId,
 };
-use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -788,15 +787,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     ast::MetaItemKind::NameValue(ref name_value) => {
                         if item.path == sym::reason {
                             if let ast::LitKind::Str(rationale, _) = name_value.kind {
-                                if !self.features.lint_reasons {
-                                    feature_err(
-                                        &self.sess,
-                                        sym::lint_reasons,
-                                        item.span,
-                                        "lint reasons are experimental",
-                                    )
-                                    .emit();
-                                }
                                 reason = Some(rationale);
                             } else {
                                 sess.dcx().emit_err(MalformedAttribute {

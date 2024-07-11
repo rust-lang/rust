@@ -135,7 +135,12 @@ impl Emitter for JsonEmitter {
         let data: Vec<FutureBreakageItem<'_>> = diags
             .into_iter()
             .map(|mut diag| {
-                if diag.level == crate::Level::Allow {
+                // Allowed or expected lints don't normally (by definition) emit a lint
+                // but future incompat lints are special and are emitted anyway.
+                //
+                // So to avoid ICEs and confused users we "upgrade" the lint level for
+                // those `FutureBreakageItem` to warn.
+                if matches!(diag.level, crate::Level::Allow | crate::Level::Expect(..)) {
                     diag.level = crate::Level::Warning;
                 }
                 FutureBreakageItem {

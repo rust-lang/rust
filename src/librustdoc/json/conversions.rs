@@ -10,6 +10,7 @@ use rustc_ast::ast;
 use rustc_attr::DeprecatedSince;
 use rustc_hir::{def::CtorKind, def::DefKind, def_id::DefId};
 use rustc_metadata::rendered_const;
+use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::{Pos, Symbol};
@@ -310,14 +311,16 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         EnumItem(e) => ItemEnum::Enum(e.into_tcx(tcx)),
         VariantItem(v) => ItemEnum::Variant(v.into_tcx(tcx)),
         FunctionItem(f) => ItemEnum::Function(from_function(f, true, header.unwrap(), tcx)),
-        ForeignFunctionItem(f) => ItemEnum::Function(from_function(f, false, header.unwrap(), tcx)),
+        ForeignFunctionItem(f, _) => {
+            ItemEnum::Function(from_function(f, false, header.unwrap(), tcx))
+        }
         TraitItem(t) => ItemEnum::Trait((*t).into_tcx(tcx)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_tcx(tcx)),
         MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), tcx)),
         TyMethodItem(m) => ItemEnum::Function(from_function(m, false, header.unwrap(), tcx)),
         ImplItem(i) => ItemEnum::Impl((*i).into_tcx(tcx)),
         StaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
-        ForeignStaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
+        ForeignStaticItem(s, _) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignTypeItem => ItemEnum::ForeignType,
         TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_tcx(tcx)),
         OpaqueTyItem(t) => ItemEnum::OpaqueTy(t.into_tcx(tcx)),
@@ -464,7 +467,7 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
                 default: default.map(|x| (*x).into_tcx(tcx)),
                 synthetic,
             },
-            Const { ty, default, is_host_effect: _ } => GenericParamDefKind::Const {
+            Const { ty, default, synthetic: _ } => GenericParamDefKind::Const {
                 type_: (*ty).into_tcx(tcx),
                 default: default.map(|x| *x),
             },
@@ -499,22 +502,26 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
                                     synthetic,
                                 }
                             }
-                            clean::GenericParamDefKind::Const {
-                                ty,
-                                default,
-                                is_host_effect: _,
-                            } => GenericParamDefKind::Const {
-                                type_: (*ty).into_tcx(tcx),
-                                default: default.map(|d| *d),
-                            },
+                            clean::GenericParamDefKind::Const { ty, default, synthetic: _ } => {
+                                GenericParamDefKind::Const {
+                                    type_: (*ty).into_tcx(tcx),
+                                    default: default.map(|d| *d),
+                                }
+                            }
                         };
                         GenericParamDef { name, kind }
                     })
                     .collect(),
             },
-            RegionPredicate { lifetime, bounds } => WherePredicate::RegionPredicate {
+            RegionPredicate { lifetime, bounds } => WherePredicate::LifetimePredicate {
                 lifetime: convert_lifetime(lifetime),
-                bounds: bounds.into_tcx(tcx),
+                outlives: bounds
+                    .iter()
+                    .map(|bound| match bound {
+                        clean::GenericBound::Outlives(lt) => convert_lifetime(*lt),
+                        _ => bug!("found non-outlives-bound on lifetime predicate"),
+                    })
+                    .collect(),
             },
             EqPredicate { lhs, rhs } => {
                 WherePredicate::EqPredicate { lhs: lhs.into_tcx(tcx), rhs: rhs.into_tcx(tcx) }

@@ -332,7 +332,7 @@ fn assert_stdin_output(
         let mut session = Session::new(config, Some(&mut buf));
         session.format(input).unwrap();
         let errors = ReportedErrors {
-            has_diff: has_diff,
+            has_diff,
             ..Default::default()
         };
         assert_eq!(session.errors, errors);
@@ -389,6 +389,26 @@ fn self_tests() {
         path.push(dir);
         path.push("main.rs");
         files.push(path);
+    }
+    // for crates that need to be included but lies outside src
+    let external_crates = vec!["check_diff", "config_proc_macro"];
+    for external_crate in external_crates {
+        let mut path = PathBuf::from(external_crate);
+        path.push("src");
+        let directory = fs::read_dir(&path).unwrap();
+        let search_files = directory.filter_map(|file| {
+            file.ok().and_then(|f| {
+                let name = f.file_name();
+                if matches!(name.as_os_str().to_str(), Some("main.rs" | "lib.rs")) {
+                    Some(f.path())
+                } else {
+                    None
+                }
+            })
+        });
+        for file in search_files {
+            files.push(file);
+        }
     }
     files.push(PathBuf::from("src/lib.rs"));
 
@@ -835,7 +855,7 @@ fn handle_result(
         // Ignore LF and CRLF difference for Windows.
         if !string_eq_ignore_newline_repr(&fmt_text, &text) {
             if std::env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0") {
-                std::fs::write(file_name, fmt_text).unwrap();
+                std::fs::write(target, fmt_text).unwrap();
                 continue;
             }
             let diff = make_diff(&text, &fmt_text, DIFF_CONTEXT_SIZE);

@@ -4,6 +4,7 @@
 //!
 //! For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 //! see design document in the tracking issue #89653.
+
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::base_n::ALPHANUMERIC_ONLY;
 use rustc_data_structures::base_n::CASE_INSENSITIVE;

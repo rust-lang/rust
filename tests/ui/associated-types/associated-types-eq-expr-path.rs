@@ -7,7 +7,9 @@ trait Foo {
 
 impl Foo for isize {
     type A = usize;
-    fn bar() -> isize { 42 }
+    fn bar() -> isize {
+        42
+    }
 }
 
 pub fn main() {

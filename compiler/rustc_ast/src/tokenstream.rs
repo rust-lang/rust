@@ -14,7 +14,7 @@
 //! ownership of the original.
 
 use crate::ast::{AttrStyle, StmtKind};
-use crate::ast_traits::{HasAttrs, HasSpan, HasTokens};
+use crate::ast_traits::{HasAttrs, HasTokens};
 use crate::token::{self, Delimiter, Nonterminal, Token, TokenKind};
 use crate::AttrVec;
 
@@ -23,7 +23,6 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{sym, Span, SpanDecoder, SpanEncoder, Symbol, DUMMY_SP};
-use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
 use std::{cmp, fmt, iter};
@@ -171,8 +170,8 @@ pub enum AttrTokenTree {
     Delimited(DelimSpan, DelimSpacing, Delimiter, AttrTokenStream),
     /// Stores the attributes for an attribute target,
     /// along with the tokens for that attribute target.
-    /// See `AttributesData` for more information
-    Attributes(AttributesData),
+    /// See `AttrsTarget` for more information
+    AttrsTarget(AttrsTarget),
 }
 
 impl AttrTokenStream {
@@ -180,42 +179,33 @@ impl AttrTokenStream {
         AttrTokenStream(Lrc::new(tokens))
     }
 
-    /// Converts this `AttrTokenStream` to a plain `TokenStream`.
-    /// During conversion, `AttrTokenTree::Attributes` get 'flattened'
+    /// Converts this `AttrTokenStream` to a plain `Vec<TokenTree>`.
+    /// During conversion, `AttrTokenTree::AttrsTarget` get 'flattened'
     /// back to a `TokenStream` of the form `outer_attr attr_target`.
     /// If there are inner attributes, they are inserted into the proper
     /// place in the attribute target tokens.
-    pub fn to_tokenstream(&self) -> TokenStream {
-        let trees: Vec<_> = self
-            .0
-            .iter()
-            .flat_map(|tree| match &tree {
+    pub fn to_token_trees(&self) -> Vec<TokenTree> {
+        let mut res = Vec::with_capacity(self.0.len());
+        for tree in self.0.iter() {
+            match tree {
                 AttrTokenTree::Token(inner, spacing) => {
-                    smallvec![TokenTree::Token(inner.clone(), *spacing)].into_iter()
+                    res.push(TokenTree::Token(inner.clone(), *spacing));
                 }
                 AttrTokenTree::Delimited(span, spacing, delim, stream) => {
-                    smallvec![TokenTree::Delimited(
+                    res.push(TokenTree::Delimited(
                         *span,
                         *spacing,
                         *delim,
-                        stream.to_tokenstream()
-                    ),]
-                    .into_iter()
+                        TokenStream::new(stream.to_token_trees()),
+                    ))
                 }
-                AttrTokenTree::Attributes(data) => {
-                    let idx = data
+                AttrTokenTree::AttrsTarget(target) => {
+                    let idx = target
                         .attrs
                         .partition_point(|attr| matches!(attr.style, crate::AttrStyle::Outer));
-                    let (outer_attrs, inner_attrs) = data.attrs.split_at(idx);
+                    let (outer_attrs, inner_attrs) = target.attrs.split_at(idx);
 
-                    let mut target_tokens: Vec<_> = data
-                        .tokens
-                        .to_attr_token_stream()
-                        .to_tokenstream()
-                        .0
-                        .iter()
-                        .cloned()
-                        .collect();
+                    let mut target_tokens = target.tokens.to_attr_token_stream().to_token_trees();
                     if !inner_attrs.is_empty() {
                         let mut found = false;
                         // Check the last two trees (to account for a trailing semi)
@@ -224,7 +214,7 @@ impl AttrTokenStream {
                                 // Inner attributes are only supported on extern blocks, functions,
                                 // impls, and modules. All of these have their inner attributes
                                 // placed at the beginning of the rightmost outermost braced group:
-                                // e.g. fn foo() { #![my_attr} }
+                                // e.g. fn foo() { #![my_attr] }
                                 //
                                 // Therefore, we can insert them back into the right location
                                 // without needing to do any extra position tracking.
@@ -237,7 +227,7 @@ impl AttrTokenStream {
 
                                 let mut stream = TokenStream::default();
                                 for inner_attr in inner_attrs {
-                                    stream.push_stream(inner_attr.tokens());
+                                    stream.push_stream(inner_attr.get_tokens());
                                 }
                                 stream.push_stream(delim_tokens.clone());
                                 *tree = TokenTree::Delimited(*span, *spacing, *delim, stream);
@@ -251,17 +241,14 @@ impl AttrTokenStream {
                             "Failed to find trailing delimited group in: {target_tokens:?}"
                         );
                     }
-                    let mut flat: SmallVec<[_; 1]> =
-                        SmallVec::with_capacity(target_tokens.len() + outer_attrs.len());
                     for attr in outer_attrs {
-                        flat.extend(attr.tokens().0.iter().cloned());
+                        res.extend(attr.get_tokens().0.iter().cloned());
                     }
-                    flat.extend(target_tokens);
-                    flat.into_iter()
+                    res.extend(target_tokens);
                 }
-            })
-            .collect();
-        TokenStream::new(trees)
+            }
+        }
+        res
     }
 }
 
@@ -275,7 +262,7 @@ impl AttrTokenStream {
 /// have an `attrs` field containing the `#[cfg(FALSE)]` attr,
 /// and a `tokens` field storing the (unparsed) tokens `struct Foo {}`
 #[derive(Clone, Debug, Encodable, Decodable)]
-pub struct AttributesData {
+pub struct AttrsTarget {
     /// Attributes, both outer and inner.
     /// These are stored in the original order that they were parsed in.
     pub attrs: AttrVec,
@@ -409,8 +396,8 @@ impl PartialEq<TokenStream> for TokenStream {
 }
 
 impl TokenStream {
-    pub fn new(streams: Vec<TokenTree>) -> TokenStream {
-        TokenStream(Lrc::new(streams))
+    pub fn new(tts: Vec<TokenTree>) -> TokenStream {
+        TokenStream(Lrc::new(tts))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -449,19 +436,19 @@ impl TokenStream {
         TokenStream::new(vec![TokenTree::token_alone(kind, span)])
     }
 
-    pub fn from_ast(node: &(impl HasAttrs + HasSpan + HasTokens + fmt::Debug)) -> TokenStream {
+    pub fn from_ast(node: &(impl HasAttrs + HasTokens + fmt::Debug)) -> TokenStream {
         let Some(tokens) = node.tokens() else {
-            panic!("missing tokens for node at {:?}: {:?}", node.span(), node);
+            panic!("missing tokens for node: {:?}", node);
         };
         let attrs = node.attrs();
         let attr_stream = if attrs.is_empty() {
             tokens.to_attr_token_stream()
         } else {
-            let attr_data =
-                AttributesData { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
-            AttrTokenStream::new(vec![AttrTokenTree::Attributes(attr_data)])
+            let target =
+                AttrsTarget { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
+            AttrTokenStream::new(vec![AttrTokenTree::AttrsTarget(target)])
         };
-        attr_stream.to_tokenstream()
+        TokenStream::new(attr_stream.to_token_trees())
     }
 
     pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {
@@ -778,6 +765,7 @@ mod size_asserts {
     static_assert_size!(AttrTokenStream, 8);
     static_assert_size!(AttrTokenTree, 32);
     static_assert_size!(LazyAttrTokenStream, 8);
+    static_assert_size!(Option<LazyAttrTokenStream>, 8); // must be small, used in many AST nodes
     static_assert_size!(TokenStream, 8);
     static_assert_size!(TokenTree, 32);
     // tidy-alphabetical-end

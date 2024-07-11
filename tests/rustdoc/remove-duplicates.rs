@@ -9,6 +9,6 @@ mod foo {
     }
 }
 
-// @count foo/index.html '//*[@class="trait"]' 1
+//@ count foo/index.html '//*[@class="trait"]' 1
 pub use foo::bar::*;
 pub use foo::*;

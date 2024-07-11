@@ -175,6 +175,11 @@ impl Drop for OwnedFd {
             // the file descriptor was closed or not, and if we retried (for
             // something like EINTR), we might close another valid file descriptor
             // opened after we closed ours.
+            // However, this is usually justified, as some of the major Unices
+            // do make sure to always close the FD, even when `close()` is interrupted,
+            // and the scenario is rare to begin with.
+            // Helpful link to an epic discussion by POSIX workgroup:
+            // http://austingroupbugs.net/view.php?id=529
             #[cfg(not(target_os = "hermit"))]
             {
                 #[cfg(unix)]

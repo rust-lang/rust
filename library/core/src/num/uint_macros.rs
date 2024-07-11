@@ -3,7 +3,6 @@ macro_rules! uint_impl {
         Self = $SelfT:ty,
         ActualT = $ActualT:ident,
         SignedT = $SignedT:ident,
-        NonZeroT = $NonZeroT:ty,
 
         // There are all for use *only* in doc comments.
         // As such, they're all passed as literals -- passing them as a string
@@ -455,8 +454,19 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_add(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_add(rhs);
-            if unlikely!(b) { None } else { Some(a) }
+            // This used to use `overflowing_add`, but that means it ends up being
+            // a `wrapping_add`, losing some optimization opportunities. Notably,
+            // phrasing it this way helps `.checked_add(1)` optimize to a check
+            // against `MAX` and a `add nuw`.
+            // Per <https://github.com/rust-lang/rust/pull/124114#issuecomment-2066173305>,
+            // LLVM is happy to re-form the intrinsic later if useful.
+
+            if unlikely!(intrinsics::add_with_overflow(self, rhs).1) {
+                None
+            } else {
+                // SAFETY: Just checked it doesn't overflow
+                Some(unsafe { intrinsics::unchecked_add(self, rhs) })
+            }
         }
 
         /// Strict integer addition. Computes `self + rhs`, panicking
@@ -491,7 +501,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_add(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_add(rhs);
-            if unlikely!(b) { overflow_panic ::add()} else {a}
+            if b { overflow_panic::add() } else { a }
          }
 
         /// Unchecked integer addition. Computes `self + rhs`, assuming overflow
@@ -593,7 +603,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_add_signed(self, rhs: $SignedT) -> Self {
             let (a, b) = self.overflowing_add_signed(rhs);
-            if unlikely!(b) { overflow_panic ::add()} else {a}
+            if b { overflow_panic::add() } else { a }
          }
 
         /// Checked integer subtraction. Computes `self - rhs`, returning
@@ -658,7 +668,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_sub(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_sub(rhs);
-            if unlikely!(b) { overflow_panic ::sub()} else {a}
+            if b { overflow_panic::sub() } else { a }
          }
 
         /// Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
@@ -779,7 +789,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_mul(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_mul(rhs);
-            if unlikely!(b) { overflow_panic ::mul()} else {a}
+            if b { overflow_panic::mul() } else { a }
          }
 
         /// Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
@@ -1216,8 +1226,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog2(self) -> Option<u32> {
-            // FIXME: Simply use `NonZero::new` once it is actually generic.
-            if let Some(x) = <$NonZeroT>::new(self) {
+            if let Some(x) = NonZero::new(self) {
                 Some(x.ilog2())
             } else {
                 None
@@ -1239,8 +1248,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog10(self) -> Option<u32> {
-            // FIXME: Simply use `NonZero::new` once it is actually generic.
-            if let Some(x) = <$NonZeroT>::new(self) {
+            if let Some(x) = NonZero::new(self) {
                 Some(x.ilog10())
             } else {
                 None
@@ -1304,7 +1312,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_neg(self) -> Self {
             let (a, b) = self.overflowing_neg();
-            if unlikely!(b) { overflow_panic::neg() } else { a }
+            if b { overflow_panic::neg() } else { a }
         }
 
         /// Checked shift left. Computes `self << rhs`, returning `None`
@@ -1367,7 +1375,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_shl(self, rhs: u32) -> Self {
             let (a, b) = self.overflowing_shl(rhs);
-            if unlikely!(b) { overflow_panic::shl() } else { a }
+            if b { overflow_panic::shl() } else { a }
         }
 
         /// Unchecked shift left. Computes `self << rhs`, assuming that
@@ -1465,7 +1473,7 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_shr(self, rhs: u32) -> Self {
             let (a, b) = self.overflowing_shr(rhs);
-            if unlikely!(b) { overflow_panic::shr() } else { a }
+            if b { overflow_panic::shr() } else { a }
         }
 
         /// Unchecked shift right. Computes `self >> rhs`, assuming that
@@ -2718,7 +2726,7 @@ macro_rules! uint_impl {
         pub const fn div_ceil(self, rhs: Self) -> Self {
             let d = self / rhs;
             let r = self % rhs;
-            if r > 0 && rhs > 0 {
+            if r > 0 {
                 d + 1
             } else {
                 d

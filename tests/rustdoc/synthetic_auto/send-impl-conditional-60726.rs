@@ -28,10 +28,10 @@ where
     I:InterfaceType<Send=True>
 {}
 
-// @has foo/struct.IntoIter.html
-// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
+//@ has foo/struct.IntoIter.html
+//@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<T> !Send for IntoIter<T>"
-// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
+//@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<T> !Sync for IntoIter<T>"
 pub struct IntoIter<T>{
     hello:DynTrait<FooInterface<T>>,

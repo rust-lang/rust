@@ -1,4 +1,3 @@
-#![feature(lint_reasons)]
 #![allow(unused, clippy::diverging_sub_expression)]
 #![warn(clippy::overly_complex_bool_expr)]
 

@@ -1,5 +1,5 @@
 error: invalid `sym` operand
-  --> $DIR/type-check-2.rs:35:24
+  --> $DIR/type-check-2.rs:38:24
    |
 LL |         asm!("{}", sym x);
    |                        ^ is a local variable
@@ -7,7 +7,7 @@ LL |         asm!("{}", sym x);
    = help: `sym` operands must refer to either a function or a static
 
 error: invalid `sym` operand
-  --> $DIR/type-check-2.rs:86:19
+  --> $DIR/type-check-2.rs:89:19
    |
 LL | global_asm!("{}", sym C);
    |                   ^^^^^ is an `i32`
@@ -15,7 +15,7 @@ LL | global_asm!("{}", sym C);
    = help: `sym` operands must refer to either a function or a static
 
 error: invalid `sym` operand
-  --> $DIR/type-check-2.rs:33:20
+  --> $DIR/type-check-2.rs:36:20
    |
 LL |         asm!("{}", sym C);
    |                    ^^^^^ is an `i32`
@@ -23,15 +23,15 @@ LL |         asm!("{}", sym C);
    = help: `sym` operands must refer to either a function or a static
 
 error: arguments for inline assembly must be copyable
-  --> $DIR/type-check-2.rs:40:32
+  --> $DIR/type-check-2.rs:43:32
    |
 LL |         asm!("{}", in(xmm_reg) SimdNonCopy(0.0, 0.0, 0.0, 0.0));
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `SimdNonCopy` does not implement the Copy trait
 
-error: cannot use value of type `{closure@$DIR/type-check-2.rs:52:28: 52:36}` for inline assembly
-  --> $DIR/type-check-2.rs:52:28
+error: cannot use value of type `{closure@$DIR/type-check-2.rs:55:28: 55:36}` for inline assembly
+  --> $DIR/type-check-2.rs:55:28
    |
 LL |         asm!("{}", in(reg) |x: i32| x);
    |                            ^^^^^^^^^^
@@ -39,7 +39,7 @@ LL |         asm!("{}", in(reg) |x: i32| x);
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `Vec<i32>` for inline assembly
-  --> $DIR/type-check-2.rs:54:28
+  --> $DIR/type-check-2.rs:57:28
    |
 LL |         asm!("{}", in(reg) vec![0]);
    |                            ^^^^^^^
@@ -48,7 +48,7 @@ LL |         asm!("{}", in(reg) vec![0]);
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: cannot use value of type `(i32, i32, i32)` for inline assembly
-  --> $DIR/type-check-2.rs:56:28
+  --> $DIR/type-check-2.rs:59:28
    |
 LL |         asm!("{}", in(reg) (1, 2, 3));
    |                            ^^^^^^^^^
@@ -56,7 +56,7 @@ LL |         asm!("{}", in(reg) (1, 2, 3));
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `[i32; 3]` for inline assembly
-  --> $DIR/type-check-2.rs:58:28
+  --> $DIR/type-check-2.rs:61:28
    |
 LL |         asm!("{}", in(reg) [1, 2, 3]);
    |                            ^^^^^^^^^
@@ -64,7 +64,7 @@ LL |         asm!("{}", in(reg) [1, 2, 3]);
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `fn() {main}` for inline assembly
-  --> $DIR/type-check-2.rs:66:31
+  --> $DIR/type-check-2.rs:69:31
    |
 LL |         asm!("{}", inout(reg) f);
    |                               ^
@@ -72,12 +72,56 @@ LL |         asm!("{}", inout(reg) f);
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `&mut i32` for inline assembly
-  --> $DIR/type-check-2.rs:69:31
+  --> $DIR/type-check-2.rs:72:31
    |
 LL |         asm!("{}", inout(reg) r);
    |                               ^
    |
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
-error: aborting due to 10 previous errors
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/type-check-2.rs:15:28
+   |
+LL |         let x: u64;
+   |             - binding declared here but left uninitialized
+LL |         asm!("{}", in(reg) x);
+   |                            ^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |         let x: u64 = 42;
+   |                    ++++
 
+error[E0381]: used binding `y` isn't initialized
+  --> $DIR/type-check-2.rs:18:9
+   |
+LL |         let mut y: u64;
+   |             ----- binding declared here but left uninitialized
+LL |         asm!("{}", inout(reg) y);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ `y` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |         let mut y: u64 = 42;
+   |                        ++++
+
+error[E0596]: cannot borrow `v` as mutable, as it is not declared as mutable
+  --> $DIR/type-check-2.rs:24:13
+   |
+LL |         let v: Vec<u64> = vec![0, 1, 2];
+   |             ^ not mutable
+...
+LL |         asm!("{}", out(reg) v[0]);
+   |                             - cannot borrow as mutable
+LL |         asm!("{}", inout(reg) v[0]);
+   |                               - cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |         let mut v: Vec<u64> = vec![0, 1, 2];
+   |             +++
+
+error: aborting due to 13 previous errors
+
+Some errors have detailed explanations: E0381, E0596.
+For more information about an error, try `rustc --explain E0381`.

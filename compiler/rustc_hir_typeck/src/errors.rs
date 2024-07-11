@@ -1,10 +1,11 @@
 //! Errors emitted by `rustc_hir_typeck`.
+
 use std::borrow::Cow;
 
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagArgValue, EmissionGuarantee, IntoDiagArg, MultiSpan,
-    SubdiagMessageOp, Subdiagnostic,
+    codes::*, Applicability, Diag, DiagArgValue, DiagSymbolList, EmissionGuarantee, IntoDiagArg,
+    MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
@@ -250,6 +251,13 @@ pub struct LossyProvenanceInt2Ptr<'tcx> {
     pub cast_ty: Ty<'tcx>,
     #[subdiagnostic]
     pub sugg: LossyProvenanceInt2PtrSuggestion,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_ptr_cast_add_auto_to_object)]
+pub struct PtrCastAddAutoToObject {
+    pub traits_len: usize,
+    pub traits: DiagSymbolList<String>,
 }
 
 #[derive(Subdiagnostic)]
@@ -500,6 +508,7 @@ pub enum SuggestBoxing {
 #[suggestion(
     hir_typeck_suggest_ptr_null_mut,
     applicability = "maybe-incorrect",
+    style = "verbose",
     code = "core::ptr::null_mut()"
 )]
 pub struct SuggestPtrNullMut {
@@ -687,4 +696,31 @@ pub struct ReplaceWithName {
     #[primary_span]
     pub span: Span,
     pub name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_cast_thin_pointer_to_fat_pointer, code = E0607)]
+pub(crate) struct CastThinPointerToFatPointer<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: String,
+    #[note(hir_typeck_teach_help)]
+    pub(crate) teach: Option<()>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_pass_to_variadic_function, code = E0617)]
+pub(crate) struct PassToVariadicFunction<'tcx, 'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub cast_ty: &'a str,
+    #[suggestion(code = "{replace}", applicability = "machine-applicable")]
+    pub sugg_span: Option<Span>,
+    pub replace: String,
+    #[help]
+    pub help: Option<()>,
+    #[note(hir_typeck_teach_help)]
+    pub(crate) teach: Option<()>,
 }

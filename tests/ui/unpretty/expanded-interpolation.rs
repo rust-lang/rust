@@ -18,6 +18,26 @@ macro_rules! stmt {
     ($stmt:stmt) => { $stmt };
 }
 
+fn break_labeled_loop() {
+    let no_paren = 'outer: loop {
+        break 'outer expr!('inner: loop { break 'inner 1; } + 1);
+    };
+
+    let paren_around_break_value = 'outer: loop {
+        break expr!('inner: loop { break 'inner 1; } + 1);
+    };
+
+    macro_rules! breaking {
+        ($value:expr) => {
+            break $value
+        };
+    }
+
+    let paren_around_break_value = loop {
+        breaking!('inner: loop { break 'inner 1; } + 1);
+    };
+}
+
 fn if_let() {
     macro_rules! if_let {
         ($pat:pat, $expr:expr) => {

@@ -169,10 +169,8 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
                 // Collect opaque types nested within the associated type bounds of this opaque type.
                 // We use identity args here, because we already know that the opaque type uses
                 // only generic parameters, and thus instantiating would not give us more information.
-                for (pred, span) in self
-                    .tcx
-                    .explicit_item_bounds(alias_ty.def_id)
-                    .instantiate_identity_iter_copied()
+                for (pred, span) in
+                    self.tcx.explicit_item_bounds(alias_ty.def_id).iter_identity_copied()
                 {
                     trace!(?pred);
                     self.visit_spanned(span, pred);

@@ -59,7 +59,6 @@
 //! might later infer `?U` to something like `&'b u32`, which would
 //! imply that `'b: 'a`.
 
-use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
 use crate::infer::resolve::OpportunisticRegionResolver;
@@ -75,6 +74,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{GenericArgKind, PolyTypeOutlivesPredicate};
 use rustc_span::DUMMY_SP;
+use rustc_type_ir::outlives::{push_outlives_components, Component};
 use smallvec::smallvec;
 
 use super::env::OutlivesEnvironment;
@@ -291,7 +291,7 @@ where
     fn components_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
-        components: &[Component<'tcx>],
+        components: &[Component<TyCtxt<'tcx>>],
         region: ty::Region<'tcx>,
         category: ConstraintCategory<'tcx>,
     ) {
@@ -471,7 +471,7 @@ where
         // projection outlive; in some cases, this may add insufficient
         // edges into the inference graph, leading to inference failures
         // even though a satisfactory solution exists.
-        let verify_bound = self.verify_bound.alias_bound(alias_ty, &mut Default::default());
+        let verify_bound = self.verify_bound.alias_bound(alias_ty);
         debug!("alias_must_outlive: pushing {:?}", verify_bound);
         self.delegate.push_verify(origin, GenericKind::Alias(alias_ty), region, verify_bound);
     }

@@ -66,7 +66,7 @@ fn main()
 
     let cf: *const dyn Foo = &0;
     let _ = cf as *const [u16]; //~ ERROR is invalid
-    let _ = cf as *const dyn Bar; //~ ERROR is invalid
+    let _ = cf as *const dyn Bar; //~ ERROR casting `*const dyn Foo` as `*const dyn Bar` is invalid
 
     vec![0.0].iter().map(|s| s as f32).collect::<Vec<f32>>(); //~ ERROR is invalid
 }

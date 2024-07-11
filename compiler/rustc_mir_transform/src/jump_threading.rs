@@ -47,6 +47,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, ScalarInt, TyCtxt};
+use rustc_mir_dataflow::lattice::HasBottom;
 use rustc_mir_dataflow::value_analysis::{Map, PlaceIndex, State, TrackElem};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{TagEncoding, Variants};
@@ -91,43 +92,8 @@ impl<'tcx> MirPass<'tcx> for JumpThreading {
             opportunities: Vec::new(),
         };
 
-        for (bb, bbdata) in body.basic_blocks.iter_enumerated() {
-            debug!(?bb, term = ?bbdata.terminator());
-            if bbdata.is_cleanup || loop_headers.contains(bb) {
-                continue;
-            }
-            let Some((discr, targets)) = bbdata.terminator().kind.as_switch() else { continue };
-            let Some(discr) = discr.place() else { continue };
-            debug!(?discr, ?bb);
-
-            let discr_ty = discr.ty(body, tcx).ty;
-            let Ok(discr_layout) = finder.ecx.layout_of(discr_ty) else { continue };
-
-            let Some(discr) = finder.map.find(discr.as_ref()) else { continue };
-            debug!(?discr);
-
-            let cost = CostChecker::new(tcx, param_env, None, body);
-
-            let mut state = State::new(ConditionSet::default(), finder.map);
-
-            let conds = if let Some((value, then, else_)) = targets.as_static_if() {
-                let Some(value) = ScalarInt::try_from_uint(value, discr_layout.size) else {
-                    continue;
-                };
-                arena.alloc_from_iter([
-                    Condition { value, polarity: Polarity::Eq, target: then },
-                    Condition { value, polarity: Polarity::Ne, target: else_ },
-                ])
-            } else {
-                arena.alloc_from_iter(targets.iter().filter_map(|(value, target)| {
-                    let value = ScalarInt::try_from_uint(value, discr_layout.size)?;
-                    Some(Condition { value, polarity: Polarity::Eq, target })
-                }))
-            };
-            let conds = ConditionSet(conds);
-            state.insert_value_idx(discr, conds, finder.map);
-
-            finder.find_opportunity(bb, state, cost, 0);
+        for bb in body.basic_blocks.indices() {
+            finder.start_from_switch(bb);
         }
 
         let opportunities = finder.opportunities;
@@ -193,8 +159,16 @@ impl Condition {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 struct ConditionSet<'a>(&'a [Condition]);
+
+impl HasBottom for ConditionSet<'_> {
+    const BOTTOM: Self = ConditionSet(&[]);
+
+    fn is_bottom(&self) -> bool {
+        self.0.is_empty()
+    }
+}
 
 impl<'a> ConditionSet<'a> {
     fn iter(self) -> impl Iterator<Item = Condition> + 'a {
@@ -212,10 +186,50 @@ impl<'a> ConditionSet<'a> {
 
 impl<'tcx, 'a> TOFinder<'tcx, 'a> {
     fn is_empty(&self, state: &State<ConditionSet<'a>>) -> bool {
-        state.all(|cs| cs.0.is_empty())
+        state.all_bottom()
     }
 
     /// Recursion entry point to find threading opportunities.
+    #[instrument(level = "trace", skip(self))]
+    fn start_from_switch(&mut self, bb: BasicBlock) -> Option<!> {
+        let bbdata = &self.body[bb];
+        if bbdata.is_cleanup || self.loop_headers.contains(bb) {
+            return None;
+        }
+        let (discr, targets) = bbdata.terminator().kind.as_switch()?;
+        let discr = discr.place()?;
+        debug!(?discr, ?bb);
+
+        let discr_ty = discr.ty(self.body, self.tcx).ty;
+        let discr_layout = self.ecx.layout_of(discr_ty).ok()?;
+
+        let discr = self.map.find(discr.as_ref())?;
+        debug!(?discr);
+
+        let cost = CostChecker::new(self.tcx, self.param_env, None, self.body);
+        let mut state = State::new_reachable();
+
+        let conds = if let Some((value, then, else_)) = targets.as_static_if() {
+            let value = ScalarInt::try_from_uint(value, discr_layout.size)?;
+            self.arena.alloc_from_iter([
+                Condition { value, polarity: Polarity::Eq, target: then },
+                Condition { value, polarity: Polarity::Ne, target: else_ },
+            ])
+        } else {
+            self.arena.alloc_from_iter(targets.iter().filter_map(|(value, target)| {
+                let value = ScalarInt::try_from_uint(value, discr_layout.size)?;
+                Some(Condition { value, polarity: Polarity::Eq, target })
+            }))
+        };
+        let conds = ConditionSet(conds);
+        state.insert_value_idx(discr, conds, self.map);
+
+        self.find_opportunity(bb, state, cost, 0);
+        None
+    }
+
+    /// Recursively walk statements backwards from this bb's terminator to find threading
+    /// opportunities.
     #[instrument(level = "trace", skip(self, cost), ret)]
     fn find_opportunity(
         &mut self,
@@ -250,7 +264,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             //   _1 = 5 // Whatever happens here, it won't change the result of a `SwitchInt`.
             //   _1 = 6
             if let Some((lhs, tail)) = self.mutated_statement(stmt) {
-                state.flood_with_tail_elem(lhs.as_ref(), tail, self.map, ConditionSet::default());
+                state.flood_with_tail_elem(lhs.as_ref(), tail, self.map, ConditionSet::BOTTOM);
             }
         }
 
@@ -270,12 +284,13 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                     self.process_switch_int(discr, targets, bb, &mut state);
                     self.find_opportunity(pred, state, cost, depth + 1);
                 }
-                _ => self.recurse_through_terminator(pred, &state, &cost, depth),
+                _ => self.recurse_through_terminator(pred, || state, &cost, depth),
             }
-        } else {
+        } else if let &[ref predecessors @ .., last_pred] = &predecessors[..] {
             for &pred in predecessors {
-                self.recurse_through_terminator(pred, &state, &cost, depth);
+                self.recurse_through_terminator(pred, || state.clone(), &cost, depth);
             }
+            self.recurse_through_terminator(last_pred, || state, &cost, depth);
         }
 
         let new_tos = &mut self.opportunities[last_non_rec..];
@@ -566,11 +581,12 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         None
     }
 
-    #[instrument(level = "trace", skip(self, cost))]
+    #[instrument(level = "trace", skip(self, state, cost))]
     fn recurse_through_terminator(
         &mut self,
         bb: BasicBlock,
-        state: &State<ConditionSet<'a>>,
+        // Pass a closure that may clone the state, as we don't want to do it each time.
+        state: impl FnOnce() -> State<ConditionSet<'a>>,
         cost: &CostChecker<'_, 'tcx>,
         depth: usize,
     ) {
@@ -580,6 +596,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::CoroutineDrop => bug!("{term:?} has no terminators"),
             // Disallowed during optimizations.
@@ -600,9 +617,9 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         };
 
         // We can recurse through this terminator.
-        let mut state = state.clone();
+        let mut state = state();
         if let Some(place_to_flood) = place_to_flood {
-            state.flood_with(place_to_flood.as_ref(), self.map, ConditionSet::default());
+            state.flood_with(place_to_flood.as_ref(), self.map, ConditionSet::BOTTOM);
         }
         self.find_opportunity(bb, state, cost.clone(), depth + 1);
     }

@@ -23,6 +23,22 @@ hir_typeck_cannot_cast_to_bool = cannot cast `{$expr_ty}` as `bool`
 
 hir_typeck_cast_enum_drop = cannot cast enum `{$expr_ty}` into integer `{$cast_ty}` because it implements `Drop`
 
+hir_typeck_cast_thin_pointer_to_fat_pointer = cannot cast thin pointer `{$expr_ty}` to fat pointer `{$cast_ty}`
+    .teach_help = Thin pointers are "simple" pointers: they are purely a reference to a
+        memory address.
+
+        Fat pointers are pointers referencing "Dynamically Sized Types" (also
+        called DST). DST don't have a statically known size, therefore they can
+        only exist behind some kind of pointers that contain additional
+        information. Slices and trait objects are DSTs. In the case of slices,
+        the additional information the fat pointer holds is their size.
+
+        To fix this error, don't try to cast directly between thin and fat
+        pointers.
+
+        For more information about casts, take a look at The Book:
+        https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions",
+
 hir_typeck_cast_unknown_pointer = cannot cast {$to ->
     [true] to
     *[false] from
@@ -122,6 +138,16 @@ hir_typeck_note_edition_guide = for more on editions, read https://doc.rust-lang
 hir_typeck_option_result_asref = use `{$def_path}::as_ref` to convert `{$expected_ty}` to `{$expr_ty}`
 hir_typeck_option_result_cloned = use `{$def_path}::cloned` to clone the value inside the `{$def_path}`
 hir_typeck_option_result_copied = use `{$def_path}::copied` to copy the value inside the `{$def_path}`
+
+hir_typeck_pass_to_variadic_function = can't pass `{$ty}` to variadic function
+    .suggestion = cast the value to `{$cast_ty}`
+    .help = cast the value to `{$cast_ty}`
+    .teach_help = certain types, like `{$ty}`, must be casted before passing them to a variadic function, because of arcane ABI rules dictated by the C standard
+
+hir_typeck_ptr_cast_add_auto_to_object = adding {$traits_len ->
+    [1] an auto trait {$traits}
+    *[other] auto traits {$traits}
+} to a trait object in a pointer cast may cause UB later on
 
 hir_typeck_remove_semi_for_coerce = you might have meant to return the `match` expression
 hir_typeck_remove_semi_for_coerce_expr = this could be implicitly returned but it is a statement, not a tail expression

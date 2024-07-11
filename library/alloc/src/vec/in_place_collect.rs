@@ -154,6 +154,7 @@
 //! }
 //! vec.truncate(write_idx);
 //! ```
+
 use crate::alloc::{handle_alloc_error, Global};
 use core::alloc::Allocator;
 use core::alloc::Layout;

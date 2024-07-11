@@ -289,8 +289,8 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             (value, AddressSpace::DATA)
                         }
                     }
-                    GlobalAlloc::Function(fn_instance) => (
-                        self.get_fn_addr(fn_instance.polymorphize(self.tcx)),
+                    GlobalAlloc::Function { instance, .. } => (
+                        self.get_fn_addr(instance.polymorphize(self.tcx)),
                         self.data_layout().instruction_address_space,
                     ),
                     GlobalAlloc::VTable(ty, trait_ref) => {
@@ -327,10 +327,6 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
         const_alloc_to_llvm(self, alloc, /*static*/ false)
-    }
-
-    fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        self.const_bitcast(val, ty)
     }
 
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {

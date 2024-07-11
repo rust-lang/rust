@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use crate::traits::error_reporting::{OverflowCause, TypeErrCtxtExt};
+use crate::error_reporting::traits::{OverflowCause, TypeErrCtxtOverflowExt};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{BoundVarReplacer, PlaceholderReplacer, ScrubbedTraitError};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -156,7 +156,7 @@ where
 {
     type Error = Vec<E>;
 
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.at.infcx.tcx
     }
 
@@ -244,7 +244,7 @@ struct DeeplyNormalizeForDiagnosticsFolder<'a, 'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.at.infcx.tcx
     }
 

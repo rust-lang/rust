@@ -12,19 +12,19 @@ mod foo {
     pub struct Bar2;
 }
 
-// @has 'foo/index.html'
-// @has - '//*[@class="item-name"]' 'BabarNon-lie'
+//@ has 'foo/index.html'
+//@ has - '//*[@class="item-name"]' 'BabarNon-lie'
 #[cfg(not(feature = "lie"))]
 pub use crate::foo::Bar as Babar;
 
-// @has - '//*[@class="item-name"]' 'Babar2Non-cake'
+//@ has - '//*[@class="item-name"]' 'Babar2Non-cake'
 #[doc(cfg(not(feature = "cake")))]
 pub use crate::foo::Bar2 as Babar2;
 
-// @has - '//*[@class="item-table"]/li' 'pub use crate::Babar as Elephant;Non-robot'
+//@ has - '//*[@class="item-table"]/li' 'pub use crate::Babar as Elephant;Non-robot'
 #[cfg(not(feature = "robot"))]
 pub use crate::Babar as Elephant;
 
-// @has - '//*[@class="item-table"]/li' 'pub use crate::Babar2 as Elephant2;Non-cat'
+//@ has - '//*[@class="item-table"]/li' 'pub use crate::Babar2 as Elephant2;Non-cat'
 #[doc(cfg(not(feature = "cat")))]
 pub use crate::Babar2 as Elephant2;

@@ -11,6 +11,6 @@ mod outer {
     }
 }
 
-// @has macro_indirect_use/inner/index.html
-// @has macro_indirect_use/inner/macro.some_macro.html
+//@ has macro_indirect_use/inner/index.html
+//@ has macro_indirect_use/inner/macro.some_macro.html
 pub use outer::inner;

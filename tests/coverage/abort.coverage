@@ -1,4 +1,3 @@
-   LL|       |#![feature(c_unwind)]
    LL|       |#![allow(unused_assignments)]
    LL|       |
    LL|     12|extern "C" fn might_abort(should_abort: bool) {

@@ -8,8 +8,8 @@ use rustc_ast::{ast, ptr};
 use rustc_span::Span;
 
 use crate::closures;
-use crate::config::lists::*;
 use crate::config::Version;
+use crate::config::{lists::*, Config};
 use crate::expr::{
     can_be_overflowed_expr, is_every_expr_simple, is_method_call, is_nested_call, is_simple_expr,
     rewrite_cond,
@@ -60,6 +60,13 @@ const SPECIAL_CASE_MACROS: &[(&str, usize)] = &[
     ("debug_assert_ne!", 2),
 ];
 
+/// Additional special case macros for version 2; these are separated to avoid breaking changes in
+/// version 1.
+const SPECIAL_CASE_MACROS_V2: &[(&str, usize)] = &[
+    // From the `log` crate.
+    ("trace!", 0),
+];
+
 const SPECIAL_CASE_ATTR: &[(&str, usize)] = &[
     // From the `failure` crate.
     ("fail", 0),
@@ -76,6 +83,7 @@ pub(crate) enum OverflowableItem<'a> {
     TuplePatField(&'a TuplePatField<'a>),
     Ty(&'a ast::Ty),
     Pat(&'a ast::Pat),
+    PreciseCapturingArg(&'a ast::PreciseCapturingArg),
 }
 
 impl<'a> Rewrite for OverflowableItem<'a> {
@@ -116,6 +124,7 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::TuplePatField(pat) => f(*pat),
             OverflowableItem::Ty(ty) => f(*ty),
             OverflowableItem::Pat(pat) => f(*pat),
+            OverflowableItem::PreciseCapturingArg(arg) => f(*arg),
         }
     }
 
@@ -130,6 +139,9 @@ impl<'a> OverflowableItem<'a> {
                     matches!(meta_item.kind, ast::MetaItemKind::Word)
                 }
             },
+            // FIXME: Why don't we consider `SegmentParam` to be simple?
+            // FIXME: If we also fix `SegmentParam`, then we should apply the same
+            // heuristic to `PreciseCapturingArg`.
             _ => false,
         }
     }
@@ -182,12 +194,17 @@ impl<'a> OverflowableItem<'a> {
         }
     }
 
-    fn special_cases(&self) -> &'static [(&'static str, usize)] {
-        match self {
+    fn special_cases(&self, config: &Config) -> impl Iterator<Item = &(&'static str, usize)> {
+        let base_cases = match self {
             OverflowableItem::MacroArg(..) => SPECIAL_CASE_MACROS,
             OverflowableItem::NestedMetaItem(..) => SPECIAL_CASE_ATTR,
             _ => &[],
-        }
+        };
+        let additional_cases = match (self, config.version()) {
+            (OverflowableItem::MacroArg(..), Version::Two) => SPECIAL_CASE_MACROS_V2,
+            _ => &[],
+        };
+        base_cases.iter().chain(additional_cases)
     }
 }
 
@@ -232,7 +249,15 @@ macro_rules! impl_into_overflowable_item_for_rustfmt_types {
     }
 }
 
-impl_into_overflowable_item_for_ast_node!(Expr, GenericParam, NestedMetaItem, FieldDef, Ty, Pat);
+impl_into_overflowable_item_for_ast_node!(
+    Expr,
+    GenericParam,
+    NestedMetaItem,
+    FieldDef,
+    Ty,
+    Pat,
+    PreciseCapturingArg
+);
 impl_into_overflowable_item_for_rustfmt_types!([MacroArg], [SegmentParam, TuplePatField]);
 
 pub(crate) fn into_overflowable_list<'a, T>(
@@ -511,7 +536,7 @@ impl<'a> Context<'a> {
                 // However, when the inner function has a prefix or a suffix
                 // (e.g., `foo() as u32`), this budget reduction may produce poorly
                 // formatted code, where a prefix or a suffix being left on its own
-                // line. Here we explicitlly check those cases.
+                // line. Here we explicitly check those cases.
                 if count_newlines(overflowed) == 1 {
                     let rw = self
                         .items
@@ -551,7 +576,7 @@ impl<'a> Context<'a> {
 
                     if tactic == DefinitiveListTactic::Vertical {
                         if let Some((all_simple, num_args_before)) =
-                            maybe_get_args_offset(self.ident, &self.items)
+                            maybe_get_args_offset(self.ident, &self.items, &self.context.config)
                         {
                             let one_line = all_simple
                                 && definitive_tactic(
@@ -771,11 +796,11 @@ fn no_long_items(list: &[ListItem], short_array_element_width_threshold: usize) 
 pub(crate) fn maybe_get_args_offset(
     callee_str: &str,
     args: &[OverflowableItem<'_>],
+    config: &Config,
 ) -> Option<(bool, usize)> {
     if let Some(&(_, num_args_before)) = args
         .get(0)?
-        .special_cases()
-        .iter()
+        .special_cases(config)
         .find(|&&(s, _)| s == callee_str)
     {
         let all_simple = args.len() > num_args_before

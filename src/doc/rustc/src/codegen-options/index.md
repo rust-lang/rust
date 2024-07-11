@@ -184,20 +184,9 @@ incremental files will be stored.
 
 ## inline-threshold
 
-This option lets you set the default threshold for inlining a function. It
-takes an unsigned integer as a value. Inlining is based on a cost model, where
-a higher threshold will allow more inlining.
+This option is deprecated and does nothing.
 
-The default depends on the [opt-level](#opt-level):
-
-| opt-level | Threshold |
-|-----------|-----------|
-| 0         | N/A, only inlines always-inline functions |
-| 1         | N/A, only inlines always-inline functions and LLVM lifetime intrinsics |
-| 2         | 225 |
-| 3         | 275 |
-| s         | 75 |
-| z         | 25 |
+Consider using `-Cllvm-args=--inline-threshold=...`.
 
 ## instrument-coverage
 

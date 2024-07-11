@@ -20,6 +20,8 @@ pub mod io;
 pub mod kernel_copy;
 #[cfg(target_os = "l4re")]
 mod l4re;
+#[cfg(target_os = "linux")]
+pub mod linux;
 #[cfg(not(target_os = "l4re"))]
 pub mod net;
 #[cfg(target_os = "l4re")]
@@ -31,8 +33,6 @@ pub mod rand;
 pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
-pub mod thread_local_dtor;
-pub mod thread_local_key;
 pub mod thread_parking;
 pub mod time;
 

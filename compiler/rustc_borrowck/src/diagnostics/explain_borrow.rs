@@ -17,7 +17,7 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
-use rustc_trait_selection::traits::error_reporting::FindExprBySpan;
+use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 
 use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
 use crate::{
@@ -389,7 +389,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
     }
 }
 
-impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
+impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
     fn free_region_constraint_info(
         &self,
         borrow_region: RegionVid,

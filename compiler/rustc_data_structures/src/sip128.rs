@@ -70,18 +70,19 @@ macro_rules! compress {
     ($state:expr) => {{ compress!($state.v0, $state.v1, $state.v2, $state.v3) }};
     ($v0:expr, $v1:expr, $v2:expr, $v3:expr) => {{
         $v0 = $v0.wrapping_add($v1);
+        $v2 = $v2.wrapping_add($v3);
         $v1 = $v1.rotate_left(13);
         $v1 ^= $v0;
-        $v0 = $v0.rotate_left(32);
-        $v2 = $v2.wrapping_add($v3);
         $v3 = $v3.rotate_left(16);
         $v3 ^= $v2;
-        $v0 = $v0.wrapping_add($v3);
-        $v3 = $v3.rotate_left(21);
-        $v3 ^= $v0;
+        $v0 = $v0.rotate_left(32);
+
         $v2 = $v2.wrapping_add($v1);
+        $v0 = $v0.wrapping_add($v3);
         $v1 = $v1.rotate_left(17);
         $v1 ^= $v2;
+        $v3 = $v3.rotate_left(21);
+        $v3 ^= $v0;
         $v2 = $v2.rotate_left(32);
     }};
 }
@@ -188,7 +189,7 @@ impl SipHasher128 {
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher128 {
         let mut hasher = SipHasher128 {
             nbuf: 0,
-            buf: MaybeUninit::uninit_array(),
+            buf: [MaybeUninit::uninit(); BUFFER_WITH_SPILL_CAPACITY],
             state: State {
                 v0: key0 ^ 0x736f6d6570736575,
                 // The XOR with 0xee is only done on 128-bit algorithm version.

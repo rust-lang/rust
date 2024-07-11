@@ -5,6 +5,7 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -12,7 +13,6 @@
 #![feature(decl_macro)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(lint_reasons)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(rustdoc_internals)]
@@ -127,6 +127,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         PartialOrd: partial_ord::expand_deriving_partial_ord,
         RustcDecodable: decodable::expand_deriving_rustc_decodable,
         RustcEncodable: encodable::expand_deriving_rustc_encodable,
+        SmartPointer: smart_ptr::expand_deriving_smart_ptr,
     }
 
     let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);

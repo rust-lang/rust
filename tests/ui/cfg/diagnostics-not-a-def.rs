@@ -1,5 +1,3 @@
-#![feature(lint_reasons)]
-
 pub mod inner {
     #[expect(unexpected_cfgs)]
     pub fn i_am_here() {

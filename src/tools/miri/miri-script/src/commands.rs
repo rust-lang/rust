@@ -252,12 +252,11 @@ impl Command {
         // Fetch given rustc commit.
         cmd!(sh, "git fetch http://localhost:{JOSH_PORT}/rust-lang/rust.git@{commit}{JOSH_FILTER}.git")
             .run()
-            .map_err(|e| {
+            .inspect_err(|_| {
                 // Try to un-do the previous `git commit`, to leave the repo in the state we found it.
                 cmd!(sh, "git reset --hard HEAD^")
                     .run()
                     .expect("FAILED to clean up again after failed `git fetch`, sorry for that");
-                e
             })
             .context("FAILED to fetch new commits, something went wrong (committing the rust-version file has been undone)")?;
 
@@ -545,9 +544,8 @@ impl Command {
         if let Some(seed_range) = many_seeds {
             e.run_many_times(seed_range, |sh, seed| {
                 eprintln!("Trying seed: {seed}");
-                run_miri(sh, Some(format!("-Zmiri-seed={seed}"))).map_err(|err| {
+                run_miri(sh, Some(format!("-Zmiri-seed={seed}"))).inspect_err(|_| {
                     eprintln!("FAILING SEED: {seed}");
-                    err
                 })
             })?;
         } else {

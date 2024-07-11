@@ -1,6 +1,8 @@
 #![warn(clippy::suboptimal_flops, clippy::imprecise_flops)]
 #![allow(clippy::unnecessary_cast)]
 
+// FIXME(f16_f128): add tests for these types when `powf` is available
+
 fn main() {
     let x = 3f32;
     let _ = x.exp2();

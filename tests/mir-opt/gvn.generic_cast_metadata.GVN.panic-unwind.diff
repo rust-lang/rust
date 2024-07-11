@@ -1,0 +1,38 @@
+- // MIR for `generic_cast_metadata` before GVN
++ // MIR for `generic_cast_metadata` after GVN
+  
+  fn generic_cast_metadata(_1: *const [T], _2: *const A, _3: *const B) -> () {
+      let mut _0: ();
+      let mut _4: *const T;
+      let mut _5: ();
+      let mut _6: *const (&A, [T]);
+      let mut _7: usize;
+      let mut _8: *const (T, B);
+      let mut _9: <B as std::ptr::Pointee>::Metadata;
+      let mut _10: *const (T, A);
+      let mut _11: <A as std::ptr::Pointee>::Metadata;
+      let mut _12: *mut A;
+      let mut _13: <A as std::ptr::Pointee>::Metadata;
+      let mut _14: *mut B;
+      let mut _15: <B as std::ptr::Pointee>::Metadata;
+  
+      bb0: {
+          _4 = _1 as *const T (PtrToPtr);
+          _5 = PtrMetadata(_4);
+          _6 = _1 as *const (&A, [T]) (PtrToPtr);
+-         _7 = PtrMetadata(_6);
++         _7 = PtrMetadata(_1);
+          _8 = _2 as *const (T, B) (PtrToPtr);
+          _9 = PtrMetadata(_8);
+          _10 = _2 as *const (T, A) (PtrToPtr);
+-         _11 = PtrMetadata(_10);
++         _11 = PtrMetadata(_2);
+          _12 = _3 as *mut A (PtrToPtr);
+          _13 = PtrMetadata(_12);
+          _14 = _3 as *mut B (PtrToPtr);
+-         _15 = PtrMetadata(_14);
++         _15 = PtrMetadata(_3);
+          return;
+      }
+  }
+  

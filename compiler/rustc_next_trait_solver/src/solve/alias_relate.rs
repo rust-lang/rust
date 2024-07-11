@@ -19,12 +19,12 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::{self as ty, Interner};
 use tracing::{instrument, trace};
 
-use crate::infcx::SolverDelegate;
+use crate::delegate::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, QueryResult};
 
-impl<Infcx, I> EvalCtxt<'_, Infcx>
+impl<D, I> EvalCtxt<'_, D>
 where
-    Infcx: SolverDelegate<Interner = I>,
+    D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     #[instrument(level = "trace", skip(self), ret)]
@@ -32,14 +32,14 @@ where
         &mut self,
         goal: Goal<I, (I::Term, I::Term, ty::AliasRelationDirection)>,
     ) -> QueryResult<I> {
-        let tcx = self.interner();
+        let cx = self.cx();
         let Goal { param_env, predicate: (lhs, rhs, direction) } = goal;
         debug_assert!(lhs.to_alias_term().is_some() || rhs.to_alias_term().is_some());
 
         // Structurally normalize the lhs.
         let lhs = if let Some(alias) = lhs.to_alias_term() {
             let term = self.next_term_infer_of_kind(lhs);
-            self.add_normalizes_to_goal(goal.with(tcx, ty::NormalizesTo { alias, term }));
+            self.add_normalizes_to_goal(goal.with(cx, ty::NormalizesTo { alias, term }));
             term
         } else {
             lhs
@@ -48,7 +48,7 @@ where
         // Structurally normalize the rhs.
         let rhs = if let Some(alias) = rhs.to_alias_term() {
             let term = self.next_term_infer_of_kind(rhs);
-            self.add_normalizes_to_goal(goal.with(tcx, ty::NormalizesTo { alias, term }));
+            self.add_normalizes_to_goal(goal.with(cx, ty::NormalizesTo { alias, term }));
             term
         } else {
             rhs

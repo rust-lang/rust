@@ -18,7 +18,7 @@ use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
 use crate::LldMode;
 
-pub use crate::utils::dylib::{dylib_path, dylib_path_var};
+pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
 
 #[cfg(test)]
 mod tests;
@@ -47,10 +47,11 @@ macro_rules! t {
         }
     };
 }
+use crate::utils::exec::{command, BootstrapCommand};
 pub use t;
 
 pub fn exe(name: &str, target: TargetSelection) -> String {
-    crate::utils::dylib::exe(name, &target.triple)
+    crate::utils::shared_helpers::exe(name, &target.triple)
 }
 
 /// Returns `true` if the file name given looks like a dynamic library.
@@ -72,7 +73,7 @@ pub fn libdir(target: TargetSelection) -> &'static str {
 
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.
 /// If the dylib_path_var is already set for this cmd, the old value will be overwritten!
-pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut Command) {
+pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
     let mut list = dylib_path();
     for path in path {
         list.insert(0, path);
@@ -81,7 +82,7 @@ pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut Command) {
 }
 
 /// Adds a list of lookup paths to `cmd`'s link library lookup path.
-pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut Command) {
+pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
     let mut list = link_lib_path();
     for path in path {
         list.insert(0, path);
@@ -135,7 +136,7 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
     if config.dry_run() {
         return Ok(());
     }
-    let _ = fs::remove_dir(link);
+    let _ = fs::remove_dir_all(link);
     return symlink_dir_inner(original, link);
 
     #[cfg(not(windows))]
@@ -241,8 +242,9 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     }
 }
 
-pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
-    let status = match cmd.status() {
+// FIXME: get rid of this function
+pub fn check_run(cmd: &mut BootstrapCommand, print_cmd_on_fail: bool) -> bool {
+    let status = match cmd.command.status() {
         Ok(status) => status,
         Err(e) => {
             println!("failed to execute command: {cmd:?}\nERROR: {e}");
@@ -358,7 +360,7 @@ pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
 /// Returns a flag that configures LLD to use only a single thread.
 /// If we use an external LLD, we need to find out which version is it to know which flag should we
 /// pass to it (LLD older than version 10 had a different flag).
-fn lld_flag_no_threads(lld_mode: LldMode, is_windows: bool) -> &'static str {
+fn lld_flag_no_threads(builder: &Builder<'_>, lld_mode: LldMode, is_windows: bool) -> &'static str {
     static LLD_NO_THREADS: OnceLock<(&'static str, &'static str)> = OnceLock::new();
 
     let new_flags = ("/threads:1", "--threads=1");
@@ -367,7 +369,9 @@ fn lld_flag_no_threads(lld_mode: LldMode, is_windows: bool) -> &'static str {
     let (windows_flag, other_flag) = LLD_NO_THREADS.get_or_init(|| {
         let newer_version = match lld_mode {
             LldMode::External => {
-                let out = output(Command::new("lld").arg("-flavor").arg("ld").arg("--version"));
+                let mut cmd = command("lld").capture_stdout();
+                cmd.arg("-flavor").arg("ld").arg("--version");
+                let out = cmd.run(builder).stdout();
                 match (out.find(char::is_numeric), out.find('.')) {
                     (Some(b), Some(e)) => out.as_str()[b..e].parse::<i32>().ok().unwrap_or(14) > 10,
                     _ => true,
@@ -429,7 +433,7 @@ pub fn linker_flags(
         if matches!(lld_threads, LldThreads::No) {
             args.push(format!(
                 "-Clink-arg=-Wl,{}",
-                lld_flag_no_threads(builder.config.lld_mode, target.is_windows())
+                lld_flag_no_threads(builder, builder.config.lld_mode, target.is_windows())
             ));
         }
     }
@@ -437,7 +441,7 @@ pub fn linker_flags(
 }
 
 pub fn add_rustdoc_cargo_linker_args(
-    cmd: &mut Command,
+    cmd: &mut BootstrapCommand,
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,
@@ -490,14 +494,15 @@ pub fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
     format!("--check-cfg=cfg({name}{next})")
 }
 
-/// Prepares `Command` that runs git inside the source directory if given.
+/// Prepares `BootstrapCommand` that runs git inside the source directory if given.
 ///
 /// Whenever a git invocation is needed, this function should be preferred over
-/// manually building a git `Command`. This approach allows us to manage bootstrap-specific
-/// needs/hacks from a single source, rather than applying them on next to every `Command::new("git")`,
-/// which is painful to ensure that the required change is applied on each one of them correctly.
-pub fn git(source_dir: Option<&Path>) -> Command {
-    let mut git = Command::new("git");
+/// manually building a git `BootstrapCommand`. This approach allows us to manage
+/// bootstrap-specific needs/hacks from a single source, rather than applying them on next to every
+/// git command creation, which is painful to ensure that the required change is applied
+/// on each one of them correctly.
+pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
+    let mut git = command("git");
 
     if let Some(source_dir) = source_dir {
         git.current_dir(source_dir);

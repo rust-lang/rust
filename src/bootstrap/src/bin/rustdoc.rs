@@ -6,19 +6,19 @@ use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 
-use dylib_util::{dylib_path, dylib_path_var};
+use shared_helpers::{
+    dylib_path, dylib_path_var, maybe_dump, parse_rustc_stage, parse_rustc_verbose,
+    parse_value_from_args,
+};
 
-#[path = "../utils/bin_helpers.rs"]
-mod bin_helpers;
-
-#[path = "../utils/dylib.rs"]
-mod dylib_util;
+#[path = "../utils/shared_helpers.rs"]
+mod shared_helpers;
 
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
 
-    let stage = bin_helpers::parse_rustc_stage();
-    let verbose = bin_helpers::parse_rustc_verbose();
+    let stage = parse_rustc_stage();
+    let verbose = parse_rustc_verbose();
 
     let rustdoc = env::var_os("RUSTDOC_REAL").expect("RUSTDOC_REAL was not set");
     let libdir = env::var_os("RUSTDOC_LIBDIR").expect("RUSTDOC_LIBDIR was not set");
@@ -26,7 +26,7 @@ fn main() {
 
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
-    let target = args.windows(2).find(|w| &*w[0] == "--target").and_then(|w| w[1].to_str());
+    let target = parse_value_from_args(&args, "--target");
 
     let mut dylib_path = dylib_path();
     dylib_path.insert(0, PathBuf::from(libdir.clone()));
@@ -62,7 +62,7 @@ fn main() {
     cmd.arg("-Zunstable-options");
     cmd.arg("--check-cfg=cfg(bootstrap)");
 
-    bin_helpers::maybe_dump(format!("stage{stage}-rustdoc"), &cmd);
+    maybe_dump(format!("stage{stage}-rustdoc"), &cmd);
 
     if verbose > 1 {
         eprintln!(

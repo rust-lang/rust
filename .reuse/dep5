@@ -29,12 +29,14 @@ Files: compiler/*
        x
        x.ps1
        x.py
+       .clang-format
        .editorconfig
        .git-blame-ignore-revs
        .gitattributes
        .gitignore
        .gitmodules
        .mailmap
+       .ignore
 Copyright: The Rust Project Developers (see https://thanks.rust-lang.org)
 License: MIT or Apache-2.0
 

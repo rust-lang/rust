@@ -18,11 +18,11 @@ doc! {
     }
 }
 
-// @has issue_23812/Foo/index.html
-// @hasraw - 'Outer comment'
-// @!hasraw - '/// Outer comment'
-// @hasraw - 'Inner comment'
-// @!hasraw - '//! Inner comment'
+//@ has issue_23812/Foo/index.html
+//@ hasraw - 'Outer comment'
+//@ !hasraw - '/// Outer comment'
+//@ hasraw - 'Inner comment'
+//@ !hasraw - '//! Inner comment'
 
 
 doc! {
@@ -32,8 +32,8 @@ doc! {
     }
 }
 
-// @has issue_23812/Bar/index.html
-// @hasraw - 'Outer block comment'
-// @!hasraw - '/** Outer block comment */'
-// @hasraw - 'Inner block comment'
-// @!hasraw - '/*! Inner block comment */'
+//@ has issue_23812/Bar/index.html
+//@ hasraw - 'Outer block comment'
+//@ !hasraw - '/** Outer block comment */'
+//@ hasraw - 'Inner block comment'
+//@ !hasraw - '/*! Inner block comment */'

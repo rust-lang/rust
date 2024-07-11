@@ -308,7 +308,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let Some((alloc_kind, mut alloc)) = self.memory.alloc_map.remove(&alloc_id) else {
             // Deallocating global memory -- always an error
             return Err(match self.tcx.try_get_global_alloc(alloc_id) {
-                Some(GlobalAlloc::Function(..)) => {
+                Some(GlobalAlloc::Function { .. }) => {
                     err_ub_custom!(
                         fluent::const_eval_invalid_dealloc,
                         alloc_id = alloc_id,
@@ -555,7 +555,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Memory of a constant or promoted or anonymous memory referenced by a static.
                 (mem, None)
             }
-            Some(GlobalAlloc::Function(..)) => throw_ub!(DerefFunctionPointer(id)),
+            Some(GlobalAlloc::Function { .. }) => throw_ub!(DerefFunctionPointer(id)),
             Some(GlobalAlloc::VTable(..)) => throw_ub!(DerefVTablePointer(id)),
             None => throw_ub!(PointerUseAfterFree(id, CheckInAllocMsg::MemoryAccessTest)),
             Some(GlobalAlloc::Static(def_id)) => {
@@ -628,6 +628,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Ok(a) => Ok(&a.1),
             Err(a) => a,
         }
+    }
+
+    /// Gives raw, immutable access to the `Allocation` address, without bounds or alignment checks.
+    /// The caller is responsible for calling the access hooks!
+    pub fn get_alloc_bytes_unchecked_raw(&self, id: AllocId) -> InterpResult<'tcx, *const u8> {
+        let alloc = self.get_alloc_raw(id)?;
+        Ok(alloc.get_bytes_unchecked_raw())
     }
 
     /// Bounds-checked *but not align-checked* allocation access.
@@ -711,6 +718,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             throw_ub!(WriteToReadOnly(id))
         }
         Ok((alloc, &mut self.machine))
+    }
+
+    /// Gives raw, mutable access to the `Allocation` address, without bounds or alignment checks.
+    /// The caller is responsible for calling the access hooks!
+    pub fn get_alloc_bytes_unchecked_raw_mut(
+        &mut self,
+        id: AllocId,
+    ) -> InterpResult<'tcx, *mut u8> {
+        let alloc = self.get_alloc_raw_mut(id)?.0;
+        Ok(alloc.get_bytes_unchecked_raw_mut())
     }
 
     /// Bounds-checked *but not align-checked* allocation access.
@@ -811,7 +828,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let alloc = alloc.inner();
                 (alloc.size(), alloc.align, AllocKind::LiveData)
             }
-            Some(GlobalAlloc::Function(_)) => bug!("We already checked function pointers above"),
+            Some(GlobalAlloc::Function { .. }) => {
+                bug!("We already checked function pointers above")
+            }
             Some(GlobalAlloc::VTable(..)) => {
                 // No data to be accessed here. But vtables are pointer-aligned.
                 return (Size::ZERO, self.tcx.data_layout.pointer_align.abi, AllocKind::VTable);
@@ -848,7 +867,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Some(FnVal::Other(*extra))
         } else {
             match self.tcx.try_get_global_alloc(id) {
-                Some(GlobalAlloc::Function(instance)) => Some(FnVal::Instance(instance)),
+                Some(GlobalAlloc::Function { instance, .. }) => Some(FnVal::Instance(instance)),
                 _ => None,
             }
         }
@@ -1039,8 +1058,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> std::fmt::Debug for DumpAllocs<'a, 'tcx, M> {
                                 alloc.inner(),
                             )?;
                         }
-                        Some(GlobalAlloc::Function(func)) => {
-                            write!(fmt, " (fn: {func})")?;
+                        Some(GlobalAlloc::Function { instance, .. }) => {
+                            write!(fmt, " (fn: {instance})")?;
                         }
                         Some(GlobalAlloc::VTable(ty, Some(trait_ref))) => {
                             write!(fmt, " (vtable: impl {trait_ref} for {ty})")?;

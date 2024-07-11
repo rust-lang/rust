@@ -1,8 +1,9 @@
 //! Deeply normalize types using the old trait solver.
-use super::error_reporting::OverflowCause;
-use super::error_reporting::TypeErrCtxtExt;
+
 use super::SelectionContext;
 use super::{project, with_replaced_escaping_bound_vars, BoundVarReplacer, PlaceholderReplacer};
+use crate::error_reporting::traits::OverflowCause;
+use crate::error_reporting::traits::TypeErrCtxtOverflowExt;
 use crate::solve::NextSolverError;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
@@ -108,16 +109,13 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     value: &T,
     reveal: Reveal,
 ) -> bool {
-    // This mirrors `ty::TypeFlags::HAS_ALIASES` except that we take `Reveal` into account.
+    let mut flags = ty::TypeFlags::HAS_ALIAS;
 
-    let mut flags = ty::TypeFlags::HAS_TY_PROJECTION
-        | ty::TypeFlags::HAS_TY_WEAK
-        | ty::TypeFlags::HAS_TY_INHERENT
-        | ty::TypeFlags::HAS_CT_PROJECTION;
-
+    // Opaques are treated as rigid with `Reveal::UserFacing`,
+    // so we can ignore those.
     match reveal {
-        Reveal::UserFacing => {}
-        Reveal::All => flags |= ty::TypeFlags::HAS_TY_OPAQUE,
+        Reveal::UserFacing => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
+        Reveal::All => {}
     }
 
     value.has_type_flags(flags)
@@ -162,7 +160,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.selcx.tcx()
     }
 
@@ -216,7 +214,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     Reveal::UserFacing => ty.super_fold_with(self),
 
                     Reveal::All => {
-                        let recursion_limit = self.interner().recursion_limit();
+                        let recursion_limit = self.cx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {
                             self.selcx.infcx.err_ctxt().report_overflow_error(
                                 OverflowCause::DeeplyNormalize(data.into()),
@@ -227,8 +225,8 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         }
 
                         let args = data.args.fold_with(self);
-                        let generic_ty = self.interner().type_of(data.def_id);
-                        let concrete_ty = generic_ty.instantiate(self.interner(), args);
+                        let generic_ty = self.cx().type_of(data.def_id);
+                        let concrete_ty = generic_ty.instantiate(self.cx(), args);
                         self.depth += 1;
                         let folded_ty = self.fold_ty(concrete_ty);
                         self.depth -= 1;
@@ -312,7 +310,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 normalized_ty
             }
             ty::Weak => {
-                let recursion_limit = self.interner().recursion_limit();
+                let recursion_limit = self.cx().recursion_limit();
                 if !recursion_limit.value_within_limit(self.depth) {
                     self.selcx.infcx.err_ctxt().report_overflow_error(
                         OverflowCause::DeeplyNormalize(data.into()),
