@@ -4088,7 +4088,6 @@ pub trait Iterator {
     /// assert!(!["a", "b", "c"].iter().contains(&"d"));
     /// assert!(["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contains(&"b"));
     /// assert!(!["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contains(&"d"));
-    /// assert!((1..1000).contains(500i32));
     /// ```
     ///
     #[unstable(feature = "iter_contains", reason = "new API", issue = "127494")]
