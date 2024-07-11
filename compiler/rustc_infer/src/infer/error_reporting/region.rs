@@ -1288,20 +1288,18 @@ fn suggest_precise_capturing<'tcx>(
             _ => None,
         });
 
-        let (insertion_span, pre, post) = if let Some(last_lifetime_span) = last_lifetime_span {
+        let (span, pre, post) = if let Some(last_lifetime_span) = last_lifetime_span {
             (last_lifetime_span.shrink_to_hi(), ", ", "")
         } else if let Some(first_param_span) = first_param_span {
             (first_param_span.shrink_to_lo(), "", ", ")
         } else {
+            // If we have no args, then have `use<>` and need to fall back to using
+            // span math. This sucks, but should be reliable due to the construction
+            // of the `use<>` span.
             (span.with_hi(span.hi() - BytePos(1)).shrink_to_hi(), "", "")
         };
 
-        diag.span_suggestion_verbose(
-            insertion_span,
-            format!("add `{new_lifetime}` to the `use<...>` bound to explicitly capture it",),
-            format!("{pre}{new_lifetime}{post}"),
-            Applicability::MachineApplicable,
-        );
+        diag.subdiagnostic(errors::AddPreciseCapturing::Existing { span, new_lifetime, pre, post });
     } else {
         let mut captured_lifetimes = FxIndexSet::default();
         let mut captured_non_lifetimes = FxIndexSet::default();
@@ -1349,11 +1347,10 @@ fn suggest_precise_capturing<'tcx>(
             .collect::<Vec<_>>()
             .join(", ");
 
-        diag.span_suggestion_verbose(
-            tcx.def_span(opaque_def_id).shrink_to_hi(),
-            format!("add a `use<...>` bound to explicitly capture `{new_lifetime}`",),
-            format!(" + use<{concatenated_bounds}>"),
-            Applicability::MachineApplicable,
-        );
+        diag.subdiagnostic(errors::AddPreciseCapturing::New {
+            span: tcx.def_span(opaque_def_id).shrink_to_hi(),
+            new_lifetime,
+            concatenated_bounds,
+        });
     }
 }
