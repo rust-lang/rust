@@ -621,8 +621,6 @@ declare_features! (
     (unstable, try_blocks, "1.29.0", Some(31436)),
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
     (unstable, type_alias_impl_trait, "1.38.0", Some(63063)),
-    /// Allows the use of type ascription in expressions.
-    (unstable, type_ascription, "1.6.0", Some(23416)),
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
