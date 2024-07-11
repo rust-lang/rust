@@ -4072,22 +4072,12 @@ pub trait Iterator {
     /// Example:
     /// ```
     /// #![feature(iter_contains)]
-    /// assert!(![1i32, 2i32, 3i32].iter().contains(&4i32));
-    /// assert!([Some(2i32), Option::<i32>::None].iter().contains(&None));
-    /// assert!([Some(2i32), Option::<i32>::None].iter().contains(&Some(2i32)));
-    /// assert!(!Vec::<i32>::new().iter().contains(&1i32));
-    /// assert!([1i32, 2i32, 2i32, 3i32].iter().contains(&2i32));
-    /// #[derive(PartialEq)]
-    /// struct Item {
-    ///     value: i32,
-    /// }
-    /// assert!([Item { value: 1i32 }, Item { value: 2i32 }].iter().contains(&Item { value: 2i32 }));
+    /// assert!([1, 2, 3].iter().contains(&1));
+    /// assert!(![1, 2, 3].iter().contains(&4));
+    /// // You can check if a String is in a string slice iterator.
     /// assert!(["a", "b", "c"].iter().contains(&"b".to_owned()));
-    /// assert!(!["a", "b", "c"].iter().contains(&"d".to_owned()));
-    /// assert!(["a", "b", "c"].iter().contains(&"b"));
-    /// assert!(!["a", "b", "c"].iter().contains(&"d"));
+    /// // You can also check if a String iterator contains a string slice.
     /// assert!(["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contains(&"b"));
-    /// assert!(!["a".to_owned(), "b".to_owned(), "c".to_owned()].iter().contains(&"d"));
     /// ```
     ///
     #[unstable(feature = "iter_contains", reason = "new API", issue = "127494")]
