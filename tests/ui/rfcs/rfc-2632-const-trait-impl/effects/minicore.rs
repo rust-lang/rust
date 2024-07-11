@@ -1,7 +1,7 @@
 //@ known-bug: #110395
 //@ failure-status: 101
-//@ normalize-stderr-test ".*note: .*\n\n" -> ""
-//@ normalize-stderr-test "thread 'rustc' panicked.*:\n.*\n" -> ""
+//@ normalize-stderr-test: ".*note: .*\n\n" -> ""
+//@ normalize-stderr-test: "thread 'rustc' panicked.*:\n.*\n" -> ""
 //@ rustc-env:RUST_BACKTRACE=0
 // FIXME(effects) check-pass
 //@ compile-flags: -Znext-solver

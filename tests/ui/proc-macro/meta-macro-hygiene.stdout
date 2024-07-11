@@ -8,9 +8,9 @@ Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro
 //@ compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene -Z trim-diagnostic-paths=no
 //@ check-pass
 // ignore-tidy-linelength
-//@ normalize-stdout-test "\d+#" -> "0#"
-//@ normalize-stdout-test "expn\d{3,}" -> "expnNNN"
-//@ normalize-stdout-test "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
+//@ normalize-stdout-test: "\d+#" -> "0#"
+//@ normalize-stdout-test: "expn\d{3,}" -> "expnNNN"
+//@ normalize-stdout-test: "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
 //
 // We don't care about symbol ids, so we set them all to 0
 // in the stdout
