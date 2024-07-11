@@ -8,7 +8,7 @@ LL |     let _ = Option:Some(vec![0, 1]);
 help: use a double colon instead
    |
 LL |     let _ = Option::Some(vec![0, 1]);
-   |                   ~~
+   |                    +
 
 error: aborting due to 1 previous error
 

@@ -1562,8 +1562,10 @@ pub(crate) struct ExpectedFnPathFoundFnKeyword {
 #[diag(parse_path_single_colon)]
 pub(crate) struct PathSingleColon {
     #[primary_span]
-    #[suggestion(applicability = "machine-applicable", code = "::", style = "verbose")]
     pub span: Span,
+
+    #[suggestion(applicability = "machine-applicable", code = ":", style = "verbose")]
+    pub suggestion: Span,
 
     #[note(parse_type_ascription_removed)]
     pub type_ascription: Option<()>,

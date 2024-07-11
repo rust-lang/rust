@@ -8,7 +8,7 @@ LL |     let _ = Option:Some("");
 help: use a double colon instead
    |
 LL |     let _ = Option::Some("");
-   |                   ~~
+   |                    +
 
 error: aborting due to 1 previous error
 

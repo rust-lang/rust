@@ -8,7 +8,7 @@ LL |     let _: usize = std::mem:size_of::<u32>();
 help: use a double colon instead
    |
 LL |     let _: usize = std::mem::size_of::<u32>();
-   |                            ~~
+   |                             +
 
 error: aborting due to 1 previous error
 
