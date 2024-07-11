@@ -2082,6 +2082,16 @@ mod remove_dir_impl {
         }
     }
 
+    fn is_enoent(result: &io::Result<()>) -> bool {
+        if let Err(err) = result
+            && matches!(err.raw_os_error(), Some(libc::ENOENT))
+        {
+            true
+        } else {
+            false
+        }
+    }
+
     fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
         // try opening as directory
         let fd = match openat_nofollow_dironly(parent_fd, &path) {
@@ -2097,36 +2107,57 @@ mod remove_dir_impl {
                     None => Err(err),
                 };
             }
+            Err(err) if matches!(err.raw_os_error(), Some(libc::ENOENT)) => {
+                // the file has already been removed by something else,
+                // do nothing.
+                return Ok(());
+            }
             result => result?,
         };
 
-        // open the directory passing ownership of the fd
-        let (dir, fd) = fdreaddir(fd)?;
-        for child in dir {
-            let child = child?;
-            let child_name = child.name_cstr();
-            match is_dir(&child) {
-                Some(true) => {
-                    remove_dir_all_recursive(Some(fd), child_name)?;
-                }
-                Some(false) => {
-                    cvt(unsafe { unlinkat(fd, child_name.as_ptr(), 0) })?;
-                }
-                None => {
-                    // POSIX specifies that calling unlink()/unlinkat(..., 0) on a directory can succeed
-                    // if the process has the appropriate privileges. This however can causing orphaned
-                    // directories requiring an fsck e.g. on Solaris and Illumos. So we try recursing
-                    // into it first instead of trying to unlink() it.
-                    remove_dir_all_recursive(Some(fd), child_name)?;
+        let result: io::Result<()> = try {
+            // open the directory passing ownership of the fd
+            let (dir, fd) = fdreaddir(fd)?;
+            for child in dir {
+                let child = child?;
+                let child_name = child.name_cstr();
+                // we need an inner try block, because if one of these
+                // directories has already been deleted, then we need to
+                // continue the loop, not return ok.
+                let result: io::Result<()> = try {
+                    match is_dir(&child) {
+                        Some(true) => {
+                            remove_dir_all_recursive(Some(fd), child_name)?;
+                        }
+                        Some(false) => {
+                            cvt(unsafe { unlinkat(fd, child_name.as_ptr(), 0) })?;
+                        }
+                        None => {
+                            // POSIX specifies that calling unlink()/unlinkat(..., 0) on a directory can succeed
+                            // if the process has the appropriate privileges. This however can causing orphaned
+                            // directories requiring an fsck e.g. on Solaris and Illumos. So we try recursing
+                            // into it first instead of trying to unlink() it.
+                            remove_dir_all_recursive(Some(fd), child_name)?;
+                        }
+                    }
+                };
+                if result.is_err() && !is_enoent(&result) {
+                    return result;
                 }
             }
-        }
 
-        // unlink the directory after removing its contents
-        cvt(unsafe {
-            unlinkat(parent_fd.unwrap_or(libc::AT_FDCWD), path.as_ptr(), libc::AT_REMOVEDIR)
-        })?;
-        Ok(())
+            // unlink the directory after removing its contents
+            cvt(unsafe {
+                unlinkat(parent_fd.unwrap_or(libc::AT_FDCWD), path.as_ptr(), libc::AT_REMOVEDIR)
+            })?;
+        };
+        if is_enoent(&result) {
+            // the file has already been removed by something else,
+            // do nothing.
+            Ok(())
+        } else {
+            result
+        }
     }
 
     fn remove_dir_all_modern(p: &Path) -> io::Result<()> {
