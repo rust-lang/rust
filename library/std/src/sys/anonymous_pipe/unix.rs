@@ -2,6 +2,7 @@ use super::*;
 
 use crate::{
     os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
+    process::Stdio,
     sys::{
         fd::FileDesc,
         pipe::{anon_pipe, AnonPipe},

@@ -1,16 +1,19 @@
-//! Module for annoymous pipe
+//! Module for anonymous pipe
 //!
 //! ```
 //! #![feature(anonymous_pipe)]
+//!
+//! # #[cfg(miri)] fn main() {}
+//! # #[cfg(not(miri))]
 //! # fn main() -> std::io::Result<()> {
 //! let (reader, writer) = std::pipe::pipe()?;
 //! # Ok(())
 //! # }
 //! ```
 
-use crate::{io, process::Stdio, sys::pipe::AnonPipe};
+use crate::{io, sys::pipe::AnonPipe};
 
-/// Create annoymous pipe that is close-on-exec and blocking.
+/// Create anonymous pipe that is close-on-exec and blocking.
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 #[inline]
 pub fn pipe() -> io::Result<(PipeReader, PipeWriter)> {
@@ -25,12 +28,12 @@ pub fn pipe() -> io::Result<(PipeReader, PipeWriter)> {
     }
 }
 
-/// Read end of the annoymous pipe.
+/// Read end of the anonymous pipe.
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 #[derive(Debug)]
 pub struct PipeReader(AnonPipe);
 
-/// Write end of the annoymous pipe.
+/// Write end of the anonymous pipe.
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 #[derive(Debug)]
 pub struct PipeWriter(AnonPipe);
@@ -137,5 +140,5 @@ mod unix;
 #[cfg(windows)]
 mod windows;
 
-#[cfg(test)]
+#[cfg(all(test, not(miri)))]
 mod tests;
