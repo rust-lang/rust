@@ -521,6 +521,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
+    /// If `ty` is `Option<T>`, returns `T, T, None`.
+    /// If `ty` is `Result<T, E>`, returns `T, T, Some(E, E)`.
+    /// Otherwise, returns `None`.
     fn deconstruct_option_or_result(
         &self,
         found_ty: Ty<'tcx>,
