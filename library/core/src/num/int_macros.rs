@@ -2173,10 +2173,35 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn wrapping_pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
             let mut base = self;
+
+            // Unroll multiplications for small exponent values.
+            // This gives the optimizer a way to efficiently inline call sites
+            // for the most common use cases with constant exponents.
+            // Currently, LLVM is unable to unroll the loop below.
+            match exp {
+                0 => return 1,
+                1 => return base,
+                2 => return base.wrapping_mul(base),
+                3 => {
+                    let squared = base.wrapping_mul(base);
+                    return squared.wrapping_mul(base);
+                }
+                4 => {
+                    let squared = base.wrapping_mul(base);
+                    return squared.wrapping_mul(squared);
+                }
+                5 => {
+                    let squared = base.wrapping_mul(base);
+                    return squared.wrapping_mul(squared).wrapping_mul(base);
+                }
+                6 => {
+                    let cubed = base.wrapping_mul(base).wrapping_mul(base);
+                    return cubed.wrapping_mul(cubed);
+                }
+                _ => {}
+            }
+
             let mut acc: Self = 1;
 
             loop {
@@ -2719,10 +2744,35 @@ macro_rules! int_impl {
         #[inline]
         #[rustc_inherit_overflow_checks]
         pub const fn pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
             let mut base = self;
+
+            // Unroll multiplications for small exponent values.
+            // This gives the optimizer a way to efficiently inline call sites
+            // for the most common use cases with constant exponents.
+            // Currently, LLVM is unable to unroll the loop below.
+            match exp {
+                0 => return 1,
+                1 => return base,
+                2 => return base * base,
+                3 => {
+                    let squared = base * base;
+                    return squared * base;
+                }
+                4 => {
+                    let squared = base * base;
+                    return squared * squared;
+                }
+                5 => {
+                    let squared = base * base;
+                    return squared * squared * base;
+                }
+                6 => {
+                    let cubed = base * base * base;
+                    return cubed * cubed;
+                }
+                _ => {}
+            }
+
             let mut acc = 1;
 
             loop {
