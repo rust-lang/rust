@@ -171,7 +171,7 @@
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
 #![feature(isqrt)]
-#![feature(iter_has_item)]
+#![feature(iter_contains)]
 #![feature(link_cfg)]
 #![feature(offset_of_enum)]
 #![feature(offset_of_nested)]

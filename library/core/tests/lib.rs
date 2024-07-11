@@ -89,7 +89,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_pin)]
 #![feature(const_waker)]
-#![feature(iter_has_item)]
+#![feature(iter_contains)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
 #![feature(pointer_is_aligned_to)]
