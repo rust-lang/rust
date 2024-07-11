@@ -269,6 +269,7 @@ impl DiagnosticDeriveVariantBuilder {
         let field_binding = &binding_info.binding;
 
         let inner_ty = FieldInnerTy::from_type(&field.ty);
+        let mut seen_label = false;
 
         field
             .attrs
@@ -280,6 +281,14 @@ impl DiagnosticDeriveVariantBuilder {
                 }
 
                 let name = attr.path().segments.last().unwrap().ident.to_string();
+
+                if name == "primary_span" && seen_label {
+                    span_err(attr.span().unwrap(), format!("`#[primary_span]` must be placed before labels, since it overwrites the span of the diagnostic")).emit();
+                }
+                if name == "label" {
+                    seen_label = true;
+                }
+
                 let needs_clone =
                     name == "primary_span" && matches!(inner_ty, FieldInnerTy::Vec(_));
                 let (binding, needs_destructure) = if needs_clone {
