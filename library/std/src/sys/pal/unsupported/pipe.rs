@@ -1,5 +1,6 @@
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 
+#[derive(Debug)]
 pub struct AnonPipe(!);
 
 impl AnonPipe {
