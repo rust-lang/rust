@@ -13,7 +13,7 @@ use ide::{
     NavigationTarget, ReferenceCategory, RenameError, Runnable, Severity, SignatureHelp,
     SnippetEdit, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
 };
-use ide_db::{rust_doc::format_docs, FxHasher};
+use ide_db::{assists, rust_doc::format_docs, FxHasher};
 use itertools::Itertools;
 use paths::{Utf8Component, Utf8Prefix};
 use semver::VersionReq;
@@ -1336,8 +1336,14 @@ pub(crate) fn code_action(
         command: None,
     };
 
-    if assist.trigger_signature_help && snap.config.client_commands().trigger_parameter_hints {
+    if assist.command == Some(assists::Command::TriggerSignatureHelp)
+        && snap.config.client_commands().trigger_parameter_hints
+    {
         res.command = Some(command::trigger_parameter_hints());
+    } else if assist.command == Some(assists::Command::Rename)
+        && snap.config.client_commands().rename
+    {
+        res.command = Some(command::rename());
     }
 
     match (assist.source_change, resolve_data) {
@@ -1712,6 +1718,14 @@ pub(crate) mod command {
         lsp_types::Command {
             title: "triggerParameterHints".into(),
             command: "rust-analyzer.triggerParameterHints".into(),
+            arguments: None,
+        }
+    }
+
+    pub(crate) fn rename() -> lsp_types::Command {
+        lsp_types::Command {
+            title: "rename".into(),
+            command: "rust-analyzer.rename".into(),
             arguments: None,
         }
     }

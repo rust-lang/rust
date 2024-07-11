@@ -1135,6 +1135,7 @@ pub struct ClientCommandsConfig {
     pub show_reference: bool,
     pub goto_location: bool,
     pub trigger_parameter_hints: bool,
+    pub rename: bool,
 }
 
 #[derive(Debug)]
@@ -1901,6 +1902,7 @@ impl Config {
             show_reference: get("rust-analyzer.showReferences"),
             goto_location: get("rust-analyzer.gotoLocation"),
             trigger_parameter_hints: get("editor.action.triggerParameterHints"),
+            rename: get("editor.action.rename"),
         }
     }
 

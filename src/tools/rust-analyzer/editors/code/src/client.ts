@@ -348,6 +348,7 @@ class ExperimentalFeatures implements lc.StaticFeature {
                     "rust-analyzer.showReferences",
                     "rust-analyzer.gotoLocation",
                     "editor.action.triggerParameterHints",
+                    "editor.action.rename",
                 ],
             },
             ...capabilities.experimental,

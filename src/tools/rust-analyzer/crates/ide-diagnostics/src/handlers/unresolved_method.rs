@@ -108,7 +108,7 @@ fn field_fix(
             (file_id, TextEdit::insert(range.start(), "(".to_owned())),
             (file_id, TextEdit::insert(range.end(), ")".to_owned())),
         ])),
-        trigger_signature_help: false,
+        command: None,
     })
 }
 
@@ -191,7 +191,7 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
                 file_id,
                 TextEdit::replace(range, assoc_func_call_expr_string),
             )),
-            trigger_signature_help: false,
+            command: None,
         })
     } else {
         None

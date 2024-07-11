@@ -190,6 +190,7 @@ function createCommands(): Record<string, CommandFactory> {
         runSingle: { enabled: commands.runSingle },
         showReferences: { enabled: commands.showReferences },
         triggerParameterHints: { enabled: commands.triggerParameterHints },
+        rename: { enabled: commands.rename },
         openLogs: { enabled: commands.openLogs },
         revealDependency: { enabled: commands.revealDependency },
     };

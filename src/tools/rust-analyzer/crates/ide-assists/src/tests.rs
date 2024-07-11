@@ -454,7 +454,7 @@ pub fn test_some_range(a: int) -> bool {
                 group: None,
                 target: 59..60,
                 source_change: None,
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_variable_assist);
@@ -470,7 +470,7 @@ pub fn test_some_range(a: int) -> bool {
                 group: None,
                 target: 59..60,
                 source_change: None,
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_function_assist);
@@ -500,7 +500,7 @@ pub fn test_some_range(a: int) -> bool {
                 group: None,
                 target: 59..60,
                 source_change: None,
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_variable_assist);
@@ -516,7 +516,7 @@ pub fn test_some_range(a: int) -> bool {
                 group: None,
                 target: 59..60,
                 source_change: None,
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_function_assist);
@@ -587,7 +587,9 @@ pub fn test_some_range(a: int) -> bool {
                         is_snippet: true,
                     },
                 ),
-                trigger_signature_help: false,
+                command: Some(
+                    Rename,
+                ),
             }
         "#]]
         .assert_debug_eq(&extract_into_variable_assist);
@@ -603,7 +605,7 @@ pub fn test_some_range(a: int) -> bool {
                 group: None,
                 target: 59..60,
                 source_change: None,
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_function_assist);
@@ -666,7 +668,9 @@ pub fn test_some_range(a: int) -> bool {
                         is_snippet: true,
                     },
                 ),
-                trigger_signature_help: false,
+                command: Some(
+                    Rename,
+                ),
             }
         "#]]
         .assert_debug_eq(&extract_into_variable_assist);
@@ -715,7 +719,7 @@ pub fn test_some_range(a: int) -> bool {
                         is_snippet: true,
                     },
                 ),
-                trigger_signature_help: false,
+                command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_function_assist);
